@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
-    "test": "vitest run --config ../../vitest.oss.config.mjs"
+    "test": "node ../../scripts/run-vitest-suite.mjs webui"
   },
   "dependencies": {
     "@mavis/protocol": "workspace:*",

@@ -725,6 +725,22 @@
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/proper-lockfile"
     },
     {
+      "name": "@types/react",
+      "versions": [
+        "18.3.31"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react"
+    },
+    {
+      "name": "@types/react-dom",
+      "versions": [
+        "18.3.7"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom"
+    },
+    {
       "name": "@types/readable-stream",
       "versions": [
         "4.0.24"
@@ -1314,6 +1330,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/moxystudio/node-cross-spawn"
+    },
+    {
+      "name": "csstype",
+      "versions": [
+        "3.2.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/frenic/csstype#readme"
     },
     {
       "name": "data-uri-to-buffer",
@@ -2416,6 +2440,14 @@
       "homepage": "https://github.com/dcodeIO/long.js#readme"
     },
     {
+      "name": "loose-envify",
+      "versions": [
+        "1.4.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/zertosh/loose-envify"
+    },
+    {
       "name": "lru-cache",
       "versions": [
         "11.5.2"
@@ -3063,6 +3095,22 @@
       "homepage": "https://github.com/dominictarr/rc#readme"
     },
     {
+      "name": "react",
+      "versions": [
+        "18.3.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
+    },
+    {
+      "name": "react-dom",
+      "versions": [
+        "18.3.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
+    },
+    {
       "name": "readable-stream",
       "versions": [
         "2.3.8",
@@ -3211,6 +3259,14 @@
       ],
       "license": "ISC",
       "homepage": "https://github.com/lddubeau/saxes#readme"
+    },
+    {
+      "name": "scheduler",
+      "versions": [
+        "0.23.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
     },
     {
       "name": "secure-json-parse",
@@ -3441,6 +3497,14 @@
       "homepage": "https://github.com/unjs/std-env#readme"
     },
     {
+      "name": "string-width",
+      "versions": [
+        "4.2.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/sindresorhus/string-width#readme"
+    },
+    {
       "name": "string_decoder",
       "versions": [
         "1.1.1",
@@ -3448,14 +3512,6 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/nodejs/string_decoder"
-    },
-    {
-      "name": "string-width",
-      "versions": [
-        "4.2.3"
-      ],
-      "license": "MIT",
-      "homepage": "https://github.com/sindresorhus/string-width#readme"
     },
     {
       "name": "strip-ansi",

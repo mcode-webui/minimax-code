@@ -48,6 +48,7 @@
     "docs/adr/0007-additive-changes-that-keep-upstream-synchronization-viable.md",
     "docs/adr/0008-first-version-assembles-the-full-tool-capability-set.md",
     "docs/adr/0009-webui-reuses-the-desktop-visual-language.md",
+    "docs/adr/0010-webui-ships-an-esbuild-artifact-with-vite-as-a-development-server.md",
     "docs/agents/domain.md",
     "docs/agents/issue-tracker.md",
     "docs/agents/triage-labels.md",

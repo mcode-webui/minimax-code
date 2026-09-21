@@ -66,7 +66,7 @@ conventions rather than designing its own. See
 | `scripts/verify.mjs` | add the WebUI gates in order, in the shared verifier rather than the workflow file |
 | `release/public-source.json` | regenerate with `node scripts/source-inventory.mjs --write` after reviewing the added paths |
 | `release/dependency-licenses.json` and the lockfile | update for the WebUI's new dependencies |
-| `scripts/build-webui.mjs`, `scripts/check-webui-boundary.mjs` | new: separate build and boundary check producing `dist-webui/` with its own metafile |
+| `scripts/build-webui.mjs`, `scripts/check-webui-boundary.mjs` | new: separate build and boundary check producing `dist-webui/` with its own metafile ([ADR 0010](adr/0010-webui-ships-an-esbuild-artifact-with-vite-as-a-development-server.md)) |
 
 `scripts/build.mjs` keeps its four CLI entry points; the WebUI is not added to them.
 The standalone TypeScript config type-checks the CLI entry points only, so the

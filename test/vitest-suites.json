@@ -160,6 +160,10 @@
     "sandbox": [
       "packages/local-runtime-v2/src/service/sandbox/backend/srt-macos.test.ts",
       "test/executable-resolution.test.ts"
+    ],
+    "webui": [
+      "packages/webui/test/unit/webui-package.test.ts",
+      "packages/webui/test/unit/webui-boundary-check.test.ts"
     ]
   }
 }

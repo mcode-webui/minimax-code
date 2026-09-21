@@ -12,6 +12,7 @@ const skipped = new Set([
   ".git",
   "node_modules",
   "dist",
+  "dist-webui",
   ".cache",
   ".pnpm-store",
   ".turbo",

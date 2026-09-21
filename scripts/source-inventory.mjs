@@ -6,13 +6,14 @@ import { createHash } from "node:crypto";
 import { inventoryPath, readExtraction } from "./lib/release-metadata.mjs";
 import { retiredSourceRoots } from "./lib/retired-sources.mjs";
 import { readSuites, suiteInventoryViolations } from "./lib/vitest-suites.mjs";
+import { INTERNAL_HOST_RE, CREDENTIAL_RE, WEBUI_DIST_DIRECTORY } from "./lib/webui-boundary-constants.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const skipped = new Set([
   ".git",
   "node_modules",
   "dist",
-  "dist-webui",
+  WEBUI_DIST_DIRECTORY,
   ".cache",
   ".pnpm-store",
   ".turbo",
@@ -45,10 +46,6 @@ if (
   violations.push(
     "LICENSE: expected MIT text with the reviewed MiniMax Code attribution",
   );
-const internalText =
-  /(?:[\w.-]+\.xaminim\.com|weaver\/idl|@mavis\/thrift-gen|\/Users\/minimax(?:\/|\b)|\/archon\/internal\/api\/)/u;
-const credential =
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\r?\n[A-Za-z0-9+/=\r\n]{100,}|\b(?:ghp_|github_pat_)[A-Za-z0-9_]{30,}|\bsk-[A-Za-z0-9_-]{32,}/u;
 for (const file of files) {
   if (retiredSourceRoots.some((prefix) => file.startsWith(prefix)))
     violations.push(`${file}: retired source`);
@@ -58,9 +55,9 @@ for (const file of files) {
   let content = readFileSync(path.join(root, file));
   if (file.endsWith(".gz")) content = gunzipSync(content);
   const text = content.toString("utf8");
-  if (internalText.test(text))
+  if (INTERNAL_HOST_RE.test(text))
     violations.push(`${file}: internal source reference`);
-  if (credential.test(text))
+  if (CREDENTIAL_RE.test(text))
     violations.push(`${file}: possible embedded credential`);
 }
 const { packageRoots } = readExtraction(root);

@@ -58,6 +58,7 @@ const steps = [
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui", script: "test:webui" },
+  { name: "test:webui-browser", script: "test:webui-browser", platforms: ["linux"] },
   { name: "test:artifact", script: "test:artifact", windows: true },
   { name: "test:capabilities", script: "test:capabilities" },
   { name: "test:windows", script: "test:windows", platforms: ["win32"], windows: true },

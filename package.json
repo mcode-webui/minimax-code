@@ -27,6 +27,7 @@
     "dev:webui": "pnpm --filter @mavis/webui dev",
     "check:webui-boundary": "node scripts/check-webui-boundary.mjs",
     "test:webui": "node scripts/run-vitest-suite.mjs webui",
+    "test:webui-browser": "playwright install chromium && playwright test",
     "typecheck:webui": "pnpm --filter @mavis/webui typecheck:server && pnpm --filter @mavis/webui typecheck:client && pnpm --filter @mavis/webui typecheck:test",
     "check:source": "node scripts/source-inventory.mjs",
     "test:capabilities": "node scripts/run-vitest-suite.mjs capability",
@@ -37,6 +38,7 @@
     "lint:tui": "eslint packages/tui/src packages/tui/test --ext .ts,.mjs --quiet"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20.19.0",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "esbuild": "0.28.2",

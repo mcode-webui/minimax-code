@@ -2727,6 +2727,40 @@
     padding: var(--spacing_12) var(--spacing_16);
     background-color: transparent;
   }
+  /* C-2: the gutter is a sibling of the `pre` so that selecting and copying the
+     code carries no line numbers, which also means the `pre` owns the scroll
+     and the gutter holds its place beside it. */
+  .webui-code-block--numbered {
+    display: flex;
+    align-items: stretch;
+  }
+  .webui-code-block--numbered pre {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .webui-code-gutter {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--spacing_12) 0 var(--spacing_12) var(--spacing_16);
+    border-right: 1px solid var(--border_light);
+    color: var(--text_default_tertiary);
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    text-align: right;
+    user-select: none;
+  }
+  .webui-code-gutter li {
+    padding: 0 var(--spacing_8);
+  }
+  /* C-1: the transcript's own tokens, mirroring `.webui-file-code` so a fence
+     and the file viewer read as one surface. */
+  .webui-code-block .hljs-comment, .webui-code-block .hljs-quote { color: var(--text_default_tertiary); font-style: italic; }
+  .webui-code-block .hljs-keyword, .webui-code-block .hljs-meta .hljs-keyword { color: var(--text_label_accent_default); }
+  .webui-code-block .hljs-string, .webui-code-block .hljs-doctag { color: var(--text_label_positive_secondary_default); }
+  .webui-code-block .hljs-number, .webui-code-block .hljs-literal { color: var(--text_label_warning_secondary_default); }
+  .webui-code-block .hljs-title, .webui-code-block .hljs-title.function_, .webui-code-block .hljs-function, .webui-code-block .hljs-section { color: var(--text_label_accent_default); }
+  .webui-code-block .hljs-type, .webui-code-block .hljs-built_in, .webui-code-block .hljs-title.class_ { color: var(--text_label_danger_secondary_default); }
+  .webui-code-block .hljs-attr, .webui-code-block .hljs-variable, .webui-code-block .hljs-property { color: var(--text_default_secondary); }
   .webui-table-shell {
     max-width: 100%;
     overflow-x: auto;

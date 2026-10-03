@@ -461,6 +461,76 @@ export function WebuiWorkspaceDirectoryBrowser({
   );
 }
 
+/** What the retry affordance on a failed turn should do. */
+export type WebuiRetryResendPlan =
+  | { readonly kind: "resend"; readonly message: string }
+  | {
+      readonly kind: "withheld";
+      readonly reason: "no-refusal" | "no-recorded-input";
+    };
+
+/** The input of the last turn a composer submitted, and the session it was in. */
+export interface WebuiRecordedTurn {
+  readonly session: string | undefined;
+  readonly message: string;
+}
+
+/**
+ * Decide what a retry on a failed turn does.
+ *
+ * A retry RE-SENDS the input the user submitted. It must not abort: the abort
+ * operation carries only a session id, so a "retry" wired to it killed a turn
+ * that may still have been running instead of re-asking. The input therefore
+ * comes from what this component recorded locally at submit time — never from
+ * a server round-trip, which would be slower and able to return a different
+ * message than the one that actually failed.
+ *
+ * `withheld` is the honest answer when there is nothing to re-send. A button
+ * that cannot do the thing it names is worse than no button: the previous
+ * defect was exactly a control that was present and could not work.
+ */
+export function planWebuiRetryResend(args: {
+  readonly refusal: string | undefined;
+  /** The session the recorded input was submitted in; `undefined` is home. */
+  readonly recordedSession: string | undefined;
+  readonly session: string | undefined;
+  readonly lastSubmittedText: string | undefined;
+}): WebuiRetryResendPlan {
+  if (!args.refusal) return { kind: "withheld", reason: "no-refusal" };
+  // `WebuiComposer` is not remounted per session, so a record left over from
+  // the previous session would re-send that session's turn. A record is only
+  // good for the session that produced it.
+  if (args.recordedSession !== args.session)
+    return { kind: "withheld", reason: "no-recorded-input" };
+  const recorded = args.lastSubmittedText?.trim();
+  if (!recorded) return { kind: "withheld", reason: "no-recorded-input" };
+  return { kind: "resend", message: recorded };
+}
+
+/**
+ * Run a retry: hand the recorded input back to the ordinary send path.
+ *
+ * Split out of the component so the decision and the resend are one testable
+ * unit. `sendTurn` is the very function the submit path uses, so a retry
+ * cannot drift into a second, subtly different way of sending — and there is no
+ * abort anywhere in this path to wire it to by mistake.
+ */
+export function resendRecordedWebuiTurn(args: {
+  readonly refusal: string | undefined;
+  readonly recordedTurn: WebuiRecordedTurn | undefined;
+  readonly session: string | undefined;
+  readonly sendTurn: (turn: { readonly message: string }) => void | Promise<void>;
+}): WebuiRetryResendPlan {
+  const plan = planWebuiRetryResend({
+    refusal: args.refusal,
+    recordedSession: args.recordedTurn?.session,
+    session: args.session,
+    lastSubmittedText: args.recordedTurn?.message,
+  });
+  if (plan.kind === "resend") void args.sendTurn({ message: plan.message });
+  return plan;
+}
+
 export function WebuiComposer({
   sessionId,
   sessionStatus,
@@ -1610,6 +1680,90 @@ export function WebuiComposer({
         });
     },
   });
+  /**
+   * The one way a turn reaches the wire. `submit` calls it after resolving an
+   * intent; the retry affordance calls it with the input recorded at submit
+   * time. Retry deliberately re-enters THIS path rather than a second send of
+   * its own, so it inherits the rules an ordinary send obeys — including the
+   * "a turn is already in flight ⇒ enqueue" branch inside
+   * `submitWebuiComposerTurn`, which is what keeps a retry from racing a
+   * running turn.
+   */
+  const sendTurn = async (turn: {
+    readonly message: string;
+    readonly clientIntent?: string;
+  }) => {
+    // A newly submitted turn is a Desktop-style request to follow the latest
+    // frontier. The scroll listener can still release this lock immediately
+    // if the user wheels back into history while the turn is running.
+    let turnRuntimeWriter = sessionId
+      ? createSessionRuntimeWriter({ kind: "session", sessionId })
+      : createSessionRuntimeWriter({ kind: "home" });
+    const turnHandlers = {
+      ...handlers,
+      setStream: (update: Parameters<typeof turnRuntimeWriter.setStream>[0]) =>
+        turnRuntimeWriter.setStream(update),
+      setSending: (sending: boolean) => turnRuntimeWriter.setSending(sending),
+      onSessionCreated: (createdSessionId: string) => {
+        handlers.onSessionCreated?.(createdSessionId);
+        if (turnRuntimeWriter.kind === "home") {
+          turnRuntimeWriter = turnRuntimeWriter.migrateToSession(createdSessionId);
+        }
+      },
+    };
+    await submitWebuiComposerTurn(
+      {
+        sessionId,
+        // `submitWebuiComposerTurn` reads `args.message ?? args.draft` and
+        // trims it, so passing the effective text as `message` re-sends it
+        // through exactly the path an ordinary send takes. `draft` carries the
+        // same value so the "no session yet" hand-off reports the input that
+        // is actually going to be sent.
+        draft: turn.message,
+        message: turn.message,
+        ...(turn.clientIntent
+          ? { clientIntent: turn.clientIntent }
+          : planMode
+            ? { clientIntent: "plan-entry" }
+            : {}),
+        attachments: attachmentWire,
+        onAttachmentsSubmitted: () => { setAttachments([]); setUrlReferences([]); },
+        sending,
+        deps: { sendMessage, resumeSession, loadMessages },
+        enqueueMessage,
+        createSession,
+        createSessionWorkspaceDir,
+        teamModeOff,
+      },
+      turnHandlers,
+    );
+  };
+  // The input of the last turn this composer submitted, kept locally so retry
+  // can re-send it without asking the server what was asked. Two holders, one
+  // value, as the slash-range ref above also does: the ref is what the retry
+  // handler reads (always current, even before the re-render lands), and the
+  // state is what makes the affordance appear at all.
+  const recordedTurnRef = useRef<WebuiRecordedTurn>();
+  const [recordedTurn, setRecordedTurn] = useState<WebuiRecordedTurn>();
+  const recordSubmittedTurn = (message: string) => {
+    const record: WebuiRecordedTurn = { session: sessionId, message };
+    recordedTurnRef.current = record;
+    setRecordedTurn(record);
+  };
+  const retryPlan = planWebuiRetryResend({
+    refusal: stream.refusal,
+    recordedSession: recordedTurn?.session,
+    session: sessionId,
+    lastSubmittedText: recordedTurn?.message,
+  });
+  const handleRetryResend = () => {
+    resendRecordedWebuiTurn({
+      refusal: stream.refusal,
+      recordedTurn: recordedTurnRef.current,
+      session: sessionId,
+      sendTurn,
+    });
+  };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const command = commandInvocation
@@ -1716,45 +1870,17 @@ export function WebuiComposer({
       setGoalMode(false);
       setPlanMode(true);
     }
-    // A newly submitted turn is a Desktop-style request to follow the latest
-    // frontier. The scroll listener can still release this lock immediately
-    // if the user wheels back into history while the turn is running.
-    let turnRuntimeWriter = sessionId
-      ? createSessionRuntimeWriter({ kind: "session", sessionId })
-      : createSessionRuntimeWriter({ kind: "home" });
-    const turnHandlers = {
-      ...handlers,
-      setStream: (update: Parameters<typeof turnRuntimeWriter.setStream>[0]) =>
-        turnRuntimeWriter.setStream(update),
-      setSending: (sending: boolean) => turnRuntimeWriter.setSending(sending),
-      onSessionCreated: (createdSessionId: string) => {
-        handlers.onSessionCreated?.(createdSessionId);
-        if (turnRuntimeWriter.kind === "home") {
-          turnRuntimeWriter = turnRuntimeWriter.migrateToSession(createdSessionId);
-        }
-      },
-    };
-    await submitWebuiComposerTurn(
-      {
-        sessionId,
-        draft,
-        ...(resolvedIntent.message ? { message: resolvedIntent.message } : {}),
-        ...(resolvedIntent.clientIntent
-          ? { clientIntent: resolvedIntent.clientIntent }
-          : planMode
-            ? { clientIntent: "plan-entry" }
-            : {}),
-        attachments: attachmentWire,
-        onAttachmentsSubmitted: () => { setAttachments([]); setUrlReferences([]); },
-        sending,
-        deps: { sendMessage, resumeSession, loadMessages },
-        enqueueMessage,
-        createSession,
-        createSessionWorkspaceDir,
-        teamModeOff,
-      },
-      turnHandlers,
-    );
+    // The exact value `submitWebuiComposerTurn` puts on the wire: it reads
+    // `message ?? draft` and trims it, so recording the effective text here is
+    // what lets a later retry reproduce this send byte for byte.
+    const effectiveMessage = resolvedIntent.message ?? draft;
+    recordSubmittedTurn(effectiveMessage);
+    await sendTurn({
+      message: effectiveMessage,
+      ...(resolvedIntent.clientIntent
+        ? { clientIntent: resolvedIntent.clientIntent }
+        : {}),
+    });
   };
   const clearLocalGoal = () => {
     applyGoal(undefined);
@@ -1829,7 +1955,7 @@ export function WebuiComposer({
           variant="output_error"
           text={stream.refusal}
           errorAt={Date.now()}
-          {...(abortSession ? { onRetry: () => void abortSession({ id: sessionId ?? "" }) } : {})}
+          {...(retryPlan.kind === "resend" ? { onRetry: handleRetryResend } : {})}
         />
       ) : null}
       {commandOutput ? (

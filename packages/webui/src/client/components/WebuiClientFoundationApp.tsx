@@ -66,6 +66,7 @@ import {
 import { RailRow } from "./RailRow.js";
 import {
   WebuiIconBrand,
+  WebuiIconContextExport,
   WebuiIconNewTask,
   WebuiIconPlugins,
   WebuiIconRemote,
@@ -94,6 +95,7 @@ import {
   collectWebuiSessionMessages,
   downloadWebuiSessionExport,
 } from "../session-export.js";
+import { importWebuiSessionFile } from "../session-import.js";
 import {
   readTeamModeOff,
   readTeamModeSessionChoices,
@@ -551,6 +553,37 @@ export function WebuiClientFoundationApp(
       }
     })();
   };
+  const handleSessionImportPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Reset first: picking the same file twice has to fire `change` again, and
+    // the element keeps its value otherwise.
+    event.target.value = "";
+    if (!file) return;
+    setSessionImportBusy(true);
+    void (async () => {
+      try {
+        const result = await importWebuiSessionFile(file, {
+          // The caller's context, never the file's session block: a downloaded
+          // file must not be able to name the working directory.
+          agentName: "main",
+          workspaceDir: selectedSession?.workspaceDir,
+        });
+        await refreshRail();
+        setSelectedSessionId(result.sessionId);
+        if (typeof window !== "undefined") {
+          window.history.replaceState(
+            null,
+            "",
+            `${window.location.pathname}${window.location.search}${sessionHash(result.sessionId)}`,
+          );
+        }
+      } catch (reason: unknown) {
+        setPageError(reason instanceof Error ? reason.message : String(reason));
+      } finally {
+        setSessionImportBusy(false);
+      }
+    })();
+  };
   const handleDeleteSession = (session: WebuiClientSession) => {
     if (!deleteSession) return;
     void deleteSession({ id: session.sessionId })
@@ -724,6 +757,8 @@ export function WebuiClientFoundationApp(
   const [railSearchOpen, setRailSearchOpen] = useState(false);
   const [railSearchQuery, setRailSearchQuery] = useState("");
   const railSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const sessionImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [sessionImportBusy, setSessionImportBusy] = useState(false);
   const openRailSearch = useCallback(() => {
     setRailSearchOpen(true);
     // The input mounts in the same commit as the state flip, so focus has to
@@ -851,6 +886,34 @@ export function WebuiClientFoundationApp(
                       icon={<WebuiIconNewTask className="flex-shrink-0" />}
                       active={homeMode && !pluginManagementOpen}
                       onSelect={startNewTask}
+                    />
+                    {/*
+                      Import is a rail-level action, not a per-session one: it
+                      reads a file and creates the session from it, so there is
+                      no session to hang the menu off yet. The picker is a
+                      hidden input driven from here so the row stays a button.
+                    */}
+                    <input
+                      ref={sessionImportInputRef}
+                      type="file"
+                      accept=".json,application/json"
+                      data-webui-session-import-input="true"
+                      aria-label="导入会话文件"
+                      // The same visually-hidden treatment the composer's
+                      // attachment inputs use. `hidden` would remove the
+                      // element from the accessibility tree and make the
+                      // picker unreachable to anything driving the DOM.
+                      className="webui-composer-hidden-file-input"
+                      onChange={handleSessionImportPicked}
+                    />
+                    <RailRow
+                      label="导入会话"
+                      icon={<WebuiIconContextExport className="flex-shrink-0" />}
+                      active={false}
+                      inert={sessionImportBusy}
+                      onSelect={() => {
+                        sessionImportInputRef.current?.click();
+                      }}
                     />
                   </div>
 

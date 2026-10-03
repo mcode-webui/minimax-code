@@ -1037,7 +1037,9 @@ describe("WebUI shell — desktop anatomy", () => {
     // catalogue/file actions rather than a disabled placeholder. The rail
     // search button joined them when session search shipped — it toggles the
     // search input rather than sitting disabled, which is why the count moved
-    // from 6 to 7.
+    // from 6 to 7. The rail import row joined them when session import
+    // shipped: it opens a file picker that posts to /session-import, so it is
+    // bound rather than a placeholder, and the count moved from 7 to 8.
     const html = renderShell();
     const controlTags: string[] = [];
     const re = /<(button|div|a|input|textarea|select)\b[^>]*>/gu;
@@ -1052,7 +1054,7 @@ describe("WebUI shell — desktop anatomy", () => {
         !/(?:^|\s)disabled(?:=|\s|>)/u.test(tag) &&
         !/aria-disabled="true"/u.test(tag),
     );
-    expect(operable).toHaveLength(7);
+    expect(operable).toHaveLength(8);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
     expect(html).toMatch(/data-webui-sidebar-toggle="true"/u);
     expect(html).toMatch(/data-webui-nav-item="新建任务"/u);
@@ -1060,6 +1062,11 @@ describe("WebUI shell — desktop anatomy", () => {
     // placeholder would silently drop session search rather than fail loudly.
     expect(html).toMatch(/data-webui-search="true" aria-expanded="false"/u);
     expect(html).not.toMatch(/data-webui-search="true"[^>]*\sdisabled/u);
+    // Same for import. Without this the picker could be unbound -- the server
+    // route would still answer, and only a real user's click would find out.
+    expect(html).toMatch(/data-webui-nav-item="导入会话"/u);
+    expect(html).toMatch(/data-webui-session-import-input="true"/u);
+    expect(html).not.toMatch(/data-webui-nav-item="导入会话"[^>]*\sdisabled/u);
   });
 
   it("lets the composer take a draft before a session exists", () => {

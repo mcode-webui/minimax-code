@@ -10,6 +10,7 @@ import {
   type SessionLifecycleApplicationOptions,
 } from "./session/lifecycle-application.js";
 import { SessionQueryApplication } from "./session/query-application.js";
+import { SessionTransferApplication } from "./session/transfer-application.js";
 import {
   SessionRootApplication,
   SessionRootEventProjector,
@@ -31,6 +32,7 @@ export interface RuntimeApplications {
     readonly root: SessionRootApplication;
     readonly diff: SessionDiffApplication;
     readonly conversationMutation: SessionConversationMutationApplication;
+    readonly transfer: SessionTransferApplication;
   };
   readonly queue: QueueApplication;
 }
@@ -150,8 +152,13 @@ export const initializeApplications: InitializeApplications = (options) => {
     options.conversationMutationPort,
     options.conversationMutationWorkflow,
   );
+  const transfer = new SessionTransferApplication({
+    messages: options.sessionSystem.repositories.messages,
+    historyMutation: options.sessionSystem.session.historyMutation,
+    now: options.nowMs ?? Date.now,
+  });
   return {
-    session: { query, content, lifecycle, root, diff, conversationMutation },
+    session: { query, content, lifecycle, root, diff, conversationMutation, transfer },
     queue,
   };
 };

@@ -168,7 +168,53 @@ export interface WebuiCreateSessionRequest {
   readonly workspaceDir?: string;
   readonly teamModeOff?: boolean;
 }
-export interface WebuiCreateSessionResult {
+
+/**
+ * A session in the shape that survives a round trip.
+ *
+ * Both layers are present because neither is recoverable from the other: the
+ * canonical layer is what the model reads on the next turn, the display layer
+ * is what the user reads. A file carrying only one of them imports as a
+ * conversation that is half-gone.
+ */
+export interface WebuiSessionTransferFile {
+  readonly format: string;
+  readonly exportedAt: string;
+  readonly session: {
+    readonly sessionId: string;
+    readonly title: string;
+    readonly agentName?: string;
+    readonly workspaceDir?: string;
+  };
+  readonly canonical: {
+    readonly envelopes: readonly {
+      readonly message_id: string;
+      readonly turn_id: string;
+      readonly message: unknown;
+    }[];
+    readonly generation: number;
+    readonly revision: string;
+  };
+  readonly display: {
+    readonly messages: readonly Record<string, unknown>[];
+  };
+}
+
+export interface WebuiImportSessionTransferRequest {
+  /** The session the caller just created to receive the history. */
+  readonly targetSessionId: string;
+  /** Informational lineage only; never trusted for anything else. */
+  readonly sourceSessionId?: string;
+  /** Untrusted. The runtime validates the whole payload before writing. */
+  readonly file: unknown;
+}
+
+export interface WebuiImportSessionTransferResult {
+  readonly sessionId: string;
+  readonly canonicalMessages: number;
+  readonly displayMessages: number;
+  readonly revision: string;
+}export interface WebuiCreateSessionResult {
   readonly agentName?: string;
   readonly sessionId?: string;
   readonly session?: WebuiSessionInfo;
@@ -800,6 +846,18 @@ export interface WebuiHarnessPort {
   ): Promise<WebuiSessionLookupResult>;
   getActiveTurn(request: WebuiSessionLookupRequest): Promise<WebuiActiveTurnResult>;
   getMessages(request: WebuiMessagesRequest): Promise<WebuiMessagesResult>;
+  /**
+   * Both storage layers of a session, verbatim.
+   *
+   * Deliberately not `getMessages`: that returns a view prepared for
+   * rendering, which drops the canonical receipts carried on compaction and
+   * fork-origin rows, and a transfer file built from it cannot be read back
+   * without losing them.
+   */
+  exportSessionTransfer(request: { readonly id: string }): Promise<WebuiSessionTransferFile>;
+  importSessionTransfer(
+    request: WebuiImportSessionTransferRequest,
+  ): Promise<WebuiImportSessionTransferResult>;
   getSessionDiff(request: WebuiGetSessionDiffRequest): Promise<WebuiGetSessionDiffResult>;
   getTurnDiff(request: WebuiGetTurnDiffRequest): Promise<WebuiGetTurnDiffResult>;
   revertTurnDiff(request: WebuiRevertTurnDiffRequest): Promise<WebuiRevertTurnDiffResult>;

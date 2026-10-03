@@ -40,14 +40,7 @@ import {
 } from "./envelope.js";
 import type { WebuiHarnessPort, WebuiSessionInfo } from "./port.js";
 import { WebuiTerminalManager } from "./terminal.js";
-import {
-  buildSessionTransfer,
-  collectSessionDisplayMessages,
-  locateSessionHistoryDir,
-  readCanonicalEnvelopes,
-  readHistoryCatalog,
-  webuiSessionTransferFileName,
-} from "./session-transfer.js";
+import { webuiSessionTransferFileName } from "./session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -305,12 +298,20 @@ export class WebuiService {
       rejectHttp(response, 401, "Unauthorized");
       return;
     }
-    if (request.method !== "GET" || !url) {
+    if (!url) {
       rejectHttp(response, 404, "Not Found");
       return;
     }
-    if (url.pathname === "/session-transfer") {
+    if (request.method === "GET" && url.pathname === "/session-transfer") {
       await this.handleSessionTransfer(url, response);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/session-import") {
+      await this.handleSessionImport(request, url, response);
+      return;
+    }
+    if (request.method !== "GET") {
+      rejectHttp(response, 404, "Not Found");
       return;
     }
     const name =
@@ -359,19 +360,19 @@ export class WebuiService {
   }
 
   /**
-   * Serve a session as a file that `import` can read back.
+   * Serve a session as a file that `/session-import` can read back.
    *
-   * This is an HTTP route rather than a WebSocket operation because the file
-   * is unbounded: one real session on this machine serialises to 50 MB, and the
+   * An HTTP route rather than a WebSocket operation because the file is
+   * unbounded: one real session on this machine serialises to 50 MB, and the
    * envelope carries a `payload_too_large` code. Producing the body here also
    * keeps it out of the browser's heap, which is the other half of why the
    * client-side export cannot be reused for this.
    *
-   * The two layers are read from different places on purpose. Canonical
-   * history is only on disk -- no port operation exposes it -- while the
-   * display projection is only reachable through `getMessages`. Reading
-   * canonical off disk from the service is why this route needs no change to
-   * the harness port.
+   * The payload comes from the runtime rather than from here. An earlier
+   * version read `messages.jsonl` off disk and walked `getMessages` for the
+   * display side, which needed no port change -- and silently lost the
+   * canonical receipts on roughly 1% of rows, because `getMessages` returns a
+   * view prepared for rendering, not the stored record.
    */
   private async handleSessionTransfer(url: URL, response: ServerResponse): Promise<void> {
     const sessionId = url.searchParams.get("sessionId")?.trim();
@@ -395,33 +396,10 @@ export class WebuiService {
       rejectHttp(response, 404, "Not Found");
       return;
     }
-    const dataDir = this.port.version().dataDir;
-    if (!dataDir) {
-      // Without a data dir there is no canonical history on disk, and a file
-      // carrying only the display projection would import as a transcript the
-      // model cannot see. Refuse rather than hand back a half-round-trip.
-      rejectHttp(response, 503, "Session history is unavailable");
-      return;
-    }
     try {
-      const [messages, historyDir] = await Promise.all([
-        collectSessionDisplayMessages(
-          (request) => this.port.getMessages(request),
-          sessionId,
-        ),
-        locateSessionHistoryDir(dataDir, sessionId),
-      ]);
-      const catalog = historyDir ? await readHistoryCatalog(historyDir) : {};
-      const exportedAt = new Date().toISOString();
-      const payload = buildSessionTransfer({
-        sessionId,
-        session,
-        envelopes: historyDir ? await readCanonicalEnvelopes(historyDir) : [],
-        messages,
-        exportedAt,
-        ...catalog,
-      });
-      const body = Buffer.from(`${JSON.stringify(payload)}\n`, "utf8");
+      const file = await this.port.exportSessionTransfer({ id: sessionId });
+      const body = Buffer.from(`${JSON.stringify(file)}\n`, "utf8");
+      const exportedAt = file.exportedAt || new Date().toISOString();
       response.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Length": body.byteLength,
@@ -432,6 +410,88 @@ export class WebuiService {
       response.end(body);
     } catch {
       rejectHttp(response, 500, "Internal Server Error");
+    }
+  }
+
+  /**
+   * Recreate a session from a transfer file.
+   *
+   * `WebuiCreateSessionRequest.name` is the *agent* to run under, not a title.
+   * Both the agent and the working directory therefore come from the query
+   * string -- the context the user is importing into -- and never from the
+   * payload. A downloaded file is untrusted input: if its session block could
+   * name an agent or a workspace, importing a file could aim a session at an
+   * arbitrary directory on this machine, or ask for an agent that does not
+   * exist and take the whole import down with it. The file contributes its
+   * history and its title; the caller contributes who and where.
+   *
+   * The title is applied after the history lands. The session is created
+   * first and the history written into it second, so a malformed payload
+   * leaves nothing behind: the failure path deletes the session it just made
+   * rather than leaving an empty shell in the sidebar for every bad file the
+   * user tries.
+   */
+  private async handleSessionImport(
+    request: IncomingMessage,
+    url: URL,
+    response: ServerResponse,
+  ): Promise<void> {
+    let file: unknown;
+    try {
+      const raw = await readRequestBody(request);
+      const parsed = raw.length === 0 ? undefined : JSON.parse(raw.toString("utf8"));
+      // Accept either the bare transfer file or `{ file: <transfer file> }`,
+      // so the client does not have to know which one this route prefers.
+      file = (parsed as { readonly file?: unknown } | undefined)?.file ?? parsed;
+    } catch {
+      rejectHttp(response, 400, "Bad Request");
+      return;
+    }
+
+    const agentName = url.searchParams.get("agentName")?.trim() || WEBUI_DEFAULT_IMPORT_AGENT;
+    const workspaceDir = url.searchParams.get("workspaceDir")?.trim() || undefined;
+
+    let sessionId: string;
+    try {
+      const created = await this.port.createSession({
+        name: agentName,
+        ...(workspaceDir ? { workspaceDir } : {}),
+      });
+      const id = created.sessionId ?? created.session?.sessionId;
+      if (!id) throw new Error("Session creation returned no id");
+      sessionId = id;
+    } catch (error) {
+      // The caller gets a status code, not a stack trace, so the reason has
+      // to land somewhere or a 500 here is undiagnosable. Only the message:
+      // the payload is untrusted and the error can quote it back.
+      console.error(`[webui] session import could not create a session: ${describeError(error)}`);
+      rejectHttp(response, 500, "Internal Server Error");
+      return;
+    }
+
+    try {
+      const result = await this.port.importSessionTransfer({
+        targetSessionId: sessionId,
+        sourceSessionId: readImportSourceId(file),
+        file,
+      });
+      const title = readImportTitle(file);
+      if (title) await this.port.updateSession({ id: result.sessionId, title });
+      respondJson(response, 200, {
+        sessionId: result.sessionId,
+        canonicalMessages: result.canonicalMessages,
+        displayMessages: result.displayMessages,
+        revision: result.revision,
+      });
+    } catch (error) {
+      await this.port.deleteSession({ id: sessionId }).catch(() => undefined);
+      // "Not a transfer file at all" is the user's mistake and worth saying so;
+      // anything else means the file parsed but could not be replayed.
+      const foreign = (error as { readonly code?: unknown } | undefined)?.code === "not-a-transfer-file";
+      console.error(`[webui] session import failed: ${describeError(error)}`);
+      respondJson(response, foreign ? 400 : 422, {
+        error: foreign ? "Not a session transfer file" : "Session import failed",
+      });
     }
   }
 
@@ -672,6 +732,84 @@ function rejectHttp(
     Connection: "close",
   });
   response.end(reason);
+}
+
+/**
+ * The import body is a whole session and real ones run to tens of megabytes,
+ * so the cap has to clear the largest export the export route can produce
+ * while still refusing a body that is not a session file.
+ */
+const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
+
+/** The agent an import lands under when the caller names none. */
+const WEBUI_DEFAULT_IMPORT_AGENT = "main";
+
+/**
+ * `maxBytes` is a parameter rather than a constant so the cap can be tested
+ * without allocating a quarter of a gigabyte in a unit test.
+ */
+export function readRequestBody(
+  request: IncomingMessage,
+  maxBytes: number = WEBUI_MAX_IMPORT_BYTES,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    request.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("Request body too large"));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => resolve(Buffer.concat(chunks)));
+    request.on("error", reject);
+  });
+}
+
+function respondJson(
+  response: ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+): void {
+  const encoded = Buffer.from(`${JSON.stringify(body)}\n`, "utf8");
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": encoded.byteLength,
+    "Cache-Control": "no-store",
+  });
+  response.end(encoded);
+}
+
+function readImportSession(file: unknown): Record<string, unknown> | undefined {
+  const session = (file as { readonly session?: unknown } | undefined)?.session;
+  return typeof session === "object" && session !== null && !Array.isArray(session)
+    ? (session as Record<string, unknown>)
+    : undefined;
+}
+
+/** Trimmed, length-capped strings only -- the payload is untrusted. */
+function readImportString(file: unknown, key: "title" | "agentName" | "workspaceDir"): string | undefined {
+  const value = readImportSession(file)?.[key];
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, 200) : undefined;
+}
+
+function readImportTitle(file: unknown): string | undefined {
+  return readImportString(file, "title");
+}
+
+function readImportSourceId(file: unknown): string | undefined {
+  const value = readImportSession(file)?.sessionId;
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : undefined;
+}
+
+function describeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 300 ? `${message.slice(0, 300)}...` : message;
 }
 
 function parseHttpUrl(rawUrl: string | undefined): URL | undefined {

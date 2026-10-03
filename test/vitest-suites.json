@@ -198,6 +198,7 @@
       "packages/tui/test/unit/tui-stream-events.test.ts",
       "packages/tui/test/unit/tui/controller/projection/turn-output-rate.test.ts",
       "packages/local-runtime-v2/src/application/session/content-timing.test.ts",
+      "packages/local-runtime-v2/src/application/session/transfer-application.test.ts",
       "packages/local-runtime-v2/src/service/turn-system/agent-host/assembly/local-turn-plugin-hooks.test.ts",
       "packages/tui/test/unit/tui-hook-system-message.test.ts",
       "packages/local-runtime-v2/src/service/turn-system/execution/execution.coordinator.test.ts",

@@ -1,8 +1,32 @@
 {
-  "extends": "../../tsconfig.node.json",
+  "extends": "./tsconfig.paths.json",
   "compilerOptions": {
     "composite": false,
-    "rootDir": "."
+    // The path map resolves workspace packages to their TypeScript source, so the
+    // program legitimately spans the repository rather than just this package.
+    "rootDir": "../..",
+    // `tsconfig.node.json` turns these on, but the workspace packages and the
+    // vendored `third_party` sources this program pulls in are held to `strict`
+    // without them — `tsconfig.standalone.json`, `pi-mono/tsconfig.base.json` and
+    // `sandbox-runtime/tsconfig.json` all leave them off. TypeScript has no
+    // per-directory options, so the program-wide value has to match the standard
+    // its own inputs are actually written to.
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    // `third_party/pi-mono`'s TUI source uses the ES2024 `v` regular-expression
+    // flag, which the inherited ES2022 target rejects.
+    "target": "ES2024",
+    // The path map points at `.ts` entry points, which TypeScript only accepts when
+    // emitting is off. Every leaf config in this chain sets `noEmit`.
+    "allowImportingTsExtensions": true
   },
+  // `third_party/pi-mono` reaches `highlight.js` through a deep subpath that
+  // bypasses the package's own `types`, and ships an ambient declaration for it.
+  // Ambient declarations only take effect when the file is part of the program, and
+  // `extends` replaces `include` wholesale, so it cannot ride along there. `files`
+  // is inherited instead, and unions with each leaf's own `include`.
+  "files": [
+    "../../third_party/pi-mono/packages/coding-agent/src/utils/highlight-js-lib-index.d.ts"
+  ],
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

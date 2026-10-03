@@ -219,6 +219,7 @@
       "test/executable-resolution.test.ts"
     ],
     "webui": [
+      "packages/webui/test/unit/composer-history.test.ts",
       "packages/webui/test/unit/settings-search-highlight.test.ts",
       "packages/webui/test/unit/settings-modal.test.tsx",
       "packages/webui/test/unit/webui-package.test.ts",

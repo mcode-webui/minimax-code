@@ -121,7 +121,10 @@ export function webuiSessionExportFileName(session: WebuiClientSession, exported
     .trim()
     .replace(/[. ]+$/u, "")
     .slice(0, 60);
-  return `${safe || session.sessionId}-${stamp}.json`;
+  // A title made entirely of reserved characters reduces to a row of
+  // underscores: legal, but a file the user cannot identify. Same rule as
+  // `webuiSessionTransferFileName`, so the two exports never disagree.
+  return `${/[\p{L}\p{N}]/u.test(safe) ? safe : session.sessionId}-${stamp}.json`;
 }
 
 /** Pretty-printed JSON with a trailing newline, so the file is diff-friendly. */

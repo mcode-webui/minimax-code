@@ -11,7 +11,7 @@
 // Shutdown order matches step 13 of the assembly checklist: stop accepting
 // new operations, then close every connection, then close the harness.
 
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import type { AddressInfo } from "node:net";
@@ -38,8 +38,16 @@ import {
   WebuiErrorCode,
   WEBUI_PROTOCOL_VERSION,
 } from "./envelope.js";
-import type { WebuiHarnessPort } from "./port.js";
+import type { WebuiHarnessPort, WebuiSessionInfo } from "./port.js";
 import { WebuiTerminalManager } from "./terminal.js";
+import {
+  buildSessionTransfer,
+  collectSessionDisplayMessages,
+  locateSessionHistoryDir,
+  readCanonicalEnvelopes,
+  readHistoryCatalog,
+  webuiSessionTransferFileName,
+} from "./session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -301,6 +309,10 @@ export class WebuiService {
       rejectHttp(response, 404, "Not Found");
       return;
     }
+    if (url.pathname === "/session-transfer") {
+      await this.handleSessionTransfer(url, response);
+      return;
+    }
     const name =
       url.pathname === "/" ||
       url.pathname === "/index.html" ||
@@ -343,6 +355,83 @@ export class WebuiService {
       response.end(body);
     } catch {
       rejectHttp(response, 404, "Not Found");
+    }
+  }
+
+  /**
+   * Serve a session as a file that `import` can read back.
+   *
+   * This is an HTTP route rather than a WebSocket operation because the file
+   * is unbounded: one real session on this machine serialises to 50 MB, and the
+   * envelope carries a `payload_too_large` code. Producing the body here also
+   * keeps it out of the browser's heap, which is the other half of why the
+   * client-side export cannot be reused for this.
+   *
+   * The two layers are read from different places on purpose. Canonical
+   * history is only on disk -- no port operation exposes it -- while the
+   * display projection is only reachable through `getMessages`. Reading
+   * canonical off disk from the service is why this route needs no change to
+   * the harness port.
+   */
+  private async handleSessionTransfer(url: URL, response: ServerResponse): Promise<void> {
+    const sessionId = url.searchParams.get("sessionId")?.trim();
+    if (!sessionId) {
+      rejectHttp(response, 400, "Bad Request");
+      return;
+    }
+    // `getSession` rejects for an unknown id rather than returning an empty
+    // result, so both the rejection and an empty `session` mean "no such
+    // session". Letting the rejection reach the outer catch answered 500 for a
+    // request that was simply asking about something that is not there.
+    let session: WebuiSessionInfo;
+    try {
+      const found = await this.port.getSession({ id: sessionId });
+      if (!found.session) {
+        rejectHttp(response, 404, "Not Found");
+        return;
+      }
+      session = found.session;
+    } catch {
+      rejectHttp(response, 404, "Not Found");
+      return;
+    }
+    const dataDir = this.port.version().dataDir;
+    if (!dataDir) {
+      // Without a data dir there is no canonical history on disk, and a file
+      // carrying only the display projection would import as a transcript the
+      // model cannot see. Refuse rather than hand back a half-round-trip.
+      rejectHttp(response, 503, "Session history is unavailable");
+      return;
+    }
+    try {
+      const [messages, historyDir] = await Promise.all([
+        collectSessionDisplayMessages(
+          (request) => this.port.getMessages(request),
+          sessionId,
+        ),
+        locateSessionHistoryDir(dataDir, sessionId),
+      ]);
+      const catalog = historyDir ? await readHistoryCatalog(historyDir) : {};
+      const exportedAt = new Date().toISOString();
+      const payload = buildSessionTransfer({
+        sessionId,
+        session,
+        envelopes: historyDir ? await readCanonicalEnvelopes(historyDir) : [],
+        messages,
+        exportedAt,
+        ...catalog,
+      });
+      const body = Buffer.from(`${JSON.stringify(payload)}\n`, "utf8");
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": body.byteLength,
+        "Content-Disposition":
+          `attachment; filename*=UTF-8''${encodeURIComponent(webuiSessionTransferFileName(sessionId, session, exportedAt))}`,
+        "Cache-Control": "no-store",
+      });
+      response.end(body);
+    } catch {
+      rejectHttp(response, 500, "Internal Server Error");
     }
   }
 

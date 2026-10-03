@@ -39,6 +39,11 @@ import {
   formatWebuiSessionAge,
   type WebuiSessionActivityMap,
 } from "../session-activity.js";
+import {
+  filterWebuiRailViewSessions,
+  selectWebuiRailViewTabs,
+  type WebuiRailView,
+} from "../rail-buckets.js";
 import { formatWebuiUnreadBadge } from "../session-unread.js";
 import type {
   WebuiClientSession,
@@ -237,6 +242,8 @@ export function WebuiProjectList({
   onDeleteSession,
   activity,
   now,
+  view: viewProp,
+  onViewChange,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly treePage?: WebuiClientSessionTreePage;
@@ -264,6 +271,9 @@ export function WebuiProjectList({
   /** Per-session running state and last-activity, for the row's right-hand end. */
   readonly activity?: WebuiSessionActivityMap;
   readonly now?: number;
+  /** Which slice of the list to show. Falls back to internal state. */
+  readonly view?: WebuiRailView;
+  readonly onViewChange?: (view: WebuiRailView) => void;
 }): ReactElement {
   // Build a lookup from parent session id to its child sessions. When
   // `treePage` is provided, this lets the rail render child sessions under
@@ -568,8 +578,75 @@ export function WebuiProjectList({
     );
   }, [selectedSessionId, treePage]);
 
+  // The rail has one view per tab rather than one stacked list. Uncontrolled
+  // by default so the app does not have to own it; `view` exists so a caller
+  // (or a test) can drive it.
+  const [internalView, setInternalView] = useState<WebuiRailView>("projects");
+  const activeView = viewProp ?? internalView;
+  const setActiveView = onViewChange ?? setInternalView;
+  const railTabs = useMemo(
+    () => selectWebuiRailViewTabs(page.sessions, activity),
+    [activity, page.sessions],
+  );
+  const viewSessions = useMemo(
+    () => filterWebuiRailViewSessions(page.sessions, activity, activeView),
+    [activeView, activity, page.sessions],
+  );
+  const activeTab = railTabs.find((entry) => entry.view === activeView);
+  const activeTabLabel = activeTab?.label ?? "项目";
+
+  const railViewTabs = (
+    <div
+      className="webui-rail-view-tabs"
+      role="tablist"
+      data-webui-rail-view-tabs="true"
+    >
+      {railTabs.map((entry) => (
+        <button
+          key={entry.view}
+          type="button"
+          data-webui-rail-view={entry.view}
+          role="tab"
+          aria-selected={activeView === entry.view}
+          className="webui-rail-view-tab"
+          onClick={() => setActiveView(entry.view)}
+        >
+          {entry.label}
+          {entry.view === "projects" ? null : (
+            <span className="webui-rail-view-count" data-webui-rail-view-count={entry.view}>
+              {entry.count}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Not a header the user can dismiss: the count is the point. The rail keeps
+  // the session the reader is on in the main column whatever the tab says, so
+  // an empty tab means "nothing is running", not "you lost your conversation".
+  if (activeView !== "projects") {
+    return (
+      <section data-webui-project-list="true" data-webui-rail-view-active={activeView}>
+        {railViewTabs}
+        <WebuiSessionList
+          page={{ sessions: viewSessions, hasMore: false }}
+          loading={loading}
+          selectedSessionId={selectedSessionId}
+          error={error}
+          activity={activity}
+          now={now}
+          heading={activeTabLabel}
+          emptyLabel={activeTab?.emptyLabel}
+          preserveOrder
+        />
+      </section>
+    );
+  }
+
   return (
     <section data-webui-project-list="true">
+      {railViewTabs}
       <div
         className="flex h-7 items-center px-2 text-sm font-normal leading-5 text-text_default_tertiary"
         data-webui-rail-section-header="true"
@@ -907,6 +984,9 @@ export function WebuiSessionList({
   teamModeChoices,
   activity,
   now,
+  heading,
+  emptyLabel,
+  preserveOrder,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly loading: boolean;
@@ -917,13 +997,29 @@ export function WebuiSessionList({
   readonly activity?: WebuiSessionActivityMap;
   /** Injected so the age labels re-render on a tick instead of on every event. */
   readonly now?: number;
+  /**
+   * Overrides the section label. The rail reuses this list for its running and
+   * unread views, where "recent tasks" would be a lie -- the list is filtered,
+   * and by what depends on the view.
+   */
+  readonly heading?: string;
+  /** Shown when the list is empty. Defaults to the neutral "no sessions". */
+  readonly emptyLabel?: string;
+  /**
+   * Keeps the order the caller handed in. The running and unread views sort by
+   * last observed activity, which is not the session record's `updatedAt` and
+   * would be undone by the default sort below.
+   */
+  readonly preserveOrder?: boolean;
 }): ReactElement {
   const sessions = useMemo(
     () =>
-      [...page.sessions].sort(
-        (left, right) => right.updatedAt - left.updatedAt,
-      ),
-    [page.sessions],
+      preserveOrder
+        ? page.sessions
+        : [...page.sessions].sort(
+            (left, right) => right.updatedAt - left.updatedAt,
+          ),
+    [page.sessions, preserveOrder],
   );
   return (
     <div
@@ -935,7 +1031,7 @@ export function WebuiSessionList({
         data-webui-rail-section-header="true"
       >
         <span className="truncate text-sm font-normal leading-5 text-text_default_tertiary">
-          最近任务
+          {heading ?? "最近任务"}
         </span>
         <span className="ml-auto flex-shrink-0 text-sm font-normal leading-5 text-text_default_tertiary">
           {sessions.length}
@@ -946,12 +1042,12 @@ export function WebuiSessionList({
           role="alert"
           className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16"
         >
-          Unable to load sessions: {error}
+          会话加载失败：{error}
         </p>
       ) : null}
       {!error && sessions.length === 0 ? (
         <p className="webui-empty-state mx-1 text-text_default_secondary text-size_12 leading-line_height_16">
-          No sessions yet.
+          {emptyLabel ?? "暂无会话"}
         </p>
       ) : (
         <ul className="pt-px space-y-px" data-webui-session-list="true">

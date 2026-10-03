@@ -1034,6 +1034,64 @@
     .webui-rail-spinner { animation: none; }
   }
 
+  /* Project / running / unread. Three views of one list rather than three
+   * groupings stacked on it: stacking forces a choice between showing a
+   * session twice and stripping it out of its project, and the counts on the
+   * tabs are only reconcilable against the rows when exactly one view is on
+   * screen. */
+  .webui-rail-view-tabs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    padding: 0 var(--spacing_8);
+    height: 28px;
+    border-bottom: 1px solid var(--border_default);
+  }
+  .webui-rail-view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    /* Bare px, like the badge above: this project carries no font-size or
+     * line-height tokens, so a var() here would resolve to nothing and the
+     * tab would fall back to the 16px body size the rail does not use. */
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text_default_tertiary);
+    cursor: pointer;
+  }
+  .webui-rail-view-tab[aria-selected="true"] {
+    color: var(--text_default_primary);
+    font-weight: 500;
+  }
+  .webui-rail-view-tab:hover {
+    color: var(--text_default_primary);
+  }
+  /* The count is the reason to glance at the tab rather than open it, so it
+   * stays legible at rest instead of only on hover. Zero is drawn, not
+   * hidden: "0 running" is an answer, and hiding it would make the tab look
+   * broken while a turn is being written. */
+  .webui-rail-view-count {
+    display: inline-flex;
+    min-width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .webui-rail-view-tab[aria-selected="true"] .webui-rail-view-count {
+    background-color: var(--bg_interaction_primary_default);
+    color: var(--text_default_primary);
+  }
+
   /* Turns that finished while the user was elsewhere. The red is the
    * unread-count convention every messenger has trained people on, and it is
    * worth being explicit that this is the one place the rail uses a danger

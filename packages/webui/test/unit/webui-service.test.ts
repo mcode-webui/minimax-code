@@ -1015,9 +1015,20 @@ describe("WebUI service", () => {
       pullSettled,
       "the parked pull to settle after the socket closed",
     );
-    // Real room for the `finally`: a second `return()` would land well after a
-    // couple of microtask turns.
-    await new Promise<void>((resolve) => setTimeout(resolve, 250));
+    // Drain the microtask queue instead of waiting on a clock.
+    //
+    // The `finally` that could double-finalise is not on a timer: it runs a few
+    // microtask hops after the parked pull resolves — abort listener, then the
+    // `await iterator.next()` continuation, then the loop's `break`, then the
+    // `finally`. Counting microtasks is deterministic; a sleep is not. The
+    // 250 ms this used to wait passed locally 8 times and failed on CI, where
+    // the whole 50-file suite loads the machine and the clock is simply not a
+    // budget this test can spend.
+    for (let i = 0; i < 64; i += 1) await Promise.resolve();
+    // One macrotask hop as well: `setImmediate` callbacks and promise
+    // continuations are not the same queue, and the socket `close` handler
+    // reaches the abort listener through the former.
+    await new Promise<void>((resolve) => setImmediate(resolve));
     // The count is the point. Asserting only `returnCalls >= 1` would pass
     // against a double-finalise, which is the failure this pins shut.
     expect(returnCalls).toBe(1);

@@ -140,6 +140,12 @@ import {
   type WebuiMentionRange,
 } from "../projection/composer-interactions.js";
 import {
+  shouldRecallWebuiHistory,
+  startWebuiHistoryBrowse,
+  stepWebuiHistoryBrowse,
+  type WebuiHistoryBrowse,
+} from "../projection/composer-history.js";
+import {
   isWebuiRunnableCommand,
   rankWebuiSlashPalette,
   sectionWebuiSlashPalette,
@@ -576,6 +582,8 @@ export function WebuiComposer({
   getAccountStatus,
   draft,
   onDraftChange,
+  inputHistory = [],
+  onInputSubmitted,
   onNeedsSession,
   onSessionCreated,
   enqueueMessage,
@@ -634,6 +642,14 @@ export function WebuiComposer({
   /** The draft lives on the shell so it survives silent first-session creation. */
   readonly draft: string;
   readonly onDraftChange: (next: string) => void;
+  /**
+   * Submitted-input history for ↑ recall (roadmap Module B: 输入历史/草稿).
+   * Keyed by session on the shell; the composer only walks it with the pure
+   * helpers from `composer-history.ts`.
+   */
+  readonly inputHistory?: readonly string[];
+  /** Records one committed submission into the shell's history store. */
+  readonly onInputSubmitted?: (text: string) => void;
   readonly onNeedsSession?: (draft: string) => void;
   readonly onSessionCreated?: (sessionId: string) => void;
   readonly teamModeOff: boolean;
@@ -706,6 +722,27 @@ export function WebuiComposer({
   // ref: a click or an arrow key that only moves the caret still has to
   // re-derive whether a slash token is under it.
   const [composerCaret, setComposerCaret] = useState(0);
+  // ↑ recall browse state (roadmap Module B). `undefined` = not browsing.
+  // While set, ↑/↓ walk `inputHistory` and any manual edit exits (the
+  // textarea's onChange only fires for real user edits — a programmatic
+  // recall swap never ends its own browse); stepping past the newest
+  // restores the stashed pre-browse draft.
+  const [historyBrowse, setHistoryBrowse] = useState<WebuiHistoryBrowse>();
+  useEffect(() => {
+    // Switching sessions swaps the history list under the browse cursor;
+    // restart clean rather than trusting the index still means anything.
+    setHistoryBrowse(undefined);
+  }, [sessionId]);
+  const applyHistoryDraft = (next: string) => {
+    handleDraftChange(next);
+    setComposerCaret(next.length);
+    // The DOM caret lags the controlled value swap by a render; pin it to
+    // the end once the new value is on screen, the way a terminal leaves the
+    // cursor after a recall.
+    requestAnimationFrame(() => {
+      textareaRef.current?.setSelectionRange(next.length, next.length);
+    });
+  };
   const editingGoalDraftRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRegionRef = useRef<HTMLDivElement | null>(null);
@@ -1790,6 +1827,19 @@ export function WebuiComposer({
     });
     const resolvedIntent = intent ?? (attachments.length > 0 ? { kind: "submit-turn" as const } : undefined);
     if (!resolvedIntent) return;
+    // Record the sendable text for ↑ recall on every committed intent —
+    // send/queue turns, goal objectives, and runnable commands all start as
+    // user-typed composer text. Recording at commit time (not transport
+    // success) keeps a refused send from silently eating the user's input,
+    // and mode activations (`/goal`, `/plan` bare) record nothing.
+    if (
+      resolvedIntent.kind === "submit-turn" ||
+      resolvedIntent.kind === "submit-goal" ||
+      resolvedIntent.kind === "run-command"
+    ) {
+      onInputSubmitted?.(messageDraft);
+      setHistoryBrowse(undefined);
+    }
     if (resolvedIntent.kind === "activate-goal-mode") {
       activateGoalMode();
       return;
@@ -2024,6 +2074,9 @@ export function WebuiComposer({
                   onChange={(event) => {
                     const next = event.target.value;
                     handleDraftChange(next);
+                    // A real user edit ends any active history browse (see
+                    // the browse state comment above).
+                    setHistoryBrowse(undefined);
                     const caret = event.target.selectionStart;
                     mentionCaretRef.current = caret;
                     setComposerCaret(caret);
@@ -2086,6 +2139,48 @@ export function WebuiComposer({
                       onDraftChange(next);
                       setComposerCaret(next.length);
                       return;
+                    }
+                    if (event.key === "Escape" && historyBrowse) {
+                      // Escape during a history browse restores the draft as
+                      // it was before ↑ first recalled. Sits after the slash
+                      // palette's own Escape so a recalled "/…" closes the
+                      // palette first and exits the browse on the second tap.
+                      event.preventDefault();
+                      const stashed = historyBrowse.draft;
+                      setHistoryBrowse(undefined);
+                      applyHistoryDraft(stashed);
+                      return;
+                    }
+                    // History recall claims ↑/↓ only when nothing else has:
+                    // the mention menu (above) and the slash popover (below,
+                    // behind the `commandSuggestions.length === 0` guard) own
+                    // the arrows while they are open.
+                    if (
+                      commandSuggestions.length === 0 &&
+                      (event.key === "ArrowUp" || event.key === "ArrowDown")
+                    ) {
+                      const caret = event.currentTarget.selectionStart ?? 0;
+                      if (event.key === "ArrowUp") {
+                        const next = historyBrowse
+                          ? stepWebuiHistoryBrowse(historyBrowse, "prev", inputHistory)
+                          : shouldRecallWebuiHistory(draft, caret)
+                            ? startWebuiHistoryBrowse(inputHistory, draft)
+                            : undefined;
+                        if (next) {
+                          event.preventDefault();
+                          setHistoryBrowse(next);
+                          applyHistoryDraft(inputHistory[next.index] ?? "");
+                          return;
+                        }
+                      } else if (historyBrowse) {
+                        const next = stepWebuiHistoryBrowse(historyBrowse, "next", inputHistory);
+                        event.preventDefault();
+                        setHistoryBrowse(next);
+                        // Stepping past the newest exits and restores the
+                        // stashed pre-browse draft.
+                        applyHistoryDraft(next ? inputHistory[next.index] ?? "" : historyBrowse.draft);
+                        return;
+                      }
                     }
                     // Enter is claimed above by an open mention menu, and below by
                     // an open slash popover. This MUST sit before the

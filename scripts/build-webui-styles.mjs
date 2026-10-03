@@ -34,10 +34,16 @@ if (!existsSync(inputCss)) {
   );
 }
 
-const cli = path.join(root, "node_modules/.bin/tailwindcss");
+// Invoke the Tailwind CLI through its JavaScript entry with the running
+// Node executable. The `.bin` shims are POSIX shell scripts on POSIX and
+// `.CMD` batch files on Windows; `spawnSync` cannot execute the former on
+// Windows (exit null) without a shell, and shelling out would make every
+// argument subject to platform quoting. The JS entry sidesteps both.
+const tailwindCli = path.join(root, "node_modules/tailwindcss/lib/cli.js");
 const result = spawnSync(
-  cli,
+  process.execPath,
   [
+    tailwindCli,
     "build",
     "--input",
     inputCss,

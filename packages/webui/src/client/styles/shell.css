@@ -1015,7 +1015,15 @@
     width: 10px;
     height: 10px;
     flex-shrink: 0;
-    border: 1.5px solid currentColor;
+    /* Not `currentColor`: the meta inherits the tertiary text grey, and a 10px
+     * ring in grey on a grey rail does not read -- and the row it sits in is
+     * exactly the one the user is not looking at. Blue is this project's own
+     * accent (`--icon_default_accent`, already the selected-state colour). Red
+     * is not available for this: it is reserved for danger and error across the
+     * token set, and a running turn is not an error. The thicker border is the
+     * same point -- at 1.5px the ring was a hairline that read as a rendering
+     * artefact rather than as a spinner. */
+    border: 2px solid var(--icon_default_accent);
     border-top-color: transparent;
     border-radius: 50%;
     animation: webui-signin-claim-spin 0.6s linear infinite;

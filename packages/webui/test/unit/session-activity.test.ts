@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -329,5 +332,38 @@ describe("rail rendering", () => {
       }),
     );
     expect(html).toMatch(/data-webui-session-age="true"/u);
+  });
+});
+describe("spinner colour", () => {
+  const shellCss = readFileSync(
+    path.join(import.meta.dirname, "..", "..", "src", "client", "styles", "shell.css"),
+    "utf8",
+  );
+  const start = shellCss.indexOf(".webui-rail-spinner {");
+  // Comments are stripped before the "must not contain" assertions: this rule
+  // explains in prose why it is not `currentColor` and why not 1.5px, so the
+  // rule body without that prose is the only thing those assertions can be
+  // about. Matching the raw text would fail on the explanation of the change
+  // rather than on the change.
+  const rule = shellCss
+    .slice(start, shellCss.indexOf("}", start))
+    .replace(/\/\*[\s\S]*?\*\//gu, "")
+    .trim();
+
+  it("is drawn in the accent colour, not the inherited grey", () => {
+    // `currentColor` resolves to `--text_default_tertiary`, and a 10px grey
+    // ring on a grey rail does not read at all. This is what keeps a later
+    // edit from quietly putting the spinner back to inheriting, which is
+    // exactly what it was before anyone looked at a screenshot.
+    expect(rule).toMatch(/border:\s*2px solid var\(--icon_default_accent\)/u);
+    expect(rule).not.toMatch(/currentColor/u);
+  });
+
+  it("draws a ring thick enough to see rather than a hairline", () => {
+    expect(rule).not.toMatch(/1\.5px/u);
+  });
+
+  it("does not reach for a raw hex, which would not follow the theme", () => {
+    expect(rule).not.toMatch(/#[0-9a-f]{3,8}/iu);
   });
 });

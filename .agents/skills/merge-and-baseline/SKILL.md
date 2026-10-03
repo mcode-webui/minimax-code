@@ -45,6 +45,32 @@ JID=$(gh pr checks <n> | grep macos | awk '{print $NF}')
 gh run view ${JID%/job/*} --job ${JID##*/job/} --log-failed | grep -E "Verification failed at|× "
 ```
 
+**Never tell "still running" from the `gh pr checks` table.** It truncates
+long check names, so a row can end at `verify (macos-latest,` with the status
+column simply not rendered — which reads exactly like a check that has not
+reported yet. An agent once told someone three PRs were "still running" for
+half an hour while one of them had already gone red. Use the rollup and the
+aggregate:
+
+```bash
+gh pr view <n> --json mergeStateStatus,statusCheckRollup --jq '
+  "mergeState=\(.mergeStateStatus)",
+  (.statusCheckRollup[] | "  \(.name)\t\(.status)/\(.conclusion // "-")")'
+```
+
+| `mergeStateStatus` | meaning |
+| --- | --- |
+| `CLEAN` | everything required passed; safe to merge |
+| `UNSTABLE` | a required check finished red, or is still queued |
+| `BEHIND` | base moved; rebase and re-run |
+| `DIRTY` | merge conflict |
+| `UNKNOWN` | GitHub has not computed it yet — poll again, do not read it as a verdict |
+
+**There is no push channel here.** `gh` is a pull, not a subscription: a CI
+result reaches an agent only because it asked. If you need to be told, use a
+schedule or have a human say so — and never report a check's state you did not
+actually read.
+
 ## 2. Merging
 
 ```bash

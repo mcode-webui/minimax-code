@@ -17,11 +17,17 @@ import {
 // and the `isWebuiRunnableCommand` narrowing.
 
 describe("WebUI slash palette — sectioning", () => {
-  it("shows goal and plan before plugin entries", () => {
+  it("orders built-ins in declaration order, then plugin entries", () => {
     const skills = Object.values(WEBUI_PLUGIN_REGISTRY);
     const palette = buildWebuiSlashPalette({ skills });
     const names = palette.map((entry) => entry.name);
-    expect(names).toEqual(["goal", "plan", "deploy-website"]);
+    // The contract is the *ordering rule*, not one frozen list: every built-in
+    // comes before every plugin entry, and the built-ins keep their declared
+    // order. Adding a built-in must not require editing this test.
+    expect(names.slice(0, WEBUI_BUILTIN_COMMANDS.length)).toEqual(
+      WEBUI_BUILTIN_COMMANDS.map((entry) => entry.name),
+    );
+    expect(names.slice(WEBUI_BUILTIN_COMMANDS.length)).toEqual(["deploy-website"]);
   });
 
   it("splits built-ins and plugin entries by `paletteSection === \"special\"`", () => {
@@ -31,12 +37,21 @@ describe("WebUI slash palette — sectioning", () => {
       (entry) => entry.source_type === -1 || entry.paletteSection === "special",
     );
     const names = defaultSection.map((entry) => entry.name);
-    expect(names).toEqual(["goal", "plan", "deploy-website"]);
+    expect(names).toEqual([
+      ...WEBUI_BUILTIN_COMMANDS.map((entry) => entry.name),
+      "deploy-website",
+    ]);
   });
 
-  it("contains only the composer mode built-ins", () => {
+  it("exposes every built-in command, composer modes and run-commands alike", () => {
     const palette = sectionWebuiSlashPalette(WEBUI_BUILTIN_COMMANDS, []);
-    expect(palette.map((entry) => entry.name)).toEqual(["goal", "plan"]);
+    // `compact` carries no composerMode, so a test that asserted "only the
+    // composer modes" would have hidden it — that is exactly the blind spot
+    // that let the run-command entry go missing while the palette stayed green.
+    expect(palette.map((entry) => entry.name)).toEqual(
+      WEBUI_BUILTIN_COMMANDS.map((entry) => entry.name),
+    );
+    expect(palette.length).toBeGreaterThan(0);
   });
 });
 
@@ -99,9 +114,63 @@ describe("WebUI slash palette — runtime narrowing", () => {
     });
     const runnable = palette.filter(isWebuiRunnableCommand);
     const names = runnable.map((entry) => entry.name).sort();
-    // Runtime support remains available, but those commands are hidden from
-    // this palette; only the goal and plan composer modes remain.
-    expect(names).toEqual([]);
+    // These rows carry no composerMode, so the lite filter drops them — but
+    // they ARE runnable: `classifyWebuiSlashCommand` returns "runnable" and
+    // `resolveWebuiSubmissionIntent` path 3 dispatches them to the host's
+    // `runCommand`. An earlier version of this test asserted `[]` with the
+    // comment "those commands are hidden from this palette" — that pinned the
+    // missing `compact` entry in place and let the palette stay green while
+    // `/compact` was unreachable from the UI.
+    expect(names).toEqual(["compact"]);
+  });
+
+  it("exposes the run-command the server transport actually routes", () => {
+    // The cross-module contract, stated so that deleting the entry fails it.
+    //
+    // `server/commands/runner.ts` routes `command === "compact"` into
+    // `port.requestCompaction`, and the operation is registered in
+    // `server/operation/operations.ts`. A palette that omits the row leaves
+    // `resolveWebuiSubmissionIntent` unable to find the name, so the
+    // submit-turn path swallows `/compact` and sends it as a plain chat
+    // message. The other names in WEBUI_RUN_COMMAND_NAMES (`help`, `new`,
+    // `status`, `usage`, `model`) have no palette row yet on purpose — they
+    // need their own scope, so this test pins the one command that is wired
+    // end to end rather than asserting the whole whitelist.
+    const palette = buildWebuiSlashPalette({
+      skills: Object.values(WEBUI_PLUGIN_REGISTRY),
+    });
+    const runnableNames = palette.filter(isWebuiRunnableCommand).map((entry) => entry.name);
+    expect(runnableNames).toContain("compact");
+  });
+
+  it("does not leave a run-command row marked unsupported", () => {
+    // A built-in whose name is in WEBUI_RUN_COMMAND_NAMES but whose
+    // `supported` is false would render inert and fall through to
+    // submit-turn — the user would watch their slash command come back as
+    // typed text. Guard the rows that actually exist, and require the
+    // whitelist to be non-empty so the loop cannot pass vacuously.
+    const runnableCandidates = WEBUI_BUILTIN_COMMANDS.filter((entry) =>
+      (WEBUI_RUN_COMMAND_NAMES as readonly string[]).includes(entry.name),
+    );
+    expect(runnableCandidates.length).toBeGreaterThan(0);
+    for (const entry of runnableCandidates) {
+      expect(
+        entry.supported,
+        `built-in "${entry.name}" is in WEBUI_RUN_COMMAND_NAMES but supported=false`,
+      ).toBe(true);
+      expect(isWebuiRunnableCommand(entry)).toBe(true);
+    }
+  });
+
+  it("keeps the palette's runnable set inside the transport whitelist", () => {
+    // The other direction: nothing may claim to be runnable unless the host
+    // port will accept the name.
+    const palette = buildWebuiSlashPalette({
+      skills: Object.values(WEBUI_PLUGIN_REGISTRY),
+    });
+    for (const entry of palette.filter(isWebuiRunnableCommand)) {
+      expect(WEBUI_RUN_COMMAND_NAMES as readonly string[]).toContain(entry.name);
+    }
   });
 
   it("WEBUI_RUN_COMMAND_NAMES matches the server-side validation list", () => {

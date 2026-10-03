@@ -3692,6 +3692,7 @@
     "packages/webui/test/unit/workspace-panel-state.test.ts",
     "packages/webui/tsconfig.client.json",
     "packages/webui/tsconfig.json",
+    "packages/webui/tsconfig.paths.json",
     "packages/webui/tsconfig.server.json",
     "packages/webui/tsconfig.test.json",
     "packages/webui/vite.config.ts",

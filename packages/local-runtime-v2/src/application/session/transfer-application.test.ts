@@ -23,8 +23,14 @@ const DISPLAY_ROW = {
   sourceContext: { steeredFrom: "turn-b" },
 };
 
-const ENVELOPE = {
-  message_id: "msg-1",
+// Pinned as a literal on both sides of the package boundary: the webui client
+// cannot import the runtime, so the two tags are held together by both suites
+// asserting this same string rather than by one importing the other. If the
+// runtime ever changes its tag, this test fails even though the runtime is
+// self-consistent.
+const EXPECTED_FORMAT = "mcode-webui-session-transfer@1";
+
+const ENVELOPE = {  message_id: "msg-1",
   turn_id: "turn-a",
   message: { role: "assistant", content: [{ type: "text", text: "hi" }] },
   turn_config: { effort: "high" },
@@ -66,9 +72,15 @@ function harness(options: { readResult?: unknown } = {}) {
   const list = vi.fn(async () => ({ messages: [DISPLAY_ROW], hasMore: false }));
   const replace = vi.fn(async () => {});
   const now = () => 1_700_000_000_000;
+  // `sessions` is declared as a `Pick<SessionRepository, "get">`, so this object
+  // is type-checked: a missing or misnamed capability is a compile error, not a
+  // runtime `undefined.get` in one test.
   const app = new SessionTransferApplication({
     messages: { list, replace } as never,
     historyMutation: { read: historyRead, stageFork } as never,
+    sessions: {
+      get: vi.fn(async (sessionId: string) => ({ sessionId, title: "检查灵动岛卡住问题" })),
+    } as never,
     now,
   });
   void options;
@@ -96,6 +108,10 @@ function expectRejection(value: unknown, code: string): void {
 }
 
 describe("SessionTransferApplication.read", () => {
+  it("writes the format tag the webui client pins", () => {
+    expect(SESSION_TRANSFER_FORMAT).toBe(EXPECTED_FORMAT);
+  });
+
   it("carries both storage layers, not a rendered view", async () => {
     const { app } = harness();
 
@@ -126,6 +142,7 @@ describe("SessionTransferApplication.read", () => {
     const scoped = new SessionTransferApplication({
       messages: { list: async () => ({ messages: [] }), replace: async () => {} } as never,
       historyMutation: { read: historyRead, stageFork: async () => ({ publish: async () => {} }) } as never,
+      sessions: { get: async () => undefined } as never,
       now: () => 0,
     });
 
@@ -143,6 +160,47 @@ describe("SessionTransferApplication.read", () => {
     const { app } = harness();
     await expect(app.read("mvs_src")).resolves.toMatchObject({
       canonical: { generation: 7, revision: "sha256:rev" },
+    });
+  });
+
+  it("carries the session's own title, not its id", async () => {
+    const { app } = harness();
+
+    const result = await app.read("mvs_src");
+
+    // `handleSessionImport` applies the file's title to the session it creates,
+    // so the title is load-bearing on the import path -- and the only thing that
+    // makes an imported session recognisable in the rail. Exporting the id here
+    // means every import lands as a row of hex, however good the source title
+    // was.
+    expect(result.session.title).toBe("检查灵动岛卡住问题");
+    expect(result.session.title).not.toBe(result.session.sessionId);
+  });
+
+  it("falls back to the id when the session record is gone", async () => {
+    // The rail route resolves the session, then exports it. A session deleted in
+    // between must still produce a file rather than fail the download.
+    const app = new SessionTransferApplication({
+      messages: {
+        list: async () => ({ messages: [], hasMore: false }),
+        replace: async () => {},
+      } as never,
+      historyMutation: {
+        read: async () => ({
+          activeGeneration: 1,
+          active: [],
+          snapshots: [],
+          revision: "sha256:r",
+          activeSettled: true,
+        }),
+        stageFork: async () => ({ publish: async () => {} }),
+      } as never,
+      sessions: { get: async () => undefined } as never,
+      now: () => 0,
+    });
+
+    await expect(app.read("mvs_gone")).resolves.toMatchObject({
+      session: { sessionId: "mvs_gone", title: "mvs_gone" },
     });
   });
 
@@ -164,6 +222,7 @@ describe("SessionTransferApplication.read", () => {
         }),
         stageFork: async () => ({ publish: async () => {} }),
       } as never,
+      sessions: { get: async () => undefined } as never,
       now: () => 0,
     });
 

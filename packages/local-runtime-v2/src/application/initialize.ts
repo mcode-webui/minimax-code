@@ -155,6 +155,7 @@ export const initializeApplications: InitializeApplications = (options) => {
   const transfer = new SessionTransferApplication({
     messages: options.sessionSystem.repositories.messages,
     historyMutation: options.sessionSystem.session.historyMutation,
+    sessions: options.sessionSystem.repositories.sessions,
     now: options.nowMs ?? Date.now,
   });
   return {

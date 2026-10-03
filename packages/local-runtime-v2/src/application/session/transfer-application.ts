@@ -30,6 +30,7 @@ import type {
   MessageRepository,
   SessionHistoryMutationCapability,
   SessionHistorySnapshot,
+  SessionRepository,
 } from "../../service/session-system/index.js";
 
 export const SESSION_TRANSFER_FORMAT = "mcode-webui-session-transfer@1";
@@ -83,6 +84,12 @@ export interface SessionTransferSnapshot {
 export interface SessionTransferApplicationOptions {
   readonly messages: Pick<MessageRepository, "list" | "replace">;
   readonly historyMutation: Pick<SessionHistoryMutationCapability, "read" | "stageFork">;
+  /**
+   * Read for one field only: the title. The importer applies the file's title to
+   * the session it creates, so an export that does not carry the real one turns
+   * every imported session into a row of hex in the rail.
+   */
+  readonly sessions: Pick<SessionRepository, "get">;
   readonly now: () => number;
 }
 
@@ -128,10 +135,14 @@ export class SessionTransferApplication {
   async read(sessionId: string): Promise<SessionTransferFile> {
     const history = await this.options.historyMutation.read(sessionId);
     const page = await this.options.messages.list(sessionId);
+    // A session deleted between the rail's lookup and this call still exports:
+    // the history is on disk either way. So an absent record falls back to the
+    // id rather than failing the download the user asked for.
+    const record = await this.options.sessions.get(sessionId);
     return {
       format: SESSION_TRANSFER_FORMAT,
       exportedAt: new Date(this.options.now()).toISOString(),
-      session: { sessionId, title: sessionId },
+      session: { sessionId, title: record?.title || sessionId },
       canonical: {
         envelopes: history.active.map(toTransferEnvelope),
         snapshots: history.snapshots.map((snapshot) => ({

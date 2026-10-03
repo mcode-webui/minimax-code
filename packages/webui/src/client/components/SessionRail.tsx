@@ -20,6 +20,7 @@ import {
 import {
   WebuiIconContextArchive,
   WebuiIconContextCopy,
+  WebuiIconContextExport,
   WebuiIconContextFeedback,
   WebuiIconContextFork,
   WebuiIconContextPin,
@@ -183,6 +184,7 @@ export function WebuiProjectList({
   onArchiveSession,
   onForkSession,
   onCopySession,
+  onExportSession,
   onDeleteSession,
 }: {
   readonly page: WebuiClientSessionPage;
@@ -205,6 +207,7 @@ export function WebuiProjectList({
   readonly onArchiveSession?: (session: WebuiClientSession) => void;
   readonly onForkSession?: (session: WebuiClientSession, createIsolatedWorktree: boolean) => void;
   readonly onCopySession?: (session: WebuiClientSession, value: "workspaceDir" | "sessionId") => void;
+  readonly onExportSession?: (session: WebuiClientSession) => void;
   readonly onDeleteSession?: (session: WebuiClientSession) => void;
 }): ReactElement {
   // Build a lookup from parent session id to its child sessions. When
@@ -300,6 +303,14 @@ export function WebuiProjectList({
         },
         {
           kind: "item",
+          key: "export",
+          label: "导出会话",
+          icon: <WebuiIconContextExport />,
+          disabled: !onExportSession,
+          onSelect: () => onExportSession?.(session),
+        },
+        {
+          kind: "item",
           key: "copy-session-id",
           label: "复制会话 ID",
           icon: <WebuiIconContextCopy />,
@@ -389,6 +400,14 @@ export function WebuiProjectList({
               onSelect: () => onCopySession?.(session, "sessionId"),
             },
           ],
+        },
+        {
+          kind: "item",
+          key: "export",
+          label: "导出会话",
+          icon: <WebuiIconContextExport />,
+          disabled: !onExportSession,
+          onSelect: () => onExportSession?.(session),
         },
         {
           kind: "item",

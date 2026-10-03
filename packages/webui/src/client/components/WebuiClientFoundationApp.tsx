@@ -90,6 +90,11 @@ import type {
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import {
+  buildWebuiSessionExport,
+  collectWebuiSessionMessages,
+  downloadWebuiSessionExport,
+} from "../session-export.js";
+import {
   readTeamModeOff,
   readTeamModeSessionChoices,
   writeTeamModeOff,
@@ -528,6 +533,24 @@ export function WebuiClientFoundationApp(
     if (!text || typeof navigator === "undefined" || !navigator.clipboard) return;
     void navigator.clipboard.writeText(text);
   };
+  const handleExportSession = (session: WebuiClientSession) => {
+    if (!loadMessages) {
+      setPageError("当前运行时不支持读取会话消息，无法导出。");
+      return;
+    }
+    void (async () => {
+      try {
+        const messages = await collectWebuiSessionMessages(loadMessages, session.sessionId);
+        const exportedAt = new Date().toISOString();
+        downloadWebuiSessionExport(
+          buildWebuiSessionExport(session, messages, exportedAt),
+          exportedAt,
+        );
+      } catch (reason: unknown) {
+        setPageError(reason instanceof Error ? reason.message : String(reason));
+      }
+    })();
+  };
   const handleDeleteSession = (session: WebuiClientSession) => {
     if (!deleteSession) return;
     void deleteSession({ id: session.sessionId })
@@ -886,6 +909,7 @@ export function WebuiClientFoundationApp(
                         onArchiveSession={handleArchiveSession}
                         onForkSession={handleForkSession}
                         onCopySession={handleCopySession}
+                        onExportSession={handleExportSession}
                         onDeleteSession={handleDeleteSession}
                       />
 

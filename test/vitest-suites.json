@@ -258,6 +258,8 @@
       "packages/webui/test/unit/composer-intent.test.ts",
       "packages/webui/test/unit/transcript-shape.test.ts",
       "packages/webui/test/unit/slash-classification.test.ts",
+      "packages/webui/test/unit/session-rail-search.test.ts",
+      "packages/webui/test/unit/session-export.test.ts",
       "packages/webui/test/unit/outside-close.test.ts",
       "packages/webui/test/unit/plugin-market-catalogue.test.tsx",
       "packages/webui/test/unit/webui-plan-mode.test.ts",

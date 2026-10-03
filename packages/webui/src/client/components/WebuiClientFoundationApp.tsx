@@ -892,6 +892,7 @@ export function WebuiClientFoundationApp(
                         page={railPage}
                         treePage={railTreePage}
                         projectRecords={projectRecords}
+                        query={railSearchQuery}
                         loading={loading}
                         onLoadMore={loadMore}
                         selectedSessionId={selectedSessionId}

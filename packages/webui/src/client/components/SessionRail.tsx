@@ -163,10 +163,54 @@ export function resolveDefaultExpandedProjectKey(
   return projects[0]?.key;
 }
 
+/**
+ * Whether a rail search query names the project row itself, rather than one of
+ * the sessions under it. Callers pair this with a "still has a matching
+ * session" check, because projects are rendered from `projectRecords`, not
+ * from the session list: without the pairing, every non-hidden project would
+ * survive a query that matched none of its sessions, and the rail would fill
+ * with empty project rows that look like unfiltered results.
+ */
+export function matchesWebuiProjectQuery(project: WebuiProjectGroup, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  if (project.name.toLowerCase().includes(needle)) return true;
+  return (project.workspaceDir ?? "").toLowerCase().includes(needle);
+}
+
+/**
+ * The project rows that survive a rail search, in the caller's order.
+ *
+ * A project survives when it still holds at least one matching session, or
+ * when the query names the row itself. Both clauses are load-bearing:
+ *
+ * - Without the session clause, every non-hidden project would render on
+ *   every query. `projects` is built from `projectRecords` (the whole
+ *   workspace) while the sessions under each project come from the filtered
+ *   page, so projects with nothing left to show came through as empty rows
+ *   that read as unfiltered results.
+ * - Without the name clause, a project would be unsearchable until its
+ *   sessions happened to page in — `page.sessions` is one page, and a
+ *   project's row exists long before its sessions are loaded.
+ *
+ * An empty query returns the input array by identity, so the unfiltered rail
+ * keeps its referential stability across renders.
+ */
+export function filterWebuiProjectsByQuery(
+  projects: readonly WebuiProjectGroup[],
+  query: string,
+): readonly WebuiProjectGroup[] {
+  if (!query.trim()) return projects;
+  return projects.filter(
+    (project) => project.sessionIds.length > 0 || matchesWebuiProjectQuery(project, query),
+  );
+}
+
 export function WebuiProjectList({
   page,
   treePage,
   projectRecords,
+  query,
   loading,
   onLoadMore,
   selectedSessionId,
@@ -190,6 +234,7 @@ export function WebuiProjectList({
   readonly page: WebuiClientSessionPage;
   readonly treePage?: WebuiClientSessionTreePage;
   readonly projectRecords?: readonly WebuiClientProject[];
+  readonly query?: string;
   readonly loading: boolean;
   readonly onLoadMore?: () => void;
   readonly selectedSessionId?: string;
@@ -251,12 +296,12 @@ export function WebuiProjectList({
             });
           })()
         : groupWebuiSessionsByWorkspace(page.sessions);
-      return [...grouped].sort((left, right) => {
+      return [...filterWebuiProjectsByQuery(grouped, query ?? "")].sort((left, right) => {
         const pinDelta = Number(Boolean(pinnedProjects?.[right.key] ?? right.pinned)) - Number(Boolean(pinnedProjects?.[left.key] ?? left.pinned));
         return pinDelta || right.updatedAt - left.updatedAt;
       });
     },
-    [page.sessions, pinnedProjects, projectRecords],
+    [page.sessions, pinnedProjects, projectRecords, query],
   );
   const [expandedProjects, setExpandedProjects] = useState<ReadonlySet<string>>(
     () => new Set(),

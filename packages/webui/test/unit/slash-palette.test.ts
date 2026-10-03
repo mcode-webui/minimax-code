@@ -92,33 +92,42 @@ describe("WebUI slash palette — rank filter", () => {
       rankWebuiSlashPalette(reversed, "code-review").map((entry) => entry.name),
     ).toEqual(["code-review", "code-review-pr", "team-code-review"]);
 
-    // The same exact hit against the real palette, where `goal` leads the
-    // palette but does not match at all.
-    const result = rankWebuiSlashPalette(palette, "plan");
-    expect(palette[0]?.name).toBe("goal");
-    expect(result[0]?.name).toBe("plan");
-    expect(result.map((entry) => entry.name)).toEqual(["plan"]);
+    // Same contract, and here on a fixture rather than the live palette: the
+    // palette grows whenever someone ships a command, so an assertion pinned
+    // to its contents is a test that breaks on a feature it does not cover.
+    const withNonMatching = [
+      slashSkillSummaryToEntry({ name: "zeta" }),
+      slashSkillSummaryToEntry({ name: "plan-extra" }),
+      slashSkillSummaryToEntry({ name: "plan" }),
+    ];
+    expect(
+      rankWebuiSlashPalette(withNonMatching, "plan").map((entry) => entry.name),
+    ).toEqual(["plan", "plan-extra"]);
   });
 
   it("ranks startsWith before includes", () => {
     // Query "p" matches `plan` (startsWith, rank 1) and `deploy-website`
     // (includes the "p" in "deploy", rank 2): startsWith wins.
-    const names = rankWebuiSlashPalette(palette, "p").map((entry) => entry.name);
+    //
+    // Built, not borrowed. This assertion used to run against the live palette,
+    // where shipping `/compact` — a different PR, an unrelated feature — put a
+    // third `p` hit in the result and turned the test red. A ranking test must
+    // pin the contract, not the roster.
+    const byRank = [
+      slashSkillSummaryToEntry({ name: "deploy-website" }), // includes
+      slashSkillSummaryToEntry({ name: "plan" }), // startsWith
+    ];
+    const names = rankWebuiSlashPalette(byRank, "p").map((entry) => entry.name);
     expect(names).toEqual(["plan", "deploy-website"]);
 
-    // Same contract with an order reversal, so palette position cannot explain
-    // the result: `ask-matt` (palette index 3) startsWith "a", while `goal`
-    // (palette index 0) is only an `includes` hit.
-    const ranked = rankWebuiSlashPalette(withSkills, "a").map(
-      (entry) => entry.name,
-    );
-    expect(ranked[0]).toBe("ask-matt");
-    expect(ranked.indexOf("ask-matt")).toBeLessThan(ranked.indexOf("goal"));
-    // `code-review` matches only through its description (rank 3), so it
-    // trails every name-level hit.
-    expect(ranked.indexOf("code-review")).toBeGreaterThan(
-      ranked.indexOf("codebase-design"),
-    );
+    // Order reversed, so palette position cannot explain the result either.
+    const reversed = [
+      slashSkillSummaryToEntry({ name: "plan" }),
+      slashSkillSummaryToEntry({ name: "deploy-website" }),
+    ];
+    expect(
+      rankWebuiSlashPalette(reversed, "p").map((entry) => entry.name),
+    ).toEqual(["plan", "deploy-website"]);
   });
 
   it("falls back to substring across label/description fields", () => {

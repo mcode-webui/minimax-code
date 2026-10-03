@@ -39,6 +39,7 @@ import {
   formatWebuiSessionAge,
   type WebuiSessionActivityMap,
 } from "../session-activity.js";
+import { formatWebuiUnreadBadge } from "../session-unread.js";
 import type {
   WebuiClientSession,
   WebuiClientSessionPage,
@@ -870,8 +871,19 @@ function SessionActivityMeta({
   if (!activity && now === undefined) return null;
   const entry = activity?.[session.sessionId];
   const busy = entry?.busy;
+  const badge = formatWebuiUnreadBadge(entry?.unread);
   return (
     <span className="webui-rail-session-meta">
+      {badge ? (
+        <span
+          className="webui-rail-unread-badge"
+          role="status"
+          aria-label={`${badge} 条未读`}
+          data-webui-unread-badge={entry?.unread}
+        >
+          {badge}
+        </span>
+      ) : null}
       {busy ? (
         <span
           className="webui-rail-spinner"

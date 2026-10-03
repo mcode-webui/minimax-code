@@ -1034,6 +1034,25 @@
     .webui-rail-spinner { animation: none; }
   }
 
+  /* Turns that finished while the user was elsewhere. The red is the
+   * unread-count convention every messenger has trained people on, and it is
+   * worth being explicit that this is the one place the rail uses a danger
+   * colour without meaning danger: a finished turn is not an error, and the
+   * badge never sits next to a failure state. */
+  .webui-rail-unread-badge {
+    min-width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    padding: 0 3px;
+    border-radius: 7px;
+    background-color: var(--bg_interaction_danger_primary_default);
+    color: var(--text_default_inverted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    text-align: center;
+  }
+
   /* The desktop home rail is project-first. A project row uses the same quiet
    * navigation treatment as the fixed rows, but keeps the folder glyph and
    * label aligned as one navigation target. */

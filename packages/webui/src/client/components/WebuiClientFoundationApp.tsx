@@ -92,11 +92,17 @@ import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import {
   applyWebuiActiveTurn,
+  applyWebuiUnreadCounts,
   initialWebuiSessionActivity,
+  markWebuiSessionRead,
   reduceWebuiSessionActivity,
   seedWebuiSessionActivity,
   type WebuiSessionActivityMap,
 } from "../session-activity.js";
+import {
+  readWebuiUnreadCounts,
+  writeWebuiUnreadCounts,
+} from "../session-unread.js";
 import {
   buildWebuiSessionExport,
   collectWebuiSessionMessages,
@@ -819,6 +825,10 @@ export function WebuiClientFoundationApp(
   const [sessionActivity, setSessionActivity] = useState<WebuiSessionActivityMap>(
     initialWebuiSessionActivity,
   );
+  // Flips once the stored counts have been read back, and is the only thing that
+  // stands between the first render and a write of the empty map. See the
+  // persist effect below for why that write is destructive.
+  const [unreadCountsReady, setUnreadCountsReady] = useState(false);
   const [activityNow, setActivityNow] = useState(() => Date.now());
   // Bumped on reconnect to re-probe: the events that would have told us a turn
   // started were missed while the stream was down, and the stream cannot
@@ -830,13 +840,50 @@ export function WebuiClientFoundationApp(
   useEffect(() => {
     if (!watchEvents) return;
     return watchEvents(
-      (event) => setSessionActivity((current) => reduceWebuiSessionActivity(current, event)),
+      (event) =>
+        setSessionActivity((current) =>
+          reduceWebuiSessionActivity(current, event, { activeSessionId: selectedSessionId }),
+        ),
       () => {
         setActivityNow(Date.now());
         setActivityProbeNonce((nonce) => nonce + 1);
       },
     );
-  }, [watchEvents]);
+    // `selectedSessionId` is read inside the callback, not merely referenced:
+    // it decides whether a finishing turn counts as unread, so a subscription
+    // held from before the user opened a session would badge the session they
+    // are reading.
+  }, [watchEvents, selectedSessionId]);
+
+  // Persist the counts. Without this the badge is worse than none: a session
+  // that ran four turns would go clean on reload and the only thing the user
+  // would conclude is that it never ran.
+  //
+  // Gated on `unreadCountsReady`, and the gate is load-bearing. Effects run in
+  // declaration order within a commit, so an ungated writer placed above the
+  // restore would serialise the empty map it sees on the first render and
+  // `removeItem` the key -- and the restore below would then read nothing and
+  // put the badge back only until the next reload. The count would survive
+  // exactly zero reloads, which is the case persistence exists for.
+  useEffect(() => {
+    if (!unreadCountsReady) return;
+    const counts: Record<string, number> = {};
+    for (const [sessionId, entry] of Object.entries(sessionActivity)) {
+      if (entry.unread && entry.unread > 0) counts[sessionId] = entry.unread;
+    }
+    writeWebuiUnreadCounts(counts);
+  }, [sessionActivity, unreadCountsReady]);
+
+  // Opening a session is what marks it read. Keyed on the id rather than run on
+  // mount, so arriving *at* a session from a link does not clear the badge the
+  // user was about to see on the row they came from.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    setSessionActivity((current) => {
+      const next = markWebuiSessionRead(current, selectedSessionId);
+      return next;
+    });
+  }, [selectedSessionId]);
 
   // The age labels are a function of the clock, not of the data. Without a tick
   // they would freeze at whatever they read when the last event arrived, and
@@ -847,8 +894,17 @@ export function WebuiClientFoundationApp(
   }, []);
 
   useEffect(() => {
-    setSessionActivity((current) => seedWebuiSessionActivity(current, railPage.sessions));
-  }, [railPage]);
+    setSessionActivity((current) =>
+      applyWebuiUnreadCounts(
+        seedWebuiSessionActivity(current, railPage.sessions),
+        readWebuiUnreadCounts(),
+        selectedSessionId,
+      ),
+    );
+    // Flipped after the restore is queued, so the writer's very next run sees a
+    // map that has the counts in it rather than the empty one it started from.
+    setUnreadCountsReady(true);
+  }, [railPage, selectedSessionId]);
 
   useEffect(() => {
     if (!getActiveTurn) return;

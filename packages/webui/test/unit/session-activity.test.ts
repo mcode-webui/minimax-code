@@ -7,8 +7,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   applyWebuiActiveTurn,
+  applyWebuiUnreadCounts,
   formatWebuiSessionAge,
   initialWebuiSessionActivity,
+  markWebuiSessionRead,
   readWebuiEventSessionId,
   reduceWebuiSessionActivity,
   seedWebuiSessionActivity,
@@ -19,6 +21,12 @@ import {
   WebuiSessionList,
 } from "../../src/client/components/SessionRail.js";
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
+import {
+  formatWebuiUnreadBadge,
+  readWebuiUnreadCounts,
+  SESSION_UNREAD_STORAGE_KEY,
+  writeWebuiUnreadCounts,
+} from "../../src/client/session-unread.js";
 import type { WebuiClientSession } from "../../src/client/contracts.js";
 import type { WebuiRuntimeEvent } from "../../src/server/port.js";
 
@@ -365,5 +373,397 @@ describe("spinner colour", () => {
 
   it("does not reach for a raw hex, which would not follow the theme", () => {
     expect(rule).not.toMatch(/#[0-9a-f]{3,8}/iu);
+  });
+});
+
+describe("unread badge styling", () => {
+  const shellCss = readFileSync(
+    path.join(import.meta.dirname, "..", "..", "src", "client", "styles", "shell.css"),
+    "utf8",
+  );
+  const start = shellCss.indexOf(".webui-rail-unread-badge {");
+  // Same reasoning as the spinner rule: the comment above the badge explains in
+  // prose why red is allowed here, so the "no raw hex" assertion is only about
+  // the rule body.
+  const rule = start < 0
+    ? ""
+    : shellCss
+        .slice(start, shellCss.indexOf("}", start))
+        .replace(/\/\*[\s\S]*?\*\//gu, "")
+        .trim();
+
+  it("exists at all", () => {
+    // Without this the three assertions below pass on an empty string, which
+    // is the state of the file when the rule is deleted or renamed.
+    expect(start).toBeGreaterThan(-1);
+    expect(rule.length).toBeGreaterThan(0);
+  });
+
+  it("fills with the danger token, not a neutral surface", () => {
+    // The whole point of the feature is that it reads as a count. A grey pill
+    // with a number on it is a label, and nobody scans the rail for labels.
+    expect(rule).toMatch(/background-color:\s*var\(--bg_interaction_danger_primary_default\)/u);
+  });
+
+  it("puts the digits on the inverted token so they stay legible", () => {
+    expect(rule).toMatch(/color:\s*var\(--text_default_inverted\)/u);
+  });
+
+  it("does not reach for a raw hex, which would not follow the theme", () => {
+    expect(rule).not.toMatch(/#[0-9a-f]{3,8}/iu);
+  });
+});
+describe("unread counts", () => {
+  const started = () =>
+    reduceWebuiSessionActivity(
+      initialWebuiSessionActivity,
+      event("session.start", { sessionId: "mvs_a", turnId: "t1" }),
+    );
+
+  it("counts a turn that finished in another session", () => {
+    const next = reduceWebuiSessionActivity(
+      started(),
+      event("session.finish", { sessionId: "mvs_a" }, 2_000),
+      { activeSessionId: "mvs_other" },
+    );
+    expect(next.mvs_a?.unread).toBe(1);
+  });
+
+  it("does not count the session the user is sitting in", () => {
+    // A badge over the row being read is the fastest way to make a badge stop
+    // being read at all.
+    const next = reduceWebuiSessionActivity(
+      started(),
+      event("session.finish", { sessionId: "mvs_a" }, 2_000),
+      { activeSessionId: "mvs_a" },
+    );
+    expect(next.mvs_a?.unread).toBeUndefined();
+  });
+
+  it("accumulates across turns", () => {
+    let state = started();
+    for (const [index, turnId] of ["t1", "t2", "t3"].entries()) {
+      state = reduceWebuiSessionActivity(state, event("session.start", { sessionId: "mvs_a", turnId }, 3_000 + index), { activeSessionId: "other" });
+      state = reduceWebuiSessionActivity(state, event("session.finish", { sessionId: "mvs_a" }, 3_100 + index), { activeSessionId: "other" });
+    }
+    expect(state.mvs_a?.unread).toBe(3);
+  });
+
+  it("does not count a turn that failed or was aborted", () => {
+    // "3 new messages" after a crash is not news, and a run of aborts would
+    // otherwise accumulate a count no user can clear by reading.
+    for (const type of ["session.error", "session.abort", "session.aborted"]) {
+      const next = reduceWebuiSessionActivity(
+        started(),
+        event(type, { sessionId: "mvs_a" }, 2_000),
+        { activeSessionId: "other" },
+      );
+      expect(next.mvs_a?.unread, type).toBeUndefined();
+    }
+  });
+
+  it("keeps the count when a status event lands afterwards", () => {
+    const finished = reduceWebuiSessionActivity(started(), event("session.finish", { sessionId: "mvs_a" }, 2_000), { activeSessionId: "other" });
+    const next = reduceWebuiSessionActivity(finished, event("session.status_updated", { sessionId: "mvs_a" }, 3_000), { activeSessionId: "other" });
+    expect(next.mvs_a?.unread).toBe(1);
+  });
+
+  it("clears when the user opens the session", () => {
+    let state = reduceWebuiSessionActivity(started(), event("session.finish", { sessionId: "mvs_a" }, 2_000), { activeSessionId: "other" });
+    state = markWebuiSessionRead(state, "mvs_a");
+    expect(state.mvs_a?.unread).toBeUndefined();
+    // The rest of the entry survives; reading a session is not forgetting it.
+    expect(state.mvs_a?.lastActivityAt).toBe(2_000);
+  });
+
+  it("returns the same object when there is nothing to clear", () => {
+    const state = started();
+    expect(markWebuiSessionRead(state, "mvs_a")).toBe(state);
+    expect(markWebuiSessionRead(initialWebuiSessionActivity, "nope")).toBe(
+      initialWebuiSessionActivity,
+    );
+  });
+
+  it("restores stored counts onto a rebuilt map", () => {
+    const next = applyWebuiUnreadCounts(initialWebuiSessionActivity, { mvs_a: 3 }, undefined);
+    expect(next.mvs_a?.unread).toBe(3);
+  });
+
+  it("never restores a badge onto the open session", () => {
+    const next = applyWebuiUnreadCounts(initialWebuiSessionActivity, { mvs_a: 3 }, "mvs_a");
+    expect(next).toBe(initialWebuiSessionActivity);
+  });
+
+  it("ignores non-positive stored counts", () => {
+    const next = applyWebuiUnreadCounts(
+      initialWebuiSessionActivity,
+      { mvs_a: 0, mvs_b: -2 },
+      undefined,
+    );
+    expect(next).toBe(initialWebuiSessionActivity);
+  });
+
+  // The three tests below all cover the same contract from different angles: a
+  // write that rebuilds an entry to change one field must not drop the others.
+  // `busy` already had to be carried across the seed and the status event; the
+  // count is the same field with the same obligation, and forgetting it is
+  // invisible in a single-turn test.
+  const finishedElsewhere = () =>
+    reduceWebuiSessionActivity(
+      started(),
+      event("session.finish", { sessionId: "mvs_a" }, 2_000),
+      { activeSessionId: "other" },
+    );
+
+  it("keeps the count when the next turn starts", () => {
+    const next = reduceWebuiSessionActivity(
+      finishedElsewhere(),
+      event("session.start", { sessionId: "mvs_a", turnId: "t2" }, 3_000),
+      { activeSessionId: "other" },
+    );
+    expect(next.mvs_a?.unread).toBe(1);
+  });
+
+  it("keeps the count when the probe says the session is busy", () => {
+    // The probe runs on a timer for every row and its reply can land after a
+    // turn has already finished. It exists to repair `busy`; it is not evidence
+    // that the user went back and read the session.
+    const next = applyWebuiActiveTurn(
+      finishedElsewhere(),
+      "mvs_a",
+      { turnId: "t9", busyReason: "turn", locallyOwned: false },
+      3_000,
+    );
+    expect(next.mvs_a?.unread).toBe(1);
+  });
+
+  it("keeps the count when a late list refreshes the row", () => {
+    const next = seedWebuiSessionActivity(finishedElsewhere(), [
+      { sessionId: "mvs_a", updatedAt: 9_000 },
+    ]);
+    expect(next.mvs_a?.unread).toBe(1);
+  });
+});
+
+describe("unread storage", () => {
+  function fakeStorage(): Storage & { store: Map<string, string> } {
+    const store = new Map<string, string>();
+    return {
+      store,
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+      clear: () => store.clear(),
+      key: () => null,
+      length: 0,
+    } as unknown as Storage & { store: Map<string, string> };
+  }
+
+  it("round-trips counts", () => {
+    const storage = fakeStorage();
+    writeWebuiUnreadCounts({ mvs_a: 2, mvs_b: 0 }, storage);
+    expect(readWebuiUnreadCounts(storage)).toEqual({ mvs_a: 2 });
+  });
+
+  it("removes the key rather than storing an empty object", () => {
+    const storage = fakeStorage();
+    writeWebuiUnreadCounts({ mvs_a: 1 }, storage);
+    expect(storage.store.size).toBe(1);
+    writeWebuiUnreadCounts({}, storage);
+    expect(storage.store.size).toBe(0);
+  });
+
+  it("drops values that are not positive integers", () => {
+    // `unread: NaN` would render a row claiming to be waiting on nothing, so a
+    // stored float or string is dropped rather than coerced.
+    const storage = fakeStorage();
+    storage.setItem(SESSION_UNREAD_STORAGE_KEY, JSON.stringify({ a: 1.5, b: "2", c: -1, d: 3, e: null }));
+    expect(readWebuiUnreadCounts(storage)).toEqual({ d: 3 });
+  });
+
+  it("survives corrupt storage", () => {
+    const storage = fakeStorage();
+    storage.setItem(SESSION_UNREAD_STORAGE_KEY, "{not json");
+    expect(readWebuiUnreadCounts(storage)).toEqual({});
+    storage.setItem(SESSION_UNREAD_STORAGE_KEY, "[1,2,3]");
+    expect(readWebuiUnreadCounts(storage)).toEqual({});
+  });
+
+  it("degrades to no counts when storage is absent", () => {
+    expect(readWebuiUnreadCounts(undefined)).toEqual({});
+    expect(() => writeWebuiUnreadCounts({ a: 1 }, undefined)).not.toThrow();
+  });
+
+  it("formats the badge, capping past 99", () => {
+    expect(formatWebuiUnreadBadge(undefined)).toBe("");
+    expect(formatWebuiUnreadBadge(0)).toBe("");
+    expect(formatWebuiUnreadBadge(1)).toBe("1");
+    expect(formatWebuiUnreadBadge(99)).toBe("99");
+    expect(formatWebuiUnreadBadge(100)).toBe("99+");
+  });
+});
+
+describe("unread badge rendering", () => {
+  const NOW = 10 * DAY;
+  const session = (over: Partial<WebuiClientSession> & { sessionId: string }): WebuiClientSession => ({
+    agentName: "main",
+    createdAt: 1,
+    updatedAt: NOW - 5 * HOUR,
+    workspaceDir: "/tmp/project",
+    ...over,
+  });
+
+  it("renders a red count instead of the spinner once a turn has finished", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 1 } },
+        now: NOW,
+      }),
+    );
+    expect(html).toMatch(/webui-rail-unread-badge/u);
+    expect(html).toMatch(/data-webui-unread-badge="1"/u);
+    // The spinner is driven by `busy` and not by the count, so a session whose
+    // turns have all finished shows the badge and nothing else. (A count and a
+    // spinner *do* coexist -- that is the next test's case, a new turn starting
+    // on a session that already had unread turns.)
+    expect(html).not.toMatch(/webui-rail-spinner/u);
+  });
+
+  it("shows the count and the spinner together while a new turn runs", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        activity: {
+          mvs_a: { lastActivityAt: NOW, unread: 3, busy: { turnId: "t2", busyReason: "turn" } },
+        },
+        now: NOW,
+      }),
+    );
+    expect(html).toMatch(/webui-rail-unread-badge/u);
+    expect(html).toMatch(/webui-rail-spinner/u);
+  });
+
+  it("renders no badge for a read session", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 0 } },
+        now: NOW,
+      }),
+    );
+    expect(html).not.toMatch(/webui-rail-unread-badge/u);
+  });
+
+  it("caps what the row draws, not just what the formatter returns", () => {
+    // The cap is asserted on `formatWebuiUnreadBadge` above, which proves
+    // nothing about the row: a rail that interpolated the count itself would
+    // render every one of those cases correctly until the 100th. A four-digit
+    // pill is also wide enough to shove the session name out of the rail.
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 150 } },
+        now: NOW,
+      }),
+    );
+    expect(html).toMatch(/>99\+</u);
+    expect(html).not.toMatch(/>150</u);
+  });
+});
+
+describe("host wiring", () => {
+  // Block comments are stripped because this file explains the wiring in prose
+  // right above the code, and an assertion that can be satisfied by the prose
+  // is not an assertion. Line comments are stripped too, for the `$` anchors
+  // below to see the end of an effect; there is no `//` inside any string
+  // literal here, which is what makes that safe.
+  const appSource = readFileSync(
+    path.join(
+      import.meta.dirname,
+      "..",
+      "..",
+      "src",
+      "client",
+      "components",
+      "WebuiClientFoundationApp.tsx",
+    ),
+    "utf8",
+  )
+    .replace(/\/\*[\s\S]*?\*\//gu, "")
+    .replace(/\/\/[^\n]*/gu, "");
+
+  /**
+   * The `useEffect` block that mentions `marker`, from its `useEffect(` up to
+   * the next one.
+   *
+   * These four are the only assertions in the file that are not behavioural,
+   * and the reason is worth stating rather than working around: the webui suite
+   * runs in `environment: "node"` with no jsdom, so `renderToStaticMarkup`
+   * never runs an effect at all. The unread behaviour itself is covered above
+   * against the pure functions; what is left is whether the shell still calls
+   * them, and that is a question about the source.
+   */
+  const effect = (marker: string): string => {
+    const at = appSource.indexOf(marker);
+    if (at < 0) return "";
+    const open = appSource.lastIndexOf("useEffect(", at);
+    const close = appSource.indexOf("useEffect(", at);
+    return appSource.slice(open < 0 ? 0 : open, close < 0 ? undefined : close).trim();
+  };
+
+  it("tells the reducer which session is open", () => {
+    // Without this the reducer cannot tell a turn that finished in the session
+    // being read from one that finished elsewhere, and it counts all of them.
+    const block = effect("reduceWebuiSessionActivity(current, event");
+    expect(block).toMatch(
+      /reduceWebuiSessionActivity\(\s*current\s*,\s*event\s*,\s*\{\s*activeSessionId:\s*selectedSessionId\s*,?\s*\}\s*,?\s*\)/u,
+    );
+  });
+
+  it("re-subscribes when the open session changes", () => {
+    // The callback closes over `selectedSessionId`, so an effect that kept the
+    // old dependency would keep deciding on behalf of the previous session for
+    // as long as the tab stayed open.
+    const block = effect("reduceWebuiSessionActivity(current, event");
+    expect(block).toMatch(
+      /\}\s*,\s*\[\s*watchEvents\s*,\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u,
+    );
+  });
+
+  it("clears the count when the user opens a session", () => {
+    expect(effect("markWebuiSessionRead(current")).toMatch(
+      /markWebuiSessionRead\(\s*current\s*,\s*selectedSessionId\s*\)/u,
+    );
+  });
+
+  it("persists the counts on every change", () => {
+    expect(effect("writeWebuiUnreadCounts(counts)")).toMatch(
+      /writeWebuiUnreadCounts\(\s*counts\s*\)\s*;/u,
+    );
+  });
+
+  it("re-applies stored counts when the rail is rebuilt", () => {
+    // A list refresh rebuilds the map from `updatedAt`, which knows nothing
+    // about counts. Without the re-read the badge survives a reload and then
+    // vanishes on the first refresh.
+    const block = effect("readWebuiUnreadCounts()");
+    expect(block).toMatch(/readWebuiUnreadCounts\(\s*\)/u);
+    expect(block).toMatch(/applyWebuiUnreadCounts/u);
+  });
+
+  it("never writes the empty map before the stored counts are read back", () => {
+    // This one is a real bug that shipped once and was caught only in a browser.
+    // Effects run in declaration order inside a commit, so a writer sitting
+    // above the restore serialises the empty map it sees on the first render,
+    // `removeItem`s the key, and the restore two lines later reads back nothing.
+    // The badge then survives exactly zero reloads, which is the one case
+    // persistence exists for. The gate is asserted on both halves: the early
+    // return in the writer, and the flag being raised by the restore.
+    const writer = effect("writeWebuiUnreadCounts(counts)");
+    expect(writer).toMatch(/if\s*\(\s*!unreadCountsReady\s*\)\s*return\s*;/u);
+    expect(writer).toMatch(/\[\s*sessionActivity\s*,\s*unreadCountsReady\s*,?\s*\]/u);
+    const restore = effect("readWebuiUnreadCounts()");
+    expect(restore).toMatch(/setUnreadCountsReady\(\s*true\s*\)/u);
   });
 });

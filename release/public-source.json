@@ -3578,6 +3578,7 @@
     "packages/webui/src/client/session-export.ts",
     "packages/webui/src/client/session-import.ts",
     "packages/webui/src/client/session-runtime-store.ts",
+    "packages/webui/src/client/session-unread.ts",
     "packages/webui/src/client/slash-palette.ts",
     "packages/webui/src/client/stream-instrumentation.ts",
     "packages/webui/src/client/stream-loop.ts",

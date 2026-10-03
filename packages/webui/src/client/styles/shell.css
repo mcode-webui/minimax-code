@@ -994,6 +994,38 @@
     background-color: var(--bg_interaction_tertiary_selected);
   }
 
+  /* The right-hand end of a rail row: how long ago the session last did
+   * something, and a spinner while a turn holds it. The runtime runs sessions
+   * in parallel, so without this a task that finished in the background is
+   * indistinguishable from one that never ran.
+   *
+   * The spinner reuses the signin claim keyframes rather than declaring its
+   * own. Same rotation, and a second copy would be a second thing to keep in
+   * step when the timing changes. */
+  .webui-rail-session-meta {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing_4);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--text_default_tertiary);
+  }
+  .webui-rail-spinner {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: webui-signin-claim-spin 0.6s linear infinite;
+  }
+  /* Stopped, not hidden: the ring still reads as "busy" for a reader who asked
+   * for less motion, which is the one fact the row is there to convey. */
+  @media (prefers-reduced-motion: reduce) {
+    .webui-rail-spinner { animation: none; }
+  }
+
   /* The desktop home rail is project-first. A project row uses the same quiet
    * navigation treatment as the fixed rows, but keeps the folder glyph and
    * label aligned as one navigation target. */

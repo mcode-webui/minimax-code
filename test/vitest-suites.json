@@ -263,6 +263,7 @@
       "packages/webui/test/unit/session-export.test.ts",
       "packages/webui/test/unit/session-transfer.test.ts",
       "packages/webui/test/unit/session-import.test.ts",
+      "packages/webui/test/unit/session-activity.test.ts",
       "packages/webui/test/unit/vite-dev-proxy.test.ts",
       "packages/webui/test/unit/session-transfer-route.test.ts",
       "packages/webui/test/unit/outside-close.test.ts",

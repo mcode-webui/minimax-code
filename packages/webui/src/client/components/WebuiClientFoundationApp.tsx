@@ -91,6 +91,13 @@ import type {
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import {
+  applyWebuiActiveTurn,
+  initialWebuiSessionActivity,
+  reduceWebuiSessionActivity,
+  seedWebuiSessionActivity,
+  type WebuiSessionActivityMap,
+} from "../session-activity.js";
+import {
   buildWebuiSessionExport,
   collectWebuiSessionMessages,
   downloadWebuiSessionExport,
@@ -797,6 +804,73 @@ export function WebuiClientFoundationApp(
     dispatchShellSurface({ type: "open-plugin-management", area });
   }, [dispatchShellSurface]);
   const [workspacePanelStates, setWorkspacePanelStates] = useState<WorkspacePanelSessionStates>(() => new Map());
+  // ---- Rail activity: which sessions are running, and when each last moved.
+  //
+  // The runtime runs sessions in parallel -- `queue.dispatcher.ts` keeps one
+  // drain loop per session id, and a submitted turn is not tied to the socket
+  // that submitted it -- so work keeps going after the user switches away.
+  // Nothing showed that: every row looked the same whether its turn finished a
+  // minute ago or never started.
+  //
+  // Three inputs, none sufficient alone. The list seeds first-paint times; the
+  // global event stream keeps them current (it carries no session id, so one
+  // subscription covers every row); and `getActiveTurn` repairs what the stream
+  // never delivered.
+  const [sessionActivity, setSessionActivity] = useState<WebuiSessionActivityMap>(
+    initialWebuiSessionActivity,
+  );
+  const [activityNow, setActivityNow] = useState(() => Date.now());
+  // Bumped on reconnect to re-probe: the events that would have told us a turn
+  // started were missed while the stream was down, and the stream cannot
+  // replay them. `SessionComposer` closes the same gap the same way.
+  const [activityProbeNonce, setActivityProbeNonce] = useState(0);
+  const watchEvents = transport?.watchEvents;
+  const getActiveTurn = transport?.getActiveTurn;
+
+  useEffect(() => {
+    if (!watchEvents) return;
+    return watchEvents(
+      (event) => setSessionActivity((current) => reduceWebuiSessionActivity(current, event)),
+      () => {
+        setActivityNow(Date.now());
+        setActivityProbeNonce((nonce) => nonce + 1);
+      },
+    );
+  }, [watchEvents]);
+
+  // The age labels are a function of the clock, not of the data. Without a tick
+  // they would freeze at whatever they read when the last event arrived, and
+  // every row would agree on how long ago "now" was.
+  useEffect(() => {
+    const timer = setInterval(() => setActivityNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setSessionActivity((current) => seedWebuiSessionActivity(current, railPage.sessions));
+  }, [railPage]);
+
+  useEffect(() => {
+    if (!getActiveTurn) return;
+    let cancelled = false;
+    // Once per list change, for every visible row. Not once per event: the
+    // stream already answers for turns it saw, and the reconnect nonce is the
+    // only other moment a re-probe is warranted.
+    for (const session of railPage.sessions) {
+      void getActiveTurn({ id: session.sessionId })
+        .then((active) => {
+          if (cancelled) return;
+          setSessionActivity((current) =>
+            applyWebuiActiveTurn(current, session.sessionId, active, Date.now()),
+          );
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [getActiveTurn, railPage, activityProbeNonce]);
+
   const sessionPanelState = selectedSessionId
     ? getWorkspacePanelSessionState(workspacePanelStates, selectedSessionId)
     : initialWorkspacePanelSessionState;
@@ -959,6 +1033,8 @@ export function WebuiClientFoundationApp(
                         loading={loading}
                         onLoadMore={loadMore}
                         selectedSessionId={selectedSessionId}
+                        activity={sessionActivity}
+                        now={activityNow}
                         onProjectSelect={setNewTaskWorkspaceDir}
                         onCreateTaskInProject={(project) => startNewTask(project.workspaceDir)}
                         error={pageError}

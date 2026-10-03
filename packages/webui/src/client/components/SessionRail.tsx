@@ -35,6 +35,10 @@ import {
 } from "../icons.js";
 import { WebuiContextMenu, type WebuiContextMenuItem } from "./ContextMenu.js";
 import { RailRow } from "./RailRow.js";
+import {
+  formatWebuiSessionAge,
+  type WebuiSessionActivityMap,
+} from "../session-activity.js";
 import type {
   WebuiClientSession,
   WebuiClientSessionPage,
@@ -230,6 +234,8 @@ export function WebuiProjectList({
   onCopySession,
   onExportSession,
   onDeleteSession,
+  activity,
+  now,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly treePage?: WebuiClientSessionTreePage;
@@ -254,6 +260,9 @@ export function WebuiProjectList({
   readonly onCopySession?: (session: WebuiClientSession, value: "workspaceDir" | "sessionId") => void;
   readonly onExportSession?: (session: WebuiClientSession) => void;
   readonly onDeleteSession?: (session: WebuiClientSession) => void;
+  /** Per-session running state and last-activity, for the row's right-hand end. */
+  readonly activity?: WebuiSessionActivityMap;
+  readonly now?: number;
 }): ReactElement {
   // Build a lookup from parent session id to its child sessions. When
   // `treePage` is provided, this lets the rail render child sessions under
@@ -700,6 +709,7 @@ export function WebuiProjectList({
                               <span className="min-w-0 flex-1 truncate">
                                 {sessionLabel(session)}
                               </span>
+                              <SessionActivityMeta session={session} activity={activity} now={now} />
                             </a>
                             <div className="webui-session-row-actions">
                               {onToggleSessionPin ? (
@@ -767,6 +777,7 @@ export function WebuiProjectList({
                                       <span className="min-w-0 flex-1 truncate">
                                         {sessionLabel(child)}
                                       </span>
+                                      <SessionActivityMeta session={child} activity={activity} now={now} />
                                     </a>
                                     <div className="webui-session-row-actions">
                                       <button
@@ -836,6 +847,45 @@ export function WebuiProjectList({
   );
 }
 
+/**
+ * The right-hand end of a rail row: a spinner while a turn holds the session,
+ * and how long ago it was last active.
+ *
+ * Shared by all three row shapes -- project rows, child rows, and the flat
+ * "all sessions" list -- so a session reads the same wherever it is listed.
+ * Renders nothing when the host passes neither map nor clock, which is what
+ * keeps the existing snapshots and SSR fixtures byte-identical: the rail is
+ * also rendered outside the app (`webui-w0-ssr-fixtures`), where there is no
+ * subscription and no clock to format against.
+ */
+function SessionActivityMeta({
+  session,
+  activity,
+  now,
+}: {
+  readonly session: WebuiClientSession;
+  readonly activity?: WebuiSessionActivityMap;
+  readonly now?: number;
+}): ReactElement | null {
+  if (!activity && now === undefined) return null;
+  const entry = activity?.[session.sessionId];
+  const busy = entry?.busy;
+  return (
+    <span className="webui-rail-session-meta">
+      {busy ? (
+        <span
+          className="webui-rail-spinner"
+          role="status"
+          aria-label={busy.busyReason === "compaction" ? "正在压缩上下文" : "正在运行"}
+        />
+      ) : null}
+      <span data-webui-session-age="true">
+        {formatWebuiSessionAge(entry?.lastActivityAt ?? session.updatedAt, now ?? session.updatedAt)}
+      </span>
+    </span>
+  );
+}
+
 export function WebuiSessionList({
   page,
   loading,
@@ -843,6 +893,8 @@ export function WebuiSessionList({
   selectedSessionId,
   error,
   teamModeChoices,
+  activity,
+  now,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly loading: boolean;
@@ -850,6 +902,9 @@ export function WebuiSessionList({
   readonly selectedSessionId?: string;
   readonly error?: string;
   readonly teamModeChoices?: TeamModeSessionChoices;
+  readonly activity?: WebuiSessionActivityMap;
+  /** Injected so the age labels re-render on a tick instead of on every event. */
+  readonly now?: number;
 }): ReactElement {
   const sessions = useMemo(
     () =>
@@ -917,6 +972,7 @@ export function WebuiSessionList({
                     Agent Team
                   </span>
                 ) : null}
+                <SessionActivityMeta session={session} activity={activity} now={now} />
               </a>
               {session.workspaceDir ? (
                 <div

@@ -950,6 +950,80 @@ describe("WebUI service", () => {
     expect(port.abortCalls).toBe(0);
   });
 
+  it("finalises the stream exactly once when the pump settles after the socket closed", async () => {
+    // The two preceding tests park the pump on a `next()` that never settles,
+    // so the `finally` in dispatchWebuiFrame never runs and only the abort
+    // listener can finalise. A real runtime stream DOES settle — the pull
+    // completes or rejects once the connection is gone — and then both the
+    // listener and the `finally` reach for `return()`. Finalising an iterator
+    // twice is a real double-close on a live subscription, so the count is
+    // asserted, not just the fact of finalisation.
+    let returnCalls = 0;
+    let settlePull!: () => void;
+    const pullSettled = new Promise<void>((resolve) => {
+      settlePull = resolve;
+    });
+    let pulls = 0;
+    const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
+      next: () => {
+        pulls += 1;
+        if (pulls === 1)
+          return Promise.resolve({
+            done: false,
+            value: { dataJson: '{"type":10}' },
+          });
+        // Park, then let the test release the pull AFTER the socket is gone.
+        // That is the shape that runs the abort listener and the `finally`.
+        return pullSettled.then(() => ({ done: true, value: undefined }));
+      },
+      return: async () => {
+        returnCalls += 1;
+        return { done: true, value: undefined };
+      },
+    };
+    port.sendResult = {
+      ok: true,
+      source: { [Symbol.asyncIterator]: () => pendingIterator },
+    };
+    const { url } = await bootService();
+    const { ws, upgrade, closed } = openClient(url);
+    await upgrade;
+    const firstValue = new Promise<void>((resolve) => {
+      const onMessage = (raw: import("ws").RawData) => {
+        ws.off("message", onMessage);
+        resolve();
+      };
+      ws.on("message", onMessage);
+    });
+    ws.send(
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "request",
+        requestId: "req-finalise-once",
+        operation: "sendMessage",
+        body: { id: "session-1", content: "settles after disconnect" },
+      }),
+    );
+    await firstValue;
+    expect(pulls).toBeGreaterThanOrEqual(1);
+    ws.close();
+    await closed;
+    // Release the parked pull only now: the abort listener has already run,
+    // and settling it drives the loop into the `finally`.
+    settlePull();
+    await awaitFinalised(
+      pullSettled,
+      "the parked pull to settle after the socket closed",
+    );
+    // Real room for the `finally`: a second `return()` would land well after a
+    // couple of microtask turns.
+    await new Promise<void>((resolve) => setTimeout(resolve, 250));
+    // The count is the point. Asserting only `returnCalls >= 1` would pass
+    // against a double-finalise, which is the failure this pins shut.
+    expect(returnCalls).toBe(1);
+    expect(port.abortCalls).toBe(0);
+  });
+
   it("drives the fresh-page list, selection, history and send sequence over one credential", async () => {
     port.listSessions = async () => ({
       sessions: [

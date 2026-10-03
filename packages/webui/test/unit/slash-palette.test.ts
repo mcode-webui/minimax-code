@@ -57,6 +57,16 @@ describe("WebUI slash palette — rank filter", () => {
   const palette = buildWebuiSlashPalette({
     skills: Object.values(WEBUI_PLUGIN_REGISTRY),
   });
+  // The registry-only palette is down to three rows (goal, plan,
+  // deploy-website), which is too few to tell rank order apart from palette
+  // order: for query "p" the only startsWith hit (`plan`, index 1) already
+  // sits before the only includes hit (`deploy-website`, index 2). Merging the
+  // shipped skill fixtures back in gives the rank assertions a genuine order
+  // reversal to prove, so the four-rank contract is still exercised against
+  // data this module actually ships.
+  const withSkills = buildWebuiSlashPalette({
+    skills: [...Object.values(WEBUI_PLUGIN_REGISTRY), ...WEBUI_SKILL_FIXTURES],
+  });
 
   it("returns the palette untouched on empty query", () => {
     expect(rankWebuiSlashPalette(palette, "").map((entry) => entry.name)).toEqual(
@@ -65,18 +75,50 @@ describe("WebUI slash palette — rank filter", () => {
   });
 
   it("ranks exact name match first", () => {
-    const result = rankWebuiSlashPalette(palette, "compact");
-    expect(result[0]?.name).toBe("compact");
+    // No shipped name is a substring of another, so an exact query on the
+    // real palette can never co-occur with a competing hit — the hit would
+    // lead whether or not rank 0 existed. Build a minimal three-row palette
+    // with the module's own entry factory that separates all three
+    // name-level ranks at once, and order it so every rank is a REVERSAL of
+    // palette position: a startsWith row first, an includes row second, and
+    // the exact row last. Expected order is therefore the reverse of the
+    // fixture, which only holds if ranks 0/1/2 are all honoured.
+    const reversed = [
+      slashSkillSummaryToEntry({ name: "code-review-pr" }), // startsWith
+      slashSkillSummaryToEntry({ name: "team-code-review" }), // includes
+      slashSkillSummaryToEntry({ name: "code-review" }), // exact
+    ];
+    expect(
+      rankWebuiSlashPalette(reversed, "code-review").map((entry) => entry.name),
+    ).toEqual(["code-review", "code-review-pr", "team-code-review"]);
+
+    // The same exact hit against the real palette, where `goal` leads the
+    // palette but does not match at all.
+    const result = rankWebuiSlashPalette(palette, "plan");
+    expect(palette[0]?.name).toBe("goal");
+    expect(result[0]?.name).toBe("plan");
+    expect(result.map((entry) => entry.name)).toEqual(["plan"]);
   });
 
   it("ranks startsWith before includes", () => {
-    // Query "p" matches `plan` (startsWith) and `compact` (includes "p").
-    const result = rankWebuiSlashPalette(palette, "p");
-    const names = result.map((entry) => entry.name);
-    const planIdx = names.indexOf("plan");
-    const compactIdx = names.indexOf("compact");
-    expect(planIdx).toBeGreaterThanOrEqual(0);
-    expect(compactIdx).toBeGreaterThan(planIdx);
+    // Query "p" matches `plan` (startsWith, rank 1) and `deploy-website`
+    // (includes the "p" in "deploy", rank 2): startsWith wins.
+    const names = rankWebuiSlashPalette(palette, "p").map((entry) => entry.name);
+    expect(names).toEqual(["plan", "deploy-website"]);
+
+    // Same contract with an order reversal, so palette position cannot explain
+    // the result: `ask-matt` (palette index 3) startsWith "a", while `goal`
+    // (palette index 0) is only an `includes` hit.
+    const ranked = rankWebuiSlashPalette(withSkills, "a").map(
+      (entry) => entry.name,
+    );
+    expect(ranked[0]).toBe("ask-matt");
+    expect(ranked.indexOf("ask-matt")).toBeLessThan(ranked.indexOf("goal"));
+    // `code-review` matches only through its description (rank 3), so it
+    // trails every name-level hit.
+    expect(ranked.indexOf("code-review")).toBeGreaterThan(
+      ranked.indexOf("codebase-design"),
+    );
   });
 
   it("falls back to substring across label/description fields", () => {

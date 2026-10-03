@@ -1086,7 +1086,23 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(html).toContain("MiniMax Code，让工作更简单。");
     // The hero column keeps the desktop's 743px width below a 240px spacer.
     expect(html).toMatch(/max-w-\[743px\]/u);
-    expect(html).toMatch(/aria-hidden="true" class="h-\[240px\] w-full shrink"/u);
+    // The spacer is decorative, full-bleed, and holds its size in the flex
+    // column. Its height is the desktop's 240px as a *cap*, not a literal:
+    // d9b9519 ("update onboarding layout and responsive design") made the
+    // spacer responsive with `h-[clamp(96px,24vh,240px)]`, which still resolves
+    // to 240px on any desktop-height window and only shrinks on short ones.
+    // Asserting the cap keeps the 240px headroom under test while leaving the
+    // responsive expression free to move; pinning the exact utility string
+    // would fail again on the next viewport pass without catching a real
+    // regression.
+    const spacerMatch = html.match(/<div aria-hidden="true" class="([^"]*)"><\/div>/u);
+    expect(spacerMatch, "home hero spacer is missing").not.toBeNull();
+    const spacerClasses = spacerMatch?.[1] ?? "";
+    // h-[…] whose expression names 240px, so the headroom is bounded by the
+    // desktop's value and never grows past it.
+    expect(spacerClasses, "spacer height must stay capped at 240px").toMatch(/(?:^|\s)h-\[[^\]]*\b240px\b[^\]]*\]/u);
+    expect(spacerClasses, "spacer must stay full-bleed").toMatch(/(?:^|\s)w-full(?:\s|$)/u);
+    expect(spacerClasses, "spacer must not shrink in the flex column").toMatch(/(?:^|\s)shrink(?:\s|$)/u);
     expect(html).not.toMatch(/data-webui-recommendations="true"/u);
     expect(html).not.toMatch(/data-webui-conversation-source="true"/u);
     // New Task is the desktop's clean home state, not the WebUI-only create-session

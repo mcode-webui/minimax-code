@@ -490,12 +490,38 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
 });
 
 describe("W0 · stacking order", () => {
+  // `.webui-message-dialog`, the portal-rendered modal, is the ceiling: it
+  // mounts outside the shell's stacking context, so it is the one layer that
+  // cannot be covered by anything declared in this stylesheet. A value above
+  // it paints over every dialog and the defect is invisible in review, so it
+  // is asserted on its own rather than left to the registry below happening to
+  // be complete.
+  const TOP_OVERLAY = 1400;
+
   it("keeps the overlay stacking values declared by the shell", () => {
     const values = [
       ...shellCss.matchAll(/z-index:\s*(-?[0-9]+)/gu),
     ].map((match) => Number(match[1]));
-    expect([...new Set(values)].sort((left, right) => left - right)).toEqual([
+    const unique = [...new Set(values)].sort((left, right) => left - right);
+
+    // The exact set below already rejects an out-of-band value, but only as a
+    // set diff. This names the actual defect when it happens.
+    expect(unique.filter((value) => value > TOP_OVERLAY)).toEqual([]);
+
+    expect(unique).toEqual([
       // 1 is used by the project/session row action controls.
+      // 40 is `.webui-workspace-panel` inside `@media (max-width: 1080px)`.
+      // Above that breakpoint the panel is an in-flow flex sibling and needs no
+      // layer; below it the panel is pulled out of flow into a right-docked
+      // drawer (`position: absolute; inset: 0 0 0 auto`), so 40 is what lifts
+      // it over the transcript and the composer overlay (20). The layers above
+      // it stay above the drawer: 45 (`.webui-progress-panel-motion`) and 50
+      // (`.webui-workspace-panel-controls`) are siblings of the panel, not
+      // children — the controls only render while the panel is closed — and
+      // 60 (`.webui-context-usage-popover`) keeps the clearance the note below
+      // describes. 45 and 50 in particular are not a band the drawer has to
+      // join: they are the collapsed-state affordances, and 40 landing below
+      // both leaves that ordering intact.
       // 60 is `.webui-context-usage-popover`: it has to clear the transcript
       // and the composer overlay (20) and the workspace panel controls (50),
       // and it stays under the model/workspace menus (70) and the dialog
@@ -504,7 +530,7 @@ describe("W0 · stacking order", () => {
       // the fork, rewind-preview and goal-clear dialogs. It mounts outside the
       // shell's stacking context, so it cannot join the 100-121 in-shell
       // dialog band and has to clear all of it.
-      1, 2, 4, 20, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 1400,
+      1, 2, 4, 20, 40, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 1400,
     ]);
   });
 });

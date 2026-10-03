@@ -106,6 +106,34 @@ export function sessionLabel(session: WebuiClientSession): string {
   return session.title?.trim() || session.agentName || session.sessionId;
 }
 
+/**
+ * Whether a session matches a rail search query.
+ *
+ * Matching is a case-insensitive substring over the label the rail already
+ * renders (`sessionLabel`) plus the workspace directory, so a project path is
+ * findable even when no session title inside it contains the query. An empty
+ * or whitespace-only query matches everything, so callers can hand the raw
+ * input value straight through without guarding.
+ */
+export function matchesWebuiSessionQuery(session: WebuiClientSession, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  if (sessionLabel(session).toLowerCase().includes(needle)) return true;
+  return (session.workspaceDir ?? "").toLowerCase().includes(needle);
+}
+
+/**
+ * The sessions matching `query`, in the caller's order. Returns the input
+ * unchanged for an empty query so the unfiltered rail keeps its identity.
+ */
+export function filterWebuiSessionsByQuery(
+  sessions: readonly WebuiClientSession[],
+  query: string,
+): readonly WebuiClientSession[] {
+  if (!query.trim()) return sessions;
+  return sessions.filter((session) => matchesWebuiSessionQuery(session, query));
+}
+
 export function workspaceProjectName(workspaceDir?: string): string {
   const value = workspaceDir?.trim();
   if (!value) return "未选项目";

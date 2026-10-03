@@ -59,6 +59,7 @@ import { WebuiComposer } from "./SessionComposer.js";
 import { WebuiSessionTranscript } from "./SessionTranscript.js";
 import {
   WebuiProjectList,
+  filterWebuiSessionsByQuery,
   sessionHash,
   sessionLabel,
 } from "./SessionRail.js";
@@ -692,6 +693,46 @@ export function WebuiClientFoundationApp(
     ? teamModeChoices[selectedSessionId] ?? teamModeOff
     : teamModeOff;
   const [railCollapsed, setRailCollapsed] = useState(false);
+  // Rail session search. `railSearchOpen` mirrors whether the input is
+  // showing; `railSearchQuery` is the live filter. The query filters only the
+  // rail's rendered list — lookups such as the selected-session resolution and
+  // the composer's session switcher keep reading the unfiltered page, so a
+  // session selected before the search can still be resolved and reopened.
+  const [railSearchOpen, setRailSearchOpen] = useState(false);
+  const [railSearchQuery, setRailSearchQuery] = useState("");
+  const railSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const openRailSearch = useCallback(() => {
+    setRailSearchOpen(true);
+    // The input mounts in the same commit as the state flip, so focus has to
+    // wait a frame for the ref to resolve.
+    requestAnimationFrame(() => railSearchInputRef.current?.focus());
+  }, []);
+  const closeRailSearch = useCallback(() => {
+    setRailSearchOpen(false);
+    setRailSearchQuery("");
+  }, []);
+  const railPage = useMemo(
+    () =>
+      railSearchQuery.trim()
+        ? { ...page, sessions: filterWebuiSessionsByQuery(page.sessions, railSearchQuery) }
+        : page,
+    [page, railSearchQuery],
+  );
+  // Child sessions live on the tree page rather than the flat page, so the
+  // query has to be applied there too or a match on a child would not show.
+  // A node whose children are all filtered out is dropped, and a tree that
+  // loses every node falls back to the flat list rather than rendering empty.
+  const railTreePage = useMemo(() => {
+    if (treePage.sessions.length === 0) return undefined;
+    if (!railSearchQuery.trim()) return treePage;
+    const nodes = treePage.sessions
+      .map((node) => ({
+        ...node,
+        childSessions: filterWebuiSessionsByQuery(node.childSessions, railSearchQuery),
+      }))
+      .filter((node) => node.childSessions.length > 0);
+    return nodes.length > 0 ? { ...treePage, sessions: nodes } : undefined;
+  }, [treePage, railSearchQuery]);
   const pluginManagementArea = webuiPluginManagementArea(shellSurface);
   const pluginManagementOpen = isPluginManagementSurface(shellSurface);
   const openPluginManagement = useCallback((area: WebuiPluginManagementArea) => {
@@ -747,11 +788,15 @@ export function WebuiClientFoundationApp(
           <button
             type="button"
             data-webui-search="true"
-            data-webui-placeholder-chrome="search"
-            aria-disabled="true"
+            aria-expanded={railSearchOpen}
+            aria-controls="webui-rail-search"
             aria-label="搜索"
-            disabled
-            className="pointer-events-auto flex size-[30px] cursor-default items-center justify-center rounded-lg text-text_default_tertiary opacity-70"
+            onClick={() => (railSearchOpen ? closeRailSearch() : openRailSearch())}
+            className={`pointer-events-auto flex size-[30px] items-center justify-center rounded-lg text-text_default_tertiary ${
+              railSearchOpen
+                ? "bg-bg_interaction_tertiary_hover text-text_default_secondary"
+                : "hover:bg-bg_interaction_tertiary_hover"
+            }`}
           >
             <WebuiIconSearch />
           </button>
@@ -786,6 +831,31 @@ export function WebuiClientFoundationApp(
                     />
                   </div>
 
+                  {railSearchOpen ? (
+                    <div
+                      className="flex-shrink-0 px-4 pb-px pt-1"
+                      data-webui-rail-fixed-row="true"
+                    >
+                      <input
+                        id="webui-rail-search"
+                        ref={railSearchInputRef}
+                        type="text"
+                        role="searchbox"
+                        data-webui-rail-search-input="true"
+                        aria-label="搜索会话"
+                        placeholder="搜索会话"
+                        value={railSearchQuery}
+                        onChange={(event) => setRailSearchQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          event.preventDefault();
+                          closeRailSearch();
+                        }}
+                        className="w-full rounded-[8px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none placeholder:text-text_default_tertiary focus:border-stroke_strong"
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="relative min-h-0 flex-1">
                     <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
                       <div className="space-y-px pb-2">
@@ -796,8 +866,8 @@ export function WebuiClientFoundationApp(
                       </div>
 
                       <WebuiProjectList
-                        page={page}
-                        treePage={treePage.sessions.length > 0 ? treePage : undefined}
+                        page={railPage}
+                        treePage={railTreePage}
                         projectRecords={projectRecords}
                         loading={loading}
                         onLoadMore={loadMore}
@@ -818,6 +888,15 @@ export function WebuiClientFoundationApp(
                         onCopySession={handleCopySession}
                         onDeleteSession={handleDeleteSession}
                       />
+
+                      {railSearchQuery.trim() && railPage.sessions.length === 0 ? (
+                        <p
+                          data-webui-rail-search-empty="true"
+                          className="px-2 py-3 text-sm text-text_default_tertiary"
+                        >
+                          没有匹配的会话
+                        </p>
+                      ) : null}
                     </div>
                     <div
                       className="webui-scroll-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6"

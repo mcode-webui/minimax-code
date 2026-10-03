@@ -2729,7 +2729,12 @@
   }
   /* C-2: the gutter is a sibling of the `pre` so that selecting and copying the
      code carries no line numbers, which also means the `pre` owns the scroll
-     and the gutter holds its place beside it. */
+     and the gutter holds its place beside it. The selectors carry
+     `.webui-markdown` because the gutter is an `<ol>` rendered inside the
+     transcript, and `.webui-markdown ol` above sets `list-style-type: decimal`
+     and a 1.8em indent. Both rules sit in the same layer, so the tie is broken
+     by specificity, not by order: at `.webui-code-gutter` (0,1,0) the markdown
+     rule (0,1,1) won and every fence rendered as `1. 1` / `2. 2`. */
   .webui-code-block--numbered {
     display: flex;
     align-items: stretch;
@@ -2738,7 +2743,7 @@
     min-width: 0;
     flex: 1 1 auto;
   }
-  .webui-code-gutter {
+  .webui-markdown .webui-code-gutter {
     flex: 0 0 auto;
     margin: 0;
     padding: var(--spacing_12) 0 var(--spacing_12) var(--spacing_16);
@@ -2749,7 +2754,7 @@
     text-align: right;
     user-select: none;
   }
-  .webui-code-gutter li {
+  .webui-markdown .webui-code-gutter li {
     padding: 0 var(--spacing_8);
   }
   /* C-1: the transcript's own tokens, mirroring `.webui-file-code` so a fence

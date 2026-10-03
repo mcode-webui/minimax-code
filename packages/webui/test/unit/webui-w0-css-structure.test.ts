@@ -534,3 +534,73 @@ describe("W0 · stacking order", () => {
     ]);
   });
 });
+
+/**
+ * Specificity as a sortable triple. Only the selector forms this file's
+ * rules use are counted: ids, class/attribute/pseudo-class, and
+ * type/pseudo-element. `winning()` above answers "which of the *same*
+ * selector wins by order"; this answers the other half, "which of two
+ * *different* selectors that both match wins at all" — the question a
+ * dedup pass cannot see.
+ */
+function specificity(selector: string): [number, number, number] {
+  const scope = selector.replace(/:(hover|active|focus|before|after|not)\b/gu, "");
+  const ids = scope.match(/#[-\w]+/gu)?.length ?? 0;
+  const classes =
+    scope.match(/\.[-\w]+|\[[^\]]*\]|::?[-\w]+/gu)?.length ?? 0;
+  const types = scope.match(/(?:^|[\s>+~,])([a-z][-\w]*)/giu)?.length ?? 0;
+  return [ids, classes, types];
+}
+
+/** The cascade order for two selectors: positive when `a` outranks `b`. */
+function compareSpecificity(
+  a: readonly number[],
+  b: readonly number[],
+): number {
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+describe("W0 · C-2 code gutter outranks the markdown list rules", () => {
+  // The gutter is an `<ol class="webui-code-gutter">` rendered inside the
+  // transcript, so `.webui-markdown ol` (`list-style-type: decimal`,
+  // `margin: 0 0 0 1.8em`) matches it too. Both live in `@layer components`,
+  // so the winner is decided by specificity, not by order. When the gutter's
+  // own rule was the less specific of the two it lost, and a real browser
+  // rendered every fence as `1. 1` / `2. 2` with the gutter pushed 1.8em
+  // right. The C-2 markup tests cannot see this: they assert the rendered
+  // HTML, never the cascade.
+  let gutter: CssRule;
+  let items: CssRule;
+  let orderedList: CssRule;
+
+  beforeAll(() => {
+    gutter = winning(".webui-markdown .webui-code-gutter");
+    items = winning(".webui-markdown .webui-code-gutter li");
+    orderedList = winning(".webui-markdown ol");
+  });
+
+  it("binds the gutter rule tighter than the markdown ordered-list rule", () => {
+    expect(specificity(gutter.selector)).toEqual([0, 2, 0]);
+    expect(
+      compareSpecificity(
+        specificity(gutter.selector),
+        specificity(orderedList.selector),
+      ),
+    ).toBeGreaterThan(0);
+  });
+
+  it("keeps the gutter marker-free and flush to the block's own padding", () => {
+    expect(declaration(gutter.body, "list-style")).toBe("none");
+    expect(declaration(gutter.body, "margin")).toBe("0");
+  });
+
+  it("gives the gutter items their own spacing without the list indent", () => {
+    expect(specificity(items.selector)).toEqual([0, 2, 1]);
+    expect(declaration(items.body, "margin")).toBeUndefined();
+    expect(declaration(items.body, "padding")).toBeDefined();
+  });
+});

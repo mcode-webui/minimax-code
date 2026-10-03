@@ -93,7 +93,25 @@ export async function dispatchWebuiFrame(
           result.stream.source as AsyncIterable<unknown> | Iterable<unknown>,
         );
         const signal = getSignal();
-        const close = () => void iterator.return?.();
+        // One finalisation, two routes to reach it.
+        //
+        // The abort listener exists for the case that made this non-obvious: a
+        // client that disconnects mid-stream leaves the pump parked on a `next()`
+        // that may never settle, so the `finally` below would never run. The
+        // listener is the only thing that can finish that iterator.
+        //
+        // But when the pull DOES settle, the loop breaks and the `finally` runs
+        // too — and calling `return()` twice on a live async iterator is a real
+        // double-close on whatever subscription it holds. Hence one idempotent
+        // gate rather than two call sites. A local `let` is enough: the
+        // listener and the `finally` share this closure and this invocation.
+        let finalised = false;
+        const finalise = async (): Promise<void> => {
+          if (finalised) return;
+          finalised = true;
+          await iterator.return?.();
+        };
+        const close = () => void finalise();
         signal?.addEventListener("abort", close, { once: true });
         // Acknowledge before pumping, but only for the operations that opt
         // in. The data streams keep their original wire shape so any
@@ -111,7 +129,7 @@ export async function dispatchWebuiFrame(
           }
         } finally {
           signal?.removeEventListener("abort", close);
-          await iterator.return?.();
+          await finalise();
         }
         return;
       }

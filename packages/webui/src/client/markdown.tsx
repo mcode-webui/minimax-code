@@ -1,5 +1,21 @@
 import { marked, type Token } from "marked";
 import katex from "katex";
+import hljs from "highlight.js/lib/core";
+import bash from "highlight.js/lib/languages/bash";
+import c from "highlight.js/lib/languages/c";
+import cpp from "highlight.js/lib/languages/cpp";
+import css from "highlight.js/lib/languages/css";
+import go from "highlight.js/lib/languages/go";
+import java from "highlight.js/lib/languages/java";
+import javascript from "highlight.js/lib/languages/javascript";
+import json from "highlight.js/lib/languages/json";
+import markdownLanguage from "highlight.js/lib/languages/markdown";
+import python from "highlight.js/lib/languages/python";
+import rust from "highlight.js/lib/languages/rust";
+import typescript from "highlight.js/lib/languages/typescript";
+import ini from "highlight.js/lib/languages/ini";
+import xml from "highlight.js/lib/languages/xml";
+import yaml from "highlight.js/lib/languages/yaml";
 import {
   createElement,
   Fragment,
@@ -8,6 +24,59 @@ import {
   type ReactNode,
 } from "react";
 import { parseWebuiMessageFileReference } from "./projection/message-file-reference.js";
+
+// The same `highlight.js/lib/core` registration `components/WorkspacePanels.tsx`
+// performs for the file viewer — the full `highlight.js` bundle is never
+// imported, and `registerLanguage` is idempotent, so the two callers share one
+// core instance.
+const MARKDOWN_CODE_LANGUAGES = {
+  bash,
+  c,
+  cpp,
+  css,
+  go,
+  java,
+  javascript,
+  json,
+  markdown: markdownLanguage,
+  python,
+  rust,
+  toml: ini,
+  typescript,
+  xml,
+  yaml,
+} as const;
+for (const [name, language] of Object.entries(MARKDOWN_CODE_LANGUAGES)) {
+  if (!hljs.getLanguage(name)) hljs.registerLanguage(name, language);
+}
+
+/** The language word of a fence tag, or `undefined` when there is none. */
+function codeFenceLanguage(lang: string | undefined): string | undefined {
+  // marked keeps everything after the backticks, so a ```ts title="a.ts"``` fence
+  // arrives as `ts title="a.ts"`.
+  const name = lang?.trim().split(/\s+/u)[0];
+  return name || undefined;
+}
+
+/** hljs markup for a fence body, or `undefined` to take the plain path. */
+function highlightCodeFence(text: string, language: string | undefined): string | undefined {
+  if (!language || !hljs.getLanguage(language)) return undefined;
+  try {
+    const value = hljs.highlight(text, { language, ignoreIllegals: true }).value;
+    return value.length > 0 ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The line numbers a fence body warrants, in document order. */
+function codeFenceGutter(text: string): number[] {
+  if (text.trim() === "") return [];
+  const lines = text.endsWith("\n") ? text.slice(0, -1).split("\n") : text.split("\n");
+  // SPEC-C C-2 asks for no gutter on a one-line body that ends without a
+  // newline, so a single entry is not a gutter.
+  return lines.length > 1 ? lines.map((_line, index) => index + 1) : [];
+}
 
 marked.use({
   extensions: [
@@ -109,7 +178,9 @@ function inline(tokens: readonly Token[] | undefined, onOpenFile?: (reference: N
       const hasExistingIcon = previousToken?.type === "text" && (previousToken as Token & { readonly text: string }).text.trim() === fileIcon;
       return isSafeWebuiMarkdownHref(token.href) ? (
         fileReference ? fileReferenceAnchor(key, token.href, fileReference, onOpenFile!, !hasExistingIcon) : <a key={key} href={token.href} rel="noreferrer">
-          {inline(token.tokens, onOpenFile, workspaceDir, lexBareText)}
+          {/* The label was tokenized by marked already. Re-lexing it here would
+              re-emit an autolink inside this anchor — `<a>` inside `<a>`. */}
+          {inline(token.tokens, onOpenFile, workspaceDir, false)}
         </a>
       ) : (
         <Fragment key={key}>{inline(token.tokens, onOpenFile, workspaceDir, lexBareText)}</Fragment>
@@ -136,7 +207,12 @@ function inline(tokens: readonly Token[] | undefined, onOpenFile?: (reference: N
       }
       if (!onOpenFile) return token.text;
       const parts: ReactNode[] = [];
-      const expression = /(?<![\w/:])(?:[A-Za-z]:[\\/][\w@.+-]+(?:[\\/][\w@.+-]+)*|\/(?:[\w@.+-]+\/)*[\w@.+-]+|(?:\.\.?\/)?[\w@.+-]+(?:\/[\w@.+-]+)*)\.[A-Za-z0-9_-]+(?::\d+(?:-\d+)?)?/gu;
+      // A path cannot start with a `.`: a match immediately after one is the
+      // tail of a dotted host (`https://example.com/pkg/index.ts`), and the
+      // URL as a whole is not a reference — `parseWebuiMessageFileReference`
+      // returns undefined for it. Excluding `.` keeps the scanner from slicing
+      // the URL before the parser ever sees one.
+      const expression = /(?<![\w/.:])(?:[A-Za-z]:[\\/][\w@.+-]+(?:[\\/][\w@.+-]+)*|\/(?:[\w@.+-]+\/)*[\w@.+-]+|(?:\.\.?\/)?[\w@.+-]+(?:\/[\w@.+-]+)*)\.[A-Za-z0-9_-]+(?::\d+(?:-\d+)?)?/gu;
       let cursor = 0;
       for (const match of token.text.matchAll(expression)) {
         const start = match.index ?? 0;
@@ -183,14 +259,31 @@ function blocks(tokens: readonly Token[] | undefined, onOpenFile?: (reference: N
         return <pre key={key}>{token.text}</pre>;
       }
     }
-    if (token.type === "code")
+    if (token.type === "code") {
+      const language = codeFenceLanguage(token.lang);
+      const highlighted = highlightCodeFence(token.text, language);
+      const gutter = codeFenceGutter(token.text);
       return (
-        <div key={key} className="webui-code-block">
+        <div key={key} className={gutter.length > 0 ? "webui-code-block webui-code-block--numbered" : "webui-code-block"}>
+          {gutter.length > 0 ? (
+            <ol className="webui-code-gutter" aria-hidden="true">
+              {gutter.map((lineNumber) => (
+                <li key={lineNumber}>{lineNumber}</li>
+              ))}
+            </ol>
+          ) : null}
           <pre>
-            <code data-language={token.lang ?? undefined}>{token.text}</code>
+            <code
+              className={highlighted === undefined ? undefined : `hljs language-${language}`}
+              data-language={token.lang ?? undefined}
+              {...(highlighted === undefined ? {} : { dangerouslySetInnerHTML: { __html: highlighted } })}
+            >
+              {highlighted === undefined ? token.text : undefined}
+            </code>
           </pre>
         </div>
       );
+    }
     if (token.type === "table") {
       type Align = "left" | "right" | "center" | null | undefined;
       const table = token as {

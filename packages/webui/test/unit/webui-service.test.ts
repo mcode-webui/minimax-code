@@ -580,6 +580,46 @@ function awaitClose(ws: WebSocket): Promise<{ code: number; reason: string }> {
   });
 }
 
+// Finalising an in-flight stream is driven by the *server* half of the closing
+// handshake: `WebuiService` runs `connectionController.abort()` from its own
+// `ws.on("close")` handler (src/server/service.ts:502-506), and that abort is
+// what calls `iterator.return()` via the listener at
+// src/server/operation/operation-dispatch.ts:96-97. The client-side `close`
+// event these tests await is a *different socket's* event, and the `ws` library
+// gives no ordering guarantee between the two — measured here, the server's
+// close handler lands one loop turn after the client's in roughly half of
+// full-file runs. So a fixed number of ticks after `await closed` is a guess,
+// not a barrier: the single `setImmediate` this replaced passed in 2 of 5 runs
+// and failed in 3. This waits for the condition itself, bounded, so a real
+// regression fails with a readable message instead of hanging or passing by
+// luck.
+const FINALISATION_TIMEOUT_MS = 2_000;
+
+function awaitFinalised(
+  finalised: Promise<unknown>,
+  what: string,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `timed out after ${FINALISATION_TIMEOUT_MS}ms waiting for ${what}`,
+        ),
+      );
+    }, FINALISATION_TIMEOUT_MS);
+    finalised.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 describe("WebUI service", () => {
   it("turns a node-pty native load failure into an actionable error", () => {
     const manager = new WebuiTerminalManager(() => { throw new Error("Failed to load native module: pty.node"); });
@@ -799,6 +839,10 @@ describe("WebUI service", () => {
 
   it("returns a running stream iterator when its WebSocket connection closes", async () => {
     let returned = false;
+    let resolveReturned!: () => void;
+    const returnedOnce = new Promise<void>((resolve) => {
+      resolveReturned = resolve;
+    });
     const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
       next: () =>
         new Promise<IteratorResult<{ readonly dataJson?: string }>>(
@@ -806,6 +850,7 @@ describe("WebUI service", () => {
         ),
       return: async () => {
         returned = true;
+        resolveReturned();
         return { done: true, value: undefined };
       },
     };
@@ -828,8 +873,165 @@ describe("WebUI service", () => {
     await port.sendObserved;
     ws.close();
     await closed;
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    // The pump is parked on a `next()` that never settles, so the `finally`
+    // in dispatchWebuiFrame cannot be what finalises this iterator — only the
+    // connection abort is. Wait for that outcome rather than for a tick count.
+    await awaitFinalised(
+      returnedOnce,
+      "the in-flight stream iterator to be finalised after the socket closed",
+    );
     expect(returned).toBe(true);
+    expect(port.abortCalls).toBe(0);
+  });
+
+  it("finalises a partly delivered stream on disconnect, not only one parked on its first pull", async () => {
+    let returned = false;
+    let resolveReturned!: () => void;
+    const returnedOnce = new Promise<void>((resolve) => {
+      resolveReturned = resolve;
+    });
+    let pulls = 0;
+    const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
+      next: () => {
+        pulls += 1;
+        // The first pull is served, so the pump is provably parked on a
+        // *later* pull when the socket dies. The abort listener has to
+        // finalise the iterator from any position in the pump, not just from
+        // the very first one the pre-existing test happens to sit on.
+        if (pulls === 1)
+          return Promise.resolve({
+            done: false,
+            value: { dataJson: '{"type":10}' },
+          });
+        return new Promise<IteratorResult<{ readonly dataJson?: string }>>(
+          () => undefined,
+        );
+      },
+      return: async () => {
+        returned = true;
+        resolveReturned();
+        return { done: true, value: undefined };
+      },
+    };
+    port.sendResult = {
+      ok: true,
+      source: { [Symbol.asyncIterator]: () => pendingIterator },
+    };
+    const { url } = await bootService();
+    const { ws, upgrade, closed } = openClient(url);
+    await upgrade;
+    // `sendMessage` does not acknowledge its stream, so the first frame on
+    // the wire is the first delivered value.
+    const firstValue = new Promise<void>((resolve) => {
+      const onMessage = (raw: import("ws").RawData) => {
+        ws.off("message", onMessage);
+        resolve();
+      };
+      ws.on("message", onMessage);
+    });
+    ws.send(
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "request",
+        requestId: "req-cancel-midstream",
+        operation: "sendMessage",
+        body: { id: "session-1", content: "partly delivered" },
+      }),
+    );
+    await firstValue;
+    expect(pulls).toBeGreaterThanOrEqual(1);
+    ws.close();
+    await closed;
+    await awaitFinalised(
+      returnedOnce,
+      "a partly delivered stream iterator to be finalised after the socket closed",
+    );
+    expect(returned).toBe(true);
+    expect(port.abortCalls).toBe(0);
+  });
+
+  it("finalises the stream exactly once when the pump settles after the socket closed", async () => {
+    // The two preceding tests park the pump on a `next()` that never settles,
+    // so the `finally` in dispatchWebuiFrame never runs and only the abort
+    // listener can finalise. A real runtime stream DOES settle — the pull
+    // completes or rejects once the connection is gone — and then both the
+    // listener and the `finally` reach for `return()`. Finalising an iterator
+    // twice is a real double-close on a live subscription, so the count is
+    // asserted, not just the fact of finalisation.
+    let returnCalls = 0;
+    let settlePull!: () => void;
+    const pullSettled = new Promise<void>((resolve) => {
+      settlePull = resolve;
+    });
+    let pulls = 0;
+    const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
+      next: () => {
+        pulls += 1;
+        if (pulls === 1)
+          return Promise.resolve({
+            done: false,
+            value: { dataJson: '{"type":10}' },
+          });
+        // Park, then let the test release the pull AFTER the socket is gone.
+        // That is the shape that runs the abort listener and the `finally`.
+        return pullSettled.then(() => ({ done: true, value: undefined }));
+      },
+      return: async () => {
+        returnCalls += 1;
+        return { done: true, value: undefined };
+      },
+    };
+    port.sendResult = {
+      ok: true,
+      source: { [Symbol.asyncIterator]: () => pendingIterator },
+    };
+    const { url } = await bootService();
+    const { ws, upgrade, closed } = openClient(url);
+    await upgrade;
+    const firstValue = new Promise<void>((resolve) => {
+      const onMessage = (raw: import("ws").RawData) => {
+        ws.off("message", onMessage);
+        resolve();
+      };
+      ws.on("message", onMessage);
+    });
+    ws.send(
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "request",
+        requestId: "req-finalise-once",
+        operation: "sendMessage",
+        body: { id: "session-1", content: "settles after disconnect" },
+      }),
+    );
+    await firstValue;
+    expect(pulls).toBeGreaterThanOrEqual(1);
+    ws.close();
+    await closed;
+    // Release the parked pull only now: the abort listener has already run,
+    // and settling it drives the loop into the `finally`.
+    settlePull();
+    await awaitFinalised(
+      pullSettled,
+      "the parked pull to settle after the socket closed",
+    );
+    // Drain the microtask queue instead of waiting on a clock.
+    //
+    // The `finally` that could double-finalise is not on a timer: it runs a few
+    // microtask hops after the parked pull resolves — abort listener, then the
+    // `await iterator.next()` continuation, then the loop's `break`, then the
+    // `finally`. Counting microtasks is deterministic; a sleep is not. The
+    // 250 ms this used to wait passed locally 8 times and failed on CI, where
+    // the whole 50-file suite loads the machine and the clock is simply not a
+    // budget this test can spend.
+    for (let i = 0; i < 64; i += 1) await Promise.resolve();
+    // One macrotask hop as well: `setImmediate` callbacks and promise
+    // continuations are not the same queue, and the socket `close` handler
+    // reaches the abort listener through the former.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    // The count is the point. Asserting only `returnCalls >= 1` would pass
+    // against a double-finalise, which is the failure this pins shut.
+    expect(returnCalls).toBe(1);
     expect(port.abortCalls).toBe(0);
   });
 

@@ -259,6 +259,18 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     return [{ path: "README.md", name: "README.md", kind: "file" }];
   }
 
+  // The archive operations joined `WebuiHarnessPort` with the F-zone
+  // contract. This fixture has no archive to serve, so it answers with an
+  // empty listing rather than going unimplemented — the port type requires
+  // the member, and an absent method would be a runtime `TypeError` instead.
+  async readWorkspaceArchive() {
+    return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+  }
+
+  async extractWorkspaceArchive() {
+    return { archivePath: "", destination: "", writtenFiles: 0 };
+  }
+
   async getWorkspaceEnvironment() {
     return { isGitRepo: true, branch: "fixture", changedFiles: 1, insertions: 2, deletions: 1, lineStatsStatus: "ready" as const, canPush: true };
   }
@@ -3440,6 +3452,12 @@ describe("WebUI shutdown order (criterion 7)", () => {
       version() {
         return { version: "0.4.2-shutdown-test", protocolVersion: 1 };
       },
+      async readWorkspaceArchive() {
+        return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+      },
+      async extractWorkspaceArchive() {
+        return { archivePath: "", destination: "", writtenFiles: 0 };
+      },
       async listSessions() {
         return { sessions: [], hasMore: false };
       },
@@ -3797,6 +3815,12 @@ describe("WebUI shutdown order (criterion 7)", () => {
       version() {
         versionCalls += 1;
         return { version: "0.4.2-shutdown-gate", protocolVersion: 1 };
+      },
+      async readWorkspaceArchive() {
+        return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+      },
+      async extractWorkspaceArchive() {
+        return { archivePath: "", destination: "", writtenFiles: 0 };
       },
       async listSessions() {
         return { sessions: [], hasMore: false };

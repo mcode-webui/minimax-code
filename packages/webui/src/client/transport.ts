@@ -399,6 +399,16 @@ export function createWebuiTransport({
     searchWorkspaceReviewDiffs: (body) => request("searchWorkspaceReviewDiffs", body),
     readCanvas: (body) => request("readCanvas", body),
     applyCanvas: (body) => request("applyCanvas", body),
+    workspaceFileUrl: ({ workspaceDir, path: filePath }) => {
+      // `ws:`/`wss:` share the `ws` prefix, so one substitution lands on
+      // `http:`/`https:` respectively, and it must happen before the token is
+      // appended — the server checks the token on this route like any other.
+      const base = baseWebsocketUrl.replace(/\/$/u, "").replace(/^ws/iu, "http");
+      const query = new URLSearchParams({ dir: workspaceDir, path: filePath, token });
+      return `${base}/workspace-file?${query.toString()}`;
+    },
+    readWorkspaceArchive: (body) => request("readWorkspaceArchive", body),
+    extractWorkspaceArchive: (body) => request("extractWorkspaceArchive", body),
     createTerminal: (body) => request("createTerminal", body),
     listTerminals: () => request("listTerminals", {}),
     writeTerminal: (body) => request("writeTerminal", body),

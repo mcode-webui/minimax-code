@@ -353,6 +353,9 @@ export function WebuiClientFoundationApp(
   const [pinnedSessions, setPinnedSessions] = useState<Record<string, boolean>>(
     readSessionOverlay("pins"),
   );
+  const [starredSessions, setStarredSessions] = useState<Record<string, boolean>>(
+    readSessionOverlay("stars"),
+  );
   const [pinnedProjects, setPinnedProjects] = useState<Record<string, boolean>>(
     readProjectPins,
   );
@@ -559,6 +562,9 @@ export function WebuiClientFoundationApp(
   };
   const handleToggleSessionPin = (session: WebuiClientSession) => {
     setPinnedSessions(toggleSessionOverlay("pins", session.sessionId));
+  };
+  const handleToggleSessionStar = (session: WebuiClientSession) => {
+    setStarredSessions(toggleSessionOverlay("stars", session.sessionId));
   };
   const handleArchiveSession = (session: WebuiClientSession) => {
     if (!archiveSession) return;
@@ -1185,6 +1191,7 @@ export function WebuiClientFoundationApp(
                         onCreateTaskInProject={(project) => startNewTask(project.workspaceDir)}
                         error={pageError}
                         pinnedSessions={pinnedSessions}
+                        starredSessions={starredSessions}
                         pinnedProjects={pinnedProjects}
                         projectNames={projectNames}
                         onRenameProject={handleRenameProject}
@@ -1192,6 +1199,7 @@ export function WebuiClientFoundationApp(
                         onArchiveProject={handleArchiveProject}
                         onRenameSession={handleRenameSession}
                         onToggleSessionPin={handleToggleSessionPin}
+                        onToggleSessionStar={handleToggleSessionStar}
                         onArchiveSession={handleArchiveSession}
                         onForkSession={handleForkSession}
                         onCopySession={handleCopySession}

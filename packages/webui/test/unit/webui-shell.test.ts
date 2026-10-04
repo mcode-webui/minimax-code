@@ -1056,7 +1056,9 @@ describe("WebUI shell — desktop anatomy", () => {
     // bound rather than a placeholder, and the count moved from 7 to 8. The
     // three rail view tabs joined them when the project/running/unread switch
     // shipped: each one changes the list, so they are bound rather than
-    // decorative, and the count moved from 8 to 11.
+    // decorative, and the count moved from 8 to 11. The favourites tab joined
+    // them when starring shipped: it swaps the rail to the starred set, so it
+    // is bound on the same terms, and the count moved from 11 to 12.
     const html = renderShell();
     const controlTags: string[] = [];
     const re = /<(button|div|a|input|textarea|select)\b[^>]*>/gu;
@@ -1071,7 +1073,7 @@ describe("WebUI shell — desktop anatomy", () => {
         !/(?:^|\s)disabled(?:=|\s|>)/u.test(tag) &&
         !/aria-disabled="true"/u.test(tag),
     );
-    expect(operable).toHaveLength(11);
+    expect(operable).toHaveLength(12);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
     expect(html).toMatch(/data-webui-sidebar-toggle="true"/u);
     expect(html).toMatch(/data-webui-nav-item="新建任务"/u);
@@ -1084,10 +1086,11 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(html).toMatch(/data-webui-nav-item="导入会话"/u);
     expect(html).toMatch(/data-webui-session-import-input="true"/u);
     expect(html).not.toMatch(/data-webui-nav-item="导入会话"[^>]*\sdisabled/u);
-    // Same for the three view tabs. A tab that is operable but does nothing is
-    // the exact shape this test exists to catch, so the selected one is
-    // asserted by name and none of them may be disabled.
-    for (const view of ["projects", "running", "unread"]) {
+    // Same for the view tabs. A tab that is operable but does nothing is
+    // the exact shape this test exists to catch, so every one is asserted by
+    // name and none of them may be disabled. A view added to the rail without
+    // being added here would sail past this contract.
+    for (const view of ["projects", "running", "unread", "stars"]) {
       expect(html, view).toMatch(new RegExp(`data-webui-rail-view="${view}"`, "u"));
       expect(html, view).not.toMatch(
         new RegExp(`data-webui-rail-view="${view}"[^>]*\\sdisabled`, "u"),

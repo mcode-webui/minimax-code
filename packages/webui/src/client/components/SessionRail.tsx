@@ -30,6 +30,8 @@ import {
   WebuiIconMore,
   WebuiIconProjectAdd,
   WebuiIconSessionPinMark,
+  WebuiIconSessionStar,
+  WebuiIconSessionStarMark,
   WebuiIconSessionDisclosure,
   WebuiIconAgent,
 } from "../icons.js";
@@ -228,6 +230,7 @@ export function WebuiProjectList({
   onCreateTaskInProject,
   error,
   pinnedSessions,
+  starredSessions,
   pinnedProjects,
   projectNames,
   onRenameProject,
@@ -235,6 +238,7 @@ export function WebuiProjectList({
   onArchiveProject,
   onRenameSession,
   onToggleSessionPin,
+  onToggleSessionStar,
   onArchiveSession,
   onForkSession,
   onCopySession,
@@ -256,6 +260,8 @@ export function WebuiProjectList({
   readonly onCreateTaskInProject?: (project: WebuiProjectGroup) => void;
   readonly error?: string;
   readonly pinnedSessions?: Readonly<Record<string, boolean>>;
+  /** Which rows the 收藏 view collects, and which carry the standing star. */
+  readonly starredSessions?: Readonly<Record<string, boolean>>;
   readonly pinnedProjects?: Readonly<Record<string, boolean>>;
   readonly projectNames?: Readonly<Record<string, string>>;
   readonly onRenameProject?: (project: WebuiProjectGroup) => void;
@@ -263,6 +269,7 @@ export function WebuiProjectList({
   readonly onArchiveProject?: (project: WebuiProjectGroup) => void;
   readonly onRenameSession?: (session: WebuiClientSession) => void;
   readonly onToggleSessionPin?: (session: WebuiClientSession) => void;
+  readonly onToggleSessionStar?: (session: WebuiClientSession) => void;
   readonly onArchiveSession?: (session: WebuiClientSession) => void;
   readonly onForkSession?: (session: WebuiClientSession, createIsolatedWorktree: boolean) => void;
   readonly onCopySession?: (session: WebuiClientSession, value: "workspaceDir" | "sessionId") => void;
@@ -400,6 +407,14 @@ export function WebuiProjectList({
           icon: <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />,
           disabled: !onToggleSessionPin,
           onSelect: () => onToggleSessionPin?.(session),
+        },
+        {
+          kind: "item",
+          key: "star",
+          label: starredSessions?.[session.sessionId] ? "取消收藏" : "收藏",
+          icon: <WebuiIconSessionStar starred={Boolean(starredSessions?.[session.sessionId])} />,
+          disabled: !onToggleSessionStar,
+          onSelect: () => onToggleSessionStar?.(session),
         },
         {
           kind: "item",
@@ -585,12 +600,12 @@ export function WebuiProjectList({
   const activeView = viewProp ?? internalView;
   const setActiveView = onViewChange ?? setInternalView;
   const railTabs = useMemo(
-    () => selectWebuiRailViewTabs(page.sessions, activity),
-    [activity, page.sessions],
+    () => selectWebuiRailViewTabs(page.sessions, activity, starredSessions),
+    [activity, page.sessions, starredSessions],
   );
   const viewSessions = useMemo(
-    () => filterWebuiRailViewSessions(page.sessions, activity, activeView),
-    [activeView, activity, page.sessions],
+    () => filterWebuiRailViewSessions(page.sessions, activity, activeView, starredSessions),
+    [activeView, activity, page.sessions, starredSessions],
   );
   const activeTab = railTabs.find((entry) => entry.view === activeView);
   const activeTabLabel = activeTab?.label ?? "项目";
@@ -637,6 +652,7 @@ export function WebuiProjectList({
           activity={activity}
           now={now}
           pinnedSessions={pinnedSessions}
+          starredSessions={starredSessions}
           heading={activeTabLabel}
           emptyLabel={activeTab?.emptyLabel}
           preserveOrder
@@ -807,6 +823,7 @@ export function WebuiProjectList({
                                 activity={activity}
                                 now={now}
                                 pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                                starred={Boolean(starredSessions?.[session.sessionId])}
                               />
                             </a>
                             <div className="webui-session-row-actions">
@@ -827,6 +844,25 @@ export function WebuiProjectList({
                                    *  the slashed pin. Same component the context menu
                                    *  uses, so the two cannot drift apart. */}
                                   <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />
+                                </button>
+                              ) : null}
+                              {onToggleSessionStar ? (
+                                <button
+                                  type="button"
+                                  aria-label={`${starredSessions?.[session.sessionId] ? "取消收藏" : "收藏"}：${sessionLabel(session)}`}
+                                  title={starredSessions?.[session.sessionId] ? "取消收藏" : "收藏"}
+                                  className="webui-rail-action"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onToggleSessionStar(session);
+                                  }}
+                                >
+                                  {/* Outline until starred, yellow fill after. Unlike the
+                                   *  pin, this glyph shows the state rather than the
+                                   *  action: a filled star is not read as "remove"
+                                   *  anywhere in the world's icon vocabulary. */}
+                                  <WebuiIconSessionStar starred={Boolean(starredSessions?.[session.sessionId])} />
                                 </button>
                               ) : null}
                               {onArchiveSession ? (
@@ -884,6 +920,7 @@ export function WebuiProjectList({
                                         activity={activity}
                                         now={now}
                                         pinned={Boolean(pinnedSessions?.[child.sessionId])}
+                                        starred={Boolean(starredSessions?.[child.sessionId])}
                                       />
                                     </a>
                                     <div className="webui-session-row-actions">
@@ -970,19 +1007,22 @@ function SessionActivityMeta({
   activity,
   now,
   pinned = false,
+  starred = false,
 }: {
   readonly session: WebuiClientSession;
   readonly activity?: WebuiSessionActivityMap;
   readonly now?: number;
   /** Draws the standing pin mark. Independent of the live state below it. */
   readonly pinned?: boolean;
+  /** Draws the standing star mark. Also independent of the live state. */
+  readonly starred?: boolean;
 }): ReactElement | null {
-  // `pinned` joins the guard rather than riding on it. A host that passes
-  // neither an activity map nor a clock is the rail rendered outside the app
-  // (SSR fixtures, and any host that does not subscribe) -- exactly the case
-  // where a pinned row has no running/unread signal to read its state against,
+  // `pinned` and `starred` join the guard rather than riding on it. A host that
+  // passes neither an activity map nor a clock is the rail rendered outside the
+  // app (SSR fixtures, and any host that does not subscribe) -- exactly the case
+  // where a marked row has no running/unread signal to read its state against,
   // so swallowing the mark there loses the only thing the row was saying.
-  if (!activity && now === undefined && !pinned) return null;
+  if (!activity && now === undefined && !pinned && !starred) return null;
   const entry = activity?.[session.sessionId];
   const busy = entry?.busy;
   const badge = formatWebuiUnreadBadge(entry?.unread);
@@ -997,6 +1037,17 @@ function SessionActivityMeta({
           role="img"
         >
           <WebuiIconSessionPinMark />
+        </span>
+      ) : null}
+      {starred ? (
+        <span
+          className="webui-rail-star-mark"
+          data-webui-star-mark="true"
+          title="已收藏"
+          aria-label="已收藏"
+          role="img"
+        >
+          <WebuiIconSessionStarMark />
         </span>
       ) : null}
       {badge ? (
@@ -1033,6 +1084,7 @@ export function WebuiSessionList({
   activity,
   now,
   pinnedSessions,
+  starredSessions,
   heading,
   emptyLabel,
   preserveOrder,
@@ -1053,6 +1105,12 @@ export function WebuiSessionList({
    * sort position says nothing about which one the user chose to keep.
    */
   readonly pinnedSessions?: Readonly<Record<string, boolean>>;
+  /**
+   * Which rows carry the standing star mark. 收藏 is a flat list, so a starred
+   * row has no project furniture to be recognised by and the mark is the only
+   * thing distinguishing it from an ordinary one.
+   */
+  readonly starredSessions?: Readonly<Record<string, boolean>>;
   /**
    * Overrides the section label. The rail reuses this list for its running and
    * unread views, where "recent tasks" would be a lie -- the list is filtered,
@@ -1141,6 +1199,7 @@ export function WebuiSessionList({
                   activity={activity}
                   now={now}
                   pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                  starred={Boolean(starredSessions?.[session.sessionId])}
                 />
               </a>
               {session.workspaceDir ? (

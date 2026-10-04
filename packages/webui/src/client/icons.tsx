@@ -248,6 +248,72 @@ export function WebuiIconProjectAdd({ className }: WebuiIconProps): ReactElement
 }
 
 /**
+ * The five-pointed star, outline until starred and a solid fill after.
+ *
+ * The one glyph in this file that shows *state* rather than the action its
+ * button performs, and deliberately so. The pin's two states are a pin and a
+ * slashed pin because a slash means "remove" across this whole icon
+ * vocabulary; nobody reads a filled star as "un-star", and the outline/filled
+ * pair is what Gmail, Mail and Notion all use. Reusing the pin's convention
+ * here would have made the rail internally consistent and externally wrong.
+ *
+ * `currentColor` rather than a literal, because the filled star is yellow and
+ * that yellow is a token which flips with the theme (`--text_status_banana`).
+ * Ten vertices: five points alternating with five notches.
+ */
+export function WebuiIconSessionStar({
+  className,
+  starred = false,
+}: WebuiIconProps & { starred?: boolean }): ReactElement {
+  return starred ? (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      data-webui-star="filled"
+      className={className}
+    >
+      <path d="M8 1.6L9.7 6.05L14.47 6.3L10.76 9.3L12 13.9L8 11.3L4 13.9L5.24 9.3L1.53 6.3L6.3 6.05Z" fill="currentColor" />
+    </svg>
+  ) : (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      data-webui-star="outline"
+      className={className}
+    >
+      <path
+        d="M8 1.6L9.7 6.05L14.47 6.3L10.76 9.3L12 13.9L8 11.3L4 13.9L5.24 9.3L1.53 6.3L6.3 6.05Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * The persistent "this row is a favourite" mark.
+ *
+ * Same argument as the pin's mark, and the same place: the star button only
+ * exists while the row is hovered, so without this a starred session is
+ * invisible everywhere except the tab the reader has to go and open.
+ */
+export function WebuiIconSessionStarMark({ className }: WebuiIconProps): ReactElement {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M8 1.6L9.7 6.05L14.47 6.3L10.76 9.3L12 13.9L8 11.3L4 13.9L5.24 9.3L1.53 6.3L6.3 6.05Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
  * The persistent "this row is pinned" mark.
  *
  * Solid on purpose, where the action button's glyph is an outline: the two

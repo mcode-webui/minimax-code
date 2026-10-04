@@ -248,7 +248,6 @@
       "packages/webui/test/unit/transcript-skeletons.test.tsx",
       "packages/webui/test/unit/conversation-usage-banner.test.tsx",
       "packages/webui/test/unit/model-picker-groups.test.tsx",
-      "packages/webui/test/unit/model-picker-recents.test.ts",
       "packages/webui/test/unit/model-picker-search.test.ts",
       "packages/webui/test/unit/model-picker-cascade.test.ts",
       "packages/webui/test/unit/thinking-control.test.tsx",

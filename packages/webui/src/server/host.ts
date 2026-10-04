@@ -15,6 +15,10 @@ import { posix as pathPosix } from "node:path";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
+import {
+  extractWorkspaceArchiveDirectory,
+  readWorkspaceArchiveListing,
+} from "./workspace-archive.js";
 import type {
   WebuiHarnessPort,
   WebuiSessionListRequest,
@@ -169,6 +173,13 @@ export interface WebuiRuntimeCliService {
   listWorkspaceFileTree?(request: { readonly workspaceDir: string; readonly path?: string }): Promise<readonly WebuiWorkspaceFile[]>;
   readWorkspaceFile?(request: { readonly workspaceDir: string; readonly path: string }): Promise<WebuiWorkspaceFileContent>;
   searchWorkspaceFiles?(input: { readonly workspaceDir: string; readonly query: string; readonly limit: number }): Promise<readonly string[]>;
+  /**
+   * Archive listing and extraction are served by this package
+   * (`./workspace-archive.ts`, Node built-ins only) rather than by the runtime,
+   * so these two stay optional: a host that has a richer implementation of its
+   * own still wins, and a host that has none gets the WebUI's reader instead of
+   * an error the panel can only show.
+   */
   readWorkspaceArchive?(request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveListing>;
   extractWorkspaceArchive?(request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveExtractResult>;
   getWorkspaceGitEnvironment?(workspaceDir: string): Promise<{ readonly metadata: Record<string, unknown>; readonly changes: Record<string, unknown> }>;
@@ -443,20 +454,22 @@ export function createHarnessPortFromHost(
         }
       }));
     },
-    // Checked rather than asserted: the siblings above use `!` because their
-    // runtime capability has shipped, but archive reading and extraction are
-    // landing with the workspace-panel work, and a bare `!` here would turn a
-    // missing capability into `undefined is not a function` at call time
-    // instead of a message the panel can show.
+    // Both operations are served by this package now, so the optional runtime
+    // hook is a preference rather than a requirement: a host that implements
+    // one keeps it, and a host that implements neither lands on
+    // `./workspace-archive.ts` instead of the "capability not connected yet"
+    // error this pair used to throw. The built-in reader owns the hardening
+    // (path validation, entry ceiling, expansion ratio), which is the reason it
+    // is not left to a runtime that may not have shipped one.
     async readWorkspaceArchive(request) {
       const cliService = requireCliService(host);
-      if (!cliService.readWorkspaceArchive) throw new Error("压缩包浏览能力尚未接入。");
-      return cliService.readWorkspaceArchive(request);
+      if (cliService.readWorkspaceArchive) return cliService.readWorkspaceArchive(request);
+      return readWorkspaceArchiveListing(request);
     },
     async extractWorkspaceArchive(request) {
       const cliService = requireCliService(host);
-      if (!cliService.extractWorkspaceArchive) throw new Error("压缩包解压能力尚未接入。");
-      return cliService.extractWorkspaceArchive(request);
+      if (cliService.extractWorkspaceArchive) return cliService.extractWorkspaceArchive(request);
+      return extractWorkspaceArchiveDirectory(request);
     },
     async readWorkspaceFile(request) {
       const cliService = requireCliService(host);

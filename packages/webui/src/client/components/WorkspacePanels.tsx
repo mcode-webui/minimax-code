@@ -380,7 +380,7 @@ export function WebuiFilePreview({ tab, result, codeMode, workspaceFileUrl, read
       {archive ?? html
         ?? (result?.loading ? <p role="status">正在加载文件…</p>
         : result?.error ? <p role="alert">{result.error}</p>
-          : result?.content?.previewDataUrl ? <WorkspaceMediaPreview path={tab.path} content={result.content} />
+          : result?.content?.previewDataUrl || workspaceFileUrl ? <WorkspaceMediaPreview path={tab.path} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: tab.workspaceDir, path: tab.path })} />
             : result?.content?.error ? <p role="alert">{result.content.error}</p>
             : result?.content?.type === "binary" ? <p>无法在文本预览中显示二进制文件。</p>
               : result?.content ? previewMarkdown ? <WebuiMarkdown source={content} /> : <pre className="webui-file-code"><code className={language ? `hljs language-${language}` : ""}>{content.split("\n").map((line, index) => {

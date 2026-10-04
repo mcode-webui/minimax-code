@@ -1,8 +1,8 @@
 // Owns the workspace HTML-preview feature (rendering an .html file inside
 // the workspace panel). Nothing is implemented yet: this file is the seam a
-// different implementer fills in. `WorkspacePanels.tsx` does not mount it yet
-// — `WebuiFilePreview` has no HTML branch to route into it, and adding one
-// would be a feature, not a split.
+// different implementer fills in. The only thing that lives outside it is
+// the dispatch in `WebuiFilePreview`, which routes `.html`/`.htm` here
+// before the read result is consulted.
 
 import type { ReactElement } from "react";
 import type { WebuiWorkspaceFileContent } from "../../server/port.js";
@@ -11,18 +11,26 @@ export type WorkspaceHtmlPreviewProps = {
   /** The file path the preview tab was opened with. */
   readonly path: string;
   /**
-   * The file content as `readWorkspaceFile` returned it. `mimeType` is the
-   * signal a later implementer uses to route `.html` versus `.htm` (and to
-   * refuse anything that is not text/html).
+   * The streamable URL of the file, credential included, as returned by
+   * `transport.workspaceFileUrl`.
+   *
+   * The preview points an iframe at this rather than carrying the document in
+   * a prop. The server already answers `/workspace-file` with
+   * `Content-Security-Policy: sandbox allow-scripts` for `text/html`, which
+   * runs the document in an opaque origin — the one thing that stops a
+   * previewed artifact from reading `window.__WEBUI_CONFIG__.token` off the
+   * page that framed it. Handing the view a string instead would mean
+   * re-implementing that isolation client-side, with two places to keep
+   * agreeing about it.
    */
-  readonly content: WebuiWorkspaceFileContent;
+  readonly fileUrl: string;
   /**
-   * How the document is isolated once it renders. Workspace HTML is
-   * untrusted, so the implementer must default to a sandboxed document
-   * (no same-origin access, no script into the panel) and may only widen it
-   * behind an explicit user choice.
+   * The read result, when the panel already has one. `mimeType` is how the
+   * view refuses a file whose extension says `.html` but whose bytes are
+   * something else: the extension picks the route, and only the runtime
+   * knows what the file actually is.
    */
-  readonly sandbox?: "allow-scripts" | "allow-same-origin" | "none";
+  readonly content?: WebuiWorkspaceFileContent;
 };
 
 /**

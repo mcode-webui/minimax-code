@@ -25,6 +25,8 @@ import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceReviewDiffs,
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
@@ -41,6 +43,8 @@ import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, W
 import { FileTree, filterWorkspaceFiles, findWorkspaceFile, getWorkspaceFileParentPaths, mergeWorkspaceFileChildren } from "./WorkspaceFileTree.js";
 import { WorkspaceMediaPreview } from "./WorkspaceMediaPreview.js";
 import { WorkspaceCanvas } from "./WorkspaceCanvas.js";
+import { WorkspaceArchiveView } from "./WorkspaceArchiveView.js";
+import { WorkspaceHtmlPreview } from "./WorkspaceHtmlPreview.js";
 
 export type WebuiTodo = WebuiWorkspaceTodo;
 // `mergeWorkspaceFileChildren` is re-exported below: the file-tree tests
@@ -335,16 +339,46 @@ export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = 
   </div>;
 }
 
-export function WebuiFilePreview({ tab, result, codeMode }: {
+const WORKSPACE_ARCHIVE_EXTENSIONS = [".zip", ".tar", ".tgz", ".gz", ".bz2", ".xz", ".7z", ".rar"] as const;
+const WORKSPACE_HTML_EXTENSIONS = [".html", ".htm"] as const;
+
+function hasExtension(path: string, extensions: readonly string[]): boolean {
+  const lower = path.toLowerCase();
+  return extensions.some((extension) => lower.endsWith(extension));
+}
+
+export function isWorkspaceArchivePath(path: string): boolean {
+  return hasExtension(path, WORKSPACE_ARCHIVE_EXTENSIONS);
+}
+
+export function isWorkspaceHtmlPath(path: string): boolean {
+  return hasExtension(path, WORKSPACE_HTML_EXTENSIONS);
+}
+
+export function WebuiFilePreview({ tab, result, codeMode, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive }: {
   readonly tab: Extract<WorkspacePanelTab, { readonly kind: "file-preview" }>;
   readonly result?: { readonly loading: boolean; readonly content?: WebuiWorkspaceFileContent; readonly error?: string };
   readonly codeMode: boolean;
+  readonly workspaceFileUrl?: (request: { readonly workspaceDir: string; readonly path: string }) => string;
+  readonly readWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveListing>;
+  readonly extractWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveExtractResult>;
 }): ReactElement {
   const previewMarkdown = /\.md$/iu.test(tab.path) && !codeMode;
   const content = result?.content?.content ?? "";
   const language = webuiFileLanguage(tab.path);
+  // Dispatched ahead of the read result on purpose: an archive never becomes
+  // text, and an HTML preview is a stream the browser fetches rather than a
+  // string the panel holds. Waiting on `readWorkspaceFile` first would either
+  // flash a binary error or buffer a document nobody will read.
+  const archive = isWorkspaceArchivePath(tab.path)
+    ? <WorkspaceArchiveView workspaceDir={tab.workspaceDir} path={tab.path} readWorkspaceArchive={readWorkspaceArchive} extractWorkspaceArchive={extractWorkspaceArchive} />
+    : undefined;
+  const html = !archive && isWorkspaceHtmlPath(tab.path) && workspaceFileUrl
+    ? <WorkspaceHtmlPreview path={tab.path} fileUrl={workspaceFileUrl({ workspaceDir: tab.workspaceDir, path: tab.path })} content={result?.content} />
+    : undefined;
   return <div className="webui-workspace-file-document" data-testid="workspace-file-preview" data-file-path={tab.path}>
-      {result?.loading ? <p role="status">正在加载文件…</p>
+      {archive ?? html
+        ?? (result?.loading ? <p role="status">正在加载文件…</p>
         : result?.error ? <p role="alert">{result.error}</p>
           : result?.content?.previewDataUrl ? <WorkspaceMediaPreview path={tab.path} content={result.content} />
             : result?.content?.error ? <p role="alert">{result.content.error}</p>
@@ -354,16 +388,19 @@ export function WebuiFilePreview({ tab, result, codeMode }: {
                 const highlighted = highlightFileLine(line, language);
                 return <span key={lineNumber} id={lineNumber === tab.lineStart ? webuiFileLineTargetId(tab.id, lineNumber) : undefined} tabIndex={lineNumber === tab.lineStart ? -1 : undefined} data-line={lineNumber} data-scroll-target-line={lineNumber === tab.lineStart ? "true" : undefined} className={`webui-file-code-line ${lineNumber >= (tab.lineStart ?? 0) && lineNumber <= (tab.lineEnd ?? tab.lineStart ?? 0) ? "webui-file-preview-line-active" : ""}`} data-line-number={lineNumber} {...(highlighted !== undefined ? { dangerouslySetInnerHTML: { __html: highlighted || " " } } : {})}>{highlighted === undefined ? line || " " : undefined}</span>;
               })}</code></pre>
-                : <p>文件读取能力暂不可用。</p>}
+                : <p>文件读取能力暂不可用。</p>)}
   </div>;
 }
 
-export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, listWorkspaceFileTree, readWorkspaceFile, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, watchEvents, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs, onClose }: {
+export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, listWorkspaceFileTree, readWorkspaceFile, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, watchEvents, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs, onClose }: {
   readonly state: WorkspacePanelState;
   readonly dispatch: (command: WorkspacePanelCommand) => void;
   readonly sessionId?: string; readonly workspaceDir?: string;
   readonly listWorkspaceFileTree?: (request: { workspaceDir: string; path?: string }) => Promise<readonly WebuiWorkspaceFile[]>;
   readonly readWorkspaceFile?: (request: { workspaceDir: string; path: string }) => Promise<WebuiWorkspaceFileContent>;
+  readonly workspaceFileUrl?: (request: { readonly workspaceDir: string; readonly path: string }) => string;
+  readonly readWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveListing>;
+  readonly extractWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveExtractResult>;
   readonly readCanvas?: (request: { sessionId: string }) => Promise<WebuiCanvasDocument>;
   readonly applyCanvas?: (request: { sessionId: string; operation: Record<string, unknown> }) => Promise<unknown>;
   readonly createTerminal?: (request: { workspaceDir: string }) => Promise<{ terminalId: string; status: string }>;
@@ -752,7 +789,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     <div className="webui-workspace-panel-body">
       <div className="webui-workspace-view">
     {tab === "files" ? <div className="webui-workspace-files-empty" data-testid="workspace-files-empty"><WebuiIconFolder className="size-8" /><strong>查看文件</strong><p>从工作区目录树中选择文件</p></div> : null}
-    {tab === "file-preview" && activeTab?.kind === "file-preview" ? <WebuiFilePreview tab={activeTab} result={fileResults[activeTab.id]} codeMode={fileCodeMode} /> : null}
+    {tab === "file-preview" && activeTab?.kind === "file-preview" ? <WebuiFilePreview tab={activeTab} result={fileResults[activeTab.id]} codeMode={fileCodeMode} workspaceFileUrl={workspaceFileUrl} readWorkspaceArchive={readWorkspaceArchive} extractWorkspaceArchive={extractWorkspaceArchive} /> : null}
     {tab === "review" && activeTab?.kind === "review" && activeTab.source === "workspace" ? <div className="webui-turn-review" data-testid="workspace-review">
       {reviewSummary?.tabId !== activeTab.id || reviewSummary.loading && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="status">正在收集变更…</p> : reviewSummary.error && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="alert">{reviewSummary.error}</p> : reviewSummary.summary ? <>
         <div className="webui-turn-review-summary"><span>{reviewSummary.summary.totals.files} 个文件</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{reviewSummary.summary.totals.additions}</span>{reviewSummary.summary.totals.deletions ? <span className="webui-diff-del">-{reviewSummary.summary.totals.deletions}</span> : null}</span></div>

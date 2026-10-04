@@ -70,13 +70,11 @@ const CANVAS_ADD_WIDTH = 240;
 const CANVAS_ADD_HEIGHT = 180;
 const CANVAS_PAN_KEY_SCALE = 4;
 
-export interface CanvasNodeLayout {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-  readonly zIndex: number;
-}
+// Re-exported so the canvas keeps a single import site for everything a
+// caller or a test needs, while the definitions themselves live in
+// `contracts.ts` — the only layer `WebuiTransport` is allowed to depend on.
+export type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../contracts.js";
+import type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../contracts.js";
 
 export interface CanvasNodeView {
   readonly id: string;
@@ -92,21 +90,8 @@ export interface CanvasPan {
 /**
  * A node drag, a node resize and a canvas pan all start from one pointer and
  * one gesture, so the marker on the pointerdown target picks the winner once.
- * Mirrors the runtime's `CanvasMutationV1` for the three mutations this panel
- * can produce; `add_file` keeps exactly one file identity, as the runtime
- * requires.
+ * `CanvasMutation` itself is declared in `contracts.ts` and re-exported above.
  */
-export type CanvasMutation =
-  | { readonly kind: "add_file"; readonly nodeId: string; readonly layout: CanvasNodeLayout; readonly relativePath: string }
-  | { readonly kind: "add_file"; readonly nodeId: string; readonly layout: CanvasNodeLayout; readonly assetId: string }
-  | { readonly kind: "update_layout"; readonly nodeId: string; readonly layout: CanvasNodeLayout }
-  | { readonly kind: "remove_node"; readonly nodeId: string };
-
-export interface CanvasOperation {
-  readonly schemaVersion: 1;
-  readonly operationId: string;
-  readonly mutations: readonly CanvasMutation[];
-}
 
 export type CanvasFileIdentity =
   | { readonly relativePath: string }

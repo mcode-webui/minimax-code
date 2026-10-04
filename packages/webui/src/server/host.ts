@@ -38,6 +38,8 @@ import type {
   WebuiQueueItem,
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceGitMutationRequest,
   WebuiWorkspaceReviewDiffs,
@@ -165,6 +167,8 @@ export interface WebuiRuntimeCliService {
   listWorkspaceFileTree?(request: { readonly workspaceDir: string; readonly path?: string }): Promise<readonly WebuiWorkspaceFile[]>;
   readWorkspaceFile?(request: { readonly workspaceDir: string; readonly path: string }): Promise<WebuiWorkspaceFileContent>;
   searchWorkspaceFiles?(input: { readonly workspaceDir: string; readonly query: string; readonly limit: number }): Promise<readonly string[]>;
+  readWorkspaceArchive?(request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveListing>;
+  extractWorkspaceArchive?(request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveExtractResult>;
   getWorkspaceGitEnvironment?(workspaceDir: string): Promise<{ readonly metadata: Record<string, unknown>; readonly changes: Record<string, unknown> }>;
   mutateWorkspaceGit?(request: WebuiWorkspaceGitMutationRequest): Promise<Record<string, unknown>>;
   getWorkspaceReviewSummary?(workspaceDir: string): Promise<WebuiWorkspaceReviewSummary>;
@@ -419,6 +423,21 @@ export function createHarnessPortFromHost(
     },
     async listWorkspaceFileTree(request) {
       return requireCliService(host).listWorkspaceFileTree!(request) as Promise<readonly WebuiWorkspaceFile[]>;
+    },
+    // Checked rather than asserted: the siblings above use `!` because their
+    // runtime capability has shipped, but archive reading and extraction are
+    // landing with the workspace-panel work, and a bare `!` here would turn a
+    // missing capability into `undefined is not a function` at call time
+    // instead of a message the panel can show.
+    async readWorkspaceArchive(request) {
+      const cliService = requireCliService(host);
+      if (!cliService.readWorkspaceArchive) throw new Error("压缩包浏览能力尚未接入。");
+      return cliService.readWorkspaceArchive(request);
+    },
+    async extractWorkspaceArchive(request) {
+      const cliService = requireCliService(host);
+      if (!cliService.extractWorkspaceArchive) throw new Error("压缩包解压能力尚未接入。");
+      return cliService.extractWorkspaceArchive(request);
     },
     async readWorkspaceFile(request) {
       const cliService = requireCliService(host);

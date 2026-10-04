@@ -273,8 +273,87 @@ export function parseSessionTransferFile(value: unknown): SessionTransferFile {
         : {}),
     },
     canonical: { envelopes, snapshots, generation: generation as number, revision },
-    display: { messages: rawMessages.filter(isRecord) as DisplayMessageRecord[] },
+    display: { messages: rawMessages.map(toDisplayMessageRecord) },
   };
+}
+
+/**
+ * Ceiling on one display row, applied to its serialised form.
+ *
+ * A transfer file is untrusted. Nothing stops a hand-edited one carrying a
+ * multi-gigabyte string in a single message, and `messages.replace` would
+ * happily write it -- the canonical layer's per-envelope ceiling does not
+ * cover the display layer, which is a separate store.
+ */
+const MAX_DISPLAY_MESSAGE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Validate one display row the way the canonical layer validates an envelope.
+ *
+ * This used to be `rawMessages.filter(isRecord) as DisplayMessageRecord[]`,
+ * and the cast stood in for the checking `toCanonicalEnvelope` actually does.
+ * That is the asymmetry the review named: a hand-edited file could put any
+ * structure at all into `local_runtime_message_rows`, while the canonical
+ * half of the same file was held to a real contract.
+ *
+ * `DisplayMessageRecord` has no required field -- every one is optional and
+ * the type carries an index signature -- so this is not about presence. It is
+ * about *type*: `timestamp` and `created_at` are read as numbers by the
+ * normaliser, `sourceContext` and `meta` are walked as objects, and a string
+ * where a number belongs turns a bad file into a bad session that fails later
+ * and somewhere else. An unknown key is left alone; the row is an open record
+ * by design and the display layer is where plugins put their own fields.
+ *
+ * A bad row fails the whole file rather than being dropped. Silently dropping
+ * it produces a session whose transcript is quietly missing a message, which
+ * is the "half-populated" outcome the parser's own contract rules out.
+ */
+function toDisplayMessageRecord(value: unknown): DisplayMessageRecord {
+  if (!isRecord(value)) {
+    throw new SessionTransferError(
+      "malformed-transfer-file",
+      "Transfer payload contains a display row that is not an object",
+    );
+  }
+  for (const key of ["msg_id", "canonical_message_id", "role", "turnId", "source", "kind"] as const) {
+    if (value[key] !== undefined && typeof value[key] !== "string") {
+      throw new SessionTransferError(
+        "malformed-transfer-file",
+        `Transfer payload contains a display row whose ${key} is not a string`,
+      );
+    }
+  }
+  for (const key of ["timestamp", "created_at"] as const) {
+    const raw = value[key];
+    if (raw !== undefined && (typeof raw !== "number" || !Number.isFinite(raw))) {
+      throw new SessionTransferError(
+        "malformed-transfer-file",
+        `Transfer payload contains a display row whose ${key} is not a finite number`,
+      );
+    }
+  }
+  for (const key of ["meta", "sourceContext", "forkOrigin"] as const) {
+    if (value[key] !== undefined && !isRecord(value[key])) {
+      throw new SessionTransferError(
+        "malformed-transfer-file",
+        `Transfer payload contains a display row whose ${key} is not an object`,
+      );
+    }
+  }
+  if (value.editContent !== undefined && typeof value.editContent !== "string") {
+    throw new SessionTransferError(
+      "malformed-transfer-file",
+      "Transfer payload contains a display row whose editContent is not a string",
+    );
+  }
+  // Measured on the serialised row, which is what `replace` persists.
+  if (JSON.stringify(value).length > MAX_DISPLAY_MESSAGE_BYTES) {
+    throw new SessionTransferError(
+      "malformed-transfer-file",
+      "Transfer payload contains a display row too large to import",
+    );
+  }
+  return value as DisplayMessageRecord;
 }
 
 function toTransferSnapshot(value: unknown): SessionTransferSnapshot {

@@ -899,23 +899,39 @@ export function WebuiClientFoundationApp(
   const watchEvents = transport?.watchEvents;
   const getActiveTurn = transport?.getActiveTurn;
 
+  // The subscription reads the open session through a ref rather than closing
+  // over it, and this is the reason the effect below depends on `watchEvents`
+  // alone.
+  //
+  // Re-subscribing on every session switch tears the old subscription down and
+  // builds a new one, and the events that arrive in between belong to neither:
+  // the teardown has already run, the new listener is not attached yet. That
+  // window is exactly what this layer exists to catch -- a turn finishing in
+  // another session while the user clicks through the rail -- and losing it
+  // is how a running session looks idle and a finished one looks silent.
+  //
+  // A ref is the standard answer, and the objection that made the dependency
+  // look necessary does not survive it: a closure captures a value once, but
+  // `ref.current` is reassigned on every render, so the one long-lived
+  // callback always reads the current session. This file already uses that
+  // shape for `composerKeyRef` two hundred lines up.
+  const selectedSessionIdRef = useRef(selectedSessionId);
+  selectedSessionIdRef.current = selectedSessionId;
   useEffect(() => {
     if (!watchEvents) return;
     return watchEvents(
       (event) =>
         setSessionActivity((current) =>
-          reduceWebuiSessionActivity(current, event, { activeSessionId: selectedSessionId }),
+          reduceWebuiSessionActivity(current, event, {
+            activeSessionId: selectedSessionIdRef.current,
+          }),
         ),
       () => {
         setActivityNow(Date.now());
         setActivityProbeNonce((nonce) => nonce + 1);
       },
     );
-    // `selectedSessionId` is read inside the callback, not merely referenced:
-    // it decides whether a finishing turn counts as unread, so a subscription
-    // held from before the user opened a session would badge the session they
-    // are reading.
-  }, [watchEvents, selectedSessionId]);
+  }, [watchEvents]);
 
   // Persist the counts. Without this the badge is worse than none: a session
   // that ran four turns would go clean on reload and the only thing the user
@@ -955,18 +971,30 @@ export function WebuiClientFoundationApp(
     return () => clearInterval(timer);
   }, []);
 
+  // Two effects where there was one, because the two halves have different
+  // triggers and merging them made the restore a per-render operation.
+  //
+  // `railPage` is a fresh object on every refresh and on every search
+  // keystroke, so an effect depending on it re-ran constantly -- and each run
+  // re-read storage and re-applied it over the live counts. A badge that had
+  // counted three turns would drop back to whatever was last written, and a
+  // failed write (quota, private mode) makes the stored value permanently
+  // stale, so the badge would shrink every time the user typed in the search
+  // box. Seeding genuinely needs the page; restoring does not.
   useEffect(() => {
     setSessionActivity((current) =>
-      applyWebuiUnreadCounts(
-        seedWebuiSessionActivity(current, railPage.sessions),
-        readWebuiUnreadCounts(),
-        selectedSessionId,
-      ),
+      seedWebuiSessionActivity(current, railPage.sessions),
+    );
+  }, [railPage]);
+
+  useEffect(() => {
+    setSessionActivity((current) =>
+      applyWebuiUnreadCounts(current, readWebuiUnreadCounts(), selectedSessionId),
     );
     // Flipped after the restore is queued, so the writer's very next run sees a
     // map that has the counts in it rather than the empty one it started from.
     setUnreadCountsReady(true);
-  }, [railPage, selectedSessionId]);
+  }, [selectedSessionId]);
 
   useEffect(() => {
     if (!getActiveTurn) return;

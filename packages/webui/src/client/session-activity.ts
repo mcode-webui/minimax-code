@@ -244,9 +244,17 @@ export function applyWebuiUnreadCounts(
   const next = { ...previous };
   for (const [sessionId, count] of entries) {
     const current = next[sessionId];
+    // The restored count is a floor, not an answer. It was written by an
+    // earlier run of this same code and can only be as fresh as the last
+    // successful write, whereas the live value has been counting events since.
+    // Overwriting with it would let a badge shrink on its own the moment the
+    // rail re-rendered -- and a write that failed (quota, private mode) makes
+    // that guaranteed rather than merely possible, because what is on disk is
+    // then permanently behind.
+    const live = current?.unread ?? 0;
     next[sessionId] = {
       ...(current ?? { lastActivityAt: 0 }),
-      unread: count,
+      unread: live > count ? live : count,
     };
   }
   return next;

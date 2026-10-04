@@ -3770,6 +3770,7 @@
     "test/webui-browser/composer.spec.mjs",
     "test/webui-browser/fixture.mjs",
     "test/webui-browser/harness.mjs",
+    "test/webui-browser/rail-search.spec.mjs",
     "test/webui-browser/server.mjs",
     "test/webui-browser/transcript.spec.mjs",
     "test/webui-browser/turn-lifecycle.spec.mjs",

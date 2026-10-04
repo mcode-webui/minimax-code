@@ -429,6 +429,47 @@ describe("unread counts", () => {
     expect(next.mvs_a?.unread).toBe(1);
   });
 
+  it("restores a stored count that is ahead of the live one", () => {
+    // The badge survived a reload and the page is now being rebuilt from a
+    // list that knows nothing about counts. Storage is the only thing that
+    // still remembers.
+    const next = applyWebuiUnreadCounts(
+      seedWebuiSessionActivity(initialWebuiSessionActivity, [
+        { sessionId: "mvs_a" },
+      ] as never),
+      { mvs_a: 3 },
+      "mvs_other",
+    );
+    expect(next.mvs_a?.unread).toBe(3);
+  });
+
+  it("never lets a restore shrink a count the live stream has reached", () => {
+    // The defect. The stored value is written by an earlier run of this same
+    // code, so it is only as fresh as the last successful write, while the live
+    // value has been counting events since. Overwriting with it let a badge go
+    // *down* on its own the moment the rail re-rendered, and a failed write --
+    // quota, private mode -- made the stored value permanently behind, so the
+    // badge shrank every time the user refreshed or typed in the search box.
+    const live = reduceWebuiSessionActivity(
+      reduceWebuiSessionActivity(
+        started(),
+        event("session.finish", { sessionId: "mvs_a" }, 2_000),
+        { activeSessionId: "mvs_other" },
+      ),
+      event("session.start", { sessionId: "mvs_a", turnId: "t2" }),
+    );
+    const afterTwo = reduceWebuiSessionActivity(
+      live,
+      event("session.finish", { sessionId: "mvs_a" }, 3_000),
+      { activeSessionId: "mvs_other" },
+    );
+    expect(afterTwo.mvs_a?.unread).toBe(2);
+
+    // Storage still holds the value from before the second turn.
+    const restored = applyWebuiUnreadCounts(afterTwo, { mvs_a: 1 }, "mvs_other");
+    expect(restored.mvs_a?.unread).toBe(2);
+  });
+
   it("does not count the session the user is sitting in", () => {
     // A badge over the row being read is the fastest way to make a badge stop
     // being read at all.
@@ -712,22 +753,32 @@ describe("host wiring", () => {
     return appSource.slice(open < 0 ? 0 : open, close < 0 ? undefined : close).trim();
   };
 
-  it("tells the reducer which session is open", () => {
-    // Without this the reducer cannot tell a turn that finished in the session
-    // being read from one that finished elsewhere, and it counts all of them.
+  it("holds one subscription across session switches", () => {
+    // The callback decides whether a finishing turn counts as unread, so it
+    // needs the *current* open session. This used to be satisfied by putting
+    // `selectedSessionId` in the effect's dependencies, on the reasoning that a
+    // closure would otherwise keep deciding on behalf of the previous session.
+    //
+    // That reasoning is wrong, and the cost of believing it was a hole in the
+    // one thing this layer exists to do. Tearing down and re-creating the
+    // subscription on every switch means the events arriving between the two
+    // belong to neither: a turn that finishes in another session while the
+    // user clicks through the rail is dropped, which is precisely the case the
+    // unread badge was added for.
+    //
+    // The ref is the standard answer and the test asserts the whole shape,
+    // because asserting only half of it is how the defect came back: the
+    // dependency has to go *and* the callback has to read through the ref, or
+    // the callback is genuinely stale.
     const block = effect("reduceWebuiSessionActivity(current, event");
-    expect(block).toMatch(
-      /reduceWebuiSessionActivity\(\s*current\s*,\s*event\s*,\s*\{\s*activeSessionId:\s*selectedSessionId\s*,?\s*\}\s*,?\s*\)/u,
-    );
-  });
+    expect(block).toMatch(/\}\s*,\s*\[\s*watchEvents\s*,?\s*\]\s*\)\s*;?\s*$/u);
+    expect(block).not.toMatch(/\[\s*watchEvents\s*,\s*selectedSessionId/u);
+    expect(block).toMatch(/activeSessionId:\s*selectedSessionIdRef\.current/u);
 
-  it("re-subscribes when the open session changes", () => {
-    // The callback closes over `selectedSessionId`, so an effect that kept the
-    // old dependency would keep deciding on behalf of the previous session for
-    // as long as the tab stayed open.
-    const block = effect("reduceWebuiSessionActivity(current, event");
-    expect(block).toMatch(
-      /\}\s*,\s*\[\s*watchEvents\s*,\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u,
+    // And the ref is kept current, or the single subscription is no better
+    // than the one that was tearing down.
+    expect(appSource).toMatch(
+      /selectedSessionIdRef\.current\s*=\s*selectedSessionId\s*;/u,
     );
   });
 
@@ -743,13 +794,30 @@ describe("host wiring", () => {
     );
   });
 
-  it("re-applies stored counts when the rail is rebuilt", () => {
-    // A list refresh rebuilds the map from `updatedAt`, which knows nothing
-    // about counts. Without the re-read the badge survives a reload and then
-    // vanishes on the first refresh.
+  it("re-applies stored counts when the open session changes", () => {
+    // The active session is excluded from the restore, so the restore has to
+    // run again when the user moves: opening a session marks it read, and
+    // arriving at a different one must not inherit that.
     const block = effect("readWebuiUnreadCounts()");
     expect(block).toMatch(/readWebuiUnreadCounts\(\s*\)/u);
     expect(block).toMatch(/applyWebuiUnreadCounts/u);
+  });
+
+  it("does not re-run the restore every time the rail re-renders", () => {
+    // `railPage` is a new object on every refresh and on every keystroke in the
+    // search box. With it in this effect's dependencies, each of those re-read
+    // storage and re-applied it over the live counts -- so a badge that had
+    // counted three turns dropped back to whatever was last written, and a
+    // failed write (quota, private mode) made the stored value permanently
+    // stale, which turned it into a badge that shrank while the user typed.
+    //
+    // The re-read is still needed, so the assertion is that the trigger is the
+    // session and not the list. Seeding the list is a separate effect that does
+    // depend on `railPage`, and is asserted to still exist.
+    const block = effect("readWebuiUnreadCounts()");
+    expect(block).toMatch(/\}\s*,\s*\[\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u);
+    expect(block).not.toMatch(/railPage/u);
+    expect(effect("seedWebuiSessionActivity(current")).toMatch(/railPage/u);
   });
 
   it("never writes the empty map before the stored counts are read back", () => {

@@ -396,6 +396,65 @@ describe("parseSessionTransferFile", () => {
     expectRejection({ ...file(), canonical: undefined }, "malformed-transfer-file");
   });
 
+  it("rejects a display row that is not an object", () => {
+    // The layer that used to be `filter(isRecord) as DisplayMessageRecord[]`,
+    // where the cast stood in for the contract the canonical layer enforces.
+    expectRejection(
+      file({ display: { messages: ["not-a-row"] } }),
+      "malformed-transfer-file",
+    );
+  });
+
+  it("rejects a display row whose timestamp is not a number", () => {
+    // The normaliser reads `timestamp` and `created_at` as numbers and does
+    // arithmetic on them. A string here is a file that fails later and
+    // somewhere else, which is harder to attribute than failing on import.
+    expectRejection(
+      file({ display: { messages: [{ msg_id: "m1", timestamp: "yesterday" }] } }),
+      "malformed-transfer-file",
+    );
+    expectRejection(
+      file({ display: { messages: [{ msg_id: "m1", created_at: Number.NaN }] } }),
+      "malformed-transfer-file",
+    );
+  });
+
+  it("rejects a display row whose msg_id is not a string", () => {
+    expectRejection(
+      file({ display: { messages: [{ msg_id: 12 }] } }),
+      "malformed-transfer-file",
+    );
+  });
+
+  it("rejects a display row whose nested containers are not objects", () => {
+    for (const key of ["meta", "sourceContext", "forkOrigin"]) {
+      expectRejection(
+        file({ display: { messages: [{ msg_id: "m1", [key]: "nope" }] } }),
+        "malformed-transfer-file",
+      );
+    }
+  });
+
+  it("rejects a display row too large to import", () => {
+    // A hand-edited file can carry anything, and the canonical layer's
+    // per-envelope ceiling says nothing about the display store.
+    expectRejection(
+      file({
+        display: { messages: [{ msg_id: "m1", blob: "x".repeat(9 * 1024 * 1024) }] },
+      }),
+      "malformed-transfer-file",
+    );
+  });
+
+  it("keeps a display row with fields it does not recognise", () => {
+    // The row is an open record by design: the display layer is where plugins
+    // put their own fields, and a validator that rejected unknown keys would
+    // break every one of them on import.
+    expect(() => parseSessionTransferFile(
+      file({ display: { messages: [{ msg_id: "m1", pluginPayload: { any: ["shape"] } }] } }),
+    )).not.toThrow();
+  });
+
   it("rejects a canonical entry without an id", () => {
     expectRejection(
       file({

@@ -48,14 +48,8 @@ import {
   writeFavoriteModels,
 } from "../projection/model-favorites.js";
 import {
-  hoistRecentModels,
-  readRecentModels,
-  recordRecentModel,
-  writeRecentModels,
-} from "../projection/model-recents.js";
-import {
   isPreview,
-  rowClickOutcome,
+  rowHasFlyout,
   type CascadeTier,
 } from "../projection/model-picker-cascade.js";
 import {
@@ -352,7 +346,6 @@ export function WebuiModelPicker({
   const [tier, setTier] = useState<CascadeTier>("list");
   const [query, setQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
-  const [recentIds, setRecentIds] = useState<readonly string[]>([]);
   const [drafts, setDrafts] = useState<
     Readonly<Record<string, WebuiModelPickerDraft>>
   >({});
@@ -401,7 +394,6 @@ export function WebuiModelPicker({
   useEffect(() => {
     if (!open) return;
     setFavoriteIds(readFavoriteModels());
-    setRecentIds(readRecentModels());
   }, [open]);
 
   const handleToggleFavorite = (key: string) => {
@@ -460,26 +452,12 @@ export function WebuiModelPicker({
   const handleSelectModel = (model: WebuiModelPickerEntry) => {
     const draft = drafts[modelKey(model)] ?? {};
     onSelect(model, draft);
-    // Record the pick so the next open starts where this one ended. The model
-    // is hoisted to the top of 「最近使用」 rather than appended, so the section
-    // keeps answering "what did I use last", not "what have I ever used".
-    setRecentIds((current) => {
-      const next = recordRecentModel(current, modelKey(model));
-      writeRecentModels(next);
-      return next;
-    });
-    // The cascade's one asymmetry (see `projection/model-picker-cascade.ts`): a
-    // model with settings is not finished when its row is clicked — the
-    // selection completes on a context window picked in its fly-out — while a
-    // model with nothing to configure completes on its own click, because there
-    // is nothing left to visit and keeping the surface open would strand the user
-    // on a menu they have finished with.
-    if (rowClickOutcome(model) === "close") {
-      setOpen(false);
-      setFocusedKey(undefined);
-      return;
-    }
-    setTier("settings");
+    // A click means "this is the one", and it finishes. The settings are a
+    // hover away — the fly-out is already open beside the row the pointer is on
+    // — so there is nothing left to visit, and keeping the menu open would
+    // strand the user on a surface they have already answered.
+    setOpen(false);
+    setFocusedKey(undefined);
   };
 
   /**
@@ -488,9 +466,9 @@ export function WebuiModelPicker({
    * Only for a row that HAS something to configure. Hovering a model with
    * nothing to configure must not summon an empty panel — a fly-out with no
    * controls in it is a worse answer than no fly-out, and there is nothing to
-   * learn from it. `rowClickOutcome` is the same "does this model have
-   * settings" test the click path uses, so the two agree by construction rather
-   * than by two lookups that could drift.
+   * learn from it. `rowHasFlyout` is the "does this model have settings" test,
+   * kept separate from `rowClickOutcome` because a click no longer varies by
+   * model while the fly-out still does.
    */
   const handleHoverRow = (key: string) => {
     const model = models.find((entry) => modelKey(entry) === key);
@@ -499,7 +477,7 @@ export function WebuiModelPicker({
     // A row with nothing to configure retracts the fly-out rather than
     // leaving the previous row's panel up: the panel would then describe a
     // model the pointer has already left.
-    setTier(rowClickOutcome(model) === "close" ? "list" : "settings");
+    setTier(rowHasFlyout(model) ? "settings" : "list");
   };
 
   // Escape backs out ONE tier: the first press retracts the fly-out and leaves
@@ -538,15 +516,11 @@ export function WebuiModelPicker({
   // searching for something else, which is the one thing a search must not do.
   // The other order would also mean the favourites section is rebuilt on every
   // keystroke even when no star is in the result set.
-  //
-  // Recents are hoisted before favourites: the most recently used model is the
-  // one the user is most likely to want back, so it is the first row.
   const groupedModels = useMemo(() => {
     const grouped = groupModelsByProvider(models);
     const filtered = filterModelGroups(grouped, query);
-    const starred = orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
-    return hoistRecentModels(starred, recentIds, modelKey);
-  }, [models, query, favoriteIds, recentIds]);
+    return orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
+  }, [models, query, favoriteIds]);
 
   /**
    * Move the focused row by `delta` through the VISIBLE rows, and return where

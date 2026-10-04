@@ -237,51 +237,37 @@ describe("thinking trigger — what it renders", () => {
     expect(off).toContain("已关闭思考");
   });
 
-  it("makes a depth-scale brain decoration, not a button", () => {
-    // A clickable brain on a depth scale would have to pick one of
-    // low/medium/high on the user's behalf — precisely the question a binary
-    // control cannot ask. The assertion is on the brain's own element rather
-    // than on the absence of any button: what must not exist is a
-    // switch-shaped brain.
+  it("gives a depth-scale model no brain at all", () => {
+    // The brain belongs to the two-state model alone. On a depth scale it is
+    // not a switch, so there is nothing to press — and a clickable one would
+    // have to pick low/medium/high on the user's behalf, precisely the question
+    // a binary control cannot ask.
+    //
+    // It used to render a non-interactive grey glyph to "indicate" the level.
+    // That is gone: a control-shaped thing that cannot be controlled is an
+    // affordance for a choice the user then has to make somewhere else. The
+    // level is on the model chip ("M3.1-Flash-Preview max") and is CHOSEN in the
+    // picker's settings fly-out, so it is stated once and editable once.
     const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
-    expect(html).toContain("<span");
-    expect(html).toContain('data-webui-thinking-indicator="on"');
-    // The switch form's marker is specifically absent.
-    expect(html).not.toContain("data-webui-thinking-trigger");
+    expect(html).toBe("");
   });
 
-  it("keeps the level out of the toolbar, where the chip already states it", () => {
+  it("states a depth level on the chip, never in the toolbar", () => {
     // The chip names the level beside the model ("M3.1-Flash-Preview max"), so
-    // a level control here would state the same value twice, one slot apart.
-    // The level is CHOSEN in the picker's settings fly-out instead — which
-    // this component never rendered in the first place, so removing it costs
-    // no reachable control.
+    // a level control here would state the same value twice, one slot apart —
+    // and with the brain gone from a depth model's toolbar, the chip is the
+    // only place it appears. It is CHOSEN in the picker's settings fly-out, so
+    // nothing became unreachable by removing the toolbar control.
     const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
-    expect(html).not.toContain('data-webui-thinking-level="true"');
-    expect(html).not.toContain('aria-haspopup="menu"');
-    expect(html).not.toContain("webui-thinking-level-menu");
-  });
-
-  it("still names the level in its hover title", () => {
-    // The chip states it, but a tooltip is where a pointer actually goes for
-    // "which level is this" — so dropping the visible control must not drop
-    // the level from the brain's title with it.
-    const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
-    expect(html).toContain("已开启思考 · high");
+    expect(html).toBe("");
+    expect(chipLevelLabel(DEPTH, "high")).toBe("high");
   });
 
   it("disables the switch while previewing another model", () => {
+    // The record belongs to the ACTIVE model, so the control is inert until the
+    // pointer is over the row that actually owns it.
     const binary = render({ options: BINARY, recorded: "on", preview: true, onChange: () => undefined });
     expect(binary).toContain("disabled");
-  });
-
-  it("drops the level from the title while previewing another model", () => {
-    // The record belongs to the ACTIVE model, so naming its level on another
-    // model's brain would be a claim about the wrong model. Same anti-stale
-    // rule as the row badge — here it costs the title, not a highlight.
-    const html = render({ options: DEPTH, recorded: "high", preview: true, onChange: () => undefined });
-    expect(html).not.toContain("已开启思考 · high");
-    expect(html).toContain("已开启思考");
   });
 
   it("carries the state in aria, not only in colour", () => {

@@ -1811,16 +1811,12 @@
   .webui-thinking-brain--unstated {
     color: var(--icon_default_tertiary);
   }
-  /* On a depth scale the brain is decoration beside a real control, not a
-   * button — it carries no hit area of its own, because there is nothing a
-   * click on it could mean. */
-  .webui-thinking-brain-slot {
-    display: flex;
-    width: 28px;
-    height: 28px;
-    align-items: center;
-    justify-content: center;
-  }
+  /* No `.webui-thinking-brain-slot` rule, and deliberately none: a depth
+   * model has no brain at all. It used to render a non-interactive glyph to
+   * "indicate" the level, and its slot styling went with it — a
+   * control-shaped thing that cannot be controlled is an affordance for a
+   * choice the user has to make somewhere else, and the level is already on
+   * the model chip. */
   /* No `.webui-thinking-level` rule, and deliberately none. The level rides
    * the model name in the chip (`.webui-model-chip-level` in ModelPicker) and
    * is chosen in the picker's settings fly-out, so a control repeating that

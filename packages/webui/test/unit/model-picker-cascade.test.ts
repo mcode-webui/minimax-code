@@ -26,9 +26,8 @@ import {
   escapeOutcome,
   isPreview,
   modelHasSettings,
-  rowClickOutcome,
+  rowHasFlyout,
   thinkingCommitOutcome,
-  tierAfterRowClick,
 } from "../../src/client/projection/model-picker-cascade.js";
 import {
   FLYOUT_ANCHOR_GAP,
@@ -54,19 +53,17 @@ const WITH_SETTINGS = entry({
 });
 const WITH_NO_SETTINGS = entry();
 
-describe("cascade — a model's own settings decide whether a click finishes", () => {
-  it("treats a model with nothing to configure as complete on its click", () => {
-    // There is nothing left to visit, so keeping the surface open would strand
-    // the user on a menu they have finished with.
+describe("cascade — a model's own settings decide whether its row is worth describing", () => {
+  it("opens no fly-out for a model with nothing to configure", () => {
+    // An empty panel is worse than no panel: it occupies the space beside the
+    // row and says nothing.
     expect(modelHasSettings(WITH_NO_SETTINGS)).toBe(false);
-    expect(rowClickOutcome(WITH_NO_SETTINGS)).toBe("close");
-    expect(tierAfterRowClick(WITH_NO_SETTINGS)).toBe("list");
+    expect(rowHasFlyout(WITH_NO_SETTINGS)).toBe(false);
   });
 
-  it("treats a model with settings as advancing to the second tier", () => {
+  it("opens a fly-out for a model that has settings", () => {
     expect(modelHasSettings(WITH_SETTINGS)).toBe(true);
-    expect(rowClickOutcome(WITH_SETTINGS)).toBe("advance");
-    expect(tierAfterRowClick(WITH_SETTINGS)).toBe("settings");
+    expect(rowHasFlyout(WITH_SETTINGS)).toBe(true);
   });
 
   it("counts either control as settings on its own", () => {
@@ -76,15 +73,33 @@ describe("cascade — a model's own settings decide whether a click finishes", (
 
   it("counts an EMPTY options list as nothing to configure", () => {
     // `length > 0`, not mere presence: an empty array is a control with no
-    // options in it, and offering the user a second tier for one is the same
-    // strand the close rule exists to prevent.
+    // options in it, and offering the user a panel for one is noise.
     expect(modelHasSettings(entry({ effortOptions: [] }))).toBe(false);
     expect(modelHasSettings(entry({ contextWindowOptions: [] }))).toBe(false);
   });
 
   it("has no model to describe as nothing to configure", () => {
     expect(modelHasSettings(undefined)).toBe(false);
-    expect(rowClickOutcome(undefined)).toBe("close");
+    expect(rowHasFlyout(undefined)).toBe(false);
+  });
+
+  it("finishes the selection on a click whatever the model offers", () => {
+    // A click means "this is the one". The fly-out is reached by hover, so it
+    // is already open beside the row the pointer is on, and a click that
+    // demanded a second step inside it made choosing a model a two-step errand
+    // over settings that are all optional and all defaulted.
+    //
+    // Matched on `handleSelectModel` rather than the whole file: the hover path
+    // still legitimately opens the settings tier, and a file-wide assertion on
+    // `setTier("settings")` would forbid exactly the behaviour that replaced the
+    // removed one.
+    const picker = readComponent("ModelPicker.tsx");
+    const handler = picker.slice(
+      picker.indexOf("const handleSelectModel"),
+      picker.indexOf("const handleHoverRow"),
+    );
+    expect(handler).toContain("setOpen(false)");
+    expect(handler).not.toContain("setTier");
   });
 });
 

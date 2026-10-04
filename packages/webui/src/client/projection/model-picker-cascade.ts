@@ -6,7 +6,7 @@
  * state and easy to get subtly wrong, so they live here as data rather than as
  * conditions inside the component:
  *
- *   - When does a click COMPLETE the selection, and when does it only advance?
+ *   - Which rows are worth describing? (a model with settings, one with none)
  *   - When are the controls live, and when are they a preview?
  *   - What does Escape do from each tier?
  *
@@ -14,9 +14,20 @@
  * Escape rule moves between. The context sizes are not a third tier: they are
  * listed in place inside the fly-out, one surface from the row.
  *
- * Ported from the cascade rework in the other WebUI implementation
+ * CHANGED from the source implementation
  * (`176b8b7 feat(webui): the model picker is a cascade again, not a two-column
- * panel`). The rules are unchanged; the entry type is this repository's.
+ * panel`): a click on a row always COMPLETES the selection. The source made a
+ * model with settings two clicks deep — click the row to reach its fly-out, then
+ * pick a context window inside it to finish. That made choosing a model a
+ * two-step errand over settings that are all optional and all defaulted, and it
+ * made the fly-out unreachable by pointer, since the pointer could not open it.
+ * The fly-out is now reached by HOVER, which is where a pointer expects to find
+ * a description of the row it is on, so a click is left with one meaning —
+ * "this is the one".
+ *
+ * `rowClickOutcome` and `tierAfterRowClick` were removed rather than left
+ * returning constants: a function that ignores its argument and always says
+ * "close" is a name the next reader will trust.
  */
 import type { WebuiModelPickerEntry } from "../components/ModelPicker.js";
 
@@ -26,12 +37,10 @@ export type CascadeTier = "list" | "settings";
 /**
  * True when this model has anything to configure.
  *
- * Drives the ONE asymmetry in the whole cascade: a model with settings is not
- * finished when its row is clicked, and a model without them is. Getting this
- * backwards is visible immediately — a model with nothing to set would refuse
- * to close, and a model with settings would close before the user could reach
- * its controls — which is exactly why it is a named predicate rather than an
- * inline `!== 0`.
+ * Drives what the fly-out offers on hover — a model with settings describes
+ * itself beside its row, one with nothing to configure has nothing to show.
+ * It no longer decides whether a click completes: a click always completes now
+ * (see `rowClickOutcome`).
  */
 export function modelHasSettings(
   model: WebuiModelPickerEntry | undefined,
@@ -43,25 +52,15 @@ export function modelHasSettings(
   );
 }
 
-/** What a click on a model row does to the surface. */
-export type RowClickOutcome = "close" | "advance";
-
 /**
- * What clicking a model row does: complete the selection, or advance to the
- * settings tier.
+ * Whether this model's row opens a settings fly-out on hover.
  *
- * The asymmetry is the point of the cascade, and it is deliberate:
- *
- *   - A model with NO settings completes on its own click. There is nothing
- *     left to visit, so keeping the surface open would strand the user on a
- *     menu they have finished with.
- *   - A model WITH settings records the model — which is also what turns its
- *     fly-out from a read-only preview into live controls — and LEAVES the
- *     surface open. The selection completes by picking a context window from
- *     the fly-out.
+ * The only remaining per-model rule in the cascade. A model with settings
+ * describes itself beside its row; one without has nothing to show, and opening
+ * an empty panel would be worse than opening none.
  */
-export function rowClickOutcome(model: WebuiModelPickerEntry | undefined): RowClickOutcome {
-  return modelHasSettings(model) ? "advance" : "close";
+export function rowHasFlyout(model: WebuiModelPickerEntry | undefined): boolean {
+  return modelHasSettings(model);
 }
 
 /** What committing the THINKING control does to the surface. */
@@ -119,15 +118,4 @@ export type EscapeOutcome = "retract-tier" | "close-menu" | "ignore";
  */
 export function escapeOutcome(tier: CascadeTier): EscapeOutcome {
   return tier === "settings" ? "retract-tier" : "close-menu";
-}
-
-/**
- * The tier to show after a row click.
- *
- * Separate from `rowClickOutcome` because the two answer different questions —
- * "does the surface stay?" and "what do we draw?" — and a caller that derived
- * one from the other by inverting a boolean would be expressing a guess.
- */
-export function tierAfterRowClick(model: WebuiModelPickerEntry | undefined): CascadeTier {
-  return rowClickOutcome(model) === "advance" ? "settings" : "list";
 }

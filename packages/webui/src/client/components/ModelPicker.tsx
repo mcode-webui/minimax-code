@@ -803,34 +803,6 @@ export function WebuiModelPicker({
   const focusedContextOptions = focusedModel?.contextWindowOptions ?? [];
 
   /**
-   * Commit a choice made INSIDE the fly-out, and finish.
-   *
-   * One function for every control in that surface, because they all mean the
-   * same thing — "this model, with this" — and a fly-out where one of them
-   * leaves the panel standing is a fly-out the user has to dismiss by hand
-   * after every use. The panel is on screen to answer a question, and both of
-   * its controls answer it completely: there is nothing left on it to go back
-   * to, so nothing is gained by staying open over it.
-   *
-   * It SELECTS the model as well as committing the setting. The fly-out belongs
-   * to a row, so choosing an option inside it is a statement about that row — a
-   * user who picks "1M" next to M3 has chosen M3, and closing the menu while
-   * leaving the row unselected made the action read as "changed a setting" and
-   * left the tick beside a model they had just picked out of step. The row click
-   * is the same two calls in a different order, so both routes to a finished
-   * selection look alike.
-   */
-  const commitFlyoutChoice = (patch: Partial<WebuiModelPickerDraft>) => {
-    if (!focusedModel) return;
-    const draft: WebuiModelPickerDraft = { ...focusedDraft, ...patch };
-    setDrafts((current) => ({ ...current, [focusedKeyString]: draft }));
-    onSettingChange(focusedModel, draft);
-    onSelect(focusedModel, draft);
-    setOpen(false);
-    setFocused(undefined);
-  };
-
-  /**
    * Commit a thinking option, in whichever shape that option implies.
    *
    * "default" RESETS the effort to the model's configured default (null, not
@@ -838,26 +810,52 @@ export function WebuiModelPicker({
    * VARIANT rather than recording a level, and a depth level records itself.
    * Splitting these three is the reason the option is reported verbatim by the
    * fly-out instead of being pre-mapped there.
+   *
+   * It SELECTS the model. Same reasoning as `handleContextChange`: the fly-out
+   * belongs to a row, so choosing a level inside it is a statement about that
+   * row. Unlike a window, though, a level is a mid-visit edit — the user may
+   * still want a window next, and this panel is flat precisely so both fit in
+   * one visit — so the menu stays open and the row carries the tick.
    */
   const handleThinkingChange = (option: string) => {
     if (!focusedModel) return;
     const variant = variantForEffort(focusedModel, option);
-    commitFlyoutChoice({
+    const draft: WebuiModelPickerDraft = {
+      ...focusedDraft,
       ...(variant !== undefined ? { variant } : {}),
-      // "on"/"off" contribute NOTHING to the patch on purpose: the switch flips
-      // the variant, and writing an effort for it too would leave the two
-      // controls disagreeing about one model.
       ...(option === "default"
         ? { thinkingEffort: null }
         : option === "off" || option === "on"
           ? {}
           : { thinkingEffort: option }),
-    });
+    };
+    setDrafts((current) => ({ ...current, [focusedKeyString]: draft }));
+    onSettingChange(focusedModel, draft);
+    onSelect(focusedModel, draft);
   };
 
-  /** Commit a context window — the same finish, with the window written. */
+  /**
+   * Commit a context window. This CLOSES: picking a window is the commitment
+   * that completes the selection, where a level is a mid-visit edit.
+   *
+   * It also SELECTS the model. The fly-out belongs to a row, and choosing an
+   * option inside it is a statement about that row — a user who picks "1M" next
+   * to M3 has chosen M3, and leaving the row unselected while closing the menu
+   * made the action read as "changed a setting" and left the tick beside a
+   * model they had just picked out of step. The row click is the same two calls
+   * in a different order, so both routes to a finished selection look alike.
+   */
   const handleContextChange = (value: number) => {
-    commitFlyoutChoice({ contextLimit: value });
+    if (!focusedModel) return;
+    const draft: WebuiModelPickerDraft = {
+      ...focusedDraft,
+      contextLimit: value,
+    };
+    setDrafts((current) => ({ ...current, [focusedKeyString]: draft }));
+    onSettingChange(focusedModel, draft);
+    onSelect(focusedModel, draft);
+    setOpen(false);
+    setFocused(undefined);
   };
 
   return (

@@ -167,18 +167,14 @@ export interface ModelSettingsFlyoutProps {
    * the model contract, not about how the control is drawn. So the fly-out
    * reports the option and `ModelPicker` does the mapping.
    *
-   * Finishes the visit, same as `onContextChange`: the caller records the
-   * setting, selects this model and closes the picker. The two controls used to
-   * disagree here — thinking left the surface open so a level and a window could
-   * be set in one visit, context closed. Two controls in one panel behaving
-   * differently on the same gesture reads as the UI having forgotten what was
-   * already picked, which is worse than the extra visit.
+   * Records and LEAVES the surface open: a level and a window are meant to be
+   * adjusted in one visit, and closing here would make that impossible.
    */
   readonly onThinkingChange: (option: string) => void;
   /**
-   * Commit a context window, finishing the visit the same way
-   * `onThinkingChange` does: the caller closes the picker once the setting and
-   * the model selection are recorded.
+   * Commit a context window. Choosing a window is a COMMITMENT rather than a
+   * mid-visit edit, so this is where the selection completes — the caller
+   * closes the picker, unlike `onThinkingChange`.
    */
   readonly onContextChange: (value: number) => void;
   /** Escape from inside the fly-out: retract the tier, keep the list. */

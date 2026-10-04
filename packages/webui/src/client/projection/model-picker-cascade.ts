@@ -63,6 +63,25 @@ export function rowHasFlyout(model: WebuiModelPickerEntry | undefined): boolean 
   return modelHasSettings(model);
 }
 
+/** What committing the THINKING control does to the surface. */
+export type ThinkingCommitOutcome = "close" | "keep-open";
+
+/**
+ * What committing the THINKING control does.
+ *
+ * Records and keeps the fly-out open. Closing here would make it impossible to
+ * set a level and a window in one visit, which is the ordinary thing a user does
+ * when they open a model's settings at all — the context sizes are listed in the
+ * same surface, so the two controls are meant to be adjusted together.
+ *
+ * Choosing a window behaves the other way: that is the commitment that closes
+ * the picker. The asymmetry is the reference's completion rule, and it is why
+ * this is a named outcome rather than two call sites deciding independently.
+ */
+export function thinkingCommitOutcome(): ThinkingCommitOutcome {
+  return "keep-open";
+}
+
 /**
  * True when the fly-out describes a model other than the active one.
  *

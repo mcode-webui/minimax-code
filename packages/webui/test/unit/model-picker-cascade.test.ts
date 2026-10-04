@@ -27,6 +27,7 @@ import {
   isPreview,
   modelHasSettings,
   rowHasFlyout,
+  thinkingCommitOutcome,
 } from "../../src/client/projection/model-picker-cascade.js";
 import {
   FLYOUT_ANCHOR_GAP,
@@ -102,83 +103,41 @@ describe("cascade — a model's own settings decide whether its row is worth des
   });
 });
 
-describe("cascade — every fly-out control finishes the visit", () => {
-  it("closes the panel after a thinking option, not just after a window", () => {
-    // Both controls live in the same fly-out, and both answer the same question
-    // completely — "this model, with this". A panel that dismisses itself after
-    // one of them and not the other is a panel the user has to close by hand
-    // after every level, which is the "the UI forgot I picked something" feeling
-    // this whole surface is supposed to not have.
-    const picker = readComponent("ModelPicker.tsx");
-    const commit = picker.slice(
-      picker.indexOf("const commitFlyoutChoice"),
-      picker.indexOf("const handleThinkingChange"),
-    );
-    expect(commit).toContain("onSelect(focusedModel, draft)");
-    expect(commit).toContain("setOpen(false)");
-    expect(commit).toContain("setFocused(undefined)");
-  });
-
-  it("routes BOTH fly-out controls through that one commit", () => {
-    // Two call sites doing the same four things is two places to keep in step,
-    // and they had already drifted: the window closed and the level did not.
-    // The split that is left is the shape of the choice, not what happens to
-    // the panel afterwards.
-    const picker = readComponent("ModelPicker.tsx");
-    const thinking = picker.slice(
-      picker.indexOf("const handleThinkingChange"),
-      picker.indexOf("const handleContextChange"),
-    );
-    const context = picker.slice(
-      picker.indexOf("const handleContextChange"),
-      picker.indexOf("return (", picker.indexOf("const handleContextChange")),
-    );
-    expect(thinking).toContain("commitFlyoutChoice({");
-    expect(context).toContain("commitFlyoutChoice({");
-    // Neither of them decides anything about the surface any more.
-    expect(thinking).not.toContain("setOpen(");
-    expect(context).not.toContain("setOpen(");
+describe("cascade — the thinking switch does not finish the visit", () => {
+  it("keeps the surface open so a window can still be set", () => {
+    // The context sizes are listed in the same fly-out, so closing on a level
+    // would make it impossible to set a level and a window in one visit, which
+    // is the ordinary thing a user does on opening a model's settings at all.
+    expect(thinkingCommitOutcome()).toBe("keep-open");
   });
 
   it("still PICKS the row, or the tick never moves to it", () => {
-    // Closing the panel is about the surface, not about the selection. The
+    // Keeping the surface open is about the menu, not about the selection. The
     // fly-out belongs to a row, so choosing a level inside it is a statement
     // about that row: the user picked "max" for this model, and the row has to
     // say so. Without this the commit changed a setting on a model that stayed
-    // unpicked — the action read as "edited something" and the panel closed on
-    // a row with no tick beside it.
+    // unpicked — the action read as "edited something" and the menu still sat
+    // open on a row with no tick beside it.
     const picker = readComponent("ModelPicker.tsx");
-    const commit = picker.slice(
-      picker.indexOf("const commitFlyoutChoice"),
-      picker.indexOf("const handleThinkingChange"),
-    );
-    expect(commit).toContain("onSettingChange(focusedModel, draft)");
-    expect(commit).toContain("onSelect(focusedModel, draft)");
-  });
-
-  it("keeps the switch writing a VARIANT and no effort", () => {
-    // The one thing the two controls must NOT share: an on/off switch flips the
-    // wire variant, and writing an effort for it as well leaves the toolbar and
-    // the fly-out reading two fields for one control.
-    const picker = readComponent("ModelPicker.tsx");
-    const thinking = picker.slice(
+    const handler = picker.slice(
       picker.indexOf("const handleThinkingChange"),
       picker.indexOf("const handleContextChange"),
     );
-    expect(thinking).toContain('option === "off" || option === "on"');
-    expect(thinking).toMatch(/\?\s*\{\s*\}\s*:/u);
+    expect(handler).toContain("onSelect(focusedModel, draft)");
+    // And no premature close: the level is a mid-visit edit.
+    expect(handler).not.toContain("setOpen(false)");
   });
 });
 
 describe("cascade — a click inside the fly-out finishes the selection", () => {
   it("selects the row from the context window", () => {
     const picker = readComponent("ModelPicker.tsx");
-    const commit = picker.slice(
-      picker.indexOf("const commitFlyoutChoice"),
-      picker.indexOf("const handleThinkingChange"),
+    const handler = picker.slice(
+      picker.indexOf("const handleContextChange"),
+      picker.indexOf("return (", picker.indexOf("const handleContextChange")),
     );
-    expect(commit).toContain("onSelect(focusedModel, draft)");
-    expect(commit).toContain("setOpen(false)");
+    expect(handler).toContain("onSelect(focusedModel, draft)");
+    expect(handler).toContain("setOpen(false)");
   });
 
   it("leaves NOTHING in the fly-out disabled while previewing", () => {

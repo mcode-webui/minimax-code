@@ -200,6 +200,8 @@ export class WebuiService {
       searchWorkspaceReviewDiffs: (request) => this.port.searchWorkspaceReviewDiffs(request),
       readCanvas: (request) => this.port.readCanvas(request),
       applyCanvas: (request) => this.port.applyCanvas(request),
+      readWorkspaceArchive: (request) => this.port.readWorkspaceArchive(request),
+      extractWorkspaceArchive: (request) => this.port.extractWorkspaceArchive(request),
       sendMessage: (request, signal) => this.port.sendMessage(request, signal),
       enqueueMessage: (request) => this.port.enqueueMessage(request),
       resumeSession: (request, signal) =>

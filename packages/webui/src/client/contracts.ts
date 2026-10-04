@@ -423,6 +423,72 @@ export interface WebuiModelSelectionRequest {
   readonly sessionId?: string;
 }
 
+/* Scheduled task (cron) wire shapes.
+ *
+ * These mirror the runtime's cron contract field for field. The panel is a
+ * projection of the registry the desktop and the CLI also write to, so a
+ * renamed field here would silently write somewhere else instead of failing.
+ * `enabled` is the wire-side polarity; the stored config's `disabled` is the
+ * runtime's own business and never crosses this boundary. */
+
+export type WebuiCronSession =
+  | { readonly mode: "root" }
+  | { readonly mode: "sessionId"; readonly sessionId: string }
+  | { readonly mode: "new"; readonly keepSessions?: number | null };
+
+export interface WebuiCronTask {
+  readonly cronName: string;
+  readonly agentName: string;
+  readonly cronId?: string;
+  readonly schedule: string;
+  readonly scheduleType: "cron" | "once";
+  readonly timezone?: string;
+  readonly enabled: boolean;
+  readonly prompt: string;
+  readonly session: WebuiCronSession;
+  readonly activeHours?: { readonly start: string; readonly end: string };
+  readonly status: "idle" | "running" | "skipped";
+  readonly lastRun: number | null;
+  readonly lastResult: string | null;
+  readonly lastError: string | null;
+  readonly nextRun: number | null;
+}
+
+export interface WebuiListCronsResult {
+  readonly tasks: WebuiCronTask[];
+}
+
+export interface WebuiCreateCronRequest {
+  readonly agentName: string;
+  readonly cronName: string;
+  readonly schedule: string;
+  readonly prompt: string;
+  readonly timezone?: string;
+  readonly enabled?: boolean;
+  readonly session?: WebuiCronSession;
+  readonly activeHours?: { readonly start: string; readonly end: string };
+}
+
+export interface WebuiUpdateCronRequest {
+  readonly agentName: string;
+  readonly cronName: string;
+  readonly schedule?: string;
+  readonly prompt?: string;
+  /** 空字符串表示清除时区。 */
+  readonly timezone?: string;
+  readonly enabled?: boolean;
+}
+
+export interface WebuiDeleteCronRequest {
+  readonly agentName: string;
+  readonly cronName: string;
+}
+
+export interface WebuiTriggerCronRequest {
+  readonly agentName: string;
+  readonly cronName: string;
+}
+
 /* Transport — the single bag of methods the foundation app and the
  * composer consume. Every method here was previously an optional prop on
  * `WebuiClientFoundationAppProps`. The optional semantics are preserved:
@@ -603,6 +669,21 @@ export interface WebuiTransport {
       readonly description?: string;
     }[];
   }>;
+  /** Scheduled tasks. Mutations return `success`; the panel re-reads the list
+   * afterwards rather than trusting a partial echo of the new state. */
+  readonly listCrons?: () => Promise<WebuiListCronsResult>;
+  readonly createCron?: (
+    request: WebuiCreateCronRequest,
+  ) => Promise<{ readonly success?: boolean }>;
+  readonly updateCron?: (
+    request: WebuiUpdateCronRequest,
+  ) => Promise<{ readonly success?: boolean }>;
+  readonly deleteCron?: (
+    request: WebuiDeleteCronRequest,
+  ) => Promise<{ readonly success?: boolean }>;
+  readonly triggerCron?: (
+    request: WebuiTriggerCronRequest,
+  ) => Promise<{ readonly success?: boolean }>;
   readonly pluginManagement?: (request: import("../shared/plugin-management.js").WebuiPluginManagementRequest) => Promise<unknown>;
   readonly getPermissionMode?: () => Promise<unknown>;
   readonly setPermissionMode?: (request: { readonly mode: "default" | "auto" | "bypassPermissions" }) => Promise<unknown>;

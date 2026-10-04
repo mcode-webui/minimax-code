@@ -191,6 +191,32 @@ export class WebuiService {
       createGoal: (request) => this.port.createGoal(request),
       patchGoal: (request) => this.port.patchGoal(request),
       clearGoal: (request) => this.port.clearGoal(request),
+      // The cron store is reached through `apiHost.cronRuntime`, which is an
+      // optional field on the runtime host handle: a test double or a host built
+      // without the scheduled-task surface leaves the port method undefined. Each
+      // forward therefore fails closed with one message rather than failing as an
+      // undefined call, so "this host has no cron" is legible in the wire error
+      // instead of a TypeError.
+      listCrons: () => {
+        if (!this.port.listCrons) throw new Error("runtime host does not expose cron");
+        return this.port.listCrons();
+      },
+      createCron: (request) => {
+        if (!this.port.createCron) throw new Error("runtime host does not expose cron");
+        return this.port.createCron(request);
+      },
+      updateCron: (request) => {
+        if (!this.port.updateCron) throw new Error("runtime host does not expose cron");
+        return this.port.updateCron(request);
+      },
+      deleteCron: (request) => {
+        if (!this.port.deleteCron) throw new Error("runtime host does not expose cron");
+        return this.port.deleteCron(request);
+      },
+      triggerCron: (request) => {
+        if (!this.port.triggerCron) throw new Error("runtime host does not expose cron");
+        return this.port.triggerCron(request);
+      },
       listWorkspaceFileTree: (request) => this.port.listWorkspaceFileTree(request),
       readWorkspaceFile: (request) => this.port.readWorkspaceFile(request),
       getWorkspaceEnvironment: (request) => this.port.getWorkspaceEnvironment(request),

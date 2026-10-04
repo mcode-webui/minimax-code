@@ -95,6 +95,13 @@ export type {
   WebuiPermissionDecision,
   WebuiQueueItem,
   WebuiModelEntry,
+  WebuiCronSession,
+  WebuiCronTask,
+  WebuiListCronsResult,
+  WebuiCreateCronRequest,
+  WebuiUpdateCronRequest,
+  WebuiDeleteCronRequest,
+  WebuiTriggerCronRequest,
 } from "./port.js";
 export {
   createHarnessPortFromHost,

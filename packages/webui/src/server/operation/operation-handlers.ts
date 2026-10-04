@@ -12,6 +12,13 @@ import type {
 } from "./operation-contract.js";
 import type { WebuiTerminalManager } from "../terminal.js";
 
+/**
+ * One message for every missing-scheduler path, so a panel that has no cron
+ * capability reads the same whether the gap is on the port or on the runtime
+ * host behind it. `host.ts` throws the same string from its own nested guard.
+ */
+const CRON_UNAVAILABLE = "runtime host does not expose cron";
+
 type OperationModule = typeof import("./operations.js");
 type OperationDescriptorName = Exclude<
   Extract<keyof OperationModule, `${string}Operation`>,
@@ -105,6 +112,11 @@ export type WebuiOperationPort = Pick<
   | "startCodexOAuthLogin"
   | "cancelCodexOAuthLogin"
   | "refreshModels"
+  | "listCrons"
+  | "createCron"
+  | "updateCron"
+  | "deleteCron"
+  | "triggerCron"
   | "requestCompaction"
   | "invalidateAuth"
 >;
@@ -230,6 +242,29 @@ export function createOperationHandlers(
     startCodexOAuthLogin: async (_context, body) => ({ body: await port.startCodexOAuthLogin(body) }),
     cancelCodexOAuthLogin: async (_context, body) => ({ body: await port.cancelCodexOAuthLogin(body) }),
     refreshModels: async () => ({ body: await port.refreshModels() }),
+    // Scheduled tasks. The port methods are optional for the same reason
+    // `pluginManagement` is: the scheduler is a borrowed runtime capability,
+    // so a port without it answers one clear error instead of crashing.
+    listCrons: async () => {
+      if (!port.listCrons) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.listCrons() };
+    },
+    createCron: async (_context, body) => {
+      if (!port.createCron) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.createCron(body) };
+    },
+    updateCron: async (_context, body) => {
+      if (!port.updateCron) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.updateCron(body) };
+    },
+    deleteCron: async (_context, body) => {
+      if (!port.deleteCron) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.deleteCron(body) };
+    },
+    triggerCron: async (_context, body) => {
+      if (!port.triggerCron) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.triggerCron(body) };
+    },
     runCommand: async (_context, body) => ({ body: await runWebuiCommand(port, body) }),
     signOut: async () => {
       await port.invalidateAuth();

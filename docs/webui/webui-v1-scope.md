@@ -22,7 +22,7 @@ assembly it needs. The reasoning behind the decisions lives in [`../adr`](adr/).
 
 ## Out of scope for the first version
 
-- Account, provider, plugin, cron and update panels. States that need them are
+- Account, provider, plugin and update panels. States that need them are
   reported as messages, not as configuration interfaces.
 - Terminal rendering, terminal image preview, check-in
 - Remote or LAN access — see
@@ -31,6 +31,10 @@ assembly it needs. The reasoning behind the decisions lives in [`../adr`](adr/).
 - Taking over turns owned by another runtime owner
 - Automatic resume of persisted jobs at cold start — see
   [ADR 0002](../adr/0002-in-process-runtime-host-with-quarantined-cold-start.md)
+
+The scheduled-task (`定时`) panel is a later addition to this list. It manages
+tasks in the shared cron store and starts the scheduler on first use, so ADR 0002
+carries an amendment describing what that does and does not change.
 
 ## Behaviour boundaries
 

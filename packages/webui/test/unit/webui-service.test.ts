@@ -68,6 +68,16 @@ import type {
 import { createWebuiTransport } from "../../src/client/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
 import { getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation } from "../../src/server/operation/workspace.js";
+import {
+  createCronOperation,
+  listCronsOperation,
+  updateCronOperation,
+  WebuiCronError,
+  type WebuiCronEngineConfig,
+  type WebuiCronEngineConfigUpdate,
+  type WebuiCronEngineTaskState,
+  type WebuiCronRuntime,
+} from "../../src/server/operation/cron.js";
 
 type CloseEvent = [number, Buffer];
 // `once` from `node:events` is overloaded and not generic, so
@@ -2962,6 +2972,406 @@ describe("WebUI host factory", () => {
     // Idempotent close: a second call does not re-close the host.
     await harness.close();
     expect(apiHost.closeCalls).toBe(1);
+  });
+});
+
+/**
+ * Scheduled tasks (定时任务).
+ *
+ * The WebUI never owns the cron store — it borrows the runtime host's
+ * scheduler through `apiHost.cronRuntime`. These tests therefore drive the
+ * real `createHarnessPortFromHost` adapter over a fake engine that copies the
+ * registry's own semantics (duplicate → 409, missing → undefined / 404), so
+ * the wire mapping and the polarity flips are exercised without a scheduler.
+ */
+describe("WebUI scheduled tasks", () => {
+  interface FakeCronEngine {
+    readonly startReasons: string[];
+    readonly tasks: Map<string, WebuiCronEngineTaskState>;
+    readonly created: WebuiCronEngineConfig[];
+    readonly updates: WebuiCronEngineConfigUpdate[];
+    readonly triggered: string[];
+    readonly runtime: WebuiCronRuntime;
+  }
+
+  function fakeCronEngine(): FakeCronEngine {
+    const startReasons: string[] = [];
+    const tasks = new Map<string, WebuiCronEngineTaskState>();
+    const created: WebuiCronEngineConfig[] = [];
+    const updates: WebuiCronEngineConfigUpdate[] = [];
+    const triggered: string[] = [];
+    const key = (agentName: string, cronName: string) => `${agentName}/${cronName}`;
+    const runtime: WebuiCronRuntime = {
+      async ensureStarted(reason?: string) {
+        startReasons.push(reason ?? "");
+      },
+      registry: {
+        listAllTasks: () => [...tasks.values()],
+        getTask: (agentName, cronName) => tasks.get(key(agentName, cronName)),
+        async createTask(agentName, cronName, config) {
+          if (tasks.has(key(agentName, cronName))) {
+            const error = new Error(
+              `Cron task already registered: ${agentName}/${cronName}`,
+            ) as Error & { code: string; statusCode: number };
+            error.code = "CRON_TASK_EXISTS";
+            error.statusCode = 409;
+            throw error;
+          }
+          created.push(config);
+          const state: WebuiCronEngineTaskState = {
+            agentName,
+            cronName,
+            cronId: `cron-${tasks.size + 1}`,
+            config,
+            enabled: !config.disabled,
+            lastRun: null,
+            lastResult: null,
+            lastError: null,
+            nextRun: 1893456000000,
+            status: "idle",
+          };
+          tasks.set(key(agentName, cronName), state);
+          return state;
+        },
+        async updateConfig(agentName, cronName, update) {
+          const state = tasks.get(key(agentName, cronName));
+          if (!state) return undefined;
+          updates.push(update);
+          const next: WebuiCronEngineTaskState = {
+            ...state,
+            config: {
+              ...state.config,
+              ...(update.disabled !== undefined ? { disabled: update.disabled } : {}),
+              ...(update.schedule !== undefined ? { schedule: update.schedule } : {}),
+              ...(update.prompt !== undefined ? { prompt: update.prompt } : {}),
+              ...(update.timezone !== undefined ? { timezone: update.timezone ?? undefined } : {}),
+            },
+            enabled: update.disabled !== undefined ? !update.disabled : state.enabled,
+          };
+          tasks.set(key(agentName, cronName), next);
+          return next;
+        },
+        async deleteTask(agentName, cronName) {
+          return tasks.delete(key(agentName, cronName));
+        },
+        async triggerTask(agentName, cronName) {
+          const state = tasks.get(key(agentName, cronName));
+          if (!state) {
+            const error = new Error(
+              `Cron task '${cronName}' not found for agent '${agentName}'`,
+            ) as Error & { code: string; statusCode: number };
+            error.code = "CRON_TASK_NOT_FOUND";
+            error.statusCode = 404;
+            throw error;
+          }
+          triggered.push(key(agentName, cronName));
+          return { ok: true };
+        },
+      },
+    };
+    return { startReasons, tasks, created, updates, triggered, runtime };
+  }
+
+  async function cronPort(engine?: FakeCronEngine) {
+    const { createHarnessPortFromHost } =
+      await import("../../src/server/index.js");
+    return createHarnessPortFromHost({
+      apiHost: {
+        close: async () => undefined,
+        ...(engine ? { cronRuntime: engine.runtime } : {}),
+      },
+      dataDir: "/tmp/data",
+      appVersion: "1.2.3",
+    });
+  }
+
+  function seedTask(
+    engine: FakeCronEngine,
+    overrides: Partial<WebuiCronEngineTaskState> = {},
+  ): void {
+    engine.tasks.set("webui-agent/morning-report", {
+      agentName: "webui-agent",
+      cronName: "morning-report",
+      cronId: "cron-7",
+      config: {
+        disabled: false,
+        schedule: "0 9 * * *",
+        scheduleType: "cron",
+        prompt: "summarize yesterday",
+        timezone: "Asia/Shanghai",
+        activeHours: { start: "08:00", end: "20:00" },
+        session: { mode: "new", keepSessions: 3 },
+      },
+      enabled: true,
+      lastRun: 1893369600000,
+      lastResult: "success",
+      lastError: null,
+      nextRun: 1893456000000,
+      status: "idle",
+      ...overrides,
+    });
+  }
+
+  it("lists an empty schedule without inventing a task", async () => {
+    const engine = fakeCronEngine();
+    const port = await cronPort(engine);
+    await expect(port.listCrons!()).resolves.toEqual({ tasks: [] });
+    // The scheduler is pulled up explicitly, attributed to the WebUI.
+    expect(engine.startReasons).toEqual(["webui:listCrons"]);
+  });
+
+  it("maps engine state onto the frozen wire shape", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine);
+    const port = await cronPort(engine);
+    const result = await port.listCrons!();
+    expect(result.tasks).toHaveLength(1);
+    expect(result.tasks[0]).toEqual({
+      cronName: "morning-report",
+      agentName: "webui-agent",
+      cronId: "cron-7",
+      schedule: "0 9 * * *",
+      scheduleType: "cron",
+      timezone: "Asia/Shanghai",
+      enabled: true,
+      prompt: "summarize yesterday",
+      session: { mode: "new", keepSessions: 3 },
+      activeHours: { start: "08:00", end: "20:00" },
+      status: "idle",
+      lastRun: 1893369600000,
+      lastResult: "success",
+      lastError: null,
+      nextRun: 1893456000000,
+    });
+  });
+
+  it("maps a paused task back to enabled: false and explicit nulls", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine, {
+      cronId: undefined,
+      enabled: false,
+      status: "skipped",
+      lastRun: null,
+      lastResult: null,
+      nextRun: null,
+      config: {
+        disabled: true,
+        schedule: "@daily",
+        scheduleType: "cron",
+        prompt: "check the build",
+        session: { mode: "root" },
+      },
+    });
+    const port = await cronPort(engine);
+    const [task] = (await port.listCrons!()).tasks;
+    expect(task).toMatchObject({
+      enabled: false,
+      status: "skipped",
+      session: { mode: "root" },
+      lastRun: null,
+      lastResult: null,
+      nextRun: null,
+    });
+    // Optional fields stay absent rather than becoming empty strings.
+    expect("cronId" in task).toBe(false);
+    expect("timezone" in task).toBe(false);
+    expect("activeHours" in task).toBe(false);
+  });
+
+  it("creates a task, flipping the wire's enabled onto the engine's disabled", async () => {
+    const engine = fakeCronEngine();
+    const port = await cronPort(engine);
+    await expect(
+      port.createCron!({
+        agentName: "webui-agent",
+        cronName: "morning-report",
+        schedule: "0 9 * * *",
+        prompt: "summarize yesterday",
+        timezone: "Asia/Shanghai",
+        session: { mode: "new", keepSessions: null },
+        activeHours: { start: "08:00", end: "20:00" },
+      }),
+    ).resolves.toEqual({ success: true });
+    expect(engine.created[0]).toEqual({
+      schedule: "0 9 * * *",
+      scheduleType: "cron",
+      prompt: "summarize yesterday",
+      timezone: "Asia/Shanghai",
+      activeHours: { start: "08:00", end: "20:00" },
+      session: { mode: "new", keepSessions: null },
+      disabled: false,
+    });
+    expect(engine.startReasons).toEqual(["webui:createCron"]);
+
+    await port.createCron!({
+      agentName: "webui-agent",
+      cronName: "paused-report",
+      schedule: "0 9 * * *",
+      prompt: "summarize yesterday",
+      enabled: false,
+    });
+    // Polarity flip: wire `enabled: false` is the engine's `disabled: true`.
+    expect(engine.created[1]?.disabled).toBe(true);
+  });
+
+  it("reports a duplicate name as 409 with the runtime's own wording", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine);
+    const port = await cronPort(engine);
+    const failure = await port
+      .createCron!({
+        agentName: "webui-agent",
+        cronName: "morning-report",
+        schedule: "0 9 * * *",
+        prompt: "duplicate",
+      })
+      .then(() => undefined, (error: unknown) => error);
+    expect(failure).toBeInstanceOf(WebuiCronError);
+    expect((failure as WebuiCronError).status).toBe(409);
+    expect((failure as Error).message).toContain("already registered");
+  });
+
+  it("updates a task, keeping the enabled ↔ disabled flip", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine);
+    const port = await cronPort(engine);
+    await expect(
+      port.updateCron!({ agentName: "webui-agent", cronName: "morning-report", enabled: false }),
+    ).resolves.toEqual({ success: true });
+    expect(engine.updates[0]).toEqual({ disabled: true });
+    expect((await port.listCrons!()).tasks[0]?.enabled).toBe(false);
+
+    // An empty timezone is the wire's "clear it" signal, not a zone.
+    await port.updateCron!({
+      agentName: "webui-agent",
+      cronName: "morning-report",
+      timezone: "",
+      schedule: "30 7 * * *",
+    });
+    expect(engine.updates[1]).toEqual({ timezone: null, schedule: "30 7 * * *" });
+    expect(engine.startReasons).toContain("webui:updateCron");
+  });
+
+  it("answers 404 for an update of a task that does not exist", async () => {
+    const engine = fakeCronEngine();
+    const port = await cronPort(engine);
+    const failure = await port
+      .updateCron!({ agentName: "webui-agent", cronName: "ghost", enabled: true })
+      .then(() => undefined, (error: unknown) => error);
+    expect((failure as WebuiCronError).status).toBe(404);
+  });
+
+  it("deletes a task and reports whether it was there", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine);
+    const port = await cronPort(engine);
+    await expect(
+      port.deleteCron!({ agentName: "webui-agent", cronName: "morning-report" }),
+    ).resolves.toEqual({ success: true });
+    await expect(
+      port.deleteCron!({ agentName: "webui-agent", cronName: "morning-report" }),
+    ).resolves.toEqual({ success: false });
+    expect(engine.tasks.size).toBe(0);
+    expect(engine.startReasons).toContain("webui:deleteCron");
+  });
+
+  it("triggers a task on demand", async () => {
+    const engine = fakeCronEngine();
+    seedTask(engine);
+    const port = await cronPort(engine);
+    await expect(
+      port.triggerCron!({ agentName: "webui-agent", cronName: "morning-report" }),
+    ).resolves.toEqual({ success: true });
+    expect(engine.triggered).toEqual(["webui-agent/morning-report"]);
+    expect(engine.startReasons).toEqual(["webui:triggerCron"]);
+  });
+
+  it("fails every operation closed when the host has no cron runtime", async () => {
+    const port = await cronPort();
+    await expect(port.listCrons!()).rejects.toThrow("runtime host does not expose cron");
+    await expect(
+      port.createCron!({ agentName: "a", cronName: "b", schedule: "0 9 * * *", prompt: "p" }),
+    ).rejects.toThrow("runtime host does not expose cron");
+    await expect(
+      port.updateCron!({ agentName: "a", cronName: "b", enabled: true }),
+    ).rejects.toThrow("runtime host does not expose cron");
+    await expect(
+      port.deleteCron!({ agentName: "a", cronName: "b" }),
+    ).rejects.toThrow("runtime host does not expose cron");
+    await expect(
+      port.triggerCron!({ agentName: "a", cronName: "b" }),
+    ).rejects.toThrow("runtime host does not expose cron");
+  });
+
+  it("registers all five operations and rejects a malformed body before the engine", async () => {
+    const { createOperationRegistry } =
+      await import("../../src/server/operation/operations.js");
+    const engine = fakeCronEngine();
+    const port = await cronPort(engine);
+    const registry = createOperationRegistry(port);
+    for (const name of [
+      "listCrons",
+      "createCron",
+      "updateCron",
+      "deleteCron",
+      "triggerCron",
+    ]) {
+      expect(registry.has(name), `expected ${name} to be registered`).toBe(true);
+    }
+    const result = async (name: string, body: unknown) =>
+      (await registry.get(name)?.handle({ requestId: name }, body)) as {
+        readonly body: unknown;
+      };
+
+    expect(await result("listCrons", undefined)).toEqual({ body: { tasks: [] } });
+    expect(await result("createCron", {
+      agentName: "webui-agent",
+      cronName: "morning-report",
+      schedule: "0 9 * * *",
+      prompt: "summarize yesterday",
+    })).toEqual({ body: { success: true } });
+    expect(await result("triggerCron", {
+      agentName: "webui-agent",
+      cronName: "morning-report",
+    })).toEqual({ body: { success: true } });
+
+    // `listCrons` takes no body, and a bad cron name or schedule never
+    // reaches the store.
+    expect(listCronsOperation.validate({})).toMatchObject({ ok: false });
+    expect(
+      createCronOperation.validate({
+        agentName: "webui-agent",
+        cronName: "bad/name",
+        schedule: "0 9 * * *",
+        prompt: "p",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      updateCronOperation.validate({
+        agentName: "webui-agent",
+        cronName: "morning-report",
+        schedule: "not-a-cron",
+      }),
+    ).toMatchObject({ ok: false });
+    expect(engine.created).toHaveLength(1);
+  });
+
+  it("fails closed at the handler when a port has no cron methods", async () => {
+    const { createOperationRegistry } =
+      await import("../../src/server/operation/operations.js");
+    const port = { version: () => ({ version: "stub", protocolVersion: 1 }) };
+    const registry = createOperationRegistry(port as unknown as WebuiHarnessPort);
+    await expect(
+      registry.get("listCrons")?.handle({ requestId: "listCrons" }, undefined),
+    ).rejects.toThrow("runtime host does not expose cron");
+    await expect(
+      registry.get("createCron")?.handle({ requestId: "createCron" }, {
+        agentName: "a",
+        cronName: "b",
+        schedule: "0 9 * * *",
+        prompt: "p",
+      }),
+    ).rejects.toThrow("runtime host does not expose cron");
   });
 });
 

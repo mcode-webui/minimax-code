@@ -135,8 +135,8 @@ function renderSessionShell(): string {
   );
 }
 
-/** The four rail destinations the desktop ships that the WebUI has no feature for. */
-const INERT_NAV_LABELS = ["定时", "网站", "远程"];
+/** The two rail destinations the desktop ships that the WebUI has no feature for. */
+const INERT_NAV_LABELS = ["网站", "远程"];
 
 describe("WebUI shell", () => {
   it("projects desktop workspace state and exposes only the supported add-menu tabs", () => {
@@ -975,6 +975,16 @@ describe("WebUI shell — desktop anatomy", () => {
     }
     expect(html).toMatch(/data-webui-nav-item="插件"/u);
 
+    // 「定时」 now opens its own page, so its row is a live button: the 500
+    // character window after the marker is the row's own markup, and
+    // `disabled` there would mean the nav is still gated.
+    const schedulesAt = html.indexOf('data-webui-nav-item="定时"');
+    expect(schedulesAt, "nav row 定时 missing").toBeGreaterThan(-1);
+    expect(
+      html.slice(schedulesAt, schedulesAt + 500),
+      "nav row 定时 is still disabled",
+    ).not.toMatch(/disabled/u);
+
     // The current destination carries the state hook, so the selected row has
     // something to read.
     expect(html).toMatch(/data-webui-nav-active="true"/u);
@@ -1058,7 +1068,10 @@ describe("WebUI shell — desktop anatomy", () => {
     // shipped: each one changes the list, so they are bound rather than
     // decorative, and the count moved from 8 to 11. The favourites tab joined
     // them when starring shipped: it swaps the rail to the starred set, so it
-    // is bound on the same terms, and the count moved from 11 to 12.
+    // is bound on the same terms, and the count moved from 11 to 12. The
+    // 「定时」 row joined them when the schedules page shipped: it opens that
+    // page, so it is bound on the same terms, and the count moved from 12 to
+    // 13.
     const html = renderShell();
     const controlTags: string[] = [];
     const re = /<(button|div|a|input|textarea|select)\b[^>]*>/gu;
@@ -1073,7 +1086,7 @@ describe("WebUI shell — desktop anatomy", () => {
         !/(?:^|\s)disabled(?:=|\s|>)/u.test(tag) &&
         !/aria-disabled="true"/u.test(tag),
     );
-    expect(operable).toHaveLength(12);
+    expect(operable).toHaveLength(13);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
     expect(html).toMatch(/data-webui-sidebar-toggle="true"/u);
     expect(html).toMatch(/data-webui-nav-item="新建任务"/u);

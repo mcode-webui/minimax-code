@@ -2,6 +2,7 @@ import { versionOperation, listSessionsOperation, listVisibleProjectsOperation, 
 import { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
 import { getMessagesOperation, getSessionDiffOperation, getTurnDiffOperation, revertTurnDiffOperation, reapplyTurnDiffOperation, getSessionRewindPreviewOperation, rewindSessionOperation, editSessionMessageOperation } from "./messages.js";
 import { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoalOperation, clearGoalOperation } from "./goal.js";
+import { listCronsOperation, createCronOperation, updateCronOperation, deleteCronOperation, triggerCronOperation } from "./cron.js";
 import { sendMessageOperation, enqueueMessageOperation, resumeSessionOperation } from "./interaction.js";
 import { watchEventsOperation, listPendingPermissionsOperation, getPendingQuestionnaireOperation, replyPermissionOperation, replyQuestionnaireOperation, dismissQuestionnaireOperation } from "./questionnaire.js";
 import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
@@ -12,6 +13,7 @@ export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, 
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
 export { getMessagesOperation, getSessionDiffOperation, getTurnDiffOperation, revertTurnDiffOperation, reapplyTurnDiffOperation, getSessionRewindPreviewOperation, rewindSessionOperation, editSessionMessageOperation } from "./messages.js";
 export { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoalOperation, clearGoalOperation } from "./goal.js";
+export { listCronsOperation, createCronOperation, updateCronOperation, deleteCronOperation, triggerCronOperation } from "./cron.js";
 export { sendMessageOperation, enqueueMessageOperation, resumeSessionOperation } from "./interaction.js";
 export { watchEventsOperation, listPendingPermissionsOperation, getPendingQuestionnaireOperation, replyPermissionOperation, replyQuestionnaireOperation, dismissQuestionnaireOperation } from "./questionnaire.js";
 export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
@@ -159,6 +161,11 @@ export function createOperationRegistry(
   registerOperation(registry, { operation: createGoalOperation, handle: handlers.createGoal });
   registerOperation(registry, { operation: patchGoalOperation, handle: handlers.patchGoal });
   registerOperation(registry, { operation: clearGoalOperation, handle: handlers.clearGoal });
+  registerOperation(registry, { operation: listCronsOperation, handle: handlers.listCrons });
+  registerOperation(registry, { operation: createCronOperation, handle: handlers.createCron });
+  registerOperation(registry, { operation: updateCronOperation, handle: handlers.updateCron });
+  registerOperation(registry, { operation: deleteCronOperation, handle: handlers.deleteCron });
+  registerOperation(registry, { operation: triggerCronOperation, handle: handlers.triggerCron });
   registerOperation(registry, { operation: listSessionsOperation, handle: handlers.listSessions });
   registerOperation(registry, { operation: listVisibleProjectsOperation, handle: handlers.listVisibleProjects });
   registerOperation(registry, { operation: getSessionTreeOperation, handle: handlers.getSessionTree });

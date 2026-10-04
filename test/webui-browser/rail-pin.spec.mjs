@@ -18,9 +18,9 @@
 // clicking through the menu. Seeding is the only way to reach the pinned state
 // in a fixture whose transport is read-only.
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { assertHarnessServer, openApp } from "./harness.mjs";
+import { openApp, test } from "./harness.mjs";
 
 const SESSION_PINS = "mavis-webui-session-pins:v1";
 const PROJECT_PINS = "mavis-webui-project-pins:v1";
@@ -103,7 +103,6 @@ test("the mark is still there while the row is hovered", async ({ page }) => {
 test("a pinned row shows its pin without being hovered", async ({ page }) => {
   await seedPins(page, { sessions: { A: true } });
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   // No hover anywhere in this test, on purpose. That is the whole claim: the
   // mark is standing, not an affordance that appears when the pointer arrives.

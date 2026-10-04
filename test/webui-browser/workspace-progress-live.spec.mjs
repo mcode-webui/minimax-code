@@ -4,8 +4,8 @@
 // pre-existing suites only ever asserted the state a session opens with, which
 // is why goal and todo progress stayed frozen until the page was reloaded.
 
-import { expect, test } from "@playwright/test";
-import { configureFixture, emitAgentMessage, openApp, requestCount } from "./harness.mjs";
+import { expect } from "@playwright/test";
+import { configureFixture, emitAgentMessage, openApp, requestCount, test } from "./harness.mjs";
 
 /** Answer `isGoalEnabled` with `true` and `getGoal` from a value the test
  *  controls, so a goal re-read is observable. */

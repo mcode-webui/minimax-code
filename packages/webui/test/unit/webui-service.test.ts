@@ -61,6 +61,9 @@ import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
+  WebuiImportSessionTransferRequest,
+  WebuiImportSessionTransferResult,
+  WebuiSessionTransferFile,
 } from "../../src/server/port.js";
 import { createWebuiTransport } from "../../src/client/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
@@ -160,6 +163,22 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     _request: WebuiMessagesRequest,
   ): Promise<WebuiMessagesResult> {
     return { messages: [], hasMore: false };
+  }
+
+  // The transfer round trip has its own tests. These two exist because
+  // `WebuiHarnessPort` requires them, and they throw rather than return a
+  // plausible empty value: a double that answers a call it was never taught
+  // to answer turns a missing assertion into a passing one.
+  async exportSessionTransfer(
+    _request: { readonly id: string },
+  ): Promise<WebuiSessionTransferFile> {
+    throw new Error("exportSessionTransfer is not scripted on this double");
+  }
+
+  async importSessionTransfer(
+    _request: WebuiImportSessionTransferRequest,
+  ): Promise<WebuiImportSessionTransferResult> {
+    throw new Error("importSessionTransfer is not scripted on this double");
   }
 
   async getSessionDiff(request: WebuiGetSessionDiffRequest) {
@@ -3108,6 +3127,16 @@ describe("WebUI shutdown order (criterion 7)", () => {
       async getSessionTree() {
         return { sessions: [], hasMore: false };
       },
+      // Throw rather than fabricate a transfer file. These ports record
+      // shutdown ordering; a stub that answered with a plausible empty
+      // transfer would let an assertion about export/import pass against
+      // data this double made up.
+      async exportSessionTransfer() {
+        throw new Error("exportSessionTransfer is not scripted on this double");
+      },
+      async importSessionTransfer() {
+        throw new Error("importSessionTransfer is not scripted on this double");
+      },
       async archiveSession() {
         return { success: true };
       },
@@ -3469,6 +3498,16 @@ describe("WebUI shutdown order (criterion 7)", () => {
       // rather than a runtime `undefined is not a function`.
       async getSessionTree() {
         return { sessions: [], hasMore: false };
+      },
+      // Throw rather than fabricate a transfer file. These ports record
+      // shutdown ordering; a stub that answered with a plausible empty
+      // transfer would let an assertion about export/import pass against
+      // data this double made up.
+      async exportSessionTransfer() {
+        throw new Error("exportSessionTransfer is not scripted on this double");
+      },
+      async importSessionTransfer() {
+        throw new Error("importSessionTransfer is not scripted on this double");
       },
       async archiveSession() {
         return { success: true };

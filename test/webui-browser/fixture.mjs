@@ -1,12 +1,36 @@
 export function installFixtureTransport() {
-  const sessions = ["A", "B"].map((sessionId, index) => ({
-    sessionId,
-    agentName: `synthetic-${sessionId}`,
-    title: `Synthetic ${sessionId}`,
+  const sessions = [
+    { id: "A", title: "绿川椒 Demo 订货小程序" },
+    { id: "B", title: "灵动岛卡住问题" },
+  ].map(({ id, title }, index) => ({
+    sessionId: id,
+    agentName: `synthetic-${id}`,
+    title,
     createdAt: 1_700_000_000_000 + index,
+    // B is the newer one on purpose: the rail orders by `updatedAt`, newest
+    // first, and a fixture where both rows tie would let an ordering assertion
+    // pass for the wrong reason -- the same trap the view-sorting unit test
+    // fell into once already.
     updatedAt: 1_700_000_000_000 + index,
     workspaceDir: "/synthetic/workspace",
   }));
+  // The rail builds its project rows from this, not from the session list:
+  // `WebuiProjectList` groups `page.sessions` under the records here, so an
+  // empty answer renders no project row, no session row, and no search box.
+  // Returning `[]` is a valid server answer and a useless fixture.
+  const projects = [
+    {
+      projectId: 1,
+      projectKind: "workspace",
+      workspaceDir: "/synthetic/workspace",
+      pinned: false,
+      hidden: false,
+      orderIndex: 0,
+      recentAtMs: 1_700_000_000_001,
+      latestActivityAtMs: 1_700_000_000_001,
+      sessionCount: sessions.length,
+    },
+  ];
   const pages = {
     A: { messages: [{ msgId: "history-A", role: "user", msgContent: "History A synthetic", timestamp: 1_700_000_000_001 }], hasMore: false },
     B: { messages: [{ msgId: "history-B", role: "user", msgContent: "History B synthetic", timestamp: 1_700_000_000_002 }], hasMore: false },
@@ -23,7 +47,7 @@ export function installFixtureTransport() {
   const responseFor = (operation, body) => {
     if (operation === "listSessions") return { sessions, hasMore: false };
     if (operation === "getSessionTree") return { sessions: [], hasMore: false };
-    if (operation === "listVisibleProjects") return [];
+    if (operation === "listVisibleProjects") return projects;
     if (operation === "getMessages") {
       if (body?.before) return { messages: [{ msgId: `older-${body.before}`, role: "user", msgContent: "Older synthetic page", timestamp: 1_699_999_999_999 }], hasMore: false };
       return pages[body?.id] ?? { messages: [], hasMore: false };

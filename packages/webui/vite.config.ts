@@ -140,6 +140,24 @@ export default defineConfig({
         target: `ws://127.0.0.1:${serverPort}`,
         ws: true,
       },
+      // The session transfer routes are plain HTTP, and the dev client is same
+      // origin with Vite -- `__WEBUI_CONFIG__.websocketUrl` points back at
+      // `location.host`, so an unproxied POST here would land on Vite and 404
+      // instead of reaching the server. Production serves the client from the
+      // same listener and needs no proxy.
+      //
+      // Regex keys, not paths: a non-`^` key is a `startsWith` prefix match, and
+      // the client module `src/client/session-import.ts` is served at exactly
+      // `/session-import.ts`. A `/session-import` key swallowed it, Vite answered
+      // that module request with a bare 404, `main.tsx` never evaluated and the
+      // shell rendered blank with no console error. The trailing group keeps the
+      // query string in the match, because the route URL carries one.
+      "^/session-transfer(\\?|$)": {
+        target: `http://127.0.0.1:${serverPort}`,
+      },
+      "^/session-import(\\?|$)": {
+        target: `http://127.0.0.1:${serverPort}`,
+      },
     },
   },
 });

@@ -423,11 +423,13 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       rule.context.some((entry) => entry.includes("prefers-reduced-motion")),
     );
 
-    // Five blocks in shell.css, six rules inside them (the settings block
+    // Six blocks in shell.css, seven rules inside them (the settings block
     // disables two selectors). Deleting one of these is the failure mode this
     // assertion exists for: the base rule would keep animating for a user who
-    // asked for reduced motion.
-    expect(reducedMotion).toHaveLength(6);
+    // asked for reduced motion. The exact list is the point -- adding an
+    // animated rule without registering its override here is the same defect,
+    // in the other direction.
+    expect(reducedMotion).toHaveLength(7);
     for (const rule of reducedMotion)
       expect(rule.body).toMatch(/(?:animation|transition):\s*none/u);
 
@@ -439,6 +441,11 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       // the quota bar fill all transition in their base rules.
       ".webui-context-usage-popover, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
       ".webui-message-actions",
+      // Added with the rail activity spinner. It spins forever by design, so a
+      // reader who asked for reduced motion would otherwise get an animation
+      // that never stops -- stopped but still drawn, so the row still reads as
+      // busy.
+      ".webui-rail-spinner",
       ".webui-settings-content",
       // Renamed from `.webui-settings-toggle span` when the toggle became the
       // shared `.webui-toggle-switch` control.

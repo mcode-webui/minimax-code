@@ -881,7 +881,21 @@ describe("WebUI shell", () => {
         loading: false,
       }),
     );
-    expect(html).toContain("No sessions yet.");
+    // Chinese, like the rest of the rail. The running and unread views override
+    // this with their own, and "no sessions yet" is false in both of them.
+    expect(html).toContain("暂无会话");
+  });
+
+  it("lets a view name its own empty state", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [], hasMore: false },
+        loading: false,
+        emptyLabel: "没有未读会话",
+      }),
+    );
+    expect(html).toContain("没有未读会话");
+    expect(html).not.toContain("暂无会话");
   });
 });
 
@@ -1034,7 +1048,15 @@ describe("WebUI shell — desktop anatomy", () => {
     //
     // Every rendered control is backed by an actual WebUI transport or local
     // composer action. The attachment menu is now operable and opens the
-    // catalogue/file actions rather than a disabled placeholder.
+    // catalogue/file actions rather than a disabled placeholder. The rail
+    // search button joined them when session search shipped — it toggles the
+    // search input rather than sitting disabled, which is why the count moved
+    // from 6 to 7. The rail import row joined them when session import
+    // shipped: it opens a file picker that posts to /session-import, so it is
+    // bound rather than a placeholder, and the count moved from 7 to 8. The
+    // three rail view tabs joined them when the project/running/unread switch
+    // shipped: each one changes the list, so they are bound rather than
+    // decorative, and the count moved from 8 to 11.
     const html = renderShell();
     const controlTags: string[] = [];
     const re = /<(button|div|a|input|textarea|select)\b[^>]*>/gu;
@@ -1049,10 +1071,29 @@ describe("WebUI shell — desktop anatomy", () => {
         !/(?:^|\s)disabled(?:=|\s|>)/u.test(tag) &&
         !/aria-disabled="true"/u.test(tag),
     );
-    expect(operable).toHaveLength(6);
+    expect(operable).toHaveLength(11);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
     expect(html).toMatch(/data-webui-sidebar-toggle="true"/u);
     expect(html).toMatch(/data-webui-nav-item="新建任务"/u);
+    // The search control must stay operable: reverting it to the disabled
+    // placeholder would silently drop session search rather than fail loudly.
+    expect(html).toMatch(/data-webui-search="true" aria-expanded="false"/u);
+    expect(html).not.toMatch(/data-webui-search="true"[^>]*\sdisabled/u);
+    // Same for import. Without this the picker could be unbound -- the server
+    // route would still answer, and only a real user's click would find out.
+    expect(html).toMatch(/data-webui-nav-item="导入会话"/u);
+    expect(html).toMatch(/data-webui-session-import-input="true"/u);
+    expect(html).not.toMatch(/data-webui-nav-item="导入会话"[^>]*\sdisabled/u);
+    // Same for the three view tabs. A tab that is operable but does nothing is
+    // the exact shape this test exists to catch, so the selected one is
+    // asserted by name and none of them may be disabled.
+    for (const view of ["projects", "running", "unread"]) {
+      expect(html, view).toMatch(new RegExp(`data-webui-rail-view="${view}"`, "u"));
+      expect(html, view).not.toMatch(
+        new RegExp(`data-webui-rail-view="${view}"[^>]*\\sdisabled`, "u"),
+      );
+    }
+    expect(html).toMatch(/data-webui-rail-view="projects"[^>]*aria-selected="true"/u);
   });
 
   it("lets the composer take a draft before a session exists", () => {

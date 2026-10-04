@@ -11,6 +11,7 @@
 
 import type { ReactElement } from "react";
 import {
+  WebuiIconCommandCompact,
   WebuiIconCommandGoal,
   WebuiIconCommandPlan,
   WebuiIconSites,
@@ -99,9 +100,18 @@ export interface SlashCommandEntry {
  * after these entries, then the dynamically resolved skills.
  *
  * Capability gating today is the static `supported` flag. Goal is backed by
- * the goal operations, and plan entry is backed by the send-message
- * `plan-entry` intent; commands without a WebUI path remain inert until their
- * transport is wired.
+ * the goal operations, plan entry is backed by the send-message
+ * `plan-entry` intent, and compact is backed by the harness port's
+ * `runCommand` — `server/commands/runner.ts` routes `command === "compact"`
+ * into `requestCompaction`, and the operation is registered in
+ * `server/operation/operations.ts`. Commands without a WebUI path remain
+ * inert until their transport is wired.
+ *
+ * `compact` is the one run-command built-in exposed so far. The remaining
+ * names in `WEBUI_RUN_COMMAND_NAMES` (`help`, `new`, `status`, `usage`,
+ * `model`) are reachable at the transport layer but have no palette row, so
+ * a user cannot discover them; they need their own entries before they can
+ * be claimed as shipped.
  */
 export const WEBUI_BUILTIN_COMMANDS: readonly SlashCommandEntry[] = [
   {
@@ -122,6 +132,15 @@ export const WEBUI_BUILTIN_COMMANDS: readonly SlashCommandEntry[] = [
     source_type: -1,
     composerMode: "plan",
     icon: WebuiIconCommandPlan,
+    supported: true,
+  },
+  {
+    name: "compact",
+    displayName: "compact",
+    label: "压缩",
+    description: "压缩当前会话上下文；可附带说明，如 /compact 保留代码变更",
+    source_type: -1,
+    icon: WebuiIconCommandCompact,
     supported: true,
   },
 ];

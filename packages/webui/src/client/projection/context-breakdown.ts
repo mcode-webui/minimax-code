@@ -154,6 +154,35 @@ export function drawableBreakdownRows(
 }
 
 /**
+ * The share of the WINDOW that one breakdown row draws on the bar.
+ *
+ * The denominator is the context window, NOT the sum of the reported
+ * categories, and getting that backwards is invisible in the code and loud on
+ * screen. The six categories add up to the used tokens by construction, so
+ * dividing by their sum always fills the whole track: a session sitting at 43%
+ * of its window drew a completely full bar directly under a heading that said
+ * 43%, on a track whose own `aria-valuenow` said 43%. Three numbers describing
+ * one bar, two different answers, and the bar was the odd one out.
+ *
+ * So the bar now carries the same fact as the ring and the heading — how much
+ * of the window is in use — and the six segments subdivide THAT. Which also
+ * makes the segments legible against the row percentages beside them: those
+ * are shares of the USED tokens, so a category printed as 81% draws 81% of the
+ * filled part and 35% of the whole track, and both are true.
+ *
+ * An unreported row draws nothing, and a row cannot draw past the window even
+ * if the engine over-reports it: a bar that overflows its own track is the
+ * same class of lie as one that under-fills it.
+ */
+export function breakdownSegmentPercent(
+  row: ContextBreakdownRow,
+  limit: number,
+): number {
+  if (row.tokens === null || !(limit > 0)) return 0;
+  return Math.max(0, Math.min(100, (row.tokens / limit) * 100));
+}
+
+/**
  * The label a row prints in its share slot: the figure, or a dash.
  *
  * The dash is the whole point of the module. It claims only what is true —

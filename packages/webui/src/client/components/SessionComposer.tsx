@@ -39,6 +39,7 @@ import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projecti
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";
 import {
+  breakdownSegmentPercent,
   breakdownShareLabel,
   breakdownSwatchStyle,
   contextBreakdownRows,
@@ -2563,6 +2564,11 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
   // for why a missing category is a dash and not `0.0%`.
   const breakdownRows = contextBreakdownRows(usage.components, used);
   const drawableRows = drawableBreakdownRows(breakdownRows);
+  // Whether the engine accounted for ANY of the used tokens, which is the only
+  // thing this decides: with nothing to subdivide, the bar draws as one solid
+  // fill of the window instead of as segments. It is not the bar's denominator
+  // — that is the window, and the two being confused is what made a 43% session
+  // draw a full bar.
   const componentsTotal = drawableRows.reduce(
     (total, row) => total + (row.tokens ?? 0),
     0,
@@ -2688,7 +2694,7 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
               <span
                 key={row.kind}
                 className="webui-context-usage-bar-segment"
-                style={{ width: `${(row.tokens ?? 0) / componentsTotal * 100}%`, ...breakdownSwatchStyle(row) }}
+                style={{ width: `${breakdownSegmentPercent(row, limit)}%`, ...breakdownSwatchStyle(row) }}
               />
             )) : <span style={{ width: `${percent}%` }} />}
           </div>

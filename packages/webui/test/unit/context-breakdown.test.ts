@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  breakdownSegmentPercent,
   breakdownShareLabel,
   breakdownSwatchStyle,
   CONTEXT_BREAKDOWN_CATEGORIES,
@@ -123,6 +124,64 @@ describe("context breakdown — the bar only draws what it can measure", () => {
 
   it("draws nothing when the engine reported nothing", () => {
     expect(drawableBreakdownRows(contextBreakdownRows(null, 1000))).toEqual([]);
+  });
+});
+
+describe("context breakdown — the bar is measured against the WINDOW", () => {
+  // The reported defect, and the numbers are the ones that were on screen: a
+  // session holding 220,269 of a 512,000 window, under a heading reading 43%,
+  // on a track whose aria-valuenow also read 43% — and a bar drawn edge to
+  // edge. The segments divided by the sum of the reported categories, which is
+  // the used tokens, so six shares of 100% always add up to the whole track.
+  const LIMIT = 512_000;
+  const USED = 220_269;
+  // The six figures as the engine reported them, summing to USED exactly.
+  const REPORTED = components(
+    ["MESSAGES", 178_418],
+    ["TOOLS", 19_604],
+    ["MEMORY", 8_150],
+    ["SKILLS", 4_846],
+    ["OTHER", 4_846],
+    ["SYSTEM_PROMPT", 4_405],
+  );
+
+  it("fills the bar to the session's share of the window, not to the whole track", () => {
+    const rows = drawableBreakdownRows(contextBreakdownRows(REPORTED, USED));
+    const filled = rows.reduce(
+      (total, row) => total + breakdownSegmentPercent(row, LIMIT),
+      0,
+    );
+    // 43% to within a rounding step, matching the heading and the ring. The
+    // failing version returned 100 here for ANY session with a reported
+    // breakdown, which is what "the bar does not match the percentage" is.
+    expect(filled).toBeCloseTo((USED / LIMIT) * 100, 6);
+    expect(filled).toBeLessThan(50);
+  });
+
+  it("divides a category's share of the used tokens, not a share of the window", () => {
+    // The row percentages stay shares of the USED tokens — 81% of what is in
+    // the context, not 81% of the window — so the bar and the list describe the
+    // same fact at two scales rather than two different facts.
+    const rows = contextBreakdownRows(REPORTED, USED);
+    const messages = rows.find((row) => row.kind === "MESSAGES");
+    expect(messages?.percent).toBeCloseTo(81, 0);
+    expect(breakdownSegmentPercent(messages!, LIMIT)).toBeCloseTo(34.8, 1);
+  });
+
+  it("lets a full context fill the track and no further", () => {
+    const rows = contextBreakdownRows(components(["MESSAGES", LIMIT]), LIMIT);
+    expect(breakdownSegmentPercent(rows[0]!, LIMIT)).toBe(100);
+    // Over-reported: a segment that overflows its own track is the same lie as
+    // one that under-fills it, and the track is the window by definition.
+    const over = contextBreakdownRows(components(["MESSAGES", LIMIT * 2]), LIMIT);
+    expect(breakdownSegmentPercent(over[0]!, LIMIT)).toBe(100);
+  });
+
+  it("draws nothing for an unreported row or an unusable window", () => {
+    const rows = contextBreakdownRows(components(["MESSAGES", 100]), 100);
+    const unreported = rows.find((row) => row.kind === "TOOLS");
+    expect(breakdownSegmentPercent(unreported!, LIMIT)).toBe(0);
+    expect(breakdownSegmentPercent(rows[0]!, 0)).toBe(0);
   });
 });
 

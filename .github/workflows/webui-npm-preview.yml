@@ -74,6 +74,15 @@ jobs:
       - name: Inspect package contents
         run: npm pack --dry-run --json "$RUNNER_TEMP/webui-package"
       - name: Publish preview to the npm registry
+        # Publishing needs a registry credential, and this repository carries
+        # none. Without one the publish fails with ENEEDAUTH and takes the whole
+        # job red on every push to `webui` — which buries the part of this job
+        # that is actually worth gating: that the WebUI still packs into a
+        # publishable npm tarball. So the publish is conditional and says so in
+        # the run log, instead of failing at the last step forever. Add
+        # `NPM_TOKEN` to the repository secrets and the preview resumes with no
+        # change here.
+        if: ${{ secrets.NPM_TOKEN != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -86,3 +95,8 @@ jobs:
           npm publish "$RUNNER_TEMP/webui-package" --tag preview
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Report the skipped preview
+        if: ${{ secrets.NPM_TOKEN == '' }}
+        run: |
+          echo "::warning::NPM_TOKEN is not configured, so no preview was published."
+          echo "::warning::The package was still built and inspected above; only the registry write was skipped."

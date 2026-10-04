@@ -739,6 +739,16 @@ export interface WebuiQueueItem {
 export interface WebuiModelEntry {
   readonly providerId: string;
   readonly modelId: string;
+  /**
+   * Which upstream serves this model: a first-party provider, the user's own
+   * MiniMax API key, or a provider the user configured themselves.
+   *
+   * The runtime has always sent this; the port just never declared it, so the
+   * client could not tell a model the account's plan meters from one another
+   * account bills. `isTokenPlanModel` reads it to decide whether the plan
+   * figures belong beside a given model.
+   */
+  readonly providerSource?: "provider" | "minimax_api" | "custom_provider";
   readonly displayName?: string;
   readonly selected?: boolean;
   readonly enabled?: boolean;

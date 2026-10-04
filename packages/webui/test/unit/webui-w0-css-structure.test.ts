@@ -435,9 +435,10 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
     expect(selectors).toEqual([
       ".message-animate-in",
       ".signin-card-collapsing, .signin-day-claimed-animation",
-      // Added with the context-usage indicator: the popover, the bar fill and
-      // the quota bar fill all transition in their base rules.
-      ".webui-context-usage-popover, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
+      // Added with the context-usage indicator: the chevron, the hover label,
+      // the popover, the bar fill and the quota bar fill all transition in
+      // their base rules.
+      ".webui-context-usage-chevron, .webui-context-usage-popover, .webui-context-usage-label, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
       ".webui-message-actions",
       ".webui-settings-content",
       // Renamed from `.webui-settings-toggle span` when the toggle became the

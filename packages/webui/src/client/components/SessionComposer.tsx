@@ -44,6 +44,7 @@ import {
   contextBreakdownRows,
   drawableBreakdownRows,
 } from "../projection/context-breakdown.js";
+import { isTokenPlanModel } from "../projection/token-plan-model.js";
 import {
   isWebuiSubscriptionProbeCurrent,
   ownsWebuiStreamGeneration,
@@ -2288,7 +2289,11 @@ export function WebuiComposer({
                  * are neighbouring 28px squares, and 0 or 2px stops reading as
                  * separate controls at all. */}
                 <div className="ml-auto flex items-center gap-[3.2px]">
-                  <ContextUsageIndicator usage={contextUsage} usageQuota={usageQuota} />
+                  <ContextUsageIndicator
+                    usage={contextUsage}
+                    usageQuota={usageQuota}
+                    planModel={selectedModel}
+                  />
                   <WebuiModelPicker
                     models={enabledModels}
                     selected={selectedModel}
@@ -2494,12 +2499,21 @@ export function WebuiComposer({
 
 
 
-function ContextUsageIndicator({ usage, usageQuota }: {
+function ContextUsageIndicator({ usage, usageQuota, planModel }: {
   readonly usage?: Record<string, unknown>;
   readonly usageQuota?: WebuiUsageQuotaResult;
+  /** The selected model, for deciding whether the plan figures describe it. */
+  readonly planModel?: WebuiModelEntry;
 }): ReactElement | null {
   const [enabled, setEnabled] = useState(() => typeof window === "undefined" || window.localStorage?.getItem("webui-context-window-usage") !== "false");
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  // Folded every time the panel opens, including on a re-open. The split is a
+  // reading task the user opted into last time; carrying the state across
+  // openings would make a glance at the panel land on six rows of percentages
+  // because of something they did a minute ago.
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const refresh = () => setEnabled(window.localStorage?.getItem("webui-context-window-usage") !== "false");
     window.addEventListener("storage", refresh);
@@ -2509,6 +2523,23 @@ function ContextUsageIndicator({ usage, usageQuota }: {
       window.removeEventListener("webui-context-window-usage-change", refresh);
     };
   }, []);
+  // The panel is a CLICK surface, not a hover one. It holds six breakdown rows
+  // and a set of plan meters, and opening all of that under a pointer means
+  // every pass across the composer — including the one en route to the send
+  // button — throws a full panel over the transcript and then takes it away
+  // again. A pointer crossing the ring now gets the ring's NAME and nothing
+  // else, which is the only question a pointer can usefully ask about a
+  // progress ring, and the click is what says "show me the numbers".
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!anchorRef.current?.contains(event.target as Node | null)) setOpen(false);
+    };
+    // `pointerdown` rather than `click` so the press that lands outside also
+    // dismisses the panel instead of being swallowed by whatever is underneath.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open]);
   if (!enabled || !usage) return null;
   // The runtime protocol's names, not invented ones — see
   // `server/projections/context-snapshot.ts`, which is the other half of this
@@ -2536,7 +2567,11 @@ function ContextUsageIndicator({ usage, usageQuota }: {
     (total, row) => total + (row.tokens ?? 0),
     0,
   );
-  const quotaResult = usageQuota?.signedIn ? usageQuota : undefined;
+  // The plan meters describe the ACCOUNT's subscription, so they only belong
+  // here when the selected model is one that subscription pays for. Beside
+  // anyone else's model they were a claim about a plan that provider does not
+  // sell — the same numbers, under the wrong heading, for the wrong bill.
+  const quotaResult = usageQuota?.signedIn && isTokenPlanModel(planModel) ? usageQuota : undefined;
   const quota = quotaResult?.quota;
   const planLabel = quotaResult?.tokenPlanTier ?? (quotaResult?.hasTokenPlan ? "Token Plan" : "未订阅 Token Plan");
   const quotaRows = quota ? [
@@ -2546,13 +2581,10 @@ function ContextUsageIndicator({ usage, usageQuota }: {
   ] : [];
   return (
     <div
+      ref={anchorRef}
       className="webui-context-usage-anchor"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
-      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onKeyDown={(event) => {
         if (event.key === "Escape") setOpen(false);
       }}
@@ -2565,6 +2597,10 @@ function ContextUsageIndicator({ usage, usageQuota }: {
         aria-haspopup="dialog"
         title={`上下文窗口 ${label}`}
         data-testid="composer-context-usage"
+        onClick={() => {
+          setOpen((value) => !value);
+          setBreakdownOpen(false);
+        }}
       >
         <svg viewBox="0 0 18 18" aria-hidden="true">
           <circle className="webui-context-usage-track" cx="9" cy="9" r="7" />
@@ -2580,15 +2616,66 @@ function ContextUsageIndicator({ usage, usageQuota }: {
           />
         </svg>
       </button>
+      {/*
+        The hover label, and it is the WHOLE of what hovering produces. A ring
+        with no name is the one control in the toolbar that says nothing about
+        what it measures; naming it costs one line, and the alternative — the
+        full panel under the pointer — costs a panel over the transcript on
+        every pass towards the send button.
+
+        The name only, not the percentage: the panel is one click away and
+        already opens on this control, so a tooltip carrying figures would be a
+        second readout of the same ring at a different size. `aria-hidden`
+        because the button's own label already announces it, and a bubble that
+        duplicates what assistive technology was just told is read twice.
+      */}
+      <span
+        className="webui-context-usage-label"
+        aria-hidden="true"
+        data-webui-context-usage-label={hovered && !open ? "true" : "false"}
+      >
+        上下文窗口
+      </span>
       <div
         className={`webui-context-usage-popover${open ? " is-open" : ""}`}
         role="dialog"
         aria-label="上下文窗口使用情况"
         aria-hidden={!open}
       >
-          <div className="webui-context-usage-heading">
-            <span>上下文窗口</span><span>{percent}%</span>
-          </div>
+          {/*
+            The heading is the panel's own disclosure control. The panel opens
+            showing how full the window is and how much of the plan is left —
+            the two things a glance is for — and the six-category split stays
+            folded until asked for, because six rows of percentages is a reading
+            task, not a glance, and the user who wants it is already looking at
+            a panel they opened on purpose.
+
+            The chevron is the whole affordance. A caret beside a number is the
+            desktop's own convention for "there is more under this", and adding
+            a separate "详情" control next to it would be two controls for one
+            section.
+          */}
+          <button
+            type="button"
+            className="webui-context-usage-heading webui-context-usage-disclosure"
+            aria-expanded={breakdownOpen}
+            aria-controls="webui-context-usage-breakdown"
+            data-webui-context-disclosure={breakdownOpen ? "open" : "closed"}
+            onClick={() => setBreakdownOpen((value) => !value)}
+          >
+            <span>上下文窗口</span>
+            <span className="webui-context-usage-heading-value">
+              {percent}%
+              <span
+                aria-hidden="true"
+                className={`webui-context-usage-chevron${breakdownOpen ? " is-open" : ""}`}
+              >
+                <svg viewBox="0 0 16 16">
+                  <path d="M4 6.5 8 10.5 12 6.5" />
+                </svg>
+              </span>
+            </span>
+          </button>
           <div
             className="webui-context-usage-bar"
             role="progressbar"
@@ -2606,7 +2693,19 @@ function ContextUsageIndicator({ usage, usageQuota }: {
             )) : <span style={{ width: `${percent}%` }} />}
           </div>
           <div className="webui-context-usage-tokens">{formatContextTokens(used)} / {formatContextTokens(limit)} tokens</div>
-          <div className="webui-context-usage-components" aria-label="上下文构成">
+          {/*
+            Hidden rather than unmounted, so the bar's segment widths above and
+            the panel's height do not both jump on the first open. `hidden` is
+            also what keeps the six rows out of the tab order and out of the
+            accessibility tree while they are folded.
+          */}
+          <div
+            id="webui-context-usage-breakdown"
+            className="webui-context-usage-components"
+            aria-label="上下文构成"
+            data-webui-context-breakdown={breakdownOpen ? "open" : "closed"}
+            hidden={!breakdownOpen}
+          >
             {breakdownRows.map((row) => (
               <div
                 className="webui-context-usage-component"

@@ -184,12 +184,57 @@ describe("thinking trigger — what it renders", () => {
     expect(html).toContain('data-webui-thinking-tone="on"');
   });
 
-  it("disables the switch when the state is unstated", () => {
-    // The engine picked; there is nothing to toggle FROM, so offering a toggle
-    // would guess which way.
+  it("keeps the switch operable when the state is unstated", () => {
+    // An unstated record is the state a session STARTS in, because the user
+    // has not touched thinking yet. Disabling here made the control dead
+    // exactly when it was first needed: a control that cannot be used until
+    // something else has already used it is not a switch. The engine's default
+    // is a state the toggle acts on, not a state that locks it.
     const html = render({ options: BINARY, recorded: "", preview: false, onChange: () => undefined });
-    expect(html).toContain("disabled");
+    expect(html).not.toContain("disabled");
     expect(html).toContain('data-webui-thinking-tone="unstated"');
+    // Still not claiming thinking is ON — it is offering to turn it on.
+    expect(html).toContain('aria-pressed="false"');
+  });
+
+  it("tells an unstated switch what pressing it does", () => {
+    // 「思考由引擎决定」 is a state with no invitation in it, which reads as an
+    // answer rather than a control. On the one control whose whole job is to
+    // be clicked, the title has to name the action too.
+    const html = render({ options: BINARY, recorded: "", preview: false, onChange: () => undefined });
+    expect(html).toContain("思考由引擎决定 · 点击开启");
+  });
+
+  it("commits an explicit on from the unstated state", () => {
+    // The click is what makes the state stated. Unstated is not a third option
+    // the user can be stuck on — it resolves to a real one the moment they
+    // touch the control. `renderToStaticMarkup` cannot run a click, so the
+    // handler's own contract is asserted from the source: the switch must
+    // commit "on" for anything that is not already on.
+    const source = readFileSync(componentPath, "utf8");
+    expect(source).toContain('onClick={() => onChange(on === true ? "off" : "on")}');
+    // And no gate may still hang the toggle on a stated record. Stripped of
+    // comments first: the file explains the old rule at length, and prose
+    // about `on === null` is not the code disabling on it.
+    const code = source
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("//"))
+      .join("\n");
+    expect(code).not.toContain("on === null");
+  });
+
+  it("still toggles on and off from a stated state", () => {
+    const calls: string[] = [];
+    const on = renderToStaticMarkup(createElement(ThinkingTrigger, {
+      options: BINARY, recorded: "on", preview: false,
+      onChange: (option: string) => calls.push(option),
+    }));
+    expect(on).toContain("已开启思考");
+    const off = renderToStaticMarkup(createElement(ThinkingTrigger, {
+      options: BINARY, recorded: "off", preview: false,
+      onChange: (option: string) => calls.push(option),
+    }));
+    expect(off).toContain("已关闭思考");
   });
 
   it("makes a depth-scale brain decoration, not a button", () => {

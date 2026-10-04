@@ -137,12 +137,21 @@ export function brainTone(thinkingOn: boolean | null): BrainTone {
  * title naming the level. Collapsing them into one tooltip would make the
  * control that names a level indistinguishable from the one that only says
  * whether thinking is on.
+ *
+ * The unstated case names the ACTION, not just the state. 「思考由引擎决定」
+ * alone reads as an answer and gives no reason to click, which is wrong for a
+ * control whose entire job is to be clicked: the state is true, and it is also
+ * the state a click changes. So it reads as the state plus what pressing it
+ * does.
  */
 export function brainHoverLabel(
   tone: BrainTone,
   levelLabel: string | undefined,
+  action: "turn-on" | "turn-off" | undefined = undefined,
 ): string {
   const state =
     tone === "on" ? "已开启思考" : tone === "off" ? "已关闭思考" : "思考由引擎决定";
-  return levelLabel ? `${state} · ${levelLabel}` : state;
+  const suffix = action === "turn-on" ? "点击开启" : action === "turn-off" ? "点击关闭" : undefined;
+  const base = suffix ? `${state} · ${suffix}` : state;
+  return levelLabel ? `${base} · ${levelLabel}` : base;
 }

@@ -7,6 +7,12 @@
  * someone wants is precisely the question a binary control cannot ask. So on a
  * depth scale the brain is not a button at all.
  *
+ * For a two-state model the brain is the ONLY thinking control in the composer,
+ * and it is the fast path: press it and thinking turns on, press it again and
+ * it turns off, without opening the model picker. That is what makes it a
+ * button rather than a label, and it is why an unstated record must leave it
+ * operable — see the switch branch below.
+ *
  * It is also the only control here. A level control used to sit beside it, and
  * that was one value stated twice: the model chip already names the level where
  * it names the model ("M3.1-Flash-Preview max"), so a second control repeating
@@ -82,16 +88,31 @@ export function ThinkingTrigger({
   const brain = (
     <BrainGlyph className={`webui-thinking-brain webui-thinking-brain--${tone}`} />
   );
-  const hover = brainHoverLabel(tone, levelLabel);
 
   if (shape === "switch") {
+    // A two-state model's brain IS the switch — the whole point of it is that
+    // thinking turns on and off from here without opening anything. So an
+    // UNSTATED record must not disable it.
+    //
+    // Disabling on `on === null` made the control dead in exactly the state a
+    // session starts in: no effort recorded yet, because the user has not
+    // touched it. A control that cannot be used until something else has
+    // already used it is not a switch. The engine's default is a state the
+    // toggle acts ON, not a state that locks it — clicking commits an explicit
+    // "on", which is a fact the user stated rather than one inferred.
+    //
+    // `aria-pressed` stays false while unstated: the brain is not claiming
+    // thinking is on, it is offering to turn it on.
+    const disabled = preview;
+    const hover = brainHoverLabel(tone, levelLabel, on === true ? "turn-off" : "turn-on");
     return (
       <button
         type="button"
         // Disabled rather than absent while previewing: the control exists for
         // the model under the pointer, and saying so by removing it would make
-        // the toolbar jump around as the pointer crosses rows.
-        disabled={preview || on === null}
+        // the toolbar jump around as the pointer crosses rows. An unstated
+        // record no longer disables it — see above.
+        disabled={disabled}
         aria-pressed={on === true}
         aria-label={hover}
         title={hover}
@@ -104,6 +125,10 @@ export function ThinkingTrigger({
       </button>
     );
   }
+
+  // A depth scale's brain only states the current level, so there is no action
+  // to name in its title.
+  const hover = brainHoverLabel(tone, levelLabel);
 
   return (
     <span

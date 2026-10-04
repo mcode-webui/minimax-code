@@ -94,8 +94,11 @@ import { WebuiGoalBanner } from "./GoalBanner.js";
 import { WebuiInteractionPanel } from "./InteractionPanel.js";
 import {
   WebuiModelPicker,
+  resolveEffortOptions,
+  variantForEffort,
   type WebuiModelPickerDraft,
 } from "./ModelPicker.js";
+import { ThinkingTrigger } from "./ThinkingTrigger.js";
 import {
   WebuiIconAttach,
   WebuiIconCheck,
@@ -2277,6 +2280,29 @@ export function WebuiComposer({
                     onSettingChange={(model, draft) =>
                       void handleSelectModel(model, draft)
                     }
+                  />
+                  <ThinkingTrigger
+                    options={
+                      selectedModel ? resolveEffortOptions(selectedModel) : []
+                    }
+                    recorded={selectedModel?.thinking?.effort}
+                    preview={false}
+                    onChange={(option) => {
+                      const model = selectedModel;
+                      if (!model) return;
+                      // Same three shapes of commit the cascade's fly-out
+                      // reports, and for the same reason: which shape applies is
+                      // a fact about the model contract, not the control.
+                      const variant = variantForEffort(model, option);
+                      void handleSelectModel(model, {
+                        ...(variant !== undefined ? { variant } : {}),
+                        ...(option === "default"
+                          ? { thinkingEffort: null }
+                          : option === "off" || option === "on"
+                            ? {}
+                            : { thinkingEffort: option }),
+                      });
+                    }}
                   />
                   {sending ? (
                     <button

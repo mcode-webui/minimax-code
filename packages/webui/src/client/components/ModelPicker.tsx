@@ -143,7 +143,7 @@ function formatContextWindow(value: number): string {
   return String(value);
 }
 
-function resolveEffortOptions(
+export function resolveEffortOptions(
   model: WebuiModelPickerEntry,
 ): readonly string[] {
   const explicit = model.effortOptions ?? [];
@@ -188,7 +188,7 @@ function resolveThinkingMode(
     | undefined;
 }
 
-function variantForEffort(
+export function variantForEffort(
   model: WebuiModelPickerEntry,
   effort: string,
 ): string | undefined {

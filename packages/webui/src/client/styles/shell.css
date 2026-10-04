@@ -1780,6 +1780,101 @@
   .webui-model-context-caret {
     color: var(--text_default_tertiary);
   }
+  /* The thinking trigger. Three tones, and the third is the one that matters:
+   * `unstated` is NOT `off`. The wire says an empty effort means "no override,
+   * the engine picks", and the engine never reports back which level it chose,
+   * so a blue brain beside the word "Default" would assert a state nothing in
+   * this process can verify. The neutral tone is the honest one, and the label
+   * beside it carries the truth. */
+  .webui-thinking-trigger {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    transition: background-color 120ms ease;
+  }
+  .webui-thinking-trigger:hover:not(:disabled) {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-thinking-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .webui-thinking-trigger:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 1px;
+  }
+  .webui-thinking-brain {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+  .webui-thinking-brain--on {
+    color: var(--text_default_accent);
+  }
+  .webui-thinking-brain--off,
+  .webui-thinking-brain--unstated {
+    color: var(--icon_default_tertiary);
+  }
+  /* On a depth scale the brain is decoration beside a real control, not a
+   * button — it carries no hit area of its own, because there is nothing a
+   * click on it could mean. */
+  .webui-thinking-brain-slot {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+  }
+  .webui-thinking-level {
+    max-width: 72px;
+    border-radius: var(--radius_8);
+    padding: var(--spacing_4) var(--spacing_8);
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
+  .webui-thinking-level:hover:not(:disabled) {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-thinking-level:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .webui-thinking-level-menu {
+    position: absolute;
+    z-index: 70;
+    right: 0;
+    bottom: calc(100% + 4px);
+    display: flex;
+    min-width: 96px;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--spacing_4);
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_12);
+    background: var(--bg_grouped_secondary_elevated);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  }
+  .webui-thinking-level-menu button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing_8);
+    border-radius: var(--radius_8);
+    padding: var(--spacing_4) var(--spacing_8);
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    text-align: left;
+  }
+  .webui-thinking-level-menu button:hover {
+    background: var(--bg_interaction_tertiary_hover);
+  }
   .webui-model-menu-column {
     display: flex;
     min-height: 0;

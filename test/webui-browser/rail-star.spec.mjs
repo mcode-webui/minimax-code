@@ -23,9 +23,9 @@
 // read-only, and clicking the button writes localStorage which does not
 // round-trip back into a fresh render assertion.
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { assertHarnessServer, openApp } from "./harness.mjs";
+import { openApp, test } from "./harness.mjs";
 
 const SESSION_STARS = "mavis-webui-session-stars:v1";
 
@@ -87,7 +87,6 @@ function viewTab(page, view) {
 test("a starred row shows its star without being hovered", async ({ page }) => {
   await seedStars(page, { A: true });
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   // No hover anywhere in this test, on purpose. That is the whole claim: the
   // mark is standing, not an affordance that appears when the pointer arrives.

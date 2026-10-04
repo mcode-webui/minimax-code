@@ -29,9 +29,9 @@
 // would pass a crash-only test while being worse than no boundary at all. So
 // the rail, the composer and the settings modal are each driven for real.
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { assertHarnessServer, openApp, switchSession } from "./harness.mjs";
+import { openApp, switchSession, test } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
@@ -161,7 +161,6 @@ test("the account panel's sign-out button is operable, not a dead end", async ({
 
 test("the boundary did not break the healthy app around it", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   // A boundary that rendered on every pass would be worse than no boundary:
   // it would blank a working app. The fallback must be absent, not merely

@@ -15,15 +15,15 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import {
-  assertHarnessServer,
   configureFixture,
   emitStream,
   openApp,
   startTurn,
   switchSession,
+  test,
 } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
@@ -46,7 +46,6 @@ const TINY_PNG = Buffer.from(
 
 test("typing / opens the slash palette; filtering and Escape behave", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   const input = composer(page);
   await input.click();
@@ -71,7 +70,6 @@ test("typing / opens the slash palette; filtering and Escape behave", async ({ p
 
 test("↑ recalls committed inputs; a manual edit exits the browse", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   await startTurn(page, "A", "first submitted message");
   await emitStream(page, "A", { dataJson: "[DONE]" });
@@ -105,7 +103,6 @@ test("↑ recalls committed inputs; a manual edit exits the browse", async ({ pa
 
 test("drafts are per session and survive a switch and a reload", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   const input = composer(page);
   await input.click();
@@ -128,7 +125,6 @@ test("drafts are per session and survive a switch and a reload", async ({ page }
 
 test("history is per session — B's submissions do not leak into A", async ({ page }) => {
   await openApp(page, "#session=B");
-  await assertHarnessServer(page);
 
   await startTurn(page, "B", "message in B");
   await emitStream(page, "B", { dataJson: "[DONE]" });
@@ -141,7 +137,6 @@ test("history is per session — B's submissions do not leak into A", async ({ p
 
 test("attaching a file and an image renders chips that can be removed", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   const fileInput = page.locator('input.webui-composer-hidden-file-input[aria-label="添加文件或图片"]');
   await fileInput.setInputFiles([
@@ -163,7 +158,6 @@ test("attaching a file and an image renders chips that can be removed", async ({
 
 test("the directory input accepts a folder selection and renders its chips", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   // B-4's folder half: the hidden webkitdirectory input needs a real
   // directory (Playwright enforces that for directory inputs), so build one
@@ -186,7 +180,6 @@ test("the directory input accepts a folder selection and renders its chips", asy
 
 test("@ opens the mention menu and the local-file picker entry drives the OS chooser", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   const input = composer(page);
   await input.click();

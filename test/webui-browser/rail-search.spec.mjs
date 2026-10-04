@@ -21,9 +21,9 @@
 // test opens it the way a user does. Writing to a hidden input would test a
 // state the app cannot reach.
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-import { assertHarnessServer, openApp } from "./harness.mjs";
+import { openApp, test } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
@@ -59,7 +59,6 @@ async function search(page, query) {
 
 test("the rail renders its sessions under a project", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
 
   // Wrong when: `listVisibleProjects` answers `[]` and the rail renders nothing
   // at all -- which is exactly how this fixture was written until now, and why

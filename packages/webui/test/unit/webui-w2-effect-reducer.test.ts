@@ -225,13 +225,9 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
-        // BLOCKED (type debt G1): `generation` is required on
-        // `WebuiStreamSubscription`, but adding it here also puts it in the
-        // result — `claimWebuiSubscriptionTurn` spreads `...owned` — so the
-        // `toEqual` at :239 would need `generation: 1` as well. That is a
-        // change to an assertion's expected value, which the assignment
-        // forbids. Left as-is pending a decision.
-        subscription: { owner: "local-send" },
+        // `generation` travels with the lease: `claimWebuiSubscriptionTurn`
+        // spreads `...owned`, so the field asserted below is this one.
+        subscription: { owner: "local-send", generation: 1 },
       },
     });
     const result = reduceWebuiEffect(
@@ -247,6 +243,7 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
     expect(result.state.stream.subscription).toEqual({
       owner: "local-send",
       turnId: "turn-1",
+      generation: 1,
     });
   });
 
@@ -255,10 +252,9 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
-        // BLOCKED (type debt G1): see the note on the `local-send` fixture
-        // above — the required `generation` would have to appear in the
-        // `toEqual` expectation too.
-        subscription: { owner: "recovered", turnId: "turn-1" },
+        // A lease this client took earlier, hence `generation: 1` — the same
+        // convention the rest of this file already uses.
+        subscription: { owner: "recovered", turnId: "turn-1", generation: 1 },
       },
     });
     const result = reduceWebuiEffect(
@@ -273,6 +269,7 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
     expect(result.state.stream.subscription).toEqual({
       owner: "recovered",
       turnId: "turn-1",
+      generation: 1,
     });
   });
 
@@ -281,10 +278,9 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
-        // BLOCKED (type debt G1): see the note on the `local-send` fixture
-        // above — the required `generation` would have to appear in the
-        // `toEqual` expectation too.
-        subscription: { owner: "recovered", turnId: "turn-1" },
+        // A lease this client took earlier, hence `generation: 1` — the same
+        // convention the rest of this file already uses.
+        subscription: { owner: "recovered", turnId: "turn-1", generation: 1 },
       },
     });
     const result = reduceWebuiEffect(
@@ -307,6 +303,7 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
     expect(result.state.stream.subscription).toEqual({
       owner: "recovered",
       turnId: "turn-1",
+      generation: 1,
     });
   });
 

@@ -10,6 +10,7 @@ import {
 } from "../../src/client/rail-buckets.js";
 import { WebuiIconSessionStar } from "../../src/client/icons.js";
 import { WebuiProjectList } from "../../src/client/components/SessionRail.js";
+import type { WebuiSessionActivityMap } from "../../src/client/session-activity.js";
 import type { WebuiClientProject, WebuiClientSession } from "../../src/client/contracts.js";
 
 /**
@@ -51,7 +52,12 @@ const SESSIONS: readonly WebuiClientSession[] = [
   session("mvs_e", 5),
 ];
 
-const ACTIVITY = {
+// Annotated, not inferred. Without it `busyReason: "turn"` widens to `string`
+// and stops being assignable to `WebuiSessionActiveTurn["busyReason"]`, which
+// is a union -- and nothing in this repo's tsc programs compiles test files, so
+// the thirteen call sites below would hand a wrongly typed map to the filter
+// and the suite would stay green on a fixture the product could never produce.
+const ACTIVITY: WebuiSessionActivityMap = {
   mvs_a: { lastActivityAt: 5_000, busy: { turnId: "t1", busyReason: "turn" } },
   mvs_b: { lastActivityAt: 9_000, unread: 3 },
   mvs_c: { lastActivityAt: 7_000 },

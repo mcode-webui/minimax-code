@@ -72,7 +72,7 @@ describe("selectWebuiRailViewTabs", () => {
   });
 
   it("counts zero rather than going negative or blank when nothing is running", () => {
-    const idle = selectWebuiRailViewTabs(SESSIONS, {});
+    const idle = selectWebuiRailViewTabs(SESSIONS, {}, {});
     expect(idle.find((entry) => entry.view === "running")?.count).toBe(0);
     expect(idle.find((entry) => entry.view === "unread")?.count).toBe(0);
   });
@@ -152,7 +152,7 @@ describe("filterWebuiRailViewSessions", () => {
       mvs_gone: { lastActivityAt: 9_999, unread: 7, busy: { turnId: "t9", busyReason: "turn" } },
     };
     expect(selectWebuiRailViewTabs(SESSIONS, stale, {}).find((e) => e.view === "running")?.count).toBe(2);
-    expect(selectWebuiRailViewTabs(SESSIONS, stale).find((e) => e.view === "unread")?.count).toBe(1);
+    expect(selectWebuiRailViewTabs(SESSIONS, stale, {}).find((e) => e.view === "unread")?.count).toBe(1);
     expect(ids(filterWebuiRailViewSessions(SESSIONS, stale, "running", {}))).toEqual([
       "mvs_c",
       "mvs_a",
@@ -295,7 +295,7 @@ describe("the rail view tabs", () => {
     // sessions; there are just none of the kind this tab collects, and the
     // reader needs to know which kind they emptied.
     const labels = new Map(
-      selectWebuiRailViewTabs(SESSIONS, BUSY).map((entry) => [entry.view, entry.emptyLabel]),
+      selectWebuiRailViewTabs(SESSIONS, BUSY, {}).map((entry) => [entry.view, entry.emptyLabel]),
     );
     expect(labels.get("running")).toBe("没有运行中的会话");
     expect(labels.get("unread")).toBe("没有未读会话");
@@ -308,7 +308,7 @@ describe("the rail view tabs", () => {
   it("keeps no English in a Chinese rail", () => {
     // The rail is Chinese throughout. An untranslated string here is how
     // "Waiting messages" and "No sessions yet" got shipped in the first place.
-    for (const entry of selectWebuiRailViewTabs(SESSIONS, BUSY)) {
+    for (const entry of selectWebuiRailViewTabs(SESSIONS, BUSY, {})) {
       expect(entry.label, entry.view).not.toMatch(/[A-Za-z]{2,}/u);
       expect(entry.emptyLabel, entry.view).not.toMatch(/[A-Za-z]{2,}/u);
     }

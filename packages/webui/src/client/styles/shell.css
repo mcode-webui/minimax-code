@@ -1012,9 +1012,15 @@
     color: var(--text_default_tertiary);
   }
   /* "This row is pinned", drawn by the row itself rather than by the button that
-   * toggles it. Pinned rows sort to the top, which is a statement about order
-   * and not about the row: it stops being true the moment a fresher session
-   * arrives, and it was never visible while reading the list.
+   * toggles it, because sort position is not a claim about the row: it stops
+   * being true the moment a fresher session arrives, and it was never visible
+   * while reading the list.
+   *
+   * Narrower than it looks: that ordering lives only in the project view's
+   * `sortWebuiProjectSessionIds`. The running, unread and favourites views sort
+   * by activity alone, so inside those a pin buys the mark and nothing else --
+   * which is the point of drawing it, and the reason nothing here depends on
+   * the sort.
    *
    * Tertiary grey, inherited from the meta block, on purpose. The two colours
    * already in this cluster each carry a meaning that is not "the user chose

@@ -357,6 +357,21 @@ test("a starred child row shows its mark once the parent is expanded", async ({ 
   await expect(starMark(page, "C")).toBeVisible();
   // The parent's own state is untouched by the child's.
   await expect(starMark(page, "A")).toHaveCount(0);
+
+  // ⚠️ Read this before adding star to a child row's context menu.
+  //
+  // `filterWebuiRailViewSessions` filters `page.sessions`, and a child is not
+  // in `page.sessions` -- it only ever appears in the tree. So the moment
+  // `openSessionMenu`'s `isChild` branch grows a star item, a starred child
+  // becomes unreachable in TWO ways at once: it still cannot be starred (no
+  // menu item today), and if it were, it would carry a mark, sit in localStorage
+  // and still never appear in 收藏 or count toward its badge.
+  //
+  // The fixture is already staged for exactly that: C is deliberately outside
+  // `sessions`, so the test above can star it and the count test can prove the
+  // badge reads 0. Whoever wires child starring has to decide whether the
+  // favourites view also walks the tree, and that decision belongs with the
+  // feature, not with this spec.
 });
 
 test("the context menu offers unstar on a starred row", async ({ page }) => {

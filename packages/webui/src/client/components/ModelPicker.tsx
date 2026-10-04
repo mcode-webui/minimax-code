@@ -53,6 +53,10 @@ import {
   type CascadeTier,
 } from "../projection/model-picker-cascade.js";
 import {
+  MODEL_FLYOUT_HOVER_DELAY_MS,
+  hoverArrival,
+} from "../projection/model-picker-hover.js";
+import {
   ModelSettingsFlyout,
   type FlyoutAnchor,
 } from "./ModelSettingsFlyout.js";
@@ -236,7 +240,8 @@ export function WebuiModelMenuList({
   focusedKey,
   favoriteKeys,
   onFocus,
-  onHover,
+  onHoverIntent,
+  onHoverLeave,
   onSelect,
   onToggleFavorite,
   onRowMount,
@@ -247,15 +252,24 @@ export function WebuiModelMenuList({
   readonly favoriteKeys: ReadonlySet<string>;
   readonly onFocus: (key: string) => void;
   /**
-   * Open this row's settings fly-out on hover.
+   * The pointer ARRIVED on this row. Opens the fly-out if the pointer rests.
    *
-   * Separate from `onFocus` on purpose. The fly-out only exists once the menu
-   * is on the `settings` tier, so focusing a row alone never showed it: the
-   * pointer had to arrive at a row that was ALREADY describing itself, which
-   * only happened after a click. Hovering a model and getting nothing is the
-   * cascade behaving like a menu that has to be opened before it can be read.
+   * Separate from `onFocus` on purpose, and the split is the whole point:
+   * `onFocus` is the row's highlight, which is the list answering "where is
+   * the pointer" and has to be instant, while this is the list CLAIMING
+   * something about the row. A claim that fires on contact makes sweeping the
+   * pointer down a list throw a panel after every row it crosses.
+   *
+   * Optional so a caller that renders rows without a cascade (the search tests
+   * do) does not have to pass a no-op.
    */
-  readonly onHover: (key: string) => void;
+  readonly onHoverIntent?: (key: string) => void;
+  /**
+   * The pointer LEFT this row. Cancels a pending open and nothing else: the
+   * panel is itself a hover region, and the pointer is usually on its way into
+   * it, so an open panel is left standing.
+   */
+  readonly onHoverLeave?: (key: string) => void;
   readonly onSelect: (model: WebuiModelPickerEntry) => void;
   readonly onToggleFavorite: (key: string) => void;
   /**
@@ -300,9 +314,10 @@ export function WebuiModelMenuList({
                   data-focused={isFocused ? "true" : "false"}
                   className="webui-model-option"
                   onMouseEnter={() => {
-                    onHover(key);
+                    onHoverIntent?.(key);
                     onFocus(key);
                   }}
+                  onMouseLeave={() => onHoverLeave?.(key)}
                   onFocus={() => onFocus(key)}
                   onClick={() => onSelect(model)}
                 >
@@ -362,9 +377,55 @@ export function WebuiModelPicker({
    * a scroll must not re-render the whole list just to update a rectangle.
    */
   const rowElements = useRef(new Map<string, HTMLElement>());
+  /**
+   * The pending fly-out, if the pointer is resting on a row.
+   *
+   * Held in a ref rather than state because it is not something to render: it
+   * exists only so that leaving the row, taking the interaction elsewhere, or
+   * closing the menu can call it off before it pays out. A `setTimeout` id in
+   * state would re-render the whole list every time the pointer moved.
+   */
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The catalogue a timer callback resolves its row against.
+   *
+   * The callback closes over the render that created it, so a plain `models`
+   * lookup would resolve the row against whatever the catalogue was when the
+   * pointer ARRIVED — up to `MODEL_FLYOUT_HOVER_DELAY_MS` stale, and the
+   * runtime refreshes that catalogue underneath an open menu on its own.
+   */
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
   const triggerId = useId();
   const menuId = useId();
   const searchId = useId();
+
+  /**
+   * Call off a hover that has not been paid for yet.
+   *
+   * Every path that takes the interaction away from the rows — leaving a row,
+   * the search box taking focus, a keystroke re-filtering the list, Escape, the
+   * menu closing — routes through here, so a panel cannot open for a pointer
+   * that is no longer on the row that asked for it.
+   */
+  const clearPendingHover = () => {
+    if (hoverTimer.current === null) return;
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  };
+
+  /**
+   * Put the fly-out away, and forget which row it was describing.
+   *
+   * Used when the interaction moves somewhere that is not a row. The row is
+   * forgotten along with the panel because a remembered row with no panel is
+   * what makes the NEXT panel describe a model the user has not gone back to.
+   */
+  const retractFlyout = () => {
+    clearPendingHover();
+    setTier("list");
+    setFocusedKey(undefined);
+  };
 
   // Keep the local mirror through model-catalog refreshes while the menu is
   // open; each setting change is also committed immediately to the runtime.
@@ -388,9 +449,13 @@ export function WebuiModelPicker({
   // with no row to explain them.
   useEffect(() => {
     if (open) return;
-    setTier("list");
-    setFocusedKey(undefined);
+    retractFlyout();
   }, [open]);
+
+  // A hover still waiting out its delay when the menu goes away must not open a
+  // panel on a picker that is no longer showing. Separate from the effect above
+  // because that one is about the tier a REOPEN starts at.
+  useEffect(() => clearPendingHover, []);
 
   // Read the stars when the menu OPENS rather than on mount: the store is the
   // only writer, and re-reading on open is what makes a star applied in
@@ -448,15 +513,16 @@ export function WebuiModelPicker({
     const draft = drafts[modelKey(model)] ?? {};
     onSelect(model, draft);
     // A click means "this is the one", and it finishes. The settings are a
-    // hover away — the fly-out is already open beside the row the pointer is on
-    // — so there is nothing left to visit, and keeping the menu open would
-    // strand the user on a surface they have already answered.
+    // hover away — hovering the row is a second away from here, and the row the
+    // pointer is on is the one being clicked — so there is nothing left to
+    // visit, and keeping the menu open would strand the user on a surface they
+    // have already answered.
     setOpen(false);
     setFocusedKey(undefined);
   };
 
   /**
-   * Open the fly-out for whichever row the pointer is over.
+   * Open the fly-out for whichever row the pointer is on.
    *
    * Only for a row that HAS something to configure. Hovering a model with
    * nothing to configure must not summon an empty panel — a fly-out with no
@@ -464,9 +530,16 @@ export function WebuiModelPicker({
    * learn from it. `rowHasFlyout` is the "does this model have settings" test,
    * kept separate from `rowClickOutcome` because a click no longer varies by
    * model while the fly-out still does.
+   *
+   * Also the landing place for the keyboard, which reaches here directly and so
+   * opens the panel without waiting out a hover delay: arrowing into a row is a
+   * decision, not a pass over it.
    */
   const handleHoverRow = (key: string) => {
-    const model = models.find((entry) => modelKey(entry) === key);
+    // Whatever hover was pending is this one now, whether it came from the
+    // pointer's delay or from the keyboard.
+    clearPendingHover();
+    const model = modelsRef.current.find((entry) => modelKey(entry) === key);
     if (!model) return;
     setFocusedKey(key);
     // A row with nothing to configure retracts the fly-out rather than
@@ -475,12 +548,59 @@ export function WebuiModelPicker({
     setTier(rowHasFlyout(model) ? "settings" : "list");
   };
 
+  /**
+   * The pointer arrived on a row. Open its panel only if the pointer rests.
+   *
+   * The rules are in `hoverArrival`; the two things worth reading here are why
+   * the retract happens NOW rather than after the delay, and why the highlight
+   * is not part of this. The retract is immediate because the highlight moves
+   * on this very mouse event (the list calls `onFocus` alongside this), so a
+   * panel left standing would re-anchor itself to the row the pointer has only
+   * just passed over — the old model's settings, sliding onto a new model,
+   * before the user has read either.
+   */
+  const handleHoverIntent = (key: string) => {
+    const model = modelsRef.current.find((entry) => modelKey(entry) === key);
+    const arrival = hoverArrival({
+      key,
+      focusedKey,
+      tier,
+      hasFlyout: rowHasFlyout(model),
+    });
+    // The panel already describes this row — the pointer has just crossed back
+    // out of it. Retracting here closes the panel under the pointer.
+    if (arrival === "keep-open") return;
+    clearPendingHover();
+    setTier("list");
+    if (arrival === "retract-only") return;
+    hoverTimer.current = setTimeout(() => {
+      hoverTimer.current = null;
+      handleHoverRow(key);
+    }, MODEL_FLYOUT_HOVER_DELAY_MS);
+  };
+
+  /**
+   * The pointer left a row. Cancel the pending open, leave an open panel.
+   *
+   * The asymmetry is the point, not an oversight: the panel is a hover region
+   * of its own, and leaving a row is the normal first step of moving INTO it.
+   * A panel that retracts on that crossing cannot be clicked, which is the
+   * whole reason the fly-out exists. The panel does still go when the pointer
+   * arrives on another row, when the search box takes over, and on Escape.
+   */
+  const handleHoverLeave = () => {
+    clearPendingHover();
+  };
+
   // Escape backs out ONE tier: the first press retracts the fly-out and leaves
   // the list, the second closes the menu. Handled here rather than through the
   // outside-close policy table because that table answers "does this surface
   // dismiss", and the fly-out is INSIDE the picker's container — it is a tier
   // of one surface, not a surface of its own.
   const handleRetract = () => {
+    // Escape is an answer, so a hover still counting down is a hover the user
+    // has already made irrelevant.
+    clearPendingHover();
     setTier((current) => {
       if (current === "settings") {
         setFocusedKey(undefined);
@@ -712,7 +832,24 @@ export function WebuiModelPicker({
                   aria-label="搜索模型"
                   className="webui-model-search-input"
                   data-webui-model-search="true"
-                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  onChange={(event) => {
+                    // A keystroke re-filters the list, and the row the open
+                    // panel was anchored to may be one of the rows that just
+                    // went. Its element unmounts, the anchor stops resolving,
+                    // and the panel is left describing a model the user can no
+                    // longer see. The search box taking the interaction is the
+                    // same act either way: nothing here is a row the pointer
+                    // is on.
+                    retractFlyout();
+                    setQuery(event.currentTarget.value);
+                  }}
+                  onFocus={() => {
+                    // Focusing the search box is the user asking a different
+                    // question, and the fly-out is the answer to the previous
+                    // one. Left up it covers the very results the search was
+                    // opened to read.
+                    retractFlyout();
+                  }}
                   onKeyDown={(event) => {
                     // The menu opens WITHOUT focus, so the search field is
                     // reachable by Tab rather than by autofocus — and autofocus
@@ -743,7 +880,8 @@ export function WebuiModelPicker({
                 focusedKey={focusedKeyString || undefined}
                 favoriteKeys={favoriteKeys}
                 onFocus={setFocusedKey}
-                onHover={handleHoverRow}
+                onHoverIntent={handleHoverIntent}
+                onHoverLeave={handleHoverLeave}
                 onSelect={handleSelectModel}
                 onToggleFavorite={handleToggleFavorite}
                 onRowMount={(key, element) => {

@@ -250,6 +250,7 @@
       "packages/webui/test/unit/model-picker-groups.test.tsx",
       "packages/webui/test/unit/model-picker-search.test.ts",
       "packages/webui/test/unit/model-picker-cascade.test.ts",
+      "packages/webui/test/unit/model-picker-hover.test.ts",
       "packages/webui/test/unit/model-picker-effort-options.test.ts",
       "packages/webui/test/unit/token-plan-model.test.ts",
       "packages/webui/test/unit/thinking-control.test.tsx",

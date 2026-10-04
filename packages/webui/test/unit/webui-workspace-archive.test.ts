@@ -33,6 +33,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { extractWorkspaceArchiveDirectory, readWorkspaceArchiveListing } from "../../src/server/workspace-archive.js";
 import { createHarnessPortFromHost, type WebuiRuntimeCliService } from "../../src/server/host.js";
+import type { WebuiWorkspaceArchiveListing } from "../../src/server/port.js";
 import {
   archiveDestinationFor,
   formatArchiveSize,
@@ -554,6 +555,10 @@ describe("harness port archive members", () => {
     // change the two port members threw "压缩包浏览能力尚未接入。" right here.
     const port = createHarnessPortFromHost({
       appVersion: "archive-test",
+      // `port.close()` calls `host.apiHost.close()`; nothing here closes the
+      // port, so this stub is never reached -- it is here because the handle
+      // type requires the field, not because the archive path reads it.
+      apiHost: { close: async () => undefined },
       cliService: {} as unknown as WebuiRuntimeCliService,
     });
     const listing = await port.readWorkspaceArchive({ workspaceDir: workspace, path: "port.zip" });
@@ -571,6 +576,7 @@ describe("harness port archive members", () => {
   it("prefers a runtime implementation when the host provides one", async () => {
     const port = createHarnessPortFromHost({
       appVersion: "archive-test",
+      apiHost: { close: async () => undefined },
       cliService: {
         async readWorkspaceArchive() {
           return { archivePath: "from-runtime.zip", entries: [], totalEntries: 0, truncated: false };
@@ -620,7 +626,7 @@ describe("workspace archive view", () => {
         path: "dist/bundle.zip",
         // A listing that never settles. Static rendering does not run the
         // effect, so this is the state a reader actually sees first.
-        readWorkspaceArchive: () => new Promise(() => undefined),
+        readWorkspaceArchive: () => new Promise<WebuiWorkspaceArchiveListing>(() => undefined),
       }),
     );
     expect(markup).toContain('role="status"');

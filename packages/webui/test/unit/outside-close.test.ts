@@ -224,6 +224,11 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: true,
         insidePermissionWrap: false,
+        // Unread while the permission popover is open — the anchored branch
+        // resolves on `permissionMenuOpen` alone. Passed explicitly so the
+        // fixture matches the scenario (one anchored dropdown, not two).
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: true,
       }),
     ).toEqual({
@@ -238,6 +243,8 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: true,
         insidePermissionWrap: true,
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: true,
       }),
     ).toEqual({
@@ -252,6 +259,8 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: true,
         insidePermissionWrap: false,
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: false,
       }),
     ).toEqual({
@@ -268,6 +277,12 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: false,
         insidePermissionWrap: false,
+        // Load-bearing here: with the permission popover shut, `addMenuOpen` is
+        // the flag that decides whether an anchored dropdown exists at all. The
+        // scenario is "no anchored dropdown, caret inside the region", so it
+        // must be false or the anchored branch would answer instead.
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: true,
       }),
     ).toEqual({
@@ -284,6 +299,10 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: false,
         insidePermissionWrap: false,
+        // "no surface open yet" is the scenario this test names, so the second
+        // anchored dropdown has to be shut for the region rule to be reached.
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: false,
       }),
     ).toEqual({
@@ -299,11 +318,15 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
     const insideRegion = evaluateComposerDismiss({
       permissionMenuOpen: true,
       insidePermissionWrap: false,
+      addMenuOpen: false,
+      insideAddWrap: false,
       insideComposerRegion: true,
     });
     const outsideRegion = evaluateComposerDismiss({
       permissionMenuOpen: true,
       insidePermissionWrap: false,
+      addMenuOpen: false,
+      insideAddWrap: false,
       insideComposerRegion: false,
     });
     expect(insideRegion).toEqual(outsideRegion);
@@ -317,6 +340,10 @@ describe("evaluateComposerDismiss — the popover's container is its wrap, not t
       evaluateComposerDismiss({
         permissionMenuOpen: true,
         insidePermissionWrap: undefined as unknown as boolean,
+        // Unreached while the popover is open; false keeps the fixture honest
+        // about the unmounted-ref scenario the casts above are simulating.
+        addMenuOpen: false,
+        insideAddWrap: false,
         insideComposerRegion: undefined as unknown as boolean,
       }).closePermissionMenu,
     ).toBe(true);

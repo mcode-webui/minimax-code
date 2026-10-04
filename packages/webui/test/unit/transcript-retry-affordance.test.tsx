@@ -208,10 +208,15 @@ describe("C-4.3 image and text in one assistant message render together, in orde
 
     const text = parts[0];
     expect(text?.type).toBe("text");
-    expect(text?.content).toContain("这是生成的示意图。");
-    expect(text?.content).toContain("后续说明。");
+    // `expect(...).toBe` checks the discriminant at runtime; it does not narrow
+    // the type for the compiler, and only some part kinds carry `content`. The
+    // same narrowing the `asset_list` branch below uses, kept honest: a part
+    // that is not text reads as `undefined` and fails the first assertion here.
+    const textContent = text?.type === "text" ? text.content : undefined;
+    expect(textContent).toContain("这是生成的示意图。");
+    expect(textContent).toContain("后续说明。");
     // The renderer XML must not leak into the visible answer.
-    expect(text?.content).not.toContain("deliver-assets");
+    expect(textContent).not.toContain("deliver-assets");
 
     const assets = parts[1];
     expect(assets?.type).toBe("asset_list");

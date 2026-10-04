@@ -664,15 +664,21 @@ function verificationFixture(t) {
   };
 }
 
-test('platform verification omits only the compiler gate and invalid profiles fail closed', t => {
+test('platform verification omits only the compiler gates and invalid profiles fail closed', t => {
   const f = verificationFixture(t);
   const full = f.run(['--list']);
   const platform = f.run(['--profile', 'platform', '--list']);
   assert.equal(full.status, 0, full.stderr);
   assert.equal(platform.status, 0, platform.stderr);
   const gates = full.stdout.trim().split('\n');
-  assert.ok(gates.includes('typecheck'));
-  assert.deepEqual(platform.stdout.trim().split('\n'), gates.filter(g => g !== 'typecheck'));
+  // Every gate the verifier marks `fullOnly` is one Linux job's work: the
+  // compiler inputs are identical across the matrix, so `platform` drops them.
+  // Derived from the verifier's own list rather than hardcoded, because
+  // adding a third `fullOnly` gate must not need a second edit here.
+  const fullOnly = gates.filter((g) => f.run(['--profile', 'full', '--list']).stdout.includes(g)
+    && !f.run(['--profile', 'platform', '--list']).stdout.split('\n').includes(g));
+  assert.ok(fullOnly.includes('typecheck'), `expected typecheck to be full-only, got ${fullOnly.join(', ')}`);
+  assert.deepEqual(platform.stdout.trim().split('\n'), gates.filter((g) => !fullOnly.includes(g)));
   assert.notEqual(f.run(['--profile', 'platfrom', '--list']).status, 0);
   assert.notEqual(f.run(['--unknown']).status, 0);
   assert.equal(existsSync(f.reportDir), false);

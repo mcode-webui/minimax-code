@@ -30,6 +30,7 @@
     "test:webui": "node scripts/run-vitest-suite.mjs webui",
     "test:webui-browser": "playwright install chromium && playwright test",
     "typecheck:webui": "pnpm --filter @mavis/webui typecheck:server && pnpm --filter @mavis/webui typecheck:client && pnpm --filter @mavis/webui typecheck:test",
+    "typecheck:webui-full": "pnpm --filter @mavis/webui typecheck:test-full",
     "check:source": "node scripts/source-inventory.mjs",
     "test:capabilities": "node scripts/run-vitest-suite.mjs capability",
     "test:windows": "node scripts/run-vitest-suite.mjs windows",

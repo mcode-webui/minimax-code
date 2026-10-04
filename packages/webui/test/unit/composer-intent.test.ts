@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
 import {
   deriveRecentWorkspaceDirs,
   isTurnLive,
@@ -41,37 +42,47 @@ import { setPermissionModeOperation } from "../../src/server/operation/permissio
  * job is to emit the right kind).
  */
 
-const goalCommand: SlashCommandEntry = {
-  name: "goal",
-  description: "open the goal workflow",
-  section: "session",
-  supported: true,
-  detail: undefined,
-};
+const ICON: SlashCommandEntry["icon"] = () => createElement("span");
 
-const helpCommand: SlashCommandEntry = {
+/**
+ * The resolver reads only `name` and `supported`, but `SlashCommandEntry`
+ * also declares the display fields the palette renders, so the fixtures
+ * carry the full shape instead of a partial one.
+ */
+const commandEntry = (
+  name: string,
+  description: string,
+  supported: boolean,
+): SlashCommandEntry => ({
+  name,
+  displayName: name,
+  label: name,
+  description,
+  source_type: -1,
+  icon: ICON,
+  supported,
+});
+
+/** The narrower type the `run-command` intent carries for its command. */
+type WebuiRunCommandEntry = Extract<WebuiSubmissionIntent, { readonly kind: "run-command" }>["command"];
+
+const goalCommand = commandEntry("goal", "open the goal workflow", true);
+
+// Typed as the runnable narrowing of `SlashCommandEntry` so the fixtures below
+// can stand in for the `command` the `run-command` intent carries.
+const helpCommand: WebuiRunCommandEntry = {
   name: "help",
+  displayName: "help",
+  label: "help",
   description: "show help",
-  section: "session",
+  source_type: -1,
+  icon: ICON,
   supported: true,
-  detail: undefined,
 };
 
-const disabledCommand: SlashCommandEntry = {
-  name: "compact",
-  description: "compact the session",
-  section: "session",
-  supported: false,
-  detail: undefined,
-};
+const disabledCommand = commandEntry("compact", "compact the session", false);
 
-const unknownCommand: SlashCommandEntry = {
-  name: "totally-unknown",
-  description: "outline only",
-  section: "session",
-  supported: true,
-  detail: undefined,
-};
+const unknownCommand = commandEntry("totally-unknown", "outline only", true);
 
 const runCommandArgs = (overrides: {
   draft?: string;

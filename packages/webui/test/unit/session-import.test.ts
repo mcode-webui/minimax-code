@@ -86,16 +86,19 @@ describe("assertWebuiTransferFile", () => {
 
 describe("importWebuiSessionFile", () => {
   it("posts the file and returns the new session", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchMock = vi.fn(async () =>
       jsonResponse(200, {
         sessionId: "mvs_new",
         canonicalMessages: 902,
         displayMessages: 435,
         revision: "sha256:abc",
       }),
-    ) as unknown as typeof fetch;
+    );
 
-    const result = await importWebuiSessionFile(blob(TRANSFER), options(fetchImpl));
+    const result = await importWebuiSessionFile(
+      blob(TRANSFER),
+      options(fetchMock as unknown as typeof fetch),
+    );
 
     expect(result).toEqual({
       sessionId: "mvs_new",
@@ -103,7 +106,7 @@ describe("importWebuiSessionFile", () => {
       displayMessages: 435,
       revision: "sha256:abc",
     });
-    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain("/session-import?");
     expect(url).toContain("token=tok");
     expect(init.method).toBe("POST");
@@ -115,14 +118,18 @@ describe("importWebuiSessionFile", () => {
     // empty token sent the call back to the global config, an explicit
     // `origin` would be silently discarded -- the request would go somewhere
     // the caller never named.
-    const fetchImpl = vi.fn(async () =>
+    const fetchMock = vi.fn(async () =>
       jsonResponse(200, { sessionId: "mvs_injected" }),
-    ) as unknown as typeof fetch;
+    );
     const global = globalThis as { __WEBUI_CONFIG__?: unknown };
     global.__WEBUI_CONFIG__ = { websocketUrl: "ws://global-host:9999/ws", token: "global" };
     try {
-      await importWebuiSessionFile(blob(TRANSFER), { origin: "http://injected:1234", token: "", fetchImpl });
-      const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      await importWebuiSessionFile(blob(TRANSFER), {
+        origin: "http://injected:1234",
+        token: "",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      });
+      const [url] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe("http://injected:1234/session-import?token=");
     } finally {
       delete global.__WEBUI_CONFIG__;
@@ -130,9 +137,9 @@ describe("importWebuiSessionFile", () => {
   });
 
   it("never puts the file's own agent or workspace in the request", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchMock = vi.fn(async () =>
       jsonResponse(200, { sessionId: "mvs_new" }),
-    ) as unknown as typeof fetch;
+    );
     const hostile = {
       ...TRANSFER,
       session: { sessionId: "mvs_src", title: "T", agentName: "root", workspaceDir: "C:/Windows" },
@@ -141,13 +148,13 @@ describe("importWebuiSessionFile", () => {
     await importWebuiSessionFile(blob(hostile), {
       origin: "http://127.0.0.1:8788",
       token: "tok",
-      fetchImpl,
+      fetchImpl: fetchMock as unknown as typeof fetch,
       agentName: "main",
       workspaceDir: "C:/work",
     });
 
     // Identity is the caller's context, never the payload's.
-    const [url] = fetchImpl.mock.calls[0] as unknown as [string];
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
     expect(url).toContain("agentName=main");
     expect(url).toContain("workspaceDir=C%3A%2Fwork");
     expect(url).not.toContain("root");
@@ -223,16 +230,20 @@ describe("importWebuiSessionFile under the dev config", () => {
     // The user-visible consequence of the guard above: with the config the dev
     // server actually injects, picking a file must reach the route. A guard that
     // reads "empty token" as "no runtime" makes this reject before any request.
-    const fetchImpl = vi.fn(async () =>
+    const fetchMock = vi.fn(async () =>
       jsonResponse(200, { sessionId: "mvs_dev", canonicalMessages: 902, displayMessages: 435, revision: "sha256:dev" }),
-    ) as unknown as typeof fetch;
+    );
     const global = globalThis as { __WEBUI_CONFIG__?: unknown };
     global.__WEBUI_CONFIG__ = { websocketUrl: "ws://127.0.0.1:5199/ws", token: "" };
     try {
-      await expect(importWebuiSessionFile(blob(TRANSFER), { fetchImpl })).resolves.toMatchObject({
+      await expect(
+        importWebuiSessionFile(blob(TRANSFER), {
+          fetchImpl: fetchMock as unknown as typeof fetch,
+        }),
+      ).resolves.toMatchObject({
         sessionId: "mvs_dev",
       });
-      const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      const [url] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe("http://127.0.0.1:5199/session-import?token=");
     } finally {
       delete global.__WEBUI_CONFIG__;

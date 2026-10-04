@@ -19,7 +19,11 @@ import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readRequestBody, WebuiService } from "../../src/server/service.js";
-import type { WebuiHarnessPort } from "../../src/server/port.js";
+import type {
+  WebuiCreateSessionRequest,
+  WebuiHarnessPort,
+  WebuiUpdateSessionRequest,
+} from "../../src/server/port.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
@@ -260,15 +264,17 @@ describe("POST /session-import", () => {
     // agent or a workspace, importing a file would aim a session at an
     // arbitrary directory on this machine -- or ask for an agent that does
     // not exist and take the whole import down with it.
-    const createSession = vi.fn(async () => ({ sessionId: "mvs_new" }));
+    const createSession = vi.fn(async (_request: WebuiCreateSessionRequest) => ({ sessionId: "mvs_new" }));
     const url = await serve({ createSession });
     await post(url, TRANSFER_FILE, `?token=${token}`);
 
     // `agentName: "mavis"` and `workspaceDir: "C:/repo"` are in the file and
     // are both ignored in favour of the default agent.
     expect(createSession).toHaveBeenCalledWith({ name: "main" });
-    const request = createSession.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(Object.keys(request)).toEqual(["name"]);
+    // The mock takes the request the route actually passes, so the keys read
+    // here are the ones `service.ts` wrote -- not an `any` the cast invented.
+    const request = createSession.mock.calls[0]?.[0];
+    expect(Object.keys(request ?? {})).toEqual(["name"]);
   });
 
   it("answers 400 for a body that is not JSON", async () => {
@@ -353,8 +359,8 @@ describe("POST /session-import", () => {
   it("caps how much of an untrusted string it will pass on", async () => {
     // The payload is a file the user picked off disk; its session block is
     // attacker-controlled as far as this server is concerned.
-    const createSession = vi.fn(async () => ({ sessionId: "mvs_new" }));
-    const updateSession = vi.fn(async () => ({ session: { sessionId: "mvs_new" } }) as never);
+    const createSession = vi.fn(async (_request: WebuiCreateSessionRequest) => ({ sessionId: "mvs_new" }));
+    const updateSession = vi.fn(async (_request: WebuiUpdateSessionRequest) => ({ session: { sessionId: "mvs_new" } }) as never);
     const url = await serve({ createSession, updateSession });
     const hostile = {
       ...TRANSFER_FILE,
@@ -363,7 +369,7 @@ describe("POST /session-import", () => {
     await post(url, hostile, `?token=${token}`);
     // The agent comes from the query string, which is the same-origin user's
     // own input; only the title is capped here.
-    expect((updateSession.mock.calls[0]?.[0] as { title: string }).title).toHaveLength(200);
+    expect(updateSession.mock.calls[0]?.[0]?.title).toHaveLength(200);
   });
 
   it("ignores a non-string session block instead of stringifying it", async () => {

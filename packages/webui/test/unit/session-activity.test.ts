@@ -283,7 +283,31 @@ describe("rail rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiProjectList, {
         page: { sessions: [session({ sessionId: "mvs_a" })] , hasMore: false },
-        projectRecords: [{ workspaceDir: "/tmp/project", name: "project" }],
+        // `loading` only reaches the "Load more" button, which needs
+        // `hasMore && onLoadMore`; this page is neither. Passed explicitly so
+        // the fixture is complete rather than accidentally short.
+        loading: false,
+        // A complete record, not a loose bag. The rail filters on `hidden`,
+        // sorts on `pinned`, and derives `updatedAt` from
+        // `recentAtMs ?? latestActivityAtMs` — so a partial fixture would let
+        // the row keep passing if any of those three were read wrongly. The
+        // record's own activity is deliberately 5h old, the same stale figure
+        // the session's `updatedAt` carries, which is what makes the `>2h` /
+        // not-`>5h` pair below discriminating: the age has to come from the
+        // activity map because the project record offers a competing 5h.
+        projectRecords: [
+          {
+            projectId: 1,
+            projectKind: "workspace",
+            workspaceDir: "/tmp/project",
+            pinned: false,
+            hidden: false,
+            orderIndex: 0,
+            recentAtMs: null,
+            latestActivityAtMs: NOW - 5 * HOUR,
+            sessionCount: 1,
+          },
+        ],
         // Deliberately NOT the session's `updatedAt`: the row must read the
         // activity map, or a session that ran since the list was fetched would
         // still show the stale time -- and this assertion would not notice.
@@ -302,6 +326,7 @@ describe("rail rendering", () => {
       renderToStaticMarkup(
         createElement(WebuiSessionList, {
           page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+          loading: false,
           activity: {
             mvs_a: { lastActivityAt: NOW - 5 * HOUR, ...(busy ? { busy: { turnId: "t1", busyReason: "turn" as const } } : {}) },
           },
@@ -320,6 +345,7 @@ describe("rail rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionList, {
         page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        loading: false,
       }),
     );
     expect(html).not.toMatch(/webui-rail-session-meta/u);
@@ -658,6 +684,7 @@ describe("unread badge rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionList, {
         page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        loading: false,
         activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 1 } },
         now: NOW,
       }),
@@ -675,6 +702,7 @@ describe("unread badge rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionList, {
         page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        loading: false,
         activity: {
           mvs_a: { lastActivityAt: NOW, unread: 3, busy: { turnId: "t2", busyReason: "turn" } },
         },
@@ -689,6 +717,7 @@ describe("unread badge rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionList, {
         page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        loading: false,
         activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 0 } },
         now: NOW,
       }),
@@ -704,6 +733,7 @@ describe("unread badge rendering", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionList, {
         page: { sessions: [session({ sessionId: "mvs_a" })], hasMore: false },
+        loading: false,
         activity: { mvs_a: { lastActivityAt: NOW - 2 * HOUR, unread: 150 } },
         now: NOW,
       }),

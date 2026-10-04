@@ -45,17 +45,27 @@ const createdElements = vi.hoisted(() => [] as CapturedElement[]);
 // Vitest's esbuild runs in dev mode, so TSX compiles to `jsxDEV` from
 // `react/jsx-dev-runtime`. The classic runtime is mocked too, so the seam holds
 // whichever of the two the transform picked.
+//
+// The recorder stores `type` as `unknown` so the tests below can compare it
+// against `"form"` and against component references without a cast at each
+// comparison. The parameter is typed `React.ElementType` — which is what the
+// transform actually passes, and which still admits the intrinsic string tags,
+// so the recorder loses nothing.
 vi.mock("react/jsx-dev-runtime", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react/jsx-dev-runtime")>();
-  const record = (type: unknown, props: Record<string, any>) => {
+  const record = (type: React.ElementType, props: Record<string, any>) => {
     createdElements.push({ type, props });
-    return actual.jsxDEV(type, props);
+    // `jsxDEV` is declared as `(type, props, key, isStatic, source?, self?)`
+    // and the runtime reads the trailing four positionally. Omitting them was
+    // already how this mock behaved — `undefined` key, falsy `isStatic` — so
+    // they are now spelled out rather than dropped.
+    return actual.jsxDEV(type, props, undefined, false);
   };
   return { ...actual, jsxDEV: record };
 });
 vi.mock("react/jsx-runtime", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react/jsx-runtime")>();
-  const record = (type: unknown, props: Record<string, any>) => {
+  const record = (type: React.ElementType, props: Record<string, any>) => {
     createdElements.push({ type, props });
     return actual.jsx(type, props);
   };
@@ -210,6 +220,10 @@ describe("retry re-sends the recorded input and never aborts", () => {
       inFlight = submitWebuiComposerTurn(
         {
           sessionId: SESSION_ID,
+          // The same pair the composer passes (`SessionComposer.tsx`), so the
+          // no-session hand-off sees the real input here too and a future
+          // `args.draft` read on this path is exercised rather than undefined.
+          draft: turn.message,
           message: turn.message,
           sending: false,
           deps: {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
 import {
   WEBUI_BUILTIN_COMMANDS,
   WEBUI_RUN_COMMAND_NAMES,
@@ -24,7 +25,10 @@ import { resolveWebuiSubmissionIntent } from "../../src/client/projection/compos
  * intent path even when its name is in WEBUI_RUN_COMMAND_NAMES.
  */
 
-const ICON: SlashCommandEntry["icon"] = () => null;
+// `icon` is a component, so it has to hand back a `ReactElement`. Nothing in
+// this file renders one — the rows are classified and sectioned as plain
+// objects — so the element only has to be real enough to match the signature.
+const ICON: SlashCommandEntry["icon"] = () => createElement("span");
 
 const newEntry = (name: string, supported: boolean): SlashCommandEntry => ({
   name,

@@ -12,7 +12,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
-import type { WebuiClientMessage } from "../../src/client/contracts.js";
+import type { WebuiClientMessage, WebuiClientMessagePage } from "../../src/client/contracts.js";
 
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
 import type { WebuiUsageQuotaResult } from "../../src/server/port.js";
@@ -52,7 +52,6 @@ function sessionShell(opts: {
                   id: "stream-assistant-1",
                   answer: opts.streamAssistantAnswer,
                   thinking: opts.streamAssistantThinking ?? "",
-                  role: "assistant" as const,
                   timestamp: Date.now(),
                 }]
               : []),
@@ -62,7 +61,6 @@ function sessionShell(opts: {
               id: "stream-assistant-1",
               answer: opts.streamAssistantAnswer,
               thinking: opts.streamAssistantThinking ?? "",
-              role: "assistant" as const,
               timestamp: Date.now(),
             }]
           : [],
@@ -141,16 +139,19 @@ const quotaHighUsage: WebuiUsageQuotaResult = {
       usedPercent: 80,
       totalPercent: 100,
       resetAtMs: Date.now() + 3600_000,
+      unlimited: false,
     },
     weekly: {
       usedPercent: 0,
       totalPercent: 100,
       resetAtMs: Date.now() + 7 * 86_400_000,
+      unlimited: false,
     },
     video: {
       usedCount: 0,
       totalCount: 100,
       resetAtMs: Date.now() + 86_400_000,
+      unlimited: false,
     },
   },
 };
@@ -195,9 +196,9 @@ describe("WebUI transcript widget wiring", () => {
           hasMore: false,
         },
         transport: {
-        loadMessages: () => new Promise(() => undefined),
-        watchEvents: () => () => undefined,
-      },
+          loadMessages: () => new Promise<WebuiClientMessagePage>(() => undefined),
+          watchEvents: () => () => undefined,
+        },
     }),
     );
     expect(html).toContain('data-testid="chat-skeleton"');
@@ -206,6 +207,37 @@ describe("WebUI transcript widget wiring", () => {
   it("renders ConversationUsageBanner at the session top when quota is high", () => {
     const html = sessionShell({ quota: quotaHighUsage });
     expect(html).toContain('data-testid="conversation-usage-banner"');
+  });
+
+  it("suppresses ConversationUsageBanner when the high-usage window is unlimited", () => {
+    // Same percentages as `quotaHighUsage`; only `unlimited` differs. The notice
+    // projection skips unlimited windows, so the banner must not appear —
+    // without this, `unlimited: false` above reads as an arbitrary fixture key.
+    const quotaUnlimited: WebuiUsageQuotaResult = {
+      signedIn: true,
+      quota: {
+        fiveHour: {
+          usedPercent: 80,
+          totalPercent: 100,
+          resetAtMs: Date.now() + 3600_000,
+          unlimited: true,
+        },
+        weekly: {
+          usedPercent: 0,
+          totalPercent: 100,
+          resetAtMs: Date.now() + 7 * 86_400_000,
+          unlimited: true,
+        },
+        video: {
+          usedCount: 0,
+          totalCount: 100,
+          resetAtMs: Date.now() + 86_400_000,
+          unlimited: true,
+        },
+      },
+    };
+    const html = sessionShell({ quota: quotaUnlimited });
+    expect(html).not.toContain('data-testid="conversation-usage-banner"');
   });
 
   it("renders ActivityIndicator while streaming and no assistant text yet", () => {

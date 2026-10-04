@@ -1011,6 +1011,48 @@
     line-height: 1;
     color: var(--text_default_tertiary);
   }
+  /* "This row is pinned", drawn by the row itself rather than by the button that
+   * toggles it, because sort position is not a claim about the row: it stops
+   * being true the moment a fresher session arrives, and it was never visible
+   * while reading the list.
+   *
+   * Narrower than it looks: that ordering lives only in the project view's
+   * `sortWebuiProjectSessionIds`. The running, unread and favourites views sort
+   * by activity alone, so inside those a pin buys the mark and nothing else --
+   * which is the point of drawing it, and the reason nothing here depends on
+   * the sort.
+   *
+   * Tertiary grey, inherited from the meta block, on purpose. The two colours
+   * already in this cluster each carry a meaning that is not "the user chose
+   * this": the accent-blue ring is a turn running right now, and the red badge
+   * is turns that finished unopened. A pin is none of those -- it is a standing
+   * preference with no urgency in it -- so painting it in either colour would
+   * make the row claim something it is not. Sizing is bare px for the same
+   * reason the badge above is: this project ships no font-size tokens. */
+  .webui-rail-pin-mark,
+  .webui-project-pin-mark,
+  .webui-rail-star-mark {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--text_default_tertiary);
+  }
+  .webui-project-pin-mark {
+    margin-left: var(--spacing_4);
+  }
+  /* The star is the one mark on this row that is allowed to shout, and only
+   * because the reader asked for it: the token is this project's own name for
+   * yellow and it flips with the theme, which a hardcoded hex would not. The
+   * pin beside it stays grey -- a pin is an ordering preference and a favourite
+   * is a thing the reader singled out, and they are not the same kind of claim.
+   *
+   * Applied to the mark and to the button's filled glyph alike, so a starred row
+   * reads the same whether the pointer is on it or not. */
+  .webui-rail-star-mark,
+  .webui-rail-action:has([data-webui-star="filled"]) {
+    color: var(--text_status_banana);
+  }
   .webui-rail-spinner {
     width: 10px;
     height: 10px;
@@ -1190,6 +1232,18 @@
   .webui-rail-action:focus-visible {
     background: transparent;
     color: var(--icon_default_secondary);
+  }
+  /* ...and the filled star survives that. `.webui-rail-action:hover` and
+   * `.webui-rail-action:has([data-webui-star="filled"])` are both (0,2,0), so
+   * whichever is written last wins, and the hover block above comes after the
+   * star colour. Left alone, the glyph went grey the moment the pointer landed
+   * on the very button that toggles it -- the reader stars a session, moves the
+   * pointer onto the star to unstar it, and watches the colour that was the
+   * evidence of the state disappear. One class more on the selector settles it
+   * by specificity instead of by source order. */
+  .webui-rail-action:hover:has([data-webui-star="filled"]),
+  .webui-rail-action:focus-visible:has([data-webui-star="filled"]) {
+    color: var(--text_status_banana);
   }
 
   .webui-project-session-list {

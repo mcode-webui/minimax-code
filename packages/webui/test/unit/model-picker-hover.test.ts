@@ -48,8 +48,8 @@ describe("model picker — a hover that is not yet a decision", () => {
     // answer is to wait. A path that opened here is the original bug.
     expect(
       hoverArrival({
-        key: "minimax/M3",
-        focusedKey: undefined,
+        rowId: "minimax::minimax/M3",
+        focusedRowId: undefined,
         tier: "list",
         hasFlyout: true,
       }),
@@ -64,8 +64,8 @@ describe("model picker — a hover that is not yet a decision", () => {
     // watches one model's settings slide onto another before reading either.
     expect(
       hoverArrival({
-        key: "minimax/M3",
-        focusedKey: "zhipu/glm-5.3",
+        rowId: "minimax::minimax/M3",
+        focusedRowId: "zai::zhipu/glm-5.3",
         tier: "settings",
         hasFlyout: true,
       }),
@@ -79,8 +79,8 @@ describe("model picker — a hover that is not yet a decision", () => {
     // hover that is already satisfied, so the panel would flicker.
     expect(
       hoverArrival({
-        key: "zhipu/glm-5.3",
-        focusedKey: "zhipu/glm-5.3",
+        rowId: "zai::zhipu/glm-5.3",
+        focusedRowId: "zai::zhipu/glm-5.3",
         tier: "settings",
         hasFlyout: true,
       }),
@@ -92,16 +92,16 @@ describe("model picker — a hover that is not yet a decision", () => {
     // with it: left standing it describes a model nothing is pointing at.
     expect(
       hoverArrival({
-        key: "openai/gpt-6",
-        focusedKey: "zhipu/glm-5.3",
+        rowId: "openai::openai/gpt-6",
+        focusedRowId: "zai::zhipu/glm-5.3",
         tier: "settings",
         hasFlyout: false,
       }),
     ).toBe("retract-only");
     expect(
       hoverArrival({
-        key: "openai/gpt-6",
-        focusedKey: undefined,
+        rowId: "openai::openai/gpt-6",
+        focusedRowId: undefined,
         tier: "list",
         hasFlyout: false,
       }),
@@ -115,12 +115,38 @@ describe("model picker — a hover that is not yet a decision", () => {
     // and returning to a CLOSED panel has to schedule like any other.
     expect(
       hoverArrival({
-        key: "zhipu/glm-5.3",
-        focusedKey: undefined,
+        rowId: "zai::zhipu/glm-5.3",
+        focusedRowId: undefined,
         tier: "list",
         hasFlyout: true,
       }),
     ).toBe("retract-then-open");
+  });
+
+  it("does not let one copy of a model answer for the other", () => {
+    // A starred model is rendered twice, so "the panel already describes this
+    // one" has to mean this ROW. Answering by model leaves the panel anchored
+    // to the shortlist's line while the pointer has moved to the provider's
+    // copy of the same model — the panel then sits beside a line the pointer
+    // is not on, which is the one place a fly-out must never be.
+    expect(
+      hoverArrival({
+        rowId: "minimax::minimax/M3",
+        focusedRowId: "__favorites::minimax/M3",
+        tier: "settings",
+        hasFlyout: true,
+      }),
+    ).toBe("retract-then-open");
+    // …and the same row arriving twice still keeps its panel, which is the
+    // pointer crossing back out of it.
+    expect(
+      hoverArrival({
+        rowId: "__favorites::minimax/M3",
+        focusedRowId: "__favorites::minimax/M3",
+        tier: "settings",
+        hasFlyout: true,
+      }),
+    ).toBe("keep-open");
   });
 });
 
@@ -146,12 +172,12 @@ describe("model picker — the hover wiring", () => {
       picker.indexOf("hoverTimer.current = setTimeout("),
       picker.indexOf("}, MODEL_FLYOUT_HOVER_DELAY_MS);"),
     );
-    expect(delay).toContain("handleHoverRow(key);");
+    expect(delay).toContain("handleHoverRow(key, rowId);");
     const arrows = picker.slice(
       picker.indexOf("const moveFocusedRow = (delta: number) => {"),
       picker.indexOf("const searchIsEmpty ="),
     );
-    expect(arrows).toContain("handleHoverRow(key);");
+    expect(arrows).toContain("handleHoverRow(row.key, row.rowId);");
     expect(picker).toContain("}, MODEL_FLYOUT_HOVER_DELAY_MS);");
   });
 
@@ -183,12 +209,27 @@ describe("model picker — the hover wiring", () => {
     // "where is the pointer" and is expected to be immediate; the panel is the
     // list making a claim about that row, and claims wait. Folding them back
     // into one handler is the regression this split exists to prevent.
-    expect(picker).toContain("onHoverIntent?: (key: string) => void;");
-    expect(picker).toContain("onHoverLeave?: (key: string) => void;");
+    expect(picker).toContain("onHoverIntent?: (key: string, rowId: string) => void;");
+    expect(picker).toContain("onHoverLeave?: (rowId: string) => void;");
     expect(picker).toMatch(
-      /onMouseEnter=\{\(\) => \{\s*\n\s*onHoverIntent\?\.\(key\);\s*\n\s*onFocus\(key\);/u,
+      /onMouseEnter=\{\(\) => \{\s*\n\s*onHoverIntent\?\.\(key, rowId\);\s*\n\s*onFocus\(key, rowId\);/u,
     );
-    expect(picker).toContain("onMouseLeave={() => onHoverLeave?.(key)}");
+    expect(picker).toContain("onMouseLeave={() => onHoverLeave?.(rowId)}");
+  });
+
+  it("anchors the panel to the ROW, which a model key cannot name", () => {
+    // The defect this exists for: a starred model is rendered twice, so a map
+    // keyed by the model holds whichever copy mounted last — the provider's.
+    // Hovering the shortlist's line then opened the panel beside a different
+    // line entirely, at the other end of the list.
+    expect(picker).toContain("export function rowIdOf(groupId: string, key: string): string {");
+    expect(picker).toContain("const rowId = rowIdOf(group.id, key);");
+    expect(picker).toContain("rowElements.current.get(focused.rowId)");
+    // The keyboard walks rows for the same reason: a walk keyed by model would
+    // step onto the shortlist's M3 and then the provider's M3, two presses for
+    // one model.
+    expect(picker).toContain("rowId: rowIdOf(group.id, key)");
+    expect(picker).toContain("rows.findIndex((row) => row.rowId === focused.rowId)");
   });
 
   it("cancels a pending hover when the pointer leaves a row, without retracting", () => {
@@ -199,5 +240,20 @@ describe("model picker — the hover wiring", () => {
     const leave = picker.slice(picker.indexOf("const handleHoverLeave = () => {"));
     expect(leave.slice(0, leave.indexOf("};"))).toContain("clearPendingHover()");
     expect(leave.slice(0, leave.indexOf("};"))).not.toContain("setTier");
+  });
+
+  it("does not let the highlight cancel the hover it was queued with", () => {
+    // Caught on the running app, not by any assertion: the list calls
+    // `onHoverIntent` and then `onFocus` from ONE mouseenter, so a highlight
+    // handler that also called off the pending hover cancelled the panel the
+    // pointer had just asked for, and the list silently stopped opening one at
+    // all. The highlight moves; the timer belongs to the pointer.
+    const focus = picker.slice(
+      picker.indexOf("const handleRowFocus = (key: string, rowId: string) => {"),
+    );
+    const body = focus.slice(0, focus.indexOf("};"));
+    expect(body).toContain("setFocused({ key, rowId })");
+    expect(body).not.toContain("clearPendingHover");
+    expect(body).not.toContain("setTier");
   });
 });

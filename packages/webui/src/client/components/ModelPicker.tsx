@@ -100,6 +100,19 @@ export interface WebuiModelProviderGroup {
   readonly id: string;
   readonly label: string;
   readonly models: readonly WebuiModelPickerEntry[];
+  /**
+   * The provider each row really belongs to, keyed by `modelKey` — set only on
+   * a section that is not the model's own provider, which today means the
+   * favourites section.
+   *
+   * A starred model is listed TWICE on purpose: it stays where the catalogue
+   * put it, under the provider that owns it, and it is also repeated at the top
+   * because that is what a shortlist is for. The repeat is the only part that
+   * needs explaining, so every repeated row says which provider it came from.
+   * Without it, a favourites list of eight rows from five providers is eight
+   * names with no way to tell a deprecated model from a different vendor's.
+   */
+  readonly modelOriginLabels?: Readonly<Record<string, string>>;
 }
 
 /** Group label: the provider's display name, falling back to its id. */
@@ -150,6 +163,20 @@ export function groupModelsByProvider(
  */
 export function modelKey(model: WebuiModelPickerEntry): string {
   return `${model.providerId}/${model.modelId}/${model.variant ?? ""}`;
+}
+
+/**
+ * A row's identity: the group it is rendered in, plus the model.
+ *
+ * A starred model is rendered TWICE — under its provider and again in the
+ * shortlist — so the model key is not a row key. Anything per-ROW has to use
+ * this: the highlight, the fly-out's anchor rectangle, where the arrow keys
+ * think they are. Keyed by the model alone, all three point at whichever copy
+ * mounted last, which is the provider's, and the panel then opens beside a
+ * different line than the one the pointer is on.
+ */
+export function rowIdOf(groupId: string, key: string): string {
+  return `${groupId}::${key}`;
 }
 
 function formatContextWindow(value: number): string {
@@ -237,7 +264,7 @@ export function variantForEffort(
 export function WebuiModelMenuList({
   groups,
   selected,
-  focusedKey,
+  focusedRowId,
   favoriteKeys,
   onFocus,
   onHoverIntent,
@@ -248,9 +275,17 @@ export function WebuiModelMenuList({
 }: {
   readonly groups: readonly WebuiModelProviderGroup[];
   readonly selected: WebuiModelPickerEntry | undefined;
-  readonly focusedKey: string | undefined;
+  /**
+   * The row the pointer or the keyboard is on, as a ROW id.
+   *
+   * Not a model key, and that is the whole point: a starred model is rendered
+   * twice, so two rows can carry the same key. Highlighting both copies because
+   * the pointer is on one of them is a claim the list cannot support — the user
+   * is looking at one line, and the other line is somewhere else on screen.
+   */
+  readonly focusedRowId: string | undefined;
   readonly favoriteKeys: ReadonlySet<string>;
-  readonly onFocus: (key: string) => void;
+  readonly onFocus: (key: string, rowId: string) => void;
   /**
    * The pointer ARRIVED on this row. Opens the fly-out if the pointer rests.
    *
@@ -263,13 +298,13 @@ export function WebuiModelMenuList({
    * Optional so a caller that renders rows without a cascade (the search tests
    * do) does not have to pass a no-op.
    */
-  readonly onHoverIntent?: (key: string) => void;
+  readonly onHoverIntent?: (key: string, rowId: string) => void;
   /**
    * The pointer LEFT this row. Cancels a pending open and nothing else: the
    * panel is itself a hover region, and the pointer is usually on its way into
    * it, so an open panel is left standing.
    */
-  readonly onHoverLeave?: (key: string) => void;
+  readonly onHoverLeave?: (rowId: string) => void;
   readonly onSelect: (model: WebuiModelPickerEntry) => void;
   readonly onToggleFavorite: (key: string) => void;
   /**
@@ -279,7 +314,7 @@ export function WebuiModelMenuList({
    * as the list filters, and an element the caller cannot measure is a fly-out
    * with nothing to point at.
    */
-  readonly onRowMount?: (key: string, element: HTMLElement | null) => void;
+  readonly onRowMount?: (rowId: string, element: HTMLElement | null) => void;
 }): ReactElement {
   return (
     <div role="listbox" aria-label="Model" className="webui-model-menu-list">
@@ -295,17 +330,26 @@ export function WebuiModelMenuList({
           </div>
           {group.models.map((model) => {
             const key = modelKey(model);
+            // The row's own identity, which is NOT the model's: a starred model
+            // is rendered in two groups, and every per-ROW thing — the
+            // highlight, the fly-out's anchor, the arrow keys' position — has to
+            // tell those two apart or it will point at whichever mounted last.
+            const rowId = rowIdOf(group.id, key);
             const isSelected = selected ? modelKey(selected) === key : false;
-            const isFocused = focusedKey === key;
+            const isFocused = focusedRowId === rowId;
             const isFavorite = favoriteKeys.has(key);
             const name =
               model.displayName ??
               `${model.providerId}/${model.modelId}`;
+            // The provider this row was repeated FROM, on the one section that
+            // repeats rows. Everywhere else the group header above already
+            // says it, and saying it twice would be noise.
+            const origin = group.modelOriginLabels?.[key];
             return (
               <div
-                key={key}
+                key={rowId}
                 className="webui-model-option-row"
-                ref={(element) => onRowMount?.(key, element)}
+                ref={(element) => onRowMount?.(rowId, element)}
               >
                 <button
                   type="button"
@@ -314,15 +358,23 @@ export function WebuiModelMenuList({
                   data-focused={isFocused ? "true" : "false"}
                   className="webui-model-option"
                   onMouseEnter={() => {
-                    onHoverIntent?.(key);
-                    onFocus(key);
+                    onHoverIntent?.(key, rowId);
+                    onFocus(key, rowId);
                   }}
-                  onMouseLeave={() => onHoverLeave?.(key)}
-                  onFocus={() => onFocus(key)}
+                  onMouseLeave={() => onHoverLeave?.(rowId)}
+                  onFocus={() => onFocus(key, rowId)}
                   onClick={() => onSelect(model)}
                 >
-                  <span className="min-w-0 flex-1 truncate text-left">
-                    {name}
+                  <span className="min-w-0 flex-1 text-left">
+                    <span className="block truncate">{name}</span>
+                    {origin ? (
+                      <span
+                        className="webui-model-option-origin"
+                        data-webui-model-origin={origin}
+                      >
+                        {origin}
+                      </span>
+                    ) : null}
                   </span>
                   {isSelected ? (
                     <span
@@ -362,7 +414,18 @@ export function WebuiModelPicker({
   triggerLevel,
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
-  const [focusedKey, setFocusedKey] = useState<string | undefined>(undefined);
+  /**
+   * The row the pointer or the keyboard is on, and the model that row describes.
+   *
+   * One state holding both, because the two have to agree: a row id with no
+   * model cannot anchor a panel, and a model with no row cannot say WHICH line
+   * on screen the panel belongs to. Two separate states would be two chances to
+   * disagree, and the disagreement is invisible until the panel opens beside the
+   * wrong line.
+   */
+  const [focused, setFocused] = useState<
+    { readonly key: string; readonly rowId: string } | undefined
+  >(undefined);
   const [tier, setTier] = useState<CascadeTier>("list");
   const [query, setQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
@@ -424,7 +487,7 @@ export function WebuiModelPicker({
   const retractFlyout = () => {
     clearPendingHover();
     setTier("list");
-    setFocusedKey(undefined);
+    setFocused(undefined);
   };
 
   // Keep the local mirror through model-catalog refreshes while the menu is
@@ -500,10 +563,10 @@ export function WebuiModelPicker({
   }, [open]);
 
   const focusedModel = useMemo<WebuiModelPickerEntry | undefined>(() => {
-    const key = focusedKey ?? (selected ? modelKey(selected) : undefined);
+    const key = focused?.key ?? (selected ? modelKey(selected) : undefined);
     if (!key) return undefined;
     return models.find((model) => modelKey(model) === key) ?? selected;
-  }, [focusedKey, models, selected]);
+  }, [focused, models, selected]);
 
   const focusedKeyString = focusedModel ? modelKey(focusedModel) : "";
   const focusedDraft: WebuiModelPickerDraft =
@@ -518,7 +581,7 @@ export function WebuiModelPicker({
     // visit, and keeping the menu open would strand the user on a surface they
     // have already answered.
     setOpen(false);
-    setFocusedKey(undefined);
+    setFocused(undefined);
   };
 
   /**
@@ -535,17 +598,36 @@ export function WebuiModelPicker({
    * opens the panel without waiting out a hover delay: arrowing into a row is a
    * decision, not a pass over it.
    */
-  const handleHoverRow = (key: string) => {
+  const handleHoverRow = (key: string, rowId: string) => {
     // Whatever hover was pending is this one now, whether it came from the
     // pointer's delay or from the keyboard.
     clearPendingHover();
     const model = modelsRef.current.find((entry) => modelKey(entry) === key);
     if (!model) return;
-    setFocusedKey(key);
+    setFocused({ key, rowId });
     // A row with nothing to configure retracts the fly-out rather than
     // leaving the previous row's panel up: the panel would then describe a
     // model the pointer has already left.
     setTier(rowHasFlyout(model) ? "settings" : "list");
+  };
+
+  /**
+   * The row's highlight moved: this one, and only this.
+   *
+   * No panel, and no cancelling of a pending one. The list calls this from the
+   * SAME mouseenter that queued the hover, so cancelling here would call off
+   * the panel the pointer had just asked for, a few lines after asking for it.
+   * It is also right on its own terms: Tab moves the highlight without moving
+   * the pointer, and a pointer still resting on a row is still resting on it.
+   *
+   * The difference from arrowing is the point. Tab is a sweep through the
+   * controls on the way to somewhere else, so a surface that unfolds on every
+   * tab stop makes the list unusable by keyboard; arrowing is a decision to
+   * look at this row, and that is what earns the panel. The pointer reaches the
+   * panel through `handleHoverIntent`.
+   */
+  const handleRowFocus = (key: string, rowId: string) => {
+    setFocused({ key, rowId });
   };
 
   /**
@@ -559,11 +641,11 @@ export function WebuiModelPicker({
    * just passed over — the old model's settings, sliding onto a new model,
    * before the user has read either.
    */
-  const handleHoverIntent = (key: string) => {
+  const handleHoverIntent = (key: string, rowId: string) => {
     const model = modelsRef.current.find((entry) => modelKey(entry) === key);
     const arrival = hoverArrival({
-      key,
-      focusedKey,
+      rowId,
+      focusedRowId: focused?.rowId,
       tier,
       hasFlyout: rowHasFlyout(model),
     });
@@ -575,7 +657,7 @@ export function WebuiModelPicker({
     if (arrival === "retract-only") return;
     hoverTimer.current = setTimeout(() => {
       hoverTimer.current = null;
-      handleHoverRow(key);
+      handleHoverRow(key, rowId);
     }, MODEL_FLYOUT_HOVER_DELAY_MS);
   };
 
@@ -603,7 +685,7 @@ export function WebuiModelPicker({
     clearPendingHover();
     setTier((current) => {
       if (current === "settings") {
-        setFocusedKey(undefined);
+        setFocused(undefined);
         return "list";
       }
       setOpen(false);
@@ -619,9 +701,9 @@ export function WebuiModelPicker({
   // the row first to unlock it, which is the step the fly-out exists to save.
   const flyoutIsPreview = isPreview(focusedKeyString, selectedKeyString);
   const flyoutAnchor =
-    focusedKeyString && tier === "settings"
+    focused?.rowId && tier === "settings"
       ? (() => {
-          const element = rowElements.current.get(focusedKeyString);
+          const element = rowElements.current.get(focused.rowId);
           if (!element) return undefined;
           return { rect: element.getBoundingClientRect(), element };
         })()
@@ -658,19 +740,28 @@ export function WebuiModelPicker({
    * settings a mouse user sees on the same row.
    */
   const moveFocusedRow = (delta: number) => {
-    const keys = groupedModels.flatMap((group) => group.models.map(modelKey));
-    if (keys.length === 0) return;
-    const current = focusedKeyString ? keys.indexOf(focusedKeyString) : -1;
+    // Rows, not models. A starred model is listed twice, so a walk keyed by
+    // model would step onto the shortlist's M3 and then onto the provider's M3
+    // — two presses, one model, and the second press looks like the keyboard
+    // ignored the first.
+    const rows = groupedModels.flatMap((group) =>
+      group.models.map((model) => {
+        const key = modelKey(model);
+        return { key, rowId: rowIdOf(group.id, key) };
+      }),
+    );
+    if (rows.length === 0) return;
+    const current = focused ? rows.findIndex((row) => row.rowId === focused.rowId) : -1;
     // From nothing focused, Down enters at the top and Up at the bottom, so
     // both keys are useful from the start rather than one of them doing
     // nothing.
     const next = current === -1
-      ? (delta > 0 ? 0 : keys.length - 1)
-      : Math.min(keys.length - 1, Math.max(0, current + delta));
-    const key = keys[next];
-    if (key === undefined) return;
-    handleHoverRow(key);
-    rowElements.current.get(key)?.scrollIntoView({ block: "nearest" });
+      ? (delta > 0 ? 0 : rows.length - 1)
+      : Math.min(rows.length - 1, Math.max(0, current + delta));
+    const row = rows[next];
+    if (!row) return;
+    handleHoverRow(row.key, row.rowId);
+    rowElements.current.get(row.rowId)?.scrollIntoView({ block: "nearest" });
   };
 
   const favoriteKeys = useMemo(
@@ -764,7 +855,7 @@ export function WebuiModelPicker({
     onSettingChange(focusedModel, draft);
     onSelect(focusedModel, draft);
     setOpen(false);
-    setFocusedKey(undefined);
+    setFocused(undefined);
   };
 
   return (
@@ -877,16 +968,16 @@ export function WebuiModelPicker({
               <WebuiModelMenuList
                 groups={groupedModels}
                 selected={selected}
-                focusedKey={focusedKeyString || undefined}
+                focusedRowId={focused?.rowId}
                 favoriteKeys={favoriteKeys}
-                onFocus={setFocusedKey}
+                onFocus={handleRowFocus}
                 onHoverIntent={handleHoverIntent}
                 onHoverLeave={handleHoverLeave}
                 onSelect={handleSelectModel}
                 onToggleFavorite={handleToggleFavorite}
-                onRowMount={(key, element) => {
-                  if (element) rowElements.current.set(key, element);
-                  else rowElements.current.delete(key);
+                onRowMount={(rowId, element) => {
+                  if (element) rowElements.current.set(rowId, element);
+                  else rowElements.current.delete(rowId);
                 }}
               />
             )}

@@ -1718,6 +1718,15 @@
   .webui-model-option-tick {
     color: var(--text_default_secondary);
   }
+  /* The provider a repeated row was carried in from, on the favourites section
+   * only. Set in the same voice as the group header it stands in for — one step
+   * down from the model name, which is what a sub-label is. */
+  .webui-model-option-origin {
+    display: block;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
   .webui-model-option[data-focused="true"] {
     background-color: var(--bg_interaction_tertiary_hover, rgba(0, 0, 0, 0.06));
   }

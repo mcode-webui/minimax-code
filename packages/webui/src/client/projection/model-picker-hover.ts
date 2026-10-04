@@ -44,7 +44,7 @@ export const MODEL_FLYOUT_HOVER_DELAY_MS = 350;
 /** What the pointer arriving on a row does to the fly-out. */
 export type HoverArrival =
   /**
-   * The open panel already describes this row. Do nothing at all.
+   * The open panel already describes THIS row. Do nothing at all.
    *
    * The pointer has just crossed back out of the panel, or never left the row
    * it is describing.
@@ -61,18 +61,25 @@ export type HoverArrival =
   | "retract-only";
 
 /**
- * What the pointer arriving on `key` does to the fly-out.
+ * What the pointer arriving on a row does to the fly-out.
  *
- * The retract-then-open split is the one that carries the design. Retracting
- * first is what keeps the panel attached to the row the pointer is on: without
- * it, the highlight moves to the next row on the same mouse event that opened
- * the previous row's panel, and the panel re-anchors itself to the new row
- * before the delay has even been paid — the user sees the old model's settings
- * sliding onto a model they have not settled on.
+ * Identity here is the ROW, not the model. A starred model is listed twice —
+ * once under its provider and once in the shortlist — so two different rows can
+ * be the same model, and "the panel already describes this one" has to mean the
+ * row under the pointer rather than the model. Comparing models would leave the
+ * panel anchored to the shortlist row while the pointer sat on the provider's
+ * copy of the same model, which is the one place a fly-out must never be.
+ *
+ * The retract-then-open split is the one that carries the rest of the design.
+ * Retracting first is what keeps the panel attached to the row the pointer is
+ * on: without it, the highlight moves to the next row on the same mouse event
+ * that opened the previous row's panel, and the panel re-anchors itself to the
+ * new row before the delay has even been paid — the user sees the old model's
+ * settings sliding onto a model they have not settled on.
  */
 export function hoverArrival(params: {
-  readonly key: string;
-  readonly focusedKey: string | undefined;
+  readonly rowId: string;
+  readonly focusedRowId: string | undefined;
   readonly tier: CascadeTier;
   readonly hasFlyout: boolean;
 }): HoverArrival {
@@ -80,7 +87,7 @@ export function hoverArrival(params: {
   // the pointer on its way to being used, and re-scheduling would restart the
   // delay on a hover that has already been satisfied — the panel would flicker
   // closed and open again as the pointer crossed back over its own row.
-  if (params.tier === "settings" && params.key === params.focusedKey) {
+  if (params.tier === "settings" && params.rowId === params.focusedRowId) {
     return "keep-open";
   }
   // A model with nothing to configure has nothing to describe, and the previous

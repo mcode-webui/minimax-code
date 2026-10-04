@@ -199,27 +199,67 @@ describe("model picker favourites — the hoisted section", () => {
     expect(kept[0]?.models.map((m) => m.modelId)).toEqual(["glm-5.3"]);
   });
 
-  it("removes a starred model from its provider, so it is listed once", () => {
-    // A model appearing both at the top and under its provider would make
-    // "starred" mean nothing.
+  it("leaves a starred model where the catalogue put it", () => {
+    // The reported defect, and it only shows up once two models from one
+    // provider are starred: hoisting emptied the provider group, so starring
+    // M3 made MiniMax stop listing M3 and the picker quietly offered a smaller
+    // catalogue than it had a minute ago. A star is a shortcut, and a shortcut
+    // that deletes the long way round is not a shortcut.
     const kept = orderModelGroups(
       grouped(...CATALOGUE),
       ["zai/glm-5.3/"],
       "收藏",
       modelKey,
     );
+    const zai = kept.find((group) => group.id === "zai");
+    expect(zai?.models.map((m) => m.modelId)).toEqual(["glm-5.3", "glm-4.6"]);
+    // Listed twice on purpose: once as the catalogue has it, once as a
+    // shortlist. Which is why the repeated row has to say where it came from.
     const all = kept.flatMap((group) => group.models.map((m) => m.modelId));
-    expect(all.filter((id) => id === "glm-5.3")).toHaveLength(1);
+    expect(all.filter((id) => id === "glm-5.3")).toHaveLength(2);
   });
 
-  it("drops a provider group that hoisting emptied", () => {
+  it("carries the provider onto every repeated row", () => {
+    // Eight names from five providers say nothing about which vendor each one
+    // is; a shortlist is how you compare, and comparison needs the vendor.
+    const kept = orderModelGroups(
+      grouped(...CATALOGUE),
+      ["zai/glm-5.3/", "openai_compat/gpt-5/"],
+      "收藏",
+      modelKey,
+    );
+    // The group LABEL, not the id — that is the word the group header above the
+    // provider's own rows is already using, and a label the reader cannot match
+    // to a header is not information.
+    expect(kept[0]?.modelOriginLabels).toEqual({
+      "zai/glm-5.3/": "zai",
+      "openai_compat/gpt-5/": "openai_compat",
+    });
+    expect(
+      orderModelGroups(
+        grouped({ ...entry("zai", "glm-5.3"), providerName: "Zhipu AI Coding Plan" }),
+        ["zai/glm-5.3/"],
+        "收藏",
+        modelKey,
+      )[0]?.modelOriginLabels,
+    ).toEqual({ "zai/glm-5.3/": "Zhipu AI Coding Plan" });
+    // …and the provider's own rows carry no label: the group header above them
+    // already says it, and saying it twice is noise.
+    expect(kept[1]?.modelOriginLabels).toBeUndefined();
+  });
+
+  it("never empties a provider group, so never drops one", () => {
     const kept = orderModelGroups(
       grouped(entry("zai", "glm-5.3"), entry("zai", "glm-4.6")),
       ["zai/glm-5.3/", "zai/glm-4.6/"],
       "收藏",
       modelKey,
     );
-    expect(kept.map((group) => group.id)).toEqual([FAVORITES_SECTION_ID]);
+    expect(kept.map((group) => group.id)).toEqual([
+      FAVORITES_SECTION_ID,
+      "zai",
+    ]);
+    expect(kept[1]?.models).toHaveLength(2);
   });
 
   it("orders the section by the store, not by the catalogue", () => {
@@ -240,7 +280,10 @@ describe("model picker favourites — the hoisted section", () => {
 
   it("is safe to re-apply to its own output", () => {
     // A function that quietly eats its own section on a second pass is a trap
-    // for the next caller: every starred model would drop on the floor.
+    // for the next caller: every starred model would drop on the floor. The
+    // origin labels have to survive the pass too — the repeated rows are the
+    // ones carrying them, so a second run that resolves every model against the
+    // section it just built would strip the provider off all of them.
     const once = orderModelGroups(
       grouped(...CATALOGUE),
       ["zai/glm-5.3/", "openai_compat/gpt-5/"],
@@ -258,9 +301,21 @@ describe("model picker favourites — the hoisted section", () => {
       "glm-5.3",
       "gpt-5",
     ]);
+    expect(twice[0]?.modelOriginLabels).toEqual({
+      "zai/glm-5.3/": "zai",
+      "openai_compat/gpt-5/": "openai_compat",
+    });
     expect(
       twice.flatMap((group) => group.models.map((m) => m.modelId)),
-    ).toEqual(["glm-5.3", "gpt-5", "MiniMax-M3", "MiniMax-M2.7", "glm-4.6"]);
+    ).toEqual([
+      "glm-5.3",
+      "gpt-5",
+      "MiniMax-M3",
+      "MiniMax-M2.7",
+      "glm-5.3",
+      "glm-4.6",
+      "gpt-5",
+    ]);
   });
 
   it("ignores a starred id the catalogue no longer carries", () => {
@@ -300,7 +355,7 @@ describe("model picker — the star is a sibling of the option", () => {
     createElement(WebuiModelMenuList, {
       groups: grouped(entry("zai", "glm-5.3", "GLM 5.3")),
       selected: undefined,
-      focusedKey: undefined,
+      focusedRowId: undefined,
       favoriteKeys: new Set(["zai/glm-5.3/"]),
       onFocus: () => undefined,
       onSelect: () => undefined,

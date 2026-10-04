@@ -78,7 +78,7 @@ describe("model picker — provider grouping", () => {
       createElement(WebuiModelMenuList, {
         groups,
         selected: minimax,
-        focusedKey: undefined,
+        focusedRowId: undefined,
         favoriteKeys: new Set<string>(),
         onFocus: () => undefined,
         onSelect: () => undefined,

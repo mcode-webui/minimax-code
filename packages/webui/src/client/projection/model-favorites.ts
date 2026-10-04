@@ -92,12 +92,20 @@ export function writeFavoriteModels(ids: readonly string[]): void {
 }
 
 /**
- * Hoist starred models into a section of their own, above the providers.
+ * Repeat the starred models in a section of their own, ABOVE the providers.
  *
- * The starred models are REMOVED from the provider groups they came from, so
- * a starred model is listed once and once only — a model appearing both at the
- * top and under its provider would make "starred" mean nothing. A group left
- * with no models is dropped rather than rendered as an empty header.
+ * The starred models are NOT taken out of the groups they came from. That was
+ * the previous behaviour and it was wrong in a way that only showed up once
+ * two models from one provider were starred: hoisting emptied the provider
+ * group, so starring M3 made the MiniMax group stop listing M3, and the picker
+ * was quietly offering a smaller catalogue than it had a minute ago. A star is
+ * a reading preference — a shortcut — and a shortcut that deletes the long way
+ * round is not a shortcut.
+ *
+ * So each model is listed twice: once under the provider that owns it, which is
+ * the catalogue's own truth, and once at the top, which is the shortlist. The
+ * repeated rows carry the provider they came from in `modelOriginLabels`, so
+ * the second listing explains itself.
  *
  * Order is the STORE order, not the catalogue order and not an alphabetical
  * sort. `toggleFavoriteId` appends, so the persisted array is already
@@ -119,9 +127,10 @@ export function writeFavoriteModels(ids: readonly string[]): void {
  * same order) — the common case must not allocate a section nobody sees.
  *
  * Re-applying this to its own output is safe: the favourites section is
- * rebuilt from its own members rather than dropped or duplicated. The picker
- * filters the raw grouping and orders that, but a function that quietly eats
- * its own section on a second pass is a trap for the next caller.
+ * rebuilt from its own members rather than dropped or duplicated, and a group
+ * that is already the favourites section does not re-label its own rows. The
+ * picker filters the raw grouping and orders that, but a function that quietly
+ * eats its own section on a second pass is a trap for the next caller.
  *
  * `favoritesLabel` and `idOf` are injected because the caller owns the row's
  * identity: this module deals in opaque strings and never has to agree with
@@ -134,32 +143,55 @@ export function orderModelGroups(
   idOf: (model: WebuiModelProviderGroup["models"][number]) => string,
 ): readonly WebuiModelProviderGroup[] {
   if (favoriteIds.length === 0) return groups;
-  const starredIds = new Set(favoriteIds);
 
   // Walk the store, not the groups: the store is what fixes the section's
   // order, and a model the store names but the catalogue no longer carries
   // simply contributes nothing rather than resurrecting a stale row.
-  const byId = new Map<string, WebuiModelProviderGroup["models"][number]>();
+  //
+  // A provider group always wins over a section that merely repeats it, so
+  // re-applying this to its own output keeps finding the real origin.
+  const byId = new Map<
+    string,
+    { readonly model: WebuiModelProviderGroup["models"][number]; readonly from: string }
+  >();
   for (const group of groups) {
-    for (const model of group.models) byId.set(idOf(model), model);
+    const repeats = group.id === FAVORITES_SECTION_ID;
+    for (const model of group.models) {
+      const id = idOf(model);
+      if (!repeats && byId.has(id)) continue;
+      byId.set(id, { model, from: group.id });
+    }
   }
-  const starred = favoriteIds
-    .map((id) => byId.get(id))
-    .filter((model): model is WebuiModelProviderGroup["models"][number] =>
-      Boolean(model),
-    );
+  // Labels a previous pass already established, so a model whose provider group
+  // is no longer in the list at all — a search that filtered it out, say —
+  // keeps saying where it came from instead of going blank.
+  const carried = groups.find(
+    (group) => group.id === FAVORITES_SECTION_ID,
+  )?.modelOriginLabels;
+
+  const starred: WebuiModelProviderGroup["models"][number][] = [];
+  const originLabels: Record<string, string> = {};
+  for (const id of favoriteIds) {
+    const found = byId.get(id);
+    if (!found) continue;
+    starred.push(found.model);
+    const from = groups.find((group) => group.id === found.from);
+    const label = from && from.id !== FAVORITES_SECTION_ID ? from.label : carried?.[id];
+    if (label) originLabels[id] = label;
+  }
   if (starred.length === 0) return groups;
 
-  const hoisted = new Set(starred.map((model) => idOf(model)));
-  const rest = groups
-    .map((group) => {
-      const models = group.models.filter((model) => !hoisted.has(idOf(model)));
-      return models.length === group.models.length ? group : { ...group, models };
-    })
-    .filter((group) => group.models.length > 0);
-
+  // Any section already in the input is rebuilt above, so it is dropped from
+  // the passthrough. Nothing else removes it now that starred models stay where
+  // they are, and a second section headed 收藏 would list the shortlist twice.
+  const providers = groups.filter((group) => group.id !== FAVORITES_SECTION_ID);
   return [
-    { id: FAVORITES_SECTION_ID, label: favoritesLabel, models: starred },
-    ...rest,
+    {
+      id: FAVORITES_SECTION_ID,
+      label: favoritesLabel,
+      models: starred,
+      modelOriginLabels: originLabels,
+    },
+    ...providers,
   ];
 }

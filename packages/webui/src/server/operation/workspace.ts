@@ -6,6 +6,8 @@ import type { WebuiOperation, WebuiOperationValidation } from "./operation-contr
 import { invalidBody } from "./operation-contract.js";
 import type {
   WebuiCanvasDocument,
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceDirectoryListing,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceFile,
@@ -21,7 +23,7 @@ import {
   validateObjectBody,
   validateOptionalObjectBody,
 } from "./common.js";
-import { LIST_WORKSPACE_FILE_TREE_OPERATION_NAME, BROWSE_WORKSPACE_DIRS_OPERATION_NAME, READ_WORKSPACE_FILE_OPERATION_NAME, GET_WORKSPACE_ENVIRONMENT_OPERATION_NAME, MUTATE_WORKSPACE_GIT_OPERATION_NAME, GET_WORKSPACE_REVIEW_SUMMARY_OPERATION_NAME, LIST_WORKSPACE_REVIEW_FILE_DIFFS_OPERATION_NAME, GET_WORKSPACE_REVIEW_FILE_CONTENT_OPERATION_NAME, SEARCH_WORKSPACE_REVIEW_DIFFS_OPERATION_NAME, READ_CANVAS_OPERATION_NAME, APPLY_CANVAS_OPERATION_NAME, CREATE_TERMINAL_OPERATION_NAME, LIST_TERMINALS_OPERATION_NAME, WRITE_TERMINAL_OPERATION_NAME, RESIZE_TERMINAL_OPERATION_NAME, DISPOSE_TERMINAL_OPERATION_NAME, WATCH_TERMINAL_OPERATION_NAME } from "./names.js";
+import { LIST_WORKSPACE_FILE_TREE_OPERATION_NAME, BROWSE_WORKSPACE_DIRS_OPERATION_NAME, READ_WORKSPACE_FILE_OPERATION_NAME, GET_WORKSPACE_ENVIRONMENT_OPERATION_NAME, MUTATE_WORKSPACE_GIT_OPERATION_NAME, GET_WORKSPACE_REVIEW_SUMMARY_OPERATION_NAME, LIST_WORKSPACE_REVIEW_FILE_DIFFS_OPERATION_NAME, GET_WORKSPACE_REVIEW_FILE_CONTENT_OPERATION_NAME, SEARCH_WORKSPACE_REVIEW_DIFFS_OPERATION_NAME, READ_CANVAS_OPERATION_NAME, APPLY_CANVAS_OPERATION_NAME, READ_WORKSPACE_ARCHIVE_OPERATION_NAME, EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME, CREATE_TERMINAL_OPERATION_NAME, LIST_TERMINALS_OPERATION_NAME, WRITE_TERMINAL_OPERATION_NAME, RESIZE_TERMINAL_OPERATION_NAME, DISPOSE_TERMINAL_OPERATION_NAME, WATCH_TERMINAL_OPERATION_NAME } from "./names.js";
 
 /** Upper bound on one directory listing. A home directory can hold
  *  thousands of folders and the picker only needs a browsable page. */
@@ -48,6 +50,17 @@ interface ReadCanvasBody {
 interface ApplyCanvasBody {
   readonly sessionId: string;
   readonly operation: Record<string, unknown>;
+}
+interface ReadWorkspaceArchiveBody {
+  readonly workspaceDir: string;
+  readonly path: string;
+  readonly prefix?: string;
+}
+interface ExtractWorkspaceArchiveBody {
+  readonly workspaceDir: string;
+  readonly path: string;
+  readonly destination: string;
+  readonly prefix?: string;
 }
 
 export const listWorkspaceFileTreeOperation: WebuiOperation<ListWorkspaceFileTreeBody, readonly WebuiWorkspaceFile[]> = {
@@ -234,8 +247,56 @@ export const applyCanvasOperation: WebuiOperation<ApplyCanvasBody, { readonly op
     };
   },
 };
-export const createTerminalOperation: WebuiOperation<Record<string, unknown>> = { name: CREATE_TERMINAL_OPERATION_NAME, validate: (body) => validateObjectBody(CREATE_TERMINAL_OPERATION_NAME, body) };
-export const listTerminalsOperation: WebuiOperation<Record<string, never>> = { name: LIST_TERMINALS_OPERATION_NAME, validate: (body) => body && typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === 0 ? { ok: true, body: {} } : { ok: false, code: WebuiErrorCode.invalidBody, message: "listTerminals body must be an empty object" } };
+export const readWorkspaceArchiveOperation: WebuiOperation<ReadWorkspaceArchiveBody, WebuiWorkspaceArchiveListing> = {
+  name: READ_WORKSPACE_ARCHIVE_OPERATION_NAME,
+  validate: (body): WebuiOperationValidation<ReadWorkspaceArchiveBody> => {
+    const result = validateObjectBody(READ_WORKSPACE_ARCHIVE_OPERATION_NAME, body);
+    if (!result.ok) return result;
+    if (typeof result.body.workspaceDir !== "string" || !result.body.workspaceDir.trim())
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "workspaceDir is required" };
+    if (typeof result.body.path !== "string" || !result.body.path.trim())
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "path is required" };
+    if (result.body.prefix !== undefined && (typeof result.body.prefix !== "string" || !result.body.prefix.trim()))
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "prefix must be a non-empty string when present" };
+    return {
+      ok: true,
+      body: {
+        workspaceDir: result.body.workspaceDir,
+        path: result.body.path,
+        ...(typeof result.body.prefix === "string" ? { prefix: result.body.prefix } : {}),
+      },
+    };
+  },
+};
+export const extractWorkspaceArchiveOperation: WebuiOperation<ExtractWorkspaceArchiveBody, WebuiWorkspaceArchiveExtractResult> = {
+  name: EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME,
+  validate: (body): WebuiOperationValidation<ExtractWorkspaceArchiveBody> => {
+    const result = validateObjectBody(EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME, body);
+    if (!result.ok) return result;
+    if (typeof result.body.workspaceDir !== "string" || !result.body.workspaceDir.trim())
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "workspaceDir is required" };
+    if (typeof result.body.path !== "string" || !result.body.path.trim())
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "path is required" };
+    // Rejected here, before the runtime sees it: a browser cannot name an
+    // absolute path, so a destination the client supplied verbatim would be
+    // the one unvalidated path in the chain. The runtime re-validates
+    // anyway — this is the first gate, not the only one.
+    if (typeof result.body.destination !== "string" || !result.body.destination.trim())
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "destination is required" };
+    if (result.body.prefix !== undefined && (typeof result.body.prefix !== "string" || !result.body.prefix.trim()))
+      return { ok: false, code: WebuiErrorCode.invalidBody, message: "prefix must be a non-empty string when present" };
+    return {
+      ok: true,
+      body: {
+        workspaceDir: result.body.workspaceDir,
+        path: result.body.path,
+        destination: result.body.destination,
+        ...(typeof result.body.prefix === "string" ? { prefix: result.body.prefix } : {}),
+      },
+    };
+  },
+};
+export const createTerminalOperation: WebuiOperation<Record<string, unknown>> = { name: CREATE_TERMINAL_OPERATION_NAME, validate: (body) => validateObjectBody(CREATE_TERMINAL_OPERATION_NAME, body) };export const listTerminalsOperation: WebuiOperation<Record<string, never>> = { name: LIST_TERMINALS_OPERATION_NAME, validate: (body) => body && typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === 0 ? { ok: true, body: {} } : { ok: false, code: WebuiErrorCode.invalidBody, message: "listTerminals body must be an empty object" } };
 export const writeTerminalOperation: WebuiOperation<Record<string, unknown>> = { name: WRITE_TERMINAL_OPERATION_NAME, validate: (body) => validateObjectBody(WRITE_TERMINAL_OPERATION_NAME, body) };
 export const resizeTerminalOperation: WebuiOperation<Record<string, unknown>> = { name: RESIZE_TERMINAL_OPERATION_NAME, validate: (body) => validateObjectBody(RESIZE_TERMINAL_OPERATION_NAME, body) };
 export const disposeTerminalOperation: WebuiOperation<Record<string, unknown>> = { name: DISPOSE_TERMINAL_OPERATION_NAME, validate: (body) => validateObjectBody(DISPOSE_TERMINAL_OPERATION_NAME, body) };

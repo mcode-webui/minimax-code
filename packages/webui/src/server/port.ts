@@ -479,6 +479,10 @@ export interface WebuiWorkspaceFile {
   readonly path: string;
   readonly name: string;
   readonly type?: string;
+  /** Bytes. Absent for directories and for runtimes that do not stat. */
+  readonly size?: number;
+  /** Epoch milliseconds of the last modification. Same absence rule as `size`. */
+  readonly modifiedAt?: number;
   readonly children?: readonly WebuiWorkspaceFile[];
 }
 
@@ -494,6 +498,37 @@ export interface WebuiWorkspaceFileContent {
 export interface WebuiWorkspaceDirectoryEntry {
   readonly name: string;
   readonly path: string;
+}
+
+/**
+ * One entry inside an archive listed by `readWorkspaceArchive`. `path` is
+ * the archive-internal POSIX path, never a host path: nothing in this shape
+ * may be handed to the filesystem without re-validating it against the
+ * extraction root.
+ */
+export interface WebuiArchiveEntry {
+  readonly path: string;
+  readonly name: string;
+  readonly isDirectory: boolean;
+  readonly size?: number;
+}
+
+export interface WebuiWorkspaceArchiveListing {
+  readonly archivePath: string;
+  /** Only the entries directly under `prefix`, or under the archive root. */
+  readonly entries: readonly WebuiArchiveEntry[];
+  /** Total entries in the archive, which may exceed `entries.length`. */
+  readonly totalEntries: number;
+  /** True when the listing was cut off before covering the whole archive. */
+  readonly truncated: boolean;
+}
+
+export interface WebuiWorkspaceArchiveExtractResult {
+  readonly archivePath: string;
+  readonly destination: string;
+  readonly writtenFiles: number;
+  /** Set when the archive carried more entries than the hard ceiling allows. */
+  readonly truncated?: boolean;
 }
 
 /**
@@ -903,6 +938,13 @@ export interface WebuiHarnessPort {
   searchWorkspaceReviewDiffs(request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly query: string; readonly includeUntrackedFiles: boolean; readonly pageIndex?: number; readonly pageSize?: number }): Promise<WebuiWorkspaceReviewSearchResult>;
   readCanvas(request: { readonly sessionId: string }): Promise<WebuiCanvasDocument>;
   applyCanvas(request: { readonly sessionId: string; readonly operation: Record<string, unknown> }): Promise<{ readonly operationId: string; readonly document: WebuiCanvasDocument }>;
+  /**
+   * Archive listing for the workspace panel. The runtime owns every
+   * hardening decision here (entry ceiling, expansion ratio, path
+   * validation); the WebUI only renders what the runtime is willing to name.
+   */
+  readWorkspaceArchive(request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveListing>;
+  extractWorkspaceArchive(request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveExtractResult>;
   sendMessage(
     request: WebuiSendMessageRequest,
     signal?: AbortSignal,

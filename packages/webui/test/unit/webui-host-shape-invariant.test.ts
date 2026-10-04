@@ -71,6 +71,15 @@ class FullPort implements WebuiHarnessPort {
   version() {
     return { version: "invariant-test", protocolVersion: 1 };
   }
+  // Added with the F-zone archive contract. This class exists to make a
+  // forgotten port member a compile error, so the members land here rather
+  // than being left optional.
+  async readWorkspaceArchive() {
+    return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+  }
+  async extractWorkspaceArchive() {
+    return { archivePath: "", destination: "", writtenFiles: 0 };
+  }
   async listSessions() {
     return { sessions: [], hasMore: false };
   }

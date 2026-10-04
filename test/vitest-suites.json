@@ -280,7 +280,12 @@
       "packages/webui/test/unit/transcript-file-anchor-anchors.test.tsx",
       "packages/webui/test/unit/transcript-interrupt-frames.test.ts",
       "packages/webui/test/unit/transcript-retry-affordance.test.tsx",
-      "packages/webui/test/unit/transcript-retry-resend-wiring.test.tsx"
+      "packages/webui/test/unit/transcript-retry-resend-wiring.test.tsx",
+      "packages/webui/test/unit/webui-workspace-media-preview.test.tsx",
+      "packages/webui/test/unit/webui-workspace-file-tree.test.tsx",
+      "packages/webui/test/unit/webui-workspace-html-preview.test.tsx",
+      "packages/webui/test/unit/webui-workspace-canvas.test.tsx",
+      "packages/webui/test/unit/webui-workspace-archive.test.ts"
     ]
   }
 }

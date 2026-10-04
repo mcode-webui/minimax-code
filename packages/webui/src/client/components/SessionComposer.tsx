@@ -99,6 +99,7 @@ import {
   type WebuiModelPickerDraft,
 } from "./ModelPicker.js";
 import { ThinkingTrigger } from "./ThinkingTrigger.js";
+import { chipLevelLabel } from "../projection/thinking-control.js";
 import {
   WebuiIconAttach,
   WebuiIconCheck,
@@ -1163,6 +1164,12 @@ export function WebuiComposer({
 
   const selectedModel = models.find((model) => model.selected);
   const enabledModels = models.filter((model) => model.enabled !== false);
+  // The active model's thinking options, resolved ONCE and read by both the
+  // model chip (to name the level) and the brain trigger (to decide whether
+  // there is a level to name). Two `resolveEffortOptions` calls would be two
+  // chances to disagree about this model's shape, and the disagreement renders
+  // as a chip stating a level beside a brain claiming the model has none.
+  const thinkingOptions = selectedModel ? resolveEffortOptions(selectedModel) : [];
   // The slash token the caret sits in, found the same way as an `@` mention.
   // Every slash opens the palette, not only one at the start of the draft:
   // `findWebuiSlashRange` anchors on the caret and on `(?:^|\s)`, so `帮我 /pl`
@@ -2285,6 +2292,14 @@ export function WebuiComposer({
                   <WebuiModelPicker
                     models={enabledModels}
                     selected={selectedModel}
+                    // The level rides the model name. It is resolved from the
+                    // SAME option list the brain trigger below reads, so the two
+                    // cannot disagree about whether this model has a depth
+                    // scale — a chip claiming "max" beside a brain that says
+                    // nothing about a level is the contradiction this avoids.
+                    triggerLevel={
+                      selectedModel ? chipLevelLabel(thinkingOptions, selectedModel.thinking?.effort) : ""
+                    }
                     onSelect={(model, draft) =>
                       void handleSelectModel(model, draft)
                     }
@@ -2293,9 +2308,7 @@ export function WebuiComposer({
                     }
                   />
                   <ThinkingTrigger
-                    options={
-                      selectedModel ? resolveEffortOptions(selectedModel) : []
-                    }
+                    options={thinkingOptions}
                     recorded={selectedModel?.thinking?.effort}
                     preview={false}
                     onChange={(option) => {

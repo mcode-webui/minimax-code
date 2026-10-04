@@ -91,9 +91,31 @@ export function resolveEffortCurrent(
   return options.includes(value) ? value : null;
 }
 
+/**
+ * The level word the model chip carries, for a DEPTH model. `""` for none.
+ *
+ * The chip names the level beside the model name, in the muted colour: "High" is
+ * a POSITION on a scale, and an on/off colour cannot express one. Which is also
+ * why this is empty for a binary model — there the brain's blue already answers
+ * "on", and 「开启」 in the chip restated what the glyph beside it says, two
+ * controls apart in the same toolbar.
+ *
+ * Empty for an absent record and for a record the model does not offer, on the
+ * same anti-stale rule as `resolveEffortCurrent`: a level the target cannot
+ * honour is not a level to print.
+ */
+export function chipLevelLabel(
+  options: readonly string[],
+  recorded: string | undefined,
+): string {
+  if (thinkingControlShape(options) !== "radiogroup") return "";
+  const value = (recorded ?? "").trim();
+  if (value === "" || !options.includes(value)) return "";
+  return value;
+}
+
 /** The accent token a brain should wear, given a three-valued verdict. */
 export type BrainTone = "on" | "off" | "unstated";
-
 /**
  * Map the verdict to a tone.
  *

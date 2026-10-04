@@ -1,18 +1,23 @@
 /**
- * The composer's thinking trigger: a brain icon, and for a depth scale a level
- * control beside it.
+ * The composer's thinking trigger: a brain icon, and nothing else.
  *
  * The brain is a SWITCH for a two-state model and a plain INDICATOR for a depth
  * scale. That asymmetry is deliberate: a clickable brain on a depth scale would
  * have to pick one of low/medium/high on the user's behalf, and which depth
  * someone wants is precisely the question a binary control cannot ask. So on a
- * depth scale the brain is not a button at all — it is `aria-hidden` decoration
- * beside a real control that names the level.
+ * depth scale the brain is not a button at all.
+ *
+ * It is also the only control here. A level control used to sit beside it, and
+ * that was one value stated twice: the model chip already names the level where
+ * it names the model ("M3.1-Flash-Preview max"), so a second control repeating
+ * that word one slot along the toolbar answered nothing the chip had not. The
+ * level is CHOSEN in the model picker's settings fly-out, which is where the
+ * thinking row already is.
  *
  * The trigger is the ICON ALONE. 「开启」 in a label said what the brain beside
  * it already said, two controls apart in the same toolbar.
  */
-import { useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import {
   brainHoverLabel,
@@ -62,7 +67,6 @@ export function ThinkingTrigger({
   preview,
   onChange,
 }: ThinkingTriggerProps): ReactElement | null {
-  const [levelOpen, setLevelOpen] = useState(false);
   const shape = thinkingControlShape(options);
   // A no-op control is worse than none, so an empty list renders nothing at all
   // rather than a control whose clicks change nothing.
@@ -70,6 +74,8 @@ export function ThinkingTrigger({
 
   const on = isThinkingOn(options, recorded);
   const tone = brainTone(on);
+  // The hover title still names the level: the chip states it, but a tooltip is
+  // where a pointer actually goes for "which level is this".
   const current = resolveEffortCurrent(options, recorded, preview);
   const levelLabel = current === null ? undefined : current;
 
@@ -100,56 +106,12 @@ export function ThinkingTrigger({
   }
 
   return (
-    <>
-      {/* Not a button: a depth scale cannot be toggled, only chosen. */}
-      <span
-        className="webui-thinking-brain-slot"
-        title={hover}
-        data-webui-thinking-indicator={tone}
-      >
-        {brain}
-      </span>
-      <button
-        type="button"
-        disabled={preview}
-        aria-haspopup="menu"
-        aria-expanded={levelOpen}
-        aria-label={`推理等级 ${levelLabel ?? "由引擎决定"}`}
-        title={`推理等级 ${levelLabel ?? "由引擎决定"}`}
-        className="webui-thinking-level"
-        data-webui-thinking-level="true"
-        onClick={() => setLevelOpen((value) => !value)}
-      >
-        <span aria-hidden="true">{levelLabel ?? "默认"}</span>
-      </button>
-      {levelOpen ? (
-        <div
-          className="webui-thinking-level-menu"
-          role="menu"
-          aria-label="推理等级"
-          onMouseLeave={() => setLevelOpen(false)}
-        >
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              role="menuitemradio"
-              aria-checked={current === option}
-              onClick={() => {
-                onChange(option);
-                setLevelOpen(false);
-              }}
-            >
-              {option}
-              {current === option ? (
-                <span aria-hidden="true" className="webui-model-context-tick">
-                  ✓
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </>
+    <span
+      className="webui-thinking-brain-slot"
+      title={hover}
+      data-webui-thinking-indicator={tone}
+    >
+      {brain}
+    </span>
   );
 }

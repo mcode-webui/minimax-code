@@ -16,6 +16,7 @@ import { createElement } from "react";
 import {
   brainHoverLabel,
   brainTone,
+  chipLevelLabel,
   isThinkingOn,
   resolveEffortCurrent,
   thinkingControlShape,
@@ -48,6 +49,37 @@ describe("thinking control — which shape renders", () => {
     // A no-op control is worse than none: it invites a click that changes
     // nothing, and it is a control the user cannot make sense of.
     expect(thinkingControlShape([])).toBeNull();
+  });
+});
+
+describe("thinking control — the level the model chip names", () => {
+  it("names the level for a depth scale", () => {
+    // "High" is a POSITION on a scale, which is exactly what the brain's
+    // blue/grey cannot express — so the chip says it in words, beside the
+    // model it belongs to.
+    expect(chipLevelLabel(DEPTH, "high")).toBe("high");
+    expect(chipLevelLabel(DEPTH, "low")).toBe("low");
+    // A level that is genuinely on offer. The real depth models name theirs
+    // `max`, which is also the case that catches an implementation reading a
+    // label off the record without checking it against the list.
+    expect(chipLevelLabel(["default", "max"], "max")).toBe("max");
+  });
+
+  it("names NOTHING for a binary model", () => {
+    // The brain's colour already answers "on" here. A word in the chip
+    // restating it would say the same thing twice, two controls apart.
+    expect(chipLevelLabel(BINARY, "on")).toBe("");
+    expect(chipLevelLabel(BINARY, "off")).toBe("");
+    expect(chipLevelLabel([], undefined)).toBe("");
+  });
+
+  it("names nothing for an absent or stale record", () => {
+    // The engine's default has no level to print, and a level the model does
+    // not offer is a cross-model leftover — printing either would put a word
+    // in the chip that nothing can honour.
+    expect(chipLevelLabel(DEPTH, "")).toBe("");
+    expect(chipLevelLabel(DEPTH, undefined)).toBe("");
+    expect(chipLevelLabel(DEPTH, "turbo")).toBe("");
   });
 });
 
@@ -163,39 +195,48 @@ describe("thinking trigger — what it renders", () => {
   it("makes a depth-scale brain decoration, not a button", () => {
     // A clickable brain on a depth scale would have to pick one of
     // low/medium/high on the user's behalf — precisely the question a binary
-    // control cannot ask. The LEVEL control beside it IS a button, so the
-    // assertion is on the brain's own element rather than on the absence of any
-    // button: what must not exist is a switch-shaped brain.
+    // control cannot ask. The assertion is on the brain's own element rather
+    // than on the absence of any button: what must not exist is a
+    // switch-shaped brain.
     const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
     expect(html).toContain("<span");
     expect(html).toContain('data-webui-thinking-indicator="on"');
     // The switch form's marker is specifically absent.
     expect(html).not.toContain("data-webui-thinking-trigger");
-    // And the real control is present, because "not a button" is a claim about
-    // the brain, not a claim that a depth scale cannot be set.
-    expect(html).toContain('data-webui-thinking-level="true"');
   });
 
-  it("puts the level control on screen for a depth scale", () => {
+  it("keeps the level out of the toolbar, where the chip already states it", () => {
+    // The chip names the level beside the model ("M3.1-Flash-Preview max"), so
+    // a level control here would state the same value twice, one slot apart.
+    // The level is CHOSEN in the picker's settings fly-out instead — which
+    // this component never rendered in the first place, so removing it costs
+    // no reachable control.
     const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
-    expect(html).toContain("high");
+    expect(html).not.toContain('data-webui-thinking-level="true"');
+    expect(html).not.toContain('aria-haspopup="menu"');
+    expect(html).not.toContain("webui-thinking-level-menu");
   });
 
-  it("labels an unstated level with the same 'default' the option list uses", () => {
-    // `resolveEffortOptions` prepends the literal "default" to every option
-    // list, so that is the vocabulary the picker already speaks. The trigger
-    // using a different word for the same state would make two surfaces
-    // disagree about what the engine default is called.
-    const html = render({ options: DEPTH, recorded: "", preview: false, onChange: () => undefined });
-    expect(html).toContain("default");
-    expect(html).toContain("推理等级");
+  it("still names the level in its hover title", () => {
+    // The chip states it, but a tooltip is where a pointer actually goes for
+    // "which level is this" — so dropping the visible control must not drop
+    // the level from the brain's title with it.
+    const html = render({ options: DEPTH, recorded: "high", preview: false, onChange: () => undefined });
+    expect(html).toContain("已开启思考 · high");
   });
 
-  it("disables both shapes while previewing another model", () => {
+  it("disables the switch while previewing another model", () => {
     const binary = render({ options: BINARY, recorded: "on", preview: true, onChange: () => undefined });
     expect(binary).toContain("disabled");
-    const depth = render({ options: DEPTH, recorded: "high", preview: true, onChange: () => undefined });
-    expect(depth).toContain("disabled");
+  });
+
+  it("drops the level from the title while previewing another model", () => {
+    // The record belongs to the ACTIVE model, so naming its level on another
+    // model's brain would be a claim about the wrong model. Same anti-stale
+    // rule as the row badge — here it costs the title, not a highlight.
+    const html = render({ options: DEPTH, recorded: "high", preview: true, onChange: () => undefined });
+    expect(html).not.toContain("已开启思考 · high");
+    expect(html).toContain("已开启思考");
   });
 
   it("carries the state in aria, not only in colour", () => {

@@ -1821,51 +1821,10 @@
     align-items: center;
     justify-content: center;
   }
-  .webui-thinking-level {
-    max-width: 72px;
-    border-radius: var(--radius_8);
-    padding: var(--spacing_4) var(--spacing_8);
-    color: var(--text_default_secondary);
-    font-size: var(--size_12);
-    line-height: var(--line_height_16);
-  }
-  .webui-thinking-level:hover:not(:disabled) {
-    background: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-thinking-level:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-  .webui-thinking-level-menu {
-    position: absolute;
-    z-index: 70;
-    right: 0;
-    bottom: calc(100% + 4px);
-    display: flex;
-    min-width: 96px;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--spacing_4);
-    border: 1px solid var(--border_default);
-    border-radius: var(--radius_12);
-    background: var(--bg_grouped_secondary_elevated);
-    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-  }
-  .webui-thinking-level-menu button {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing_8);
-    border-radius: var(--radius_8);
-    padding: var(--spacing_4) var(--spacing_8);
-    color: var(--text_default_primary);
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    text-align: left;
-  }
-  .webui-thinking-level-menu button:hover {
-    background: var(--bg_interaction_tertiary_hover);
-  }
+  /* No `.webui-thinking-level` rule, and deliberately none. The level rides
+   * the model name in the chip (`.webui-model-chip-level` in ModelPicker) and
+   * is chosen in the picker's settings fly-out, so a control repeating that
+   * word one slot along the toolbar would answer nothing the chip had not. */
   .webui-model-menu-column {
     display: flex;
     min-height: 0;

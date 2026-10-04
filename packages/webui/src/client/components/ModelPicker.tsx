@@ -72,6 +72,17 @@ export interface ModelPickerProps {
     draft: WebuiModelPickerDraft,
   ) => void;
   readonly triggerLabel?: string;
+  /**
+   * The thinking level the chip names beside the model, or `undefined`.
+   *
+   * Passed in rather than derived here because "which shape is this model's
+   * thinking" is a fact about the model CONTRACT, and it is already resolved
+   * once for the composer's brain trigger — deriving it a second time here
+   * would give two places to disagree about whether this model has a depth
+   * scale, and the disagreement would show as a chip claiming a level the
+   * brain beside it says nothing about.
+   */
+  readonly triggerLevel?: string;
 }
 
 export interface WebuiModelProviderGroup {
@@ -314,6 +325,7 @@ export function WebuiModelPicker({
   onSelect,
   onSettingChange,
   triggerLabel,
+  triggerLevel,
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
   const [focusedKey, setFocusedKey] = useState<string | undefined>(undefined);
@@ -569,8 +581,26 @@ export function WebuiModelPicker({
         disabled={models.length === 0}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="min-w-0 max-w-[220px] truncate whitespace-nowrap">
-          {triggerText}
+        <span className="flex min-w-0 items-baseline gap-[6px]">
+          <span className="min-w-0 truncate whitespace-nowrap">
+            {triggerText}
+          </span>
+          {/*
+            The level, named where the model is named. A depth scale has a
+            POSITION to state and the brain's on/off colour cannot state one, so
+            the word rides the model name in the muted colour instead of a
+            second copy of it sitting two controls away. The name truncates and
+            this does not: a long provider-prefixed name losing its tail is
+            fine, a level word half-clipped is not.
+          */}
+          {triggerLevel ? (
+            <span
+              className="shrink-0 text-icon_default_tertiary"
+              data-webui-model-chip-level="true"
+            >
+              {triggerLevel}
+            </span>
+          ) : null}
         </span>
         <WebuiIconChevronDown className="flex-shrink-0 text-icon_default_tertiary" />
       </button>

@@ -37,10 +37,16 @@ import {
   type WebuiWorkspaceSubagent,
   type WebuiWorkspaceTodo,
 } from "../projection/workspace-progress.js";
-import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconChevronLeft, WebuiIconClose, WebuiIconDiffFile, WebuiIconFile, WebuiIconFolder, WebuiIconRunLocation, WebuiIconSearch, WebuiIconSidebarToggle, WebuiIconWorkspaceCanvas, WebuiIconWorkspaceExpand, WebuiIconWorkspaceReview, WebuiIconWorkspaceTerminal } from "../icons.js";
+import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, WebuiIconDiffFile, WebuiIconFile, WebuiIconFolder, WebuiIconRunLocation, WebuiIconSearch, WebuiIconSidebarToggle, WebuiIconWorkspaceCanvas, WebuiIconWorkspaceExpand, WebuiIconWorkspaceReview, WebuiIconWorkspaceTerminal } from "../icons.js";
+import { FileTree, filterWorkspaceFiles, findWorkspaceFile, getWorkspaceFileParentPaths, mergeWorkspaceFileChildren } from "./WorkspaceFileTree.js";
+import { WorkspaceMediaPreview } from "./WorkspaceMediaPreview.js";
+import { WorkspaceCanvas } from "./WorkspaceCanvas.js";
 
 export type WebuiTodo = WebuiWorkspaceTodo;
-const DESKTOP_COPY = { environment: "环境信息", progress: "进度", progressEmpty: "跟踪较长任务的进度", newTerminal: "新建终端", terminalLimit: "最多可以打开 5 个终端", terminalLabel: "终端", terminalExited: "已退出", terminalEmptyTitle: "还没有终端", terminalEmptyDescription: "可直接在右侧面板中启动当前工作区的 Shell。", canvasEmptyTitle: "把文件放到画布上", canvasEmptyDescription: "添加图片或其他工作区文件，然后自由排列和调整大小。", fileClose: "关闭", changes: "变更", commit: "提交或推送", openTerminal: "打开终端", unsupported: "WebUI 尚未接入此操作" } as const;
+// `mergeWorkspaceFileChildren` is re-exported below: the file-tree tests
+// import it from this module, which stays the panel's public surface.
+export { mergeWorkspaceFileChildren };
+const DESKTOP_COPY = { environment: "环境信息", progress: "进度", progressEmpty: "跟踪较长任务的进度", newTerminal: "新建终端", terminalLimit: "最多可以打开 5 个终端", terminalLabel: "终端", terminalExited: "已退出", terminalEmptyTitle: "还没有终端", terminalEmptyDescription: "可直接在右侧面板中启动当前工作区的 Shell。", fileClose: "关闭", changes: "变更", commit: "提交或推送", openTerminal: "打开终端", unsupported: "WebUI 尚未接入此操作" } as const;
 
 const FILE_CODE_LANGUAGES = {
   bash,
@@ -149,47 +155,6 @@ export function WebuiDiffFileSection({ file, selected, loading = false, error, o
       </span>;
     })}</code></pre> : <p className="webui-turn-review-unavailable">当前运行时没有提供该文件的文本 patch。</p>}
   </details>;
-}
-
-function filterWorkspaceFiles(files: readonly WebuiWorkspaceFile[], query: string): WebuiWorkspaceFile[] {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return [...files];
-  return files.flatMap((file) => {
-    const children = file.children ? filterWorkspaceFiles(file.children, normalizedQuery) : [];
-    if (file.name.toLowerCase().includes(normalizedQuery) || children.length > 0) {
-      return [{ ...file, ...(file.children ? { children } : {}) }];
-    }
-    return [];
-  });
-}
-
-export function mergeWorkspaceFileChildren(
-  files: readonly WebuiWorkspaceFile[],
-  directoryPath: string,
-  children: readonly WebuiWorkspaceFile[],
-): readonly WebuiWorkspaceFile[] {
-  return files.map((file) => {
-    if (file.path === directoryPath && file.type === "directory") {
-      return { ...file, children };
-    }
-    return file.children?.length
-      ? { ...file, children: mergeWorkspaceFileChildren(file.children, directoryPath, children) }
-      : file;
-  });
-}
-
-function findWorkspaceFile(files: readonly WebuiWorkspaceFile[], path: string): WebuiWorkspaceFile | undefined {
-  for (const file of files) {
-    if (file.path === path) return file;
-    const nested = file.children ? findWorkspaceFile(file.children, path) : undefined;
-    if (nested) return nested;
-  }
-  return undefined;
-}
-
-function getWorkspaceFileParentPaths(path: string): string[] {
-  const segments = path.replace(/\\/gu, "/").split("/").filter(Boolean);
-  return segments.slice(0, -1).map((_, index) => segments.slice(0, index + 1).join("/"));
 }
 
 export function projectWebuiTodos(messages: readonly Record<string, unknown>[]): WebuiTodo[] {
@@ -370,25 +335,6 @@ export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = 
   </div>;
 }
 
-function FileTree({ files, onOpen, expandedPaths, loadingPaths, directoryErrors, onToggle, selectedPath }: { readonly files: readonly WebuiWorkspaceFile[]; readonly onOpen: (file: WebuiWorkspaceFile) => void; readonly expandedPaths: ReadonlySet<string>; readonly loadingPaths: ReadonlySet<string>; readonly directoryErrors: Readonly<Record<string, string>>; readonly onToggle: (file: WebuiWorkspaceFile) => void; readonly selectedPath?: string }): ReactElement {
-  return <div className="webui-file-tree">{files.map((file) => {
-    const expanded = expandedPaths.has(file.path);
-    return <div key={file.path}>
-      <button type="button" className={`webui-file-tree-row ${file.path === selectedPath ? "is-selected" : ""}`} aria-current={file.path === selectedPath ? "true" : undefined} aria-expanded={file.type === "directory" ? expanded : undefined} aria-busy={file.type === "directory" && loadingPaths.has(file.path) ? "true" : undefined} onClick={() => file.type === "directory" ? onToggle(file) : onOpen(file)}>
-        {file.type === "directory" ? <WebuiIconChevronLeft className={`inline size-3 transition-transform duration-[180ms] ease-out ${expanded ? "rotate-90" : ""}`} /> : <WebuiIconFile className="inline size-3" />} {file.name}
-      </button>
-      {file.type === "directory" ? <div className={`webui-expandable-motion${expanded ? " is-open" : ""}`} aria-hidden={!expanded} ref={(element) => element?.toggleAttribute("inert", !expanded)}>
-        <div className="webui-file-tree-children">
-          {loadingPaths.has(file.path) ? <p role="status">正在加载目录…</p>
-            : directoryErrors[file.path] ? <p role="alert">{directoryErrors[file.path]}</p>
-              : file.children?.length ? <FileTree files={file.children} onOpen={onOpen} expandedPaths={expandedPaths} loadingPaths={loadingPaths} directoryErrors={directoryErrors} onToggle={onToggle} selectedPath={selectedPath} />
-                : <p>此文件夹为空。</p>}
-        </div>
-      </div> : null}
-    </div>;
-  })}</div>;
-}
-
 export function WebuiFilePreview({ tab, result, codeMode }: {
   readonly tab: Extract<WorkspacePanelTab, { readonly kind: "file-preview" }>;
   readonly result?: { readonly loading: boolean; readonly content?: WebuiWorkspaceFileContent; readonly error?: string };
@@ -400,7 +346,7 @@ export function WebuiFilePreview({ tab, result, codeMode }: {
   return <div className="webui-workspace-file-document" data-testid="workspace-file-preview" data-file-path={tab.path}>
       {result?.loading ? <p role="status">正在加载文件…</p>
         : result?.error ? <p role="alert">{result.error}</p>
-          : result?.content?.previewDataUrl ? <img className="webui-workspace-image-preview" src={result.content.previewDataUrl} alt={tab.path.split("/").at(-1) ?? tab.path} data-testid="workspace-image-preview" />
+          : result?.content?.previewDataUrl ? <WorkspaceMediaPreview path={tab.path} content={result.content} />
             : result?.content?.error ? <p role="alert">{result.content.error}</p>
             : result?.content?.type === "binary" ? <p>无法在文本预览中显示二进制文件。</p>
               : result?.content ? previewMarkdown ? <WebuiMarkdown source={content} /> : <pre className="webui-file-code"><code className={language ? `hljs language-${language}` : ""}>{content.split("\n").map((line, index) => {
@@ -468,8 +414,6 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     retriedSnapshots.current.add(retryKey);
     setReviewRefreshToken((value) => value + 1);
   };
-  const [canvas, setCanvas] = useState<WebuiCanvasDocument>();
-  const [zoom, setZoom] = useState(1);
   const [terminals, setTerminals] = useState<readonly Record<string, unknown>[]>([]);
   const [activeTerminalId, setActiveTerminalId] = useState<string>();
   const [terminalError, setTerminalError] = useState<string>();
@@ -736,12 +680,6 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   }, [selectedFilePath, selectedReviewPath, expandedDirectories, visibleFiles]);
   const activeSessionId = activeTab && "sessionId" in activeTab ? activeTab.sessionId : sessionId;
   useEffect(() => {
-    if (!activeSessionId || !readCanvas) { setCanvas(undefined); return undefined; }
-    let cancelled = false;
-    void readCanvas({ sessionId: activeSessionId }).then((next) => { if (!cancelled) setCanvas(next); }).catch(() => { if (!cancelled) setCanvas(undefined); });
-    return () => { cancelled = true; };
-  }, [activeSessionId, activeTab?.id, readCanvas]);
-  useEffect(() => {
     if (!listTerminals) return undefined;
     let cancelled = false;
     void listTerminals().then((next) => { if (!cancelled) setTerminals(next); }).catch(() => { if (!cancelled) setTerminals([]); });
@@ -835,10 +773,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       <div className="webui-turn-review-summary"><span>本轮改动</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{turnReviewFiles.reduce((sum, file) => sum + file.additions, 0)}</span>{turnReviewFiles.some((file) => file.deletions > 0) ? <span className="webui-diff-del">-{turnReviewFiles.reduce((sum, file) => sum + file.deletions, 0)}</span> : null}</span></div>
       {turnReviewFiles.length ? <div className="webui-turn-review-files">{turnReviewFiles.map((file) => <WebuiDiffFileSection key={file.file} file={file} selected={selectedReviewPath === file.file} />)}</div> : <p className="webui-turn-review-empty">本轮没有可审查的文件差异。</p>}
     </div> : null}
-    {tab === "canvas" ? <div className="webui-canvas-content" onWheel={(event) => { event.preventDefault(); setZoom((value) => Math.max(.4, Math.min(2, value + (event.deltaY > 0 ? -.1 : .1)))); }}>
-      {!canvas?.nodes.length ? <><strong>{DESKTOP_COPY.canvasEmptyTitle}</strong><p>{DESKTOP_COPY.canvasEmptyDescription}</p></> : <div className="webui-canvas-stage" style={{ transform: `scale(${zoom})` }}>{canvas.nodes.map((node) => <div className="webui-canvas-node" key={String(node.id)}>{String((node.file as Record<string, unknown> | undefined)?.fileName ?? node.id)}</div>)}</div>}
-      <span className="webui-canvas-zoom">{Math.round(zoom * 100)}%</span>
-    </div> : null}
+    {tab === "canvas" ? <WorkspaceCanvas sessionId={activeSessionId} readCanvas={readCanvas} /> : null}
     {tab === "terminal" ? <div className="webui-terminal-empty">{terminals.length === 0 ? <><strong>{DESKTOP_COPY.terminalEmptyTitle}</strong><p>{DESKTOP_COPY.terminalEmptyDescription}</p></> : <><div className="webui-terminal-tabs">{terminals.map((terminal, index) => <button type="button" key={String(terminal.terminalId)} className={`file-tab group/tab-close h-8 w-40 min-w-20 ${String(terminal.terminalId) === (activeTerminalId ?? String(terminals[0]?.terminalId)) ? "bg-bg_interaction_tertiary_selected" : ""}`} onClick={() => setActiveTerminalId(String(terminal.terminalId))}><span>#{index + 1}</span>{terminal.status === "exited" ? DESKTOP_COPY.terminalExited : DESKTOP_COPY.terminalLabel}<span className="file-tab-close opacity-0 group-hover/tab-close:opacity-100"><WebuiIconClose className="size-[14px]" /></span></button>)}</div><div ref={terminalHost} className="webui-xterm-host" />{terminalError ? <p role="alert">{terminalError}</p> : null}<div className="webui-terminal-actions"><button type="button" onClick={() => { if (!activeWorkspace || !createTerminal) return; void createTerminal({ workspaceDir: activeWorkspace }).then((created) => { setActiveTerminalId(created.terminalId); return listTerminals?.().then(setTerminals); }).catch((error: unknown) => setTerminalError(error instanceof Error ? error.message : String(error))); }}>{DESKTOP_COPY.newTerminal}</button><button type="button" onClick={() => { const active = terminals.find((candidate) => String(candidate.terminalId) === (activeTerminalId ?? String(terminals[0]?.terminalId))); if (active && disposeTerminal) void disposeTerminal({ terminalId: String(active.terminalId) }).then(() => listTerminals?.().then(setTerminals)); }}>{DESKTOP_COPY.fileClose}</button></div></> }{terminals.length === 0 ? <button type="button" onClick={() => { if (!activeWorkspace || !createTerminal) return; void createTerminal({ workspaceDir: activeWorkspace }).then((created) => { setActiveTerminalId(created.terminalId); return listTerminals?.().then(setTerminals); }).catch((error: unknown) => setTerminalError(error instanceof Error ? error.message : String(error))); }}>{DESKTOP_COPY.newTerminal}</button> : null}</div> : null}
       </div>
       {hasFileWorkspace && fileTreeOpen ? <aside className="webui-workspace-file-tree-panel" aria-label="工作区文件树">

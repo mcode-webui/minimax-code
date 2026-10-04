@@ -285,7 +285,7 @@ describe("round-3 message actions", () => {
       messageId: "user-1",
       loading: false,
       busy: false,
-      preview: { turns: [{ files: [] }] },
+      preview: { turns: [{ turnId: "turn-1", files: [] }] },
       onClose: () => undefined,
       onConfirm: () => undefined,
     }));
@@ -295,7 +295,7 @@ describe("round-3 message actions", () => {
       messageId: "user-1",
       loading: false,
       busy: false,
-      preview: { turns: [{ files: [{ filePath: "a.ts", action: "modify", skipped: false }] }] },
+      preview: { turns: [{ turnId: "turn-1", files: [{ filePath: "a.ts", action: "modify", skipped: false }] }] },
       onClose: () => undefined,
       onConfirm: () => undefined,
     }));
@@ -311,11 +311,11 @@ function goal(status: WebuiGoal["status"], wait?: WebuiGoal["executionWait"]): W
 describe("round-3 goal and questionnaire behavior", () => {
   it("renders all goal states and wait reasons with the correct status copy", () => {
     for (const status of ["active", "paused", "blocked", "complete", "budget_limited", "usage_limited"] as const) {
-      const html = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal(status) }));
+      const html = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal(status), onEditGoal: () => undefined }));
       expect(html).toContain(`data-goal-status="${status}"`);
       expect(html).toContain(`>${WEBUI_GOAL_STATUS_COPY[status]}<`);
     }
-    const waiting = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal("active", { reason: "permission", sinceMs: 1 }) }));
+    const waiting = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal("active", { reason: "permission", sinceMs: 1 }), onEditGoal: () => undefined }));
     expect(waiting).toContain("等待你确认权限");
   });
 
@@ -324,7 +324,7 @@ describe("round-3 goal and questionnaire behavior", () => {
     expect(buildWebuiGoalEditPatch(" ", "50K")).toMatchObject({ ok: false });
     expect(buildWebuiGoalEditPatch("objective", "not-a-budget")).toMatchObject({ ok: false });
     expect(buildWebuiGoalStatusPatch("paused")).toEqual({ status: "paused" });
-    const html = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal("active") }));
+    const html = renderToStaticMarkup(createElement(WebuiGoalBanner, { goal: goal("active"), onEditGoal: () => undefined }));
     expect(html).toContain("thread-goal-banner-pause");
     expect(html).toContain("thread-goal-banner-clear");
     expect(html).toContain("thread-goal-banner-edit-button");
@@ -501,7 +501,6 @@ describe("plugin management WebUI operation", () => {
     const markup = renderToStaticMarkup(
       createElement(PluginManagement, {
         transport: { pluginManagement: async () => ({ plugins: [] }) },
-        onClose: () => undefined,
       }),
     );
     expect(markup).toContain('data-testid="plugin-management"');

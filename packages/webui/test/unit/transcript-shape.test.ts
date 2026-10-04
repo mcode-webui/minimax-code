@@ -553,7 +553,7 @@ describe("single historical message projection", () => {
 
     const intersectingMessages = projectWebuiTranscriptMessages(
       { messages: history },
-      [{ id: "review-tools", role: "assistant", answer: "live update" }],
+      [{ id: "review-tools", answer: "live update", thinking: "" }],
     );
     const oldIntersectingItems = intersectingMessages.flatMap(projectWebuiMessage);
     const oldIntersectingViews = intersectingMessages.map((message) =>
@@ -576,14 +576,12 @@ describe("projectLiveTurnView — direct execution on the six content categories
       id: "live-asst-1",
       answer: "",
       thinking: "first reasoning",
-      role: "assistant",
       toolCalls: [{ id: "t1", name: "search.query" }],
     },
     {
       id: "live-asst-2",
       answer: "The answer is",
       thinking: "second reasoning",
-      role: "assistant",
       toolCalls: [{ id: "t2", name: "compute" }],
       usage: { request_duration_ms: 800, output_tokens: 30 },
     },
@@ -591,7 +589,6 @@ describe("projectLiveTurnView — direct execution on the six content categories
       id: "live-asst-3",
       answer: "ready",
       thinking: "",
-      role: "assistant",
       usage: { request_duration_ms: 250, output_tokens: 12 },
     },
   ];

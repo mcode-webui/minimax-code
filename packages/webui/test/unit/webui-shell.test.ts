@@ -79,7 +79,7 @@ import { projectWebuiMessage } from "../../src/client/projection/message-project
 import { projectLiveTurnView } from "../../src/client/projection/transcript-shape.js";
 import { buildWebuiQuestionnaireAnswers } from "../../src/client/projection/questionnaire-state.js";
 import { groupWebuiTranscriptItems } from "../../src/client/projection/transcript-projection.js";
-import type { WebuiGoal, WebuiQuestionnaireRequest } from "../../src/server/port.js";
+import type { WebuiGoal, WebuiGoalPatchRequest, WebuiQuestionnaireRequest } from "../../src/server/port.js";
 import {
   migrateSessionRuntimeState,
   readSessionRuntimeState,
@@ -678,9 +678,13 @@ describe("WebUI shell", () => {
   });
 
   it("expands the first project only when no session is selected", () => {
+    // `latestSessionId` is required on the type but unread by
+    // `resolveDefaultExpandedProjectKey`; it is filled in the way the rail
+    // builds a group (`sessions[0]?.sessionId`) so the fixture is a shape the
+    // component could actually hand this function.
     const projects = [
-      { key: "/work/alpha", name: "alpha", sessionIds: ["a"], updatedAt: 20 },
-      { key: "/work/beta", name: "beta", sessionIds: ["b"], updatedAt: 10 },
+      { key: "/work/alpha", name: "alpha", sessionIds: ["a"], latestSessionId: "a", updatedAt: 20 },
+      { key: "/work/beta", name: "beta", sessionIds: ["b"], latestSessionId: "b", updatedAt: 10 },
     ];
     expect(resolveDefaultExpandedProjectKey(projects, undefined, false)).toBe("/work/alpha");
     expect(resolveDefaultExpandedProjectKey(projects, "a", false)).toBeUndefined();
@@ -1816,8 +1820,12 @@ describe("WebUI composer app-to-helper seam", () => {
     });
     expect(onSessionCreated).toHaveBeenCalledWith("new-session");
 
-    const patchGoal = vi.fn(async (request: { sessionId: string; objective: string }) =>
-      nextGoal(request.sessionId, request.objective),
+    // The mock takes the real request type: `objective` is optional on
+    // `WebuiGoalPatchRequest` (a patch may carry only a status or a budget),
+    // so a mock demanding a `string` was narrower than the contract it stands
+    // in for. The objective still comes from the request, as before.
+    const patchGoal = vi.fn(async (request: WebuiGoalPatchRequest) =>
+      nextGoal(request.sessionId, request.objective ?? ""),
     );
     const currentGoal = nextGoal("existing-session", "old");
     await submitWebuiGoal({
@@ -2639,9 +2647,14 @@ describe("WebUI composer transcriptIncomplete", () => {
     const final = getState();
     // The turn clock drives 已执行 N 秒 / the thinking seconds counter; the
     // user's line comes from the replayed `msg-user-*` frame instead of a
-    // second pending renderer.
+    // second pending renderer — covered by the next test, which feeds that
+    // frame and reads `role`.
+    //
+    // This assertion used to be `expect(final.pendingUser).toBeUndefined()`.
+    // `pendingUser` no longer exists anywhere in `src/`, so that read could
+    // never fail and pinned nothing. Deleted rather than cast away; the test
+    // keeps the real `processingStartedAtMs` assertion below it.
     expect(typeof final.processingStartedAtMs).toBe("number");
-    expect(final.pendingUser).toBeUndefined();
   });
 
   it("tags the server's replayed user frame with role=user", () => {
@@ -2865,6 +2878,17 @@ describe("WebUI composer transcriptIncomplete", () => {
 
   it("renders the desktop questionnaire card copy and layout", () => {
     const questionnaire: WebuiQuestionnaireRequest = {
+      // The wire shape the runtime sends: current schema, and the default
+      // presentation for an ordinary questionnaire. `showProgress` and
+      // `allowBackNavigation` are only read when there is more than one step,
+      // and this card has exactly one, so the progress block stays unrendered
+      // either way — the copy assertions below are unaffected.
+      schemaVersion: 2,
+      presentation: {
+        replaceComposer: true,
+        showProgress: true,
+        allowBackNavigation: true,
+      },
       id: "q1",
       steps: [
         {
@@ -2873,6 +2897,12 @@ describe("WebUI composer transcriptIncomplete", () => {
           selectionMode: 0,
           required: false,
           allowOther: true,
+          // Read only when `selectedOther` is true. Deliberately a non-empty
+          // string distinct from 自定义回答... so the assertion below is
+          // discriminating: a card that wrongly took the `selectedOther`
+          // branch would render this text and fail, rather than rendering the
+          // same fallback the code falls back to.
+          otherPlaceholder: "Describe it",
           options: [
             { id: "a", label: "选项一" },
             { id: "b", label: "选项二" },
@@ -2943,6 +2973,11 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       setMessages: () => undefined,
       claimSubscription: (owner) => {
         order.push(`claim:${owner}`);
+        // `claimSubscription` returns the claimed generation, or `undefined`
+        // when the caller does not model one. These sinks only record the
+        // order, so `undefined` is the honest return and
+        // `runWebuiStreamLoop` tolerates it.
+        return undefined;
       },
       releaseSubscription: () => {
         order.push("release");
@@ -2974,6 +3009,9 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       setMessages: () => undefined,
       claimSubscription: (owner, turnId) => {
         claims.push({ owner, ...(turnId ? { turnId } : {}) });
+        // This sink records the claim rather than holding a lease, so it has
+        // no generation to hand back — `undefined` is the real return type.
+        return undefined;
       },
       releaseSubscription: () => {
         released += 1;
@@ -2989,7 +3027,13 @@ describe("WebUI stream loop · subscription lease discipline", () => {
   });
 
   it("anchors an attachment with history so the runtime replays the turn", async () => {
-    const resumeSession = vi.fn(async () => undefined);
+    // Mocked against the real `WebuiClientSessionResumer`, so `mock.calls[0]`
+    // is a two-element tuple. A zero-arg mock typed the call as `[]` and made
+    // the assertion below unreachable at the type level even though the loop
+    // really does pass the request.
+    const resumeSession = vi.fn<WebuiClientSessionResumer>(
+      async () => undefined,
+    );
     const loadMessages = vi.fn(async () => ({
       messages: [
         { msgId: "history-1", role: "user", msgContent: "earlier", timestamp: 1_700_000_000_001 },

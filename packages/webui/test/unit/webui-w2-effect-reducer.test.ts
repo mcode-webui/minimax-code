@@ -28,7 +28,13 @@ import {
   type WebuiEffectHandlers,
   type WebuiEffectState,
 } from "../../src/client/projection/effect-reducer.js";
-import { initialWebuiStreamState, isWebuiSubscriptionProbeCurrent, reduceWebuiStreamFrame, resolveWebuiSubscriptionRecheck } from "../../src/client/stream.js";
+import {
+  initialWebuiStreamState,
+  isWebuiSubscriptionProbeCurrent,
+  reduceWebuiStreamFrame,
+  resolveWebuiSubscriptionRecheck,
+  type WebuiStreamState,
+} from "../../src/client/stream.js";
 import {
   initialWebuiWorkspaceProgress,
   reduceWebuiWorkspaceProgressEvent,
@@ -131,7 +137,10 @@ describe("W2.9 · guard contract · session gate runs before any state write", (
 });
 
 describe("W2 · recheck resolution · the active turn breaks the tie", () => {
-  const owned = { owner: "recovered", turnId: "turn-1" } as const;
+  // One lease, the first this client ever took, so `generation: 1` — the
+  // counter is client-side and monotonic, and every case below describes a
+  // single-loop scenario.
+  const owned = { owner: "recovered", turnId: "turn-1", generation: 1 } as const;
 
   it("holds when the active turn is the one we already track", () => {
     expect(
@@ -216,6 +225,12 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
+        // BLOCKED (type debt G1): `generation` is required on
+        // `WebuiStreamSubscription`, but adding it here also puts it in the
+        // result — `claimWebuiSubscriptionTurn` spreads `...owned` — so the
+        // `toEqual` at :239 would need `generation: 1` as well. That is a
+        // change to an assertion's expected value, which the assignment
+        // forbids. Left as-is pending a decision.
         subscription: { owner: "local-send" },
       },
     });
@@ -240,6 +255,9 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
+        // BLOCKED (type debt G1): see the note on the `local-send` fixture
+        // above — the required `generation` would have to appear in the
+        // `toEqual` expectation too.
         subscription: { owner: "recovered", turnId: "turn-1" },
       },
     });
@@ -263,6 +281,9 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
+        // BLOCKED (type debt G1): see the note on the `local-send` fixture
+        // above — the required `generation` would have to appear in the
+        // `toEqual` expectation too.
         subscription: { owner: "recovered", turnId: "turn-1" },
       },
     });
@@ -437,7 +458,10 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       SESSION,
     );
     // A newer turn claimed while the commands were in flight.
-    const live = {
+    // Annotated `WebuiStreamState` so the literal's `owner` keeps its union
+    // member instead of widening to `string` — without a contextual type the
+    // reducers that branch on `owner` no longer accept this.
+    const live: WebuiStreamState = {
       ...stale.stream,
       subscription: { owner: "recovered", turnId: "turn-2", generation: 2 },
     };
@@ -482,10 +506,13 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
-        subscription: { owner: "local-send", turnId: "turn-1" },
+        subscription: { owner: "local-send", turnId: "turn-1", generation: 1 },
       },
     });
-    const settled = reduceWebuiStreamFrame(live, {
+    // `reduceWebuiStreamFrame` takes the stream slice, so hand it the slice.
+    // `makeState` only wraps it in an effect state; the frame reducer reads
+    // no effect fields, so the two arguments describe the same state.
+    const settled = reduceWebuiStreamFrame(live.stream, {
       dataJson: "[DONE]",
     });
     expect(settled.subscription).toBeUndefined();
@@ -497,7 +524,7 @@ describe("W2 · stream subscription ownership · one stream per turn", () => {
       stream: {
         ...initialWebuiStreamState,
         phase: "streaming",
-        subscription: { owner: "recovered", turnId: "turn-1" },
+        subscription: { owner: "recovered", turnId: "turn-1", generation: 1 },
       },
     });
     const settled = reduceWebuiEffect(
@@ -912,9 +939,15 @@ describe("W2 · trace 9 · progress is ALWAYS the first command when the guard p
       // present, but more importantly we assert that the *resulting*
       // workspace progress slice matches what the reducer computed —
       // swapping the patches puts a different slice here.
+      //
+      // The sentinel phase is deliberately outside `phase`'s union: a real
+      // phase value would be indistinguishable from one the patch recomputed,
+      // so the only way to prove the patch *copies* `phase` is to seed a
+      // value no reducer can produce. One documented cast is the price of that
+      // sentinel; the runtime value and the expectation below are unchanged.
       const next = first.patch({
         ...initialWebuiStreamState,
-        phase: "PREVIOUSLY_STREAMING",
+        phase: "PREVIOUSLY_STREAMING" as WebuiStreamState["phase"],
       });
       expect(next.workspaceProgress).toEqual(
         result.state.stream.workspaceProgress,
@@ -1089,27 +1122,25 @@ describe("W2.9 · executor · applyWebuiEffectCommands walks commands in order",
     calls: { type: string; payload: unknown }[];
   } {
     const calls: { type: string; payload: unknown }[] = [];
-    const record = (type: string) => (payload: unknown) =>
-      calls.push({ type, payload });
+    // Annotated `: void` so `calls.push`'s numeric return is discarded, and
+    // the parameter is optional so one recorder fits both the zero-argument
+    // handlers (`refreshPending`) and the ones that take a value. Without
+    // this the recorder returned `(payload: unknown) => number`, which no
+    // handler signature accepts.
+    const record =
+      (type: string) =>
+      (payload?: unknown): void => {
+        calls.push({ type, payload });
+      };
     return {
       calls,
-      refreshPending: record("refreshPending") as () => void,
-      refreshGoal: record("refreshGoal") as () => void,
-      setSending: record("setSending") as (sending: boolean) => void,
-      setStream: record("setStream") as (
-        patch: (current: WebuiStreamState) => WebuiStreamState,
-      ) => void,
-      setPermissions: record("setPermissions") as (
-        patch: (
-          current: readonly WebuiPendingPermission[],
-        ) => readonly WebuiPendingPermission[],
-      ) => void,
-      setQuestionnaire: record("setQuestionnaire") as (
-        patch: (
-          current: WebuiQuestionnaireRequest | undefined,
-        ) => WebuiQuestionnaireRequest | undefined,
-      ) => void,
-      setGoal: record("setGoal") as (goal: WebuiGoal | undefined) => void,
+      refreshPending: record("refreshPending"),
+      refreshGoal: record("refreshGoal"),
+      setSending: record("setSending"),
+      setStream: record("setStream"),
+      setPermissions: record("setPermissions"),
+      setQuestionnaire: record("setQuestionnaire"),
+      setGoal: record("setGoal"),
     };
   }
 

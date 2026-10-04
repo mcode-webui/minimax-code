@@ -47,6 +47,15 @@ import {
   toggleFavoriteId,
   writeFavoriteModels,
 } from "../projection/model-favorites.js";
+import {
+  isPreview,
+  rowClickOutcome,
+  type CascadeTier,
+} from "../projection/model-picker-cascade.js";
+import {
+  ModelSettingsFlyout,
+  type FlyoutAnchor,
+} from "./ModelSettingsFlyout.js";
 
 // Re-export so existing importers keep their import path stable.
 export type { WebuiModelPickerDraft, WebuiModelPickerEntry };
@@ -213,6 +222,7 @@ export function WebuiModelMenuList({
   onFocus,
   onSelect,
   onToggleFavorite,
+  onRowMount,
 }: {
   readonly groups: readonly WebuiModelProviderGroup[];
   readonly selected: WebuiModelPickerEntry | undefined;
@@ -221,6 +231,14 @@ export function WebuiModelMenuList({
   readonly onFocus: (key: string) => void;
   readonly onSelect: (model: WebuiModelPickerEntry) => void;
   readonly onToggleFavorite: (key: string) => void;
+  /**
+   * Report each row's element so the caller can anchor the fly-out to it.
+   *
+   * A callback ref rather than a prop-drilled map: the rows mount and unmount
+   * as the list filters, and an element the caller cannot measure is a fly-out
+   * with nothing to point at.
+   */
+  readonly onRowMount?: (key: string, element: HTMLElement | null) => void;
 }): ReactElement {
   return (
     <div role="listbox" aria-label="Model" className="webui-model-menu-list">
@@ -243,7 +261,11 @@ export function WebuiModelMenuList({
               model.displayName ??
               `${model.providerId}/${model.modelId}`;
             return (
-              <div key={key} className="webui-model-option-row">
+              <div
+                key={key}
+                className="webui-model-option-row"
+                ref={(element) => onRowMount?.(key, element)}
+              >
                 <button
                   type="button"
                   role="option"
@@ -295,12 +317,20 @@ export function WebuiModelPicker({
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
   const [focusedKey, setFocusedKey] = useState<string | undefined>(undefined);
+  const [tier, setTier] = useState<CascadeTier>("list");
   const [query, setQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
   const [drafts, setDrafts] = useState<
     Readonly<Record<string, WebuiModelPickerDraft>>
   >({});
   const rootRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * Every mounted row, so the fly-out can measure the one it is anchored to.
+   *
+   * A ref map rather than React state: the fly-out re-measures on scroll, and
+   * a scroll must not re-render the whole list just to update a rectangle.
+   */
+  const rowElements = useRef(new Map<string, HTMLElement>());
   const triggerId = useId();
   const menuId = useId();
   const searchId = useId();
@@ -320,6 +350,15 @@ export function WebuiModelPicker({
   useEffect(() => {
     if (open) return;
     setQuery("");
+  }, [open]);
+
+  // Reopening starts at the list tier. A picker that reopens one tier deep into
+  // a fly-out for a row the user has not re-hovered would be showing controls
+  // with no row to explain them.
+  useEffect(() => {
+    if (open) return;
+    setTier("list");
+    setFocusedKey(undefined);
   }, [open]);
 
   // Read the stars when the menu OPENS rather than on mount: the store is the
@@ -386,10 +425,51 @@ export function WebuiModelPicker({
 
   const handleSelectModel = (model: WebuiModelPickerEntry) => {
     const draft = drafts[modelKey(model)] ?? {};
-    setOpen(false);
-    setFocusedKey(undefined);
     onSelect(model, draft);
+    // The cascade's one asymmetry (see `projection/model-picker-cascade.ts`): a
+    // model with settings is not finished when its row is clicked — the
+    // selection completes in the second tier — while a model with nothing to
+    // configure completes on its own click, because there is nothing left to
+    // visit and keeping the surface open would strand the user on a menu they
+    // have finished with.
+    if (rowClickOutcome(model) === "close") {
+      setOpen(false);
+      setFocusedKey(undefined);
+      return;
+    }
+    setTier("settings");
   };
+
+  // Escape backs out ONE tier: the first press retracts the fly-out and leaves
+  // the list, the second closes the menu. Handled here rather than through the
+  // outside-close policy table because that table answers "does this surface
+  // dismiss", and the fly-out is INSIDE the picker's container — it is a tier
+  // of one surface, not a surface of its own.
+  const handleRetract = () => {
+    setTier((current) => {
+      if (current === "settings") {
+        setFocusedKey(undefined);
+        return "list";
+      }
+      setOpen(false);
+      return "list";
+    });
+  };
+
+  const selectedKeyString = selected ? modelKey(selected) : undefined;
+  // The recorded settings belong to the ACTIVE model, so a fly-out describing
+  // any other one is a read-only preview: the options are shown (the user can
+  // see what the model offers before committing) but committing them for an
+  // unpicked model has no contract meaning.
+  const flyoutIsPreview = isPreview(focusedKeyString, selectedKeyString);
+  const flyoutAnchor =
+    focusedKeyString && tier === "settings"
+      ? (() => {
+          const element = rowElements.current.get(focusedKeyString);
+          if (!element) return undefined;
+          return { rect: element.getBoundingClientRect(), element };
+        })()
+      : undefined;
 
   // Order matters and is deliberate: filter FIRST, then hoist. Hoisting on the
   // unfiltered list would keep a starred model visible while the user is
@@ -440,6 +520,38 @@ export function WebuiModelPicker({
     : [];
   const focusedContextOptions = focusedModel?.contextWindowOptions ?? [];
 
+  /**
+   * Commit a thinking option, in whichever shape that option implies.
+   *
+   * "default" RESETS the effort to the model's configured default (null, not
+   * the empty string — the wire distinguishes them), "on"/"off" flip the wire
+   * VARIANT rather than recording a level, and a depth level records itself.
+   * Splitting these three is the reason the option is reported verbatim by the
+   * fly-out instead of being pre-mapped there.
+   */
+  const handleThinkingChange = (option: string) => {
+    if (!focusedModel) return;
+    const variant = variantForEffort(focusedModel, option);
+    updateFocusedDraft({
+      ...(variant !== undefined ? { variant } : {}),
+      ...(option === "default"
+        ? { thinkingEffort: null }
+        : option === "off" || option === "on"
+          ? {}
+          : { thinkingEffort: option }),
+    });
+  };
+
+  /**
+   * Commit a context window. This is the second tier, and the second tier is
+   * where the selection COMPLETES — so unlike the thinking switch it closes.
+   */
+  const handleContextChange = (value: number) => {
+    updateFocusedDraft({ contextLimit: value });
+    setOpen(false);
+    setFocusedKey(undefined);
+  };
+
   return (
     <div
       ref={rootRef}
@@ -467,7 +579,13 @@ export function WebuiModelPicker({
           id={menuId}
           aria-labelledby={triggerId}
           data-webui-model-menu="true"
-          className="webui-model-menu webui-model-menu--two-column"
+          data-webui-model-tier={tier}
+          className="webui-model-menu webui-model-menu--cascade"
+          onKeyDown={(event) => {
+            // The fly-out stops propagation on its own Escape, so reaching here
+            // means focus is on the list: one more press closes the menu.
+            if (event.key === "Escape") handleRetract();
+          }}
         >
           <div className="webui-model-menu-column">
             <div className="webui-model-menu-search">
@@ -497,140 +615,27 @@ export function WebuiModelPicker({
                 onFocus={setFocusedKey}
                 onSelect={handleSelectModel}
                 onToggleFavorite={handleToggleFavorite}
+                onRowMount={(key, element) => {
+                  if (element) rowElements.current.set(key, element);
+                  else rowElements.current.delete(key);
+                }}
               />
             )}
           </div>
-          <div className="webui-model-menu-detail" aria-live="polite">
-            {focusedModel ? (
-              <>
-                {focusedEffortOptions.length > 0 ? (
-                  <div className="webui-model-detail-row webui-model-setting-effort">
-                    <span className="webui-model-detail-label">推理等级</span>
-                    {focusedEffortOptions.length === 2 &&
-                    focusedEffortOptions.includes("off") &&
-                    focusedEffortOptions.includes("on") &&
-                    resolveThinkingMode(focusedModel) === "switchable" ? (
-                      <ToggleSwitch
-                        checked={focusedEffort === "on"}
-                        label="推理等级"
-                        data-webui-model-thinking-toggle="true"
-                        className="webui-model-thinking-toggle"
-                        onChange={() => {
-                          if (!focusedModel) return;
-                          const next = focusedEffort === "on" ? "off" : "on";
-                          const variant = variantForEffort(focusedModel, next);
-                          updateFocusedDraft({
-                            ...(variant !== undefined ? { variant } : {}),
-                          });
-                        }}
-                      />
-                    ) : (
-                      <div
-                        role="radiogroup"
-                        aria-label="推理等级"
-                        className="webui-model-effort-group"
-                      >
-                        {focusedEffortOptions.map((option) => {
-                          const active = focusedEffort === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              role="radio"
-                              aria-checked={active}
-                              className="webui-model-effort-option"
-                              onClick={() => {
-                                if (!focusedModel) return;
-                                const variant = variantForEffort(
-                                  focusedModel,
-                                  option,
-                                );
-                                updateFocusedDraft({
-                                  ...(variant !== undefined ? { variant } : {}),
-                                  ...(option === "default"
-                                    ? { thinkingEffort: null }
-                                    : option === "off" || option === "on"
-                                      ? {}
-                                      : { thinkingEffort: option }),
-                                });
-                              }}
-                            >
-                              {option}
-                              {active ? (
-                                <span aria-hidden="true" className="webui-model-context-tick">✓</span>
-                              ) : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-                {focusedContextOptions.length > 0 ? (
-                  <div className="webui-model-detail-row webui-model-setting-context">
-                    <span className="webui-model-detail-label">上下文窗口</span>
-                    <div
-                      role="radiogroup"
-                      aria-label="上下文窗口"
-                      className="webui-model-context-group"
-                    >
-                      {focusedContextOptions.map((value) => {
-                        const active = focusedContextLimit === value;
-                        const hint =
-                          focusedModel.contextWindowOptionHints?.[
-                            String(value)
-                          ];
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            role="radio"
-                            aria-checked={active}
-                            className={`webui-model-context-option ${active ? "is-active" : ""}`}
-                            onClick={() => {
-                              if (!focusedModel) return;
-                              updateFocusedDraft({ contextLimit: value });
-                            }}
-                          >
-                            <span className="webui-model-context-value">
-                              {formatContextWindow(value)}
-                            </span>
-                            {hint === "higher_usage" ? (
-                              <span className="webui-model-context-hint">
-                                用量较高
-                              </span>
-                            ) : null}
-                            {active ? (
-                              <span
-                                aria-hidden="true"
-                                className="webui-model-context-tick"
-                              >
-                                ✓
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-                {focusedEffortOptions.length === 0 &&
-                focusedContextOptions.length === 0 ? (
-                  <div className="webui-model-detail-empty">
-                    <div className="webui-model-detail-empty-title">
-                      {focusedModel.displayName ?? focusedModel.modelId}
-                    </div>
-                    <div className="webui-model-detail-empty-hint">
-                      这个模型没有可调设置。
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="webui-model-detail-empty">选择一个模型查看设置</div>
-            )}
-          </div>
         </div>
+      ) : null}
+      {open && tier === "settings" ? (
+        <ModelSettingsFlyout
+          model={focusedModel}
+          effortOptions={focusedEffortOptions}
+          contextOptions={focusedContextOptions}
+          anchor={flyoutAnchor}
+          draft={focusedDraft}
+          preview={flyoutIsPreview}
+          onThinkingChange={handleThinkingChange}
+          onContextChange={handleContextChange}
+          onRetract={handleRetract}
+        />
       ) : null}
     </div>
   );

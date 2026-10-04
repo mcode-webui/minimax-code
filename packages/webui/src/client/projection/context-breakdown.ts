@@ -106,7 +106,7 @@ export function formatPercent(percent: number): string {
  * rather than a silent merge.
  */
 export function contextBreakdownRows(
-  components: readonly unknown,
+  components: unknown,
   total: number,
 ): ContextBreakdownRow[] {
   const reported = new Map<string, number>();

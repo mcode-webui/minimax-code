@@ -1713,6 +1713,73 @@
    * list then has to give up `height: 100%` — that height is measured against
    * the COLUMN, and with a search box above it the list would overflow the
    * menu by exactly the search box's height. */
+  /* The cascade. One column, sized to the list: the settings live in a fly-out
+   * beside the hovered row, so the menu no longer reserves a second column for
+   * a model the user may never have hovered. The width is what the list needs
+   * to read model names, not what a settings panel would need. */
+  .webui-model-menu--cascade {
+    display: flex;
+    flex-direction: column;
+    width: min(320px, calc(100vw - 32px));
+    max-height: min(420px, calc(100dvh - 112px));
+    padding: var(--spacing_8);
+    overflow: visible;
+  }
+  /* The fly-out is `position: fixed` and placed by the shared
+   * `positionFlyout` engine, so it escapes this list's own `overflow-y: auto`.
+   * It is NOT a child of the menu: a nested surface would be clipped by the
+   * very scrolling container it needs to escape. */
+  .webui-model-flyout {
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_8);
+    min-width: 0;
+    padding: var(--spacing_8);
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_12);
+    background: var(--bg_grouped_secondary_elevated);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+    color: var(--text_default_primary);
+  }
+  .webui-model-flyout--tier-two {
+    gap: 2px;
+    padding: var(--spacing_4);
+  }
+  /* A preview describes a model the user has not picked. The options stay
+   * visible — the point is to see what the model offers before committing to
+   * it — but they are not committable, and saying so with the disabled state is
+   * clearer than hiding the control and leaving the user wondering. */
+  .webui-model-flyout[data-webui-model-preview="true"] {
+    opacity: 0.92;
+  }
+  .webui-model-context-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing_8);
+    width: 100%;
+    border-radius: var(--radius_8);
+    padding: var(--spacing_4) var(--spacing_8);
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    transition: background-color 120ms ease;
+  }
+  .webui-model-context-trigger:hover:not(:disabled) {
+    background-color: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-model-context-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .webui-model-context-trigger:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: -2px;
+  }
+  .webui-model-context-caret {
+    color: var(--text_default_tertiary);
+  }
   .webui-model-menu-column {
     display: flex;
     min-height: 0;

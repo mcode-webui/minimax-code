@@ -88,3 +88,19 @@ describe("desktop settings registry", () => {
     ], original)).toEqual({ headers: { "X-Renamed": "new" }, removeHeaders: ["X-First", "X-Second"] });
   });
 });
+
+describe("account tab gating", () => {
+  it("leaves the account tab clickable while the unimplemented tabs stay disabled", () => {
+    // The account panel is fully implemented (email row, sign-out button,
+    // sign-out error region), so it must not carry the `disabled` gate the
+    // not-yet-built panels still need.
+    const account = DESKTOP_SETTINGS_TABS.find((tab) => tab.key === "account");
+    expect(account?.disabled).toBeUndefined();
+    for (const key of ["voice", "shortcuts", "custom-instructions", "connection", "coding", "worktree"])
+      expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBe(true);
+  });
+
+  it("keeps the account tab reachable through the settings search", () => {
+    expect(filterSettingsTabs("账户").map((tab) => tab.key)).toContain("account");
+  });
+});

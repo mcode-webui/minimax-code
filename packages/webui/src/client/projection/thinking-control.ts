@@ -65,30 +65,39 @@ export function isThinkingOn(
   return value !== "off";
 }
 
+/** The whole of a model entry's thinking state, as the controls read it. */
+export interface ThinkingState {
+  /** The wire variant: `"thinking"`, `""` for the non-thinking variant. */
+  readonly variant?: string;
+  /** The recorded depth, or `null` for an explicit "engine decides". */
+  readonly thinkingEffort?: string | null;
+}
+
 /**
- * The option the control highlights as current, or `null`.
+ * Is thinking ON, reading the field that actually carries the answer.
  *
- *   - a previewed row (focused ≠ active) never highlights: the record belongs
- *     to the active model, and highlighting it against another model is a lie
- *     about which model the setting is for;
- *   - an absent record maps to "default";
- *   - a recorded option the target does NOT offer highlights NOTHING, rather
- *     than silently falling back to "default" and pretending the engine default
- *     is picked. The same anti-stale rule the row badge applies.
+ * The switch's state is the WIRE VARIANT, not the effort. A two-state model has
+ * no depth to record, so an on/off commit writes `variant: "thinking"` or
+ * `variant: ""` and deliberately leaves `thinking.effort` alone — reading the
+ * effort here therefore read a field the toggle never writes, and the control
+ * sat in `unstated` for the whole life of the session no matter how many times
+ * it was pressed.
  *
- * Reads `options`, not the radio group's rendered list, so the check holds for
- * the switch form too — that form never builds a list, and gating its checked
- * state on one made every recorded "on" read as off.
+ * A present variant is a STATEMENT, so it is never `null`: the runtime always
+ * reports one for a selected model, falling back to the model's declared
+ * default. Only a model that reports no variant at all falls through to the
+ * effort, and that keeps the three-valued verdict intact — an absent record is
+ * still the engine's choice rather than a confident "off".
+ *
+ * `options` narrows the effort fallback, so a cross-model leftover ("high" on a
+ * switch) still reads as `null` instead of as "on".
  */
-export function resolveEffortCurrent(
+export function resolveThinkingVerdict(
   options: readonly string[],
-  recorded: string | undefined,
-  preview: boolean,
-): string | null {
-  if (preview) return null;
-  const value = (recorded ?? "").trim();
-  if (value === "") return "default";
-  return options.includes(value) ? value : null;
+  state: ThinkingState,
+): boolean | null {
+  if (state.variant !== undefined) return state.variant === "thinking";
+  return isThinkingOn(options, state.thinkingEffort ?? undefined);
 }
 
 /**
@@ -100,9 +109,8 @@ export function resolveEffortCurrent(
  * "on", and 「开启」 in the chip restated what the glyph beside it says, two
  * controls apart in the same toolbar.
  *
- * Empty for an absent record and for a record the model does not offer, on the
- * same anti-stale rule as `resolveEffortCurrent`: a level the target cannot
- * honour is not a level to print.
+ * Empty for an absent record and for a record the model does not offer: a level
+ * the target cannot honour is not a level to print.
  */
 export function chipLevelLabel(
   options: readonly string[],

@@ -18,7 +18,7 @@ import {
   brainTone,
   chipLevelLabel,
   isThinkingOn,
-  resolveEffortCurrent,
+  resolveThinkingVerdict,
   thinkingControlShape,
 } from "../../src/client/projection/thinking-control.js";
 import { ThinkingTrigger } from "../../src/client/components/ThinkingTrigger.js";
@@ -122,32 +122,40 @@ describe("thinking control — the third verdict is not 'off'", () => {
   });
 });
 
-describe("thinking control — what the control highlights", () => {
-  it("highlights nothing while previewing another model", () => {
-    // The record belongs to the active model; highlighting it against another
-    // model is a lie about which model the setting is for.
-    expect(resolveEffortCurrent(BINARY, "on", true)).toBeNull();
+describe("thinking control — the verdict reads the field that carries it", () => {
+  it("reads the VARIANT for a two-state model, which is where its state lives", () => {
+    // The regression this whole block exists for. A two-state model has no depth
+    // to record, so an on/off commit writes the variant and deliberately leaves
+    // `thinking.effort` empty. Reading the effort therefore read a field the
+    // toggle never writes, and the brain sat in `unstated` for the whole life of
+    // the session — pressing it committed a change that could never come back.
+    expect(resolveThinkingVerdict(BINARY, { variant: "thinking" })).toBe(true);
+    expect(resolveThinkingVerdict(BINARY, { variant: "" })).toBe(false);
+    // With a recorded effort present too, the variant is still the answer: it is
+    // the field the switch writes, and the effort is a leftover.
+    expect(resolveThinkingVerdict(BINARY, { variant: "thinking", thinkingEffort: "" })).toBe(
+      true,
+    );
+    expect(resolveThinkingVerdict(BINARY, { variant: "", thinkingEffort: "high" })).toBe(false);
   });
 
-  it("maps the engine default to 'default'", () => {
-    expect(resolveEffortCurrent(DEPTH, "", false)).toBe("default");
-    expect(resolveEffortCurrent(DEPTH, undefined, false)).toBe("default");
+  it("keeps a present variant two-valued, never 'the engine decides'", () => {
+    // The runtime always reports a variant for a selected model — falling back to
+    // the model's declared default — so an unstated verdict here would mean the
+    // field went missing, and painting that as "engine decides" would name a
+    // state nobody chose.
+    expect(brainTone(resolveThinkingVerdict(BINARY, { variant: "" }))).toBe("off");
+    expect(brainTone(resolveThinkingVerdict(BINARY, { variant: "thinking" }))).toBe("on");
   });
 
-  it("highlights a recorded option the target offers", () => {
-    expect(resolveEffortCurrent(DEPTH, "high", false)).toBe("high");
-  });
-
-  it("highlights NOTHING for a stale recorded level", () => {
-    // Not "default": falling back would silently pretend the engine default is
-    // picked, which is the anti-stale rule the row badge already applies.
-    expect(resolveEffortCurrent(DEPTH, "on", false)).toBeNull();
-  });
-
-  it("holds for the switch form, which never builds an option list", () => {
-    // Gating the switch's checked state on a rendered list made every recorded
-    // "on" read as off.
-    expect(resolveEffortCurrent(BINARY, "on", false)).toBe("on");
+  it("falls back to the effort only for a model that reports no variant", () => {
+    // A provider whose switch is carried as an effort rather than a variant.
+    expect(resolveThinkingVerdict(BINARY, { thinkingEffort: "on" })).toBe(true);
+    expect(resolveThinkingVerdict(BINARY, { thinkingEffort: "off" })).toBe(false);
+    expect(resolveThinkingVerdict(BINARY, {})).toBeNull();
+    // A cross-model leftover still reads as unstated rather than as "on".
+    expect(resolveThinkingVerdict(BINARY, { thinkingEffort: "high" })).toBeNull();
+    expect(resolveThinkingVerdict(BINARY, { thinkingEffort: null })).toBeNull();
   });
 });
 
@@ -182,6 +190,39 @@ describe("thinking trigger — what it renders", () => {
     expect(html).toContain("<button");
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('data-webui-thinking-tone="on"');
+  });
+
+  it("goes blue from the VARIANT, with no recorded effort at all", () => {
+    // What the user reported: M3's brain never turned blue and pressing it did
+    // nothing. The commit wrote the variant; the brain read the effort, which
+    // for a switchable model stays empty forever. The variant alone has to
+    // drive both the colour and the next press.
+    const on = render({
+      options: BINARY, recorded: undefined, variant: "thinking",
+      preview: false, onChange: () => undefined,
+    });
+    expect(on).toContain('data-webui-thinking-tone="on"');
+    expect(on).toContain('aria-pressed="true"');
+    expect(on).toContain("已开启思考");
+
+    const off = render({
+      options: BINARY, recorded: undefined, variant: "",
+      preview: false, onChange: () => undefined,
+    });
+    expect(off).toContain('data-webui-thinking-tone="off"');
+    expect(off).toContain('aria-pressed="false"');
+    expect(off).toContain("已关闭思考");
+  });
+
+  it("names no level in the title, because a switch has none", () => {
+    // The title used to end in "· default": the recorded effort read as a
+    // position on a scale, on a control whose two states the same sentence had
+    // already named. The depth level is named on the model chip instead.
+    const html = render({
+      options: BINARY, recorded: "", preview: false, onChange: () => undefined,
+    });
+    expect(html).toContain('aria-label="思考由引擎决定 · 点击开启"');
+    expect(html).not.toContain("· default");
   });
 
   it("keeps the switch operable when the state is unstated", () => {
@@ -282,6 +323,16 @@ describe("thinking trigger — what it renders", () => {
 describe("thinking trigger — the icon is the whole trigger", () => {
   const source = readFileSync(componentPath, "utf8");
 
+  /** The file with its prose removed, so an assertion about CODE cannot be
+   * satisfied or broken by a comment explaining the code. */
+  function stripComments(text: string): string {
+    return text
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("//"))
+      .join("\n");
+  }
+
   it("carries no text label beside the brain", () => {
     // 「开启」 in a label said what the brain beside it already said, two
     // controls apart in the same toolbar. The name is for assistive tech; the
@@ -293,5 +344,42 @@ describe("thinking trigger — the icon is the whole trigger", () => {
     // On a depth scale the brain is not a control, so announcing it as one
     // would put a focusable-sounding thing in the tab order that does nothing.
     expect(source).toContain('aria-hidden="true"');
+  });
+
+  it("names the three tone classes in full, or the build purges their colour", () => {
+    // The cause of "the brain never turns blue", and it is invisible from the
+    // DOM: the component emitted the right class and the stylesheet had no rule
+    // for it. Tailwind's `components` layer is purged against the class names it
+    // finds as COMPLETE literals in the client sources, so an interpolated
+    // `webui-thinking-brain--${tone}` left the scanner with a prefix and dropped
+    // all three tone rules from the built stylesheet — a successful build that
+    // shipped a control whose only signal was missing.
+    //
+    // Asserted on the source rather than on a rendered colour because the colour
+    // needs the built artifact, and the thing that goes wrong is the class name
+    // long before anything is painted.
+    for (const tone of ["on", "off", "unstated"]) {
+      expect(source).toContain(`webui-thinking-brain--${tone}`);
+    }
+    // Comments are stripped first: this file explains the interpolated form at
+    // length, and prose about it is not the code using it.
+    expect(stripComments(source)).not.toContain("webui-thinking-brain--${");
+  });
+
+  it("keeps every tone class that shell.css actually styles", () => {
+    // The two lists have to agree. A tone added to the projection without a
+    // matching rule in the stylesheet paints nothing, and a rule added without a
+    // matching tone is dead weight — either way the brain's state is unreadable
+    // and only a person in the running app would notice.
+    const css = readFileSync(
+      path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../../src/client/styles/shell.css",
+      ),
+      "utf8",
+    );
+    const styled = [...css.matchAll(/\.webui-thinking-brain--([a-z]+)/g)].map((m) => m[1]);
+    expect(styled.length).toBeGreaterThan(0);
+    for (const tone of styled) expect(source).toContain(`webui-thinking-brain--${tone}`);
   });
 });

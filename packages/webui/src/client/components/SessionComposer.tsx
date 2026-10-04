@@ -2310,6 +2310,7 @@ export function WebuiComposer({
                   <ThinkingTrigger
                     options={thinkingOptions}
                     recorded={selectedModel?.thinking?.effort}
+                    variant={selectedModel?.variant}
                     preview={false}
                     onChange={(option) => {
                       const model = selectedModel;

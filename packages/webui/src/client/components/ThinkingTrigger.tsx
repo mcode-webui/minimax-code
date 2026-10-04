@@ -24,9 +24,9 @@ import type { ReactElement } from "react";
 import {
   brainHoverLabel,
   brainTone,
-  isThinkingOn,
-  resolveEffortCurrent,
+  resolveThinkingVerdict,
   thinkingControlShape,
+  type BrainTone,
 } from "../projection/thinking-control.js";
 
 /**
@@ -67,12 +67,40 @@ function BrainGlyph({ className }: { readonly className?: string }): ReactElemen
   );
 }
 
+/**
+ * The tone's class name, written out in full.
+ *
+ * NOT `` `webui-thinking-brain--${tone}` ``. Tailwind's `components` layer is
+ * purged against the class names it can find as complete literals in the
+ * client sources, and an interpolated one is not one: the scanner sees
+ * `webui-thinking-brain--` and stops. Every rule keyed to the three tone
+ * classes was therefore dropped from the built stylesheet while the component
+ * went on emitting them, so the brain rendered in whatever colour it inherited
+ * and the one thing this control exists to signal never appeared — with no
+ * error anywhere, because a purged rule is a successful build.
+ *
+ * A map with the full names is what the scanner can read, and it is the same
+ * shape `is-active` already uses elsewhere in the shell.
+ */
+const TONE_CLASS: Readonly<Record<BrainTone, string>> = {
+  on: "webui-thinking-brain--on",
+  off: "webui-thinking-brain--off",
+  unstated: "webui-thinking-brain--unstated",
+};
+
 export interface ThinkingTriggerProps {
   /** The active model's resolved thinking options. Empty renders nothing. */
   readonly options: readonly string[];
   /** The active model's recorded effort, if any. */
   readonly recorded: string | undefined;
-  /** True while the picker is describing a model that is not the active one. */
+  /**
+   * The active model's wire variant — a two-state model's actual on/off state.
+   *
+   * Read here because the switch's state lives in the variant and nowhere else:
+   * a model with no depth has no effort to record, so an on/off commit writes
+   * the variant and leaves `recorded` untouched.
+   */
+  readonly variant?: string;
   readonly preview: boolean;
   readonly onChange: (option: string) => void;
 }
@@ -80,6 +108,7 @@ export interface ThinkingTriggerProps {
 export function ThinkingTrigger({
   options,
   recorded,
+  variant,
   preview,
   onChange,
 }: ThinkingTriggerProps): ReactElement | null {
@@ -87,41 +116,38 @@ export function ThinkingTrigger({
   // A no-op control is worse than none, so an empty list renders nothing at all
   // rather than a control whose clicks change nothing.
   if (shape === null) return null;
-
-  const on = isThinkingOn(options, recorded);
-  const tone = brainTone(on);
-  // The hover title still names the level: the chip states it, but a tooltip is
-  // where a pointer actually goes for "which level is this".
-  const current = resolveEffortCurrent(options, recorded, preview);
-  const levelLabel = current === null ? undefined : current;
-
-  const brain = (
-    <BrainGlyph className={`webui-thinking-brain webui-thinking-brain--${tone}`} />
-  );
-
   if (shape !== "switch") return null;
+
+  const on = resolveThinkingVerdict(options, {
+    ...(variant !== undefined ? { variant } : {}),
+    thinkingEffort: recorded,
+  });
+  const tone = brainTone(on);
+  // No level in the title. A switch HAS no levels — off and on are the two
+  // states the sentence above already names — so the recorded effort can only
+  // be "default" here, and printing it restated the control's own state as if
+  // it were a position on a scale. The depth level is named on the chip.
+  const hover = brainHoverLabel(tone, undefined, on === true ? "turn-off" : "turn-on");
 
   // A two-state model's brain IS the switch — the whole point of it is that
   // thinking turns on and off from here without opening anything. So an
-  // UNSTATED record must not disable it.
+  // UNSTATED verdict must not disable it.
   //
   // Disabling on `on === null` made the control dead in exactly the state a
-  // session starts in: no effort recorded yet, because the user has not
-  // touched it. A control that cannot be used until something else has already
-  // used it is not a switch. The engine's default is a state the toggle acts
-  // ON, not a state that locks it — clicking commits an explicit "on", which
-  // is a fact the user stated rather than one inferred.
+  // session starts in: nothing recorded yet, because the user has not touched
+  // it. A control that cannot be used until something else has already used it
+  // is not a switch. The engine's default is a state the toggle acts on, not a
+  // state that locks it — clicking commits an explicit "on", which is a fact
+  // the user stated rather than one inferred.
   //
   // `aria-pressed` stays false while unstated: the brain is not claiming
   // thinking is on, it is offering to turn it on.
-  const hover = brainHoverLabel(tone, levelLabel, on === true ? "turn-off" : "turn-on");
   return (
     <button
       type="button"
       // Disabled rather than absent while previewing: the control exists for
       // the model under the pointer, and saying so by removing it would make
-      // the toolbar jump around as the pointer crosses rows. An unstated
-      // record no longer disables it — see above.
+      // the toolbar jump around as the pointer crosses rows.
       disabled={preview}
       aria-pressed={on === true}
       aria-label={hover}
@@ -131,7 +157,7 @@ export function ThinkingTrigger({
       data-webui-thinking-tone={tone}
       onClick={() => onChange(on === true ? "off" : "on")}
     >
-      {brain}
+      <BrainGlyph className={`webui-thinking-brain ${TONE_CLASS[tone]}`} />
     </button>
   );
 }

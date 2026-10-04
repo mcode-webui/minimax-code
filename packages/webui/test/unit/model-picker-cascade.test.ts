@@ -110,6 +110,50 @@ describe("cascade — the thinking switch does not finish the visit", () => {
     // is the ordinary thing a user does on opening a model's settings at all.
     expect(thinkingCommitOutcome()).toBe("keep-open");
   });
+
+  it("still PICKS the row, or the tick never moves to it", () => {
+    // Keeping the surface open is about the menu, not about the selection. The
+    // fly-out belongs to a row, so choosing a level inside it is a statement
+    // about that row: the user picked "max" for this model, and the row has to
+    // say so. Without this the commit changed a setting on a model that stayed
+    // unpicked — the action read as "edited something" and the menu still sat
+    // open on a row with no tick beside it.
+    const picker = readComponent("ModelPicker.tsx");
+    const handler = picker.slice(
+      picker.indexOf("const handleThinkingChange"),
+      picker.indexOf("const handleContextChange"),
+    );
+    expect(handler).toContain("onSelect(focusedModel, draft)");
+    // And no premature close: the level is a mid-visit edit.
+    expect(handler).not.toContain("setOpen(false)");
+  });
+});
+
+describe("cascade — a click inside the fly-out finishes the selection", () => {
+  it("selects the row from the context window", () => {
+    const picker = readComponent("ModelPicker.tsx");
+    const handler = picker.slice(
+      picker.indexOf("const handleContextChange"),
+      picker.indexOf("return (", picker.indexOf("const handleContextChange")),
+    );
+    expect(handler).toContain("onSelect(focusedModel, draft)");
+    expect(handler).toContain("setOpen(false)");
+  });
+
+  it("leaves NOTHING in the fly-out disabled while previewing", () => {
+    // The dead end this removes: every control was disabled until the row was
+    // already picked, with a title saying so. So the panel could only be read
+    // for an unpicked model — the one case it is opened for — and the user had
+    // to click the row first to unlock it, which is the step the fly-out exists
+    // to save. A click inside it now IS how the row gets picked.
+    const flyout = readComponent("ModelSettingsFlyout.tsx");
+    const code = flyout
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("//") && !line.trimStart().startsWith("*"))
+      .join("\n");
+    expect(code).not.toContain("disabled={preview}");
+    expect(code).not.toContain("先选中这个模型");
+  });
 });
 
 describe("cascade — an unpicked model's controls are a preview", () => {

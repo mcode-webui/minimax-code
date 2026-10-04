@@ -748,7 +748,15 @@ export interface WebuiModelEntry {
   readonly contextWindowOptions?: readonly number[];
   readonly contextWindowOptionHints?: Readonly<Record<string, string>>;
   readonly contextLimit?: number;
-  readonly thinkingConfig?: { readonly mode?: string };
+  /**
+   * The runtime's thinking contract. `default_value` is what marks a
+   * `switchable` model as having an on/off thinking switch, and the client's
+   * `resolveEffortOptions` reads it to decide whether to draw the brain.
+   */
+  readonly thinkingConfig?: {
+    readonly mode?: string;
+    readonly default_value?: "true" | "false";
+  };
   readonly thinking?: { readonly effort?: string };
   readonly providerName?: string;
   readonly status?: {

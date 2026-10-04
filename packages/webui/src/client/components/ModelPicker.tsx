@@ -167,9 +167,14 @@ export function resolveEffortOptions(
   // surfaces the control without the runtime having to fill `effortOptions`.
   if (model.thinkingConfig?.mode === "switchable") {
     const variants = model.supportedVariants ?? [];
-    const hasOff = variants.includes("");
-    const hasOn = variants.some((variant) => Boolean(variant));
-    if (hasOff && hasOn) return ["off", "on"];
+    const hasOff = variants.includes("") || variants.includes("none-thinking");
+    const hasOn = variants.some((variant) => variant && variant !== "none-thinking");
+    // `default_value` is the runtime's own statement that this model has a
+    // thinking switch, and it reaches the client on `thinkingConfig` even when
+    // the variant list does not. Trusting it means the brain icon does not
+    // depend on a second field arriving intact.
+    const declaredSwitch = model.thinkingConfig?.default_value !== undefined;
+    if ((hasOff && hasOn) || declaredSwitch) return ["off", "on"];
   }
   return [];
 }
@@ -439,16 +444,6 @@ export function WebuiModelPicker({
   const focusedDraft: WebuiModelPickerDraft =
     focusedModel ? (drafts[focusedKeyString] ?? {}) : {};
 
-  const updateFocusedDraft = (patch: Partial<WebuiModelPickerDraft>) => {
-    if (!focusedModel) return;
-    const next: WebuiModelPickerDraft = {
-      ...drafts[focusedKeyString],
-      ...patch,
-    };
-    setDrafts((current) => ({ ...current, [focusedKeyString]: next }));
-    onSettingChange(focusedModel, next);
-  };
-
   const handleSelectModel = (model: WebuiModelPickerEntry) => {
     const draft = drafts[modelKey(model)] ?? {};
     onSelect(model, draft);
@@ -497,10 +492,11 @@ export function WebuiModelPicker({
   };
 
   const selectedKeyString = selected ? modelKey(selected) : undefined;
-  // The recorded settings belong to the ACTIVE model, so a fly-out describing
-  // any other one is a read-only preview: the options are shown (the user can
-  // see what the model offers before committing) but committing them for an
-  // unpicked model has no contract meaning.
+  // Whether the fly-out describes a model other than the active one. It changes
+  // what the panel SHOWS and nothing about what it lets the user do: a click
+  // inside the fly-out is how that row gets picked, so gating the controls on it
+  // made the panel a dead end that could only be read — the user had to click
+  // the row first to unlock it, which is the step the fly-out exists to save.
   const flyoutIsPreview = isPreview(focusedKeyString, selectedKeyString);
   const flyoutAnchor =
     focusedKeyString && tier === "settings"
@@ -603,27 +599,50 @@ export function WebuiModelPicker({
    * VARIANT rather than recording a level, and a depth level records itself.
    * Splitting these three is the reason the option is reported verbatim by the
    * fly-out instead of being pre-mapped there.
+   *
+   * It SELECTS the model. Same reasoning as `handleContextChange`: the fly-out
+   * belongs to a row, so choosing a level inside it is a statement about that
+   * row. Unlike a window, though, a level is a mid-visit edit — the user may
+   * still want a window next, and this panel is flat precisely so both fit in
+   * one visit — so the menu stays open and the row carries the tick.
    */
   const handleThinkingChange = (option: string) => {
     if (!focusedModel) return;
     const variant = variantForEffort(focusedModel, option);
-    updateFocusedDraft({
+    const draft: WebuiModelPickerDraft = {
+      ...focusedDraft,
       ...(variant !== undefined ? { variant } : {}),
       ...(option === "default"
         ? { thinkingEffort: null }
         : option === "off" || option === "on"
           ? {}
           : { thinkingEffort: option }),
-    });
+    };
+    setDrafts((current) => ({ ...current, [focusedKeyString]: draft }));
+    onSettingChange(focusedModel, draft);
+    onSelect(focusedModel, draft);
   };
 
   /**
-   * Commit a context window. Unlike the thinking control, this CLOSES: picking a
-   * window is the commitment that completes the selection, where a level is a
-   * mid-visit edit.
+   * Commit a context window. This CLOSES: picking a window is the commitment
+   * that completes the selection, where a level is a mid-visit edit.
+   *
+   * It also SELECTS the model. The fly-out belongs to a row, and choosing an
+   * option inside it is a statement about that row — a user who picks "1M" next
+   * to M3 has chosen M3, and leaving the row unselected while closing the menu
+   * made the action read as "changed a setting" and left the tick beside a
+   * model they had just picked out of step. The row click is the same two calls
+   * in a different order, so both routes to a finished selection look alike.
    */
   const handleContextChange = (value: number) => {
-    updateFocusedDraft({ contextLimit: value });
+    if (!focusedModel) return;
+    const draft: WebuiModelPickerDraft = {
+      ...focusedDraft,
+      contextLimit: value,
+    };
+    setDrafts((current) => ({ ...current, [focusedKeyString]: draft }));
+    onSettingChange(focusedModel, draft);
+    onSelect(focusedModel, draft);
     setOpen(false);
     setFocusedKey(undefined);
   };

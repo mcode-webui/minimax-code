@@ -44,6 +44,7 @@ import {
   positionFlyout,
   type FlyoutRect,
 } from "../projection/flyout-position.js";
+import { resolveThinkingVerdict } from "../projection/thinking-control.js";
 import type {
   WebuiModelPickerDraft,
   WebuiModelPickerEntry,
@@ -146,7 +147,16 @@ export interface ModelSettingsFlyoutProps {
   readonly contextOptions: readonly number[];
   readonly anchor: FlyoutAnchor | undefined;
   readonly draft: WebuiModelPickerDraft;
-  /** True while the described model is not the active one. */
+  /**
+   * True while the described model is not the active one.
+   *
+   * Carried on the surface as state, NOT as a gate. Every control here is a way
+   * of picking the row this panel describes, so disabling them until the row was
+   * already picked made the panel read-only for exactly the case it was opened
+   * for: the user hovering a model they had not yet chosen, to see what it
+   * offers. They had to click the row first to unlock it, and then the fly-out
+   * had saved them nothing over editing the panel's own column.
+   */
   readonly preview: boolean;
   /**
    * Commit a thinking change, carrying the chosen option VERBATIM.
@@ -202,14 +212,25 @@ export function ModelSettingsFlyout({
     return effortOptions.includes(recordedEffort) ? recordedEffort : undefined;
   })();
 
+  // One verdict, read from the field that carries it and shared with the
+  // composer's brain trigger. This used to re-derive it locally from the
+  // recorded effort alone, which never changes for a two-state model — the
+  // switch commits a VARIANT — so this toggle sat off no matter what the
+  // composer said. Two controls answering "is thinking on" from two different
+  // fields is how the toolbar and the fly-out end up disagreeing.
+  //
+  // `null` is a stated choice ("engine decides"), so the draft's own value wins
+  // over the model's whenever it is anything but `undefined`.
+  const draftEffort =
+    draft.thinkingEffort !== undefined
+      ? draft.thinkingEffort
+      : (model.thinking?.effort ?? null);
+  const stateVariant = draft.variant !== undefined ? draft.variant : model.variant;
   const thinkingOn =
-    draft.variant !== undefined
-      ? draft.variant === "thinking"
-      : draft.thinkingEffort === null
-        ? false
-        : effortOptions.includes("on")
-          ? model.thinking?.effort === "on"
-          : Boolean(model.thinking?.effort);
+    resolveThinkingVerdict(effortOptions, {
+      ...(stateVariant !== undefined ? { variant: stateVariant } : {}),
+      thinkingEffort: draftEffort,
+    }) === true;
 
   // The recorded window, and only when the model actually offers it. A recorded
   // value the target model does not advertise highlights NOTHING — silently
@@ -249,7 +270,6 @@ export function ModelSettingsFlyout({
             <ToggleSwitch
               checked={thinkingOn}
               label="推理等级"
-              disabled={preview}
               data-webui-model-thinking-toggle="true"
               className="webui-model-thinking-toggle"
               onChange={() => onThinkingChange(thinkingOn ? "off" : "on")}
@@ -268,7 +288,6 @@ export function ModelSettingsFlyout({
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    disabled={preview}
                     className="webui-model-effort-option"
                     onClick={() => onThinkingChange(option)}
                   >
@@ -312,8 +331,6 @@ export function ModelSettingsFlyout({
                   type="button"
                   role="option"
                   aria-selected={selected}
-                  disabled={preview}
-                  title={preview ? "先选中这个模型才能修改上下文窗口" : undefined}
                   className={`webui-model-context-option ${selected ? "is-active" : ""}`}
                   data-webui-model-context-option={String(value)}
                   onClick={() => onContextChange(value)}

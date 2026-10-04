@@ -433,6 +433,16 @@ export class WebuiService {
       response.end();
       return;
     }
+    // A zero-byte file has no last byte, so `end` above is -1 and there is no
+    // legal `end` to hand a read stream: `createReadStream` rejects it with
+    // ERR_OUT_OF_RANGE, which rejects this promise and — since the caller only
+    // `void`s the dispatch — surfaces as an unhandled rejection and takes the
+    // process down. The `Content-Length: 0` already sent above is the whole
+    // body, so just end the response.
+    if (total === 0) {
+      response.end();
+      return;
+    }
     await new Promise<void>((resolve) => {
       const stream = createReadStream(target, { start, end });
       stream.on("error", () => {
@@ -768,6 +778,11 @@ function parseByteRange(
   if (!header) return undefined;
   const match = /^bytes=(\d*)-(\d*)$/u.exec(header.trim());
   if (!match) return undefined;
+  // No byte of a zero-length representation can be selected, so any range
+  // against one is unsatisfiable. Handled here rather than in the two
+  // branches below because the suffix branch would otherwise answer with
+  // `{start: 0, end: -1}` — a range whose header cannot even be spelled.
+  if (size === 0) return "invalid";
   const [, rawStart, rawEnd] = match;
   if (!rawStart && !rawEnd) return "invalid";
   if (!rawStart) {

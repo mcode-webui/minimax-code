@@ -11,6 +11,7 @@ import { createWebuiTransport } from "./transport.js";
 import { route } from "./router.js";
 import { NotFound } from "./components/NotFound.js";
 import { ArchonPage } from "./components/ArchonPage.js";
+import { WebuiErrorBoundary } from "./components/WebuiErrorBoundary.js";
 
 declare const document: {
   getElementById(elementId: string): HTMLElement | null;
@@ -44,5 +45,7 @@ const app = <WebuiClientFoundationApp
   />;
 const currentRoute = route(location.pathname);
 root.render(
-  currentRoute === "404" ? <NotFound /> : <ArchonPage>{app}</ArchonPage>,
+  // The boundary wraps the app, not the 404: a 404 is a legitimate render and
+  // must not offer a "retry" that reloads the same missing path.
+  currentRoute === "404" ? <NotFound /> : <WebuiErrorBoundary><ArchonPage>{app}</ArchonPage></WebuiErrorBoundary>,
 );

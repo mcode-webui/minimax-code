@@ -159,19 +159,33 @@ describe("thinking control — the verdict reads the field that carries it", () 
   });
 });
 
-describe("thinking control — the hover title carries the truth", () => {
-  it("says the engine decides when the state is unstated", () => {
-    expect(brainHoverLabel("unstated", undefined)).toBe("思考由引擎决定");
+describe("thinking control — the hover title names the action", () => {
+  it("offers the press that turns thinking off, once it is on", () => {
+    expect(brainHoverLabel("on")).toBe("关闭思考");
   });
 
-  it("appends the level when the model has one", () => {
-    expect(brainHoverLabel("on", "high")).toBe("已开启思考 · high");
+  it("offers the press that turns thinking on", () => {
+    expect(brainHoverLabel("off")).toBe("开启思考");
   });
 
-  it("keeps a state's claim and the level as two readable halves", () => {
-    // One collapsed tooltip would make the control that names a level
-    // indistinguishable from the one that only says whether thinking is on.
-    expect(brainHoverLabel("off", "low")).toBe("已关闭思考 · low");
+  it("offers that same press from the unstated state", () => {
+    // The neutral colour already declines to claim a state, so the title has
+    // the same job in all three cases: say what the click does. Unstated is a
+    // state the toggle acts on, not a third position to sit on.
+    expect(brainHoverLabel("unstated")).toBe("开启思考");
+  });
+
+  it("states the action alone, never the state beside it", () => {
+    // The old title read 「已开启思考 · 点击关闭」 — two clauses for one job, the
+    // second of which is the one worth reading, and a leading 「已」 that made it
+    // answer a question the glyph's colour and aria-pressed had already
+    // answered twice.
+    for (const tone of ["on", "off", "unstated"] as const) {
+      const label = brainHoverLabel(tone);
+      expect(label).not.toContain("已");
+      expect(label).not.toContain("·");
+      expect(label).not.toContain("点击");
+    }
   });
 });
 
@@ -203,7 +217,7 @@ describe("thinking trigger — what it renders", () => {
     });
     expect(on).toContain('data-webui-thinking-tone="on"');
     expect(on).toContain('aria-pressed="true"');
-    expect(on).toContain("已开启思考");
+    expect(on).toContain('title="关闭思考"');
 
     const off = render({
       options: BINARY, recorded: undefined, variant: "",
@@ -211,7 +225,7 @@ describe("thinking trigger — what it renders", () => {
     });
     expect(off).toContain('data-webui-thinking-tone="off"');
     expect(off).toContain('aria-pressed="false"');
-    expect(off).toContain("已关闭思考");
+    expect(off).toContain('title="开启思考"');
   });
 
   it("names no level in the title, because a switch has none", () => {
@@ -221,7 +235,7 @@ describe("thinking trigger — what it renders", () => {
     const html = render({
       options: BINARY, recorded: "", preview: false, onChange: () => undefined,
     });
-    expect(html).toContain('aria-label="思考由引擎决定 · 点击开启"');
+    expect(html).toContain('aria-label="开启思考"');
     expect(html).not.toContain("· default");
   });
 
@@ -241,9 +255,10 @@ describe("thinking trigger — what it renders", () => {
   it("tells an unstated switch what pressing it does", () => {
     // 「思考由引擎决定」 is a state with no invitation in it, which reads as an
     // answer rather than a control. On the one control whose whole job is to
-    // be clicked, the title has to name the action too.
+    // be clicked, the title has to name the action.
     const html = render({ options: BINARY, recorded: "", preview: false, onChange: () => undefined });
-    expect(html).toContain("思考由引擎决定 · 点击开启");
+    expect(html).toContain('title="开启思考"');
+    expect(html).not.toContain("思考由引擎决定");
   });
 
   it("commits an explicit on from the unstated state", () => {
@@ -264,18 +279,15 @@ describe("thinking trigger — what it renders", () => {
     expect(code).not.toContain("on === null");
   });
 
-  it("still toggles on and off from a stated state", () => {
-    const calls: string[] = [];
-    const on = renderToStaticMarkup(createElement(ThinkingTrigger, {
-      options: BINARY, recorded: "on", preview: false,
-      onChange: (option: string) => calls.push(option),
-    }));
-    expect(on).toContain("已开启思考");
-    const off = renderToStaticMarkup(createElement(ThinkingTrigger, {
-      options: BINARY, recorded: "off", preview: false,
-      onChange: (option: string) => calls.push(option),
-    }));
-    expect(off).toContain("已关闭思考");
+  it("titles a stated state with the press that would reverse it", () => {
+    // `renderToStaticMarkup` cannot click, so what this pins is the half of the
+    // toggle that decides the payload: the title follows the state, and the
+    // handler reads the same `on === true` test. The click itself is asserted
+    // from the source in the test above.
+    const on = render({ options: BINARY, recorded: "on", preview: false, onChange: () => undefined });
+    expect(on).toContain('title="关闭思考"');
+    const off = render({ options: BINARY, recorded: "off", preview: false, onChange: () => undefined });
+    expect(off).toContain('title="开启思考"');
   });
 
   it("gives a depth-scale model no brain at all", () => {
@@ -312,11 +324,19 @@ describe("thinking trigger — what it renders", () => {
   });
 
   it("carries the state in aria, not only in colour", () => {
-    // Colour reinforces; the accessible name decides. A control whose only
-    // signal is a hue is invisible to a screen reader and to a colour-blind
-    // user alike.
-    const html = render({ options: BINARY, recorded: "on", preview: false, onChange: () => undefined });
-    expect(html).toContain("已开启思考");
+    // Colour reinforces; aria decides. A control whose only signal is a hue is
+    // invisible to a screen reader and to a colour-blind user alike.
+    //
+    // The state rides on `aria-pressed`, which is the attribute meant for it,
+    // while the name names the press — so a screen reader announces the toggle
+    // and its position separately rather than one sentence trying to be both.
+    const on = render({ options: BINARY, recorded: "on", preview: false, onChange: () => undefined });
+    expect(on).toContain('aria-pressed="true"');
+    expect(on).toContain('aria-label="关闭思考"');
+
+    const off = render({ options: BINARY, recorded: "off", preview: false, onChange: () => undefined });
+    expect(off).toContain('aria-pressed="false"');
+    expect(off).toContain('aria-label="开启思考"');
   });
 });
 

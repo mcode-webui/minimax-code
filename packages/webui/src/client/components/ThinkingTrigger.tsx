@@ -123,11 +123,10 @@ export function ThinkingTrigger({
     thinkingEffort: recorded,
   });
   const tone = brainTone(on);
-  // No level in the title. A switch HAS no levels — off and on are the two
-  // states the sentence above already names — so the recorded effort can only
-  // be "default" here, and printing it restated the control's own state as if
-  // it were a position on a scale. The depth level is named on the chip.
-  const hover = brainHoverLabel(tone, undefined, on === true ? "turn-off" : "turn-on");
+  // One title for the button, read from the tone rather than from `on`
+  // separately — the two always agree, and a caller free to pass both is a
+  // caller free to pass them disagreeing.
+  const hover = brainHoverLabel(tone);
 
   // A two-state model's brain IS the switch — the whole point of it is that
   // thinking turns on and off from here without opening anything. So an

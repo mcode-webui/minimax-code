@@ -206,6 +206,14 @@ export function ModelSettingsFlyout({
     effortOptions.includes("off") &&
     effortOptions.includes("on");
 
+  // A two-state model's control is a switch, not a position on a scale: it turns
+  // thinking on and off and has no level to sit at. Labelling it 「推理等级」
+  // promises a scale the control cannot express, and it contradicted the
+  // toolbar brain beside the send button, which was already calling the same
+  // thing 思考. A depth model keeps the scale wording, because there the level
+  // is real and the row lists one.
+  const effortLabel = isBinary ? "思考" : "推理等级";
+
   // A recorded level the target model does not advertise highlights NOTHING.
   // Silently falling back to "default" would pretend the engine default is
   // picked, which is the same anti-stale rule the row badge applies.
@@ -269,11 +277,11 @@ export function ModelSettingsFlyout({
     >
       {effortOptions.length > 0 ? (
         <div className="webui-model-detail-row webui-model-setting-effort">
-          <span className="webui-model-detail-label">推理等级</span>
+          <span className="webui-model-detail-label">{effortLabel}</span>
           {isBinary ? (
             <ToggleSwitch
               checked={thinkingOn}
-              label="推理等级"
+              label={effortLabel}
               data-webui-model-thinking-toggle="true"
               className="webui-model-thinking-toggle"
               onChange={() => onThinkingChange(thinkingOn ? "off" : "on")}
@@ -281,7 +289,7 @@ export function ModelSettingsFlyout({
           ) : (
             <div
               role="radiogroup"
-              aria-label="推理等级"
+              aria-label={effortLabel}
               className="webui-model-effort-group"
             >
               {effortOptions.map((option) => {

@@ -138,28 +138,24 @@ export function brainTone(thinkingOn: boolean | null): BrainTone {
 }
 
 /**
- * What the brain says on hover.
+ * What the brain says on hover: the ACTION a press performs.
  *
- * Two hover titles, one per question. The brain's title states the ON/OFF
- * verdict; when the model has a depth scale, the LEVEL control carries its own
- * title naming the level. Collapsing them into one tooltip would make the
- * control that names a level indistinguishable from the one that only says
- * whether thinking is on.
+ * 「关闭思考」 / 「开启思考」, not a statement of what currently is. The state is
+ * already carried twice over without the title — the glyph's colour
+ * (`brainTone`) and `aria-pressed` — so 「已开启思考 · 点击关闭」 spent two
+ * clauses restating a third time what the user could see, and the leading 「已」
+ * made the title answer a question nobody asked. A toggle's tooltip earns its
+ * place by saying what the click will do.
  *
- * The unstated case names the ACTION, not just the state. 「思考由引擎决定」
- * alone reads as an answer and gives no reason to click, which is wrong for a
- * control whose entire job is to be clicked: the state is true, and it is also
- * the state a click changes. So it reads as the state plus what pressing it
- * does.
+ * The unstated case reads as 「开启思考」 for the same reason: the neutral colour
+ * already declines to claim a state, and what the control offers is the press.
+ * An unstated verdict is a state the toggle acts on, not a third position.
+ *
+ * One string per tone, and the tone is the whole input: the caller used to pass
+ * the action separately, which said the same thing twice and could disagree with
+ * the tone it was derived from. A depth model renders no brain at all — its
+ * level is named on the model chip — so there is no level to append here.
  */
-export function brainHoverLabel(
-  tone: BrainTone,
-  levelLabel: string | undefined,
-  action: "turn-on" | "turn-off" | undefined = undefined,
-): string {
-  const state =
-    tone === "on" ? "已开启思考" : tone === "off" ? "已关闭思考" : "思考由引擎决定";
-  const suffix = action === "turn-on" ? "点击开启" : action === "turn-off" ? "点击关闭" : undefined;
-  const base = suffix ? `${state} · ${suffix}` : state;
-  return levelLabel ? `${base} · ${levelLabel}` : base;
+export function brainHoverLabel(tone: BrainTone): string {
+  return tone === "on" ? "关闭思考" : "开启思考";
 }

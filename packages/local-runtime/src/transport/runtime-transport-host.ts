@@ -330,7 +330,7 @@ export function createRuntimeTransportHost(
         signal: entry.controller.signal,
       };
       if (body !== undefined) {
-        init.body = body;
+        init.body = typeof body === 'string' ? body : new Uint8Array(body);
         init.duplex = 'half';
       }
       const response = await handleRequest(new Request(url, init));

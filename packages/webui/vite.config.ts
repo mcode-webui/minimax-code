@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type ViteDevServer } from "vite";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,14 +51,12 @@ function webuiRuntimePlugin() {
             tag: "script",
             children:
               "window.__WEBUI_CONFIG__={websocketUrl:`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`,token:''};",
-            injectTo: "head-prepend",
+            injectTo: "head-prepend" as const,
           },
         ],
       };
     },
-    configureServer(server: {
-      middlewares: { use: (handler: (...args: never[]) => void) => void };
-    }) {
+    configureServer(server: ViteDevServer) {
       server.middlewares.use(async (request, response, next) => {
         const [pathname, query = ""] = request.url?.split("?", 2) ?? [""];
 

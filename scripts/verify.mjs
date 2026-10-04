@@ -55,6 +55,10 @@ const steps = [
   { name: "build", script: "build", windows: true },
   { name: "check:standalone", script: "check:standalone", windows: true },
   { name: "typecheck:webui", script: "typecheck:webui" },
+  // Compiler inputs are identical across the matrix, and this program is a
+  // second compile of the same WebUI sources as `typecheck:webui` above. One
+  // Linux job runs it; the three per-program checks stay on every platform.
+  { name: "typecheck:webui-full", script: "typecheck:webui-full", fullOnly: true },
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui", script: "test:webui" },

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   assertWebuiTransferFile,
   importWebuiSessionFile,
-  readWebuiSessionImportTarget,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
   WebuiSessionImportRefused,
 } from "../../src/client/session-import.js";
@@ -217,61 +216,7 @@ describe("importWebuiSessionFile", () => {
   });
 });
 
-describe("readWebuiSessionImportTarget", () => {
-  it("derives the origin from the websocket url and carries the token", () => {
-    const global = globalThis as { __WEBUI_CONFIG__?: unknown };
-    global.__WEBUI_CONFIG__ = { websocketUrl: "ws://127.0.0.1:8788/?token=abc", token: "abc" };
-    try {
-      expect(readWebuiSessionImportTarget()).toEqual({ origin: "http://127.0.0.1:8788", token: "abc" });
-    } finally {
-      delete global.__WEBUI_CONFIG__;
-    }
-  });
 
-  it("returns nothing when the runtime config was never injected", () => {
-    const global = globalThis as { __WEBUI_CONFIG__?: unknown };
-    delete global.__WEBUI_CONFIG__;
-    expect(readWebuiSessionImportTarget()).toBeUndefined();
-  });
-
-  it("accepts the dev server's empty token as a usable target", () => {
-    // `vite.config.ts` injects `token:''` and the dev service skips the
-    // credential check entirely (`service.ts` gates on `this.dev`, not on the
-    // token's shape). An empty token is therefore the *normal* dev state, not a
-    // signal that the app is disconnected -- treating it as one makes the import
-    // button refuse on every dev machine while production works fine.
-    const global = globalThis as { __WEBUI_CONFIG__?: unknown };
-    global.__WEBUI_CONFIG__ = { websocketUrl: "ws://127.0.0.1:5199/ws", token: "" };
-    try {
-      expect(readWebuiSessionImportTarget()).toEqual({ origin: "http://127.0.0.1:5199", token: "" });
-    } finally {
-      delete global.__WEBUI_CONFIG__;
-    }
-  });
-
-  it("refuses a config with no websocket url rather than posting to nowhere", () => {
-    const global = globalThis as { __WEBUI_CONFIG__?: unknown };
-    global.__WEBUI_CONFIG__ = { websocketUrl: "", token: "abc" };
-    try {
-      expect(readWebuiSessionImportTarget()).toBeUndefined();
-    } finally {
-      delete global.__WEBUI_CONFIG__;
-    }
-  });
-
-  it("refuses an unparseable websocket url instead of throwing out of the picker", () => {
-    // Non-empty but not a URL. This is the case the empty-string guard cannot
-    // catch, and it reaches the user as an unhandled `TypeError` if the parse is
-    // unguarded -- a file picker that throws instead of showing a message.
-    const global = globalThis as { __WEBUI_CONFIG__?: unknown };
-    global.__WEBUI_CONFIG__ = { websocketUrl: "not a url", token: "abc" };
-    try {
-      expect(readWebuiSessionImportTarget()).toBeUndefined();
-    } finally {
-      delete global.__WEBUI_CONFIG__;
-    }
-  });
-});
 
 describe("importWebuiSessionFile under the dev config", () => {
   it("posts the file with an empty token instead of refusing", async () => {

@@ -111,11 +111,7 @@ import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
 } from "../session-unread.js";
-import {
-  buildWebuiSessionExport,
-  collectWebuiSessionMessages,
-  downloadWebuiSessionExport,
-} from "../session-export.js";
+import { startWebuiSessionTransferDownload } from "../session-transfer-download.js";
 import { importWebuiSessionFile } from "../session-import.js";
 import {
   readTeamModeOff,
@@ -613,22 +609,15 @@ export function WebuiClientFoundationApp(
     void navigator.clipboard.writeText(text);
   };
   const handleExportSession = (session: WebuiClientSession) => {
-    if (!loadMessages) {
-      setPageError("当前运行时不支持读取会话消息，无法导出。");
-      return;
+    // The file comes from `GET /session-transfer`, not from walking the
+    // message pages here: that route is the one `POST /session-import` accepts,
+    // and a browser-assembled file carries the display layer only. See
+    // `session-transfer-download.ts` for why this is a navigation.
+    try {
+      startWebuiSessionTransferDownload(session.sessionId);
+    } catch (reason: unknown) {
+      setPageError(reason instanceof Error ? reason.message : String(reason));
     }
-    void (async () => {
-      try {
-        const messages = await collectWebuiSessionMessages(loadMessages, session.sessionId);
-        const exportedAt = new Date().toISOString();
-        downloadWebuiSessionExport(
-          buildWebuiSessionExport(session, messages, exportedAt),
-          exportedAt,
-        );
-      } catch (reason: unknown) {
-        setPageError(reason instanceof Error ? reason.message : String(reason));
-      }
-    })();
   };
   const handleSessionImportPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

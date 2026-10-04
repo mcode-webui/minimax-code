@@ -192,6 +192,29 @@ export interface WebuiSessionTransferFile {
       readonly turn_id: string;
       readonly message: unknown;
     }[];
+    /**
+     * Compaction snapshots the active file is chained to.
+     *
+     * Not optional history, and the reason this field exists in the type at
+     * all. Each generation's file names its parent by
+     * `(generation, compactionId)`, and the import scanner walks the whole
+     * lineage before it accepts anything -- a file carrying only the active
+     * generation dies with `parent-snapshot-missing` the moment the session
+     * has ever been compacted. Nothing is lost today because the route
+     * serialises the runtime's value verbatim, but a type that omits the
+     * field is a type that permits the next refactor to rebuild the payload
+     * without it, and that refactor passes every test in this repository.
+     */
+    readonly snapshots: readonly {
+      readonly generation: number;
+      readonly fileName: string;
+      readonly revision: string;
+      readonly records: readonly {
+        readonly message_id: string;
+        readonly turn_id: string;
+        readonly message: unknown;
+      }[];
+    }[];
     readonly generation: number;
     readonly revision: string;
   };

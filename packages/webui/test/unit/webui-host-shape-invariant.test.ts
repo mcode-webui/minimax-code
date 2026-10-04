@@ -109,7 +109,7 @@ class FullPort implements WebuiHarnessPort {
       format: "mcode-webui-session-transfer@1",
       exportedAt: "1970-01-01T00:00:00.000Z",
       session: { sessionId: "invariant", title: "invariant" },
-      canonical: { envelopes: [], generation: 0, revision: "" },
+      canonical: { envelopes: [], snapshots: [], generation: 0, revision: "" },
       display: { messages: [] },
     };
   }

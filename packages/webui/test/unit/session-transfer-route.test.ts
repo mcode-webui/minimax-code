@@ -20,8 +20,19 @@ import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readRequestBody, WebuiService } from "../../src/server/service.js";
 import type { WebuiHarnessPort } from "../../src/server/port.js";
+import {
+  assertWebuiTransferFile,
+  WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
+} from "../../src/client/session-import.js";
 
 const token = "test-token";
+
+const SNAPSHOT = {
+  generation: 7,
+  fileName: "gen-7.jsonl",
+  revision: "sha256:parent",
+  records: [{ message_id: "msg-c0", turn_id: "turn-0", message: { role: "user", content: "earlier" } }],
+};
 
 const TRANSFER_FILE = {
   format: "mcode-webui-session-transfer@1",
@@ -29,6 +40,10 @@ const TRANSFER_FILE = {
   session: { sessionId: "mvs_src", title: "Imported", agentName: "mavis", workspaceDir: "C:/repo" },
   canonical: {
     envelopes: [{ message_id: "msg-c1", turn_id: "turn-1", message: { role: "user", content: "hi" } }],
+    // Present because `WebuiSessionTransferFile.canonical.snapshots` requires
+    // it, and asserted below because the type alone does not stop the runtime
+    // from dropping it before it reaches the wire.
+    snapshots: [SNAPSHOT],
     generation: 8,
     revision: "sha256:abc",
   },
@@ -88,6 +103,57 @@ describe("GET /session-transfer", () => {
     expect(response.headers.get("content-disposition")).toContain("T-20261003T044259");
     const body = await response.json() as typeof TRANSFER_FILE;
     expect(body).toEqual(TRANSFER_FILE);
+  });
+
+  it("carries the compaction lineage, not only the active generation", async () => {
+    // A compacted session is the case the whole canonical layer exists for.
+    // The active generation names its parent by `(generation, compactionId)`
+    // and the import scanner walks the lineage before accepting anything, so a
+    // file without the snapshots dies at import with `parent-snapshot-missing`.
+    // The type now requires this field; this asserts the bytes carry it, since
+    // a type cannot stop the runtime from emptying the array.
+    const url = await serve();
+    const response = await fetch(`${url}/session-transfer?sessionId=mvs_1&token=${token}`);
+    const body = (await response.json()) as typeof TRANSFER_FILE;
+    expect(body.canonical.snapshots).toEqual([SNAPSHOT]);
+  });
+
+  it("produces a file the client's own importer accepts", async () => {
+    // The contract that was broken, and the reason this assertion lives on the
+    // HTTP route rather than on either module alone.
+    //
+    // The rail's export used to be assembled in the browser under the tag
+    // `mcode-webui-session@1`, while this route -- the one the import half
+    // needs -- wrote `mcode-webui-session-transfer@1`. Every test on either
+    // side passed: the client correctly built the file it was told to build,
+    // the server correctly served the file it was told to serve, and the
+    // importer correctly refused the tag it was documented to refuse. The user
+    // exported a session, picked the file back, and got "这是旧版导出的会话
+    // 文件…无法还原" for a file that UI had just written.
+    //
+    // A unit test on the payload builder cannot see this, and neither can a
+    // test of the importer: the failure is the *relationship* between two
+    // modules that never referenced each other. So this takes the bytes off
+    // the wire and hands them to the function the browser hands them to.
+    const url = await serve();
+    const response = await fetch(`${url}/session-transfer?sessionId=mvs_1&token=${token}`);
+    const downloaded = await response.json();
+
+    expect(() => assertWebuiTransferFile(downloaded)).not.toThrow();
+  });
+
+  it("still refuses the retired client-side export, by name", async () => {
+    // The refusal is the only thing standing between a user and a session that
+    // reads back but that the model cannot continue. It has to survive the
+    // route being pointed at the importable format.
+    const url = await serve({
+      exportSessionTransfer: async () =>
+        ({ ...TRANSFER_FILE, format: WEBUI_LEGACY_CLIENT_EXPORT_FORMAT }) as never,
+    });
+    const response = await fetch(`${url}/session-transfer?sessionId=mvs_1&token=${token}`);
+    const downloaded = await response.json();
+
+    expect(() => assertWebuiTransferFile(downloaded)).toThrow(/旧版导出/u);
   });
 
   it("takes the body from exportSessionTransfer, never from getMessages", async () => {

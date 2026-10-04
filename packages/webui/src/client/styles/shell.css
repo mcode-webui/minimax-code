@@ -1011,7 +1011,29 @@
     line-height: 1;
     color: var(--text_default_tertiary);
   }
-  .webui-rail-spinner {
+  /* "This row is pinned", drawn by the row itself rather than by the button that
+   * toggles it. Pinned rows sort to the top, which is a statement about order
+   * and not about the row: it stops being true the moment a fresher session
+   * arrives, and it was never visible while reading the list.
+   *
+   * Tertiary grey, inherited from the meta block, on purpose. The two colours
+   * already in this cluster each carry a meaning that is not "the user chose
+   * this": the accent-blue ring is a turn running right now, and the red badge
+   * is turns that finished unopened. A pin is none of those -- it is a standing
+   * preference with no urgency in it -- so painting it in either colour would
+   * make the row claim something it is not. Sizing is bare px for the same
+   * reason the badge above is: this project ships no font-size tokens. */
+  .webui-rail-pin-mark,
+  .webui-project-pin-mark {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--text_default_tertiary);
+  }
+  .webui-project-pin-mark {
+    margin-left: var(--spacing_4);
+  }  .webui-rail-spinner {
     width: 10px;
     height: 10px;
     flex-shrink: 0;

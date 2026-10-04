@@ -29,7 +29,7 @@ import {
   WebuiIconFolder,
   WebuiIconMore,
   WebuiIconProjectAdd,
-  WebuiIconSessionPin,
+  WebuiIconSessionPinMark,
   WebuiIconSessionDisclosure,
   WebuiIconAgent,
 } from "../icons.js";
@@ -636,6 +636,7 @@ export function WebuiProjectList({
           error={error}
           activity={activity}
           now={now}
+          pinnedSessions={pinnedSessions}
           heading={activeTabLabel}
           emptyLabel={activeTab?.emptyLabel}
           preserveOrder
@@ -700,6 +701,20 @@ export function WebuiProjectList({
                     className="webui-project-card text-left text-text_default_secondary"
                   >
                     <WebuiIconFolder className="flex-shrink-0" />
+                    {pinnedProjects?.[project.key] ?? project.pinned ? (
+                      /* Leading edge, not the trailing one: `.webui-project-row-actions`
+                       * is pinned to the row's right and only appears on hover, so a
+                       * mark on that side would be standing proof of nothing. */
+                      <span
+                        className="webui-project-pin-mark"
+                        data-webui-project-pin-mark="true"
+                        title="已置顶"
+                        aria-label="已置顶"
+                        role="img"
+                      >
+                        <WebuiIconSessionPinMark />
+                      </span>
+                    ) : null}
                     <span className="min-w-0 flex-1 truncate text-sm leading-5">
                       {projectName}
                     </span>
@@ -787,7 +802,12 @@ export function WebuiProjectList({
                               <span className="min-w-0 flex-1 truncate">
                                 {sessionLabel(session)}
                               </span>
-                              <SessionActivityMeta session={session} activity={activity} now={now} />
+                              <SessionActivityMeta
+                                session={session}
+                                activity={activity}
+                                now={now}
+                                pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                              />
                             </a>
                             <div className="webui-session-row-actions">
                               {onToggleSessionPin ? (
@@ -802,7 +822,11 @@ export function WebuiProjectList({
                                     onToggleSessionPin(session);
                                   }}
                                 >
-                                  <WebuiIconSessionPin />
+                                  {/* The glyph draws the ACTION, not the state: already
+                                   *  pinned means the click unpins, so the button offers
+                                   *  the slashed pin. Same component the context menu
+                                   *  uses, so the two cannot drift apart. */}
+                                  <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />
                                 </button>
                               ) : null}
                               {onArchiveSession ? (
@@ -855,7 +879,12 @@ export function WebuiProjectList({
                                       <span className="min-w-0 flex-1 truncate">
                                         {sessionLabel(child)}
                                       </span>
-                                      <SessionActivityMeta session={child} activity={activity} now={now} />
+                                      <SessionActivityMeta
+                                        session={child}
+                                        activity={activity}
+                                        now={now}
+                                        pinned={Boolean(pinnedSessions?.[child.sessionId])}
+                                      />
                                     </a>
                                     <div className="webui-session-row-actions">
                                       <button
@@ -940,17 +969,36 @@ function SessionActivityMeta({
   session,
   activity,
   now,
+  pinned = false,
 }: {
   readonly session: WebuiClientSession;
   readonly activity?: WebuiSessionActivityMap;
   readonly now?: number;
+  /** Draws the standing pin mark. Independent of the live state below it. */
+  readonly pinned?: boolean;
 }): ReactElement | null {
-  if (!activity && now === undefined) return null;
+  // `pinned` joins the guard rather than riding on it. A host that passes
+  // neither an activity map nor a clock is the rail rendered outside the app
+  // (SSR fixtures, and any host that does not subscribe) -- exactly the case
+  // where a pinned row has no running/unread signal to read its state against,
+  // so swallowing the mark there loses the only thing the row was saying.
+  if (!activity && now === undefined && !pinned) return null;
   const entry = activity?.[session.sessionId];
   const busy = entry?.busy;
   const badge = formatWebuiUnreadBadge(entry?.unread);
   return (
     <span className="webui-rail-session-meta">
+      {pinned ? (
+        <span
+          className="webui-rail-pin-mark"
+          data-webui-pin-mark="true"
+          title="已置顶"
+          aria-label="已置顶"
+          role="img"
+        >
+          <WebuiIconSessionPinMark />
+        </span>
+      ) : null}
       {badge ? (
         <span
           className="webui-rail-unread-badge"
@@ -984,6 +1032,7 @@ export function WebuiSessionList({
   teamModeChoices,
   activity,
   now,
+  pinnedSessions,
   heading,
   emptyLabel,
   preserveOrder,
@@ -992,11 +1041,18 @@ export function WebuiSessionList({
   readonly loading: boolean;
   readonly onLoadMore?: () => void;
   readonly selectedSessionId?: string;
+  readonly onProjectSelect?: (workspaceDir?: string) => void;
   readonly error?: string;
   readonly teamModeChoices?: TeamModeSessionChoices;
   readonly activity?: WebuiSessionActivityMap;
   /** Injected so the age labels re-render on a tick instead of on every event. */
   readonly now?: number;
+  /**
+   * Which rows carry the standing pin mark. The running and unread views are
+   * exactly where a user needs it -- those rows are ordered by activity, so
+   * sort position says nothing about which one the user chose to keep.
+   */
+  readonly pinnedSessions?: Readonly<Record<string, boolean>>;
   /**
    * Overrides the section label. The rail reuses this list for its running and
    * unread views, where "recent tasks" would be a lie -- the list is filtered,
@@ -1080,7 +1136,12 @@ export function WebuiSessionList({
                     Agent Team
                   </span>
                 ) : null}
-                <SessionActivityMeta session={session} activity={activity} now={now} />
+                <SessionActivityMeta
+                  session={session}
+                  activity={activity}
+                  now={now}
+                  pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                />
               </a>
               {session.workspaceDir ? (
                 <div

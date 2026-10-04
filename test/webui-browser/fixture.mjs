@@ -31,6 +31,26 @@ export function installFixtureTransport() {
       sessionCount: sessions.length,
     },
   ];
+  const child = {
+    sessionId: "C",
+    agentName: "synthetic-C",
+    title: "子任务 C",
+    createdAt: 1_700_000_000_002,
+    updatedAt: 1_700_000_000_002,
+    workspaceDir: "/synthetic/workspace",
+    parentSessionId: "A",
+  };
+  // A child, so the rail's third row shape exists at all. It is deliberately
+  // NOT in `sessions`: the rail draws child rows from the tree and only after
+  // the parent is expanded, so leaving it out of the list keeps every count,
+  // ordering and search assertion in the other specs exactly as they were.
+  // With the tree answering `[]` the disclosure button never renders and the
+  // child row is unreachable in a browser -- the same "valid server answer,
+  // useless fixture" trap the project list was.
+  const tree = {
+    sessions: [{ session: sessions[0], childSessions: [child] }],
+    hasMore: false,
+  };
   const pages = {
     A: { messages: [{ msgId: "history-A", role: "user", msgContent: "History A synthetic", timestamp: 1_700_000_000_001 }], hasMore: false },
     B: { messages: [{ msgId: "history-B", role: "user", msgContent: "History B synthetic", timestamp: 1_700_000_000_002 }], hasMore: false },
@@ -46,7 +66,7 @@ export function installFixtureTransport() {
   const matches = (body, condition) => Object.entries(condition).every(([key, value]) => body?.[key] === value);
   const responseFor = (operation, body) => {
     if (operation === "listSessions") return { sessions, hasMore: false };
-    if (operation === "getSessionTree") return { sessions: [], hasMore: false };
+    if (operation === "getSessionTree") return tree;
     if (operation === "listVisibleProjects") return projects;
     if (operation === "getMessages") {
       if (body?.before) return { messages: [{ msgId: `older-${body.before}`, role: "user", msgContent: "Older synthetic page", timestamp: 1_699_999_999_999 }], hasMore: false };

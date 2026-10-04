@@ -247,6 +247,7 @@
       "packages/webui/test/unit/transcript-skeletons.test.tsx",
       "packages/webui/test/unit/conversation-usage-banner.test.tsx",
       "packages/webui/test/unit/model-picker-groups.test.tsx",
+      "packages/webui/test/unit/model-picker-search.test.ts",
       "packages/webui/test/unit/webui-transcript-widgets-integration.test.ts",
       "packages/webui/test/unit/webui-round3-acceptance.test.tsx",
       "packages/webui/test/unit/webui-w0-store-sequence.test.ts",

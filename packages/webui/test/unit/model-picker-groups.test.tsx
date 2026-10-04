@@ -79,8 +79,10 @@ describe("model picker — provider grouping", () => {
         groups,
         selected: minimax,
         focusedKey: undefined,
+        favoriteKeys: new Set<string>(),
         onFocus: () => undefined,
         onSelect: () => undefined,
+        onToggleFavorite: () => undefined,
       }),
     );
 

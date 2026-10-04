@@ -37,6 +37,16 @@ import type {
   WebuiModelPickerEntry,
 } from "../contracts.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
+import {
+  filterModelGroups,
+  isSearchEmpty,
+} from "../projection/model-picker-search.js";
+import {
+  orderModelGroups,
+  readFavoriteModels,
+  toggleFavoriteId,
+  writeFavoriteModels,
+} from "../projection/model-favorites.js";
 
 // Re-export so existing importers keep their import path stable.
 export type { WebuiModelPickerDraft, WebuiModelPickerEntry };
@@ -55,11 +65,15 @@ export interface ModelPickerProps {
   readonly triggerLabel?: string;
 }
 
-function modelKey(model: WebuiModelPickerEntry): string {
-  return `${model.providerId}/${model.modelId}/${model.variant ?? ""}`;
-}
-
 export interface WebuiModelProviderGroup {
+  /**
+   * Stable identity for the group: the provider id, or `FAVORITES_SECTION_ID`
+   * for the starred section. This is what React keys on and what the search
+   * filter keeps order by — NOT `label`, because two providers are free to
+   * share a display name and keying on it would make the second one a
+   * duplicate-key render.
+   */
+  readonly id: string;
   readonly label: string;
   readonly models: readonly WebuiModelPickerEntry[];
 }
@@ -73,18 +87,45 @@ function providerGroupLabel(model: WebuiModelPickerEntry): string {
 /**
  * Groups by provider, keeping the catalog's own order — the same grouping the
  * TUI picker applies (see `packages/tui/src/tui/features/model/picker.ts`).
+ *
+ * Buckets on `providerId` and carries the display name alongside, rather than
+ * bucketing on the name itself. Same visible result for the ordinary case
+ * where every provider has a distinct name, and the right result for the
+ * case where two do not.
  */
 export function groupModelsByProvider(
   models: readonly WebuiModelPickerEntry[],
 ): readonly WebuiModelProviderGroup[] {
-  const groups = new Map<string, WebuiModelPickerEntry[]>();
+  const order: string[] = [];
+  const buckets = new Map<string, WebuiModelPickerEntry[]>();
+  const labels = new Map<string, string>();
   for (const model of models) {
-    const label = providerGroupLabel(model);
-    const group = groups.get(label);
-    if (group) group.push(model);
-    else groups.set(label, [model]);
+    const id = model.providerId;
+    const bucket = buckets.get(id);
+    if (bucket) {
+      bucket.push(model);
+      continue;
+    }
+    buckets.set(id, [model]);
+    labels.set(id, providerGroupLabel(model));
+    order.push(id);
   }
-  return [...groups].map(([label, entries]) => ({ label, models: entries }));
+  return order.map((id) => ({
+    id,
+    label: labels.get(id) ?? id,
+    models: buckets.get(id) ?? [],
+  }));
+}
+
+/**
+ * The stable identity of one row: `providerId/modelId/variant`.
+ *
+ * The variant is part of the key because the picker lists the same model
+ * twice when it offers an off/on pair, and a star on one of them is a
+ * statement about that row, not about the model name.
+ */
+export function modelKey(model: WebuiModelPickerEntry): string {
+  return `${model.providerId}/${model.modelId}/${model.variant ?? ""}`;
 }
 
 function formatContextWindow(value: number): string {
@@ -157,25 +198,35 @@ function variantForEffort(
  * The model column. A group header is a line of text, not an option: it lives
  * inside a `role="group"`, which carries the name through `aria-label`, so the
  * visible text is hidden from assistive technology.
+ *
+ * The star is a SIBLING of the option button, never a child. A button inside
+ * the option button would be invalid nesting, would make the option's own
+ * click handler fire when the star was pressed, and would leave a keyboard
+ * user unable to reach the star at all. The row is therefore a wrapper that
+ * owns the layout, and the option keeps the width it had before.
  */
 export function WebuiModelMenuList({
   groups,
   selected,
   focusedKey,
+  favoriteKeys,
   onFocus,
   onSelect,
+  onToggleFavorite,
 }: {
   readonly groups: readonly WebuiModelProviderGroup[];
   readonly selected: WebuiModelPickerEntry | undefined;
   readonly focusedKey: string | undefined;
+  readonly favoriteKeys: ReadonlySet<string>;
   readonly onFocus: (key: string) => void;
   readonly onSelect: (model: WebuiModelPickerEntry) => void;
+  readonly onToggleFavorite: (key: string) => void;
 }): ReactElement {
   return (
     <div role="listbox" aria-label="Model" className="webui-model-menu-list">
       {groups.map((group) => (
         <div
-          key={group.label}
+          key={group.id}
           role="group"
           aria-label={group.label}
           className="webui-model-menu-group"
@@ -187,31 +238,46 @@ export function WebuiModelMenuList({
             const key = modelKey(model);
             const isSelected = selected ? modelKey(selected) === key : false;
             const isFocused = focusedKey === key;
+            const isFavorite = favoriteKeys.has(key);
+            const name =
+              model.displayName ??
+              `${model.providerId}/${model.modelId}`;
             return (
-              <button
-                key={key}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                data-focused={isFocused ? "true" : "false"}
-                className="webui-model-option"
-                onMouseEnter={() => onFocus(key)}
-                onFocus={() => onFocus(key)}
-                onClick={() => onSelect(model)}
-              >
-                <span className="min-w-0 flex-1 truncate text-left">
-                  {model.displayName ??
-                    `${model.providerId}/${model.modelId}`}
-                </span>
-                {isSelected ? (
-                  <span
-                    aria-hidden="true"
-                    className="webui-model-option-tick"
-                  >
-                    ✓
+              <div key={key} className="webui-model-option-row">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  data-focused={isFocused ? "true" : "false"}
+                  className="webui-model-option"
+                  onMouseEnter={() => onFocus(key)}
+                  onFocus={() => onFocus(key)}
+                  onClick={() => onSelect(model)}
+                >
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {name}
                   </span>
-                ) : null}
-              </button>
+                  {isSelected ? (
+                    <span
+                      aria-hidden="true"
+                      className="webui-model-option-tick"
+                    >
+                      ✓
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={isFavorite}
+                  aria-label={`${isFavorite ? "取消收藏" : "收藏"} ${name}`}
+                  title={isFavorite ? "取消收藏" : "收藏"}
+                  className="webui-model-option-star"
+                  data-webui-model-star="true"
+                  onClick={() => onToggleFavorite(key)}
+                >
+                  <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -229,12 +295,15 @@ export function WebuiModelPicker({
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
   const [focusedKey, setFocusedKey] = useState<string | undefined>(undefined);
+  const [query, setQuery] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
   const [drafts, setDrafts] = useState<
     Readonly<Record<string, WebuiModelPickerDraft>>
   >({});
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerId = useId();
   const menuId = useId();
+  const searchId = useId();
 
   // Keep the local mirror through model-catalog refreshes while the menu is
   // open; each setting change is also committed immediately to the runtime.
@@ -243,6 +312,32 @@ export function WebuiModelPicker({
     if (open) return;
     setDrafts({});
   }, [open]);
+
+  // The query does not survive a close. A picker that reopens still filtered
+  // to three rows from a search the user has forgotten they typed reads as a
+  // catalogue that lost models, which is a scarier bug than the one the reset
+  // avoids.
+  useEffect(() => {
+    if (open) return;
+    setQuery("");
+  }, [open]);
+
+  // Read the stars when the menu OPENS rather than on mount: the store is the
+  // only writer, and re-reading on open is what makes a star applied in
+  // another tab of the same picker show up. Reading during the first render
+  // would also mean a server render and a client render disagreed.
+  useEffect(() => {
+    if (!open) return;
+    setFavoriteIds(readFavoriteModels());
+  }, [open]);
+
+  const handleToggleFavorite = (key: string) => {
+    setFavoriteIds((current) => {
+      const next = toggleFavoriteId(current, key);
+      writeFavoriteModels(next);
+      return next;
+    });
+  };
 
   // Close on outside pointerdown.
   useEffect(() => {
@@ -296,7 +391,22 @@ export function WebuiModelPicker({
     onSelect(model, draft);
   };
 
-  const groupedModels = useMemo(() => groupModelsByProvider(models), [models]);
+  // Order matters and is deliberate: filter FIRST, then hoist. Hoisting on the
+  // unfiltered list would keep a starred model visible while the user is
+  // searching for something else, which is the one thing a search must not do.
+  // The other order would also mean the favourites section is rebuilt on every
+  // keystroke even when no star is in the result set.
+  const groupedModels = useMemo(() => {
+    const grouped = groupModelsByProvider(models);
+    const filtered = filterModelGroups(grouped, query);
+    return orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
+  }, [models, query, favoriteIds]);
+
+  const favoriteKeys = useMemo(
+    () => new Set(favoriteIds),
+    [favoriteIds],
+  );
+  const searchIsEmpty = isSearchEmpty(groupedModels, query, models.length);
 
   const triggerText =
     selected?.displayName ??
@@ -359,13 +469,37 @@ export function WebuiModelPicker({
           data-webui-model-menu="true"
           className="webui-model-menu webui-model-menu--two-column"
         >
-          <WebuiModelMenuList
-            groups={groupedModels}
-            selected={selected}
-            focusedKey={focusedKeyString || undefined}
-            onFocus={setFocusedKey}
-            onSelect={handleSelectModel}
-          />
+          <div className="webui-model-menu-column">
+            <div className="webui-model-menu-search">
+              <label className="webui-model-search-field" htmlFor={searchId}>
+                <span className="sr-only">搜索模型</span>
+                <input
+                  id={searchId}
+                  type="search"
+                  autoFocus
+                  value={query}
+                  placeholder="搜索模型…"
+                  aria-label="搜索模型"
+                  className="webui-model-search-input"
+                  data-webui-model-search="true"
+                  onChange={(event) => setQuery(event.currentTarget.value)}
+                />
+              </label>
+            </div>
+            {searchIsEmpty ? (
+              <div className="webui-model-search-empty">没有匹配的模型</div>
+            ) : (
+              <WebuiModelMenuList
+                groups={groupedModels}
+                selected={selected}
+                focusedKey={focusedKeyString || undefined}
+                favoriteKeys={favoriteKeys}
+                onFocus={setFocusedKey}
+                onSelect={handleSelectModel}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            )}
+          </div>
           <div className="webui-model-menu-detail" aria-live="polite">
             {focusedModel ? (
               <>

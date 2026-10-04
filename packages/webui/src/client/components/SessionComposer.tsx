@@ -2269,7 +2269,18 @@ export function WebuiComposer({
                     <span>计划</span>
                   </button>
                 ) : null}
-                <div className="ml-auto flex items-center gap-1">
+                {/* 3.2px, written as an arbitrary value on purpose. The
+                 * spacing scale is a fixed enumeration, so `gap-0.8` is not a
+                 * class that exists and would silently render a ZERO gap
+                 * instead of the 3.2px asked for — a spacing change that
+                 * quietly becomes "controls touching" is worse than no change.
+                 *
+                 * This cluster got here by measurement, across three passes:
+                 * 12px → 6px → 4px → 3.2px, each visibly looser than the last
+                 * next to controls this small. 3.2 is the floor: the hit areas
+                 * are neighbouring 28px squares, and 0 or 2px stops reading as
+                 * separate controls at all. */}
+                <div className="ml-auto flex items-center gap-[3.2px]">
                   <ContextUsageIndicator usage={contextUsage} usageQuota={usageQuota} />
                   <WebuiModelPicker
                     models={enabledModels}

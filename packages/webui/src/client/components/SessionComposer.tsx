@@ -2509,8 +2509,19 @@ function ContextUsageIndicator({ usage, usageQuota }: {
     };
   }, []);
   if (!enabled || !usage) return null;
-  const used = readUsageNumber(usage, "usedTokens", "used_tokens");
-  const limit = readUsageNumber(usage, "contextWindowTokens", "context_window_tokens");
+  // The runtime protocol's names, not invented ones — see
+  // `server/projections/context-snapshot.ts`, which is the other half of this
+  // read. The snake_case spellings are the wire's, so they are the primary
+  // keys; the camelCase ones stay accepted because `WebuiUsageQuotaResult` and
+  // the quota rows already publish that vocabulary, and a readout that renders
+  // from one shape and not the other is a readout that half the time is blank.
+  const used = readUsageNumber(usage, "total_tokens", "usedTokens", "used_tokens");
+  const limit = readUsageNumber(
+    usage,
+    "context_window",
+    "contextWindowTokens",
+    "context_window_tokens",
+  );
   if (used === undefined || used < 0 || limit === undefined || limit <= 0) return null;
   const percent = Math.min(100, Math.max(0, Math.round(used / limit * 100)));
   const circumference = 2 * Math.PI * 7;

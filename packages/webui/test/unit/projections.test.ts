@@ -142,6 +142,11 @@ describe("WebUI event projections", () => {
   });
 
   it("projects the latest context usage and compaction state", () => {
+    // The message shape is the runtime protocol's, not a shape invented here:
+    // `usage: { total_tokens, context_window }`. This test used to write
+    // `contextUsage: { contextWindowTokens, usedTokens }`, which pinned a shape
+    // no message in the database has ever had — so it passed green while the
+    // composer's context readout rendered nowhere.
     expect(
       projectContextSnapshot({
         active: false,
@@ -150,7 +155,7 @@ describe("WebUI event projections", () => {
           { kind: "compaction", timestamp: 2 },
           {
             rawJson: JSON.stringify({
-              contextUsage: { contextWindowTokens: 100, usedTokens: 40 },
+              usage: { context_window: 100, total_tokens: 40 },
             }),
           },
         ],
@@ -161,5 +166,32 @@ describe("WebUI event projections", () => {
       usedTokens: 40,
       compaction: { state: "completed" },
     });
+  });
+
+  it("reads the snake_case protocol fields, not camelCase lookalikes", () => {
+    // A guard with teeth: an implementation that accepted only
+    // `usedTokens` / `contextWindowTokens` would still pass the test above if
+    // the fixture carried both spellings, so the fixture carries only the ones
+    // the wire actually has.
+    expect(
+      projectContextSnapshot({
+        active: false,
+        messages: [
+          { rawJson: JSON.stringify({ usage: { total_tokens: 7, context_window: 70 } }) },
+        ],
+      }),
+    ).toMatchObject({ status: "live", window: 70, usedTokens: 7 });
+  });
+
+  it("reports empty rather than a fabricated zero for a turn that reported no usage", () => {
+    // The failure mode this whole change is about: a shape mismatch must
+    // surface as "no data", never as 0% — a zero would look like a real
+    // reading of an untouched context.
+    expect(
+      projectContextSnapshot({
+        active: false,
+        messages: [{ rawJson: JSON.stringify({ finish_reason: "stop" }) }],
+      }),
+    ).toMatchObject({ status: "empty" });
   });
 });

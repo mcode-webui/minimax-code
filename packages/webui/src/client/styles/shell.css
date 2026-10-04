@@ -1648,10 +1648,14 @@
   .webui-model-context-option:hover {
     background: var(--bg_interaction_tertiary_hover);
   }
+  /* Same shape as `.webui-model-effort-group` above, and deliberately gap-less:
+   * both are lists of pickable sizes, and a 4px gap in one of them and not the
+   * other would read as the context list being a different kind of control from
+   * the level list, which is the one thing they are not. */
   .webui-model-context-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing_4, 4px);
+    gap: 0;
   }
   .webui-model-context-option {
     display: flex;
@@ -1728,23 +1732,24 @@
   /* The fly-out is `position: fixed` and placed by the shared
    * `positionFlyout` engine, so it escapes this list's own `overflow-y: auto`.
    * It is NOT a child of the menu: a nested surface would be clipped by the
-   * very scrolling container it needs to escape. */
+   * very scrolling container it needs to escape.
+   *
+   * `min-width` rather than `width`: the surface is MEASURED for its clamp and
+   * flip, and a model with two context sizes is legitimately narrower than one
+   * with five. The floor keeps a two-size list from collapsing to a column of
+   * digits. */
   .webui-model-flyout {
     z-index: 70;
     display: flex;
     flex-direction: column;
     gap: var(--spacing_8);
-    min-width: 0;
+    min-width: 176px;
     padding: var(--spacing_8);
     border: 1px solid var(--border_default);
     border-radius: var(--radius_12);
     background: var(--bg_grouped_secondary_elevated);
     box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
     color: var(--text_default_primary);
-  }
-  .webui-model-flyout--tier-two {
-    gap: 2px;
-    padding: var(--spacing_4);
   }
   /* A preview describes a model the user has not picked. The options stay
    * visible — the point is to see what the model offers before committing to
@@ -1753,32 +1758,18 @@
   .webui-model-flyout[data-webui-model-preview="true"] {
     opacity: 0.92;
   }
-  .webui-model-context-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing_8);
-    width: 100%;
-    border-radius: var(--radius_8);
-    padding: var(--spacing_4) var(--spacing_8);
-    color: var(--text_default_primary);
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    transition: background-color 120ms ease;
-  }
-  .webui-model-context-trigger:hover:not(:disabled) {
-    background-color: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-model-context-trigger:disabled {
+  /* The context sizes, listed in place inside the settings fly-out.
+   * `.webui-model-context-group` is the listbox wrapper and
+   * `.webui-model-context-option` each size; both are shared with the thinking
+   * level rows, which is why the option rule sits with them above. */
+  .webui-model-context-option:disabled {
     cursor: not-allowed;
     opacity: 0.55;
   }
-  .webui-model-context-trigger:focus-visible {
+  .webui-model-context-option:focus-visible,
+  .webui-model-effort-option:focus-visible {
     outline: 2px solid var(--border_accent);
     outline-offset: -2px;
-  }
-  .webui-model-context-caret {
-    color: var(--text_default_tertiary);
   }
   /* The thinking trigger. Three tones, and the third is the one that matters:
    * `unstated` is NOT `off`. The wire says an empty effort means "no override,

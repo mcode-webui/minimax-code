@@ -1,19 +1,19 @@
 /**
- * Fixed-viewport placement for the model picker's fly-out tiers.
+ * Fixed-viewport placement for the model picker's settings fly-out.
  *
- * ONE engine for both tiers, deliberately. Two implementations of "which way
- * does this open" is how two tiers of one cascade end up disagreeing about
- * direction — the second tier flipping left while the first went right reads as
- * a broken menu rather than a deeper one.
+ * ONE engine, kept as a module rather than inlined in the component, because
+ * flipping and clamping are exactly the two rules that are easy to get subtly
+ * wrong and impossible to eyeball in a screenshot — so they are pure functions
+ * with no DOM to pin them against.
+ *
+ * `surface` is MEASURED by the caller, never a constant: the fly-out's height
+ * follows the number of context sizes the described model offers, and a clamp
+ * computed against a stale height lets the bottom of that list fall off screen.
  *
  * The surface is positioned `fixed` so it escapes the model list's own
  * `overflow-y: auto`. That is why the anchor is a viewport-space rect rather
  * than an offset parent: an `absolute` fly-out inside the scrolling list would
  * be clipped by it, and the list is the one thing the fly-out has to escape.
- *
- * Pure functions, no DOM. The arithmetic is the part worth pinning — flipping
- * and clamping are exactly the two rules that are easy to get subtly wrong and
- * impossible to eyeball in a screenshot.
  */
 
 export interface FlyoutRect {

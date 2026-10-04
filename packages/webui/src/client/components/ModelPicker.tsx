@@ -428,10 +428,10 @@ export function WebuiModelPicker({
     onSelect(model, draft);
     // The cascade's one asymmetry (see `projection/model-picker-cascade.ts`): a
     // model with settings is not finished when its row is clicked — the
-    // selection completes in the second tier — while a model with nothing to
-    // configure completes on its own click, because there is nothing left to
-    // visit and keeping the surface open would strand the user on a menu they
-    // have finished with.
+    // selection completes on a context window picked in its fly-out — while a
+    // model with nothing to configure completes on its own click, because there
+    // is nothing left to visit and keeping the surface open would strand the user
+    // on a menu they have finished with.
     if (rowClickOutcome(model) === "close") {
       setOpen(false);
       setFocusedKey(undefined);
@@ -543,8 +543,9 @@ export function WebuiModelPicker({
   };
 
   /**
-   * Commit a context window. This is the second tier, and the second tier is
-   * where the selection COMPLETES — so unlike the thinking switch it closes.
+   * Commit a context window. Unlike the thinking control, this CLOSES: picking a
+   * window is the commitment that completes the selection, where a level is a
+   * mid-visit edit.
    */
   const handleContextChange = (value: number) => {
     updateFocusedDraft({ contextLimit: value });

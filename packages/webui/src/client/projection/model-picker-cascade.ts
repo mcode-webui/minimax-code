@@ -10,6 +10,10 @@
  *   - When are the controls live, and when are they a preview?
  *   - What does Escape do from each tier?
  *
+ * "Tier" here is the LIST and the SETTINGS FLY-OUT — the two surfaces the
+ * Escape rule moves between. The context sizes are not a third tier: they are
+ * listed in place inside the fly-out, one surface from the row.
+ *
  * Ported from the cascade rework in the other WebUI implementation
  * (`176b8b7 feat(webui): the model picker is a cascade again, not a two-column
  * panel`). The rules are unchanged; the entry type is this repository's.
@@ -53,25 +57,29 @@ export type RowClickOutcome = "close" | "advance";
  *     menu they have finished with.
  *   - A model WITH settings records the model — which is also what turns its
  *     fly-out from a read-only preview into live controls — and LEAVES the
- *     surface open. The selection completes in the second tier, by picking a
- *     context window.
+ *     surface open. The selection completes by picking a context window from
+ *     the fly-out.
  */
 export function rowClickOutcome(model: WebuiModelPickerEntry | undefined): RowClickOutcome {
   return modelHasSettings(model) ? "advance" : "close";
 }
 
-/** What a control in the first tier does when it is committed. */
-export type TierOneOutcome = "close" | "keep-open";
+/** What committing the THINKING control does to the surface. */
+export type ThinkingCommitOutcome = "close" | "keep-open";
 
 /**
  * What committing the THINKING control does.
  *
- * Records and keeps the fly-out open. The thinking switch is in the FIRST tier,
- * and the context window is in the second — closing here would make it
- * impossible to set a level and a window in one visit, which is the ordinary
- * thing a user does when they open a model's settings at all.
+ * Records and keeps the fly-out open. Closing here would make it impossible to
+ * set a level and a window in one visit, which is the ordinary thing a user does
+ * when they open a model's settings at all — the context sizes are listed in the
+ * same surface, so the two controls are meant to be adjusted together.
+ *
+ * Choosing a window behaves the other way: that is the commitment that closes
+ * the picker. The asymmetry is the reference's completion rule, and it is why
+ * this is a named outcome rather than two call sites deciding independently.
  */
-export function tierOneCommitOutcome(): TierOneOutcome {
+export function thinkingCommitOutcome(): ThinkingCommitOutcome {
   return "keep-open";
 }
 

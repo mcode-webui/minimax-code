@@ -14,8 +14,8 @@
 // CLOSED — so the cascade's shape cannot be observed by rendering it. A
 // structural assertion is honest about that; pretending a rendered assertion
 // covered it would not be. What the tripwires check is the shape decisions that
-// the design turns on: one placement engine for both tiers, no permanent
-// settings column, and both tiers present.
+// the design turns on: one placement engine, no permanent settings column, and
+// the context sizes listed IN PLACE rather than behind a third tier.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,8 +27,8 @@ import {
   isPreview,
   modelHasSettings,
   rowClickOutcome,
+  thinkingCommitOutcome,
   tierAfterRowClick,
-  tierOneCommitOutcome,
 } from "../../src/client/projection/model-picker-cascade.js";
 import {
   FLYOUT_ANCHOR_GAP,
@@ -90,11 +90,10 @@ describe("cascade — a model's own settings decide whether a click finishes", (
 
 describe("cascade — the thinking switch does not finish the visit", () => {
   it("keeps the surface open so a window can still be set", () => {
-    // The thinking switch is the FIRST tier and the context window is the
-    // second. Closing here would make a level and a window impossible to set
-    // in one visit, which is the ordinary thing a user does on opening a
-    // model's settings at all.
-    expect(tierOneCommitOutcome()).toBe("keep-open");
+    // The context sizes are listed in the same fly-out, so closing on a level
+    // would make it impossible to set a level and a window in one visit, which
+    // is the ordinary thing a user does on opening a model's settings at all.
+    expect(thinkingCommitOutcome()).toBe("keep-open");
   });
 });
 
@@ -226,20 +225,42 @@ describe("cascade — the shape the source has to keep", () => {
     expect(picker).toContain("ModelSettingsFlyout");
   });
 
-  it("drives BOTH tiers through the same placement hook", () => {
-    // Two copies of the flip/clamp math is how two tiers of one cascade end up
-    // opening in different directions. Counted as "one definition, two call
-    // sites" rather than a raw occurrence count, so adding a third copy is
-    // caught while a third TIER is not mistaken for a duplicated engine.
+  it("drives its one surface through the one placement hook", () => {
+    // Counted as "one definition, one call site" so a second copy of the
+    // flip/clamp math is caught. With the third tier gone there is exactly one
+    // caller left, and the count is what says so.
     expect(flyout.match(/function useFlyoutPlacement\(/gu) ?? []).toHaveLength(1);
-    expect(flyout.match(/= useFlyoutPlacement\(/gu) ?? []).toHaveLength(2);
+    expect(flyout.match(/= useFlyoutPlacement\(/gu) ?? []).toHaveLength(1);
     // And the hook itself delegates to the one shared arithmetic module.
     expect(flyout.match(/positionFlyout\(/gu) ?? []).toHaveLength(1);
   });
 
-  it("draws the two tiers as two named surfaces", () => {
-    expect(flyout).toContain('data-webui-model-flyout="tier-one"');
-    expect(flyout).toContain('data-webui-model-flyout="tier-two"');
+  it("measures the surface instead of declaring its size", () => {
+    // The context sizes are inline, so the fly-out is as tall as the model
+    // happens to have options. A frozen height means the clamp is computed
+    // against a size that is not the one on screen, and a model with a long
+    // option list loses its own options off the bottom of the viewport.
+    expect(flyout).not.toMatch(/const TIER_(ONE|TWO)_(WIDTH|HEIGHT)/u);
+    expect(flyout).toContain("ResizeObserver");
+    expect(flyout).toContain("surface.getBoundingClientRect()");
+  });
+
+  it("lists the context sizes in place, not behind a third fly-out", () => {
+    // The whole point of this shape. The surface already says which model it
+    // describes, so a collapsed row restating the current value, a chevron over
+    // it, and then a separate panel carrying the same sizes are three ways to
+    // answer one question — and that panel was a floating surface landing back
+    // over the model list it was describing. The literal greps cover COMMENTS
+    // too, which is the point: a retired class named in prose is how it comes
+    // back.
+    expect(flyout).toContain('role="listbox"');
+    expect(flyout).toContain('role="option"');
+    expect(flyout).not.toContain('data-webui-model-flyout="tier-two"');
+    expect(flyout).not.toContain("webui-model-flyout--tier-two");
+    expect(flyout).not.toContain("webui-model-context-trigger");
+    expect(flyout).not.toContain("webui-model-context-caret");
+    expect(flyout).not.toContain("aria-expanded");
+    expect(flyout).not.toContain("menuitemradio");
   });
 
   it("keeps the list container from being duplicated", () => {

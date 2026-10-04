@@ -13,6 +13,8 @@ import type {
   WebuiClaimSigninView,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
   WebuiEnqueueMessageRequest,
   WebuiEnqueueMessageResult,
   WebuiFileDiffInfoView,
@@ -474,6 +476,29 @@ export interface WebuiTransport {
     readonly sessionId: string;
     readonly operation: Record<string, unknown>;
   }) => Promise<unknown>;
+  /**
+   * The streamable URL of one workspace file, credential included.
+   *
+   * Provided by the transport rather than assembled by a component: media and
+   * HTML previews need a URL the browser fetches directly, and only the
+   * transport knows the per-start token. Building it in a component would put
+   * the credential in two places and let one of them drift.
+   */
+  readonly workspaceFileUrl?: (request: {
+    readonly workspaceDir: string;
+    readonly path: string;
+  }) => string;
+  readonly readWorkspaceArchive?: (request: {
+    readonly workspaceDir: string;
+    readonly path: string;
+    readonly prefix?: string;
+  }) => Promise<WebuiWorkspaceArchiveListing>;
+  readonly extractWorkspaceArchive?: (request: {
+    readonly workspaceDir: string;
+    readonly path: string;
+    readonly destination: string;
+    readonly prefix?: string;
+  }) => Promise<WebuiWorkspaceArchiveExtractResult>;
   readonly createTerminal?: (request: {
     readonly workspaceDir: string;
   }) => Promise<{ readonly terminalId: string; readonly status: string }>;

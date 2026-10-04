@@ -39,6 +39,12 @@ import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projecti
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";
 import {
+  breakdownShareLabel,
+  breakdownSwatchStyle,
+  contextBreakdownRows,
+  drawableBreakdownRows,
+} from "../projection/context-breakdown.js";
+import {
   isWebuiSubscriptionProbeCurrent,
   ownsWebuiStreamGeneration,
   reduceWebuiStreamFrame,
@@ -2459,24 +2465,15 @@ function ContextUsageIndicator({ usage, usageQuota }: {
   const percent = Math.min(100, Math.max(0, Math.round(used / limit * 100)));
   const circumference = 2 * Math.PI * 7;
   const label = `${percent}% · ${formatContextTokens(used)} / ${formatContextTokens(limit)} tokens`;
-  const componentNames: Readonly<Record<string, string>> = {
-    MESSAGES: "消息",
-    TOOLS: "工具",
-    SKILLS: "技能",
-    SYSTEM_PROMPT: "系统提示词",
-    OTHER: "其他",
-    MEMORY: "记忆",
-  };
-  const componentColors = [1, 0.82, 0.68, 0.54, 0.4, 0.26];
-  const rawComponents = Array.isArray(usage.components) ? usage.components : [];
-  const components = rawComponents.flatMap((component) => {
-    if (!component || typeof component !== "object" || Array.isArray(component)) return [];
-    const item = component as Record<string, unknown>;
-    const kind = typeof item.kind === "string" ? item.kind : "OTHER";
-    const tokens = typeof item.tokens === "number" && Number.isFinite(item.tokens) ? Math.max(0, item.tokens) : 0;
-    return [{ kind, label: componentNames[kind] ?? componentNames.OTHER, tokens }];
-  }).sort((left, right) => right.tokens - left.tokens);
-  const componentsTotal = components.reduce((total, component) => total + component.tokens, 0);
+  // Always all six categories, in the reference's fixed order, with a dash for
+  // whatever the engine did not report. See `projection/context-breakdown.ts`
+  // for why a missing category is a dash and not `0.0%`.
+  const breakdownRows = contextBreakdownRows(usage.components, used);
+  const drawableRows = drawableBreakdownRows(breakdownRows);
+  const componentsTotal = drawableRows.reduce(
+    (total, row) => total + (row.tokens ?? 0),
+    0,
+  );
   const quotaResult = usageQuota?.signedIn ? usageQuota : undefined;
   const quota = quotaResult?.quota;
   const planLabel = quotaResult?.tokenPlanTier ?? (quotaResult?.hasTokenPlan ? "Token Plan" : "未订阅 Token Plan");
@@ -2538,28 +2535,34 @@ function ContextUsageIndicator({ usage, usageQuota }: {
             aria-valuemax={100}
             aria-valuenow={percent}
           >
-            {componentsTotal > 0 ? components.map((component, index) => (
+            {componentsTotal > 0 ? drawableRows.map((row) => (
               <span
-                key={component.kind}
+                key={row.kind}
                 className="webui-context-usage-bar-segment"
-                style={{ width: `${component.tokens / componentsTotal * 100}%`, opacity: componentColors[index % componentColors.length] }}
+                style={{ width: `${(row.tokens ?? 0) / componentsTotal * 100}%`, ...breakdownSwatchStyle(row) }}
               />
             )) : <span style={{ width: `${percent}%` }} />}
           </div>
           <div className="webui-context-usage-tokens">{formatContextTokens(used)} / {formatContextTokens(limit)} tokens</div>
-          {components.length > 0 ? (
-            <div className="webui-context-usage-components" aria-label="上下文构成">
-              {components.map((component, index) => (
-                <div className="webui-context-usage-component" key={component.kind}>
-                  <span className="webui-context-usage-component-label">
-                    <span className="webui-context-usage-swatch" style={{ opacity: componentColors[index % componentColors.length] }} />
-                    {component.label}
-                  </span>
-                  <span>{componentsTotal > 0 ? `${((component.tokens / componentsTotal) * 100).toFixed(1)}%` : "0.0%"}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <div className="webui-context-usage-components" aria-label="上下文构成">
+            {breakdownRows.map((row) => (
+              <div
+                className="webui-context-usage-component"
+                key={row.kind}
+                data-webui-context-category={row.kind}
+                data-webui-context-reported={row.tokens === null ? "false" : "true"}
+              >
+                <span className="webui-context-usage-component-label">
+                  <span
+                    className="webui-context-usage-swatch"
+                    style={breakdownSwatchStyle(row)}
+                  />
+                  {row.label}
+                </span>
+                <span>{breakdownShareLabel(row)}</span>
+              </div>
+            ))}
+          </div>
           {quotaResult ? (
             <>
               <div className="webui-context-usage-divider" />

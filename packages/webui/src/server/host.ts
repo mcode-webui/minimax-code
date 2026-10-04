@@ -131,6 +131,10 @@ export interface WebuiRuntimeCliService {
     request: import("./port.js").WebuiMessagesRequest,
     context?: Record<string, never>,
   ): Promise<import("./port.js").WebuiMessagesResult>;
+  exportSessionTransfer(sessionId: string): Promise<import("./port.js").WebuiSessionTransferFile>;
+  importSessionTransfer(
+    request: import("./port.js").WebuiImportSessionTransferRequest,
+  ): Promise<import("./port.js").WebuiImportSessionTransferResult>;
   getSessionDiff(
     request: WebuiGetSessionDiffRequest,
     context?: Record<string, never>,
@@ -393,6 +397,12 @@ export function createHarnessPortFromHost(
     },
     async getMessages(request) {
       return requireCliService(host).getMessages(request, {});
+    },
+    async exportSessionTransfer(request) {
+      return requireCliService(host).exportSessionTransfer(request.id);
+    },
+    async importSessionTransfer(request) {
+      return requireCliService(host).importSessionTransfer(request);
     },
     async getSessionDiff(request) {
       return requireCliService(host).getSessionDiff(request, {});

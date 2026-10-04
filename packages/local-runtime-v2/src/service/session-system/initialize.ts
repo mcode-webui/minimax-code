@@ -81,6 +81,12 @@ export interface InitializedSessionApplicationSystem {
     readonly query: SessionSystemOwner['sessions']['query'];
     readonly lifecycle: SessionLifecycleService;
     readonly maintenance: SessionMaintenanceService;
+    /**
+     * Canonical history publication. Exposed so the session-transfer
+     * application can read and write `messages.jsonl` without a second path
+     * to the on-disk layout; nothing else should need it.
+     */
+    readonly historyMutation: SessionSystemOwner['sessions']['historyMutation'];
     readonly deletion: {
       create(): SessionDeletionService;
     };
@@ -206,6 +212,7 @@ export function initializeSessionApplicationSystem(
       query: owner.sessions.query,
       lifecycle,
       maintenance,
+      historyMutation: owner.sessions.historyMutation,
       deletion: {
         create: () =>
           new SessionDeletionService({

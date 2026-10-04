@@ -11,7 +11,7 @@
 // Shutdown order matches step 13 of the assembly checklist: stop accepting
 // new operations, then close every connection, then close the harness.
 
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -39,8 +39,9 @@ import {
   WebuiErrorCode,
   WEBUI_PROTOCOL_VERSION,
 } from "./envelope.js";
-import type { WebuiHarnessPort } from "./port.js";
+import type { WebuiHarnessPort, WebuiSessionInfo } from "./port.js";
 import { WebuiTerminalManager } from "./terminal.js";
+import { webuiSessionTransferFileName } from "./session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -300,15 +301,27 @@ export class WebuiService {
       rejectHttp(response, 401, "Unauthorized");
       return;
     }
-    // Checked here rather than inside the static-asset table below, so this
-    // route inherits the loopback, origin and credential checks above instead
-    // of re-implementing them: a workspace file is served to whoever holds
-    // the per-start token, and to nobody else.
-    if (url?.pathname === "/workspace-file") {
+    if (!url) {
+      rejectHttp(response, 404, "Not Found");
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/session-transfer") {
+      await this.handleSessionTransfer(url, response);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/session-import") {
+      await this.handleSessionImport(request, url, response);
+      return;
+    }
+    // Ahead of the GET-only gate below because this route also answers HEAD:
+    // `#serveWorkspaceFile` reports the byte range and content length with no
+    // body. It sits after the loopback, origin and credential checks, so it
+    // inherits them rather than re-implementing them.
+    if (url.pathname === "/workspace-file") {
       await this.#serveWorkspaceFile(request, response, url);
       return;
     }
-    if (request.method !== "GET" || !url) {
+    if (request.method !== "GET") {
       rejectHttp(response, 404, "Not Found");
       return;
     }
@@ -354,6 +367,142 @@ export class WebuiService {
       response.end(body);
     } catch {
       rejectHttp(response, 404, "Not Found");
+    }
+  }
+
+  /**
+   * Serve a session as a file that `/session-import` can read back.
+   *
+   * An HTTP route rather than a WebSocket operation because the file is
+   * unbounded: one real session on this machine serialises to 50 MB, and the
+   * envelope carries a `payload_too_large` code. Producing the body here also
+   * keeps it out of the browser's heap, which is the other half of why the
+   * client-side export cannot be reused for this.
+   *
+   * The payload comes from the runtime rather than from here. An earlier
+   * version read `messages.jsonl` off disk and walked `getMessages` for the
+   * display side, which needed no port change -- and silently lost the
+   * canonical receipts on roughly 1% of rows, because `getMessages` returns a
+   * view prepared for rendering, not the stored record.
+   */
+  private async handleSessionTransfer(url: URL, response: ServerResponse): Promise<void> {
+    const sessionId = url.searchParams.get("sessionId")?.trim();
+    if (!sessionId) {
+      rejectHttp(response, 400, "Bad Request");
+      return;
+    }
+    // `getSession` rejects for an unknown id rather than returning an empty
+    // result, so both the rejection and an empty `session` mean "no such
+    // session". Letting the rejection reach the outer catch answered 500 for a
+    // request that was simply asking about something that is not there.
+    let session: WebuiSessionInfo;
+    try {
+      const found = await this.port.getSession({ id: sessionId });
+      if (!found.session) {
+        rejectHttp(response, 404, "Not Found");
+        return;
+      }
+      session = found.session;
+    } catch {
+      rejectHttp(response, 404, "Not Found");
+      return;
+    }
+    try {
+      const file = await this.port.exportSessionTransfer({ id: sessionId });
+      const body = Buffer.from(`${JSON.stringify(file)}\n`, "utf8");
+      const exportedAt = file.exportedAt || new Date().toISOString();
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": body.byteLength,
+        "Content-Disposition":
+          `attachment; filename*=UTF-8''${encodeURIComponent(webuiSessionTransferFileName(sessionId, session, exportedAt))}`,
+        "Cache-Control": "no-store",
+      });
+      response.end(body);
+    } catch {
+      rejectHttp(response, 500, "Internal Server Error");
+    }
+  }
+
+  /**
+   * Recreate a session from a transfer file.
+   *
+   * `WebuiCreateSessionRequest.name` is the *agent* to run under, not a title.
+   * Both the agent and the working directory therefore come from the query
+   * string -- the context the user is importing into -- and never from the
+   * payload. A downloaded file is untrusted input: if its session block could
+   * name an agent or a workspace, importing a file could aim a session at an
+   * arbitrary directory on this machine, or ask for an agent that does not
+   * exist and take the whole import down with it. The file contributes its
+   * history and its title; the caller contributes who and where.
+   *
+   * The title is applied after the history lands. The session is created
+   * first and the history written into it second, so a malformed payload
+   * leaves nothing behind: the failure path deletes the session it just made
+   * rather than leaving an empty shell in the sidebar for every bad file the
+   * user tries.
+   */
+  private async handleSessionImport(
+    request: IncomingMessage,
+    url: URL,
+    response: ServerResponse,
+  ): Promise<void> {
+    let file: unknown;
+    try {
+      const raw = await readRequestBody(request);
+      const parsed = raw.length === 0 ? undefined : JSON.parse(raw.toString("utf8"));
+      // Accept either the bare transfer file or `{ file: <transfer file> }`,
+      // so the client does not have to know which one this route prefers.
+      file = (parsed as { readonly file?: unknown } | undefined)?.file ?? parsed;
+    } catch {
+      rejectHttp(response, 400, "Bad Request");
+      return;
+    }
+
+    const agentName = url.searchParams.get("agentName")?.trim() || WEBUI_DEFAULT_IMPORT_AGENT;
+    const workspaceDir = url.searchParams.get("workspaceDir")?.trim() || undefined;
+
+    let sessionId: string;
+    try {
+      const created = await this.port.createSession({
+        name: agentName,
+        ...(workspaceDir ? { workspaceDir } : {}),
+      });
+      const id = created.sessionId ?? created.session?.sessionId;
+      if (!id) throw new Error("Session creation returned no id");
+      sessionId = id;
+    } catch (error) {
+      // The caller gets a status code, not a stack trace, so the reason has
+      // to land somewhere or a 500 here is undiagnosable. Only the message:
+      // the payload is untrusted and the error can quote it back.
+      console.error(`[webui] session import could not create a session: ${describeError(error)}`);
+      rejectHttp(response, 500, "Internal Server Error");
+      return;
+    }
+
+    try {
+      const result = await this.port.importSessionTransfer({
+        targetSessionId: sessionId,
+        sourceSessionId: readImportSourceId(file),
+        file,
+      });
+      const title = readImportTitle(file);
+      if (title) await this.port.updateSession({ id: result.sessionId, title });
+      respondJson(response, 200, {
+        sessionId: result.sessionId,
+        canonicalMessages: result.canonicalMessages,
+        displayMessages: result.displayMessages,
+        revision: result.revision,
+      });
+    } catch (error) {
+      await this.port.deleteSession({ id: sessionId }).catch(() => undefined);
+      // "Not a transfer file at all" is the user's mistake and worth saying so;
+      // anything else means the file parsed but could not be replayed.
+      const foreign = (error as { readonly code?: unknown } | undefined)?.code === "not-a-transfer-file";
+      console.error(`[webui] session import failed: ${describeError(error)}`);
+      respondJson(response, foreign ? 400 : 422, {
+        error: foreign ? "Not a session transfer file" : "Session import failed",
+      });
     }
   }
 
@@ -695,6 +844,84 @@ function rejectHttp(
   response.end(reason);
 }
 
+/**
+ * The import body is a whole session and real ones run to tens of megabytes,
+ * so the cap has to clear the largest export the export route can produce
+ * while still refusing a body that is not a session file.
+ */
+const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
+
+/** The agent an import lands under when the caller names none. */
+const WEBUI_DEFAULT_IMPORT_AGENT = "main";
+
+/**
+ * `maxBytes` is a parameter rather than a constant so the cap can be tested
+ * without allocating a quarter of a gigabyte in a unit test.
+ */
+export function readRequestBody(
+  request: IncomingMessage,
+  maxBytes: number = WEBUI_MAX_IMPORT_BYTES,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    request.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("Request body too large"));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => resolve(Buffer.concat(chunks)));
+    request.on("error", reject);
+  });
+}
+
+function respondJson(
+  response: ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+): void {
+  const encoded = Buffer.from(`${JSON.stringify(body)}\n`, "utf8");
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": encoded.byteLength,
+    "Cache-Control": "no-store",
+  });
+  response.end(encoded);
+}
+
+function readImportSession(file: unknown): Record<string, unknown> | undefined {
+  const session = (file as { readonly session?: unknown } | undefined)?.session;
+  return typeof session === "object" && session !== null && !Array.isArray(session)
+    ? (session as Record<string, unknown>)
+    : undefined;
+}
+
+/** Trimmed, length-capped strings only -- the payload is untrusted. */
+function readImportString(file: unknown, key: "title" | "agentName" | "workspaceDir"): string | undefined {
+  const value = readImportSession(file)?.[key];
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, 200) : undefined;
+}
+
+function readImportTitle(file: unknown): string | undefined {
+  return readImportString(file, "title");
+}
+
+function readImportSourceId(file: unknown): string | undefined {
+  const value = readImportSession(file)?.sessionId;
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : undefined;
+}
+
+function describeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 300 ? `${message.slice(0, 300)}...` : message;
+}
+
 function parseHttpUrl(rawUrl: string | undefined): URL | undefined {
   if (!rawUrl) return undefined;
   try {
@@ -716,89 +943,6 @@ function contentType(name: string): string {
     : name.endsWith(".js")
       ? "text/javascript; charset=utf-8"
       : "text/html; charset=utf-8";
-}
-
-/**
- * Media types for workspace files, on a whitelist with an
- * `application/octet-stream` floor.
- *
- * Deliberately not `contentType()`: that one exists to serve the WebUI's own
- * bundle, where an unrecognised asset really is best guessed as HTML, and
- * guessing wrong there is inert. Here the guessed file is the agent's working
- * tree, so an unrecognised type has to download rather than render — the
- * default is what keeps a `.txt` or `.json` from being interpreted as a
- * document by whatever navigated to it.
- */
-const WORKSPACE_MEDIA_TYPES: Readonly<Record<string, string>> = {
-  ".avif": "image/avif",
-  ".bmp": "image/bmp",
-  ".gif": "image/gif",
-  ".ico": "image/x-icon",
-  ".jpeg": "image/jpeg",
-  ".jpg": "image/jpeg",
-  ".png": "image/png",
-  ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".mp4": "video/mp4",
-  ".mov": "video/quicktime",
-  ".ogv": "video/ogg",
-  ".webm": "video/webm",
-  ".aac": "audio/aac",
-  ".flac": "audio/flac",
-  ".m4a": "audio/mp4",
-  ".mp3": "audio/mpeg",
-  ".ogg": "audio/ogg",
-  ".wav": "audio/wav",
-  ".csv": "text/csv; charset=utf-8",
-  ".htm": "text/html; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".json": "application/json",
-  ".pdf": "application/pdf",
-  ".wasm": "application/wasm",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".txt": "text/plain; charset=utf-8",
-};
-
-function workspaceContentType(name: string): string {
-  return WORKSPACE_MEDIA_TYPES[path.extname(name).toLowerCase()] ?? "application/octet-stream";
-}
-
-/**
- * Parse a single-range `Range` header against a known file size.
- *
- * Returns "invalid" for a syntactically unsatisfiable range so the caller can
- * answer 416, and the clamped range otherwise. A multi-range request is
- * answered with the whole file rather than `multipart/byteranges`: media
- * elements never ask for one, and serving the full body is a correct if less
- * efficient answer to the same bytes.
- */
-function parseByteRange(
-  header: string | undefined,
-  size: number,
-): { readonly start: number; readonly end: number } | "invalid" | undefined {
-  if (!header) return undefined;
-  const match = /^bytes=(\d*)-(\d*)$/u.exec(header.trim());
-  if (!match) return undefined;
-  // No byte of a zero-length representation can be selected, so any range
-  // against one is unsatisfiable. Handled here rather than in the two
-  // branches below because the suffix branch would otherwise answer with
-  // `{start: 0, end: -1}` — a range whose header cannot even be spelled.
-  if (size === 0) return "invalid";
-  const [, rawStart, rawEnd] = match;
-  if (!rawStart && !rawEnd) return "invalid";
-  if (!rawStart) {
-    // Suffix form `bytes=-500`: the final N bytes.
-    const suffix = Number(rawEnd);
-    if (!Number.isSafeInteger(suffix) || suffix <= 0) return "invalid";
-    return { start: Math.max(0, size - suffix), end: size - 1 };
-  }
-  const start = Number(rawStart);
-  if (!Number.isSafeInteger(start)) return "invalid";
-  if (start >= size) return "invalid";
-  const end = rawEnd ? Number(rawEnd) : size - 1;
-  if (!Number.isSafeInteger(end) || end < start) return "invalid";
-  return { start, end: Math.min(end, size - 1) };
 }
 
 function resolveClientAsset(
@@ -848,6 +992,69 @@ function parseWebSocketUrl(rawUrl: string | undefined): URL | undefined {
   } catch {
     return undefined;
   }
+}
+
+const WORKSPACE_MEDIA_TYPES: Readonly<Record<string, string>> = {
+  ".avif": "image/avif",
+  ".bmp": "image/bmp",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
+  ".ogv": "video/ogg",
+  ".webm": "video/webm",
+  ".aac": "audio/aac",
+  ".flac": "audio/flac",
+  ".m4a": "audio/mp4",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".csv": "text/csv; charset=utf-8",
+  ".htm": "text/html; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".json": "application/json",
+  ".pdf": "application/pdf",
+  ".wasm": "application/wasm",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+};
+
+function workspaceContentType(name: string): string {
+  return WORKSPACE_MEDIA_TYPES[path.extname(name).toLowerCase()] ?? "application/octet-stream";
+}
+
+function parseByteRange(
+  header: string | undefined,
+  size: number,
+): { readonly start: number; readonly end: number } | "invalid" | undefined {
+  if (!header) return undefined;
+  const match = /^bytes=(\d*)-(\d*)$/u.exec(header.trim());
+  if (!match) return undefined;
+  // No byte of a zero-length representation can be selected, so any range
+  // against one is unsatisfiable. Handled here rather than in the two
+  // branches below because the suffix branch would otherwise answer with
+  // `{start: 0, end: -1}` — a range whose header cannot even be spelled.
+  if (size === 0) return "invalid";
+  const [, rawStart, rawEnd] = match;
+  if (!rawStart && !rawEnd) return "invalid";
+  if (!rawStart) {
+    // Suffix form `bytes=-500`: the final N bytes.
+    const suffix = Number(rawEnd);
+    if (!Number.isSafeInteger(suffix) || suffix <= 0) return "invalid";
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+  const start = Number(rawStart);
+  if (!Number.isSafeInteger(start)) return "invalid";
+  if (start >= size) return "invalid";
+  const end = rawEnd ? Number(rawEnd) : size - 1;
+  if (!Number.isSafeInteger(end) || end < start) return "invalid";
+  return { start, end: Math.min(end, size - 1) };
 }
 
 function isLoopbackHost(host: string): boolean {

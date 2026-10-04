@@ -113,6 +113,23 @@ class FullPort implements WebuiHarnessPort {
   async getMessages() {
     return { messages: [], hasMore: false };
   }
+  async exportSessionTransfer() {
+    return {
+      format: "mcode-webui-session-transfer@1",
+      exportedAt: "1970-01-01T00:00:00.000Z",
+      session: { sessionId: "invariant", title: "invariant" },
+      canonical: { envelopes: [], snapshots: [], generation: 0, revision: "" },
+      display: { messages: [] },
+    };
+  }
+  async importSessionTransfer(request: { readonly targetSessionId: string }) {
+    return {
+      sessionId: request.targetSessionId,
+      canonicalMessages: 0,
+      displayMessages: 0,
+      revision: "",
+    };
+  }
   async getSessionDiff() {
     return { diffs: [], changeSetId: "invariant" };
   }

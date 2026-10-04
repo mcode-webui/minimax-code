@@ -994,6 +994,123 @@
     background-color: var(--bg_interaction_tertiary_selected);
   }
 
+  /* The right-hand end of a rail row: how long ago the session last did
+   * something, and a spinner while a turn holds it. The runtime runs sessions
+   * in parallel, so without this a task that finished in the background is
+   * indistinguishable from one that never ran.
+   *
+   * The spinner reuses the signin claim keyframes rather than declaring its
+   * own. Same rotation, and a second copy would be a second thing to keep in
+   * step when the timing changes. */
+  .webui-rail-session-meta {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing_4);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--text_default_tertiary);
+  }
+  .webui-rail-spinner {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    /* Not `currentColor`: the meta inherits the tertiary text grey, and a 10px
+     * ring in grey on a grey rail does not read -- and the row it sits in is
+     * exactly the one the user is not looking at. Blue is this project's own
+     * accent (`--icon_default_accent`, already the selected-state colour). Red
+     * is not available for this: it is reserved for danger and error across the
+     * token set, and a running turn is not an error. The thicker border is the
+     * same point -- at 1.5px the ring was a hairline that read as a rendering
+     * artefact rather than as a spinner. */
+    border: 2px solid var(--icon_default_accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: webui-signin-claim-spin 0.6s linear infinite;
+  }
+  /* Stopped, not hidden: the ring still reads as "busy" for a reader who asked
+   * for less motion, which is the one fact the row is there to convey. */
+  @media (prefers-reduced-motion: reduce) {
+    .webui-rail-spinner { animation: none; }
+  }
+
+  /* Project / running / unread. Three views of one list rather than three
+   * groupings stacked on it: stacking forces a choice between showing a
+   * session twice and stripping it out of its project, and the counts on the
+   * tabs are only reconcilable against the rows when exactly one view is on
+   * screen. */
+  .webui-rail-view-tabs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    padding: 0 var(--spacing_8);
+    height: 28px;
+    border-bottom: 1px solid var(--border_default);
+  }
+  .webui-rail-view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    /* Bare px, like the badge above: this project carries no font-size or
+     * line-height tokens, so a var() here would resolve to nothing and the
+     * tab would fall back to the 16px body size the rail does not use. */
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text_default_tertiary);
+    cursor: pointer;
+  }
+  .webui-rail-view-tab[aria-selected="true"] {
+    color: var(--text_default_primary);
+    font-weight: 500;
+  }
+  .webui-rail-view-tab:hover {
+    color: var(--text_default_primary);
+  }
+  /* The count is the reason to glance at the tab rather than open it, so it
+   * stays legible at rest instead of only on hover. Zero is drawn, not
+   * hidden: "0 running" is an answer, and hiding it would make the tab look
+   * broken while a turn is being written. */
+  .webui-rail-view-count {
+    display: inline-flex;
+    min-width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .webui-rail-view-tab[aria-selected="true"] .webui-rail-view-count {
+    background-color: var(--bg_interaction_primary_default);
+    color: var(--text_default_primary);
+  }
+
+  /* Turns that finished while the user was elsewhere. The red is the
+   * unread-count convention every messenger has trained people on, and it is
+   * worth being explicit that this is the one place the rail uses a danger
+   * colour without meaning danger: a finished turn is not an error, and the
+   * badge never sits next to a failure state. */
+  .webui-rail-unread-badge {
+    min-width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    padding: 0 3px;
+    border-radius: 7px;
+    background-color: var(--bg_interaction_danger_primary_default);
+    color: var(--text_default_inverted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    text-align: center;
+  }
+
   /* The desktop home rail is project-first. A project row uses the same quiet
    * navigation treatment as the fixed rows, but keeps the folder glyph and
    * label aligned as one navigation target. */

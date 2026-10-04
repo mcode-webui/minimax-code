@@ -86,6 +86,7 @@ import type {
 import { formatUsageResetLabel } from "./UserMenu.js";
 import { WebuiGoalBanner } from "./GoalBanner.js";
 import { WebuiInteractionPanel } from "./InteractionPanel.js";
+import { WebuiQueuePanel } from "./QueuePanel.js";
 import {
   WebuiModelPicker,
   type WebuiModelPickerDraft,
@@ -1962,44 +1963,14 @@ export function WebuiComposer({
           interactionError={interactionError}
         />
       ) : null}
-      {queuePaused && sessionId ? (
-        <span
-          role="status"
-          className="text-text_default_secondary text-size_12"
-        >
-          队列已暂停
-        </span>
-      ) : null}
-      {queueItems.length > 0 ? (
-        <section
-          className="mt-3 flex w-full flex-col gap-2"
-          data-webui-queue="true"
-        >
-          <strong className="text-size_14">
-            Waiting messages ({queueItems.length})
-          </strong>
-          {queueItems.map((item) => (
-            <article
-              key={item.itemId}
-              className="webui-card flex items-center gap-2 p-spacing_12"
-            >
-              <span className="min-w-0 flex-1 truncate text-size_14">
-                {item.content || item.itemId}
-              </span>
-              {item.status === "queued" ? (
-                <button
-                  type="button"
-                  className="webui-button-secondary text-size_12"
-                  onClick={() => void handleDeleteQueueItem(item)}
-                  data-webui-remove-queue-item={item.itemId}
-                >
-                  Remove
-                </button>
-              ) : null}
-            </article>
-          ))}
-        </section>
-      ) : null}
+      {/* The pause notice was gated on a session while the queue list was not,
+          and the component keeps that split: there is no queue to pause before
+          a session exists, but the list is a pure function of `queueItems`. */}
+      <WebuiQueuePanel
+        items={queueItems}
+        paused={sessionId ? queuePaused : false}
+        onRemove={(item) => void handleDeleteQueueItem(item)}
+      />
       {stream.refusal ? (
         <OutputError
           variant="output_error"

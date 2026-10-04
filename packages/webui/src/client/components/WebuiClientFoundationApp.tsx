@@ -67,12 +67,14 @@ import { WebuiComposer } from "./SessionComposer.js";
 import { WebuiSessionTranscript } from "./SessionTranscript.js";
 import {
   WebuiProjectList,
+  filterWebuiSessionsByQuery,
   sessionHash,
   sessionLabel,
 } from "./SessionRail.js";
 import { RailRow } from "./RailRow.js";
 import {
   WebuiIconBrand,
+  WebuiIconContextExport,
   WebuiIconNewTask,
   WebuiIconPlugins,
   WebuiIconRemote,
@@ -96,6 +98,21 @@ import type {
 } from "../projection/workspace-progress.js";
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
+import {
+  applyWebuiActiveTurn,
+  applyWebuiUnreadCounts,
+  initialWebuiSessionActivity,
+  markWebuiSessionRead,
+  reduceWebuiSessionActivity,
+  seedWebuiSessionActivity,
+  type WebuiSessionActivityMap,
+} from "../session-activity.js";
+import {
+  readWebuiUnreadCounts,
+  writeWebuiUnreadCounts,
+} from "../session-unread.js";
+import { startWebuiSessionTransferDownload } from "../session-transfer-download.js";
+import { importWebuiSessionFile } from "../session-import.js";
 import {
   readTeamModeOff,
   readTeamModeSessionChoices,
@@ -591,6 +608,48 @@ export function WebuiClientFoundationApp(
     if (!text || typeof navigator === "undefined" || !navigator.clipboard) return;
     void navigator.clipboard.writeText(text);
   };
+  const handleExportSession = (session: WebuiClientSession) => {
+    // The file comes from `GET /session-transfer`, not from walking the
+    // message pages here: that route is the one `POST /session-import` accepts,
+    // and a browser-assembled file carries the display layer only. See
+    // `session-transfer-download.ts` for why this is a navigation.
+    try {
+      startWebuiSessionTransferDownload(session.sessionId);
+    } catch (reason: unknown) {
+      setPageError(reason instanceof Error ? reason.message : String(reason));
+    }
+  };
+  const handleSessionImportPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Reset first: picking the same file twice has to fire `change` again, and
+    // the element keeps its value otherwise.
+    event.target.value = "";
+    if (!file) return;
+    setSessionImportBusy(true);
+    void (async () => {
+      try {
+        const result = await importWebuiSessionFile(file, {
+          // The caller's context, never the file's session block: a downloaded
+          // file must not be able to name the working directory.
+          agentName: "main",
+          workspaceDir: selectedSession?.workspaceDir,
+        });
+        await refreshRail();
+        setSelectedSessionId(result.sessionId);
+        if (typeof window !== "undefined") {
+          window.history.replaceState(
+            null,
+            "",
+            `${window.location.pathname}${window.location.search}${sessionHash(result.sessionId)}`,
+          );
+        }
+      } catch (reason: unknown) {
+        setPageError(reason instanceof Error ? reason.message : String(reason));
+      } finally {
+        setSessionImportBusy(false);
+      }
+    })();
+  };
   const handleDeleteSession = (session: WebuiClientSession) => {
     if (!deleteSession) return;
     void deleteSession({ id: session.sessionId })
@@ -765,12 +824,199 @@ export function WebuiClientFoundationApp(
     ? teamModeChoices[selectedSessionId] ?? teamModeOff
     : teamModeOff;
   const [railCollapsed, setRailCollapsed] = useState(false);
+  // Rail session search. `railSearchOpen` mirrors whether the input is
+  // showing; `railSearchQuery` is the live filter. The query filters only the
+  // rail's rendered list — lookups such as the selected-session resolution and
+  // the composer's session switcher keep reading the unfiltered page, so a
+  // session selected before the search can still be resolved and reopened.
+  const [railSearchOpen, setRailSearchOpen] = useState(false);
+  const [railSearchQuery, setRailSearchQuery] = useState("");
+  const railSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const sessionImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [sessionImportBusy, setSessionImportBusy] = useState(false);
+  const openRailSearch = useCallback(() => {
+    setRailSearchOpen(true);
+    // The input mounts in the same commit as the state flip, so focus has to
+    // wait a frame for the ref to resolve.
+    requestAnimationFrame(() => railSearchInputRef.current?.focus());
+  }, []);
+  const closeRailSearch = useCallback(() => {
+    setRailSearchOpen(false);
+    setRailSearchQuery("");
+  }, []);
+  const railPage = useMemo(
+    () =>
+      railSearchQuery.trim()
+        ? { ...page, sessions: filterWebuiSessionsByQuery(page.sessions, railSearchQuery) }
+        : page,
+    [page, railSearchQuery],
+  );
+  // Child sessions live on the tree page rather than the flat page, so the
+  // query has to be applied there too or a match on a child would not show.
+  // A node whose children are all filtered out is dropped, and a tree that
+  // loses every node falls back to the flat list rather than rendering empty.
+  const railTreePage = useMemo(() => {
+    if (treePage.sessions.length === 0) return undefined;
+    if (!railSearchQuery.trim()) return treePage;
+    const nodes = treePage.sessions
+      .map((node) => ({
+        ...node,
+        childSessions: filterWebuiSessionsByQuery(node.childSessions, railSearchQuery),
+      }))
+      .filter((node) => node.childSessions.length > 0);
+    return nodes.length > 0 ? { ...treePage, sessions: nodes } : undefined;
+  }, [treePage, railSearchQuery]);
   const pluginManagementArea = webuiPluginManagementArea(shellSurface);
   const pluginManagementOpen = isPluginManagementSurface(shellSurface);
   const openPluginManagement = useCallback((area: WebuiPluginManagementArea) => {
     dispatchShellSurface({ type: "open-plugin-management", area });
   }, [dispatchShellSurface]);
   const [workspacePanelStates, setWorkspacePanelStates] = useState<WorkspacePanelSessionStates>(() => new Map());
+  // ---- Rail activity: which sessions are running, and when each last moved.
+  //
+  // The runtime runs sessions in parallel -- `queue.dispatcher.ts` keeps one
+  // drain loop per session id, and a submitted turn is not tied to the socket
+  // that submitted it -- so work keeps going after the user switches away.
+  // Nothing showed that: every row looked the same whether its turn finished a
+  // minute ago or never started.
+  //
+  // Three inputs, none sufficient alone. The list seeds first-paint times; the
+  // global event stream keeps them current (it carries no session id, so one
+  // subscription covers every row); and `getActiveTurn` repairs what the stream
+  // never delivered.
+  const [sessionActivity, setSessionActivity] = useState<WebuiSessionActivityMap>(
+    initialWebuiSessionActivity,
+  );
+  // Flips once the stored counts have been read back, and is the only thing that
+  // stands between the first render and a write of the empty map. See the
+  // persist effect below for why that write is destructive.
+  const [unreadCountsReady, setUnreadCountsReady] = useState(false);
+  const [activityNow, setActivityNow] = useState(() => Date.now());
+  // Bumped on reconnect to re-probe: the events that would have told us a turn
+  // started were missed while the stream was down, and the stream cannot
+  // replay them. `SessionComposer` closes the same gap the same way.
+  const [activityProbeNonce, setActivityProbeNonce] = useState(0);
+  const watchEvents = transport?.watchEvents;
+  const getActiveTurn = transport?.getActiveTurn;
+
+  // The subscription reads the open session through a ref rather than closing
+  // over it, and this is the reason the effect below depends on `watchEvents`
+  // alone.
+  //
+  // Re-subscribing on every session switch tears the old subscription down and
+  // builds a new one, and the events that arrive in between belong to neither:
+  // the teardown has already run, the new listener is not attached yet. That
+  // window is exactly what this layer exists to catch -- a turn finishing in
+  // another session while the user clicks through the rail -- and losing it
+  // is how a running session looks idle and a finished one looks silent.
+  //
+  // A ref is the standard answer, and the objection that made the dependency
+  // look necessary does not survive it: a closure captures a value once, but
+  // `ref.current` is reassigned on every render, so the one long-lived
+  // callback always reads the current session. This file already uses that
+  // shape for `composerKeyRef` two hundred lines up.
+  const selectedSessionIdRef = useRef(selectedSessionId);
+  selectedSessionIdRef.current = selectedSessionId;
+  useEffect(() => {
+    if (!watchEvents) return;
+    return watchEvents(
+      (event) =>
+        setSessionActivity((current) =>
+          reduceWebuiSessionActivity(current, event, {
+            activeSessionId: selectedSessionIdRef.current,
+          }),
+        ),
+      () => {
+        setActivityNow(Date.now());
+        setActivityProbeNonce((nonce) => nonce + 1);
+      },
+    );
+  }, [watchEvents]);
+
+  // Persist the counts. Without this the badge is worse than none: a session
+  // that ran four turns would go clean on reload and the only thing the user
+  // would conclude is that it never ran.
+  //
+  // Gated on `unreadCountsReady`, and the gate is load-bearing. Effects run in
+  // declaration order within a commit, so an ungated writer placed above the
+  // restore would serialise the empty map it sees on the first render and
+  // `removeItem` the key -- and the restore below would then read nothing and
+  // put the badge back only until the next reload. The count would survive
+  // exactly zero reloads, which is the case persistence exists for.
+  useEffect(() => {
+    if (!unreadCountsReady) return;
+    const counts: Record<string, number> = {};
+    for (const [sessionId, entry] of Object.entries(sessionActivity)) {
+      if (entry.unread && entry.unread > 0) counts[sessionId] = entry.unread;
+    }
+    writeWebuiUnreadCounts(counts);
+  }, [sessionActivity, unreadCountsReady]);
+
+  // Opening a session is what marks it read. Keyed on the id rather than run on
+  // mount, so arriving *at* a session from a link does not clear the badge the
+  // user was about to see on the row they came from.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    setSessionActivity((current) => {
+      const next = markWebuiSessionRead(current, selectedSessionId);
+      return next;
+    });
+  }, [selectedSessionId]);
+
+  // The age labels are a function of the clock, not of the data. Without a tick
+  // they would freeze at whatever they read when the last event arrived, and
+  // every row would agree on how long ago "now" was.
+  useEffect(() => {
+    const timer = setInterval(() => setActivityNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Two effects where there was one, because the two halves have different
+  // triggers and merging them made the restore a per-render operation.
+  //
+  // `railPage` is a fresh object on every refresh and on every search
+  // keystroke, so an effect depending on it re-ran constantly -- and each run
+  // re-read storage and re-applied it over the live counts. A badge that had
+  // counted three turns would drop back to whatever was last written, and a
+  // failed write (quota, private mode) makes the stored value permanently
+  // stale, so the badge would shrink every time the user typed in the search
+  // box. Seeding genuinely needs the page; restoring does not.
+  useEffect(() => {
+    setSessionActivity((current) =>
+      seedWebuiSessionActivity(current, railPage.sessions),
+    );
+  }, [railPage]);
+
+  useEffect(() => {
+    setSessionActivity((current) =>
+      applyWebuiUnreadCounts(current, readWebuiUnreadCounts(), selectedSessionId),
+    );
+    // Flipped after the restore is queued, so the writer's very next run sees a
+    // map that has the counts in it rather than the empty one it started from.
+    setUnreadCountsReady(true);
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (!getActiveTurn) return;
+    let cancelled = false;
+    // Once per list change, for every visible row. Not once per event: the
+    // stream already answers for turns it saw, and the reconnect nonce is the
+    // only other moment a re-probe is warranted.
+    for (const session of railPage.sessions) {
+      void getActiveTurn({ id: session.sessionId })
+        .then((active) => {
+          if (cancelled) return;
+          setSessionActivity((current) =>
+            applyWebuiActiveTurn(current, session.sessionId, active, Date.now()),
+          );
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [getActiveTurn, railPage, activityProbeNonce]);
+
   const sessionPanelState = selectedSessionId
     ? getWorkspacePanelSessionState(workspacePanelStates, selectedSessionId)
     : initialWorkspacePanelSessionState;
@@ -820,11 +1066,15 @@ export function WebuiClientFoundationApp(
           <button
             type="button"
             data-webui-search="true"
-            data-webui-placeholder-chrome="search"
-            aria-disabled="true"
+            aria-expanded={railSearchOpen}
+            aria-controls="webui-rail-search"
             aria-label="搜索"
-            disabled
-            className="pointer-events-auto flex size-[30px] cursor-default items-center justify-center rounded-lg text-text_default_tertiary opacity-70"
+            onClick={() => (railSearchOpen ? closeRailSearch() : openRailSearch())}
+            className={`pointer-events-auto flex size-[30px] items-center justify-center rounded-lg text-text_default_tertiary ${
+              railSearchOpen
+                ? "bg-bg_interaction_tertiary_hover text-text_default_secondary"
+                : "hover:bg-bg_interaction_tertiary_hover"
+            }`}
           >
             <WebuiIconSearch />
           </button>
@@ -857,7 +1107,60 @@ export function WebuiClientFoundationApp(
                       active={homeMode && !pluginManagementOpen}
                       onSelect={startNewTask}
                     />
+                    {/*
+                      Import is a rail-level action, not a per-session one: it
+                      reads a file and creates the session from it, so there is
+                      no session to hang the menu off yet. The picker is a
+                      hidden input driven from here so the row stays a button.
+                    */}
+                    <input
+                      ref={sessionImportInputRef}
+                      type="file"
+                      accept=".json,application/json"
+                      data-webui-session-import-input="true"
+                      aria-label="导入会话文件"
+                      // The same visually-hidden treatment the composer's
+                      // attachment inputs use. `hidden` would remove the
+                      // element from the accessibility tree and make the
+                      // picker unreachable to anything driving the DOM.
+                      className="webui-composer-hidden-file-input"
+                      onChange={handleSessionImportPicked}
+                    />
+                    <RailRow
+                      label="导入会话"
+                      icon={<WebuiIconContextExport className="flex-shrink-0" />}
+                      active={false}
+                      inert={sessionImportBusy}
+                      onSelect={() => {
+                        sessionImportInputRef.current?.click();
+                      }}
+                    />
                   </div>
+
+                  {railSearchOpen ? (
+                    <div
+                      className="flex-shrink-0 px-4 pb-px pt-1"
+                      data-webui-rail-fixed-row="true"
+                    >
+                      <input
+                        id="webui-rail-search"
+                        ref={railSearchInputRef}
+                        type="text"
+                        role="searchbox"
+                        data-webui-rail-search-input="true"
+                        aria-label="搜索会话"
+                        placeholder="搜索会话"
+                        value={railSearchQuery}
+                        onChange={(event) => setRailSearchQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          event.preventDefault();
+                          closeRailSearch();
+                        }}
+                        className="w-full rounded-[8px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none placeholder:text-text_default_tertiary focus:border-stroke_strong"
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="relative min-h-0 flex-1">
                     <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
@@ -869,12 +1172,15 @@ export function WebuiClientFoundationApp(
                       </div>
 
                       <WebuiProjectList
-                        page={page}
-                        treePage={treePage.sessions.length > 0 ? treePage : undefined}
+                        page={railPage}
+                        treePage={railTreePage}
                         projectRecords={projectRecords}
+                        query={railSearchQuery}
                         loading={loading}
                         onLoadMore={loadMore}
                         selectedSessionId={selectedSessionId}
+                        activity={sessionActivity}
+                        now={activityNow}
                         onProjectSelect={setNewTaskWorkspaceDir}
                         onCreateTaskInProject={(project) => startNewTask(project.workspaceDir)}
                         error={pageError}
@@ -889,8 +1195,18 @@ export function WebuiClientFoundationApp(
                         onArchiveSession={handleArchiveSession}
                         onForkSession={handleForkSession}
                         onCopySession={handleCopySession}
+                        onExportSession={handleExportSession}
                         onDeleteSession={handleDeleteSession}
                       />
+
+                      {railSearchQuery.trim() && railPage.sessions.length === 0 ? (
+                        <p
+                          data-webui-rail-search-empty="true"
+                          className="px-2 py-3 text-sm text-text_default_tertiary"
+                        >
+                          没有匹配的会话
+                        </p>
+                      ) : null}
                     </div>
                     <div
                       className="webui-scroll-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6"

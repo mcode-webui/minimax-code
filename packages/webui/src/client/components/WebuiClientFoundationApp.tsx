@@ -19,6 +19,14 @@ import {
   type ReactElement,
 } from "react";
 import { ArchonShell } from "./ArchonShell.js";
+import {
+  loadWebuiComposerPersisted,
+  migrateWebuiHomeComposerState,
+  recordWebuiInputHistory,
+  saveWebuiComposerPersisted,
+  WEBUI_COMPOSER_HOME_KEY,
+  type WebuiComposerPersisted,
+} from "../projection/composer-history.js";
 import { Composer } from "./Composer.js";
 import { GreetingSkeleton } from "./TranscriptSkeletons.js";
 import {
@@ -279,7 +287,63 @@ export function WebuiClientFoundationApp(
   useEffect(() => {
     dispatchShellSurface({ type: "show-conversation" });
   }, [dispatchShellSurface, selectedSessionId]);
-  const [draft, setDraft] = useState("");
+  // Composer input history + per-session drafts (roadmap Module B:
+  // 输入历史/草稿). One persisted store keyed by session (home has its own
+  // slot), so a draft survives both a session switch and a reload, and ↑ in
+  // the composer recalls that session's submitted inputs. The store is
+  // best-effort: `localStorage` unavailability degrades to memory.
+  const [composerStore, setComposerStore] = useState<WebuiComposerPersisted>(
+    () => loadWebuiComposerPersisted(),
+  );
+  const composerKey = selectedSessionId ?? WEBUI_COMPOSER_HOME_KEY;
+  const composerKeyRef = useRef(composerKey);
+  composerKeyRef.current = composerKey;
+  const draft = composerStore.drafts[composerKey] ?? "";
+  // One updater for every composer-store write: apply the change, persist,
+  // and keep the named slot alive through the prune. `keepKeys` matters
+  // because the store's prune keeps the newest-inserted slots, and an
+  // active session's slot does not re-insert merely by being written to.
+  const applyComposerStore = useCallback(
+    (
+      update: (current: WebuiComposerPersisted) => WebuiComposerPersisted,
+      keepKey: string,
+    ) => {
+      setComposerStore((current) => {
+        const state = update(current);
+        if (state === current) return current;
+        saveWebuiComposerPersisted(state, undefined, [keepKey]);
+        return state;
+      });
+    },
+    [],
+  );
+  const setDraft = useCallback(
+    (next: string) => {
+      applyComposerStore((current) => {
+        const drafts = { ...current.drafts };
+        if (next) drafts[composerKeyRef.current] = next;
+        else delete drafts[composerKeyRef.current];
+        return { ...current, drafts };
+      }, composerKeyRef.current);
+    },
+    [applyComposerStore],
+  );
+  // Recording rides the same store: a committed submission lands in the
+  // current slot's history (home while no session exists yet; the created
+  // session inherits the entry below in `handleSessionCreated`).
+  const recordComposerInput = useCallback(
+    (text: string) => {
+      applyComposerStore((current) => {
+        const key = composerKeyRef.current;
+        const history = {
+          ...current.history,
+          [key]: recordWebuiInputHistory(current.history[key] ?? [], text),
+        };
+        return { ...current, history };
+      }, composerKeyRef.current);
+    },
+    [applyComposerStore],
+  );
   const [teamModeOff, setTeamModeOff] = useState(readTeamModeOff);
   const [teamModeChoices, setTeamModeChoices] =
     useState<TeamModeSessionChoices>(readTeamModeSessionChoices);
@@ -685,6 +749,15 @@ export function WebuiClientFoundationApp(
     // carry it (and the sending flag) across the view switch so the reply
     // stays on screen, and leave home clean.
     migrateSessionRuntimeState(HOME_SESSION_RUNTIME_KEY, id);
+    // The composer store follows the same home → session migration: the
+    // input just submitted was recorded under the home slot, and the new
+    // session's history (and any unsent draft) should own it from here on.
+    // `keepKey` is the NEW session id — `composerKeyRef` still reads "home"
+    // until the next render, and home is being deleted anyway.
+    applyComposerStore(
+      (current) => migrateWebuiHomeComposerState(current, id),
+      id,
+    );
     setSelectedSessionId(id);
     writeTeamModeSessionChoice(id, teamModeOff);
     setTeamModeChoices((current) => ({ ...current, [id]: teamModeOff }));
@@ -1286,6 +1359,8 @@ export function WebuiClientFoundationApp(
                     getAccountStatus={transport?.getAccountStatus}
                     draft={draft}
                     onDraftChange={setDraft}
+                    inputHistory={composerStore.history[composerKey] ?? []}
+                    onInputSubmitted={recordComposerInput}
                     teamModeOff={composerTeamModeOff}
                     sessions={page.sessions}
                     workspaceDir={selectedSession?.workspaceDir ?? newTaskWorkspaceDir}

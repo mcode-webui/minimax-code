@@ -556,7 +556,12 @@ describe("WebUI Markdown", () => {
     expect(html).toContain("webui-code-block");
     expect(html).toContain('data-language="js"');
     expect(html).toContain("<pre");
-    expect(html).toContain("const a = 1");
+    // Tag-stripped, because a registered language is now syntax-highlighted
+    // (SPEC-C C-1) and the text arrives wrapped in `hljs-*` spans. The claim
+    // under test is that the code text survives rendering intact, not that it
+    // survives as one unbroken run of characters in the serialised HTML — the
+    // two are different claims, and only the first is true of a highlighter.
+    expect(html.replace(/<[^>]*>/g, "")).toContain("const a = 1");
     expect(html).not.toContain("dangerously");
   });
 
@@ -580,7 +585,7 @@ describe("WebUI Markdown", () => {
     expect(html).toContain("webui-code-block");
     expect(html).toContain('data-language="js"');
     expect(html).toContain("<pre");
-    expect(html).toContain("const a");
+    expect(html.replace(/<[^>]*>/g, "")).toContain("const a");
     expect(html).not.toContain("dangerously");
   });
 

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { FSWatcher } from 'node:fs';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -47,8 +47,19 @@ describe('createWorkspaceGitWatcher', () => {
 });
 
 async function createWorkspace(): Promise<string> {
-  const workspace = await mkdtemp(join(tmpdir(), 'workspace-git-watcher-'));
-  temporaryDirectories.push(workspace);
+  const created = await mkdtemp(join(tmpdir(), 'workspace-git-watcher-'));
+  temporaryDirectories.push(created);
+  // macOS: `tmpdir()` is `/var/folders/...` and `/var` is a symlink to
+  // `/private/var`. `mkdtemp` hands back the UNRESOLVED path; the watcher
+  // realpaths before it watches, which is the correct behaviour — a filesystem
+  // watch on the symlink spelling is not reliably the same inode.
+  //
+  // Comparing the unresolved path against the resolved one is not only a
+  // failing assertion: the helper closure picks the listener with
+  // `directory === workspace`, so that comparison never matched, the listener
+  // stayed undefined, and the `?.()` call after it silently did nothing. The
+  // test was not failing because of a path bug. It was passing over nothing.
+  const workspace = await realpath(created);
   await mkdir(join(workspace, '.git', 'refs', 'heads'), { recursive: true });
   await mkdir(join(workspace, '.git', 'info'), { recursive: true });
   return workspace;

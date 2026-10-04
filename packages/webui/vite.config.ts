@@ -24,6 +24,22 @@ const workspaceAlias = packageExportEntries(repoRoot, packageRoots).map(
   }),
 );
 
+const ASSET_CONTENT_TYPES: Record<string, string> = {
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+};
+
+function assetContentTypeFor(relative: string): string | undefined {
+  const dot = relative.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  return ASSET_CONTENT_TYPES[relative.slice(dot).toLowerCase()];
+}
+
 function webuiRuntimePlugin() {
   return {
     name: "webui-runtime-config-and-assets",
@@ -44,7 +60,20 @@ function webuiRuntimePlugin() {
       middlewares: { use: (handler: (...args: never[]) => void) => void };
     }) {
       server.middlewares.use(async (request, response, next) => {
-        const pathname = request.url?.split("?", 1)[0] ?? "";
+        const [pathname, query = ""] = request.url?.split("?", 2) ?? [""];
+
+        // Requests carrying a query (`?import` and friends) belong to Vite's
+        // transform pipeline: a JSON asset imported from the module graph is
+        // requested as `...json?import` and must come back as a JavaScript
+        // module with a proper MIME type. Serving the raw bytes here instead
+        // ships no Content-Type at all, the browser's strict module MIME
+        // check fails the import, and the whole dev page fails to mount —
+        // the dev-mode symptom behind roadmap item B-2 (slash palette "does
+        // not open in dev").
+        if (query) {
+          next();
+          return;
+        }
         if (pathname === "/styles.css") {
           try {
             response.statusCode = 200;
@@ -78,6 +107,14 @@ function webuiRuntimePlugin() {
           const file = await readFile(path.join(sourceRoot, relative));
           response.statusCode = 200;
           response.setHeader("Cache-Control", "no-store");
+          // The middleware answers ahead of Vite's static handler, so the
+          // Content-Type Vite would have set has to be set here too; without
+          // it fonts and JSON arrive as `application/octet-stream`-ish
+          // unknown types and some consumers reject them.
+          response.setHeader(
+            "Content-Type",
+            assetContentTypeFor(relative) ?? "application/octet-stream",
+          );
           response.end(file);
         } catch {
           next();

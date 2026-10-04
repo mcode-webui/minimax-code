@@ -12,6 +12,8 @@
 // directly at process start.
 
 import { posix as pathPosix } from "node:path";
+import { stat } from "node:fs/promises";
+import path from "node:path";
 import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
 import type {
   WebuiHarnessPort,
@@ -422,7 +424,24 @@ export function createHarnessPortFromHost(
       return { success: await requireCliService(host).clearGoal(request.sessionId) };
     },
     async listWorkspaceFileTree(request) {
-      return requireCliService(host).listWorkspaceFileTree!(request) as Promise<readonly WebuiWorkspaceFile[]>;
+      const tree = await requireCliService(host).listWorkspaceFileTree!(request) as readonly WebuiWorkspaceFile[];
+      // The runtime reports names and shape but no file facts, while the port
+      // contract now promises `size` and `modifiedAt` for the panel's metadata
+      // column. Statted here because this is the one place that sees both the
+      // tree and the filesystem — extending the runtime would put the change
+      // outside this package, and a tree that silently omits the fields would
+      // leave the column blank rather than failing loudly.
+      return Promise.all(tree.map(async (entry) => {
+        if (entry.type === "directory") return entry;
+        try {
+          const stats = await stat(path.join(request.workspaceDir, entry.path));
+          return { ...entry, size: stats.size, modifiedAt: stats.mtimeMs };
+        } catch {
+          // A file that vanished or is unreadable keeps its entry and loses
+          // only the metadata; dropping it from the tree would be a lie.
+          return entry;
+        }
+      }));
     },
     // Checked rather than asserted: the siblings above use `!` because their
     // runtime capability has shipped, but archive reading and extraction are

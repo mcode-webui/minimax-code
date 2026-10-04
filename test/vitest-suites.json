@@ -284,7 +284,9 @@
       "packages/webui/test/unit/webui-workspace-file-tree.test.tsx",
       "packages/webui/test/unit/webui-workspace-html-preview.test.tsx",
       "packages/webui/test/unit/webui-workspace-canvas.test.tsx",
-      "packages/webui/test/unit/webui-workspace-archive.test.ts"
+      "packages/webui/test/unit/webui-workspace-archive.test.ts",
+      "packages/webui/test/unit/webui-error-boundary.test.tsx",
+      "packages/webui/test/unit/connection-status.test.tsx"
     ]
   }
 }

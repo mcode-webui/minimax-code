@@ -401,6 +401,29 @@ describe("workspace archive extraction", () => {
     expect(exists(path.join(workspace, "..", "escaped.txt"))).toBe(false);
   });
 
+  it("refuses a hostile entry elsewhere in the archive even when a prefix is scoped", async () => {
+    // Scoping the extraction must not become a way to skip a check: a hostile
+    // entry outside the selected directory still refuses the whole operation,
+    // the same as it does when the archive is extracted whole.
+    writeArtifact(
+      "scoped-slip.zip",
+      craftZip([
+        { name: "sub/fine.txt", content: "fine" },
+        { name: "../escaped.txt", content: "pwned" },
+      ]),
+    );
+    await expect(
+      extractWorkspaceArchiveDirectory({
+        workspaceDir: workspace,
+        path: "scoped-slip.zip",
+        destination: "scoped-out",
+        prefix: "sub",
+      }),
+    ).rejects.toThrow(/不安全|越界/);
+    expect(exists(artifactPath("scoped-out"))).toBe(false);
+    expect(exists(path.join(workspace, "..", "escaped.txt"))).toBe(false);
+  });
+
   it("refuses absolute entry names, drive letters and backslash separators", async () => {
     const cases: Readonly<Record<string, RegExp>> = {
       "/etc/passwd": /不安全/,

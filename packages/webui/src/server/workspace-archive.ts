@@ -876,7 +876,13 @@ function listOneLevel(
 function selectForExtraction(contents: ArchiveContents, prefix: string): readonly ArchiveEntry[] {
   if (!prefix) return contents.entries;
   const scope = `${prefix}/`;
-  return contents.entries.filter((entry) => entry.path === prefix || entry.path.startsWith(scope));
+  // An entry with no path is one the reader refused, and it is selected
+  // regardless of the prefix so the pre-flight refuses the whole archive for it.
+  // Scoping it away would make extracting a subdirectory quietly skip a hostile
+  // entry that extracting the root refuses.
+  return contents.entries.filter(
+    (entry) => entry.path === undefined || entry.path === prefix || entry.path.startsWith(scope),
+  );
 }
 
 /**

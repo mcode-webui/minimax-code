@@ -48,6 +48,12 @@ import {
   writeFavoriteModels,
 } from "../projection/model-favorites.js";
 import {
+  hoistRecentModels,
+  readRecentModels,
+  recordRecentModel,
+  writeRecentModels,
+} from "../projection/model-recents.js";
+import {
   isPreview,
   rowClickOutcome,
   type CascadeTier,
@@ -231,6 +237,7 @@ export function WebuiModelMenuList({
   focusedKey,
   favoriteKeys,
   onFocus,
+  onHover,
   onSelect,
   onToggleFavorite,
   onRowMount,
@@ -240,6 +247,16 @@ export function WebuiModelMenuList({
   readonly focusedKey: string | undefined;
   readonly favoriteKeys: ReadonlySet<string>;
   readonly onFocus: (key: string) => void;
+  /**
+   * Open this row's settings fly-out on hover.
+   *
+   * Separate from `onFocus` on purpose. The fly-out only exists once the menu
+   * is on the `settings` tier, so focusing a row alone never showed it: the
+   * pointer had to arrive at a row that was ALREADY describing itself, which
+   * only happened after a click. Hovering a model and getting nothing is the
+   * cascade behaving like a menu that has to be opened before it can be read.
+   */
+  readonly onHover: (key: string) => void;
   readonly onSelect: (model: WebuiModelPickerEntry) => void;
   readonly onToggleFavorite: (key: string) => void;
   /**
@@ -283,7 +300,10 @@ export function WebuiModelMenuList({
                   aria-selected={isSelected}
                   data-focused={isFocused ? "true" : "false"}
                   className="webui-model-option"
-                  onMouseEnter={() => onFocus(key)}
+                  onMouseEnter={() => {
+                    onHover(key);
+                    onFocus(key);
+                  }}
                   onFocus={() => onFocus(key)}
                   onClick={() => onSelect(model)}
                 >
@@ -332,6 +352,7 @@ export function WebuiModelPicker({
   const [tier, setTier] = useState<CascadeTier>("list");
   const [query, setQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
+  const [recentIds, setRecentIds] = useState<readonly string[]>([]);
   const [drafts, setDrafts] = useState<
     Readonly<Record<string, WebuiModelPickerDraft>>
   >({});
@@ -380,6 +401,7 @@ export function WebuiModelPicker({
   useEffect(() => {
     if (!open) return;
     setFavoriteIds(readFavoriteModels());
+    setRecentIds(readRecentModels());
   }, [open]);
 
   const handleToggleFavorite = (key: string) => {
@@ -438,6 +460,14 @@ export function WebuiModelPicker({
   const handleSelectModel = (model: WebuiModelPickerEntry) => {
     const draft = drafts[modelKey(model)] ?? {};
     onSelect(model, draft);
+    // Record the pick so the next open starts where this one ended. The model
+    // is hoisted to the top of 「最近使用」 rather than appended, so the section
+    // keeps answering "what did I use last", not "what have I ever used".
+    setRecentIds((current) => {
+      const next = recordRecentModel(current, modelKey(model));
+      writeRecentModels(next);
+      return next;
+    });
     // The cascade's one asymmetry (see `projection/model-picker-cascade.ts`): a
     // model with settings is not finished when its row is clicked — the
     // selection completes on a context window picked in its fly-out — while a
@@ -450,6 +480,26 @@ export function WebuiModelPicker({
       return;
     }
     setTier("settings");
+  };
+
+  /**
+   * Open the fly-out for whichever row the pointer is over.
+   *
+   * Only for a row that HAS something to configure. Hovering a model with
+   * nothing to configure must not summon an empty panel — a fly-out with no
+   * controls in it is a worse answer than no fly-out, and there is nothing to
+   * learn from it. `rowClickOutcome` is the same "does this model have
+   * settings" test the click path uses, so the two agree by construction rather
+   * than by two lookups that could drift.
+   */
+  const handleHoverRow = (key: string) => {
+    const model = models.find((entry) => modelKey(entry) === key);
+    if (!model) return;
+    setFocusedKey(key);
+    // A row with nothing to configure retracts the fly-out rather than
+    // leaving the previous row's panel up: the panel would then describe a
+    // model the pointer has already left.
+    setTier(rowClickOutcome(model) === "close" ? "list" : "settings");
   };
 
   // Escape backs out ONE tier: the first press retracts the fly-out and leaves
@@ -488,11 +538,50 @@ export function WebuiModelPicker({
   // searching for something else, which is the one thing a search must not do.
   // The other order would also mean the favourites section is rebuilt on every
   // keystroke even when no star is in the result set.
+  //
+  // Recents are hoisted before favourites: the most recently used model is the
+  // one the user is most likely to want back, so it is the first row.
   const groupedModels = useMemo(() => {
     const grouped = groupModelsByProvider(models);
     const filtered = filterModelGroups(grouped, query);
-    return orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
-  }, [models, query, favoriteIds]);
+    const starred = orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
+    return hoistRecentModels(starred, recentIds, modelKey);
+  }, [models, query, favoriteIds, recentIds]);
+
+  /**
+   * Move the focused row by `delta` through the VISIBLE rows, and return where
+   * focus ended up.
+   *
+   * Exists because the menu no longer autofocuses its search field. The arrows
+   * used to work by virtue of that field holding focus; without an explicit
+   * handler here, dropping the autofocus would have silently taken the keyboard
+   * with it, which is the trade this change must not make.
+   *
+   * Walks `groupedModels` rather than the raw catalogue, so a row the search
+   * filter has hidden is not a row the arrow keys can land on. The first
+   * ArrowDown from nothing focused enters at the top, which is what someone
+   * opening a picker and pressing Down expects.
+   *
+   * Lands through the same `handleHoverRow` the pointer uses. Arrowing and
+   * hovering are the same act — "this row is the one I am looking at" — and
+   * routing them separately is how a keyboard user ends up unable to see the
+   * settings a mouse user sees on the same row.
+   */
+  const moveFocusedRow = (delta: number) => {
+    const keys = groupedModels.flatMap((group) => group.models.map(modelKey));
+    if (keys.length === 0) return;
+    const current = focusedKeyString ? keys.indexOf(focusedKeyString) : -1;
+    // From nothing focused, Down enters at the top and Up at the bottom, so
+    // both keys are useful from the start rather than one of them doing
+    // nothing.
+    const next = current === -1
+      ? (delta > 0 ? 0 : keys.length - 1)
+      : Math.min(keys.length - 1, Math.max(0, current + delta));
+    const key = keys[next];
+    if (key === undefined) return;
+    handleHoverRow(key);
+    rowElements.current.get(key)?.scrollIntoView({ block: "nearest" });
+  };
 
   const favoriteKeys = useMemo(
     () => new Set(favoriteIds),
@@ -625,13 +714,30 @@ export function WebuiModelPicker({
                 <input
                   id={searchId}
                   type="search"
-                  autoFocus
                   value={query}
                   placeholder="搜索模型…"
                   aria-label="搜索模型"
                   className="webui-model-search-input"
                   data-webui-model-search="true"
                   onChange={(event) => setQuery(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    // The menu opens WITHOUT focus, so the search field is
+                    // reachable by Tab rather than by autofocus — and autofocus
+                    // is what it used to do. Focusing the field on open is wrong
+                    // for a menu whose first job is picking from a short list:
+                    // it drops a caret and a blinking cursor into a text box
+                    // nobody asked to type in, and typing then filters the list
+                    // by accident.
+                    //
+                    // "No autofocus" must not mean "no keyboard", so the arrows
+                    // that used to work by virtue of the field holding focus now
+                    // work here explicitly. Caret movement inside the field is
+                    // left alone: this is a single-line search box, and stealing
+                    // Left/Right would break editing a query.
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    moveFocusedRow(event.key === "ArrowDown" ? 1 : -1);
+                  }}
                 />
               </label>
             </div>
@@ -644,6 +750,7 @@ export function WebuiModelPicker({
                 focusedKey={focusedKeyString || undefined}
                 favoriteKeys={favoriteKeys}
                 onFocus={setFocusedKey}
+                onHover={handleHoverRow}
                 onSelect={handleSelectModel}
                 onToggleFavorite={handleToggleFavorite}
                 onRowMount={(key, element) => {

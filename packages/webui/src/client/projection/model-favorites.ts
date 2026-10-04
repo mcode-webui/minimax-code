@@ -126,12 +126,19 @@ export function writeFavoriteModels(ids: readonly string[]): void {
  * `favoritesLabel` and `idOf` are injected because the caller owns the row's
  * identity: this module deals in opaque strings and never has to agree with
  * `ModelPicker`'s own key format.
+ *
+ * `sectionId` is the one parameter that looks redundant — the favourites
+ * section obviously wants the favourites id — and it exists so a SECOND
+ * hoisted section can reuse this. 「最近使用」 hoists the same way, and two
+ * sections sharing one id would be two React keys on the same string, which
+ * renders as a duplicated or vanished row rather than an error.
  */
 export function orderModelGroups(
   groups: readonly WebuiModelProviderGroup[],
   favoriteIds: readonly string[],
   favoritesLabel: string,
   idOf: (model: WebuiModelProviderGroup["models"][number]) => string,
+  sectionId: string = FAVORITES_SECTION_ID,
 ): readonly WebuiModelProviderGroup[] {
   if (favoriteIds.length === 0) return groups;
   const starredIds = new Set(favoriteIds);
@@ -159,7 +166,7 @@ export function orderModelGroups(
     .filter((group) => group.models.length > 0);
 
   return [
-    { id: FAVORITES_SECTION_ID, label: favoritesLabel, models: starred },
+    { id: sectionId, label: favoritesLabel, models: starred },
     ...rest,
   ];
 }

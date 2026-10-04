@@ -34,14 +34,23 @@ import {
 } from "../projection/thinking-control.js";
 
 /**
- * A brain glyph. Inline SVG rather than an icon-module entry: it is the only
- * place in the shell that draws one, and an icon module export used once is a
- * second thing to keep in step with the design tokens.
+ * A brain glyph.
+ *
+ * The Lucide `brain` outline, at its native 24×24 grid and 2px stroke. It is
+ * inlined rather than pulled from an icon package: this is the only place in
+ * the shell that draws a brain, and a one-off dependency plus a one-off import
+ * is a second thing to keep in step with the design tokens. The path data is
+ * Lucide's, unmodified — an icon redrawn by eye is a different icon, and this
+ * one has to stay recognisable to anyone who has seen it elsewhere.
+ *
+ * `strokeWidth` is the 1.4 the shell's other glyphs use, not Lucide's 2: the
+ * brain is drawn in a 20px box here rather than 24, so the same nominal stroke
+ * would render visibly heavier than the icons beside it.
  */
 function BrainGlyph({ className }: { readonly className?: string }): ReactElement {
   return (
     <svg
-      viewBox="0 0 20 20"
+      viewBox="0 0 24 24"
       aria-hidden="true"
       className={className}
       fill="none"
@@ -50,9 +59,14 @@ function BrainGlyph({ className }: { readonly className?: string }): ReactElemen
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M10 3.5a3 3 0 0 0-3 3 2.5 2.5 0 0 0-1.5 4.4A2.6 2.6 0 0 0 7 15.4a2.4 2.4 0 0 0 3 1.1Z" />
-      <path d="M10 3.5a3 3 0 0 1 3 3 2.5 2.5 0 0 1 1.5 4.4A2.6 2.6 0 0 1 13 15.4a2.4 2.4 0 0 1-3 1.1Z" />
-      <path d="M10 3.5v13" />
+      <path d="M12 18V5" />
+      <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4" />
+      <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
+      <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
+      <path d="M18 18a4 4 0 0 0 2-7.464" />
+      <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
+      <path d="M6 18a4 4 0 0 1-2-7.464" />
+      <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
     </svg>
   );
 }

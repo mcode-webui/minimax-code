@@ -16,6 +16,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # `secrets` cannot be read inside a step's `if:` ("Secrets cannot be
+    # directly referenced in if: conditionals"), so a step cannot be gated on
+    # whether the credential exists without going through a job-level env entry
+    # first. Deriving a flag here keeps the token itself out of the job
+    # environment: it stays on the single step that needs it, below.
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -74,15 +81,14 @@ jobs:
       - name: Inspect package contents
         run: npm pack --dry-run --json "$RUNNER_TEMP/webui-package"
       - name: Publish preview to the npm registry
-        # Publishing needs a registry credential, and this repository carries
-        # none. Without one the publish fails with ENEEDAUTH and takes the whole
-        # job red on every push to `webui` — which buries the part of this job
-        # that is actually worth gating: that the WebUI still packs into a
-        # publishable npm tarball. So the publish is conditional and says so in
-        # the run log, instead of failing at the last step forever. Add
-        # `NPM_TOKEN` to the repository secrets and the preview resumes with no
-        # change here.
-        if: ${{ secrets.NPM_TOKEN != '' }}
+        # This repository carries no Actions secrets, so the publish fails with
+        # ENEEDAUTH and takes the job red on every push to `webui`. That buries
+        # the part of this job worth gating: that the WebUI still packs into a
+        # publishable npm tarball, which the two steps above keep proving on
+        # every push. Skipping the one step that cannot work here, and saying so
+        # in the run log, keeps that signal readable. Add `NPM_TOKEN` to the
+        # repository secrets and the preview resumes with no change here.
+        if: ${{ env.HAS_NPM_TOKEN == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -96,7 +102,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Report the skipped preview
-        if: ${{ secrets.NPM_TOKEN == '' }}
+        if: ${{ env.HAS_NPM_TOKEN != 'true' }}
         run: |
           echo "::warning::NPM_TOKEN is not configured, so no preview was published."
           echo "::warning::The package was still built and inspected above; only the registry write was skipped."

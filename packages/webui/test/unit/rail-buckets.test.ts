@@ -46,14 +46,15 @@ const ids = (list: readonly WebuiClientSession[]): string[] =>
   list.map((entry) => entry.sessionId);
 
 const tab = (view: WebuiRailView) =>
-  selectWebuiRailViewTabs(SESSIONS, BUSY).find((entry) => entry.view === view);
+  selectWebuiRailViewTabs(SESSIONS, BUSY, {}).find((entry) => entry.view === view);
 
 describe("selectWebuiRailViewTabs", () => {
-  it("offers the three views, projects first", () => {
-    expect(selectWebuiRailViewTabs(SESSIONS, BUSY).map((entry) => entry.view)).toEqual([
+  it("offers the four views, projects first", () => {
+    expect(selectWebuiRailViewTabs(SESSIONS, BUSY, {}).map((entry) => entry.view)).toEqual([
       "projects",
       "running",
       "unread",
+      "stars",
     ]);
   });
 
@@ -71,7 +72,7 @@ describe("selectWebuiRailViewTabs", () => {
   });
 
   it("counts zero rather than going negative or blank when nothing is running", () => {
-    const idle = selectWebuiRailViewTabs(SESSIONS, {});
+    const idle = selectWebuiRailViewTabs(SESSIONS, {}, {});
     expect(idle.find((entry) => entry.view === "running")?.count).toBe(0);
     expect(idle.find((entry) => entry.view === "unread")?.count).toBe(0);
   });
@@ -81,11 +82,15 @@ describe("selectWebuiRailViewTabs", () => {
   });
 
   it("survives having no activity map at all", () => {
-    const tabs = selectWebuiRailViewTabs(SESSIONS, undefined);
+    const tabs = selectWebuiRailViewTabs(SESSIONS, undefined, {});
     expect(tabs.find((entry) => entry.view === "running")?.count).toBe(0);
     expect(tabs.find((entry) => entry.view === "unread")?.count).toBe(0);
+    // And the favourites view has to survive it too, which is the whole reason
+    // its predicate never reads the activity map: a star is a decision the
+    // reader made, not something the runtime has to have observed.
+    expect(tabs.find((entry) => entry.view === "stars")?.count).toBe(0);
     expect(tabs[0]?.count).toBe(SESSIONS.length);
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
   });
 });
 
@@ -93,13 +98,13 @@ describe("filterWebuiRailViewSessions", () => {
   it("keeps every session in the project view", () => {
     // The project view is the existing rail, unchanged. If this ever filtered,
     // sessions would silently disappear from the default view.
-    expect(filterWebuiRailViewSessions(SESSIONS, BUSY, "projects")).toHaveLength(
+    expect(filterWebuiRailViewSessions(SESSIONS, BUSY, "projects", {})).toHaveLength(
       SESSIONS.length,
     );
   });
 
   it("keeps only the running sessions", () => {
-    expect(ids(filterWebuiRailViewSessions(SESSIONS, BUSY, "running"))).toEqual([
+    expect(ids(filterWebuiRailViewSessions(SESSIONS, BUSY, "running", {}))).toEqual([
       "mvs_c",
       "mvs_a",
     ]);
@@ -109,7 +114,7 @@ describe("filterWebuiRailViewSessions", () => {
     // A session already listed under "running" is not unread *to act on* --
     // it is mid-answer. Listing it twice in two views is the duplication this
     // whole tab switch exists to avoid.
-    expect(ids(filterWebuiRailViewSessions(SESSIONS, BUSY, "unread"))).toEqual(["mvs_b"]);
+    expect(ids(filterWebuiRailViewSessions(SESSIONS, BUSY, "unread", {}))).toEqual(["mvs_b"]);
   });
 
   it("orders a view by last activity, newest first", () => {
@@ -126,7 +131,7 @@ describe("filterWebuiRailViewSessions", () => {
       mvs_fresh: { lastActivityAt: 900, busy: { turnId: "t2", busyReason: "turn" } },
     };
     const sessions = [session("mvs_slow", 900), session("mvs_fresh", 100)];
-    expect(ids(filterWebuiRailViewSessions(sessions, activity, "running"))).toEqual([
+    expect(ids(filterWebuiRailViewSessions(sessions, activity, "running", {}))).toEqual([
       "mvs_fresh",
       "mvs_slow",
     ]);
@@ -146,9 +151,9 @@ describe("filterWebuiRailViewSessions", () => {
       ...BUSY,
       mvs_gone: { lastActivityAt: 9_999, unread: 7, busy: { turnId: "t9", busyReason: "turn" } },
     };
-    expect(selectWebuiRailViewTabs(SESSIONS, stale).find((e) => e.view === "running")?.count).toBe(2);
-    expect(selectWebuiRailViewTabs(SESSIONS, stale).find((e) => e.view === "unread")?.count).toBe(1);
-    expect(ids(filterWebuiRailViewSessions(SESSIONS, stale, "running"))).toEqual([
+    expect(selectWebuiRailViewTabs(SESSIONS, stale, {}).find((e) => e.view === "running")?.count).toBe(2);
+    expect(selectWebuiRailViewTabs(SESSIONS, stale, {}).find((e) => e.view === "unread")?.count).toBe(1);
+    expect(ids(filterWebuiRailViewSessions(SESSIONS, stale, "running", {}))).toEqual([
       "mvs_c",
       "mvs_a",
     ]);
@@ -157,14 +162,14 @@ describe("filterWebuiRailViewSessions", () => {
   it("never mutates the input order or the input array", () => {
     const input = [...SESSIONS];
     const before = ids(input);
-    filterWebuiRailViewSessions(input, BUSY, "running");
-    filterWebuiRailViewSessions(input, BUSY, "unread");
+    filterWebuiRailViewSessions(input, BUSY, "running", {});
+    filterWebuiRailViewSessions(input, BUSY, "unread", {});
     expect(ids(input)).toEqual(before);
   });
 
   it("returns an empty list rather than throwing for a view nothing matches", () => {
     expect(
-      filterWebuiRailViewSessions([session("mvs_x", 1)], {}, "unread"),
+      filterWebuiRailViewSessions([session("mvs_x", 1)], {}, "unread", {}),
     ).toEqual([]);
   });
 });
@@ -189,7 +194,7 @@ describe("the rail view tabs", () => {
       }),
     );
 
-  it("offers all three tabs, with the project view selected by default", () => {
+  it("offers all four tabs, with the project view selected by default", () => {
     const html = render();
     expect(html).toMatch(/data-webui-rail-view="projects"/u);
     expect(html).toMatch(/data-webui-rail-view="running"/u);
@@ -290,17 +295,20 @@ describe("the rail view tabs", () => {
     // sessions; there are just none of the kind this tab collects, and the
     // reader needs to know which kind they emptied.
     const labels = new Map(
-      selectWebuiRailViewTabs(SESSIONS, BUSY).map((entry) => [entry.view, entry.emptyLabel]),
+      selectWebuiRailViewTabs(SESSIONS, BUSY, {}).map((entry) => [entry.view, entry.emptyLabel]),
     );
     expect(labels.get("running")).toBe("没有运行中的会话");
     expect(labels.get("unread")).toBe("没有未读会话");
-    expect(new Set(labels.values()).size).toBe(3);
+    expect(labels.get("stars")).toBe("没有收藏的会话");
+    // Every tab has to say something different when it is empty, or the reader
+    // cannot tell which one they emptied.
+    expect(new Set(labels.values()).size).toBe(4);
   });
 
   it("keeps no English in a Chinese rail", () => {
     // The rail is Chinese throughout. An untranslated string here is how
     // "Waiting messages" and "No sessions yet" got shipped in the first place.
-    for (const entry of selectWebuiRailViewTabs(SESSIONS, BUSY)) {
+    for (const entry of selectWebuiRailViewTabs(SESSIONS, BUSY, {})) {
       expect(entry.label, entry.view).not.toMatch(/[A-Za-z]{2,}/u);
       expect(entry.emptyLabel, entry.view).not.toMatch(/[A-Za-z]{2,}/u);
     }

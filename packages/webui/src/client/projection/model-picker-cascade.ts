@@ -63,36 +63,16 @@ export function rowHasFlyout(model: WebuiModelPickerEntry | undefined): boolean 
   return modelHasSettings(model);
 }
 
-/** What committing the THINKING control does to the surface. */
-export type ThinkingCommitOutcome = "close" | "keep-open";
-
 /**
- * What committing the THINKING control does.
+ * True when the fly-out describes a model other than the active one.
  *
- * Records and keeps the fly-out open. Closing here would make it impossible to
- * set a level and a window in one visit, which is the ordinary thing a user does
- * when they open a model's settings at all — the context sizes are listed in the
- * same surface, so the two controls are meant to be adjusted together.
- *
- * Choosing a window behaves the other way: that is the commitment that closes
- * the picker. The asymmetry is the reference's completion rule, and it is why
- * this is a named outcome rather than two call sites deciding independently.
- */
-export function thinkingCommitOutcome(): ThinkingCommitOutcome {
-  return "keep-open";
-}
-
-/**
- * True when the fly-out's controls are a PREVIEW and must render disabled.
- *
- * A fly-out describing a model the user has not picked renders its controls
- * disabled. The recorded settings belong to the ACTIVE model, and committing
- * them for an unpicked model has no contract meaning: the picker's
- * `onSettingChange` reports a change against a model the runtime is not using.
- *
- * So the options are still SHOWN — the user can see what the model offers before
- * committing to it — but they cannot be committed until the row is picked, and
- * picking the row is what makes the surface live.
+ * Carried on the surface as state, NOT as a gate. It used to disable every
+ * control until the row was picked, which made the panel read-only in exactly
+ * the case it was opened for: a user hovering a model they had not yet chosen,
+ * to see what it offers. They had to click the row first to unlock it, and then
+ * the fly-out had saved them nothing over the settings column it replaced. So
+ * every control here is a way of PICKING the row this panel describes, and the
+ * answer to that is the same whether or not the row was already active.
  */
 export function isPreview(
   focusedKey: string | undefined,

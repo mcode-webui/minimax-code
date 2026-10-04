@@ -41,7 +41,7 @@ import {
 } from "../projection/workspace-progress.js";
 import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, WebuiIconDiffFile, WebuiIconFile, WebuiIconFolder, WebuiIconRunLocation, WebuiIconSearch, WebuiIconSidebarToggle, WebuiIconWorkspaceCanvas, WebuiIconWorkspaceExpand, WebuiIconWorkspaceReview, WebuiIconWorkspaceTerminal } from "../icons.js";
 import { FileTree, filterWorkspaceFiles, findWorkspaceFile, getWorkspaceFileParentPaths, mergeWorkspaceFileChildren } from "./WorkspaceFileTree.js";
-import { WorkspaceMediaPreview } from "./WorkspaceMediaPreview.js";
+import { WorkspaceMediaPreview, isMediaContent } from "./WorkspaceMediaPreview.js";
 import { WorkspaceCanvas } from "./WorkspaceCanvas.js";
 import { WorkspaceArchiveView } from "./WorkspaceArchiveView.js";
 import { WorkspaceHtmlPreview } from "./WorkspaceHtmlPreview.js";
@@ -380,7 +380,7 @@ export function WebuiFilePreview({ tab, result, codeMode, workspaceFileUrl, read
       {archive ?? html
         ?? (result?.loading ? <p role="status">正在加载文件…</p>
         : result?.error ? <p role="alert">{result.error}</p>
-          : result?.content?.previewDataUrl || workspaceFileUrl ? <WorkspaceMediaPreview path={tab.path} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: tab.workspaceDir, path: tab.path })} />
+          : result?.content && isMediaContent(result.content, tab.path) ? <WorkspaceMediaPreview path={tab.path} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: tab.workspaceDir, path: tab.path })} />
             : result?.content?.error ? <p role="alert">{result.content.error}</p>
             : result?.content?.type === "binary" ? <p>无法在文本预览中显示二进制文件。</p>
               : result?.content ? previewMarkdown ? <WebuiMarkdown source={content} /> : <pre className="webui-file-code"><code className={language ? `hljs language-${language}` : ""}>{content.split("\n").map((line, index) => {

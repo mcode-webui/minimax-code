@@ -31,6 +31,21 @@ export type WorkspaceMediaPreviewProps = {
 };
 
 /**
+ * Whether a read result is media this component should render at all.
+ *
+ * The file URL is derivable for *any* path, so the container cannot gate on
+ * "a URL exists" — that would point an `<img>` at an executable and render a
+ * broken image. The decision belongs to the runtime's `mimeType` where there
+ * is one, and falls back to the extension for the text results that carry no
+ * mime, so the same check holds on both sides of the read.
+ */
+export function isMediaContent(content: Pick<WebuiWorkspaceFileContent, "mimeType">, path: string): boolean {
+  const mimeType = content.mimeType?.toLowerCase();
+  if (mimeType) return /^(image|video|audio)\//u.test(mimeType);
+  return /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg|mp4|webm|ogv|mov|mp3|wav|ogg|m4a|aac|flac)$/iu.test(path);
+}
+
+/**
  * Image preview for one workspace file.
  *
  * Audio and video are not implemented yet. They belong here as sibling

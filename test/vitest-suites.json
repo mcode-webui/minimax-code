@@ -310,7 +310,9 @@
       "packages/webui/test/unit/webui-error-boundary.test.tsx",
       "packages/webui/test/unit/account-login.test.ts",
       "packages/webui/test/unit/connection-health.test.ts",
-      "packages/webui/test/unit/connection-status.test.tsx"
+      "packages/webui/test/unit/connection-status.test.tsx",
+      "packages/webui/test/unit/global-instructions-operation.test.ts",
+      "packages/webui/test/unit/personalization-settings.test.tsx"
     ]
   }
 }

@@ -14,6 +14,7 @@
 import { posix as pathPosix } from "node:path";
 import { stat } from "node:fs/promises";
 import path from "node:path";
+import { GlobalInstructions } from "@mavis/local-runtime-v2/turn-system";
 import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
 import {
   extractWorkspaceArchiveDirectory,
@@ -22,6 +23,7 @@ import {
 import type { WebuiScheduledTaskRuntime } from "./scheduled-task-scheduler.js";
 import type {
   WebuiHarnessPort,
+  WebuiGlobalInstructionsView,
   WebuiSessionListRequest,
   WebuiSessionPage,
   WebuiSessionTreeRequest,
@@ -265,6 +267,10 @@ export interface WebuiRuntimeCliService {
   setPermissionMode(request: {
     readonly mode: "default" | "auto" | "bypassPermissions";
   }): Promise<unknown>;
+  getGlobalInstructions(): Promise<WebuiGlobalInstructionsView>;
+  setGlobalInstructions(request: {
+    readonly content: string;
+  }): Promise<WebuiGlobalInstructionsView>;
   selectModel(request: {
     readonly providerId: string;
     readonly modelId: string;
@@ -713,6 +719,18 @@ export function createHarnessPortFromHost(
     async setPermissionMode(request) {
       return requireCliService(host).setPermissionMode(request);
     },
+    async getGlobalInstructions() {
+      return projectGlobalInstructions(
+        await requireGlobalInstructions(host).read(),
+        requireGlobalInstructionsPath(host),
+      );
+    },
+    async setGlobalInstructions(request) {
+      return projectGlobalInstructions(
+        await requireGlobalInstructions(host).write(request.content),
+        requireGlobalInstructionsPath(host),
+      );
+    },
     async getSessionUsage(request) {
       return requireCliService(host).getSessionUsage(request);
     },
@@ -846,6 +864,44 @@ function requireCliService(host: WebuiRuntimeHostHandle): WebuiRuntimeCliService
   if (!host.cliService)
     throw new Error("runtime host does not expose the CLI service");
   return host.cliService;
+}
+
+/**
+ * The profile-wide `AGENTS.md` lives at `dataDir/AGENTS.md` and Turn assembly
+ * reads it through `GlobalInstructions`. The v2 `instructions` capability only
+ * exposes `listSources` (paths, no content) and no write, so the harness holds
+ * its own instance over the same `dataDir` rather than adding a second file
+ * layout. Lazy so a host constructed without a `dataDir` still boots and only
+ * fails when this surface is actually used.
+ */
+let globalInstructions: GlobalInstructions | undefined;
+let globalInstructionsDataDir: string | undefined;
+function requireGlobalInstructions(host: WebuiRuntimeHostHandle): GlobalInstructions {
+  if (!host.dataDir)
+    throw new Error("runtime host does not expose a data directory");
+  if (globalInstructions === undefined || globalInstructionsDataDir !== host.dataDir) {
+    globalInstructions = new GlobalInstructions(host.dataDir);
+    globalInstructionsDataDir = host.dataDir;
+  }
+  return globalInstructions;
+}
+
+function requireGlobalInstructionsPath(host: WebuiRuntimeHostHandle): string {
+  if (!host.dataDir)
+    throw new Error("runtime host does not expose a data directory");
+  return pathPosix.join(host.dataDir, "AGENTS.md");
+}
+
+async function projectGlobalInstructions(
+  state: { readonly content: string; readonly exists: boolean; readonly maxBytes: number },
+  filePath: string,
+): Promise<WebuiGlobalInstructionsView> {
+  return {
+    content: state.content,
+    exists: state.exists,
+    path: filePath,
+    maxBytes: state.maxBytes,
+  };
 }
 
 function permissionReplyValue(reply: WebuiPermissionDecision): number {

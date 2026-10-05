@@ -97,3 +97,5 @@ export const UPDATE_SCHEDULED_TASK_OPERATION_NAME = "updateScheduledTask" as con
 export const DELETE_SCHEDULED_TASK_OPERATION_NAME = "deleteScheduledTask" as const;
 export const TRIGGER_SCHEDULED_TASK_OPERATION_NAME = "triggerScheduledTaskNow" as const;
 export const GET_SCHEDULED_TASK_CAPABILITY_OPERATION_NAME = "getScheduledTaskCapability" as const;
+export const GET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "getGlobalInstructions" as const;
+export const SET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "setGlobalInstructions" as const;

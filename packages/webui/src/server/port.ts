@@ -1248,6 +1248,7 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   getSigninPanel(): Promise<WebuiSigninPanelView>;
   claimSignin(): Promise<WebuiClaimSigninView>;
   /**
+/**
    * Account login over the device-authorization flow, and the sign-out that
    * actually removes the credential. See `account-login.ts` for why the
    * session lives server-side; supplied by the assembly alongside the host.
@@ -1256,7 +1257,31 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   getAccountLoginStatus(): Promise<WebuiAccountLoginView>;
   cancelAccountLogin(): Promise<{ readonly ok: true }>;
   signOutAccount(): Promise<{ readonly status: string; readonly generation: number }>;
+  /**
+   * Profile-wide `AGENTS.md`, the file Turn assembly already reads through
+   * `GlobalInstructions.readForPrompt`. Read-only on the v2 `instructions`
+   * capability (`listSources` returns paths, not content), so the harness owns
+   * a `GlobalInstructions` instance over the same `dataDir` the turn path uses —
+   * one file, one writer, no second source of truth.
+   */
+  getGlobalInstructions?(): Promise<WebuiGlobalInstructionsView>;
+  /** Writing empty content deletes the file, matching `GlobalInstructions.write`. */
+  setGlobalInstructions?(request: {
+    readonly content: string;
+  }): Promise<WebuiGlobalInstructionsView>;
   close(): Promise<void>;
+}
+
+/**
+ * `AGENTS.md` state for the personalization panel. `maxBytes` is reported
+ * rather than hard-coded client-side so the UI cap can never drift from the
+ * runtime's `GLOBAL_INSTRUCTIONS_MAX_BYTES`.
+ */
+export interface WebuiGlobalInstructionsView {
+  readonly content: string;
+  readonly exists: boolean;
+  readonly path: string;
+  readonly maxBytes: number;
 }
 
 /** One percentage window (5-hour / weekly) of the token-plan quota. */

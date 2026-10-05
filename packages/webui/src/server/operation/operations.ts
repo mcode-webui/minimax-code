@@ -8,6 +8,7 @@ import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOpera
 import { pluginManagementOperation } from "./plugin-management.js";
 import { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 import { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
+import { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 import { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
 export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, getSessionTreeOperation, createSessionOperation, getSessionOperation, getActiveTurnOperation } from "./session.js";
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
@@ -19,6 +20,7 @@ export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOpera
 export { pluginManagementOperation } from "./plugin-management.js";
 export { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 export { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
+export { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
 import { createOperationHandlers, type WebuiOperationPort } from "./operation-handlers.js";
 import type {
@@ -124,6 +126,8 @@ export function createOperationRegistry(
   registerOperation(registry, { operation: getScheduledTaskCapabilityOperation, handle: handlers.getScheduledTaskCapability });
   registerOperation(registry, { operation: getPermissionModeOperation, handle: handlers.getPermissionMode });
   registerOperation(registry, { operation: setPermissionModeOperation, handle: handlers.setPermissionMode });
+  registerOperation(registry, { operation: getGlobalInstructionsOperation, handle: handlers.getGlobalInstructions });
+  registerOperation(registry, { operation: setGlobalInstructionsOperation, handle: handlers.setGlobalInstructions });
   registerOperation(registry, { operation: getSessionUsageOperation, handle: handlers.getSessionUsage });
   registerOperation(registry, { operation: getUsageQuotaOperation, handle: handlers.getUsageQuota });
   registerOperation(registry, { operation: getSigninPanelOperation, handle: handlers.getSigninPanel });

@@ -117,6 +117,8 @@ export type WebuiOperationPort = Pick<
   | "deleteScheduledTask"
   | "triggerScheduledTaskNow"
   | "getScheduledTaskCapability"
+  | "getGlobalInstructions"
+  | "setGlobalInstructions"
 >;
 
 export type WebuiOperationHandlers = {
@@ -215,6 +217,14 @@ export function createOperationHandlers(
     setPermissionMode: async (_context, body) => {
       if (!port.setPermissionMode) throw new Error("runtime host does not expose permission mode updates");
       return { body: await port.setPermissionMode(body) };
+    },
+    getGlobalInstructions: async () => {
+      if (!port.getGlobalInstructions) throw new Error("runtime host does not expose global instructions reads");
+      return { body: await port.getGlobalInstructions() };
+    },
+    setGlobalInstructions: async (_context, body) => {
+      if (!port.setGlobalInstructions) throw new Error("runtime host does not expose global instructions updates");
+      return { body: await port.setGlobalInstructions(body) };
     },
     getSessionUsage: async (_context, body) => ({ body: await port.getSessionUsage(body) }),
     getUsageQuota: async (_context, body) => ({ body: await port.getUsageQuota(body) }),

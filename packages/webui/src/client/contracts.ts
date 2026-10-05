@@ -116,6 +116,7 @@ import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
+  WebuiGlobalInstructionsView,
 } from "../server/port.js";
 
 /* Attachment shape — used by the components layer, declared here so the
@@ -640,6 +641,13 @@ export interface WebuiTransport {
   readonly pluginManagement?: (request: import("../shared/plugin-management.js").WebuiPluginManagementRequest) => Promise<unknown>;
   readonly getPermissionMode?: () => Promise<unknown>;
   readonly setPermissionMode?: (request: { readonly mode: "default" | "auto" | "bypassPermissions" }) => Promise<unknown>;
+  /**
+   * Profile-wide `AGENTS.md`. The server owns the file, the 32KiB cap and the
+   * atomic write, so the panel only echoes `maxBytes` instead of re-declaring
+   * the limit; a mismatch would let the UI accept text the runtime then rejects.
+   */
+  readonly getGlobalInstructions?: () => Promise<WebuiGlobalInstructionsView>;
+  readonly setGlobalInstructions?: (request: { readonly content: string }) => Promise<WebuiGlobalInstructionsView>;
   readonly selectModel?: (
     request: WebuiModelSelectionRequest,
   ) => Promise<{ readonly success?: boolean }>;

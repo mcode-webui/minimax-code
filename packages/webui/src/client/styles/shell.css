@@ -347,6 +347,18 @@
   .webui-generic-section > h3 { margin: 0; padding: 0 var(--spacing_16); color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   .webui-generic-card { display: flex; width: 100%; flex-direction: column; border-radius: var(--radius_16); background: var(--bg_grouped_tertiary); padding: var(--spacing_4); }
   .webui-generic-section[data-testid="app-mode-section"] > .webui-generic-card { background: transparent; padding: 0; }
+  /* Personalization (K area): one editor card. The header lifts the section's
+   * own `> h3` padding so the save button aligns with the title baseline while
+   * the card below keeps the generic horizontal inset. */
+  .webui-personalization-page { display: flex; width: 100%; min-height: 0; max-width: 704px; flex: 1; margin: 0 auto; flex-direction: column; gap: var(--spacing_16); padding: 0 0 var(--spacing_32); }
+  .webui-personalization-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
+  .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
+  .webui-personalization-textarea { width: 100%; min-height: 320px; resize: vertical; border: none; outline: none; background: transparent; padding: var(--spacing_12); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
+  .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }
+  .webui-personalization-meta { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-personalization-meta span:first-child { min-width: 0; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+  .webui-personalization-meta .is-over-limit { color: var(--text_label_danger_secondary_default); }
+  .webui-personalization-saved { margin: 0; padding: 0 var(--spacing_12) var(--spacing_4); color: var(--text_status_success); font-size: var(--size_12); }
   .webui-generic-row { display: flex; width: 100%; min-height: 56px; align-items: center; justify-content: space-between; gap: 24px; overflow: hidden; border-radius: var(--radius_12); padding: var(--spacing_8) var(--spacing_8) var(--spacing_8) var(--spacing_12); }
   .webui-generic-row-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
   .webui-generic-row-copy strong { color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_regular); line-height: var(--line_height_20); }

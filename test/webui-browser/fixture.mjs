@@ -67,6 +67,11 @@ export function installFixtureTransport() {
   // questionnaire has no other way to say what the server answers on the NEXT
   // poll. `undefined` keeps the old "no pending questionnaire" answer.
   let questionnaire;
+  // Per-action results for the plugin-management facade. The panel asks for
+  // one action at a time (`{action, input}`), so a test stages exactly the
+  // listing it wants (an MCP server list with connection states, say) and
+  // every other action keeps the empty default.
+  const pluginManagementResults = {};
   let activeTurn;
   const requests = [];
   const sockets = new Set();
@@ -86,6 +91,10 @@ export function installFixtureTransport() {
     if (operation === "listPendingPermissions") return { requests: [] };
     if (operation === "getActiveTurn") return activeTurn;
     if (operation === "getPendingQuestionnaire") return questionnaire ? { request: questionnaire } : {};
+    if (operation === "pluginManagement") {
+      const action = typeof body?.action === "string" ? body.action : "";
+      return pluginManagementResults[action] ?? {};
+    }
     if (operation === "dismissQuestionnaire") return { ok: true };
     if (operation === "replyQuestionnaire") return { ok: true };
     if (operation === "listQueueMessages") return { items: [] };
@@ -228,6 +237,9 @@ export function installFixtureTransport() {
     // is inert on purpose, so a staged questionnaire stays pending until the
     // test answers, dismisses, or replaces it.
     setQuestionnaire(request) { questionnaire = request ? clone(request) : undefined; },
+    setPluginManagementResult(action, result) {
+      pluginManagementResults[action] = result === undefined ? undefined : clone(result);
+    },
     // Kill every live socket (the "server went away" moment) and/or decide
     // whether new connections may form. Between a dropAll() and reopening
     // the gate, the client is fully disconnected — with no turn running,

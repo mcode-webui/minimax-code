@@ -277,6 +277,11 @@ export function WebuiClientFoundationApp(
   // that union is read by the rail's active state and by the reducer tests;
   // widening it for one page would change every reader.
   const [schedulesOpen, setSchedulesOpen] = useState(false);
+  // The 在对话中创建 path opens a real session for the user to talk in, then
+  // leaves the closing 「完成并创建」 action behind in this page. The id lives
+  // here rather than in the panel because the view switches to the conversation
+  // in between: the panel unmounts, and the rail brings it back.
+  const [cronChatSessionId, setCronChatSessionId] = useState<string | undefined>();
   const [selectedSessionId, setSelectedSessionId] =
     useSelectedSessionId(locationHash);
   // Rail session links are plain `#session=<id>` anchors, so the navigation runs
@@ -1275,7 +1280,7 @@ export function WebuiClientFoundationApp(
             data-webui-shell-region="surface"
             className="relative flex min-h-0 min-w-0 flex-1 flex-row"
           >
-            {schedulesOpen ? <SchedulesPanel transport={transport} onClose={closeSchedules} /> : pluginManagementArea ? <PluginManagement transport={transport} initialArea={pluginManagementArea} onChatWithAgent={async (name) => {
+            {schedulesOpen ? <SchedulesPanel transport={transport} onClose={closeSchedules} projects={projectRecords} currentSessionId={selectedSessionId} chatSessionId={cronChatSessionId} onChatSessionCreated={(sessionId) => { setCronChatSessionId(sessionId); setSchedulesOpen(false); dispatchShellSurface({ type: "show-conversation" }); handleSessionCreated(sessionId); }} onChatSessionFinished={() => setCronChatSessionId(undefined)} /> : pluginManagementArea ? <PluginManagement transport={transport} initialArea={pluginManagementArea} onChatWithAgent={async (name) => {
               if (!transport?.createSession) throw new Error("当前 WebUI 未连接会话创建服务");
               const created = await transport.createSession({ name });
               const sessionId = created.sessionId ?? created.session?.sessionId;

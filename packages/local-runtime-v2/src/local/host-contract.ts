@@ -72,6 +72,15 @@ interface CreateLocalRuntimeHostOptions extends V1CreateLocalRuntimeHostOptions 
 interface CreatedLocalRuntimeHost extends V1CreatedLocalRuntimeHost {
   application?: LocalRuntimeApplication;
   cliService?: import('./cli-service.js').CliService;
+  /**
+   * The scheduled-task capability, published on its own rather than as the whole
+   * `RuntimeServices` graph. A host that manages schedules needs exactly this one
+   * service; handing over `services` instead would also hand it `channelSystem`,
+   * `browserUse` and the session/turn owners, which is how a surface ends up
+   * owning capabilities it was never granted. Absent when this host owns no
+   * scheduler, so every consumer can fail closed on `undefined`.
+   */
+  scheduledTasks?: import('../services.js').RuntimeServices['cron'];
 }
 
 export type {

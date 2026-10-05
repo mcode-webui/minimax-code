@@ -101,6 +101,37 @@ import {
 } from "../../src/client/stream.js";
 import { projectWebuiTodos, WebuiProgressOverviewPanel, WebuiProgressPanel, WebuiSubagentsPanel, WebuiWorkspacePanel, WebuiWorkspacePanelControls } from "../../src/client/components/WorkspacePanels.js";
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/projection/workspace-panel-state.js";
+import {
+  CRON_NAME_LIMIT,
+  CRON_PERIOD_OPTIONS,
+  CRON_PROMPT_LIMIT,
+  WebuiCronCreateDialog,
+  buildCronSchedule,
+  createCronRequestFromDraft,
+  cronDraftFromDefinition,
+  cronDraftIssue,
+  emptyCronDraft,
+  scheduleFields,
+  updateCronRequestFromDraft,
+  type WebuiCronDraft,
+} from "../../src/client/components/CronCreateDialog.js";
+import {
+  CHAT_CREATE_GUIDE_PROMPT,
+  WebuiCronChatCreateFlow,
+  buildChatCronRequest,
+} from "../../src/client/components/CronChatCreateFlow.js";
+import {
+  SchedulesPanel,
+  WebuiCronCreateMenu,
+  WebuiCronDefinitionList,
+  WebuiCronRunHistory,
+  cronDeleteRequest,
+  cronToggleRequest,
+  cronTriggerRequest,
+  describeCronSchedule,
+  groupCronDefinitionsByAgent,
+} from "../../src/client/components/SchedulesPanel.js";
+import type { WebuiCronDefinition, WebuiCronRun } from "../../src/client/contracts.js";
 
 import type {
   WebuiStreamFrame,
@@ -3375,5 +3406,472 @@ describe("WebUI stream loop · superseded loop fencing", () => {
       }),
     ).rejects.toThrow("The running turn could not be stopped");
     expect(setStream).not.toHaveBeenCalled();
+  });
+});
+
+/* The 定时任务 page is a projection of the shared cron registry, and the v2
+ * contract moved it from `agentName` + `cronName` to `cronId`, made the schedule
+ * structured, and gave creation a second path. These assertions render the real
+ * markup (the vitest environment is `node`, so a controlled presentational
+ * component plus the pure mappers is what can be checked without a DOM) and pin
+ * the frozen wire bodies. */
+
+function cronDefinition(overrides: Partial<WebuiCronDefinition> = {}): WebuiCronDefinition {
+  return {
+    cronId: "cron-1",
+    name: "每日简报",
+    agentName: "main",
+    schedule: { kind: "recurring", expression: "30 9 * * *" },
+    enabled: true,
+    prompt: "汇总昨天的提交并写进 CHANGELOG.md",
+    sessionTarget: { mode: "new" },
+    createdAtMs: 1,
+    updatedAtMs: 2,
+    ...overrides,
+  };
+}
+
+function cronRun(overrides: Partial<WebuiCronRun> = {}): WebuiCronRun {
+  return {
+    runId: "run-1",
+    cronId: "cron-1",
+    triggerSource: "scheduled",
+    status: "delivered",
+    createdAtMs: 1_767_225_600_000,
+    ...overrides,
+  };
+}
+
+function filledCronDraft(overrides: Partial<WebuiCronDraft> = {}): WebuiCronDraft {
+  return { ...emptyCronDraft(), name: "每日简报", prompt: "汇总昨天的提交", ...overrides };
+}
+
+function renderCronDialog(draft: WebuiCronDraft, extra: Record<string, unknown> = {}): string {
+  return renderToStaticMarkup(
+    createElement(WebuiCronCreateDialog, {
+      draft,
+      onDraftChange: () => undefined,
+      onSubmit: () => undefined,
+      onClose: () => undefined,
+      ...extra,
+    }),
+  );
+}
+
+const countOf = (html: string, needle: string): number => html.split(needle).length - 1;
+
+/** Just the 执行时间 row, so a sub-selector count is not confused by the
+ *  dropdowns above it. */
+function periodMarkup(html: string): string {
+  const start = html.indexOf('aria-label="周期"');
+  if (start < 0) return "";
+  const label = html.lastIndexOf("<select", start);
+  return html.slice(label, html.indexOf("</label>", start));
+}
+
+describe("定时任务面板", () => {
+  it("reproduces the desktop dialog's fields, required marks, counters and confirm gate", () => {
+    const html = renderCronDialog(emptyCronDraft());
+
+    // Every control the desktop dialog shows, in the desktop's own wording.
+    for (const label of ["名称", "Agent", "指令", "运行模式", "项目", "模型", "周期", "时间"])
+      expect(html, `field ${label} missing`).toContain(`aria-label="${label}"`);
+    expect(html).toContain("给任务起个名字");
+    expect(html).toContain("描述你希望 Agent 执行的操作...");
+
+    // Starred fields: 名称, Agent, 指令, 执行时间.
+    expect(countOf(html, 'data-testid="cron-field-required"')).toBe(4);
+    expect(countOf(html, 'required=""')).toBe(3);
+
+    // Counters and the options each dropdown defaults to.
+    expect(html).toContain(`0/${CRON_NAME_LIMIT}`);
+    expect(html).toContain(`0/${CRON_PROMPT_LIMIT}`);
+    expect(html).toContain(">默认</option>");
+    expect(html).toContain(">不需要项目</option>");
+    expect(html).toContain(">每天</option>");
+
+    // 运行模式 is exactly the desktop's two options, and 每次新建对话 is selected.
+    const mode = html.slice(html.indexOf('aria-label="运行模式"'));
+    expect(countOf(mode.slice(0, mode.indexOf("</select>")), "<option")).toBe(2);
+    expect(mode).toContain(">每次新建对话</option>");
+    expect(mode).toContain(">始终使用同一对话</option>");
+    expect(mode).not.toContain("继续指定对话");
+    expect(html).toContain('aria-label="运行模式"');
+
+    // Nothing filled in yet, so 确认 is disabled.
+    const submit = html.slice(html.indexOf('data-testid="cron-create-submit"'));
+    expect(submit.slice(0, 200)).toMatch(/disabled/u);
+    expect(cronDraftIssue(emptyCronDraft())).toBe("请填写名称");
+
+    // The same dialog with the three starred fields filled is submittable.
+    const ready = renderCronDialog(filledCronDraft());
+    const readySubmit = ready.slice(ready.indexOf('data-testid="cron-create-submit"'));
+    expect(readySubmit.slice(0, 200)).not.toMatch(/disabled/u);
+    expect(ready).toContain(`4/${CRON_NAME_LIMIT}`);
+  });
+
+  it("derives WebuiCronSchedule from the structured control instead of a typed expression", () => {
+    // The desktop's four periods, each with the sub-selectors it needs.
+    expect(
+      buildCronSchedule(filledCronDraft({ period: "minutes", intervalMinutes: 15 })),
+    ).toEqual({ kind: "recurring", expression: "*/15 * * * *" });
+    expect(
+      buildCronSchedule(
+        filledCronDraft({ period: "hours", intervalHours: 3, minuteOfHour: 20 }),
+      ),
+    ).toEqual({ kind: "recurring", expression: "20 */3 * * *" });
+    expect(buildCronSchedule(filledCronDraft({ period: "daily", time: "09:30" }))).toEqual({
+      kind: "recurring",
+      expression: "30 9 * * *",
+    });
+    expect(buildCronSchedule(filledCronDraft({ period: "weekly", weekday: 3, time: "08:00" }))).toEqual({
+      kind: "recurring",
+      expression: "0 8 * * 3",
+    });
+    // 周日 is cron day-of-week 0, not 7.
+    expect(buildCronSchedule(filledCronDraft({ period: "weekly", weekday: 0, time: "08:00" }))).toEqual({
+      kind: "recurring",
+      expression: "0 8 * * 0",
+    });
+
+    // The dropdown is exactly the four periods, and offers no way to author a
+    // one-shot task.
+    expect(CRON_PERIOD_OPTIONS.map((option) => option.value)).toEqual([
+      "minutes",
+      "hours",
+      "daily",
+      "weekly",
+    ]);
+    const periodSelect = periodMarkup(renderCronDialog(emptyCronDraft()));
+    expect(countOf(periodSelect, "<option")).toBe(4);
+    expect(periodSelect).not.toContain("仅一次");
+
+    // Switching the period changes how many sub-selectors exist, and each one
+    // is the field that period's expression actually uses.
+    const subSelectors = (period: WebuiCronDraft["period"]): number =>
+      countOf(
+        periodMarkup(renderCronDialog(filledCronDraft({ period }))),
+        "aria-label=",
+      ) - 1; // the 周期 select itself
+    expect(subSelectors("minutes")).toBe(1);
+    expect(subSelectors("hours")).toBe(2);
+    expect(subSelectors("daily")).toBe(1);
+    expect(subSelectors("weekly")).toBe(2);
+    expect(renderCronDialog(filledCronDraft({ period: "hours" }))).toContain("间隔小时");
+    expect(renderCronDialog(filledCronDraft({ period: "minutes" }))).toContain("间隔分钟");
+    expect(renderCronDialog(filledCronDraft({ period: "weekly" }))).toContain("星期");
+    // 每天 and 每周 are the two that take a clock time.
+    expect(renderCronDialog(filledCronDraft({ period: "daily" }))).toContain('aria-label="时间"');
+    expect(renderCronDialog(filledCronDraft({ period: "hours" }))).not.toContain('aria-label="时间"');
+
+    // An unfinished control is not a schedule, which is what keeps 确认 disabled.
+    expect(buildCronSchedule(filledCronDraft({ period: "minutes", intervalMinutes: 0 }))).toBeUndefined();
+    expect(buildCronSchedule(filledCronDraft({ period: "hours", intervalHours: 0 }))).toBeUndefined();
+    expect(buildCronSchedule(filledCronDraft({ period: "daily", time: "" }))).toBeUndefined();
+    expect(cronDraftIssue(filledCronDraft({ period: "daily", time: "" }))).toBe("请填写执行时间");
+
+    // Editing a task reads the same fields back, so a save round-trips.
+    for (const draft of [
+      filledCronDraft({ period: "minutes", intervalMinutes: 30 }),
+      filledCronDraft({ period: "hours", intervalHours: 6, minuteOfHour: 15 }),
+      filledCronDraft({ period: "daily", time: "09:30" }),
+      filledCronDraft({ period: "weekly", weekday: 5, time: "07:05" }),
+    ])
+      expect(scheduleFields(buildCronSchedule(draft)!)).toMatchObject({
+        period: draft.period,
+        intervalMinutes: draft.intervalMinutes,
+        intervalHours: draft.intervalHours,
+        minuteOfHour: draft.minuteOfHour,
+        weekday: draft.weekday,
+        time: draft.period === "minutes" || draft.period === "hours" ? "09:00" : draft.time,
+        rawExpression: "",
+      });
+
+    // An expression this build did not produce survives an edit verbatim rather
+    // than being silently rewritten into "每天".
+    const foreign = cronDefinition({ schedule: { kind: "recurring", expression: "0 9 * * 1-5" } });
+    const foreignDraft = cronDraftFromDefinition(foreign);
+    expect(scheduleFields(foreign.schedule).rawExpression).toBe("0 9 * * 1-5");
+    expect(buildCronSchedule(foreignDraft)).toEqual({
+      kind: "recurring",
+      expression: "0 9 * * 1-5",
+    });
+    expect(renderCronDialog(foreignDraft)).toContain("0 9 * * 1-5");
+  });
+
+  it("shows an existing one-shot task read-only and saves it without a schedule", () => {
+    const once = cronDefinition({
+      cronId: "cron-once",
+      schedule: { kind: "once", runAtMs: new Date("2026-01-02T07:15:00").getTime() },
+    });
+    const draft = cronDraftFromDefinition(once);
+
+    // The form has no `once` period to select, so it marks the schedule instead
+    // of pretending the task is daily.
+    expect(draft.onceAtMs).toBe(new Date("2026-01-02T07:15:00").getTime());
+    expect(CRON_PERIOD_OPTIONS.map((option) => option.value)).not.toContain("once");
+
+    // Saving sends no `schedule` at all, so the stored one-shot survives.
+    const request = updateCronRequestFromDraft({ ...draft, name: "改过名字" }, "cron-once");
+    expect(request).toBeDefined();
+    expect(request).not.toHaveProperty("schedule");
+    expect(request).toMatchObject({ cronId: "cron-once", name: "改过名字" });
+    // A daily task the form does own still sends its schedule.
+    expect(
+      updateCronRequestFromDraft(filledCronDraft({ period: "daily", time: "07:00" }), "cron-1"),
+    ).toMatchObject({ schedule: { kind: "recurring", expression: "0 7 * * *" } });
+    // The form cannot create a one-shot either.
+    expect(createCronRequestFromDraft(draft)).toBeUndefined();
+
+    // The dialog shows it, disables the controls, and says the time is fixed.
+    const html = renderCronDialog(draft);
+    expect(html).toContain('data-testid="cron-once-readonly"');
+    expect(html).toContain("一次性任务");
+    expect(html.slice(html.indexOf('aria-label="周期"'))).toMatch(/disabled/u);
+  });
+
+  it("offers exactly the two creation paths", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiCronCreateMenu, {
+        open: true,
+        onToggle: () => undefined,
+        onManual: () => undefined,
+        onChat: () => undefined,
+      }),
+    );
+    expect(countOf(html, "data-webui-cron-create-option")).toBe(2);
+    expect(html).toContain('data-webui-cron-create-option="manual"');
+    expect(html).toContain('data-webui-cron-create-option="chat"');
+    expect(html).toContain("手动创建");
+    expect(html).toContain("在对话中创建");
+
+    // Closed, the menu is just the trigger.
+    const closed = renderToStaticMarkup(
+      createElement(WebuiCronCreateMenu, {
+        open: false,
+        onToggle: () => undefined,
+        onManual: () => undefined,
+        onChat: () => undefined,
+      }),
+    );
+    expect(closed).not.toContain("手动创建");
+  });
+
+  it("sends each path its own frozen create request", () => {
+    // 手动创建 targets a fresh conversation per run. `emptyCronDraft` defaults
+    // to 每天 09:00, so the structured control produces `0 9 * * *`.
+    expect(createCronRequestFromDraft(filledCronDraft())).toEqual({
+      name: "每日简报",
+      agentName: "main",
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+      prompt: "汇总昨天的提交",
+      sessionTarget: { mode: "new" },
+      project: null,
+      model: null,
+    });
+
+    // 在对话中创建 targets the conversation the user just described it in.
+    expect(buildChatCronRequest(filledCronDraft(), "session-7")).toEqual({
+      name: "每日简报",
+      agentName: "main",
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+      prompt: "汇总昨天的提交",
+      sessionTarget: { mode: "sessionId", sessionId: "session-7" },
+      project: null,
+      model: null,
+    });
+    // The closing action cannot invent a session, and an incomplete draft is
+    // still incomplete.
+    expect(buildChatCronRequest(filledCronDraft(), "  ")).toBeUndefined();
+    expect(buildChatCronRequest(emptyCronDraft(), "session-7")).toBeUndefined();
+    expect(createCronRequestFromDraft(emptyCronDraft())).toBeUndefined();
+
+    // Both paths keep the optional fields null rather than "" so the wire reads
+    // them as 「不需要项目」 / 用默认模型.
+    expect(createCronRequestFromDraft(filledCronDraft({ project: "", model: "" }))).toMatchObject({
+      project: null,
+      model: null,
+    });
+    expect(createCronRequestFromDraft(filledCronDraft({ project: "/tmp/repo", model: "m-1" }))).toMatchObject({
+      project: "/tmp/repo",
+      model: "m-1",
+    });
+
+    // 始终使用同一对话 names the session it was given…
+    expect(
+      createCronRequestFromDraft(filledCronDraft({ sessionMode: "sessionId", sessionId: "session-3" })),
+    ).toMatchObject({ sessionTarget: { mode: "sessionId", sessionId: "session-3" } });
+    // …and with none it leaves `sessionId` off, which the contract allows and
+    // the server binds. It is no longer a validation error.
+    expect(
+      createCronRequestFromDraft(filledCronDraft({ sessionMode: "sessionId", sessionId: "" })),
+    ).toMatchObject({ sessionTarget: { mode: "sessionId" } });
+    expect(
+      createCronRequestFromDraft(filledCronDraft({ sessionMode: "sessionId", sessionId: "" }))!
+        .sessionTarget,
+    ).not.toHaveProperty("sessionId");
+    expect(cronDraftIssue(filledCronDraft({ sessionMode: "sessionId", sessionId: "" }))).toBe("");
+  });
+
+  it("orchestrates the conversational path around one created session and one guide message", () => {
+    const intro = renderToStaticMarkup(
+      createElement(WebuiCronChatCreateFlow, {
+        draft: emptyCronDraft(),
+        onDraftChange: () => undefined,
+        onStart: () => undefined,
+        onSubmit: () => undefined,
+        onClose: () => undefined,
+      }),
+    );
+    expect(intro).toContain("在对话中创建");
+    expect(intro).toContain('data-testid="cron-chat-create-start"');
+    // Before a session exists there is nothing to close out yet: the intro
+    // explains the closing action but does not offer it.
+    expect(intro).not.toContain('data-testid="cron-create-submit"');
+
+    const talking = renderToStaticMarkup(
+      createElement(WebuiCronChatCreateFlow, {
+        sessionId: "session-7",
+        draft: filledCronDraft(),
+        onDraftChange: () => undefined,
+        onStart: () => undefined,
+        onSubmit: () => undefined,
+        onClose: () => undefined,
+      }),
+    );
+    expect(talking).toContain("session-7");
+    // The one message seeded into the new conversation is shown to the user, so
+    // they can see what was sent on their behalf.
+    expect(talking).toContain(CHAT_CREATE_GUIDE_PROMPT.split("\n")[0]!);
+    expect(talking).toContain("完成并创建");
+    // The target session is fixed, so the form cannot point elsewhere.
+    expect(talking).toContain('aria-label="运行模式"');
+    expect(talking.slice(talking.indexOf('aria-label="运行模式"'))).toMatch(/disabled/u);
+  });
+
+  it("groups the list by agent and states who executes the task", () => {
+    const definitions = [
+      cronDefinition({ cronId: "cron-1", name: "每日简报", agentName: "main" }),
+      cronDefinition({
+        cronId: "cron-2",
+        name: "周报",
+        agentName: "main",
+        schedule: { kind: "recurring", expression: "0 8 * * 3" },
+      }),
+      cronDefinition({ cronId: "cron-3", name: "巡检", agentName: "ops" }),
+      cronDefinition({ cronId: "cron-4", name: "已删除", agentName: "ops", deletedAtMs: 9 }),
+    ];
+    const groups = groupCronDefinitionsByAgent(definitions);
+    expect(groups.map(([agent]) => agent)).toEqual(["main", "ops"]);
+    expect(groups[0]![1].map((item) => item.name)).toEqual(["每日简报", "周报"]);
+    // A soft-deleted task is not listed.
+    expect(groups[1]![1].map((item) => item.cronId)).toEqual(["cron-3"]);
+
+    const html = renderToStaticMarkup(
+      createElement(WebuiCronDefinitionList, {
+        definitions,
+        runsByCronId: { "cron-1": [cronRun({ runId: "run-a", status: "failed", error: "boom" })] },
+        busyKey: "",
+        openHistoryCronId: "",
+        onToggleEnabled: () => undefined,
+        onTrigger: () => undefined,
+        onEdit: () => undefined,
+        onDelete: () => undefined,
+        onToggleHistory: () => undefined,
+        onRefreshHistory: () => undefined,
+      }),
+    );
+    expect(html).toContain('data-webui-schedule-group="main"');
+    expect(html).toContain('data-webui-schedule-group="ops"');
+    expect(html).toContain("每日简报");
+    // Each row's schedule reads back off the structured fields the editor uses.
+    expect(html).toContain("每天 09:30");
+    expect(html).toContain("周三 08:00");
+    expect(html).toContain("上次执行：");
+    expect(html).toContain("下次执行：");
+    expect(html).toContain("上次结果：失败 · boom");
+    expect(html).not.toContain("已删除");
+    // Every row carries all four controls, addressed by cronId.
+    for (const cronId of ["cron-1", "cron-2", "cron-3"])
+      for (const action of ["trigger", "edit", "delete", "toggle"])
+        expect(html, `${action} for ${cronId}`).toContain(`schedules-${action}-${cronId}`);
+
+    // The ownership risk is stated on the page, not hidden in a release note.
+    const panel = renderToStaticMarkup(
+      createElement(SchedulesPanel, {
+        transport: { listCronDefinitions: async () => ({ items: [], hasMore: false }) },
+      }),
+    );
+    expect(panel).toContain("schedules-execution-ownership");
+    expect(panel).toContain("任务由本 Web 服务在进程存活期间执行");
+    expect(panel).toContain("webui 未运行时不会触发");
+  });
+
+  it("reads a row's schedule back as the same words the editor saves", () => {
+    expect(describeCronSchedule({ kind: "recurring", expression: "30 9 * * *" })).toBe("每天 09:30");
+    expect(describeCronSchedule({ kind: "recurring", expression: "*/15 * * * *" })).toBe("每 15 分钟");
+    expect(describeCronSchedule({ kind: "recurring", expression: "20 */3 * * *" })).toBe("每 3 小时 20 分");
+    expect(describeCronSchedule({ kind: "recurring", expression: "0 8 * * 3" })).toBe("周三 08:00");
+    expect(
+      describeCronSchedule({ kind: "once", runAtMs: new Date("2026-01-02T07:15:00").getTime() }),
+    ).toBe("仅一次 2026-01-02 07:15");
+    // Unrecognized expressions are shown, not hidden behind a wrong label.
+    expect(describeCronSchedule({ kind: "recurring", expression: "0 9 * * 1-5" })).toBe(
+      "表达式 0 9 * * 1-5",
+    );
+  });
+
+  it("addresses every row mutation by cronId, never by agent and name", () => {
+    const definition = cronDefinition();
+    // The pause switch is the only place `enabled` changes.
+    expect(cronToggleRequest(definition, false)).toEqual({ cronId: "cron-1", enabled: false });
+    expect(cronToggleRequest(definition, true)).toEqual({ cronId: "cron-1", enabled: true });
+    expect(cronTriggerRequest(definition)).toEqual({ cronId: "cron-1" });
+    expect(cronDeleteRequest(definition)).toEqual({ cronId: "cron-1" });
+    // v1 sent the pair; nothing may send it again.
+    for (const request of [
+      cronToggleRequest(definition, false),
+      cronTriggerRequest(definition),
+      cronDeleteRequest(definition),
+    ])
+      expect(request).not.toHaveProperty("cronName");
+  });
+
+  it("marks a paused task and tells a manual run from a scheduled one", () => {
+    const paused = cronDefinition({ enabled: false });
+    const html = renderToStaticMarkup(
+      createElement(WebuiCronDefinitionList, {
+        definitions: [paused],
+        runsByCronId: {},
+        busyKey: "",
+        openHistoryCronId: "",
+        onToggleEnabled: () => undefined,
+        onTrigger: () => undefined,
+        onEdit: () => undefined,
+        onDelete: () => undefined,
+        onToggleHistory: () => undefined,
+        onRefreshHistory: () => undefined,
+      }),
+    );
+    expect(html).toContain("已暂停");
+    expect(html).toMatch(/role="switch" aria-checked="false"/u);
+
+    const runs = renderToStaticMarkup(
+      createElement(WebuiCronRunHistory, {
+        cronId: "cron-1",
+        runs: [
+          cronRun({ runId: "run-1", triggerSource: "manual", status: "delivered" }),
+          cronRun({ runId: "run-2", triggerSource: "scheduled", status: "failed", error: "boom" }),
+        ],
+      }),
+    );
+    // The only field that answers "was that me, or the timer?" is triggerSource,
+    // so the history has to say it.
+    expect(runs).toContain('data-webui-cron-run-trigger="manual"');
+    expect(runs).toContain('data-webui-cron-run-trigger="scheduled"');
+    expect(runs).toContain("手动");
+    expect(runs).toContain("定时");
+    expect(runs).toContain("已投递");
+    expect(runs).toContain("boom");
   });
 });

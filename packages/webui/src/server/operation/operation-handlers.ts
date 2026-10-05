@@ -58,6 +58,14 @@ export type WebuiOperationPort = Pick<
   | "createGoal"
   | "patchGoal"
   | "clearGoal"
+  | "listAgents"
+  | "listCronDefinitions"
+  | "getCronDefinition"
+  | "createCronDefinition"
+  | "updateCronDefinition"
+  | "deleteCronDefinition"
+  | "triggerCronRun"
+  | "listCronRuns"
   | "listWorkspaceFileTree"
   | "readWorkspaceFile"
   | "getWorkspaceEnvironment"
@@ -112,11 +120,14 @@ export type WebuiOperationPort = Pick<
   | "startCodexOAuthLogin"
   | "cancelCodexOAuthLogin"
   | "refreshModels"
-  | "listCrons"
-  | "createCron"
-  | "updateCron"
-  | "deleteCron"
-  | "triggerCron"
+  | "listAgents"
+  | "listCronDefinitions"
+  | "getCronDefinition"
+  | "createCronDefinition"
+  | "updateCronDefinition"
+  | "deleteCronDefinition"
+  | "triggerCronRun"
+  | "listCronRuns"
   | "requestCompaction"
   | "invalidateAuth"
 >;
@@ -243,27 +254,40 @@ export function createOperationHandlers(
     cancelCodexOAuthLogin: async (_context, body) => ({ body: await port.cancelCodexOAuthLogin(body) }),
     refreshModels: async () => ({ body: await port.refreshModels() }),
     // Scheduled tasks. The port methods are optional for the same reason
-    // `pluginManagement` is: the scheduler is a borrowed runtime capability,
-    // so a port without it answers one clear error instead of crashing.
-    listCrons: async () => {
-      if (!port.listCrons) throw new Error(CRON_UNAVAILABLE);
-      return { body: await port.listCrons() };
+    // `pluginManagement` is: the in-process scheduler and `services.cron` are
+    // a borrowed runtime capability, so a port without them answers one clear
+    // error instead of crashing.
+    listAgents: async (_context, body) => {
+      if (!port.listAgents) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.listAgents(body) };
     },
-    createCron: async (_context, body) => {
-      if (!port.createCron) throw new Error(CRON_UNAVAILABLE);
-      return { body: await port.createCron(body) };
+    listCronDefinitions: async (_context, body) => {
+      if (!port.listCronDefinitions) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.listCronDefinitions(body) };
     },
-    updateCron: async (_context, body) => {
-      if (!port.updateCron) throw new Error(CRON_UNAVAILABLE);
-      return { body: await port.updateCron(body) };
+    getCronDefinition: async (_context, body) => {
+      if (!port.getCronDefinition) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.getCronDefinition(body) };
     },
-    deleteCron: async (_context, body) => {
-      if (!port.deleteCron) throw new Error(CRON_UNAVAILABLE);
-      return { body: await port.deleteCron(body) };
+    createCronDefinition: async (_context, body) => {
+      if (!port.createCronDefinition) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.createCronDefinition(body) };
     },
-    triggerCron: async (_context, body) => {
-      if (!port.triggerCron) throw new Error(CRON_UNAVAILABLE);
-      return { body: await port.triggerCron(body) };
+    updateCronDefinition: async (_context, body) => {
+      if (!port.updateCronDefinition) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.updateCronDefinition(body) };
+    },
+    deleteCronDefinition: async (_context, body) => {
+      if (!port.deleteCronDefinition) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.deleteCronDefinition(body) };
+    },
+    triggerCronRun: async (_context, body) => {
+      if (!port.triggerCronRun) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.triggerCronRun(body) };
+    },
+    listCronRuns: async (_context, body) => {
+      if (!port.listCronRuns) throw new Error(CRON_UNAVAILABLE);
+      return { body: await port.listCronRuns(body) };
     },
     runCommand: async (_context, body) => ({ body: await runWebuiCommand(port, body) }),
     signOut: async () => {

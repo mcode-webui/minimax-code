@@ -125,6 +125,7 @@ import {
   type CronTurnDeliveryPort,
   type InitializedCronService,
 } from "./service/cron/index.js";
+import { ownsScheduledTaskRuntime } from "./service/cron/ownership.js";
 import {
   createRuntimeInspector,
   type ComposedInspector,
@@ -307,6 +308,8 @@ export interface CreateRuntimeServicesOptions
   readonly recoverPersistedState?: boolean;
   /** Composition owner mode; CLI omits Electron-only capabilities. */
   readonly runtimeOwnerKind?: string;
+  /** v2 host option: request ownership of scheduling (in-process timers + Cron service assembly). */
+  readonly enableScheduledTasks?: boolean;
   /** Electron-owned fixed key for encrypted Desktop Prompt bundles. */
   readonly promptConfigKey?: Uint8Array;
   /** Client capability ceiling; omitted owners retain the shared legacy surface. */
@@ -490,7 +493,10 @@ export async function createRuntimeServices(
     internalTurnPromptReads,
     writeGlobalEvent,
     nowMs,
-    enableCron: ownsElectronRuntimeCapabilities(options.runtimeOwnerKind),
+    enableCron: ownsScheduledTaskRuntime({
+      runtimeOwnerKind: options.runtimeOwnerKind,
+      enableScheduledTasks: options.enableScheduledTasks,
+    }),
     runtimeOwnerIdentity: options.runtimeOwnerIdentity,
     planEntryEnabled,
     agentPlanEntryEnabled,

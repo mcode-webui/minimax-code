@@ -23,7 +23,9 @@ import type { AppDb } from "./infra/db/client.js";
 import { readPreferenceValue } from "./infra/db/preference-values.js";
 import { migratePluginTestDatabase } from "../test/helpers/plugin-database.js";
 import { EventBus } from "./infra/event-bus/index.js";
-import type { SchedulerClient } from "./infra/scheduler/index.js";
+import { createBackgroundRuntime } from "./background-runtime.js";
+import { Scheduler, type SchedulerClient } from "./infra/scheduler/index.js";
+import { resolveScheduledTaskScheduling } from "./service/cron/ownership.js";
 import type { LocalAgentService } from "./service/agent/index.js";
 import { resolveAgentPromptSurface } from "./service/turn-system/agent-host/preparation/agent-prompt-surface.js";
 import type { InitializeTurnSystemOptions } from "./service/turn-system/index.js";
@@ -2054,6 +2056,124 @@ describe("runtime services CLI composition", () => {
     ]);
     await expect(services.builtinAgentDefinitionsReady).resolves.toBe(true);
     expect(mocked.events.at(-1)).toBe("agent:ensure");
+  });
+
+  it("composes the Cron service for a resident host that opts into scheduled tasks", async () => {
+    const scheduler = {} as SchedulerClient;
+    const services = await createRuntimeServices({
+      db: {} as AppDb,
+      dataDir: "/data/scheduled-tasks",
+      logger: noopLogger,
+      scheduler,
+      eventBus: new EventBus<GlobalEvent>(),
+      compatibility: defaultCompatibility(),
+      agentService: localAgentService,
+      runtimeOwnerKind: "tui",
+      capabilityProfile: "cli",
+      enableScheduledTasks: true,
+    });
+
+    expect(services.cron).toBe(mocked.service);
+    expect(mocked.cronOptions?.scheduler).toBe(scheduler);
+    // The opt-in is Cron-scoped: channel delivery keeps following its own owner rule.
+    expect(services.channelSystem).toBeUndefined();
+    expect(services.cronDelivery).toBeDefined();
+    await services.close();
+  });
+
+  it("leaves a resident host unchanged when the scheduled-task option is absent or false", async () => {
+    const resident = await createRuntimeServices({
+      db: {} as AppDb,
+      dataDir: "/data/resident-without-opt-in",
+      logger: noopLogger,
+      scheduler: {} as SchedulerClient,
+      eventBus: new EventBus<GlobalEvent>(),
+      compatibility: defaultCompatibility(),
+      agentService: localAgentService,
+      runtimeOwnerKind: "tui",
+      capabilityProfile: "cli",
+    });
+    expect(resident.cron).toBeUndefined();
+    expect(resident.cronDelivery).toBeUndefined();
+    expect(resident.channelSystem).toBeUndefined();
+    expect(mocked.cronOptions).toBeUndefined();
+    await resident.close();
+
+    mocked.cronOptions = undefined;
+    const explicitlyDisabled = await createRuntimeServices({
+      db: {} as AppDb,
+      dataDir: "/data/resident-opt-out",
+      logger: noopLogger,
+      scheduler: {} as SchedulerClient,
+      eventBus: new EventBus<GlobalEvent>(),
+      compatibility: defaultCompatibility(),
+      agentService: localAgentService,
+      runtimeOwnerKind: "tui",
+      capabilityProfile: "cli",
+      enableScheduledTasks: false,
+    });
+    expect(explicitlyDisabled.cron).toBeUndefined();
+    expect(explicitlyDisabled.channelSystem).toBeUndefined();
+    expect(mocked.cronOptions).toBeUndefined();
+    await explicitlyDisabled.close();
+
+    // Electron owners keep their pre-existing Cron capability without the option.
+    mocked.cronOptions = undefined;
+    const electron = await createRuntimeServices({
+      db: {} as AppDb,
+      dataDir: "/data/electron-default",
+      logger: noopLogger,
+      scheduler: {} as SchedulerClient,
+      eventBus: new EventBus<GlobalEvent>(),
+      compatibility: defaultCompatibility(),
+      agentService: localAgentService,
+      runtimeOwnerKind: "electron",
+    });
+    expect(electron.cron).toBe(mocked.service);
+    await electron.close();
+  });
+
+  it("starts the Scheduler with persisted job execution for an opted-in host", async () => {
+    const scheduling = resolveScheduledTaskScheduling({
+      electronOwner: false,
+      startupExecutionEnabled: false,
+      enableScheduledTasks: true,
+    });
+    expect(scheduling).toEqual({
+      schedulerOwned: true,
+      restorePersistedJobExecution: true,
+    });
+
+    const start = vi
+      .spyOn(Scheduler.prototype, "start")
+      .mockImplementation(() => undefined);
+    try {
+      const background = await createBackgroundRuntime({
+        db: {} as AppDb,
+        enableScheduler: scheduling.schedulerOwned,
+        restorePersistedJobExecution: scheduling.restorePersistedJobExecution,
+      });
+      await background.start();
+
+      expect(start).toHaveBeenCalledWith({ restorePersistedJobExecution: true });
+      await background.close();
+    } finally {
+      start.mockRestore();
+    }
+
+    // Without the opt-in the resident host keeps the policy-derived value.
+    expect(
+      resolveScheduledTaskScheduling({
+        electronOwner: false,
+        startupExecutionEnabled: false,
+      }),
+    ).toEqual({ schedulerOwned: false, restorePersistedJobExecution: false });
+    expect(
+      resolveScheduledTaskScheduling({
+        electronOwner: true,
+        startupExecutionEnabled: false,
+      }),
+    ).toEqual({ schedulerOwned: true, restorePersistedJobExecution: false });
   });
 
   /**

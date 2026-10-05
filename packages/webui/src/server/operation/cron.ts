@@ -1,30 +1,29 @@
 /**
- * Scheduled tasks (`定时任务`) — the five WebUI operations plus the thin
- * mapping layer between the wire shapes in `../port.ts` and the runtime cron
- * engine's own model.
+ * Scheduled tasks (`定时任务`) — the seven WebUI operations over the v2 cron
+ * service, plus the structural declaration of that service.
  *
- * Why the mapping lives here rather than being imported: the engine's
- * `CronTaskState` / `CronConfig` / `SessionConfig` belong to `@mavis/cron`
- * and the equivalent contract glue to `@mavis/local-runtime`, and neither is
- * a dependency of this package (ADR 0005 keeps the WebUI build graph narrow).
- * So the engine side is declared structurally, exactly as `host.ts` declares
- * the runtime host, and the semantics are ported 1:1 from
- * `packages/local-runtime/src/cron/contract.ts`:
+ * Why the service is declared here rather than imported: `CronService` and its
+ * views belong to `@mavis/local-runtime-v2` and the equivalent contract glue
+ * to `@mavis/local-runtime`, neither of which is a dependency of this package
+ * (ADR 0005 keeps the WebUI build graph narrow). So the engine side is declared
+ * structurally, exactly as `host.ts` declares the runtime host, and every field
+ * is a verbatim copy of the frozen v2 contract
+ * (`D:\temp\mmx-webui-cron\CONTRACT.md` §2 ←
+ * `packages/local-runtime-v2/src/service/cron/contracts.ts`). The assembly
+ * type-check is what proves the two models still line up.
  *
- *  - wire `enabled` ↔ engine `disabled` (polarity flip),
- *  - wire `session` (tagged union) ↔ engine `session` (tagged union),
- *  - wire `activeHours` / `timezone` pass-through, empty timezone clears,
- *  - duplicate cron → 409, not-found → 404, validation → 400.
+ * v2 moved addressing from `agentName` + `cronName` to a single `cronId`, and
+ * replaced the v1 string schedule with a structured `CronSchedule`. There is no
+ * polarity flip left to port: the wire `enabled` and the stored `active` are
+ * both spelled `enabled` on the v2 command surface.
  *
- * Cron expression *parsing* stays with the engine: `registry.createTask` /
- * `updateConfig` both run their own scheduler check before touching the
- * store, so a bad expression is rejected once, by the same code path the
- * desktop and the CLI use. What this module does check up front is the
- * structural part (field count, character set) so an obviously malformed
- * expression never reaches the store as a 500.
+ * Expression *parsing* stays with the runtime: `createDefinition` /
+ * `updateDefinition` run the scheduler's own check before touching the store,
+ * so a bad expression is rejected once, by the same code path the desktop and
+ * the CLI use. What this module checks up front is the structural part so an
+ * obviously malformed schedule never reaches the store as a 500.
  */
 
-import { WebuiErrorCode } from "../envelope.js";
 import {
   invalidBody,
   requireNonEmptyString,
@@ -36,107 +35,66 @@ import type {
   WebuiOperationValidation,
 } from "./operation-contract.js";
 import type {
-  WebuiCreateCronRequest,
-  WebuiCronSession,
-  WebuiCronTask,
-  WebuiDeleteCronRequest,
-  WebuiListCronsResult,
-  WebuiTriggerCronRequest,
-  WebuiUpdateCronRequest,
+  WebuiCreateCronDefinitionRequest,
+  WebuiCronDefinition,
+  WebuiCronIdRequest,
+  WebuiCronMutationResult,
+  WebuiCronPage,
+  WebuiCronRun,
+  WebuiCronSchedule,
+  WebuiCronSessionTarget,
+  WebuiListCronDefinitionsRequest,
+  WebuiListCronRunsRequest,
+  WebuiUpdateCronDefinitionRequest,
 } from "../port.js";
 import {
-  CREATE_CRON_OPERATION_NAME,
-  DELETE_CRON_OPERATION_NAME,
-  LIST_CRONS_OPERATION_NAME,
-  TRIGGER_CRON_OPERATION_NAME,
-  UPDATE_CRON_OPERATION_NAME,
+  CREATE_CRON_DEFINITION_OPERATION_NAME,
+  DELETE_CRON_DEFINITION_OPERATION_NAME,
+  GET_CRON_DEFINITION_OPERATION_NAME,
+  LIST_CRON_DEFINITIONS_OPERATION_NAME,
+  LIST_CRON_RUNS_OPERATION_NAME,
+  TRIGGER_CRON_RUN_OPERATION_NAME,
+  UPDATE_CRON_DEFINITION_OPERATION_NAME,
 } from "./names.js";
-
-const CRON_NAME_RE = /^[^\s/\\:*?"<>|]+$/;
-const ACTIVE_HOURS_RE = /^\d{2}:\d{2}$/;
-const MAX_CRON_NAME_LENGTH = 64;
-const CRON_FIELD_COUNT_RE = /^[^\s]+\s+[^\s]+\s+[^\s]+\s+[^\s]+\s+[^\s]+(\s+[^\s]+)?$/;
 
 /* Engine-side shapes.
  *
- * Structural mirrors of `@mavis/cron`'s `CronTaskState` / `CronConfig` and of
- * the six `CronRegistry` methods this surface uses. `host.ts` narrows the
- * runtime's `cronRuntime` onto these, so the assembly type-check is what
- * proves the two models still line up. */
-
-export interface WebuiCronEngineConfig {
-  readonly disabled?: boolean;
-  readonly schedule: string;
-  readonly scheduleType?: "cron" | "once";
-  readonly prompt: string;
-  readonly timezone?: string;
-  readonly activeHours?: { readonly start: string; readonly end: string };
-  /** Engine tagged union — structurally identical to the wire `session`. */
-  readonly session: WebuiCronSession;
-}
-
-export interface WebuiCronEngineConfigUpdate {
-  disabled?: boolean;
-  schedule?: string;
-  prompt?: string;
-  /** `null` clears the timezone, mirroring the engine's own update shape. */
-  timezone?: string | null;
-}
-
-export interface WebuiCronEngineTaskState {
-  readonly agentName: string;
-  readonly cronName: string;
-  readonly cronId?: string;
-  readonly config: WebuiCronEngineConfig;
-  readonly enabled: boolean;
-  readonly lastRun: number | null;
-  readonly lastResult: string | null;
-  readonly lastError: string | null;
-  readonly nextRun: number | null;
-  readonly status: "idle" | "running" | "skipped";
-}
-
-export interface WebuiCronEngineRegistry {
-  listAllTasks(): readonly WebuiCronEngineTaskState[];
-  getTask(agentName: string, cronName: string): WebuiCronEngineTaskState | undefined;
-  createTask(
-    agentName: string,
-    cronName: string,
-    config: WebuiCronEngineConfig,
-  ): Promise<WebuiCronEngineTaskState>;
-  updateConfig(
-    agentName: string,
-    cronName: string,
-    update: WebuiCronEngineConfigUpdate,
-  ): Promise<WebuiCronEngineTaskState | undefined>;
-  deleteTask(agentName: string, cronName: string): Promise<boolean>;
-  triggerTask(agentName: string, cronName: string): Promise<unknown>;
-}
-
-/**
- * The runtime's scheduled-task engine. Optional on the host handle: a host
- * that predates it (and every existing test double) keeps type-checking, and
- * `host.ts` fails each cron port method closed with one clear message.
- */
-export interface WebuiCronRuntime {
-  /**
-   * Idempotent scheduler start. The assembly already calls it with
-   * `webui:service_start` because the WebUI is a resident service, so by the
-   * time an operation arrives this is normally a no-op; calling it per
-   * operation covers hosts assembled without that boot step and tags each
-   * WebUI-initiated run in the runtime logs.
-   */
-  ensureStarted(reason?: string): Promise<void>;
-  readonly registry: WebuiCronEngineRegistry;
+ * Structural mirror of the v2 `CronService`. `host.ts` narrows the runtime's
+ * `services.cron` onto this, so the assembly type-check is what proves the two
+ * models still line up. The metric-context arguments the runtime accepts are
+ * omitted: the WebUI never passes them, and leaving them out keeps this
+ * declaration to exactly the surface it calls. */
+export interface WebuiCronService {
+  listDefinitions(query: {
+    readonly cursor?: string;
+    readonly limit?: number;
+    readonly includeDeleted?: boolean;
+    readonly agentName?: string;
+  }): WebuiCronPage<WebuiCronDefinition>;
+  getDefinition(cronId: string): WebuiCronDefinition | undefined;
+  createDefinition(
+    command: WebuiCreateCronDefinitionRequest,
+  ): Promise<WebuiCronDefinition>;
+  updateDefinition(
+    command: WebuiUpdateCronDefinitionRequest,
+  ): Promise<WebuiCronDefinition>;
+  deleteDefinition(command: WebuiCronIdRequest): void | Promise<void>;
+  deleteDefinitionsByAgent(agentName: string): void;
+  triggerManualRun(cronId: string): Promise<WebuiCronRun>;
+  listRuns(query: {
+    readonly cronId: string;
+    readonly cursor?: string;
+    readonly limit?: number;
+  }): WebuiCronPage<WebuiCronRun>;
 }
 
 /* ── Error mapping ────────────────────────────────────────────────────────── */
 
 /**
- * A cron failure with the status the desktop contract would have returned.
- * The WebUI envelope has one `harness_error` code, so the status travels in
- * the message and on this class; the panel branches on the wording the
- * runtime itself produced.
+ * A cron failure carrying the status the frozen desktop contract would have
+ * returned. The WebUI envelope has one `harness_error` code, so the status
+ * travels in the message and on this class; the panel branches on the wording
+ * the runtime itself produced.
  */
 export class WebuiCronError extends Error {
   constructor(
@@ -149,7 +107,7 @@ export class WebuiCronError extends Error {
   }
 }
 
-/** Mirror of `local-runtime`'s `toCronContractError`. */
+/** Mirror of the runtime's own cron contract error projection. */
 export function toWebuiCronError(error: unknown): WebuiCronError {
   if (error instanceof WebuiCronError) return error;
   const candidate = (error ?? {}) as {
@@ -167,11 +125,13 @@ export function toWebuiCronError(error: unknown): WebuiCronError {
       : typeof candidate.status === "number"
         ? candidate.status
         : 500;
-  // The registry raises duplicates as `CRON_TASK_EXISTS` / statusCode 409,
-  // but older store paths throw a plain Error that would otherwise land on
-  // 500. Both have to read as "this name is taken".
+  // The repository raises duplicates as `CRON_DEFINITION_EXISTS` /
+  // statusCode 409, but a store that cannot be opened throws a plain Error
+  // that would otherwise land on 500. Both have to read as "this name is
+  // taken".
   const duplicate =
     code === "CRON_TASK_EXISTS" ||
+    code === "CRON_DEFINITION_EXISTS" ||
     /already exists|already registered/i.test(message);
   if (duplicate) {
     status = 409;
@@ -181,301 +141,362 @@ export function toWebuiCronError(error: unknown): WebuiCronError {
   return new WebuiCronError(status, message, code);
 }
 
-/* ── Mapping ──────────────────────────────────────────────────────────────── */
-
-/** Engine tagged union → wire session. */
-export function webuiSessionFromEngineSession(
-  session: WebuiCronSession,
-): WebuiCronSession {
-  if (session.mode === "new") {
-    return session.keepSessions === undefined || session.keepSessions === null
-      ? { mode: "new" }
-      : { mode: "new", keepSessions: session.keepSessions };
-  }
-  return session.mode === "sessionId"
-    ? { mode: "sessionId", sessionId: session.sessionId }
-    : { mode: "root" };
-}
-
-/** Engine task state → wire task. */
-export function webuiCronTaskFromEngineState(
-  state: WebuiCronEngineTaskState,
-): WebuiCronTask {
-  return {
-    cronName: state.cronName,
-    agentName: state.agentName,
-    ...(state.cronId ? { cronId: state.cronId } : {}),
-    schedule: state.config.schedule,
-    scheduleType: state.config.scheduleType === "once" ? "once" : "cron",
-    ...(state.config.timezone !== undefined
-      ? { timezone: state.config.timezone }
-      : {}),
-    enabled: state.enabled,
-    prompt: state.config.prompt,
-    session: webuiSessionFromEngineSession(state.config.session),
-    ...(state.config.activeHours
-      ? {
-          activeHours: {
-            start: state.config.activeHours.start,
-            end: state.config.activeHours.end,
-          },
-        }
-      : {}),
-    status: state.status,
-    lastRun: state.lastRun,
-    lastResult: state.lastResult,
-    lastError: state.lastError,
-    nextRun: state.nextRun,
-  };
-}
-
-/** Wire create request → engine config (`enabled` ↔ `disabled` flip). */
-export function webuiCreateRequestToEngineConfig(
-  request: WebuiCreateCronRequest,
-): WebuiCronEngineConfig {
-  return {
-    schedule: request.schedule,
-    scheduleType: "cron",
-    prompt: request.prompt,
-    ...(request.timezone ? { timezone: request.timezone } : {}),
-    ...(request.activeHours
-      ? {
-          activeHours: {
-            start: request.activeHours.start,
-            end: request.activeHours.end,
-          },
-        }
-      : {}),
-    session: request.session ?? { mode: "new" },
-    disabled: request.enabled === undefined ? false : !request.enabled,
-  };
-}
-
-/** Wire update request → engine config update (absent field = untouched). */
-export function webuiUpdateRequestToEngineUpdate(
-  request: WebuiUpdateCronRequest,
-): WebuiCronEngineConfigUpdate {
-  const update: {
-    disabled?: boolean;
-    schedule?: string;
-    prompt?: string;
-    timezone?: string | null;
-  } = {};
-  if (request.enabled !== undefined) update.disabled = !request.enabled;
-  if (request.schedule !== undefined) update.schedule = request.schedule;
-  if (request.prompt !== undefined) update.prompt = request.prompt;
-  // Empty string is the wire's "clear the timezone" signal, not a zone.
-  if (request.timezone !== undefined)
-    update.timezone = request.timezone === "" ? null : request.timezone;
-  return update;
-}
-
-/* ── Validation ───────────────────────────────────────────────────────────── */
-
-export const listCronsOperation: WebuiOperation<undefined, WebuiListCronsResult> =
-  {
-    name: LIST_CRONS_OPERATION_NAME,
-    validate: (body) =>
-      body === undefined
-        ? { ok: true, body: undefined }
-        : {
-            ok: false,
-            code: WebuiErrorCode.invalidBody,
-            message: `${LIST_CRONS_OPERATION_NAME} does not accept a body`,
-          },
-  };
-
-export const createCronOperation: WebuiOperation<WebuiCreateCronRequest> = {
-  name: CREATE_CRON_OPERATION_NAME,
-  validate: (body) => {
-    const record = requireRecord(CREATE_CRON_OPERATION_NAME, body);
-    if (!record.ok) return record;
-    const value = record.body;
-    const agentName = requireNonEmptyString(
-      CREATE_CRON_OPERATION_NAME,
-      value,
-      "agentName",
-    );
-    if (typeof agentName !== "string") return agentName;
-    const cronName = cronNameField(CREATE_CRON_OPERATION_NAME, value);
-    if (typeof cronName !== "string") return cronName;
-    const schedule = requireNonEmptyString(
-      CREATE_CRON_OPERATION_NAME,
-      value,
-      "schedule",
-    );
-    if (typeof schedule !== "string") return schedule;
-    const scheduleProblem = cronScheduleProblem(schedule);
-    if (scheduleProblem)
-      return invalidBody(`${CREATE_CRON_OPERATION_NAME} ${scheduleProblem}`);
-    const prompt = requireNonEmptyString(CREATE_CRON_OPERATION_NAME, value, "prompt");
-    if (typeof prompt !== "string") return prompt;
-    if (value.timezone !== undefined && typeof value.timezone !== "string")
-      return invalidBody(`${CREATE_CRON_OPERATION_NAME} timezone must be a string`);
-    if (value.enabled !== undefined && typeof value.enabled !== "boolean")
-      return invalidBody(`${CREATE_CRON_OPERATION_NAME} enabled must be a boolean`);
-    const activeHours = activeHoursField(value);
-    if (activeHours === null)
-      return invalidBody(
-        `${CREATE_CRON_OPERATION_NAME} activeHours must be { start, end } in HH:MM format`,
-      );
-    const session = sessionField(value);
-    if (session === null)
-      return invalidBody(
-        `${CREATE_CRON_OPERATION_NAME} session must be { mode: "root" }, { mode: "sessionId", sessionId } or { mode: "new", keepSessions }`,
-      );
-    return {
-      ok: true,
-      body: {
-        agentName,
-        cronName,
-        schedule,
-        prompt,
-        ...(value.timezone ? { timezone: value.timezone as string } : {}),
-        ...(value.enabled !== undefined
-          ? { enabled: value.enabled as boolean }
-          : {}),
-        ...(session ? { session } : {}),
-        ...(activeHours ? { activeHours } : {}),
-      },
-    };
-  },
-};
-
-export const updateCronOperation: WebuiOperation<WebuiUpdateCronRequest> = {
-  name: UPDATE_CRON_OPERATION_NAME,
-  validate: (body) => {
-    const record = requireRecord(UPDATE_CRON_OPERATION_NAME, body);
-    if (!record.ok) return record;
-    const value = record.body;
-    const agentName = requireNonEmptyString(
-      UPDATE_CRON_OPERATION_NAME,
-      value,
-      "agentName",
-    );
-    if (typeof agentName !== "string") return agentName;
-    const cronName = cronNameField(UPDATE_CRON_OPERATION_NAME, value);
-    if (typeof cronName !== "string") return cronName;
-    if (value.schedule !== undefined) {
-      if (typeof value.schedule !== "string" || !value.schedule.trim())
-        return invalidBody(
-          `${UPDATE_CRON_OPERATION_NAME} schedule must be a non-empty string`,
-        );
-      const scheduleProblem = cronScheduleProblem(value.schedule);
-      if (scheduleProblem) return invalidBody(`${UPDATE_CRON_OPERATION_NAME} ${scheduleProblem}`);
-    }
-    if (
-      value.prompt !== undefined &&
-      (typeof value.prompt !== "string" || !value.prompt.trim())
-    )
-      return invalidBody(`${UPDATE_CRON_OPERATION_NAME} prompt must be a non-empty string`);
-    // The empty string is the documented "clear the timezone" value, so it
-    // passes here and becomes `null` in the engine update.
-    if (value.timezone !== undefined && typeof value.timezone !== "string")
-      return invalidBody(`${UPDATE_CRON_OPERATION_NAME} timezone must be a string`);
-    if (value.enabled !== undefined && typeof value.enabled !== "boolean")
-      return invalidBody(`${UPDATE_CRON_OPERATION_NAME} enabled must be a boolean`);
-    return {
-      ok: true,
-      body: {
-        agentName,
-        cronName,
-        ...(value.schedule !== undefined ? { schedule: value.schedule as string } : {}),
-        ...(value.prompt !== undefined ? { prompt: value.prompt as string } : {}),
-        ...(value.timezone !== undefined
-          ? { timezone: value.timezone as string }
-          : {}),
-        ...(value.enabled !== undefined ? { enabled: value.enabled as boolean } : {}),
-      },
-    };
-  },
-};
-
-export const deleteCronOperation: WebuiOperation<WebuiDeleteCronRequest> = {
-  name: DELETE_CRON_OPERATION_NAME,
-  validate: (body) => validateCronKeyBody(DELETE_CRON_OPERATION_NAME, body),
-};
-
-export const triggerCronOperation: WebuiOperation<WebuiTriggerCronRequest> = {
-  name: TRIGGER_CRON_OPERATION_NAME,
-  validate: (body) => validateCronKeyBody(TRIGGER_CRON_OPERATION_NAME, body),
-};
-
-function validateCronKeyBody(
-  operation: string,
-  body: unknown,
-): WebuiOperationValidation<WebuiDeleteCronRequest> {
-  const record = requireRecord(operation, body);
-  if (!record.ok) return record;
-  const agentName = requireNonEmptyString(operation, record.body, "agentName");
-  if (typeof agentName !== "string") return agentName;
-  const cronName = cronNameField(operation, record.body);
-  if (typeof cronName !== "string") return cronName;
-  return { ok: true, body: { agentName, cronName } };
-}
+/* ── Shared field readers ─────────────────────────────────────────────────── */
 
 /** `null` marks "present but unusable"; `undefined` means "absent". */
-function cronNameField(
+function scheduleField(
   operation: string,
   body: Record<string, unknown>,
-): string | ValidationFailure {
-  const cronName = requireNonEmptyString(operation, body, "cronName");
-  if (typeof cronName !== "string") return cronName;
-  if (cronName.length > MAX_CRON_NAME_LENGTH || !CRON_NAME_RE.test(cronName))
-    return invalidBody(
-      `${operation} cronName must be 1-${MAX_CRON_NAME_LENGTH} characters without whitespace or / \\ : * ? " < > |`,
-    );
-  return cronName;
-}
-
-/** `null` marks "present but unusable"; `undefined` means "absent". */
-function activeHoursField(
-  body: Record<string, unknown>,
-): { readonly start: string; readonly end: string } | undefined | null {
-  const value = body.activeHours;
+): WebuiCronSchedule | undefined | null {
+  const value = body.schedule;
   if (value === undefined) return undefined;
   if (value === null || typeof value !== "object" || Array.isArray(value))
     return null;
   const candidate = value as Record<string, unknown>;
-  const { start, end } = candidate;
-  if (typeof start !== "string" || typeof end !== "string") return null;
-  if (!ACTIVE_HOURS_RE.test(start) || !ACTIVE_HOURS_RE.test(end)) return null;
-  return { start, end };
-}
-
-function sessionField(
-  body: Record<string, unknown>,
-): WebuiCronSession | undefined | null {
-  const value = body.session;
-  if (value === undefined) return undefined;
-  if (value === null || typeof value !== "object" || Array.isArray(value))
-    return null;
-  const candidate = value as Record<string, unknown>;
-  if (candidate.mode === "root") return { mode: "root" };
-  if (candidate.mode === "sessionId") {
-    return typeof candidate.sessionId === "string" && candidate.sessionId
-      ? { mode: "sessionId", sessionId: candidate.sessionId }
+  if (candidate.kind === "once") {
+    const runAtMs = candidate.runAtMs;
+    return typeof runAtMs === "number" && Number.isFinite(runAtMs)
+      ? { kind: "once", runAtMs }
       : null;
   }
-  if (candidate.mode === "new") {
-    const keep = candidate.keepSessions;
-    if (keep === undefined || keep === null) return { mode: "new" };
-    if (typeof keep === "number" && Number.isInteger(keep) && keep >= 1)
-      return { mode: "new", keepSessions: keep };
+  if (candidate.kind === "recurring") {
+    const expression = candidate.expression;
+    if (typeof expression !== "string" || !expression.trim()) return null;
+    const timezone = candidate.timezone;
+    if (timezone !== undefined && typeof timezone !== "string") return null;
+    const maxRuns = candidate.maxRuns;
+    if (
+      maxRuns !== undefined &&
+      (!Number.isInteger(maxRuns) || (maxRuns as number) < 1)
+    )
+      return null;
+    return {
+      kind: "recurring",
+      expression,
+      ...(timezone !== undefined ? { timezone: timezone as string } : {}),
+      ...(maxRuns !== undefined ? { maxRuns: maxRuns as number } : {}),
+    };
+  }
+  return null;
+}
+
+/** `null` marks "present but unusable"; `undefined` means "absent". */
+function sessionTargetField(
+  operation: string,
+  body: Record<string, unknown>,
+): WebuiCronSessionTarget | undefined | null {
+  const value = body.sessionTarget;
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== "object" || Array.isArray(value))
     return null;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.mode === "new") return { mode: "new" };
+  if (candidate.mode === "sessionId") {
+    const sessionId = candidate.sessionId;
+    // `sessionId` is optional on the v2 union: absent means "bind the first
+    // session this definition creates".
+    if (sessionId === undefined) return { mode: "sessionId" };
+    return typeof sessionId === "string" && sessionId
+      ? { mode: "sessionId", sessionId }
+      : null;
   }
   return null;
 }
 
 /**
- * Structural schedule check only. The authoritative parse is the engine's own
- * `assertSchedulable`, which `createTask` / `updateConfig` run before the
- * store sees the config; this keeps an obviously malformed expression from
- * reaching it as a request the engine cannot interpret.
+ * An absent optional field, kept distinct from a present-and-`null` one:
+ * `project: null` is the "no project" value the panel sends, not an omission.
  */
-function cronScheduleProblem(schedule: string): string | undefined {
-  const trimmed = schedule.trim();
-  if (!CRON_FIELD_COUNT_RE.test(trimmed))
-    return "schedule must have 5 or 6 whitespace-separated fields";
-  return undefined;
+type OptionalField<T> =
+  | { readonly present: false }
+  | { readonly present: true; readonly value: T };
+
+function isValidationFailure<T>(
+  field: OptionalField<T> | ValidationFailure,
+): field is ValidationFailure {
+  return (field as ValidationFailure).ok === false;
+}
+
+function optionalBooleanField(
+  operation: string,
+  body: Record<string, unknown>,
+  key: string,
+): OptionalField<boolean> | ValidationFailure {
+  const value = body[key];
+  if (value === undefined) return { present: false };
+  if (typeof value !== "boolean")
+    return invalidBody(`${operation} ${key} must be a boolean`);
+  return { present: true, value };
+}
+
+/** `project` / `model` are `string | null`; anything else is unusable. */
+function optionalNullableStringField(
+  operation: string,
+  body: Record<string, unknown>,
+  key: string,
+): OptionalField<string | null> | ValidationFailure {
+  const value = body[key];
+  if (value === undefined) return { present: false };
+  if (value !== null && typeof value !== "string")
+    return invalidBody(`${operation} ${key} must be a string or null`);
+  return { present: true, value: value as string | null };
+}
+
+/* ── Validation ───────────────────────────────────────────────────────────── */
+
+export const listCronDefinitionsOperation: WebuiOperation<
+  WebuiListCronDefinitionsRequest,
+  WebuiCronPage<WebuiCronDefinition>
+> = {
+  name: LIST_CRON_DEFINITIONS_OPERATION_NAME,
+  validate: (body) => {
+    if (body === undefined) return { ok: true, body: {} };
+    const record = requireRecord(LIST_CRON_DEFINITIONS_OPERATION_NAME, body);
+    if (!record.ok) return record;
+    const value = record.body;
+    const page = pageValidation(LIST_CRON_DEFINITIONS_OPERATION_NAME, value);
+    if (!page.ok) return page;
+    if (value.agentName !== undefined && typeof value.agentName !== "string")
+      return invalidBody(
+        `${LIST_CRON_DEFINITIONS_OPERATION_NAME} agentName must be a string`,
+      );
+    return {
+      ok: true,
+      body: {
+        ...page.body,
+        ...(value.agentName !== undefined
+          ? { agentName: value.agentName as string }
+          : {}),
+      },
+    };
+  },
+};
+
+export const getCronDefinitionOperation: WebuiOperation<
+  WebuiCronIdRequest,
+  WebuiCronDefinition | undefined
+> = {
+  name: GET_CRON_DEFINITION_OPERATION_NAME,
+  validate: (body) => validateCronIdBody(GET_CRON_DEFINITION_OPERATION_NAME, body),
+};
+
+export const createCronDefinitionOperation: WebuiOperation<WebuiCreateCronDefinitionRequest> =
+  {
+    name: CREATE_CRON_DEFINITION_OPERATION_NAME,
+    validate: (body) => {
+      const record = requireRecord(CREATE_CRON_DEFINITION_OPERATION_NAME, body);
+      if (!record.ok) return record;
+      const value = record.body;
+      const name = requireNonEmptyString(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "name",
+      );
+      if (typeof name !== "string") return name;
+      const agentName = requireNonEmptyString(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "agentName",
+      );
+      if (typeof agentName !== "string") return agentName;
+      const prompt = requireNonEmptyString(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "prompt",
+      );
+      if (typeof prompt !== "string") return prompt;
+      const schedule = scheduleField(CREATE_CRON_DEFINITION_OPERATION_NAME, value);
+      if (!schedule)
+        return invalidBody(
+          `${CREATE_CRON_DEFINITION_OPERATION_NAME} schedule must be { kind: "recurring", expression } or { kind: "once", runAtMs }`,
+        );
+      const sessionTarget = sessionTargetField(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+      );
+      if (!sessionTarget)
+        return invalidBody(
+          `${CREATE_CRON_DEFINITION_OPERATION_NAME} sessionTarget must be { mode: "new" } or { mode: "sessionId", sessionId }`,
+        );
+      const enabled = optionalBooleanField(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "enabled",
+      );
+      if (isValidationFailure(enabled)) return enabled;
+      const project = optionalNullableStringField(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "project",
+      );
+      if (isValidationFailure(project)) return project;
+      const model = optionalNullableStringField(
+        CREATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "model",
+      );
+      if (isValidationFailure(model)) return model;
+      return {
+        ok: true,
+        body: {
+          name,
+          agentName,
+          prompt,
+          schedule,
+          sessionTarget,
+          ...(enabled.present ? { enabled: enabled.value } : {}),
+          ...(project.present ? { project: project.value } : {}),
+          ...(model.present ? { model: model.value } : {}),
+        },
+      };
+    },
+  };
+
+export const updateCronDefinitionOperation: WebuiOperation<WebuiUpdateCronDefinitionRequest> =
+  {
+    name: UPDATE_CRON_DEFINITION_OPERATION_NAME,
+    validate: (body) => {
+      const record = requireRecord(UPDATE_CRON_DEFINITION_OPERATION_NAME, body);
+      if (!record.ok) return record;
+      const value = record.body;
+      const cronId = requireNonEmptyString(
+        UPDATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "cronId",
+      );
+      if (typeof cronId !== "string") return cronId;
+      if (value.name !== undefined && (typeof value.name !== "string" || !value.name.trim()))
+        return invalidBody(
+          `${UPDATE_CRON_DEFINITION_OPERATION_NAME} name must be a non-empty string`,
+        );
+      if (value.prompt !== undefined && (typeof value.prompt !== "string" || !value.prompt.trim()))
+        return invalidBody(
+          `${UPDATE_CRON_DEFINITION_OPERATION_NAME} prompt must be a non-empty string`,
+        );
+      let schedule: WebuiCronSchedule | undefined;
+      if (value.schedule !== undefined) {
+        const parsed = scheduleField(UPDATE_CRON_DEFINITION_OPERATION_NAME, value);
+        if (!parsed)
+          return invalidBody(
+            `${UPDATE_CRON_DEFINITION_OPERATION_NAME} schedule must be { kind: "recurring", expression } or { kind: "once", runAtMs }`,
+          );
+        schedule = parsed;
+      }
+      let sessionTarget: WebuiCronSessionTarget | undefined;
+      if (value.sessionTarget !== undefined) {
+        const parsed = sessionTargetField(
+          UPDATE_CRON_DEFINITION_OPERATION_NAME,
+          value,
+        );
+        if (!parsed)
+          return invalidBody(
+            `${UPDATE_CRON_DEFINITION_OPERATION_NAME} sessionTarget must be { mode: "new" } or { mode: "sessionId", sessionId }`,
+          );
+        sessionTarget = parsed;
+      }
+      const enabled = optionalBooleanField(
+        UPDATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "enabled",
+      );
+      if (isValidationFailure(enabled)) return enabled;
+      const project = optionalNullableStringField(
+        UPDATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "project",
+      );
+      if (isValidationFailure(project)) return project;
+      const model = optionalNullableStringField(
+        UPDATE_CRON_DEFINITION_OPERATION_NAME,
+        value,
+        "model",
+      );
+      if (isValidationFailure(model)) return model;
+      return {
+        ok: true,
+        body: {
+          cronId,
+          ...(value.name !== undefined ? { name: value.name as string } : {}),
+          ...(value.prompt !== undefined ? { prompt: value.prompt as string } : {}),
+          ...(schedule !== undefined ? { schedule } : {}),
+          ...(sessionTarget !== undefined ? { sessionTarget } : {}),
+          ...(enabled.present ? { enabled: enabled.value } : {}),
+          ...(project.present ? { project: project.value } : {}),
+          ...(model.present ? { model: model.value } : {}),
+        },
+      };
+    },
+  };
+
+export const deleteCronDefinitionOperation: WebuiOperation<
+  WebuiCronIdRequest,
+  WebuiCronMutationResult
+> = {
+  name: DELETE_CRON_DEFINITION_OPERATION_NAME,
+  validate: (body) =>
+    validateCronIdBody(DELETE_CRON_DEFINITION_OPERATION_NAME, body),
+};
+
+export const triggerCronRunOperation: WebuiOperation<
+  WebuiCronIdRequest,
+  WebuiCronRun
+> = {
+  name: TRIGGER_CRON_RUN_OPERATION_NAME,
+  validate: (body) => validateCronIdBody(TRIGGER_CRON_RUN_OPERATION_NAME, body),
+};
+
+export const listCronRunsOperation: WebuiOperation<
+  WebuiListCronRunsRequest,
+  WebuiCronPage<WebuiCronRun>
+> = {
+  name: LIST_CRON_RUNS_OPERATION_NAME,
+  validate: (body) => {
+    const record = requireRecord(LIST_CRON_RUNS_OPERATION_NAME, body);
+    if (!record.ok) return record;
+    const cronId = requireNonEmptyString(
+      LIST_CRON_RUNS_OPERATION_NAME,
+      record.body,
+      "cronId",
+    );
+    if (typeof cronId !== "string") return cronId;
+    const page = pageValidation(LIST_CRON_RUNS_OPERATION_NAME, record.body);
+    if (!page.ok) return page;
+    return { ok: true, body: { cronId, ...page.body } };
+  },
+};
+
+function validateCronIdBody(
+  operation: string,
+  body: unknown,
+): WebuiOperationValidation<WebuiCronIdRequest> {
+  const record = requireRecord(operation, body);
+  if (!record.ok) return record;
+  const cronId = requireNonEmptyString(operation, record.body, "cronId");
+  if (typeof cronId !== "string") return cronId;
+  return { ok: true, body: { cronId } };
+}
+
+/**
+ * Shared optional `cursor` / `limit` reader. Mirrors the validation-result
+ * shape the operations already return so callers can forward a failure without
+ * inspecting which union member they got.
+ */
+function pageValidation(
+  operation: string,
+  body: Record<string, unknown>,
+): WebuiOperationValidation<{
+  readonly cursor?: string;
+  readonly limit?: number;
+}> {
+  if (body.limit !== undefined && (!Number.isInteger(body.limit) || (body.limit as number) < 1))
+    return invalidBody(`${operation} limit must be a positive integer`);
+  if (body.cursor !== undefined && typeof body.cursor !== "string")
+    return invalidBody(`${operation} cursor must be a string`);
+  return {
+    ok: true,
+    body: {
+      ...(body.cursor !== undefined ? { cursor: body.cursor as string } : {}),
+      ...(body.limit !== undefined ? { limit: body.limit as number } : {}),
+    },
+  };
 }

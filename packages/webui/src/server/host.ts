@@ -75,22 +75,23 @@ import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
+  WebuiAgentRef,
+  WebuiCronDefinition,
+  WebuiCronIdRequest,
+  WebuiCronMutationResult,
+  WebuiCronPage,
+  WebuiCronRun,
+  WebuiCreateCronDefinitionRequest,
+  WebuiListAgentsRequest,
+  WebuiListCronDefinitionsRequest,
+  WebuiListCronRunsRequest,
+  WebuiUpdateCronDefinitionRequest,
 } from "./port.js";
 import {
   toWebuiCronError,
-  webuiCreateRequestToEngineConfig,
-  webuiCronTaskFromEngineState,
-  webuiUpdateRequestToEngineUpdate,
   WebuiCronError,
-  type WebuiCronRuntime,
+  type WebuiCronService,
 } from "./operation/cron.js";
-import {
-  CREATE_CRON_OPERATION_NAME,
-  DELETE_CRON_OPERATION_NAME,
-  LIST_CRONS_OPERATION_NAME,
-  TRIGGER_CRON_OPERATION_NAME,
-  UPDATE_CRON_OPERATION_NAME,
-} from "./operation/names.js";
 
 /**
  * The exact surface of the runtime `cliService` the WebUI talks to. The
@@ -334,15 +335,22 @@ export interface WebuiRuntimeCliService {
 export interface WebuiRuntimeHostHandle {
   readonly apiHost: {
     close(): Promise<void>;
-    /**
-     * Scheduled-task engine, borrowed from the runtime host. Optional on
-     * purpose: the WebUI only reads it, and every host that predates it
-     * (including the test doubles) must keep type-checking. Each cron port
-     * method fails closed with `runtime host does not expose cron` when the
-     * slot is empty — the same nested-guard shape as `requestCompaction`.
-     */
-    readonly cronRuntime?: WebuiCronRuntime;
   };
+  /**
+   * The v2 runtime services, borrowed by the scheduled-task surface. Optional
+   * on purpose: the WebUI only reads `cron` from it, and every host that does
+   * not assemble it (including the test doubles) must keep type-checking. Each
+   * cron port method fails closed with
+   * `runtime host does not expose cron` when the slot is empty — the same
+   * nested-guard shape as `requestCompaction`.
+   *
+   * `scheduledTasks` is published on its own by the runtime when the host owns
+   * the in-process Scheduler, which the assembly requests with
+   * `enableScheduledTasks: true`. It is deliberately a single capability and not
+   * the whole `services` graph: the WebUI owns schedules and nothing else, and a
+   * wider slot would also expose `channelSystem` and the session/turn owners.
+   */
+  readonly scheduledTasks?: WebuiCronService;
   readonly appVersion?: string;
   readonly dataDir?: string;
   readonly invalidateAuth?: () => void;
@@ -469,79 +477,80 @@ export function createHarnessPortFromHost(
     async clearGoal(request) {
       return { success: await requireCliService(host).clearGoal(request.sessionId) };
     },
-    /* Scheduled tasks.
+    /* Scheduled tasks — v2.
      *
-     * The registry lives on the runtime host, not the cliService. The
-     * scheduler is already up by the time an operation arrives: the assembly
-     * starts it with `ensureStarted("webui:service_start")` because the WebUI
-     * is a resident service. Each operation still calls
-     * `ensureStarted("webui:<operation>")` before reading or mutating, which is
-     * idempotent, covers the hosts assembled without that boot step, and keeps
-     * every WebUI-initiated run attributable in the runtime logs.
+     * The service lives on the runtime host as `scheduledTasks`, assembled by
+     * the v2 host when this host owns the in-process Scheduler. Unlike v1 there
+     * is no `ensureStarted` to call: the scheduler is armed during host startup
+     * and stays armed for the life of the process, which is what a resident
+     * local service needs.
      *
-     * Tasks persist in the shared `~/.minimax` store the desktop and the CLI
-     * also read and write — the WebUI is one more writer on it, not an owner.
-     */
-    async listCrons() {
-      const cron = await requireCronRuntime(host, LIST_CRONS_OPERATION_NAME);
-      return {
-        tasks: cron.registry.listAllTasks().map(webuiCronTaskFromEngineState),
-      };
+     * Definitions persist in the shared `~/.minimax` store the desktop and the
+     * CLI also read and write — the WebUI is one more writer on it, not an
+     * owner. */
+    async listAgents(request) {
+      return deriveAgentRefs(requireCliService(host), request);
     },
-    async createCron(request) {
-      const cron = await requireCronRuntime(host, CREATE_CRON_OPERATION_NAME);
-      const config = webuiCreateRequestToEngineConfig(request);
+    async listCronDefinitions(request) {
+      const cron = requireCronService(host);
+      return cron.listDefinitions(request);
+    },
+    async getCronDefinition(request) {
+      const cron = requireCronService(host);
+      return cron.getDefinition(request.cronId);
+    },
+    async createCronDefinition(request) {
+      const cron = requireCronService(host);
       try {
-        await cron.registry.createTask(request.agentName, request.cronName, config);
+        return await cron.createDefinition(request);
       } catch (error) {
         // A duplicate name is the case the panel has to explain, so it keeps
         // the runtime's own wording and the derived status.
         throw toWebuiCronError(error);
       }
-      return { success: true };
     },
-    async updateCron(request) {
-      const cron = await requireCronRuntime(host, UPDATE_CRON_OPERATION_NAME);
-      try {
-        const state = await cron.registry.updateConfig(
-          request.agentName,
-          request.cronName,
-          webuiUpdateRequestToEngineUpdate(request),
+    async updateCronDefinition(request) {
+      const cron = requireCronService(host);
+      if (!cron.getDefinition(request.cronId))
+        // One deliberate asymmetry with `deleteCronDefinition`, which answers
+        // `{ success: false }` for the same absent `cronId`: an update carries
+        // no success boolean, so "there was nothing to update" can only travel
+        // as a 404.
+        throw new WebuiCronError(
+          404,
+          `cron definition not found: ${request.cronId}`,
+          "CRON_DEFINITION_NOT_FOUND",
         );
-        if (!state)
-          throw new WebuiCronError(
-            404,
-            `cron task not found: ${request.agentName}/${request.cronName}`,
-            "CRON_TASK_NOT_FOUND",
-          );
+      try {
+        return await cron.updateDefinition(request);
+      } catch (error) {
+        throw toWebuiCronError(error);
+      }
+    },
+    async deleteCronDefinition(request) {
+      const cron = requireCronService(host);
+      // Idempotent by contract: the boolean reports whether a definition was
+      // actually there, so a `cronId` that is not registered yields
+      // `success: false` rather than a 404.
+      if (!cron.getDefinition(request.cronId)) return { success: false };
+      try {
+        await cron.deleteDefinition({ cronId: request.cronId });
       } catch (error) {
         throw toWebuiCronError(error);
       }
       return { success: true };
     },
-    async deleteCron(request) {
-      const cron = await requireCronRuntime(host, DELETE_CRON_OPERATION_NAME);
+    async triggerCronRun(request) {
+      const cron = requireCronService(host);
       try {
-        // Idempotent by contract: `deleteCron` answers `{ success }` where the
-        // boolean reports whether a task was actually there, so a name that is
-        // not registered yields `success: false` rather than a 404. That is the
-        // one deliberate asymmetry with `updateCron`, whose result carries no
-        // such boolean and therefore raises 404 through the state check.
-        return {
-          success: await cron.registry.deleteTask(request.agentName, request.cronName),
-        };
+        return await cron.triggerManualRun(request.cronId);
       } catch (error) {
         throw toWebuiCronError(error);
       }
     },
-    async triggerCron(request) {
-      const cron = await requireCronRuntime(host, TRIGGER_CRON_OPERATION_NAME);
-      try {
-        await cron.registry.triggerTask(request.agentName, request.cronName);
-      } catch (error) {
-        throw toWebuiCronError(error);
-      }
-      return { success: true };
+    async listCronRuns(request) {
+      const cron = requireCronService(host);
+      return cron.listRuns(request);
     },
     async listWorkspaceFileTree(request) {
       const tree = await requireCliService(host).listWorkspaceFileTree!(request) as readonly WebuiWorkspaceFile[];
@@ -860,22 +869,59 @@ function requireCliService(host: WebuiRuntimeHostHandle): WebuiRuntimeCliService
 }
 
 /**
- * Resolve the runtime host's scheduled-task engine and pull the scheduler up.
+ * Resolve the runtime host's v2 cron service.
  *
- * Same nested-guard shape as `requireCliService`, one level deeper: the host
- * is checked first, then the engine slot. Failing closed here means a WebUI
- * without a cron-capable runtime answers
- * `runtime host does not expose cron` on all five operations instead of
- * half-reading a store the scheduler never owns.
+ * Same nested-guard shape as `requireCliService`, one level deeper: the host is
+ * checked first, then the `services` slot, then `cron`. Failing closed here
+ * means a WebUI assembled without an owned Scheduler answers
+ * `runtime host does not expose cron` on all seven scheduled-task operations
+ * instead of half-reading a store no scheduler owns.
  */
-async function requireCronRuntime(
-  host: WebuiRuntimeHostHandle,
-  operation: string,
-): Promise<WebuiCronRuntime> {
-  if (!host.apiHost.cronRuntime)
-    throw new Error("runtime host does not expose cron");
-  await host.apiHost.cronRuntime.ensureStarted(`webui:${operation}`);
-  return host.apiHost.cronRuntime;
+function requireCronService(host: WebuiRuntimeHostHandle): WebuiCronService {
+  if (!host.scheduledTasks) throw new Error("runtime host does not expose cron");
+  return host.scheduledTasks;
+}
+
+/** Per-page ceiling the agent derivation reads with when the caller sets none. */
+const AGENT_SCAN_PAGE_LIMIT = 500;
+/**
+ * Hard ceiling on how many session pages one `listAgents` call will walk. The
+ * result is derived, not authoritative, so it is better to stop and let the
+ * panel re-ask than to keep paging a large profile indefinitely.
+ */
+const AGENT_SCAN_MAX_PAGES = 50;
+
+/**
+ * Derive the distinct agent set from the session listing.
+ *
+ * `listSessions` already names the agent behind every session, so the set of
+ * `agentName` values is the set an agent can be scheduled against — no new
+ * runtime query and no new runtime capability. Pages are walked up to a bounded
+ * budget because a single page would silently drop agents that live past it.
+ */
+async function deriveAgentRefs(
+  service: WebuiRuntimeCliService,
+  request: WebuiListAgentsRequest | undefined,
+): Promise<readonly WebuiAgentRef[]> {
+  const limit = request?.limit ?? AGENT_SCAN_PAGE_LIMIT;
+  const agents: WebuiAgentRef[] = [];
+  const seen = new Set<string>();
+  let cursor = request?.cursor;
+  for (let page = 0; page < AGENT_SCAN_MAX_PAGES; page += 1) {
+    const result = await service.listSessions(
+      { name: "main", limit, ...(cursor !== undefined ? { cursor } : {}) },
+      {},
+    );
+    for (const session of result.sessions) {
+      const agentName = session.agentName?.trim();
+      if (!agentName || seen.has(agentName)) continue;
+      seen.add(agentName);
+      agents.push({ agentName });
+    }
+    if (!result.hasMore || !result.nextCursor) return agents;
+    cursor = result.nextCursor;
+  }
+  return agents;
 }
 
 function permissionReplyValue(reply: WebuiPermissionDecision): number {

@@ -32,9 +32,11 @@ assembly it needs. The reasoning behind the decisions lives in [`../adr`](adr/).
 - Automatic resume of persisted jobs at cold start — see
   [ADR 0002](../adr/0002-in-process-runtime-host-with-quarantined-cold-start.md)
 
-The scheduled-task (`定时`) panel is a later addition to this list. It manages
-tasks in the shared cron store and starts the scheduler on first use, so ADR 0002
-carries an amendment describing what that does and does not change.
+The scheduled-task (`定时`) panel is a later addition to this list. The WebUI is a
+resident local service, so it owns the schedule for the life of the process and
+re-arms its timers on start. ADR 0002 carries an amendment describing what that
+does and does not change, including the two mechanisms it is easy to conflate:
+restoring a schedule is not recovering in-flight work.
 
 ## Behaviour boundaries
 

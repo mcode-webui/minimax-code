@@ -15,6 +15,7 @@ import {
   createBackgroundRuntime,
   type BackgroundRuntime,
 } from "./background-runtime.js";
+import { resolveScheduledTaskScheduling } from "./service/cron/ownership.js";
 import {
   cleanupFailedV1Startup,
   createDeferredAgentRuntimeTelemetry,
@@ -446,6 +447,11 @@ function createStartedHost(
     ...v1,
     ...(ownerRuntime ? { application: ownerRuntime.services.application } : {}),
     ...(cliService ? { cliService } : {}),
+    // Only the scheduled-task capability leaves this function, never the whole
+    // `services` graph -- see `CreatedLocalRuntimeHost.scheduledTasks`.
+    ...(ownerRuntime?.services.cron
+      ? { scheduledTasks: ownerRuntime.services.cron }
+      : {}),
     apiHost: v1.apiHost,
     ready,
     ...(ownerRuntime
@@ -812,6 +818,21 @@ function createBrowserUseServiceOptions(
   };
 }
 
+/**
+ * v2 host option for scheduled tasks. `CreateLocalRuntimeHostOptions` lives in
+ * the host contract, so the optional field is read through a narrow widening
+ * here; hosts forward `enableScheduledTasks` at the factory boundary.
+ */
+function requestsScheduledTasks(options: CreateLocalRuntimeHostOptions): boolean {
+  return (
+    (
+      options as CreateLocalRuntimeHostOptions & {
+        readonly enableScheduledTasks?: boolean;
+      }
+    ).enableScheduledTasks === true
+  );
+}
+
 async function initializeOwnerRuntime(input: {
   readonly v1: V1CreatedLocalRuntimeHost;
   readonly compatibility: V1RuntimeCompatibility;
@@ -841,14 +862,22 @@ async function initializeOwnerRuntime(input: {
       options.startupExecutionPolicy,
     );
     const electronOwner = options.runtimeOwnerKind === "electron";
+    // Scheduled tasks stay process-local: an opted-in resident host owns the
+    // Scheduler and cron services without inheriting any Electron-only surface.
+    const scheduledTaskOwner = requestsScheduledTasks(options);
+    const scheduling = resolveScheduledTaskScheduling({
+      electronOwner,
+      startupExecutionEnabled,
+      enableScheduledTasks: scheduledTaskOwner,
+    });
     background = await createBackgroundRuntime({
       db: database.db,
       dataDir: v1.dataDir,
       logger,
       metrics: v1.metricsClient,
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
-      restorePersistedJobExecution: startupExecutionEnabled,
-      enableScheduler: electronOwner,
+      restorePersistedJobExecution: scheduling.restorePersistedJobExecution,
+      enableScheduler: scheduling.schedulerOwned,
     });
     services = await createRuntimeServices({
       db: database.db,
@@ -871,6 +900,7 @@ async function initializeOwnerRuntime(input: {
       recoverPersistedState: startupExecutionEnabled,
       greetingEnabled: electronOwner && startupExecutionEnabled,
       runtimeOwnerKind: options.runtimeOwnerKind,
+      enableScheduledTasks: scheduledTaskOwner,
       browserUse: createBrowserUseServiceOptions(options),
       ...(options.promptConfigKey
         ? { promptConfigKey: options.promptConfigKey }

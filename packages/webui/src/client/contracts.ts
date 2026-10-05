@@ -423,70 +423,115 @@ export interface WebuiModelSelectionRequest {
   readonly sessionId?: string;
 }
 
-/* Scheduled task (cron) wire shapes.
+/* Scheduled task (cron) wire shapes — v2.
  *
- * These mirror the runtime's cron contract field for field. The panel is a
- * projection of the registry the desktop and the CLI also write to, so a
- * renamed field here would silently write somewhere else instead of failing.
- * `enabled` is the wire-side polarity; the stored config's `disabled` is the
- * runtime's own business and never crosses this boundary. */
+ * Field-for-field copies of the frozen wire contract
+ * (`D:\temp\mmx-webui-cron\CONTRACT.md` §2). The panel is a projection of the
+ * registry the desktop and the CLI also write to, so a renamed field here would
+ * silently write somewhere else instead of failing. Nothing in this block may be
+ * renamed, reordered away, or extended: v2 is the single source of truth.
+ *
+ * Every definition and run is addressed by `cronId`, not by
+ * `agentName` + `cronName`. */
 
-export type WebuiCronSession =
-  | { readonly mode: "root" }
-  | { readonly mode: "sessionId"; readonly sessionId: string }
-  | { readonly mode: "new"; readonly keepSessions?: number | null };
+export type WebuiCronSchedule =
+  | { readonly kind: "recurring"; readonly expression: string; readonly timezone?: string; readonly maxRuns?: number }
+  | { readonly kind: "once"; readonly runAtMs: number };
 
-export interface WebuiCronTask {
-  readonly cronName: string;
+export type WebuiCronSessionTarget =
+  | { readonly mode: "new" }
+  | { readonly mode: "sessionId"; readonly sessionId?: string };
+
+export interface WebuiCronDefinition {
+  readonly cronId: string;
+  readonly name: string;
   readonly agentName: string;
-  readonly cronId?: string;
-  readonly schedule: string;
-  readonly scheduleType: "cron" | "once";
-  readonly timezone?: string;
+  readonly schedule: WebuiCronSchedule;
   readonly enabled: boolean;
   readonly prompt: string;
-  readonly session: WebuiCronSession;
-  readonly activeHours?: { readonly start: string; readonly end: string };
-  readonly status: "idle" | "running" | "skipped";
-  readonly lastRun: number | null;
-  readonly lastResult: string | null;
-  readonly lastError: string | null;
-  readonly nextRun: number | null;
+  readonly sessionTarget: WebuiCronSessionTarget;
+  readonly project?: string | null;
+  readonly model?: string | null;
+  readonly nextRunAtMs?: number;
+  readonly createdAtMs: number;
+  readonly updatedAtMs: number;
+  readonly deletedAtMs?: number;
 }
 
-export interface WebuiListCronsResult {
-  readonly tasks: WebuiCronTask[];
+export type WebuiCronRunStatus = "pending" | "delivered" | "failed";
+export type WebuiCronRunTrigger = "manual" | "scheduled";
+
+export interface WebuiCronRun {
+  readonly runId: string;
+  readonly cronId: string;
+  readonly triggerSource: WebuiCronRunTrigger;
+  readonly sessionId?: string;
+  readonly status: WebuiCronRunStatus;
+  readonly createdAtMs: number;
+  readonly deliveredAtMs?: number;
+  readonly failedAtMs?: number;
+  readonly errorCode?: string;
+  readonly error?: string;
 }
 
-export interface WebuiCreateCronRequest {
+export interface WebuiCronPage<T> {
+  readonly items: readonly T[];
+  readonly hasMore: boolean;
+  readonly nextCursor?: string;
+}
+
+export interface WebuiAgentRef {
   readonly agentName: string;
-  readonly cronName: string;
-  readonly schedule: string;
+  readonly displayName?: string;
+}
+
+/** 幂等：删除不存在的 cronId 返回 { success: false }，不抛错。 */
+export interface WebuiCronMutationResult { readonly success: boolean }
+
+export interface WebuiCreateCronDefinitionRequest {
+  readonly name: string;
+  readonly agentName: string;
+  readonly schedule: WebuiCronSchedule;
   readonly prompt: string;
-  readonly timezone?: string;
+  readonly sessionTarget: WebuiCronSessionTarget;
   readonly enabled?: boolean;
-  readonly session?: WebuiCronSession;
-  readonly activeHours?: { readonly start: string; readonly end: string };
+  readonly project?: string | null;
+  readonly model?: string | null;
 }
 
-export interface WebuiUpdateCronRequest {
-  readonly agentName: string;
-  readonly cronName: string;
-  readonly schedule?: string;
+export interface WebuiUpdateCronDefinitionRequest {
+  readonly cronId: string;
+  readonly name?: string;
+  readonly schedule?: WebuiCronSchedule;
   readonly prompt?: string;
-  /** 空字符串表示清除时区。 */
-  readonly timezone?: string;
   readonly enabled?: boolean;
+  readonly sessionTarget?: WebuiCronSessionTarget;
+  readonly project?: string | null;
+  readonly model?: string | null;
 }
 
-export interface WebuiDeleteCronRequest {
-  readonly agentName: string;
-  readonly cronName: string;
+/* Request bodies. These name no wire state of their own: they only carry the
+ * frozen `cronId` / cursor / limit addressing the operations accept. */
+
+export interface WebuiListAgentsRequest {
+  readonly limit?: number;
+  readonly cursor?: string;
 }
 
-export interface WebuiTriggerCronRequest {
-  readonly agentName: string;
-  readonly cronName: string;
+export interface WebuiListCronDefinitionsRequest {
+  readonly agentName?: string;
+  readonly cursor?: string;
+  readonly limit?: number;
+}
+
+export interface WebuiListCronRunsRequest {
+  readonly cronId: string;
+  readonly cursor?: string;
+  readonly limit?: number;
+}
+
+export interface WebuiCronIdRequest {
+  readonly cronId: string;
 }
 
 /* Transport — the single bag of methods the foundation app and the
@@ -669,21 +714,39 @@ export interface WebuiTransport {
       readonly description?: string;
     }[];
   }>;
-  /** Scheduled tasks. Mutations return `success`; the panel re-reads the list
-   * afterwards rather than trusting a partial echo of the new state. */
-  readonly listCrons?: () => Promise<WebuiListCronsResult>;
-  readonly createCron?: (
-    request: WebuiCreateCronRequest,
-  ) => Promise<{ readonly success?: boolean }>;
-  readonly updateCron?: (
-    request: WebuiUpdateCronRequest,
-  ) => Promise<{ readonly success?: boolean }>;
-  readonly deleteCron?: (
-    request: WebuiDeleteCronRequest,
-  ) => Promise<{ readonly success?: boolean }>;
-  readonly triggerCron?: (
-    request: WebuiTriggerCronRequest,
-  ) => Promise<{ readonly success?: boolean }>;
+  /** Scheduled tasks (v2). Mutations return `success`; the panel re-reads the
+   * list afterwards rather than trusting a partial echo of the new state.
+   *
+   * `listAgents` answers a bare `WebuiAgentRef[]` — the server derives it from
+   * the agent names the session list already reports, so there is no paging
+   * envelope to unwrap (`server/operation/agents.ts`). */
+  readonly listAgents?: (
+    request?: WebuiListAgentsRequest,
+  ) => Promise<readonly WebuiAgentRef[]>;
+  readonly listCronDefinitions?: (
+    request?: WebuiListCronDefinitionsRequest,
+  ) => Promise<WebuiCronPage<WebuiCronDefinition>>;
+  readonly getCronDefinition?: (
+    request: WebuiCronIdRequest,
+  ) => Promise<WebuiCronDefinition>;
+  readonly createCronDefinition?: (
+    request: WebuiCreateCronDefinitionRequest,
+  ) => Promise<WebuiCronDefinition>;
+  readonly updateCronDefinition?: (
+    request: WebuiUpdateCronDefinitionRequest,
+  ) => Promise<WebuiCronDefinition>;
+  // Only delete answers `{ success }`: it is idempotent, so the boolean reports
+  // whether a definition was actually there. Create and update hand back the
+  // resulting definition and trigger hands back the run it started.
+  readonly deleteCronDefinition?: (
+    request: WebuiCronIdRequest,
+  ) => Promise<WebuiCronMutationResult>;
+  readonly triggerCronRun?: (
+    request: WebuiCronIdRequest,
+  ) => Promise<WebuiCronRun>;
+  readonly listCronRuns?: (
+    request: WebuiListCronRunsRequest,
+  ) => Promise<WebuiCronPage<WebuiCronRun>>;
   readonly pluginManagement?: (request: import("../shared/plugin-management.js").WebuiPluginManagementRequest) => Promise<unknown>;
   readonly getPermissionMode?: () => Promise<unknown>;
   readonly setPermissionMode?: (request: { readonly mode: "default" | "auto" | "bypassPermissions" }) => Promise<unknown>;

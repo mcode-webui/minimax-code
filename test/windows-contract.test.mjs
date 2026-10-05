@@ -19,12 +19,24 @@ afterEach(() => {
 });
 
 describe.skipIf(process.platform !== "win32")("Windows source contract", () => {
+  // This assertion is one blocking `powershell.exe` spawn that runs a CIM
+  // query (see checkWindowsSourceLocation). The whole cost is the cold start
+  // of the PowerShell host and the WMI/CIM subsystem, not any work the test
+  // controls. Measured on windows-latest over the suite's own history: 3011ms
+  // and 3204ms when the subsystem is warm, and 5365 / 6472 / 7181 / 8262ms
+  // when it is not, so the 5s Vitest default sat inside the noise band and
+  // flipped this gate red on cold runners. The deadline has to clear the 15s
+  // budget the check itself gives that spawn, otherwise the test kills the
+  // subprocess before it can return its own fail-closed result and a genuine
+  // volume failure is reported as an opaque timeout. 30s is 2x that budget,
+  // 3.6x the slowest sample seen, and still half the 60s the update case below
+  // allows. Scoped to this test: no suite-wide relaxation.
   it("accepts the Windows checkout on a local NTFS volume", () => {
     assert.deepEqual(checkWindowsSourceLocation({ allowNonFixed: false }), {
       ok: true,
       skipped: false,
     });
-  });
+  }, 30_000);
 
   it("preserves Windows path syntax on the native host", async () => {
     assert.equal(await resolveWslPath(windowsPath), windowsPath);

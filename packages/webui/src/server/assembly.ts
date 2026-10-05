@@ -510,6 +510,9 @@ export async function createWebuiRuntimeHost(
     claimSignin: () => dailyCheckin.claimSignin(),
   };
   const harnessPort = createHarnessPortFromHost(hostHandle);
+  await startResidentCronScheduler(hostHandle, (message) => {
+    console.warn(`[webui] ${message}`);
+  });
   return {
     harnessPort,
     host: hostHandle,
@@ -517,6 +520,49 @@ export async function createWebuiRuntimeHost(
     mcodeTools,
     invalidateAuth,
   };
+}
+
+/**
+ * Structural view of the two cron members the assembly needs. `WebuiAssembledHost`
+ * types `apiHost` without the cron surface, so the boot-time call cannot see
+ * through the assembled type. Declared here rather than widened on the host
+ * handle because only the boot path needs it; the operation path goes through
+ * `requireCronRuntime`, which is where the real engine types live.
+ */
+type WebuiResidentCronSurface = {
+  readonly ensureStarted?: (reason?: string) => Promise<void>;
+  readonly cronRuntime?: WebuiResidentCronSurface;
+};
+
+/**
+ * The WebUI is a resident local service, not a page that runs on demand: the
+ * published `mcode-webui` bin starts the host, prints a URL and blocks until
+ * SIGINT/SIGTERM. So the cron scheduler starts with the service rather than on
+ * first use of the scheduled-task panel. Waiting for the panel would mean a
+ * schedule created from the desktop or CLI never fires here, because nobody has
+ * opened the panel to notice it did not.
+ *
+ * Non-fatal on purpose. A cron store that cannot be opened degrades the
+ * scheduled-task panel; it does not stop the service from serving sessions. The
+ * per-operation `ensureStarted` in `requireCronRuntime` still runs, so a
+ * transient boot-time failure is retried the first time the panel is used.
+ */
+async function startResidentCronScheduler(
+  handle: { readonly apiHost?: unknown },
+  report: (message: string) => void,
+): Promise<void> {
+  const apiHost = handle.apiHost as WebuiResidentCronSurface | undefined;
+  const ensureStarted = apiHost?.cronRuntime?.ensureStarted;
+  if (typeof ensureStarted !== "function") return;
+  try {
+    await ensureStarted("webui:service_start");
+  } catch (error) {
+    report(
+      `scheduled tasks unavailable at start: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 }
 
 /**

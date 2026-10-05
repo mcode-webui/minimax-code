@@ -120,9 +120,11 @@ export interface WebuiCronEngineRegistry {
  */
 export interface WebuiCronRuntime {
   /**
-   * Starts the scheduler on demand. The WebUI never relies on a cold-start
-   * restore (ADR 0002 keeps `startupExecutionPolicy: 'quarantined'`), so this
-   * call is what pulls the scheduler up before the registry is read.
+   * Idempotent scheduler start. The assembly already calls it with
+   * `webui:service_start` because the WebUI is a resident service, so by the
+   * time an operation arrives this is normally a no-op; calling it per
+   * operation covers hosts assembled without that boot step and tags each
+   * WebUI-initiated run in the runtime logs.
    */
   ensureStarted(reason?: string): Promise<void>;
   readonly registry: WebuiCronEngineRegistry;

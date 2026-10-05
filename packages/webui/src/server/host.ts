@@ -471,12 +471,13 @@ export function createHarnessPortFromHost(
     },
     /* Scheduled tasks.
      *
-     * The registry lives on the runtime host, not the cliService, and the
-     * scheduler is never started implicitly: ADR 0002 keeps the cold start
-     * quarantined, so each call pulls it up with an explicit, attributable
-     * `ensureStarted("webui:<operation>")` before reading or mutating. That
-     * is what makes a WebUI-initiated run distinguishable in the runtime's
-     * logs from a host-initiated one.
+     * The registry lives on the runtime host, not the cliService. The
+     * scheduler is already up by the time an operation arrives: the assembly
+     * starts it with `ensureStarted("webui:service_start")` because the WebUI
+     * is a resident service. Each operation still calls
+     * `ensureStarted("webui:<operation>")` before reading or mutating, which is
+     * idempotent, covers the hosts assembled without that boot step, and keeps
+     * every WebUI-initiated run attributable in the runtime logs.
      *
      * Tasks persist in the shared `~/.minimax` store the desktop and the CLI
      * also read and write — the WebUI is one more writer on it, not an owner.

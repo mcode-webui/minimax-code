@@ -25,32 +25,40 @@ Execution state that is not persisted — stream buffers, subscriptions, pending
 permission and questionnaire requests — belongs to the owner process and cannot be
 recovered from disk.
 
-## Amendment: the scheduled-task panel starts the cron scheduler on demand
+## Amendment: the resident service owns the cron schedule
 
-The scheduled-task panel (`定时`) reads and writes the same cron store the terminal
-client uses, reached through `apiHost.cronRuntime` rather than the `services.cron`
-composition that `runtimeOwnerKind: 'tui'` leaves undefined. Using it calls
-`cronRuntime.ensureStarted()`, which starts the croner scheduler inside the WebUI
-process. That is a deliberate change to the picture the options above describe, and
-it is worth being precise about what did and did not change.
+The WebUI is a resident local service, not a surface that runs on demand. The
+published `mcode-webui` bin assembles the host, prints a URL, and blocks until
+SIGINT or SIGTERM; the browser page is a client that attaches to it. The
+scheduled-task panel therefore manages tasks in the shared cron store and the
+service itself starts the scheduler during startup
+(`ensureStarted("webui:service_start")`), reached through `apiHost.cronRuntime`
+rather than the `services.cron` composition that `runtimeOwnerKind: 'tui'`
+leaves undefined.
 
-**Unchanged.** `startupExecutionPolicy` stays `'quarantined'`. It gates only the
-host's own cold-start path, so a WebUI restart still never resumes persisted jobs on
-its own. `runtimeOwnerKind` stays `'tui'`; no Electron-only capability is claimed.
+Starting with the service rather than on first use of the panel is the whole
+point. A schedule created from the desktop or the CLI has to fire in the
+resident WebUI whether or not anyone has opened the panel to watch it; tying
+the scheduler to the panel would make "the panel was never opened" silently
+mean "the schedule never runs".
 
-**Changed.** Reaching the scheduler is a *use-time* action, not a startup one. The
-first schedules operation loads persisted cron definitions from the shared store and
-schedules them for the lifetime of the process. So a WebUI service that is left
-running will fire cron tasks at their times, where before it would not.
+**Unchanged.** `startupExecutionPolicy` stays `'quarantined'` and
+`runtimeOwnerKind` stays `'tui'`. The policy gates the host's own cold-start
+path, and the WebUI starting the cron scheduler is a separate, explicit act
+rather than that path. No Electron-only capability is claimed.
 
-**Accepted hazard.** The data directory is shared, so a WebUI service and the
-terminal client can both hold the scheduler for the same agent at the same time and
-each fire the same task. The engine's busy-queue bounds overlap within one process;
-it does not arbitrate across two. The panel therefore states which side is executing
-rather than implying the WebUI owns execution.
+**Re-opened on purpose.** The second rejected option above turned on "a WebUI
+restart and the terminal client would both attempt to resume the same
+persisted jobs". That hazard is now accepted for cron specifically: the data
+directory is shared, so the WebUI service and the terminal client can both hold
+the scheduler for one agent and fire the same task twice. The engine's
+busy-queue bounds overlap within one process; it does not arbitrate across two.
+The panel states which side is executing rather than implying the WebUI owns
+execution exclusively.
 
-**Rejected alternative.** Restricting the panel to list plus manual trigger, and
-leaving scheduling to the terminal client only. It keeps one scheduler per data
-directory, but a task created in the WebUI does nothing until the user happens to run
-the desktop client, which is the "builds but never runs" failure the panel exists to
-avoid.
+**What still does not resume.** The consequences above are about sessions and
+in-flight turns, and they are unaffected: a restart still marks a running turn
+`interrupted` rather than continuing it, and reopening a session is an
+explicit `resumeSession`. What the WebUI restores at startup is the cron
+*schedule* — stored definitions and their timers — not anybody's unfinished work.
+

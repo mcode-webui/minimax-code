@@ -3583,6 +3583,84 @@ describe("WebUI runtime host assembly", () => {
     }
   });
 
+  it("starts the cron scheduler while assembling, because the WebUI is a resident service", async () => {
+    const { createWebuiRuntimeHost } =
+      await import("../../src/server/index.js");
+    const dataDir = await mkdtemp(
+      path.join(os.tmpdir(), "webui-assembly-cron-start-"),
+    );
+    const reasons: (string | undefined)[] = [];
+    try {
+      const assembled = await createWebuiRuntimeHost({
+        dataDir,
+        factory: async (options) => ({
+          apiHost: {
+            close: async () => undefined,
+            cronRuntime: {
+              ensureStarted: async (reason?: string) => {
+                reasons.push(reason);
+              },
+            },
+          },
+          dataDir: options.dataDir,
+        }),
+      });
+      // No panel interaction, no operation: the schedule has to be live by the
+      // time the service starts accepting connections, or a task created from
+      // the desktop or the CLI never fires here.
+      expect(reasons).toEqual(["webui:service_start"]);
+      await assembled.harnessPort.close();
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it("assembles a host with no cron surface, and survives a cron start that fails", async () => {
+    const { createWebuiRuntimeHost } =
+      await import("../../src/server/index.js");
+    const withoutCron = await mkdtemp(
+      path.join(os.tmpdir(), "webui-assembly-cron-absent-"),
+    );
+    try {
+      const assembled = await createWebuiRuntimeHost({
+        dataDir: withoutCron,
+        factory: async (options) => ({
+          apiHost: { close: async () => undefined },
+          dataDir: options.dataDir,
+        }),
+      });
+      await assembled.harnessPort.close();
+    } finally {
+      await rm(withoutCron, { recursive: true, force: true });
+    }
+
+    // A cron store that cannot be opened degrades the scheduled-task panel; it
+    // does not stop the service from serving sessions.
+    const failing = await mkdtemp(
+      path.join(os.tmpdir(), "webui-assembly-cron-failing-"),
+    );
+    try {
+      const assembled = await createWebuiRuntimeHost({
+        dataDir: failing,
+        factory: async (options) => ({
+          apiHost: {
+            close: async () => undefined,
+            cronRuntime: {
+              ensureStarted: async () => {
+                throw new Error("cron store is locked");
+              },
+            },
+          },
+          dataDir: options.dataDir,
+        }),
+      });
+      expect(assembled.harnessPort.version).toBeTypeOf("function");
+      await assembled.harnessPort.close();
+    } finally {
+      await rm(failing, { recursive: true, force: true });
+    }
+  });
+
   it("assembles tool capabilities explicitly and releases both owners on shutdown", async () => {
     const { createWebuiRuntimeHost } =
       await import("../../src/server/index.js");

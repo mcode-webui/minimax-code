@@ -287,6 +287,7 @@
       "packages/webui/test/unit/outside-close.test.ts",
       "packages/webui/test/unit/plugin-market-catalogue.test.tsx",
       "packages/webui/test/unit/webui-plan-mode.test.ts",
+      "packages/webui/test/unit/questionnaire-goal-autoreply.test.tsx",
       "packages/webui/test/unit/transcript-scroll.test.ts",
       "packages/webui/test/unit/markdown-codeblock-c1-highlight.test.tsx",
       "packages/webui/test/unit/markdown-codeblock-c2-line-numbers.test.tsx",

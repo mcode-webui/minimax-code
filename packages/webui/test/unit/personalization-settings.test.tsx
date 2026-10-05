@@ -163,6 +163,17 @@ describe("记忆 section markup", () => {
     expect(markup).toMatch(/<button[^>]*data-testid="memory-proactive-switch"[^>]*disabled=""/u);
   });
 
+  it("keeps the switches out of reach until a read gives them a baseline", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // Not merely rendered off — unreachable. A switch showing an unknown
+    // state that still accepts a click is how a setting gets flipped by
+    // accident: the user cannot see what they are changing, and the write
+    // lands on top of a state nobody read.
+    expect(markup).toMatch(/<button[^>]*data-testid="memory-enabled-switch"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button[^>]*data-testid="memory-proactive-switch"[^>]*disabled=""/u);
+  });
+
   it("renders both switches off before any read resolves", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 

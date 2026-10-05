@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { ToggleSwitch } from "../ToggleSwitch.js";
 import type {
   WebuiAgentMemoryView,
@@ -545,19 +545,23 @@ export function MemorySection({
 
   const toggle = useCallback(
     async (patch: { readonly enabled?: boolean; readonly proactive?: boolean }) => {
-      if (!setMemorySettings || toggling) return;
+      // A switch with no baseline is not a switch the user can reason about:
+      // they cannot see what they are changing, and a write against an unknown
+      // state is how a setting gets flipped by accident. This is also why the
+      // optimistic value below always rolls back — `previous` may legitimately
+      // be undefined, and restoring "unknown" is the honest answer, not
+      // leaving the guessed value on screen.
+      if (!setMemorySettings || toggling || !settings) return;
       setToggling(true);
       setError(undefined);
-      // Optimistic, so the switch does not lag a click by a round trip; a
-      // failed write puts the server's value back rather than leaving the UI
-      // claiming a state the config never took.
       const previous = settings;
-      setSettings((current) => ({ enabled: current?.enabled ?? true, proactive: current?.proactive ?? false, ...patch }));
+      // Optimistic, so the switch does not lag a click by a round trip.
+      setSettings({ ...previous, ...patch });
       try {
         const next = await setMemorySettings(patch);
         if (next) setSettings(next);
       } catch (cause: unknown) {
-        if (previous) setSettings(previous);
+        setSettings(previous);
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
         setToggling(false);
@@ -583,7 +587,7 @@ export function MemorySection({
             checked={settings?.enabled ?? false}
             label="记忆"
             testId="memory-enabled-switch"
-            disabled={toggling || !setMemorySettings}
+            disabled={toggling || !settings || !setMemorySettings}
             onChange={(checked) => void toggle({ enabled: checked })}
           />
         </MemoryRow>
@@ -596,7 +600,7 @@ export function MemorySection({
             checked={settings?.proactive ?? false}
             label="主动记忆"
             testId="memory-proactive-switch"
-            disabled={toggling || !setMemorySettings}
+            disabled={toggling || !settings || !setMemorySettings}
             onChange={(checked) => void toggle({ proactive: checked })}
           />
         </MemoryRow>
@@ -673,6 +677,18 @@ export function AgentMemoryManager({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * The 记忆 section is the last block in the tab, so expanding the manager
+   * pushed its content past the bottom of the scroll container. The button
+   * appeared to do nothing: the panel really opened, just where the user
+   * could not see it. `nearest` scrolls the minimum distance that brings the
+   * new content into view, so an already-visible manager does not jump.
+   */
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ block: "nearest" });
+  }, []);
 
   const load = useCallback(async () => {
     if (!getAgentMemory || loading) return;
@@ -703,7 +719,7 @@ export function AgentMemoryManager({
   }, [draft, saving, setAgentMemory]);
 
   return (
-    <div data-testid="agent-memory-manager" className="webui-personalization-manager">
+    <div ref={rootRef} data-testid="agent-memory-manager" className="webui-personalization-manager">
       <div className="webui-personalization-header">
         <span className="webui-personalization-meta">记忆内容</span>
         {draft === undefined ? (

@@ -74,6 +74,34 @@ function trimmedOrUndefined(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+/* What the runtime says when a revert or reapply does not apply, and what a
+ * person can do about it.
+ *
+ * The reasons are machine tokens, and the authoritative one is
+ * `applyLocalTurnDiffSnapshotMutation`'s `unsafe_path`: a captured file sits
+ * outside the workspace, so the whole operation is refused rather than
+ * partially applied. Surfacing the raw token tells the user nothing, and the
+ * other codes read the same way — `conflict` in particular does not say that
+ * the files changed *after* the turn, which is the part that matters.
+ *
+ * A reason not in this table is passed through unchanged. That is deliberate:
+ * `git apply` failures arrive as free-form stderr, and discarding them would
+ * replace a real message with a guess. */
+const WEBUI_DIFF_FAILURE_COPY: Readonly<Record<string, string>> = {
+  unsafe_path: "这轮改动里有文件不在工作区内，出于安全没有动它。",
+  conflict: "这轮改动之后文件又被修改过，撤销前请先确认当前内容。",
+  not_undoable: "这轮文件改动没有留下可撤销的快照。",
+  "Turn diff not found": "找不到这轮文件改动。",
+  "Only the latest turn diff can be changed": "只能撤销最近一轮的文件改动。",
+  "Turn diff is not undoable": "这轮文件改动没有可撤销的补丁。",
+};
+
+export function describeWebuiDiffFailure(reason: string | undefined): string | undefined {
+  const trimmed = trimmedOrUndefined(reason);
+  if (!trimmed) return undefined;
+  return WEBUI_DIFF_FAILURE_COPY[trimmed] ?? trimmed;
+}
+
 /** Decides what a revert/reapply round trip meant.
  *
  * The two operations nest the resulting view differently, and reading either
@@ -95,12 +123,12 @@ export function resolveWebuiDiffMutation(
 ): WebuiDiffStateAction {
   if (thrown !== undefined) {
     const message = thrown instanceof Error ? thrown.message : undefined;
-    return { type: "mutation-failed", error: trimmedOrUndefined(message) };
+    return { type: "mutation-failed", error: describeWebuiDiffFailure(message) };
   }
   // `success` is required on reapply and optional on revert; an explicit
   // `false` is a refusal even if a view rode along beside it.
   if (result?.success === false) {
-    return { type: "mutation-failed", error: trimmedOrUndefined(result.error) };
+    return { type: "mutation-failed", error: describeWebuiDiffFailure(result.error) };
   }
   const nextView =
     action === "revert"
@@ -109,7 +137,7 @@ export function resolveWebuiDiffMutation(
   if (nextView && (nextView.fileChanges ?? []).length > 0) {
     return { type: "mutation-succeeded", view: nextView };
   }
-  return { type: "mutation-failed", error: trimmedOrUndefined(result?.error) };
+  return { type: "mutation-failed", error: describeWebuiDiffFailure(result?.error) };
 }
 
 export function buildWebuiDiffMutationRequest(

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   WebuiDiffCard,
   buildWebuiDiffMutationRequest,
+  describeWebuiDiffFailure,
   initialWebuiDiffState,
   reduceWebuiDiffState,
   resolveWebuiDiffMutation,
@@ -288,6 +289,49 @@ describe("resolveWebuiDiffMutation reads the transport result the way the wire m
     expect(resolveWebuiDiffMutation("reapply", undefined, new Error("   "))).toEqual({
       type: "mutation-failed",
       error: undefined,
+    });
+  });
+});
+
+/* The runtime's reasons are machine tokens. `applyLocalTurnDiffSnapshotMutation`
+ * refuses the whole operation with `unsafe_path` when a captured file sits
+ * outside the workspace — it does not partially apply — and `conflict` when a
+ * file changed after the turn. Both reach the client verbatim through
+ * `assertMutationSucceeded`, which throws with `body.error` as the message.
+ * Without a translation the user reads the token. */
+describe("runtime reason codes become something a person can act on", () => {
+  it("translates every reason the mutation path can produce", () => {
+    expect(describeWebuiDiffFailure("unsafe_path")).toBe("这轮改动里有文件不在工作区内，出于安全没有动它。");
+    expect(describeWebuiDiffFailure("conflict")).toBe("这轮改动之后文件又被修改过，撤销前请先确认当前内容。");
+    expect(describeWebuiDiffFailure("not_undoable")).toBe("这轮文件改动没有留下可撤销的快照。");
+    expect(describeWebuiDiffFailure("Turn diff not found")).toBe("找不到这轮文件改动。");
+    expect(describeWebuiDiffFailure("Only the latest turn diff can be changed")).toBe("只能撤销最近一轮的文件改动。");
+    expect(describeWebuiDiffFailure("Turn diff is not undoable")).toBe("这轮文件改动没有可撤销的补丁。");
+  });
+
+  it("no longer shows a raw token as the user-facing reason", () => {
+    const action = resolveWebuiDiffMutation("revert", { success: false, error: "unsafe_path" });
+    expect(action).toEqual({ type: "mutation-failed", error: "这轮改动里有文件不在工作区内，出于安全没有动它。" });
+    expect(action.type === "mutation-failed" && action.error).not.toBe("unsafe_path");
+  });
+
+  /* `git apply` failures arrive as free-form stderr. Passing them through keeps
+   * a real message; replacing them with a guess would be worse than useless. */
+  it("passes an unknown reason through unchanged", () => {
+    expect(describeWebuiDiffFailure("error: patch failed: src/one.ts:3")).toBe("error: patch failed: src/one.ts:3");
+    expect(describeWebuiDiffFailure("  unsafe_path  ")).toBe("这轮改动里有文件不在工作区内，出于安全没有动它。");
+  });
+
+  it("still reports no reason when there is none", () => {
+    expect(describeWebuiDiffFailure(undefined)).toBeUndefined();
+    expect(describeWebuiDiffFailure("")).toBeUndefined();
+    expect(describeWebuiDiffFailure("   ")).toBeUndefined();
+  });
+
+  it("translates a thrown unsafe_path the same way as a reported one", () => {
+    expect(resolveWebuiDiffMutation("revert", undefined, new Error("unsafe_path"))).toEqual({
+      type: "mutation-failed",
+      error: "这轮改动里有文件不在工作区内，出于安全没有动它。",
     });
   });
 });

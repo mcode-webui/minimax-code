@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import type { WebuiGlobalInstructionsView } from "../../../server/port.js";
+import type { WebuiAgentMemoryView } from "../../contracts.js";
 
 /**
  * Personalization panel — the profile-wide `AGENTS.md` editor.
@@ -30,6 +31,12 @@ export interface PersonalizationSettingsProps {
   readonly setGlobalInstructions?: (request: {
     readonly content: string;
   }) => Promise<WebuiGlobalInstructionsView>;
+  readonly getAgentMemory?: (request?: {
+    readonly includeContent?: boolean;
+  }) => Promise<WebuiAgentMemoryView>;
+  readonly setAgentMemory?: (request: {
+    readonly content: string;
+  }) => Promise<WebuiAgentMemoryView>;
 }
 
 /**
@@ -75,6 +82,8 @@ export function resolveEditorSeed(input: {
 export function PersonalizationSettings({
   getGlobalInstructions,
   setGlobalInstructions,
+  getAgentMemory,
+  setAgentMemory,
 }: PersonalizationSettingsProps): ReactElement {
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState<string>();
@@ -200,6 +209,163 @@ export function PersonalizationSettings({
           ) : null}
         </div>
       </section>
+      <AgentMemorySection
+        getAgentMemory={getAgentMemory}
+        setAgentMemory={setAgentMemory}
+      />
     </div>
+  );
+}
+
+export interface AgentMemorySectionProps {
+  readonly getAgentMemory?: (request?: {
+    readonly includeContent?: boolean;
+  }) => Promise<WebuiAgentMemoryView>;
+  readonly setAgentMemory?: (request: {
+    readonly content: string;
+  }) => Promise<WebuiAgentMemoryView>;
+}
+
+/**
+ * 长期记忆 — the per-agent main memory file.
+ *
+ * Summary first, body on request. A live main file runs past the runtime's
+ * 64KB cleanup threshold (the profile this was built against held 110KB), so
+ * the section renders the size and mtime from a bodyless read and only fetches
+ * the text when the user asks to edit it. Rendering the whole file into a
+ * textarea up front would make the settings tab pay for a large payload and a
+ * large DOM on every open to display a row of metadata.
+ *
+ * This is main memory, not `writeMemorySummary` — the runtime rejects summary
+ * content over 4KB, and the desktop's 记忆概要 modal shows a 68KB document, so
+ * the two cannot be the same store.
+ */
+export function AgentMemorySection({
+  getAgentMemory,
+  setAgentMemory,
+}: AgentMemorySectionProps): ReactElement {
+  const [summary, setSummary] = useState<WebuiAgentMemoryView>();
+  const [draft, setDraft] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!getAgentMemory) return;
+    let cancelled = false;
+    void getAgentMemory()
+      .then((value) => {
+        if (cancelled || !value) return;
+        setSummary(value);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getAgentMemory]);
+
+  const load = useCallback(async () => {
+    if (!getAgentMemory || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const value = await getAgentMemory({ includeContent: true });
+      if (value) {
+        setSummary(value);
+        setDraft(value.content ?? "");
+      }
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [getAgentMemory, loading]);
+
+  const save = useCallback(async () => {
+    if (!setAgentMemory || saving || draft === undefined) return;
+    setSaving(true);
+    setError(undefined);
+    try {
+      const next = await setAgentMemory({ content: draft });
+      if (next) setSummary(next);
+      setSaved(true);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, saving, setAgentMemory]);
+
+  const editing = draft !== undefined;
+
+  return (
+    <section
+      data-testid="agent-memory-section"
+      className="webui-generic-section"
+    >
+      <div className="webui-personalization-header">
+        <h3>长期记忆</h3>
+        {editing ? (
+          <button
+            type="button"
+            data-testid="agent-memory-save"
+            className="webui-mavis-button webui-mavis-button-gray"
+            disabled={saving || !setAgentMemory}
+            onClick={() => void save()}
+          >
+            保存
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid="agent-memory-load"
+            className="webui-mavis-button webui-mavis-button-gray"
+            disabled={loading || !getAgentMemory}
+            onClick={() => void load()}
+          >
+            {loading ? "加载中…" : "加载并编辑"}
+          </button>
+        )}
+      </div>
+      <div className="webui-generic-card">
+        {editing ? (
+          <textarea
+            data-testid="agent-memory-textarea"
+            className="webui-personalization-textarea"
+            value={draft}
+            spellCheck={false}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setSaved(false);
+            }}
+          />
+        ) : (
+          <p data-testid="agent-memory-summary" className="webui-personalization-meta">
+            {summary?.exists
+              ? `${summary.sizeBytes} 字节 · ${summary.path}`
+              : "暂无长期记忆文件"}
+          </p>
+        )}
+        {error ? (
+          <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
+            {error}
+          </p>
+        ) : null}
+        {saved && !saving ? (
+          <p data-testid="agent-memory-saved" className="webui-personalization-saved">
+            已保存
+          </p>
+        ) : null}
+        {!getAgentMemory || !setAgentMemory ? (
+          <p data-testid="agent-memory-unavailable" className="webui-settings-error">
+            当前运行时不支持长期记忆读写。
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }

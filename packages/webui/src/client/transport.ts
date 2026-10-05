@@ -449,6 +449,8 @@ export function createWebuiTransport({
     setPermissionMode: (body) => request("setPermissionMode", body),
     getGlobalInstructions: () => request("getGlobalInstructions", {}),
     setGlobalInstructions: (body) => request("setGlobalInstructions", body),
+    getAgentMemory: (body) => request("getAgentMemory", body ?? {}),
+    setAgentMemory: (body) => request("setAgentMemory", body),
     selectModel: (body) => request("selectModel", body),
     getSessionUsage: (body) => request("getSessionUsage", body),
     getUsageQuota: (body) => request("getUsageQuota", body ?? {}),

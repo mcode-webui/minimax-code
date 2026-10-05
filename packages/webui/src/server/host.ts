@@ -15,6 +15,11 @@ import { posix as pathPosix } from "node:path";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { GlobalInstructions } from "@mavis/local-runtime-v2/turn-system";
+import {
+  readAgentMemory,
+  writeAgentMemory,
+  WEBUI_DEFAULT_AGENT_NAME,
+} from "./agent-memory.js";
 import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
 import {
   extractWorkspaceArchiveDirectory,
@@ -271,6 +276,10 @@ export interface WebuiRuntimeCliService {
   setGlobalInstructions(request: {
     readonly content: string;
   }): Promise<WebuiGlobalInstructionsView>;
+  getAgentMemory(request?: { readonly includeContent?: boolean }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  setAgentMemory(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
   selectModel(request: {
     readonly providerId: string;
     readonly modelId: string;
@@ -731,6 +740,20 @@ export function createHarnessPortFromHost(
         requireGlobalInstructionsPath(host),
       );
     },
+    async getAgentMemory(request) {
+      return readAgentMemory(
+        requireDataDir(host),
+        WEBUI_DEFAULT_AGENT_NAME,
+        { includeContent: request?.includeContent === true },
+      );
+    },
+    async setAgentMemory(request) {
+      return writeAgentMemory(
+        requireDataDir(host),
+        WEBUI_DEFAULT_AGENT_NAME,
+        request.content,
+      );
+    },
     async getSessionUsage(request) {
       return requireCliService(host).getSessionUsage(request);
     },
@@ -890,6 +913,12 @@ function requireGlobalInstructionsPath(host: WebuiRuntimeHostHandle): string {
   if (!host.dataDir)
     throw new Error("runtime host does not expose a data directory");
   return pathPosix.join(host.dataDir, "AGENTS.md");
+}
+
+function requireDataDir(host: WebuiRuntimeHostHandle): string {
+  if (!host.dataDir)
+    throw new Error("runtime host does not expose a data directory");
+  return host.dataDir;
 }
 
 async function projectGlobalInstructions(

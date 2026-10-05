@@ -119,6 +119,29 @@ import type {
   WebuiGlobalInstructionsView,
 } from "../server/port.js";
 
+/**
+ * Per-agent main memory (`agents/<name>/memory/MEMORY.md`).
+ *
+ * Declared in the client type layer rather than next to the server
+ * implementation: `src/server/agent-memory.ts` imports `node:fs`, and the
+ * client tsconfig compiles with `"types": []` — a browser-side program has no
+ * node globals. `server/port.ts` avoids this by being pure `import type` with
+ * no runtime import, so anything that actually touches the filesystem has to
+ * keep its types on this side of the seam.
+ *
+ * `content` is absent from a summary read. A live main file runs past the
+ * runtime's 64KB cleanup threshold, so the panel asks for the body explicitly
+ * rather than pulling a large payload on every open.
+ */
+export interface WebuiAgentMemoryView {
+  readonly agentName: string;
+  readonly path: string;
+  readonly exists: boolean;
+  readonly sizeBytes: number;
+  readonly updatedAt?: string;
+  readonly content?: string;
+}
+
 /* Attachment shape — used by the components layer, declared here so the
  * projection layer can return an `attachments` array without importing the
  * React component. The actual component lives at
@@ -648,7 +671,13 @@ export interface WebuiTransport {
    */
   readonly getGlobalInstructions?: () => Promise<WebuiGlobalInstructionsView>;
   readonly setGlobalInstructions?: (request: { readonly content: string }) => Promise<WebuiGlobalInstructionsView>;
-  readonly selectModel?: (
+  /**
+   * Per-agent main memory. The summary read carries no `content`: a live main
+   * file runs past the runtime's 64KB cleanup threshold, so the panel asks for
+   * the body explicitly instead of pulling it on every open.
+   */
+  readonly getAgentMemory?: (request?: { readonly includeContent?: boolean }) => Promise<WebuiAgentMemoryView>;
+  readonly setAgentMemory?: (request: { readonly content: string }) => Promise<WebuiAgentMemoryView>;  readonly selectModel?: (
     request: WebuiModelSelectionRequest,
   ) => Promise<{ readonly success?: boolean }>;
   readonly getSessionUsage?: (request: {

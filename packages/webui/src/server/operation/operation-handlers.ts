@@ -119,6 +119,8 @@ export type WebuiOperationPort = Pick<
   | "getScheduledTaskCapability"
   | "getGlobalInstructions"
   | "setGlobalInstructions"
+  | "getAgentMemory"
+  | "setAgentMemory"
 >;
 
 export type WebuiOperationHandlers = {
@@ -225,6 +227,14 @@ export function createOperationHandlers(
     setGlobalInstructions: async (_context, body) => {
       if (!port.setGlobalInstructions) throw new Error("runtime host does not expose global instructions updates");
       return { body: await port.setGlobalInstructions(body) };
+    },
+    getAgentMemory: async (_context, body) => {
+      if (!port.getAgentMemory) throw new Error("runtime host does not expose agent memory reads");
+      return { body: await port.getAgentMemory(body) };
+    },
+    setAgentMemory: async (_context, body) => {
+      if (!port.setAgentMemory) throw new Error("runtime host does not expose agent memory updates");
+      return { body: await port.setAgentMemory(body) };
     },
     getSessionUsage: async (_context, body) => ({ body: await port.getSessionUsage(body) }),
     getUsageQuota: async (_context, body) => ({ body: await port.getUsageQuota(body) }),

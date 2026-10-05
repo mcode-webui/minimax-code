@@ -99,3 +99,5 @@ export const TRIGGER_SCHEDULED_TASK_OPERATION_NAME = "triggerScheduledTaskNow" a
 export const GET_SCHEDULED_TASK_CAPABILITY_OPERATION_NAME = "getScheduledTaskCapability" as const;
 export const GET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "getGlobalInstructions" as const;
 export const SET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "setGlobalInstructions" as const;
+export const GET_AGENT_MEMORY_OPERATION_NAME = "getAgentMemory" as const;
+export const SET_AGENT_MEMORY_OPERATION_NAME = "setAgentMemory" as const;

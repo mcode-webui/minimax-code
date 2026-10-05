@@ -1269,6 +1269,18 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   setGlobalInstructions?(request: {
     readonly content: string;
   }): Promise<WebuiGlobalInstructionsView>;
+  /**
+   * Per-agent main memory (`agents/<name>/memory/MEMORY.md`). Summary-only by
+   * default; `includeContent` pulls the body, which runs past the 64KB
+   * cleanup threshold on a live profile. Writing empty content deletes the
+   * file, matching the runtime's write contract.
+   */
+  getAgentMemory?(request?: {
+    readonly includeContent?: boolean;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  setAgentMemory?(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
   close(): Promise<void>;
 }
 

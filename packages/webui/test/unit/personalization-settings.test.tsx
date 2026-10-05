@@ -124,3 +124,41 @@ describe("PersonalizationSettings markup", () => {
     expect(markup).toMatch(/<button[^>]*data-testid="global-instructions-save"[^>]*disabled=""/u);
   });
 });
+
+describe("AgentMemorySection markup", () => {
+  it("offers load-and-edit rather than a bodyless dead panel", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("长期记忆");
+    expect(markup).toContain("agent-memory-load");
+    // The first paint must not already contain the editor: a live main file
+    // runs past the runtime's 64KB cleanup threshold, and the body is only
+    // worth fetching when the user actually asks to edit.
+    expect(markup).not.toContain("agent-memory-textarea");
+  });
+
+  it("declines the surface instead of faking it when the transport is absent", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("agent-memory-unavailable");
+    expect(markup).toMatch(/<button[^>]*data-testid="agent-memory-load"[^>]*disabled=""/u);
+  });
+
+  it("disables load when only one direction of the pair is available", () => {
+    const markup = renderToStaticMarkup(
+      <PersonalizationSettings
+        getAgentMemory={() => Promise.resolve({
+          agentName: "mavis",
+          path: "/tmp/agents/mavis/memory/MEMORY.md",
+          exists: false,
+          sizeBytes: 0,
+        })}
+      />,
+    );
+
+    // A read-only surface is not usable: without a writer the loaded body
+    // would be un-editable, so the button stays out of reach.
+    expect(markup).toContain("agent-memory-unavailable");
+  });
+});
+

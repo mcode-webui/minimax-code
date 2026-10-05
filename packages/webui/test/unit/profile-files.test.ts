@@ -1,5 +1,5 @@
-// Agent main memory (K area) — the storage contract, pinned against a real
-// temp data dir rather than a re-implementation.
+// Profile-owned file storage (K area) — `AGENTS.md` and the per-agent main
+// memory, pinned against a real temp data dir rather than a re-implementation.
 //
 // What matters here and cannot be asserted from a static render:
 //
@@ -7,13 +7,25 @@
 //      runtime's 64KB cleanup threshold, so a bodyless read is the difference
 //      between a settings row and a large payload on every panel open. The
 //      test writes a file over that threshold and pins both reads.
-//   2. An empty write deletes the file, matching `GlobalInstructions.write`.
-//      Without this a user cannot clear their memory at all.
+//   2. An empty write deletes the file. Without this a user cannot clear their
+//      instructions or their memory at all.
 //   3. The agent name is a path segment under `agents/`, so traversal must be
 //      rejected. This is the same guard the runtime applies, and a settings
 //      panel takes the name from a request body — it cannot be trusted.
 //   4. A failed write leaves the previous content intact rather than truncating
 //      a 100KB memory file to nothing.
+//
+// The two size limits are copied out of the runtime as literals, which is the
+// price of not importing the runtime's own classes (see the module header).
+// They are pinned to exact values here so a change on the runtime side is a
+// failing test on this side rather than a silent disagreement:
+//
+//   * `GLOBAL_INSTRUCTIONS_MAX_BYTES` — `local-runtime-v2` `.../persistence/
+//     global-instructions.ts`. If the runtime's cap moves, this UI keeps
+//     accepting text the runtime then drops at prompt assembly.
+//   * `WEBUI_DEFAULT_AGENT_NAME` — `packages/tui/src/product-context.ts`. If
+//     the default agent is renamed, the panel would edit a stale agent's
+//     memory while looking correct.
 //
 // The panel's own render is covered by `personalization-settings.test.tsx`;
 // this file is the storage underneath it.
@@ -26,16 +38,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   agentMemoryPath,
   assertSafeAgentName,
+  GLOBAL_INSTRUCTIONS_MAX_BYTES,
+  globalInstructionsPath,
   isInsideDataDir,
   readAgentMemory,
+  readGlobalInstructions,
   WEBUI_DEFAULT_AGENT_NAME,
   writeAgentMemory,
-} from "../../src/server/agent-memory.js";
+  writeGlobalInstructions,
+} from "../../src/server/profile-files.js";
 import {
   getAgentMemoryOperation,
   setAgentMemoryOperation,
 } from "../../src/server/operation/operations.js";
-import type { WebuiAgentMemoryView } from "../../src/client/contracts.js";
 import { WebuiErrorCode } from "../../src/server/envelope.js";
 
 const tempDirs: string[] = [];
@@ -44,10 +59,17 @@ afterEach(async () => {
 });
 
 async function tempDataDir(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "webui-agent-memory-"));
+  const dir = await mkdtemp(join(tmpdir(), "webui-profile-files-"));
   tempDirs.push(dir);
   return dir;
 }
+
+describe("limits copied from the runtime", () => {
+  it("pins the AGENTS.md cap and the default agent name", () => {
+    expect(GLOBAL_INSTRUCTIONS_MAX_BYTES).toBe(32 * 1024);
+    expect(WEBUI_DEFAULT_AGENT_NAME).toBe("mavis");
+  });
+});
 
 describe("getAgentMemoryOperation validation", () => {
   it("defaults to a summary read with no content", () => {
@@ -189,5 +211,79 @@ describe("agent main memory storage", () => {
     await expect(
       writeAgentMemory(dataDir, WEBUI_DEFAULT_AGENT_NAME, "new content"),
     ).rejects.toMatchObject({ code: "AGENT_MEMORY_UNAVAILABLE" });
+  });
+});
+
+describe("AGENTS.md storage", () => {
+  it("reports an absent file as empty without creating it", async () => {
+    const dataDir = await tempDataDir();
+
+    await expect(readGlobalInstructions(dataDir)).resolves.toEqual({
+      content: "",
+      exists: false,
+      path: globalInstructionsPath(dataDir),
+      maxBytes: GLOBAL_INSTRUCTIONS_MAX_BYTES,
+    });
+    await expect(
+      readFile(globalInstructionsPath(dataDir), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("round-trips content at the path Turn assembly reads", async () => {
+    const dataDir = await tempDataDir();
+    const content = "# Agents 全局设定\n\n| 维度 | 内容 |\n| --- | --- |\n";
+
+    await writeGlobalInstructions(dataDir, content);
+    await expect(readFile(join(dataDir, "AGENTS.md"), "utf8")).resolves.toBe(content);
+    await expect(readGlobalInstructions(dataDir)).resolves.toMatchObject({
+      content,
+      exists: true,
+    });
+  });
+
+  it("deletes the file on a blank write and keeps the removal idempotent", async () => {
+    const dataDir = await tempDataDir();
+    await writeGlobalInstructions(dataDir, "keep until cleared");
+
+    await writeGlobalInstructions(dataDir, "   ");
+    await expect(readGlobalInstructions(dataDir)).resolves.toMatchObject({
+      content: "",
+      exists: false,
+    });
+    await expect(
+      readFile(globalInstructionsPath(dataDir), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    await expect(writeGlobalInstructions(dataDir, "")).resolves.toMatchObject({
+      exists: false,
+    });
+  });
+
+  it("refuses content over the cap the panel mirrors", async () => {
+    const dataDir = await tempDataDir();
+
+    await expect(
+      writeGlobalInstructions(dataDir, "x".repeat(GLOBAL_INSTRUCTIONS_MAX_BYTES + 1)),
+    ).rejects.toMatchObject({ code: "GLOBAL_INSTRUCTIONS_TOO_LARGE" });
+  });
+
+  it("leaves the previous content intact when an oversized write is rejected", async () => {
+    const dataDir = await tempDataDir();
+    await writeGlobalInstructions(dataDir, "keep me");
+
+    await expect(
+      writeGlobalInstructions(dataDir, "x".repeat(GLOBAL_INSTRUCTIONS_MAX_BYTES + 1)),
+    ).rejects.toBeTruthy();
+    expect(await readFile(globalInstructionsPath(dataDir), "utf8")).toBe("keep me");
+  });
+
+  it("measures the cap in bytes, not characters", async () => {
+    const dataDir = await tempDataDir();
+    // Half the cap in characters, but three bytes each in UTF-8.
+    const chinese = "指".repeat(GLOBAL_INSTRUCTIONS_MAX_BYTES / 2);
+
+    await expect(writeGlobalInstructions(dataDir, chinese)).rejects.toMatchObject({
+      code: "GLOBAL_INSTRUCTIONS_TOO_LARGE",
+    });
   });
 });

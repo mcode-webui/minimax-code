@@ -1260,15 +1260,17 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   /**
    * Profile-wide `AGENTS.md`, the file Turn assembly already reads through
    * `GlobalInstructions.readForPrompt`. Read-only on the v2 `instructions`
-   * capability (`listSources` returns paths, not content), so the harness owns
-   * a `GlobalInstructions` instance over the same `dataDir` the turn path uses —
-   * one file, one writer, no second source of truth.
+   * capability (`listSources` returns paths, not content), so the WebUI reads
+   * and writes the file itself over the same `dataDir` the turn path uses — one
+   * file, one writer, no second source of truth.
    */
-  getGlobalInstructions?(): Promise<WebuiGlobalInstructionsView>;
+  getGlobalInstructions?(): Promise<
+    import("../client/contracts.js").WebuiGlobalInstructionsView
+  >;
   /** Writing empty content deletes the file, matching `GlobalInstructions.write`. */
   setGlobalInstructions?(request: {
     readonly content: string;
-  }): Promise<WebuiGlobalInstructionsView>;
+  }): Promise<import("../client/contracts.js").WebuiGlobalInstructionsView>;
   /**
    * Per-agent main memory (`agents/<name>/memory/MEMORY.md`). Summary-only by
    * default; `includeContent` pulls the body, which runs past the 64KB
@@ -1282,18 +1284,6 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
     readonly content: string;
   }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
   close(): Promise<void>;
-}
-
-/**
- * `AGENTS.md` state for the personalization panel. `maxBytes` is reported
- * rather than hard-coded client-side so the UI cap can never drift from the
- * runtime's `GLOBAL_INSTRUCTIONS_MAX_BYTES`.
- */
-export interface WebuiGlobalInstructionsView {
-  readonly content: string;
-  readonly exists: boolean;
-  readonly path: string;
-  readonly maxBytes: number;
 }
 
 /** One percentage window (5-hour / weekly) of the token-plan quota. */

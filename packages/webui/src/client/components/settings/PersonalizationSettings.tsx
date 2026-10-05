@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
-import type { WebuiGlobalInstructionsView } from "../../../server/port.js";
-import type { WebuiAgentMemoryView } from "../../contracts.js";
+import type {
+  WebuiAgentMemoryView,
+  WebuiGlobalInstructionsView,
+} from "../../contracts.js";
 
 /**
  * Personalization panel — the profile-wide `AGENTS.md` editor.

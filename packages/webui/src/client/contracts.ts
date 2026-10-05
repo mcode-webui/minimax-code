@@ -116,14 +116,27 @@ import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
-  WebuiGlobalInstructionsView,
 } from "../server/port.js";
+
+/**
+ * Profile-wide `AGENTS.md`.
+ *
+ * `maxBytes` is reported by the server rather than declared by the client: the
+ * server owns the 32KiB cap, and a panel that hardcoded it would keep accepting
+ * text the server then rejects.
+ */
+export interface WebuiGlobalInstructionsView {
+  readonly content: string;
+  readonly exists: boolean;
+  readonly path: string;
+  readonly maxBytes: number;
+}
 
 /**
  * Per-agent main memory (`agents/<name>/memory/MEMORY.md`).
  *
  * Declared in the client type layer rather than next to the server
- * implementation: `src/server/agent-memory.ts` imports `node:fs`, and the
+ * implementation: `src/server/profile-files.ts` imports `node:fs`, and the
  * client tsconfig compiles with `"types": []` — a browser-side program has no
  * node globals. `server/port.ts` avoids this by being pure `import type` with
  * no runtime import, so anything that actually touches the filesystem has to
@@ -677,7 +690,8 @@ export interface WebuiTransport {
    * the body explicitly instead of pulling it on every open.
    */
   readonly getAgentMemory?: (request?: { readonly includeContent?: boolean }) => Promise<WebuiAgentMemoryView>;
-  readonly setAgentMemory?: (request: { readonly content: string }) => Promise<WebuiAgentMemoryView>;  readonly selectModel?: (
+  readonly setAgentMemory?: (request: { readonly content: string }) => Promise<WebuiAgentMemoryView>;
+  readonly selectModel?: (
     request: WebuiModelSelectionRequest,
   ) => Promise<{ readonly success?: boolean }>;
   readonly getSessionUsage?: (request: {

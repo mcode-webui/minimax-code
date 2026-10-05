@@ -1038,6 +1038,165 @@
     background-color: var(--bg_interaction_tertiary_selected);
   }
 
+  /* The right-hand end of a rail row: how long ago the session last did
+   * something, and a spinner while a turn holds it. The runtime runs sessions
+   * in parallel, so without this a task that finished in the background is
+   * indistinguishable from one that never ran.
+   *
+   * The spinner reuses the signin claim keyframes rather than declaring its
+   * own. Same rotation, and a second copy would be a second thing to keep in
+   * step when the timing changes. */
+  .webui-rail-session-meta {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing_4);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--text_default_tertiary);
+  }
+  /* "This row is pinned", drawn by the row itself rather than by the button that
+   * toggles it, because sort position is not a claim about the row: it stops
+   * being true the moment a fresher session arrives, and it was never visible
+   * while reading the list.
+   *
+   * Narrower than it looks: that ordering lives only in the project view's
+   * `sortWebuiProjectSessionIds`. The running, unread and favourites views sort
+   * by activity alone, so inside those a pin buys the mark and nothing else --
+   * which is the point of drawing it, and the reason nothing here depends on
+   * the sort.
+   *
+   * Tertiary grey, inherited from the meta block, on purpose. The two colours
+   * already in this cluster each carry a meaning that is not "the user chose
+   * this": the accent-blue ring is a turn running right now, and the red badge
+   * is turns that finished unopened. A pin is none of those -- it is a standing
+   * preference with no urgency in it -- so painting it in either colour would
+   * make the row claim something it is not. Sizing is bare px for the same
+   * reason the badge above is: this project ships no font-size tokens. */
+  .webui-rail-pin-mark,
+  .webui-project-pin-mark,
+  .webui-rail-star-mark {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--text_default_tertiary);
+  }
+  .webui-project-pin-mark {
+    margin-left: var(--spacing_4);
+  }
+  /* The star is the one mark on this row that is allowed to shout, and only
+   * because the reader asked for it: the token is this project's own name for
+   * yellow and it flips with the theme, which a hardcoded hex would not. The
+   * pin beside it stays grey -- a pin is an ordering preference and a favourite
+   * is a thing the reader singled out, and they are not the same kind of claim.
+   *
+   * Applied to the mark and to the button's filled glyph alike, so a starred row
+   * reads the same whether the pointer is on it or not. */
+  .webui-rail-star-mark,
+  .webui-rail-action:has([data-webui-star="filled"]) {
+    color: var(--text_status_banana);
+  }
+  .webui-rail-spinner {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    /* Not `currentColor`: the meta inherits the tertiary text grey, and a 10px
+     * ring in grey on a grey rail does not read -- and the row it sits in is
+     * exactly the one the user is not looking at. Blue is this project's own
+     * accent (`--icon_default_accent`, already the selected-state colour). Red
+     * is not available for this: it is reserved for danger and error across the
+     * token set, and a running turn is not an error. The thicker border is the
+     * same point -- at 1.5px the ring was a hairline that read as a rendering
+     * artefact rather than as a spinner. */
+    border: 2px solid var(--icon_default_accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: webui-signin-claim-spin 0.6s linear infinite;
+  }
+  /* Stopped, not hidden: the ring still reads as "busy" for a reader who asked
+   * for less motion, which is the one fact the row is there to convey. */
+  @media (prefers-reduced-motion: reduce) {
+    .webui-rail-spinner { animation: none; }
+  }
+
+  /* Project / running / unread. Three views of one list rather than three
+   * groupings stacked on it: stacking forces a choice between showing a
+   * session twice and stripping it out of its project, and the counts on the
+   * tabs are only reconcilable against the rows when exactly one view is on
+   * screen. */
+  .webui-rail-view-tabs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    padding: 0 var(--spacing_8);
+    height: 28px;
+    border-bottom: 1px solid var(--border_default);
+  }
+  .webui-rail-view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    /* Bare px, like the badge above: this project carries no font-size or
+     * line-height tokens, so a var() here would resolve to nothing and the
+     * tab would fall back to the 16px body size the rail does not use. */
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text_default_tertiary);
+    cursor: pointer;
+  }
+  .webui-rail-view-tab[aria-selected="true"] {
+    color: var(--text_default_primary);
+    font-weight: 500;
+  }
+  .webui-rail-view-tab:hover {
+    color: var(--text_default_primary);
+  }
+  /* The count is the reason to glance at the tab rather than open it, so it
+   * stays legible at rest instead of only on hover. Zero is drawn, not
+   * hidden: "0 running" is an answer, and hiding it would make the tab look
+   * broken while a turn is being written. */
+  .webui-rail-view-count {
+    display: inline-flex;
+    min-width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .webui-rail-view-tab[aria-selected="true"] .webui-rail-view-count {
+    background-color: var(--bg_interaction_primary_default);
+    color: var(--text_default_primary);
+  }
+
+  /* Turns that finished while the user was elsewhere. The red is the
+   * unread-count convention every messenger has trained people on, and it is
+   * worth being explicit that this is the one place the rail uses a danger
+   * colour without meaning danger: a finished turn is not an error, and the
+   * badge never sits next to a failure state. */
+  .webui-rail-unread-badge {
+    min-width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    padding: 0 3px;
+    border-radius: 7px;
+    background-color: var(--bg_interaction_danger_primary_default);
+    color: var(--text_default_inverted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    text-align: center;
+  }
+
   /* The desktop home rail is project-first. A project row uses the same quiet
    * navigation treatment as the fixed rows, but keeps the folder glyph and
    * label aligned as one navigation target. */
@@ -1117,6 +1276,18 @@
   .webui-rail-action:focus-visible {
     background: transparent;
     color: var(--icon_default_secondary);
+  }
+  /* ...and the filled star survives that. `.webui-rail-action:hover` and
+   * `.webui-rail-action:has([data-webui-star="filled"])` are both (0,2,0), so
+   * whichever is written last wins, and the hover block above comes after the
+   * star colour. Left alone, the glyph went grey the moment the pointer landed
+   * on the very button that toggles it -- the reader stars a session, moves the
+   * pointer onto the star to unstar it, and watches the colour that was the
+   * evidence of the state disappear. One class more on the selector settles it
+   * by specificity instead of by source order. */
+  .webui-rail-action:hover:has([data-webui-star="filled"]),
+  .webui-rail-action:focus-visible:has([data-webui-star="filled"]) {
+    color: var(--text_status_banana);
   }
 
   .webui-project-session-list {
@@ -2998,6 +3169,45 @@
     padding: var(--spacing_12) var(--spacing_16);
     background-color: transparent;
   }
+  /* C-2: the gutter is a sibling of the `pre` so that selecting and copying the
+     code carries no line numbers, which also means the `pre` owns the scroll
+     and the gutter holds its place beside it. The selectors carry
+     `.webui-markdown` because the gutter is an `<ol>` rendered inside the
+     transcript, and `.webui-markdown ol` above sets `list-style-type: decimal`
+     and a 1.8em indent. Both rules sit in the same layer, so the tie is broken
+     by specificity, not by order: at `.webui-code-gutter` (0,1,0) the markdown
+     rule (0,1,1) won and every fence rendered as `1. 1` / `2. 2`. */
+  .webui-code-block--numbered {
+    display: flex;
+    align-items: stretch;
+  }
+  .webui-code-block--numbered pre {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .webui-markdown .webui-code-gutter {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--spacing_12) 0 var(--spacing_12) var(--spacing_16);
+    border-right: 1px solid var(--border_light);
+    color: var(--text_default_tertiary);
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    text-align: right;
+    user-select: none;
+  }
+  .webui-markdown .webui-code-gutter li {
+    padding: 0 var(--spacing_8);
+  }
+  /* C-1: the transcript's own tokens, mirroring `.webui-file-code` so a fence
+     and the file viewer read as one surface. */
+  .webui-code-block .hljs-comment, .webui-code-block .hljs-quote { color: var(--text_default_tertiary); font-style: italic; }
+  .webui-code-block .hljs-keyword, .webui-code-block .hljs-meta .hljs-keyword { color: var(--text_label_accent_default); }
+  .webui-code-block .hljs-string, .webui-code-block .hljs-doctag { color: var(--text_label_positive_secondary_default); }
+  .webui-code-block .hljs-number, .webui-code-block .hljs-literal { color: var(--text_label_warning_secondary_default); }
+  .webui-code-block .hljs-title, .webui-code-block .hljs-title.function_, .webui-code-block .hljs-function, .webui-code-block .hljs-section { color: var(--text_label_accent_default); }
+  .webui-code-block .hljs-type, .webui-code-block .hljs-built_in, .webui-code-block .hljs-title.class_ { color: var(--text_label_danger_secondary_default); }
+  .webui-code-block .hljs-attr, .webui-code-block .hljs-variable, .webui-code-block .hljs-property { color: var(--text_default_secondary); }
   .webui-table-shell {
     max-width: 100%;
     overflow-x: auto;

@@ -7,11 +7,10 @@
 // round trip in between. Every assertion runs against the built client driven
 // by the in-page fixture, so the wire shapes here are the real ones.
 
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import {
   assistantBody,
-  assertHarnessServer,
   configureFixture,
   dropStream,
   emitAgentMessage,
@@ -22,6 +21,7 @@ import {
   requestCount,
   startTurn,
   switchSession,
+  test,
 } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
@@ -31,7 +31,6 @@ test.beforeEach(async ({ page }) => {
 
 test("an agent turn streams thinking and answer, then settles on DONE", async ({ page }) => {
   await openApp(page, "#session=A");
-  await assertHarnessServer(page);
   await startTurn(page, "A", "Run the synthetic turn");
   await expect(liveIndicator(page)).toBeVisible();
 
@@ -190,7 +189,6 @@ test("a page reload restores history and never revives a finished turn", async (
   await expect(liveIndicator(page)).toHaveCount(0);
 
   await page.reload();
-  await assertHarnessServer(page);
   await expect(page.locator("#webui-root")).toBeVisible();
   await expect(page.getByText("Persisted question")).toHaveCount(1);
   await expect(page.getByText("Persisted answer")).toHaveCount(1);

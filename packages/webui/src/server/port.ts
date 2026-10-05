@@ -168,7 +168,76 @@ export interface WebuiCreateSessionRequest {
   readonly workspaceDir?: string;
   readonly teamModeOff?: boolean;
 }
-export interface WebuiCreateSessionResult {
+
+/**
+ * A session in the shape that survives a round trip.
+ *
+ * Both layers are present because neither is recoverable from the other: the
+ * canonical layer is what the model reads on the next turn, the display layer
+ * is what the user reads. A file carrying only one of them imports as a
+ * conversation that is half-gone.
+ */
+export interface WebuiSessionTransferFile {
+  readonly format: string;
+  readonly exportedAt: string;
+  readonly session: {
+    readonly sessionId: string;
+    readonly title: string;
+    readonly agentName?: string;
+    readonly workspaceDir?: string;
+  };
+  readonly canonical: {
+    readonly envelopes: readonly {
+      readonly message_id: string;
+      readonly turn_id: string;
+      readonly message: unknown;
+    }[];
+    /**
+     * Compaction snapshots the active file is chained to.
+     *
+     * Not optional history, and the reason this field exists in the type at
+     * all. Each generation's file names its parent by
+     * `(generation, compactionId)`, and the import scanner walks the whole
+     * lineage before it accepts anything -- a file carrying only the active
+     * generation dies with `parent-snapshot-missing` the moment the session
+     * has ever been compacted. Nothing is lost today because the route
+     * serialises the runtime's value verbatim, but a type that omits the
+     * field is a type that permits the next refactor to rebuild the payload
+     * without it, and that refactor passes every test in this repository.
+     */
+    readonly snapshots: readonly {
+      readonly generation: number;
+      readonly fileName: string;
+      readonly revision: string;
+      readonly records: readonly {
+        readonly message_id: string;
+        readonly turn_id: string;
+        readonly message: unknown;
+      }[];
+    }[];
+    readonly generation: number;
+    readonly revision: string;
+  };
+  readonly display: {
+    readonly messages: readonly Record<string, unknown>[];
+  };
+}
+
+export interface WebuiImportSessionTransferRequest {
+  /** The session the caller just created to receive the history. */
+  readonly targetSessionId: string;
+  /** Informational lineage only; never trusted for anything else. */
+  readonly sourceSessionId?: string;
+  /** Untrusted. The runtime validates the whole payload before writing. */
+  readonly file: unknown;
+}
+
+export interface WebuiImportSessionTransferResult {
+  readonly sessionId: string;
+  readonly canonicalMessages: number;
+  readonly displayMessages: number;
+  readonly revision: string;
+}export interface WebuiCreateSessionResult {
   readonly agentName?: string;
   readonly sessionId?: string;
   readonly session?: WebuiSessionInfo;
@@ -410,6 +479,10 @@ export interface WebuiWorkspaceFile {
   readonly path: string;
   readonly name: string;
   readonly type?: string;
+  /** Bytes. Absent for directories and for runtimes that do not stat. */
+  readonly size?: number;
+  /** Epoch milliseconds of the last modification. Same absence rule as `size`. */
+  readonly modifiedAt?: number;
   readonly children?: readonly WebuiWorkspaceFile[];
 }
 
@@ -425,6 +498,37 @@ export interface WebuiWorkspaceFileContent {
 export interface WebuiWorkspaceDirectoryEntry {
   readonly name: string;
   readonly path: string;
+}
+
+/**
+ * One entry inside an archive listed by `readWorkspaceArchive`. `path` is
+ * the archive-internal POSIX path, never a host path: nothing in this shape
+ * may be handed to the filesystem without re-validating it against the
+ * extraction root.
+ */
+export interface WebuiArchiveEntry {
+  readonly path: string;
+  readonly name: string;
+  readonly isDirectory: boolean;
+  readonly size?: number;
+}
+
+export interface WebuiWorkspaceArchiveListing {
+  readonly archivePath: string;
+  /** Only the entries directly under `prefix`, or under the archive root. */
+  readonly entries: readonly WebuiArchiveEntry[];
+  /** Total entries in the archive, which may exceed `entries.length`. */
+  readonly totalEntries: number;
+  /** True when the listing was cut off before covering the whole archive. */
+  readonly truncated: boolean;
+}
+
+export interface WebuiWorkspaceArchiveExtractResult {
+  readonly archivePath: string;
+  readonly destination: string;
+  readonly writtenFiles: number;
+  /** Set when the archive carried more entries than the hard ceiling allows. */
+  readonly truncated?: boolean;
 }
 
 /**
@@ -818,6 +922,18 @@ export interface WebuiHarnessPort {
   ): Promise<WebuiSessionLookupResult>;
   getActiveTurn(request: WebuiSessionLookupRequest): Promise<WebuiActiveTurnResult>;
   getMessages(request: WebuiMessagesRequest): Promise<WebuiMessagesResult>;
+  /**
+   * Both storage layers of a session, verbatim.
+   *
+   * Deliberately not `getMessages`: that returns a view prepared for
+   * rendering, which drops the canonical receipts carried on compaction and
+   * fork-origin rows, and a transfer file built from it cannot be read back
+   * without losing them.
+   */
+  exportSessionTransfer(request: { readonly id: string }): Promise<WebuiSessionTransferFile>;
+  importSessionTransfer(
+    request: WebuiImportSessionTransferRequest,
+  ): Promise<WebuiImportSessionTransferResult>;
   getSessionDiff(request: WebuiGetSessionDiffRequest): Promise<WebuiGetSessionDiffResult>;
   getTurnDiff(request: WebuiGetTurnDiffRequest): Promise<WebuiGetTurnDiffResult>;
   revertTurnDiff(request: WebuiRevertTurnDiffRequest): Promise<WebuiRevertTurnDiffResult>;
@@ -840,6 +956,13 @@ export interface WebuiHarnessPort {
   searchWorkspaceReviewDiffs(request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly query: string; readonly includeUntrackedFiles: boolean; readonly pageIndex?: number; readonly pageSize?: number }): Promise<WebuiWorkspaceReviewSearchResult>;
   readCanvas(request: { readonly sessionId: string }): Promise<WebuiCanvasDocument>;
   applyCanvas(request: { readonly sessionId: string; readonly operation: Record<string, unknown> }): Promise<{ readonly operationId: string; readonly document: WebuiCanvasDocument }>;
+  /**
+   * Archive listing for the workspace panel. The runtime owns every
+   * hardening decision here (entry ceiling, expansion ratio, path
+   * validation); the WebUI only renders what the runtime is willing to name.
+   */
+  readWorkspaceArchive(request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveListing>;
+  extractWorkspaceArchive(request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }): Promise<WebuiWorkspaceArchiveExtractResult>;
   sendMessage(
     request: WebuiSendMessageRequest,
     signal?: AbortSignal,

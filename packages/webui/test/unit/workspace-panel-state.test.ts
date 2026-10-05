@@ -11,12 +11,13 @@ import {
   reduceWorkspacePanelSessionState,
   reduceWorkspacePanelState,
   setWorkspaceSessionProgressPanelOpen,
+  type WorkspacePanelSessionStates,
 } from "../../src/client/projection/workspace-panel-state.js";
 import { focusWebuiFileLine, webuiFileLineTargetId } from "../../src/client/projection/file-line-navigation.js";
 
 describe("right workspace panel navigation", () => {
   it("keeps workspace and progress visibility isolated per session", () => {
-    let states = new Map();
+    let states: WorkspacePanelSessionStates = new Map();
     states = reduceWorkspacePanelSessionState(states, "session-a", {
       type: "open-primary-view",
       kind: "files",
@@ -47,7 +48,7 @@ describe("right workspace panel navigation", () => {
   });
 
   it("never opens progress over an open workspace and forgets session state on reload", () => {
-    let states = new Map();
+    let states: WorkspacePanelSessionStates = new Map();
     states = reduceWorkspacePanelSessionState(states, "session-a", {
       type: "open-primary-view",
       kind: "files",

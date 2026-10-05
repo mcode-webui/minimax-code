@@ -126,7 +126,7 @@ describe("Agent activity disclosure", () => {
       messageId: "activity-view",
       answers: [],
       processInitiallyExpanded: true,
-      getTurnDiff: async () => ({ changes: [] }),
+      getTurnDiff: async () => ({ fileChanges: [] }),
       revertTurnDiff: async () => ({ success: true }),
       reapplyTurnDiff: async () => ({ success: true }),
       processSegments: [{

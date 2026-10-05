@@ -417,8 +417,14 @@ export interface MessagePassiveLoadingPlaceholderProps {
   label?: string;
 }
 
+// No default for `props`: React's `createElement` always materialises a props
+// object (it substitutes `{}` for a missing config), so the `= {}` default was
+// unreachable from either call site — `SessionTranscript.tsx` passes `label`,
+// and the tests call through `createElement`. Keeping it made the parameter
+// type `Props | undefined`, which defeats `createElement`'s `P extends {}`
+// inference and pushed `label` onto `Attributes` as an excess property.
 export function MessagePassiveLoadingPlaceholder(
-  props: MessagePassiveLoadingPlaceholderProps = {},
+  props: MessagePassiveLoadingPlaceholderProps,
 ): React.JSX.Element {
   const { label } = props;
   return (

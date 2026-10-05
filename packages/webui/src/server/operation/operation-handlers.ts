@@ -61,6 +61,8 @@ export type WebuiOperationPort = Pick<
   | "searchWorkspaceReviewDiffs"
   | "readCanvas"
   | "applyCanvas"
+  | "readWorkspaceArchive"
+  | "extractWorkspaceArchive"
   | "sendMessage"
   | "enqueueMessage"
   | "resumeSession"
@@ -139,6 +141,12 @@ export function createOperationHandlers(
     }),
     applyCanvas: async (_context, body) => ({
       body: await port.applyCanvas(body),
+    }),
+    readWorkspaceArchive: async (_context, body) => ({
+      body: await port.readWorkspaceArchive(body),
+    }),
+    extractWorkspaceArchive: async (_context, body) => ({
+      body: await port.extractWorkspaceArchive(body),
     }),
     getWorkspaceEnvironment: async (_context, body) => ({
       body: await port.getWorkspaceEnvironment(body),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
 import {
   WEBUI_BUILTIN_COMMANDS,
   WEBUI_RUN_COMMAND_NAMES,
@@ -24,7 +25,10 @@ import { resolveWebuiSubmissionIntent } from "../../src/client/projection/compos
  * intent path even when its name is in WEBUI_RUN_COMMAND_NAMES.
  */
 
-const ICON: SlashCommandEntry["icon"] = () => null;
+// `icon` is a component, so it has to hand back a `ReactElement`. Nothing in
+// this file renders one — the rows are classified and sectioned as plain
+// objects — so the element only has to be real enough to match the signature.
+const ICON: SlashCommandEntry["icon"] = () => createElement("span");
 
 const newEntry = (name: string, supported: boolean): SlashCommandEntry => ({
   name,
@@ -102,14 +106,18 @@ describe("isWebuiRunnableCommand — boolean narrowing predicate (unchanged cont
 });
 
 describe("sectionWebuiSlashPalette — order snapshot (default + skills sections)", () => {
-  it("keeps only goal and plan as default built-ins", () => {
+  it("keeps every built-in in the default section, in declared order", () => {
     const builtins = WEBUI_BUILTIN_COMMANDS;
     const skills: SlashCommandEntry[] = [];
     const sectioned = sectionWebuiSlashPalette(builtins, skills);
     const defaultNames = sectioned
       .filter((entry) => entry.source_type === -1)
       .map((entry) => entry.name);
-    expect(defaultNames).toEqual(["goal", "plan"]);
+    // Stated as a rule rather than a frozen list. This test used to name
+    // `["goal", "plan"]` and call itself "only the composer mode built-ins",
+    // which is how a wired run-command row could join the palette without
+    // anyone noticing which section it landed in.
+    expect(defaultNames).toEqual(builtins.map((entry) => entry.name));
   });
 
   it("places the `skills` section after the default section, with the `技能` divider tag", () => {
@@ -150,7 +158,7 @@ describe("sectionWebuiSlashPalette — order snapshot (default + skills sections
     const defaultNames = sectioned
       .filter((entry) => entry.source_type === -1)
       .map((entry) => entry.name);
-    expect(defaultNames).toEqual(["goal", "plan", "deploy-website"]);
+    expect(defaultNames).toEqual([...builtins.map((entry) => entry.name), "deploy-website"]);
   });
 });
 
@@ -225,8 +233,17 @@ describe("resolveWebuiSubmissionIntent — operational consequence: disabled / i
         });
       }
     }
-    // The remaining built-ins are composer modes, not run-command entries.
-    expect(runCommandIntents).toEqual([]);
+    // The invariant is an equality, not an empty list: the run-command
+    // intents must be exactly the rows `classifyWebuiSlashCommand` calls
+    // `runnable`. Adding a wired run-command row (compact) grows this set on
+    // purpose; letting an inert row sneak in grows it wrongly. Either way the
+    // set has to match the classification, which is what this asserts.
+    const runnableEntries = allEntries.filter(
+      (entry) => classifyWebuiSlashCommand(entry) === "runnable",
+    );
+    expect(runCommandIntents).toEqual(
+      runnableEntries.map((entry) => ({ name: entry.name, input: "payload" })),
+    );
   });
 });
 
@@ -312,7 +329,7 @@ describe("host `runCommand` stub counter — disabled entries trigger zero host 
     expect(calls).toEqual([]);
   });
 
-  it("registry-wide — composer modes do not reach the runCommand stub", async () => {
+  it("registry-wide — only the runnable rows reach the runCommand stub", async () => {
     const calls: { command: string; input?: string }[] = [];
     const stub = async (args: { command: string; input?: string }) => {
       calls.push(args);
@@ -321,7 +338,17 @@ describe("host `runCommand` stub counter — disabled entries trigger zero host 
     for (const entry of allEntries) {
       await dispatchEntry(entry, stub);
     }
-    expect(calls).toEqual([]);
+    // Composer modes and skills must not call the host at all. This used to
+    // assert `[]` over the whole registry, which is only true while no
+    // run-command row exists — it read as a general promise but was really a
+    // snapshot of an empty palette. Now it states the real rule: the stub is
+    // called once per runnable row, and for those rows only.
+    const runnableEntries = allEntries.filter(
+      (entry) => classifyWebuiSlashCommand(entry) === "runnable",
+    );
+    expect(calls.map((call) => call.command)).toEqual(
+      runnableEntries.map((entry) => entry.name),
+    );
   });
 });
 

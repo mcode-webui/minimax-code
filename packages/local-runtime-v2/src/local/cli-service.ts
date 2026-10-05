@@ -100,6 +100,11 @@ import type {
   ConversationSendOptions,
 } from "../application/conversation/conversation-application.js";
 import type { RuntimeApplications } from "../application/initialize.js";
+import type {
+  ImportSessionTransferRequest as ImportSessionTransferReq,
+  ImportSessionTransferResult as ImportSessionTransferResp,
+  SessionTransferFile,
+} from "../application/session/transfer-application.js";
 import type { LocalRuntimeApplication } from "../application/session/process-local-application-contract.js";
 import type { CliManagementApplication } from "../application/cli-management-application.js";
 
@@ -265,6 +270,22 @@ export class CliService {
       ctx,
       req,
     );
+  }
+
+  /**
+   * Both storage layers of a session, in a form `importSessionTransfer` can
+   * read back. Not the same thing as `getMessages`: that one returns a view
+   * prepared for rendering, which drops the canonical receipts on compaction
+   * and fork-origin rows.
+   */
+  exportSessionTransfer(sessionId: string): Promise<SessionTransferFile> {
+    return this.options.applications.session.transfer.read(sessionId);
+  }
+
+  importSessionTransfer(
+    req: ImportSessionTransferReq,
+  ): Promise<ImportSessionTransferResp> {
+    return this.options.applications.session.transfer.write(req);
   }
 
   getSessionRewindPreview(

@@ -14,6 +14,7 @@
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "typecheck:test-full": "tsc -p tsconfig.test-full.json --noEmit",
     "build:styles": "node ../../scripts/build-webui-styles.mjs",
     "test": "node ../../scripts/run-vitest-suite.mjs webui"
   },

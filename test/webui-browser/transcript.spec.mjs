@@ -1,31 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+
+import { configureFixture, openApp, switchSession, test } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
   page.on("console", (message) => { if (message.type() === "error") console.error("BROWSER_CONSOLE_ERROR", message.text()); });
 });
-
-async function openApp(page, hash = "#session=A") {
-  await page.goto(`/${hash}`);
-  await assertHarnessServer(page);
-  await expect(page.locator("#webui-root")).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.__fixture.requests.some((request) => request.operation === "listSessions"))).toBe(true);
-}
-
-async function configureFixture(page, setup) {
-  await page.addInitScript({ content: `window.__WEBUI_FIXTURE_SETUP__ ??= []; window.__WEBUI_FIXTURE_SETUP__.push((${setup.toString()}));` });
-}
-
-async function assertHarnessServer(page) {
-  const expectedServerId = test.info().config.metadata.webuiBrowserServerId;
-  const health = await page.request.get("http://127.0.0.1:4179/health");
-  expect(await health.json()).toEqual({ status: "ok", serverId: expectedServerId });
-  await expect.poll(() => page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId);
-}
-
-async function switchSession(page, sessionId) {
-  await page.evaluate((id) => { window.location.hash = `session=${id}`; }, sessionId);
-}
 
 test("A history is never rendered during B's delayed first page", async ({ page }) => {
   // A session switch fans out into three concurrent `getMessages` for B
@@ -35,7 +15,6 @@ test("A history is never rendered during B's delayed first page", async ({ page 
   // page would land anyway and the assertion below would prove nothing.
   await configureFixture(page, () => window.__fixture.delayEvery("getMessages", { id: "B" }));
   await page.goto("/#session=A");
-  await assertHarnessServer(page);
   await expect(page.getByText("History A synthetic")).toBeVisible();
 
   await switchSession(page, "B");
@@ -56,7 +35,6 @@ test("late A loadOlder completion leaves B messages, loading, and errors untouch
     window.__fixture.delayNext("getMessages", { id: "A", before: "cursor-A" });
   });
   await page.goto("/#session=A");
-  await assertHarnessServer(page);
   await expect(page.getByText("History A synthetic")).toBeVisible();
   await page.getByRole("button", { name: "加载更早消息" }).click();
   await expect.poll(() => page.evaluate(() => window.__fixture.pending.some((item) => item.operation === "getMessages" && item.body.before === "cursor-A"))).toBe(true);

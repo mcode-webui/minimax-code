@@ -37,7 +37,6 @@ const marketplace = (initialArea: "plugins" | "skills"): string =>
   renderToStaticMarkup(
     createElement(PluginManagement, {
       transport,
-      onClose: () => undefined,
       initialArea,
     }),
   );

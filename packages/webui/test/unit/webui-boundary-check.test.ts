@@ -52,7 +52,11 @@ const xaminimHost = `host: ${xaminim}`;
 const ghPrefix = ["gh", "p", "_"].join("");
 const credential = `${ghPrefix}` + "abcdefghijklmnopqrstuvwxyz0123456789";
 
-function cleanGraph() {
+// The rules take a rewritten metafile input map and the tests below delete a
+// key from it, so the return type is the map rather than the literal the
+// object expression infers: an inferred literal has no optional properties and
+// `delete` on one of its keys is an error.
+function cleanGraph(): Record<string, { bytesInOutput: number }> {
   return {
     "packages/webui/src/server/index.ts": { bytesInOutput: 120 },
     "packages/webui/src/client/main.tsx": { bytesInOutput: 6_000 },

@@ -79,7 +79,7 @@ import { projectWebuiMessage } from "../../src/client/projection/message-project
 import { projectLiveTurnView } from "../../src/client/projection/transcript-shape.js";
 import { buildWebuiQuestionnaireAnswers } from "../../src/client/projection/questionnaire-state.js";
 import { groupWebuiTranscriptItems } from "../../src/client/projection/transcript-projection.js";
-import type { WebuiGoal, WebuiQuestionnaireRequest } from "../../src/server/port.js";
+import type { WebuiGoal, WebuiGoalPatchRequest, WebuiQuestionnaireRequest } from "../../src/server/port.js";
 import {
   migrateSessionRuntimeState,
   readSessionRuntimeState,
@@ -678,9 +678,13 @@ describe("WebUI shell", () => {
   });
 
   it("expands the first project only when no session is selected", () => {
+    // `latestSessionId` is required on the type but unread by
+    // `resolveDefaultExpandedProjectKey`; it is filled in the way the rail
+    // builds a group (`sessions[0]?.sessionId`) so the fixture is a shape the
+    // component could actually hand this function.
     const projects = [
-      { key: "/work/alpha", name: "alpha", sessionIds: ["a"], updatedAt: 20 },
-      { key: "/work/beta", name: "beta", sessionIds: ["b"], updatedAt: 10 },
+      { key: "/work/alpha", name: "alpha", sessionIds: ["a"], latestSessionId: "a", updatedAt: 20 },
+      { key: "/work/beta", name: "beta", sessionIds: ["b"], latestSessionId: "b", updatedAt: 10 },
     ];
     expect(resolveDefaultExpandedProjectKey(projects, undefined, false)).toBe("/work/alpha");
     expect(resolveDefaultExpandedProjectKey(projects, "a", false)).toBeUndefined();
@@ -881,7 +885,21 @@ describe("WebUI shell", () => {
         loading: false,
       }),
     );
-    expect(html).toContain("No sessions yet.");
+    // Chinese, like the rest of the rail. The running and unread views override
+    // this with their own, and "no sessions yet" is false in both of them.
+    expect(html).toContain("暂无会话");
+  });
+
+  it("lets a view name its own empty state", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebuiSessionList, {
+        page: { sessions: [], hasMore: false },
+        loading: false,
+        emptyLabel: "没有未读会话",
+      }),
+    );
+    expect(html).toContain("没有未读会话");
+    expect(html).not.toContain("暂无会话");
   });
 });
 
@@ -1034,7 +1052,17 @@ describe("WebUI shell — desktop anatomy", () => {
     //
     // Every rendered control is backed by an actual WebUI transport or local
     // composer action. The attachment menu is now operable and opens the
-    // catalogue/file actions rather than a disabled placeholder.
+    // catalogue/file actions rather than a disabled placeholder. The rail
+    // search button joined them when session search shipped — it toggles the
+    // search input rather than sitting disabled, which is why the count moved
+    // from 6 to 7. The rail import row joined them when session import
+    // shipped: it opens a file picker that posts to /session-import, so it is
+    // bound rather than a placeholder, and the count moved from 7 to 8. The
+    // three rail view tabs joined them when the project/running/unread switch
+    // shipped: each one changes the list, so they are bound rather than
+    // decorative, and the count moved from 8 to 11. The favourites tab joined
+    // them when starring shipped: it swaps the rail to the starred set, so it
+    // is bound on the same terms, and the count moved from 11 to 12.
     const html = renderShell();
     const controlTags: string[] = [];
     const re = /<(button|div|a|input|textarea|select)\b[^>]*>/gu;
@@ -1049,10 +1077,30 @@ describe("WebUI shell — desktop anatomy", () => {
         !/(?:^|\s)disabled(?:=|\s|>)/u.test(tag) &&
         !/aria-disabled="true"/u.test(tag),
     );
-    expect(operable).toHaveLength(6);
+    expect(operable).toHaveLength(12);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
     expect(html).toMatch(/data-webui-sidebar-toggle="true"/u);
     expect(html).toMatch(/data-webui-nav-item="新建任务"/u);
+    // The search control must stay operable: reverting it to the disabled
+    // placeholder would silently drop session search rather than fail loudly.
+    expect(html).toMatch(/data-webui-search="true" aria-expanded="false"/u);
+    expect(html).not.toMatch(/data-webui-search="true"[^>]*\sdisabled/u);
+    // Same for import. Without this the picker could be unbound -- the server
+    // route would still answer, and only a real user's click would find out.
+    expect(html).toMatch(/data-webui-nav-item="导入会话"/u);
+    expect(html).toMatch(/data-webui-session-import-input="true"/u);
+    expect(html).not.toMatch(/data-webui-nav-item="导入会话"[^>]*\sdisabled/u);
+    // Same for the view tabs. A tab that is operable but does nothing is
+    // the exact shape this test exists to catch, so every one is asserted by
+    // name and none of them may be disabled. A view added to the rail without
+    // being added here would sail past this contract.
+    for (const view of ["projects", "running", "unread", "stars"]) {
+      expect(html, view).toMatch(new RegExp(`data-webui-rail-view="${view}"`, "u"));
+      expect(html, view).not.toMatch(
+        new RegExp(`data-webui-rail-view="${view}"[^>]*\\sdisabled`, "u"),
+      );
+    }
+    expect(html).toMatch(/data-webui-rail-view="projects"[^>]*aria-selected="true"/u);
   });
 
   it("lets the composer take a draft before a session exists", () => {
@@ -1086,7 +1134,23 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(html).toContain("MiniMax Code，让工作更简单。");
     // The hero column keeps the desktop's 743px width below a 240px spacer.
     expect(html).toMatch(/max-w-\[743px\]/u);
-    expect(html).toMatch(/aria-hidden="true" class="h-\[240px\] w-full shrink"/u);
+    // The spacer is decorative, full-bleed, and holds its size in the flex
+    // column. Its height is the desktop's 240px as a *cap*, not a literal:
+    // d9b9519 ("update onboarding layout and responsive design") made the
+    // spacer responsive with `h-[clamp(96px,24vh,240px)]`, which still resolves
+    // to 240px on any desktop-height window and only shrinks on short ones.
+    // Asserting the cap keeps the 240px headroom under test while leaving the
+    // responsive expression free to move; pinning the exact utility string
+    // would fail again on the next viewport pass without catching a real
+    // regression.
+    const spacerMatch = html.match(/<div aria-hidden="true" class="([^"]*)"><\/div>/u);
+    expect(spacerMatch, "home hero spacer is missing").not.toBeNull();
+    const spacerClasses = spacerMatch?.[1] ?? "";
+    // h-[…] whose expression names 240px, so the headroom is bounded by the
+    // desktop's value and never grows past it.
+    expect(spacerClasses, "spacer height must stay capped at 240px").toMatch(/(?:^|\s)h-\[[^\]]*\b240px\b[^\]]*\]/u);
+    expect(spacerClasses, "spacer must stay full-bleed").toMatch(/(?:^|\s)w-full(?:\s|$)/u);
+    expect(spacerClasses, "spacer must not shrink in the flex column").toMatch(/(?:^|\s)shrink(?:\s|$)/u);
     expect(html).not.toMatch(/data-webui-recommendations="true"/u);
     expect(html).not.toMatch(/data-webui-conversation-source="true"/u);
     // New Task is the desktop's clean home state, not the WebUI-only create-session
@@ -1756,8 +1820,12 @@ describe("WebUI composer app-to-helper seam", () => {
     });
     expect(onSessionCreated).toHaveBeenCalledWith("new-session");
 
-    const patchGoal = vi.fn(async (request: { sessionId: string; objective: string }) =>
-      nextGoal(request.sessionId, request.objective),
+    // The mock takes the real request type: `objective` is optional on
+    // `WebuiGoalPatchRequest` (a patch may carry only a status or a budget),
+    // so a mock demanding a `string` was narrower than the contract it stands
+    // in for. The objective still comes from the request, as before.
+    const patchGoal = vi.fn(async (request: WebuiGoalPatchRequest) =>
+      nextGoal(request.sessionId, request.objective ?? ""),
     );
     const currentGoal = nextGoal("existing-session", "old");
     await submitWebuiGoal({
@@ -2579,9 +2647,14 @@ describe("WebUI composer transcriptIncomplete", () => {
     const final = getState();
     // The turn clock drives 已执行 N 秒 / the thinking seconds counter; the
     // user's line comes from the replayed `msg-user-*` frame instead of a
-    // second pending renderer.
+    // second pending renderer — covered by the next test, which feeds that
+    // frame and reads `role`.
+    //
+    // This assertion used to be `expect(final.pendingUser).toBeUndefined()`.
+    // `pendingUser` no longer exists anywhere in `src/`, so that read could
+    // never fail and pinned nothing. Deleted rather than cast away; the test
+    // keeps the real `processingStartedAtMs` assertion below it.
     expect(typeof final.processingStartedAtMs).toBe("number");
-    expect(final.pendingUser).toBeUndefined();
   });
 
   it("tags the server's replayed user frame with role=user", () => {
@@ -2805,6 +2878,17 @@ describe("WebUI composer transcriptIncomplete", () => {
 
   it("renders the desktop questionnaire card copy and layout", () => {
     const questionnaire: WebuiQuestionnaireRequest = {
+      // The wire shape the runtime sends: current schema, and the default
+      // presentation for an ordinary questionnaire. `showProgress` and
+      // `allowBackNavigation` are only read when there is more than one step,
+      // and this card has exactly one, so the progress block stays unrendered
+      // either way — the copy assertions below are unaffected.
+      schemaVersion: 2,
+      presentation: {
+        replaceComposer: true,
+        showProgress: true,
+        allowBackNavigation: true,
+      },
       id: "q1",
       steps: [
         {
@@ -2813,6 +2897,12 @@ describe("WebUI composer transcriptIncomplete", () => {
           selectionMode: 0,
           required: false,
           allowOther: true,
+          // Read only when `selectedOther` is true. Deliberately a non-empty
+          // string distinct from 自定义回答... so the assertion below is
+          // discriminating: a card that wrongly took the `selectedOther`
+          // branch would render this text and fail, rather than rendering the
+          // same fallback the code falls back to.
+          otherPlaceholder: "Describe it",
           options: [
             { id: "a", label: "选项一" },
             { id: "b", label: "选项二" },
@@ -2883,6 +2973,11 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       setMessages: () => undefined,
       claimSubscription: (owner) => {
         order.push(`claim:${owner}`);
+        // `claimSubscription` returns the claimed generation, or `undefined`
+        // when the caller does not model one. These sinks only record the
+        // order, so `undefined` is the honest return and
+        // `runWebuiStreamLoop` tolerates it.
+        return undefined;
       },
       releaseSubscription: () => {
         order.push("release");
@@ -2914,6 +3009,9 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       setMessages: () => undefined,
       claimSubscription: (owner, turnId) => {
         claims.push({ owner, ...(turnId ? { turnId } : {}) });
+        // This sink records the claim rather than holding a lease, so it has
+        // no generation to hand back — `undefined` is the real return type.
+        return undefined;
       },
       releaseSubscription: () => {
         released += 1;
@@ -2929,7 +3027,13 @@ describe("WebUI stream loop · subscription lease discipline", () => {
   });
 
   it("anchors an attachment with history so the runtime replays the turn", async () => {
-    const resumeSession = vi.fn(async () => undefined);
+    // Mocked against the real `WebuiClientSessionResumer`, so `mock.calls[0]`
+    // is a two-element tuple. A zero-arg mock typed the call as `[]` and made
+    // the assertion below unreachable at the type level even though the loop
+    // really does pass the request.
+    const resumeSession = vi.fn<WebuiClientSessionResumer>(
+      async () => undefined,
+    );
     const loadMessages = vi.fn(async () => ({
       messages: [
         { msgId: "history-1", role: "user", msgContent: "earlier", timestamp: 1_700_000_000_001 },

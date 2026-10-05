@@ -71,6 +71,15 @@ class FullPort implements WebuiHarnessPort {
   version() {
     return { version: "invariant-test", protocolVersion: 1 };
   }
+  // Added with the F-zone archive contract. This class exists to make a
+  // forgotten port member a compile error, so the members land here rather
+  // than being left optional.
+  async readWorkspaceArchive() {
+    return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+  }
+  async extractWorkspaceArchive() {
+    return { archivePath: "", destination: "", writtenFiles: 0 };
+  }
   async listSessions() {
     return { sessions: [], hasMore: false };
   }
@@ -103,6 +112,23 @@ class FullPort implements WebuiHarnessPort {
   }
   async getMessages() {
     return { messages: [], hasMore: false };
+  }
+  async exportSessionTransfer() {
+    return {
+      format: "mcode-webui-session-transfer@1",
+      exportedAt: "1970-01-01T00:00:00.000Z",
+      session: { sessionId: "invariant", title: "invariant" },
+      canonical: { envelopes: [], snapshots: [], generation: 0, revision: "" },
+      display: { messages: [] },
+    };
+  }
+  async importSessionTransfer(request: { readonly targetSessionId: string }) {
+    return {
+      sessionId: request.targetSessionId,
+      canonicalMessages: 0,
+      displayMessages: 0,
+      revision: "",
+    };
   }
   async getSessionDiff() {
     return { diffs: [], changeSetId: "invariant" };

@@ -77,3 +77,10 @@ The five canonical triage roles use their default label strings. See `docs/agent
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Merge and baseline
+
+After any PR is merged — yours or someone else's — realign the local
+checkout, the roadmap's baseline line, and the group chat before moving on.
+Branch from an explicit ref, never from wherever `HEAD` happens to be.
+See `.agents/skills/merge-and-baseline/SKILL.md`.

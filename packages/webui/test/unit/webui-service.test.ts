@@ -7,7 +7,7 @@
 // surface honest (the harness never runs against real history, per ADR
 // 0006) while the wire side exercises the real `ws` package.
 
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import os from "node:os";
@@ -61,6 +61,9 @@ import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
+  WebuiImportSessionTransferRequest,
+  WebuiImportSessionTransferResult,
+  WebuiSessionTransferFile,
 } from "../../src/server/port.js";
 import { createWebuiTransport } from "../../src/client/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
@@ -72,6 +75,19 @@ type CloseEvent = [number, Buffer];
 // return shape is `Promise<unknown[]>` (the args tuple), which is
 // all the assertions in this file actually need.
 type OncePromise<T> = Promise<T[]>;
+
+/**
+ * The staged tree the `/workspace-file` tests point `dir` at, plus the bound
+ * loopback endpoint serving it. See `bootWorkspaceTree` for why the tree
+ * carries a prefix-sharing sibling.
+ */
+interface WorkspaceFileTree {
+  readonly endpoint: string;
+  readonly token: string;
+  readonly root: string;
+  readonly sibling: string;
+  readonly outside: string;
+}
 
 class ScriptedHarnessPort implements WebuiHarnessPort {
   lastProviderTest?: { readonly providerId: string; readonly apiKey?: string };
@@ -162,6 +178,22 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     return { messages: [], hasMore: false };
   }
 
+  // The transfer round trip has its own tests. These two exist because
+  // `WebuiHarnessPort` requires them, and they throw rather than return a
+  // plausible empty value: a double that answers a call it was never taught
+  // to answer turns a missing assertion into a passing one.
+  async exportSessionTransfer(
+    _request: { readonly id: string },
+  ): Promise<WebuiSessionTransferFile> {
+    throw new Error("exportSessionTransfer is not scripted on this double");
+  }
+
+  async importSessionTransfer(
+    _request: WebuiImportSessionTransferRequest,
+  ): Promise<WebuiImportSessionTransferResult> {
+    throw new Error("importSessionTransfer is not scripted on this double");
+  }
+
   async getSessionDiff(request: WebuiGetSessionDiffRequest) {
     this.diffRequests.push({ operation: "getSessionDiff", body: request });
     return { diffs: [{ file: "session.ts", additions: 1, deletions: 0 }], changeSetId: "changes-1" };
@@ -244,6 +276,18 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
 
   async listWorkspaceFileTree() {
     return [{ path: "README.md", name: "README.md", kind: "file" }];
+  }
+
+  // The archive operations joined `WebuiHarnessPort` with the F-zone
+  // contract. This fixture has no archive to serve, so it answers with an
+  // empty listing rather than going unimplemented — the port type requires
+  // the member, and an absent method would be a runtime `TypeError` instead.
+  async readWorkspaceArchive() {
+    return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+  }
+
+  async extractWorkspaceArchive() {
+    return { archivePath: "", destination: "", writtenFiles: 0 };
   }
 
   async getWorkspaceEnvironment() {
@@ -580,6 +624,46 @@ function awaitClose(ws: WebSocket): Promise<{ code: number; reason: string }> {
   });
 }
 
+// Finalising an in-flight stream is driven by the *server* half of the closing
+// handshake: `WebuiService` runs `connectionController.abort()` from its own
+// `ws.on("close")` handler (src/server/service.ts:502-506), and that abort is
+// what calls `iterator.return()` via the listener at
+// src/server/operation/operation-dispatch.ts:96-97. The client-side `close`
+// event these tests await is a *different socket's* event, and the `ws` library
+// gives no ordering guarantee between the two — measured here, the server's
+// close handler lands one loop turn after the client's in roughly half of
+// full-file runs. So a fixed number of ticks after `await closed` is a guess,
+// not a barrier: the single `setImmediate` this replaced passed in 2 of 5 runs
+// and failed in 3. This waits for the condition itself, bounded, so a real
+// regression fails with a readable message instead of hanging or passing by
+// luck.
+const FINALISATION_TIMEOUT_MS = 2_000;
+
+function awaitFinalised(
+  finalised: Promise<unknown>,
+  what: string,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `timed out after ${FINALISATION_TIMEOUT_MS}ms waiting for ${what}`,
+        ),
+      );
+    }, FINALISATION_TIMEOUT_MS);
+    finalised.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 describe("WebUI service", () => {
   it("turns a node-pty native load failure into an actionable error", () => {
     const manager = new WebuiTerminalManager(() => { throw new Error("Failed to load native module: pty.node"); });
@@ -799,6 +883,10 @@ describe("WebUI service", () => {
 
   it("returns a running stream iterator when its WebSocket connection closes", async () => {
     let returned = false;
+    let resolveReturned!: () => void;
+    const returnedOnce = new Promise<void>((resolve) => {
+      resolveReturned = resolve;
+    });
     const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
       next: () =>
         new Promise<IteratorResult<{ readonly dataJson?: string }>>(
@@ -806,6 +894,7 @@ describe("WebUI service", () => {
         ),
       return: async () => {
         returned = true;
+        resolveReturned();
         return { done: true, value: undefined };
       },
     };
@@ -828,8 +917,165 @@ describe("WebUI service", () => {
     await port.sendObserved;
     ws.close();
     await closed;
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    // The pump is parked on a `next()` that never settles, so the `finally`
+    // in dispatchWebuiFrame cannot be what finalises this iterator — only the
+    // connection abort is. Wait for that outcome rather than for a tick count.
+    await awaitFinalised(
+      returnedOnce,
+      "the in-flight stream iterator to be finalised after the socket closed",
+    );
     expect(returned).toBe(true);
+    expect(port.abortCalls).toBe(0);
+  });
+
+  it("finalises a partly delivered stream on disconnect, not only one parked on its first pull", async () => {
+    let returned = false;
+    let resolveReturned!: () => void;
+    const returnedOnce = new Promise<void>((resolve) => {
+      resolveReturned = resolve;
+    });
+    let pulls = 0;
+    const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
+      next: () => {
+        pulls += 1;
+        // The first pull is served, so the pump is provably parked on a
+        // *later* pull when the socket dies. The abort listener has to
+        // finalise the iterator from any position in the pump, not just from
+        // the very first one the pre-existing test happens to sit on.
+        if (pulls === 1)
+          return Promise.resolve({
+            done: false,
+            value: { dataJson: '{"type":10}' },
+          });
+        return new Promise<IteratorResult<{ readonly dataJson?: string }>>(
+          () => undefined,
+        );
+      },
+      return: async () => {
+        returned = true;
+        resolveReturned();
+        return { done: true, value: undefined };
+      },
+    };
+    port.sendResult = {
+      ok: true,
+      source: { [Symbol.asyncIterator]: () => pendingIterator },
+    };
+    const { url } = await bootService();
+    const { ws, upgrade, closed } = openClient(url);
+    await upgrade;
+    // `sendMessage` does not acknowledge its stream, so the first frame on
+    // the wire is the first delivered value.
+    const firstValue = new Promise<void>((resolve) => {
+      const onMessage = (raw: import("ws").RawData) => {
+        ws.off("message", onMessage);
+        resolve();
+      };
+      ws.on("message", onMessage);
+    });
+    ws.send(
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "request",
+        requestId: "req-cancel-midstream",
+        operation: "sendMessage",
+        body: { id: "session-1", content: "partly delivered" },
+      }),
+    );
+    await firstValue;
+    expect(pulls).toBeGreaterThanOrEqual(1);
+    ws.close();
+    await closed;
+    await awaitFinalised(
+      returnedOnce,
+      "a partly delivered stream iterator to be finalised after the socket closed",
+    );
+    expect(returned).toBe(true);
+    expect(port.abortCalls).toBe(0);
+  });
+
+  it("finalises the stream exactly once when the pump settles after the socket closed", async () => {
+    // The two preceding tests park the pump on a `next()` that never settles,
+    // so the `finally` in dispatchWebuiFrame never runs and only the abort
+    // listener can finalise. A real runtime stream DOES settle — the pull
+    // completes or rejects once the connection is gone — and then both the
+    // listener and the `finally` reach for `return()`. Finalising an iterator
+    // twice is a real double-close on a live subscription, so the count is
+    // asserted, not just the fact of finalisation.
+    let returnCalls = 0;
+    let settlePull!: () => void;
+    const pullSettled = new Promise<void>((resolve) => {
+      settlePull = resolve;
+    });
+    let pulls = 0;
+    const pendingIterator: AsyncIterator<{ readonly dataJson?: string }> = {
+      next: () => {
+        pulls += 1;
+        if (pulls === 1)
+          return Promise.resolve({
+            done: false,
+            value: { dataJson: '{"type":10}' },
+          });
+        // Park, then let the test release the pull AFTER the socket is gone.
+        // That is the shape that runs the abort listener and the `finally`.
+        return pullSettled.then(() => ({ done: true, value: undefined }));
+      },
+      return: async () => {
+        returnCalls += 1;
+        return { done: true, value: undefined };
+      },
+    };
+    port.sendResult = {
+      ok: true,
+      source: { [Symbol.asyncIterator]: () => pendingIterator },
+    };
+    const { url } = await bootService();
+    const { ws, upgrade, closed } = openClient(url);
+    await upgrade;
+    const firstValue = new Promise<void>((resolve) => {
+      const onMessage = (raw: import("ws").RawData) => {
+        ws.off("message", onMessage);
+        resolve();
+      };
+      ws.on("message", onMessage);
+    });
+    ws.send(
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "request",
+        requestId: "req-finalise-once",
+        operation: "sendMessage",
+        body: { id: "session-1", content: "settles after disconnect" },
+      }),
+    );
+    await firstValue;
+    expect(pulls).toBeGreaterThanOrEqual(1);
+    ws.close();
+    await closed;
+    // Release the parked pull only now: the abort listener has already run,
+    // and settling it drives the loop into the `finally`.
+    settlePull();
+    await awaitFinalised(
+      pullSettled,
+      "the parked pull to settle after the socket closed",
+    );
+    // Drain the microtask queue instead of waiting on a clock.
+    //
+    // The `finally` that could double-finalise is not on a timer: it runs a few
+    // microtask hops after the parked pull resolves — abort listener, then the
+    // `await iterator.next()` continuation, then the loop's `break`, then the
+    // `finally`. Counting microtasks is deterministic; a sleep is not. The
+    // 250 ms this used to wait passed locally 8 times and failed on CI, where
+    // the whole 50-file suite loads the machine and the clock is simply not a
+    // budget this test can spend.
+    for (let i = 0; i < 64; i += 1) await Promise.resolve();
+    // One macrotask hop as well: `setImmediate` callbacks and promise
+    // continuations are not the same queue, and the socket `close` handler
+    // reaches the abort listener through the former.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    // The count is the point. Asserting only `returnCalls >= 1` would pass
+    // against a double-finalise, which is the failure this pins shut.
+    expect(returnCalls).toBe(1);
     expect(port.abortCalls).toBe(0);
   });
 
@@ -1492,6 +1738,351 @@ describe("WebUI service", () => {
     } finally {
       await rm(workspaceDir, { recursive: true, force: true });
     }
+  });
+
+  // `GET /workspace-file` serves one workspace file as a byte-range-capable
+  // resource, for the media preview and the HTML preview in the workspace
+  // panel. The route is dispatched *after* the loopback, origin and credential
+  // checks in `#serveClient`, so every assertion here goes out over a real
+  // socket: what is under test is bytes and headers on the wire, not the
+  // return value of an internal helper. The three properties that make the
+  // route safe enough to exist are all wire-level:
+  //
+  //   * a path that leaves the workspace never resolves to bytes,
+  //   * a range request answers the bytes it was asked for and nothing else,
+  //   * an unrecognised file is never rendered, because the media type comes
+  //     from a whitelist with an `application/octet-stream` floor rather than
+  //     from the guessing `contentType()` the WebUI's own bundle needs.
+  describe("workspace file resource", () => {
+    // 21 bytes, so `bytes=0-4` and the suffix form `bytes=-5` cut distinct,
+    // checkable slices out of the start and the end of the same file.
+    const TEXT = "0123456789abcdefghij\n";
+    const stagedDirs: string[] = [];
+
+    afterEach(async () => {
+      while (stagedDirs.length > 0) {
+        const dir = stagedDirs.pop();
+        if (dir) await rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    /**
+     * Boot the real service and stage a temp tree for it to serve.
+     *
+     * The tree carries two things a plain `mkdtemp` root would not: a sibling
+     * directory whose *name* starts with the root's name (`<root>-sibling`),
+     * and a second unrelated temp directory outside the root. The sibling is
+     * the case a `..`-segment check alone misses — `path.resolve` collapses
+     * both `<root>/../<root>-sibling/secret.txt` and the absolute form
+     * `<root>-sibling/secret.txt` to a real path outside the root, and only
+     * the `target === root || target.startsWith(root + path.sep)` comparison
+     * rejects them, because both start with the root as a plain *string*.
+     */
+    async function bootWorkspaceTree(): Promise<WorkspaceFileTree> {
+      const { credential } = await bootService();
+      const root = await mkdtemp(path.join(os.tmpdir(), "webui-wsfile-"));
+      const sibling = `${root}-sibling`;
+      const outside = await mkdtemp(path.join(os.tmpdir(), "webui-wsfile-outside-"));
+      stagedDirs.push(root, sibling, outside);
+      await mkdir(sibling);
+      await mkdir(path.join(root, "nested"));
+      await writeFile(path.join(root, "notes.txt"), TEXT);
+      await writeFile(path.join(root, "page.html"), "<!doctype html><p>preview</p>\n");
+      await writeFile(path.join(root, "frame.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      // Two shapes that must land on the whitelist floor: an extension the
+      // table has never heard of, and no extension at all.
+      await writeFile(path.join(root, "blob.unknownext"), "not on the list\n");
+      await writeFile(path.join(root, "LICENSE"), "no extension at all\n");
+      await writeFile(path.join(sibling, "secret.txt"), "sibling secret\n");
+      await writeFile(path.join(outside, "secret.txt"), "outside secret\n");
+      return {
+        endpoint: `http://127.0.0.1:${service.info().tcpPort}/workspace-file`,
+        token: credential.token,
+        root,
+        sibling,
+        outside,
+      };
+    }
+
+    /**
+     * Build the request URL. An empty `token`/`dir`/`path` is omitted from the
+     * query string, which is what exercises the parameter-level failures
+     * without hand-rolling one.
+     */
+    function fileUrl(
+      tree: WorkspaceFileTree,
+      relative: string,
+      options?: {
+        readonly token?: string | undefined;
+        readonly dir?: string | undefined;
+      },
+    ): string {
+      const params = new URLSearchParams();
+      // An empty `dir`/`path`/`token` is left out of the query string
+      // entirely, which is how the parameter-level failures get reached.
+      const dir = options?.dir === undefined ? tree.root : options.dir;
+      if (dir) params.set("dir", dir);
+      if (relative) params.set("path", relative);
+      const token = options?.token === undefined ? tree.token : options.token;
+      if (token) params.set("token", token);
+      return `${tree.endpoint}?${params.toString()}`;
+    }
+
+    /** Read the body as the bytes that arrived, never as a decoded string. */
+    async function readBody(response: Response): Promise<Buffer> {
+      return Buffer.from(await response.arrayBuffer());
+    }
+
+    it("requires the per-start credential before resolving a path", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const anonymous = await fetch(fileUrl(tree, "notes.txt", { token: "" }));
+      expect(anonymous.status).toBe(401);
+
+      const wrong = await fetch(
+        fileUrl(tree, "notes.txt", { token: "definitely-not-it" }),
+      );
+      expect(wrong.status).toBe(401);
+    });
+
+    it("serves a whole file with its whitelisted media type and no partial framing", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const response = await fetch(fileUrl(tree, "notes.txt"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+      expect(response.headers.get("content-length")).toBe(String(TEXT.length));
+      expect(response.headers.get("content-range")).toBeNull();
+      expect((await readBody(response)).toString("utf8")).toBe(TEXT);
+      // The security headers ride on every response, not only on HTML: a
+      // previewed artifact must never be able to sniff its way to a rendering
+      // type, and a range body must not be replayed against a later edit.
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("accept-ranges")).toBe("bytes");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("content-security-policy")).toBe("sandbox");
+    });
+
+    it("serves a zero-byte file as an empty 200 and refuses a range against it", async () => {
+      // A zero-byte file has no last byte, so `total - 1` is -1: the read
+      // stream used to be handed that and rejected it with ERR_OUT_OF_RANGE,
+      // which rejected the response promise and left the request hanging as an
+      // unhandled rejection. A freshly created empty file in the workspace is
+      // an ordinary thing for the file browser to be asked for.
+      const tree = await bootWorkspaceTree();
+      await writeFile(path.join(tree.root, "empty.txt"), "");
+
+      const response = await fetch(fileUrl(tree, "empty.txt"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-length")).toBe("0");
+      expect(response.headers.get("content-security-policy")).toBe("sandbox");
+      expect((await readBody(response)).length).toBe(0);
+
+      // A range cannot select a byte that does not exist, so this is
+      // unsatisfiable rather than answerable — and its Content-Range has to
+      // stay spellable, which is why it is not a `bytes 0--1/0`.
+      for (const header of ["bytes=0-", "bytes=-5"]) {
+        const ranged = await fetch(fileUrl(tree, "empty.txt"), {
+          headers: { Range: header },
+        });
+        expect(ranged.status, `Range: ${header}`).toBe(416);
+        expect(ranged.headers.get("content-range"), `Range: ${header}`).toBe("bytes */0");
+      }
+    });
+
+    it("answers a bounded range with exactly those bytes and the matching Content-Range", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const response = await fetch(fileUrl(tree, "notes.txt"), {
+        headers: { Range: "bytes=0-4" },
+      });
+      expect(response.status).toBe(206);
+      expect(response.headers.get("content-range")).toBe(`bytes 0-4/${TEXT.length}`);
+      expect(response.headers.get("content-length")).toBe("5");
+      const body = await readBody(response);
+      expect(body.length).toBe(5);
+      expect(body.toString("utf8")).toBe(TEXT.slice(0, 5));
+    });
+
+    it("answers a suffix range with the final bytes", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const response = await fetch(fileUrl(tree, "notes.txt"), {
+        headers: { Range: "bytes=-5" },
+      });
+      expect(response.status).toBe(206);
+      expect(response.headers.get("content-range")).toBe(
+        `bytes ${TEXT.length - 5}-${TEXT.length - 1}/${TEXT.length}`,
+      );
+      const body = await readBody(response);
+      expect(body.length).toBe(5);
+      expect(body.toString("utf8")).toBe(TEXT.slice(-5));
+    });
+
+    it("refuses a range it cannot satisfy, and a reversed one, with 416", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const pastTheEnd = await fetch(fileUrl(tree, "notes.txt"), {
+        headers: { Range: "bytes=999999-" },
+      });
+      expect(pastTheEnd.status).toBe(416);
+      expect(pastTheEnd.headers.get("content-range")).toBe(`bytes */${TEXT.length}`);
+      expect((await readBody(pastTheEnd)).length).toBe(0);
+
+      const reversed = await fetch(fileUrl(tree, "notes.txt"), {
+        headers: { Range: "bytes=4-2" },
+      });
+      expect(reversed.status).toBe(416);
+      expect(reversed.headers.get("content-range")).toBe(`bytes */${TEXT.length}`);
+
+      // `bytes=-` parses as a range spec that names no bytes at all — the
+      // suffix length is missing rather than malformed — so it lands on the
+      // unsatisfiable side of the split below, not the unparseable one.
+      const empty = await fetch(fileUrl(tree, "notes.txt"), {
+        headers: { Range: "bytes=-" },
+      });
+      expect(empty.status).toBe(416);
+      expect(empty.headers.get("content-range")).toBe(`bytes */${TEXT.length}`);
+    });
+
+    it("refuses a path that walks out of the workspace with `..`", async () => {
+      const tree = await bootWorkspaceTree();
+      const target = `../${path.basename(tree.outside)}/secret.txt`;
+      // The file is real and outside the root, so the 403 below is a decision
+      // about the path rather than a missing-file accident.
+      await expect(
+        readFile(path.join(tree.outside, "secret.txt"), "utf8"),
+      ).resolves.toBe("outside secret\n");
+
+      const response = await fetch(fileUrl(tree, target));
+      expect(response.status).toBe(403);
+      expect((await response.text()).includes("outside secret")).toBe(false);
+    });
+
+    it("refuses a sibling that merely shares the root's name prefix", async () => {
+      const tree = await bootWorkspaceTree();
+      // The absolute spelling is the sharp one: it starts with the root as a
+      // plain string, so a `target.startsWith(root)` check would let it
+      // through, and the `+ path.sep` comparison is what rejects it.
+      const escapes = [
+        path.join(tree.sibling, "secret.txt"),
+        `../${path.basename(tree.sibling)}/secret.txt`,
+      ];
+
+      for (const target of escapes) {
+        const response = await fetch(fileUrl(tree, target));
+        expect(response.status, `escape via ${target}`).toBe(403);
+        expect((await response.text()).includes("sibling secret")).toBe(false);
+      }
+    });
+
+    it("falls back to application/octet-stream for a type the whitelist has never heard of", async () => {
+      const tree = await bootWorkspaceTree();
+
+      for (const name of ["blob.unknownext", "LICENSE"]) {
+        const response = await fetch(fileUrl(tree, name));
+        expect(response.status, `serve ${name}`).toBe(200);
+        const type = response.headers.get("content-type");
+        expect(type, `type for ${name}`).toBe("application/octet-stream");
+        // The whole point of the separate table: an unrecognised file must
+        // not be guessed into a rendering type the way `contentType()` guesses
+        // the WebUI's own bundle.
+        expect(type ?? "").not.toContain("text/html");
+      }
+    });
+
+    it("serves HTML in a script sandbox that cannot read the framing page", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const response = await fetch(fileUrl(tree, "page.html"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+      // `allow-scripts` so the previewed document runs, but no
+      // `allow-same-origin`: without it the document lands in an opaque
+      // origin and cannot reach `window.__WEBUI_CONFIG__.token`, which would
+      // hand it the whole WebUI session.
+      expect(response.headers.get("content-security-policy")).toBe(
+        "sandbox allow-scripts",
+      );
+    });
+
+    it("sandboxes a non-HTML type without the allow-scripts variant", async () => {
+      const tree = await bootWorkspaceTree();
+
+      for (const name of ["notes.txt", "frame.png"]) {
+        const response = await fetch(fileUrl(tree, name));
+        expect(response.status, `serve ${name}`).toBe(200);
+        const policy = response.headers.get("content-security-policy");
+        expect(policy, `policy for ${name}`).toBe("sandbox");
+        // Exactly `sandbox`: media in an iframe is already inert, and granting
+        // scripts to it would be a grant nothing needs.
+        expect(policy ?? "").not.toContain("allow-scripts");
+      }
+    });
+
+    it("404s a directory or a missing file rather than reading something else", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const directory = await fetch(fileUrl(tree, "nested"));
+      expect(directory.status).toBe(404);
+
+      // The root itself passes the resolve check (`target === root`), so this
+      // also pins that the `isFile()` gate is what rejects it, rather than the
+      // path comparison.
+      const rootItself = await fetch(fileUrl(tree, "."));
+      expect(rootItself.status).toBe(404);
+
+      const missing = await fetch(fileUrl(tree, "absent.txt"));
+      expect(missing.status).toBe(404);
+    });
+
+    it("400s when either dir or path is missing", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const withoutDir = await fetch(fileUrl(tree, "notes.txt", { dir: "" }));
+      expect(withoutDir.status).toBe(400);
+
+      const withoutPath = await fetch(fileUrl(tree, ""));
+      expect(withoutPath.status).toBe(400);
+    });
+
+    it("answers HEAD with the headers and no body, and 405s any other method", async () => {
+      const tree = await bootWorkspaceTree();
+
+      const head = await fetch(fileUrl(tree, "notes.txt"), { method: "HEAD" });
+      expect(head.status).toBe(200);
+      expect(head.headers.get("content-length")).toBe(String(TEXT.length));
+      expect(head.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+      expect((await readBody(head)).length).toBe(0);
+
+      for (const method of ["POST", "PUT", "DELETE"]) {
+        const response = await fetch(fileUrl(tree, "notes.txt"), { method });
+        expect(response.status, `${method} /workspace-file`).toBe(405);
+      }
+    });
+
+    it("serves the whole file for a multi-range or unparseable Range header", async () => {
+      // The stated design: a single range only, and anything that is not one
+      // parseable single range is answered with the whole file rather than
+      // `multipart/byteranges`. Media elements never ask for a multi-range, so
+      // a full 200 is a correct, if less efficient, answer to the same bytes.
+      const tree = await bootWorkspaceTree();
+
+      for (const header of ["bytes=0-1,4-5", "bytes=abc", "items=0-4"]) {
+        const response = await fetch(fileUrl(tree, "notes.txt"), {
+          headers: { Range: header },
+        });
+        expect(response.status, `Range: ${header}`).toBe(200);
+        expect(response.headers.get("content-type"), `Range: ${header}`).toBe(
+          "text/plain; charset=utf-8",
+        );
+        expect(response.headers.get("content-range"), `Range: ${header}`).toBeNull();
+        expect(
+          (await readBody(response)).toString("utf8"),
+          `Range: ${header}`,
+        ).toBe(TEXT);
+      }
+    });
   });
 
   it("accepts a websocket upgrade without a credential when dev mode is on", async () => {
@@ -2880,6 +3471,12 @@ describe("WebUI shutdown order (criterion 7)", () => {
       version() {
         return { version: "0.4.2-shutdown-test", protocolVersion: 1 };
       },
+      async readWorkspaceArchive() {
+        return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+      },
+      async extractWorkspaceArchive() {
+        return { archivePath: "", destination: "", writtenFiles: 0 };
+      },
       async listSessions() {
         return { sessions: [], hasMore: false };
       },
@@ -2905,6 +3502,16 @@ describe("WebUI shutdown order (criterion 7)", () => {
       // rather than a runtime `undefined is not a function`.
       async getSessionTree() {
         return { sessions: [], hasMore: false };
+      },
+      // Throw rather than fabricate a transfer file. These ports record
+      // shutdown ordering; a stub that answered with a plausible empty
+      // transfer would let an assertion about export/import pass against
+      // data this double made up.
+      async exportSessionTransfer() {
+        throw new Error("exportSessionTransfer is not scripted on this double");
+      },
+      async importSessionTransfer() {
+        throw new Error("importSessionTransfer is not scripted on this double");
       },
       async archiveSession() {
         return { success: true };
@@ -3238,6 +3845,12 @@ describe("WebUI shutdown order (criterion 7)", () => {
         versionCalls += 1;
         return { version: "0.4.2-shutdown-gate", protocolVersion: 1 };
       },
+      async readWorkspaceArchive() {
+        return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
+      },
+      async extractWorkspaceArchive() {
+        return { archivePath: "", destination: "", writtenFiles: 0 };
+      },
       async listSessions() {
         return { sessions: [], hasMore: false };
       },
@@ -3267,6 +3880,16 @@ describe("WebUI shutdown order (criterion 7)", () => {
       // rather than a runtime `undefined is not a function`.
       async getSessionTree() {
         return { sessions: [], hasMore: false };
+      },
+      // Throw rather than fabricate a transfer file. These ports record
+      // shutdown ordering; a stub that answered with a plausible empty
+      // transfer would let an assertion about export/import pass against
+      // data this double made up.
+      async exportSessionTransfer() {
+        throw new Error("exportSessionTransfer is not scripted on this double");
+      },
+      async importSessionTransfer() {
+        throw new Error("importSessionTransfer is not scripted on this double");
       },
       async archiveSession() {
         return { success: true };

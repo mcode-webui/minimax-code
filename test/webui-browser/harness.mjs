@@ -2,26 +2,57 @@
 //
 // The fixtures are deterministic and in-page: every WebUI wire envelope the
 // client sends lands on `window.__fixture` instead of a real server, so these
-// helpers only ever talk to that fixture. Keeping them in one module means a
-// new spec gets the same session-switch and harness assertions without
-// restating them.
+// helpers only ever talk to that fixture.
+//
+// Specs import `test` from here rather than from `@playwright/test`. That is
+// what makes the harness-server guard below impossible to leave out: the guard
+// is registered on the exported `test`, so every spec file that imports it
+// inherits the guard for every test it declares, and a new spec gets it without
+// restating anything. A per-test call that any test could forget is not a
+// guarantee, and the suite runs against a built artifact served by whichever
+// process happens to answer on the harness port.
 
-import { expect, test } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
+
+/** The suite's `test`, carrying the harness-server guard for every test. */
+export const test = base;
 
 export async function configureFixture(page, setup) {
   await page.addInitScript({ content: `window.__WEBUI_FIXTURE_SETUP__ ??= []; window.__WEBUI_FIXTURE_SETUP__.push((${setup.toString()}));` });
 }
 
-/** The harness server and the page must both report this run's server id. */
-export async function assertHarnessServer(page) {
-  const expectedServerId = test.info().config.metadata.webuiBrowserServerId;
-  const health = await page.request.get("http://127.0.0.1:4179/health");
-  expect(await health.json()).toEqual({ status: "ok", serverId: expectedServerId });
-  await expect.poll(() => page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId);
+function expectedServerId() {
+  return test.info().config.metadata.webuiBrowserServerId;
 }
+
+/** The harness server must report this run's server id. Needs no document. */
+async function assertHarnessServerHealth(page) {
+  const health = await page.request.get("http://127.0.0.1:4179/health");
+  expect(await health.json()).toEqual({ status: "ok", serverId: expectedServerId() });
+}
+
+/** The harness server and the page must both report this run's server id. */
+async function assertHarnessServer(page) {
+  await assertHarnessServerHealth(page);
+  await expect.poll(() => page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId());
+}
+
+// The server half runs before the test body, so a run aimed at the wrong server
+// fails fast instead of after a full timeout. The page half only exists once a
+// document has loaded, and specs load it at their own moment (some configure
+// fixtures first, some call `page.goto` directly), so it runs after the body has
+// navigated -- which is also what covers the tests that never reach `openApp`.
+test.beforeEach(async ({ page }) => {
+  await assertHarnessServerHealth(page);
+});
+
+test.afterEach(async ({ page }) => {
+  expect(await page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId());
+});
 
 export async function openApp(page, hash = "#session=A") {
   await page.goto(`/${hash}`);
+  await assertHarnessServer(page);
   await expect(page.locator("#webui-root")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__fixture.requests.some((request) => request.operation === "listSessions"))).toBe(true);
 }

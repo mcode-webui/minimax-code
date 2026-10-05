@@ -215,6 +215,20 @@ const SUBAGENT_REPORTED_EVENT_TYPES = [
 ] as const;
 const TODO_EVENT_TYPES = ["todo_updated"] as const;
 
+/**
+ * `Array.prototype.includes` accepts any value, but these literal tuples are what
+ * make a dispatch branch exhaustive, so membership has to narrow `type` instead of
+ * merely comparing it — `type && TODO_EVENT_TYPES.includes(type)` still hands a
+ * plain `string` to a `"todo_updated"` parameter. A frame carrying no event name
+ * belongs to no branch, which is what `includes(undefined)` already answered.
+ */
+function isEventTypeOf<T extends string>(
+  type: string | undefined,
+  allowed: readonly T[],
+): type is T {
+  return type !== undefined && (allowed as readonly string[]).includes(type);
+}
+
 function terminalSubagentStatus(
   type: string,
   data: Record<string, unknown>,
@@ -231,11 +245,11 @@ export function reduceWebuiWorkspaceProgressEvent(
   sessionId?: string,
 ): WebuiWorkspaceProgressState {
   const type = eventType(value);
-  if (TODO_EVENT_TYPES.includes(type)) {
+  if (isEventTypeOf(type, TODO_EVENT_TYPES)) {
     const todos = normalizeTodos(value.todos ?? eventData(value).todos);
     return todos ? { ...state, todos, hasTodoSnapshot: true } : state;
   }
-  if (SUBAGENT_SPAWN_EVENT_TYPES.includes(type)) {
+  if (isEventTypeOf(type, SUBAGENT_SPAWN_EVENT_TYPES)) {
     const subagent = subagentFromEvent(value, sessionId);
     return subagent
       ? {
@@ -245,7 +259,7 @@ export function reduceWebuiWorkspaceProgressEvent(
         }
       : state;
   }
-  if (SUBAGENT_STATUS_EVENT_TYPES.includes(type)) {
+  if (isEventTypeOf(type, SUBAGENT_STATUS_EVENT_TYPES)) {
     const data = eventData(value);
     const childSessionId = stringValue(data, ["sessionId", "session_id"]);
     if (!childSessionId) return state;
@@ -262,7 +276,7 @@ export function reduceWebuiWorkspaceProgressEvent(
         hasSubagentSnapshot: true,
       };
   }
-  if (SUBAGENT_REPORTED_EVENT_TYPES.includes(type)) {
+  if (isEventTypeOf(type, SUBAGENT_REPORTED_EVENT_TYPES)) {
     const data = eventData(value);
     const childSessionId = stringValue(data, ["sessionId", "session_id"]);
     const existing = childSessionId
@@ -329,8 +343,12 @@ function applyTodoToolCalls(
   message: WebuiClientMessage | Record<string, unknown>,
 ): WebuiWorkspaceProgressState {
   const loose = message as Record<string, unknown>;
+  // `message` is a union, and its `Record<string, unknown>` arm types `toolCalls`
+  // as `unknown` — so `message.toolCalls ?? []` leaves a non-iterable on the
+  // right-hand side. Read the declared field through the same `Array.isArray`
+  // guard as the snake_case one below it.
   const calls = [
-    ...(message.toolCalls ?? []),
+    ...(Array.isArray(message.toolCalls) ? message.toolCalls : []),
     ...(Array.isArray(loose.tool_calls) ? loose.tool_calls : []),
   ];
   let next = state;

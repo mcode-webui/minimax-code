@@ -394,7 +394,9 @@ describe("interaction panel — plan routing", () => {
           {
             requestId: "perm-1",
             sessionId: "s1",
+            agentName: "main",
             toolName: "bash",
+            ruleContents: [],
             reason: "why",
             allowAlwaysSupported: false,
             createdAt: 0,

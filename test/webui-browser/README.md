@@ -6,7 +6,9 @@ The fixture replaces the browser's `WebSocket` constructor before the built clie
 
 Playwright uses one pinned Linux viewport (1440×900), DPR 1, `zh-CN`, `Asia/Shanghai`, light color scheme, and reduced motion. No screenshot or whole-HTML snapshot is used. Live and completed turn visibility is asserted from controlled stream frames while the indicator remains unmodified.
 
-The harness starts with a random server ID and checks that both `/health` and the served page report it. An existing server is reused only when its ID matches; set `WEBUI_BROWSER_SERVER_ID` to a shared value when reusing a known healthy server during one local development session.
+The harness starts with a random server ID, and every test asserts that both `/health` and the served page report this run's ID. That assertion is registered on the `test` that `harness.mjs` exports, so a spec gets it by importing `test` from there instead of from `@playwright/test` — it cannot be left out by a new spec, and a test that runs against any other build fails instead of passing quietly.
+
+Playwright starts its own harness server on port 4179 and reuses an already-running one only when `WEBUI_BROWSER_REUSE=1` is set. Without it, a busy port is an error rather than a silent adoption of whatever process happens to answer there. Set `WEBUI_BROWSER_SERVER_ID` as well to give a deliberately reused server a known ID that matches the run. CI never reuses either way.
 
 ## Specs
 

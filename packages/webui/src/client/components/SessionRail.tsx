@@ -20,6 +20,7 @@ import {
 import {
   WebuiIconContextArchive,
   WebuiIconContextCopy,
+  WebuiIconContextExport,
   WebuiIconContextFeedback,
   WebuiIconContextFork,
   WebuiIconContextPin,
@@ -28,12 +29,24 @@ import {
   WebuiIconFolder,
   WebuiIconMore,
   WebuiIconProjectAdd,
-  WebuiIconSessionPin,
+  WebuiIconSessionPinMark,
+  WebuiIconSessionStar,
+  WebuiIconSessionStarMark,
   WebuiIconSessionDisclosure,
   WebuiIconAgent,
 } from "../icons.js";
 import { WebuiContextMenu, type WebuiContextMenuItem } from "./ContextMenu.js";
 import { RailRow } from "./RailRow.js";
+import {
+  formatWebuiSessionAge,
+  type WebuiSessionActivityMap,
+} from "../session-activity.js";
+import {
+  filterWebuiRailViewSessions,
+  selectWebuiRailViewTabs,
+  type WebuiRailView,
+} from "../rail-buckets.js";
+import { formatWebuiUnreadBadge } from "../session-unread.js";
 import type {
   WebuiClientSession,
   WebuiClientSessionPage,
@@ -106,6 +119,34 @@ export function sessionLabel(session: WebuiClientSession): string {
   return session.title?.trim() || session.agentName || session.sessionId;
 }
 
+/**
+ * Whether a session matches a rail search query.
+ *
+ * Matching is a case-insensitive substring over the label the rail already
+ * renders (`sessionLabel`) plus the workspace directory, so a project path is
+ * findable even when no session title inside it contains the query. An empty
+ * or whitespace-only query matches everything, so callers can hand the raw
+ * input value straight through without guarding.
+ */
+export function matchesWebuiSessionQuery(session: WebuiClientSession, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  if (sessionLabel(session).toLowerCase().includes(needle)) return true;
+  return (session.workspaceDir ?? "").toLowerCase().includes(needle);
+}
+
+/**
+ * The sessions matching `query`, in the caller's order. Returns the input
+ * unchanged for an empty query so the unfiltered rail keeps its identity.
+ */
+export function filterWebuiSessionsByQuery(
+  sessions: readonly WebuiClientSession[],
+  query: string,
+): readonly WebuiClientSession[] {
+  if (!query.trim()) return sessions;
+  return sessions.filter((session) => matchesWebuiSessionQuery(session, query));
+}
+
 export function workspaceProjectName(workspaceDir?: string): string {
   const value = workspaceDir?.trim();
   if (!value) return "未选项目";
@@ -134,10 +175,54 @@ export function resolveDefaultExpandedProjectKey(
   return projects[0]?.key;
 }
 
+/**
+ * Whether a rail search query names the project row itself, rather than one of
+ * the sessions under it. Callers pair this with a "still has a matching
+ * session" check, because projects are rendered from `projectRecords`, not
+ * from the session list: without the pairing, every non-hidden project would
+ * survive a query that matched none of its sessions, and the rail would fill
+ * with empty project rows that look like unfiltered results.
+ */
+export function matchesWebuiProjectQuery(project: WebuiProjectGroup, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  if (project.name.toLowerCase().includes(needle)) return true;
+  return (project.workspaceDir ?? "").toLowerCase().includes(needle);
+}
+
+/**
+ * The project rows that survive a rail search, in the caller's order.
+ *
+ * A project survives when it still holds at least one matching session, or
+ * when the query names the row itself. Both clauses are load-bearing:
+ *
+ * - Without the session clause, every non-hidden project would render on
+ *   every query. `projects` is built from `projectRecords` (the whole
+ *   workspace) while the sessions under each project come from the filtered
+ *   page, so projects with nothing left to show came through as empty rows
+ *   that read as unfiltered results.
+ * - Without the name clause, a project would be unsearchable until its
+ *   sessions happened to page in — `page.sessions` is one page, and a
+ *   project's row exists long before its sessions are loaded.
+ *
+ * An empty query returns the input array by identity, so the unfiltered rail
+ * keeps its referential stability across renders.
+ */
+export function filterWebuiProjectsByQuery(
+  projects: readonly WebuiProjectGroup[],
+  query: string,
+): readonly WebuiProjectGroup[] {
+  if (!query.trim()) return projects;
+  return projects.filter(
+    (project) => project.sessionIds.length > 0 || matchesWebuiProjectQuery(project, query),
+  );
+}
+
 export function WebuiProjectList({
   page,
   treePage,
   projectRecords,
+  query,
   loading,
   onLoadMore,
   selectedSessionId,
@@ -145,6 +230,7 @@ export function WebuiProjectList({
   onCreateTaskInProject,
   error,
   pinnedSessions,
+  starredSessions,
   pinnedProjects,
   projectNames,
   onRenameProject,
@@ -152,14 +238,21 @@ export function WebuiProjectList({
   onArchiveProject,
   onRenameSession,
   onToggleSessionPin,
+  onToggleSessionStar,
   onArchiveSession,
   onForkSession,
   onCopySession,
+  onExportSession,
   onDeleteSession,
+  activity,
+  now,
+  view: viewProp,
+  onViewChange,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly treePage?: WebuiClientSessionTreePage;
   readonly projectRecords?: readonly WebuiClientProject[];
+  readonly query?: string;
   readonly loading: boolean;
   readonly onLoadMore?: () => void;
   readonly selectedSessionId?: string;
@@ -167,6 +260,8 @@ export function WebuiProjectList({
   readonly onCreateTaskInProject?: (project: WebuiProjectGroup) => void;
   readonly error?: string;
   readonly pinnedSessions?: Readonly<Record<string, boolean>>;
+  /** Which rows the 收藏 view collects, and which carry the standing star. */
+  readonly starredSessions?: Readonly<Record<string, boolean>>;
   readonly pinnedProjects?: Readonly<Record<string, boolean>>;
   readonly projectNames?: Readonly<Record<string, string>>;
   readonly onRenameProject?: (project: WebuiProjectGroup) => void;
@@ -174,10 +269,18 @@ export function WebuiProjectList({
   readonly onArchiveProject?: (project: WebuiProjectGroup) => void;
   readonly onRenameSession?: (session: WebuiClientSession) => void;
   readonly onToggleSessionPin?: (session: WebuiClientSession) => void;
+  readonly onToggleSessionStar?: (session: WebuiClientSession) => void;
   readonly onArchiveSession?: (session: WebuiClientSession) => void;
   readonly onForkSession?: (session: WebuiClientSession, createIsolatedWorktree: boolean) => void;
   readonly onCopySession?: (session: WebuiClientSession, value: "workspaceDir" | "sessionId") => void;
+  readonly onExportSession?: (session: WebuiClientSession) => void;
   readonly onDeleteSession?: (session: WebuiClientSession) => void;
+  /** Per-session running state and last-activity, for the row's right-hand end. */
+  readonly activity?: WebuiSessionActivityMap;
+  readonly now?: number;
+  /** Which slice of the list to show. Falls back to internal state. */
+  readonly view?: WebuiRailView;
+  readonly onViewChange?: (view: WebuiRailView) => void;
 }): ReactElement {
   // Build a lookup from parent session id to its child sessions. When
   // `treePage` is provided, this lets the rail render child sessions under
@@ -220,12 +323,12 @@ export function WebuiProjectList({
             });
           })()
         : groupWebuiSessionsByWorkspace(page.sessions);
-      return [...grouped].sort((left, right) => {
+      return [...filterWebuiProjectsByQuery(grouped, query ?? "")].sort((left, right) => {
         const pinDelta = Number(Boolean(pinnedProjects?.[right.key] ?? right.pinned)) - Number(Boolean(pinnedProjects?.[left.key] ?? left.pinned));
         return pinDelta || right.updatedAt - left.updatedAt;
       });
     },
-    [page.sessions, pinnedProjects, projectRecords],
+    [page.sessions, pinnedProjects, projectRecords, query],
   );
   const [expandedProjects, setExpandedProjects] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -272,6 +375,14 @@ export function WebuiProjectList({
         },
         {
           kind: "item",
+          key: "export",
+          label: "导出会话",
+          icon: <WebuiIconContextExport />,
+          disabled: !onExportSession,
+          onSelect: () => onExportSession?.(session),
+        },
+        {
+          kind: "item",
           key: "copy-session-id",
           label: "复制会话 ID",
           icon: <WebuiIconContextCopy />,
@@ -296,6 +407,14 @@ export function WebuiProjectList({
           icon: <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />,
           disabled: !onToggleSessionPin,
           onSelect: () => onToggleSessionPin?.(session),
+        },
+        {
+          kind: "item",
+          key: "star",
+          label: starredSessions?.[session.sessionId] ? "取消收藏" : "收藏",
+          icon: <WebuiIconSessionStar starred={Boolean(starredSessions?.[session.sessionId])} />,
+          disabled: !onToggleSessionStar,
+          onSelect: () => onToggleSessionStar?.(session),
         },
         {
           kind: "item",
@@ -361,6 +480,14 @@ export function WebuiProjectList({
               onSelect: () => onCopySession?.(session, "sessionId"),
             },
           ],
+        },
+        {
+          kind: "item",
+          key: "export",
+          label: "导出会话",
+          icon: <WebuiIconContextExport />,
+          disabled: !onExportSession,
+          onSelect: () => onExportSession?.(session),
         },
         {
           kind: "item",
@@ -466,8 +593,77 @@ export function WebuiProjectList({
     );
   }, [selectedSessionId, treePage]);
 
+  // The rail has one view per tab rather than one stacked list. Uncontrolled
+  // by default so the app does not have to own it; `view` exists so a caller
+  // (or a test) can drive it.
+  const [internalView, setInternalView] = useState<WebuiRailView>("projects");
+  const activeView = viewProp ?? internalView;
+  const setActiveView = onViewChange ?? setInternalView;
+  const railTabs = useMemo(
+    () => selectWebuiRailViewTabs(page.sessions, activity, starredSessions),
+    [activity, page.sessions, starredSessions],
+  );
+  const viewSessions = useMemo(
+    () => filterWebuiRailViewSessions(page.sessions, activity, activeView, starredSessions),
+    [activeView, activity, page.sessions, starredSessions],
+  );
+  const activeTab = railTabs.find((entry) => entry.view === activeView);
+  const activeTabLabel = activeTab?.label ?? "项目";
+
+  const railViewTabs = (
+    <div
+      className="webui-rail-view-tabs"
+      role="tablist"
+      data-webui-rail-view-tabs="true"
+    >
+      {railTabs.map((entry) => (
+        <button
+          key={entry.view}
+          type="button"
+          data-webui-rail-view={entry.view}
+          role="tab"
+          aria-selected={activeView === entry.view}
+          className="webui-rail-view-tab"
+          onClick={() => setActiveView(entry.view)}
+        >
+          {entry.label}
+          {entry.view === "projects" ? null : (
+            <span className="webui-rail-view-count" data-webui-rail-view-count={entry.view}>
+              {entry.count}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Not a header the user can dismiss: the count is the point. The rail keeps
+  // the session the reader is on in the main column whatever the tab says, so
+  // an empty tab means "nothing is running", not "you lost your conversation".
+  if (activeView !== "projects") {
+    return (
+      <section data-webui-project-list="true" data-webui-rail-view-active={activeView}>
+        {railViewTabs}
+        <WebuiSessionList
+          page={{ sessions: viewSessions, hasMore: false }}
+          loading={loading}
+          selectedSessionId={selectedSessionId}
+          error={error}
+          activity={activity}
+          now={now}
+          pinnedSessions={pinnedSessions}
+          starredSessions={starredSessions}
+          heading={activeTabLabel}
+          emptyLabel={activeTab?.emptyLabel}
+          preserveOrder
+        />
+      </section>
+    );
+  }
+
   return (
     <section data-webui-project-list="true">
+      {railViewTabs}
       <div
         className="flex h-7 items-center px-2 text-sm font-normal leading-5 text-text_default_tertiary"
         data-webui-rail-section-header="true"
@@ -521,6 +717,20 @@ export function WebuiProjectList({
                     className="webui-project-card text-left text-text_default_secondary"
                   >
                     <WebuiIconFolder className="flex-shrink-0" />
+                    {pinnedProjects?.[project.key] ?? project.pinned ? (
+                      /* Leading edge, not the trailing one: `.webui-project-row-actions`
+                       * is pinned to the row's right and only appears on hover, so a
+                       * mark on that side would be standing proof of nothing. */
+                      <span
+                        className="webui-project-pin-mark"
+                        data-webui-project-pin-mark="true"
+                        title="已置顶"
+                        aria-label="已置顶"
+                        role="img"
+                      >
+                        <WebuiIconSessionPinMark />
+                      </span>
+                    ) : null}
                     <span className="min-w-0 flex-1 truncate text-sm leading-5">
                       {projectName}
                     </span>
@@ -608,6 +818,13 @@ export function WebuiProjectList({
                               <span className="min-w-0 flex-1 truncate">
                                 {sessionLabel(session)}
                               </span>
+                              <SessionActivityMeta
+                                session={session}
+                                activity={activity}
+                                now={now}
+                                pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                                starred={Boolean(starredSessions?.[session.sessionId])}
+                              />
                             </a>
                             <div className="webui-session-row-actions">
                               {onToggleSessionPin ? (
@@ -622,7 +839,30 @@ export function WebuiProjectList({
                                     onToggleSessionPin(session);
                                   }}
                                 >
-                                  <WebuiIconSessionPin />
+                                  {/* The glyph draws the ACTION, not the state: already
+                                   *  pinned means the click unpins, so the button offers
+                                   *  the slashed pin. Same component the context menu
+                                   *  uses, so the two cannot drift apart. */}
+                                  <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />
+                                </button>
+                              ) : null}
+                              {onToggleSessionStar ? (
+                                <button
+                                  type="button"
+                                  aria-label={`${starredSessions?.[session.sessionId] ? "取消收藏" : "收藏"}：${sessionLabel(session)}`}
+                                  title={starredSessions?.[session.sessionId] ? "取消收藏" : "收藏"}
+                                  className="webui-rail-action"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onToggleSessionStar(session);
+                                  }}
+                                >
+                                  {/* Outline until starred, yellow fill after. Unlike the
+                                   *  pin, this glyph shows the state rather than the
+                                   *  action: a filled star is not read as "remove"
+                                   *  anywhere in the world's icon vocabulary. */}
+                                  <WebuiIconSessionStar starred={Boolean(starredSessions?.[session.sessionId])} />
                                 </button>
                               ) : null}
                               {onArchiveSession ? (
@@ -675,6 +915,13 @@ export function WebuiProjectList({
                                       <span className="min-w-0 flex-1 truncate">
                                         {sessionLabel(child)}
                                       </span>
+                                      <SessionActivityMeta
+                                        session={child}
+                                        activity={activity}
+                                        now={now}
+                                        pinned={Boolean(pinnedSessions?.[child.sessionId])}
+                                        starred={Boolean(starredSessions?.[child.sessionId])}
+                                      />
                                     </a>
                                     <div className="webui-session-row-actions">
                                       <button
@@ -744,6 +991,89 @@ export function WebuiProjectList({
   );
 }
 
+/**
+ * The right-hand end of a rail row: a spinner while a turn holds the session,
+ * and how long ago it was last active.
+ *
+ * Shared by all three row shapes -- project rows, child rows, and the flat
+ * "all sessions" list -- so a session reads the same wherever it is listed.
+ * Renders nothing when the host passes neither map nor clock, which is what
+ * keeps the existing snapshots and SSR fixtures byte-identical: the rail is
+ * also rendered outside the app (`webui-w0-ssr-fixtures`), where there is no
+ * subscription and no clock to format against.
+ */
+function SessionActivityMeta({
+  session,
+  activity,
+  now,
+  pinned = false,
+  starred = false,
+}: {
+  readonly session: WebuiClientSession;
+  readonly activity?: WebuiSessionActivityMap;
+  readonly now?: number;
+  /** Draws the standing pin mark. Independent of the live state below it. */
+  readonly pinned?: boolean;
+  /** Draws the standing star mark. Also independent of the live state. */
+  readonly starred?: boolean;
+}): ReactElement | null {
+  // `pinned` and `starred` join the guard rather than riding on it. A host that
+  // passes neither an activity map nor a clock is the rail rendered outside the
+  // app (SSR fixtures, and any host that does not subscribe) -- exactly the case
+  // where a marked row has no running/unread signal to read its state against,
+  // so swallowing the mark there loses the only thing the row was saying.
+  if (!activity && now === undefined && !pinned && !starred) return null;
+  const entry = activity?.[session.sessionId];
+  const busy = entry?.busy;
+  const badge = formatWebuiUnreadBadge(entry?.unread);
+  return (
+    <span className="webui-rail-session-meta">
+      {pinned ? (
+        <span
+          className="webui-rail-pin-mark"
+          data-webui-pin-mark="true"
+          title="已置顶"
+          aria-label="已置顶"
+          role="img"
+        >
+          <WebuiIconSessionPinMark />
+        </span>
+      ) : null}
+      {starred ? (
+        <span
+          className="webui-rail-star-mark"
+          data-webui-star-mark="true"
+          title="已收藏"
+          aria-label="已收藏"
+          role="img"
+        >
+          <WebuiIconSessionStarMark />
+        </span>
+      ) : null}
+      {badge ? (
+        <span
+          className="webui-rail-unread-badge"
+          role="status"
+          aria-label={`${badge} 条未读`}
+          data-webui-unread-badge={entry?.unread}
+        >
+          {badge}
+        </span>
+      ) : null}
+      {busy ? (
+        <span
+          className="webui-rail-spinner"
+          role="status"
+          aria-label={busy.busyReason === "compaction" ? "正在压缩上下文" : "正在运行"}
+        />
+      ) : null}
+      <span data-webui-session-age="true">
+        {formatWebuiSessionAge(entry?.lastActivityAt ?? session.updatedAt, now ?? session.updatedAt)}
+      </span>
+    </span>
+  );
+}
+
 export function WebuiSessionList({
   page,
   loading,
@@ -751,20 +1081,59 @@ export function WebuiSessionList({
   selectedSessionId,
   error,
   teamModeChoices,
+  activity,
+  now,
+  pinnedSessions,
+  starredSessions,
+  heading,
+  emptyLabel,
+  preserveOrder,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly loading: boolean;
   readonly onLoadMore?: () => void;
   readonly selectedSessionId?: string;
+  readonly onProjectSelect?: (workspaceDir?: string) => void;
   readonly error?: string;
   readonly teamModeChoices?: TeamModeSessionChoices;
+  readonly activity?: WebuiSessionActivityMap;
+  /** Injected so the age labels re-render on a tick instead of on every event. */
+  readonly now?: number;
+  /**
+   * Which rows carry the standing pin mark. The running and unread views are
+   * exactly where a user needs it -- those rows are ordered by activity, so
+   * sort position says nothing about which one the user chose to keep.
+   */
+  readonly pinnedSessions?: Readonly<Record<string, boolean>>;
+  /**
+   * Which rows carry the standing star mark. 收藏 is a flat list, so a starred
+   * row has no project furniture to be recognised by and the mark is the only
+   * thing distinguishing it from an ordinary one.
+   */
+  readonly starredSessions?: Readonly<Record<string, boolean>>;
+  /**
+   * Overrides the section label. The rail reuses this list for its running and
+   * unread views, where "recent tasks" would be a lie -- the list is filtered,
+   * and by what depends on the view.
+   */
+  readonly heading?: string;
+  /** Shown when the list is empty. Defaults to the neutral "no sessions". */
+  readonly emptyLabel?: string;
+  /**
+   * Keeps the order the caller handed in. The running and unread views sort by
+   * last observed activity, which is not the session record's `updatedAt` and
+   * would be undone by the default sort below.
+   */
+  readonly preserveOrder?: boolean;
 }): ReactElement {
   const sessions = useMemo(
     () =>
-      [...page.sessions].sort(
-        (left, right) => right.updatedAt - left.updatedAt,
-      ),
-    [page.sessions],
+      preserveOrder
+        ? page.sessions
+        : [...page.sessions].sort(
+            (left, right) => right.updatedAt - left.updatedAt,
+          ),
+    [page.sessions, preserveOrder],
   );
   return (
     <div
@@ -776,7 +1145,7 @@ export function WebuiSessionList({
         data-webui-rail-section-header="true"
       >
         <span className="truncate text-sm font-normal leading-5 text-text_default_tertiary">
-          最近任务
+          {heading ?? "最近任务"}
         </span>
         <span className="ml-auto flex-shrink-0 text-sm font-normal leading-5 text-text_default_tertiary">
           {sessions.length}
@@ -787,12 +1156,12 @@ export function WebuiSessionList({
           role="alert"
           className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16"
         >
-          Unable to load sessions: {error}
+          会话加载失败：{error}
         </p>
       ) : null}
       {!error && sessions.length === 0 ? (
         <p className="webui-empty-state mx-1 text-text_default_secondary text-size_12 leading-line_height_16">
-          No sessions yet.
+          {emptyLabel ?? "暂无会话"}
         </p>
       ) : (
         <ul className="pt-px space-y-px" data-webui-session-list="true">
@@ -825,6 +1194,13 @@ export function WebuiSessionList({
                     Agent Team
                   </span>
                 ) : null}
+                <SessionActivityMeta
+                  session={session}
+                  activity={activity}
+                  now={now}
+                  pinned={Boolean(pinnedSessions?.[session.sessionId])}
+                  starred={Boolean(starredSessions?.[session.sessionId])}
+                />
               </a>
               {session.workspaceDir ? (
                 <div

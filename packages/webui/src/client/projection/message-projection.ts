@@ -365,8 +365,31 @@ function normalizeWebuiClientMessage(
   const parts = read("parts");
   const timestamp = read("timestamp");
   const contextUsage = read("contextUsage", "context_usage");
+  // Every field the checks below normalize is stripped from the carried-over
+  // remainder first. A conditional spread can only *add* a normalized value, so
+  // a field that was already malformed on the input used to survive
+  // `...message` untouched: the false branch contributed nothing and therefore
+  // removed nothing. `projectMessageParts` then called `.trimStart()` on such a
+  // `msgContent` and threw `msgContent?.trimStart is not a function` during the
+  // transcript render, and a non-array `toolCalls` threw on `.entries`. The
+  // guards below look like they drop those values, and now they do: stripping
+  // first makes each `typeof`/`Array.isArray` test authoritative in both
+  // directions, so a normalized field is present only when it passed.
+  const {
+    msgContent: _incomingMsgContent,
+    thinkingContent: _incomingThinkingContent,
+    thinkingDurationMs: _incomingThinkingDurationMs,
+    toolCalls: _incomingToolCalls,
+    parts: _incomingParts,
+    role: _incomingRole,
+    source: _incomingSource,
+    kind: _incomingKind,
+    timestamp: _incomingTimestamp,
+    contextUsage: _incomingContextUsage,
+    ...remainder
+  } = message;
   return {
-    ...message,
+    ...remainder,
     ...(typeof msgContent === "string" ? { msgContent } : {}),
     ...(typeof thinkingContent === "string" ? { thinkingContent } : {}),
     ...(typeof thinkingDurationMs === "number" ? { thinkingDurationMs } : {}),

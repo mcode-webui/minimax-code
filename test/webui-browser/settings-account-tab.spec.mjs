@@ -20,9 +20,9 @@
 //    about the two things that are only true of *this* app in *this* bundle:
 //    that the boundary is really mounted around the real tree, and that a throw
 //    raised by real projection code reaches it. So the crash here is provoked
-//    the way it happens in the field — a `getMessages` response whose
-//    `msgContent` is a number — and the assertion is that the failure becomes a
-//    retryable surface and that retry really restores the app.
+//    the way it happens in the field — a `getSessionTree` answer that omits a
+//    field the rail is typed as always present — and the assertion is that the
+//    failure becomes a retryable surface and that retry really restores the app.
 //
 // The healthy half matters as much as the crash half. A boundary that
 // swallows good renders, or that wraps so much that the app stops responding,
@@ -31,7 +31,7 @@
 
 import { expect } from "@playwright/test";
 
-import { openApp, switchSession, test } from "./harness.mjs";
+import { configureFixture, openApp, switchSession, test } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
@@ -196,33 +196,56 @@ test("the boundary did not break the healthy app around it", async ({ page }) =>
 });
 
 /**
- * Drives the app into a real render throw and leaves it there.
+ * Hold the boot `getSessionTree` request so the crash can be provoked later.
  *
- * The payload is the field type the wire contract promises to be a string. A
- * runtime that emits a number for it is an ordinary server-side bug, and it is
- * the shape that makes `message.msgContent?.trimStart` throw during the
- * transcript's render -- no production hook, no test-only flag, no stubbing of
- * the component under test.
+ * Must run BEFORE `openApp`: the app fetches the tree exactly once, on mount,
+ * so a hold installed afterwards would never catch anything. The app boots
+ * normally with the request outstanding (the rail falls back to the flat list),
+ * which is what lets the test assert the app was healthy before it broke.
+ */
+function holdSessionTree(page) {
+  return configureFixture(page, () => window.__fixture.delayEvery("getSessionTree", { name: "main" }));
+}
+
+/**
+ * Answers the held tree request with a node that has no `childSessions` key,
+ * leaving the app sitting in the boundary's fallback.
  *
- * The switch away and back matters: at boot A's first page is already fetched,
- * so the poisoned page is only read on the next request for it. Going via B
- * guarantees that request happens. B is left untouched on the way through, so
- * this is a single crash, not two.
+ * The wire type says every node carries an array, but nothing on the wire
+ * enforces that: a serializer that omits empty fields, a runtime older than the
+ * tree projection, or a hand-rolled adapter that only populates the field when
+ * there ARE children all produce exactly this answer -- and a session with no
+ * sub-agents is the overwhelmingly common case, so omitting the field is the
+ * cheap, natural encoding rather than an exotic one. `WebuiClientFoundationApp`
+ * already reads one such node defensively (`node?.childSessions ?? []`, for the
+ * subagent list) while iterating the same field unguarded to build the flat
+ * lookup, so this is a live inconsistency in the app rather than an invented
+ * shape. The result is `node.childSessions is not iterable`, thrown from a
+ * `useMemo` during the app's render -- no production hook, no test-only flag,
+ * no stubbing of the component under test.
  */
 async function crashAppIntoBoundary(page) {
+  await expect.poll(() => page.evaluate(() => window.__fixture.requests.filter((request) => request.operation === "getSessionTree").length)).toBeGreaterThan(0);
   await page.evaluate(() =>
-    window.__fixture.setPage("A", {
-      messages: [{ msgId: "hostile-1", role: "assistant", msgContent: 42, timestamp: 1_700_000_000_001 }],
+    window.__fixture.resolve("getSessionTree", { name: "main" }, {
+      // No `childSessions` key at all -- see the note above.
+      sessions: [{ session: { sessionId: "A", agentName: "synthetic-A", title: "绿川椒 Demo 订货小程序", createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000, workspaceDir: "/synthetic/workspace" } }],
       hasMore: false,
     }),
   );
-  await switchSession(page, "B");
-  await expect(activeSessionRow(page, "B")).toBeVisible();
-  await switchSession(page, "A");
   await expect(page.locator('[data-testid="webui-error-boundary"]')).toBeVisible();
 }
 
+/** The tree page the server answers with once the bad one is repaired. */
+function repairedTree() {
+  return {
+    sessions: [{ session: { sessionId: "A", agentName: "synthetic-A", title: "绿川椒 Demo 订货小程序", createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000, workspaceDir: "/synthetic/workspace" }, childSessions: [] }],
+    hasMore: false,
+  };
+}
+
 test("a render throw in the app becomes a retryable surface", async ({ page }) => {
+  await holdSessionTree(page);
   await openApp(page, "#session=A");
   await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);
 
@@ -230,10 +253,13 @@ test("a render throw in the app becomes a retryable surface", async ({ page }) =
 
   // The cause is shown, not only logged. A user who cannot describe the failure
   // has nothing to report, and this is the only place the message survives the
-  // unmount of the tree that threw.
+  // unmount of the tree that threw. The text is the V8 message for the
+  // unguarded `for...of` over the missing field, asserted verbatim: a fuzzy
+  // match would also pass if the app failed somewhere else entirely, which is
+  // the one thing this test exists to rule out.
   await expect(page.locator('[data-testid="webui-error-boundary-title"]')).toHaveText("界面出现错误");
   await expect(page.locator('[data-testid="webui-error-boundary-message"]'))
-    .toHaveText("message.msgContent?.trimStart is not a function");
+    .toHaveText("node.childSessions is not iterable");
   await expect(page.locator('[data-testid="webui-error-boundary-retry"]')).toBeEnabled();
 
   // The app is genuinely unmounted, not merely covered. Counting rows is the
@@ -244,17 +270,15 @@ test("a render throw in the app becomes a retryable surface", async ({ page }) =
 });
 
 test("retry after a render error brings the app back", async ({ page }) => {
+  await holdSessionTree(page);
   await openApp(page, "#session=A");
   await crashAppIntoBoundary(page);
 
   // Fix the server's answer before retrying, so "retry recovers" is a claim
-  // about the recovery path and not about the data having self-healed.
-  await page.evaluate(() =>
-    window.__fixture.setPage("A", {
-      messages: [{ msgId: "history-A", role: "user", msgContent: "History A synthetic", timestamp: 1_700_000_000_001 }],
-      hasMore: false,
-    }),
-  );
+  // about the recovery path and not about the data having self-healed. Retrying
+  // remounts the app, which re-reads the tree from scratch, so the repair has
+  // to be in the fixture rather than in the crashed tree.
+  await page.evaluate((tree) => window.__fixture.setTree(tree), repairedTree());
   await page.locator('[data-testid="webui-error-boundary-retry"]').click();
 
   // Recovered means the app is usable again, not that the alert went away: the
@@ -269,4 +293,35 @@ test("retry after a render error brings the app back", async ({ page }) => {
   // rail takes input again.
   await clickSessionRow(page, "B");
   await expect(page.getByText("History B synthetic")).toBeVisible();
+});
+
+test("a malformed msgContent is handled, not crashed on", async ({ page }) => {
+  await openApp(page, "#session=A");
+
+  // The same payload the crash test used to rely on, now asserted as what it
+  // became: a message the projection is entitled to drop. Without this, the
+  // crash test's replacement would look like the guard simply removed coverage
+  // of a shape the wire can carry -- here it is still carried, the transcript
+  // still renders its neighbours, and nothing reaches the boundary.
+  await page.evaluate(() =>
+    window.__fixture.setPage("A", {
+      messages: [
+        { msgId: "history-A", role: "user", msgContent: "History A synthetic", timestamp: 1_700_000_000_001 },
+        { msgId: "hostile-1", role: "assistant", msgContent: 42, timestamp: 1_700_000_000_002 },
+      ],
+      hasMore: false,
+    }),
+  );
+  // A's page was already fetched at boot, so the new one is only read on the
+  // next request for it; going via B guarantees that request happens.
+  await switchSession(page, "B");
+  await expect(activeSessionRow(page, "B")).toBeVisible();
+  await switchSession(page, "A");
+
+  // The good neighbour still renders, so the page is not simply blank.
+  await expect(page.getByText("History A synthetic")).toBeVisible();
+  // ...and the app is still the app: rail, composer, no crash surface.
+  await expect(page.locator('[data-webui-session-link="A"]')).toBeVisible();
+  await expect(page.getByPlaceholder("输入消息…（输入 / 唤起命令）")).toBeVisible();
+  await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);
 });

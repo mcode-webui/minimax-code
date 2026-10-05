@@ -4,6 +4,7 @@ import {
   projectMessageParts,
   stripQuestionnaireResponse,
 } from "../../src/client/projection/message-parts.js";
+import { projectWebuiMessage } from "../../src/client/projection/message-projection.js";
 import {
   toolCallLabel,
   toolCallStatus,
@@ -308,5 +309,94 @@ describe("Desktop message parts projection", () => {
     ]);
     expect(JSON.stringify(parts)).not.toContain("internal payload");
     expect(JSON.stringify(parts)).not.toContain("<asset-path>");
+  });
+});
+
+/**
+ * `normalizeWebuiClientMessage` is the one client-owned seam that sees raw wire
+ * history, and its whole job is to rebuild a message the projection can trust.
+ * `projectMessageParts` then reads `message.msgContent?.trimStart()` on the
+ * strength of that, and calls `.replace` on the same value further down, so a
+ * non-string that survives normalization raises a `TypeError` from inside the
+ * transcript render.
+ *
+ * The trap this pins: the seam used to guard each field with a conditional
+ * spread that could only *add* a normalized value. Rebuilding from `...message`
+ * meant a field that was already malformed on the input passed straight through,
+ * because the false branch contributed nothing and therefore removed nothing.
+ * The number/object/array cases below all arrived on the top-level camelCase
+ * field, which is why the snake_case and `rawJson` shapes looked safe and this
+ * one did not.
+ */
+describe("wire message normalization drops a non-string content field", () => {
+  const malformed = [
+    ["number", 42],
+    ["object", { eventType: "todo_updated", todos: [{ content: "x", status: "pending" }] }],
+    ["array", [{ eventType: "todo_updated" }]],
+  ] as const;
+
+  for (const [label, msgContent] of malformed) {
+    it(`drops a top-level ${label} msgContent instead of throwing`, () => {
+      const message = { msgId: `hostile-${label}`, role: "assistant", msgContent, timestamp: 1 };
+      expect(() => projectWebuiMessage(message as never)).not.toThrow();
+      // Dropped, not coerced: a number is not a message body, and rendering
+      // "42" as a transcript row would be worse than rendering nothing.
+      expect(projectWebuiMessage(message as never)).toEqual([]);
+    });
+
+    it(`drops a top-level ${label} thinkingContent instead of throwing`, () => {
+      // The same defect on the sibling field, which `projectMessageParts`
+      // reaches through `message.thinkingContent?.trim()`. Fixed together
+      // because they are the same conditional-spread bug in the same function.
+      const message = { msgId: `hostile-think-${label}`, role: "assistant", msgContent: "ok", thinkingContent: msgContent, timestamp: 1 };
+      expect(() => projectWebuiMessage(message as never)).not.toThrow();
+    });
+  }
+
+  const malformedCollections = [
+    ["number", 42],
+    ["string", "not-a-list"],
+    ["object", { a: 1 }],
+  ] as const;
+
+  for (const [label, toolCalls] of malformedCollections) {
+    it(`drops a non-array ${label} toolCalls instead of throwing`, () => {
+      // The same conditional-spread defect on the collection fields:
+      // `projectMessageParts` reached `(message.toolCalls ?? []).entries`.
+      const message = { msgId: `hostile-tools-${label}`, role: "assistant", msgContent: "ok", toolCalls, timestamp: 1 };
+      expect(() => projectWebuiMessage(message as never)).not.toThrow();
+    });
+  }
+
+  it("drops a non-array parts field instead of throwing", () => {
+    const message = { msgId: "hostile-parts", role: "assistant", msgContent: "ok", parts: "not-a-list", timestamp: 1 };
+    expect(() => projectWebuiMessage(message as never)).not.toThrow();
+  });
+
+  it("still keeps a well-formed string content field", () => {
+    // The control that stops the drop above from passing by discarding every
+    // message: normalization has to keep the content it is asked to keep.
+    const items = projectWebuiMessage({ msgId: "ok-1", role: "assistant", msgContent: "Plain answer", timestamp: 1 } as never);
+    expect(items).toHaveLength(1);
+    expect(JSON.stringify(items)).toContain("Plain answer");
+  });
+
+  it("still promotes a string content field out of rawJson", () => {
+    // The path the seam exists for: a persisted snake_case body has to survive
+    // the rebuild as a camelCase `msgContent`.
+    const items = projectWebuiMessage({
+      msgId: "ok-raw",
+      role: "assistant",
+      rawJson: JSON.stringify({ msg_content: "Persisted answer" }),
+    } as never);
+    expect(JSON.stringify(items)).toContain("Persisted answer");
+  });
+
+  it("still omits a serialized todo_updated event from the transcript", () => {
+    expect(projectMessageParts({
+      msgId: "todo-event",
+      role: "assistant",
+      msgContent: JSON.stringify({ eventType: "todo_updated", todos: [] }),
+    })).toEqual([]);
   });
 });

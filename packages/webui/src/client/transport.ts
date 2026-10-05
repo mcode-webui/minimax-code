@@ -329,6 +329,14 @@ export function createWebuiTransport({
       if (reconnectTimer !== undefined) clearTimeout(reconnectTimer);
       reconnectTimer = undefined;
       const previous = socket;
+      // The close handler below guards on `socket !== ws`, and this function
+      // has already cleared `socket`, so that guard would have skipped
+      // `markWebuiEventWatcherDown` entirely. A forced reconnect — tab coming
+      // back into view, network coming back — therefore reported the channel
+      // as healthy for the whole reconnect window, which is exactly the silent
+      // "connected" lie this watcher exists to remove. Mark it down here, on
+      // the path that is closing the socket without going through the guard.
+      if (previous) markWebuiEventWatcherDown(watcherToken);
       socket = undefined;
       previous?.close();
       connect();

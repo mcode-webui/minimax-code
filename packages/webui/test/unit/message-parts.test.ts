@@ -399,4 +399,26 @@ describe("wire message normalization drops a non-string content field", () => {
       msgContent: JSON.stringify({ eventType: "todo_updated", todos: [] }),
     })).toEqual([]);
   });
+  it("does not throw when `attachments` is not an array on the wire", () => {
+    // `attachments` was the one field the normalizer guarded everywhere
+    // EXCEPT: it is not in the strip list and not in the conditional spreads,
+    // so it rode through `...remainder` and `projectMessageAttachments` ran a
+    // bare `for...of` over it. Measured on f56b26f:
+    //   attachments={"a":1}  -> TypeError: attachments is not iterable
+    for (const attachments of [{ a: 1 }, 42, true, "str"] as unknown[]) {
+      expect(() =>
+        projectWebuiMessage({ msgId: "bad-attachments", role: "assistant", msgContent: "ok", attachments } as never),
+      ).not.toThrow();
+    }
+  });
+
+  it("keeps a real attachments array working", () => {
+    const items = projectWebuiMessage({
+      msgId: "ok-attachments",
+      role: "user",
+      msgContent: "see this",
+      attachments: [{ id: "a1", type: "image", file_name: "shot.png" }],
+    } as never);
+    expect(JSON.stringify(items)).toContain("shot.png");
+  });
 });

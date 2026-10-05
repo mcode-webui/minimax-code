@@ -386,6 +386,13 @@ function normalizeWebuiClientMessage(
     kind: _incomingKind,
     timestamp: _incomingTimestamp,
     contextUsage: _incomingContextUsage,
+    // `attachments` rides through `...remainder` untouched without this, and
+    // `projectMessageAttachments` iterates it with a bare `for...of` — so
+    // `attachments: {}` / `42` / `true` on the wire threw
+    // `TypeError: attachments is not iterable` and took the whole transcript
+    // render with it. Same class as the fields above; it was just missing from
+    // the list, so the guard was not authoritative in both directions.
+    attachments: _incomingAttachments,
     ...remainder
   } = message;
   return {
@@ -395,6 +402,9 @@ function normalizeWebuiClientMessage(
     ...(typeof thinkingDurationMs === "number" ? { thinkingDurationMs } : {}),
     ...(Array.isArray(toolCalls) ? { toolCalls } : {}),
     ...(Array.isArray(parts) ? { parts: parts as Record<string, unknown>[] } : {}),
+    ...(Array.isArray(read("attachments"))
+      ? { attachments: read("attachments") as WebuiMessageAttachment[] }
+      : {}),
     ...(typeof read("role") === "string" ? { role: read("role") as string } : {}),
     ...(typeof read("source") === "string" ? { source: read("source") as string } : {}),
     ...(typeof read("kind") === "string" ? { kind: read("kind") as string } : {}),

@@ -7,6 +7,7 @@ import { watchEventsOperation, listPendingPermissionsOperation, getPendingQuesti
 import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
+import { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
 import { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation } from "./provider.js";
 export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, getSessionTreeOperation, createSessionOperation, getSessionOperation, getActiveTurnOperation } from "./session.js";
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
@@ -17,6 +18,7 @@ export { watchEventsOperation, listPendingPermissionsOperation, getPendingQuesti
 export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
 export { pluginManagementOperation } from "./plugin-management.js";
 export { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
+export { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
 export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation } from "./provider.js";
 import { createOperationHandlers, type WebuiOperationPort } from "./operation-handlers.js";
 import type {
@@ -109,6 +111,17 @@ export function createOperationRegistry(
   registerOperation(registry, { operation: selectModelOperation, handle: handlers.selectModel });
   registerOperation(registry, { operation: listSkillsOperation, handle: handlers.listSkills });
   registerOperation(registry, { operation: pluginManagementOperation, handle: handlers.pluginManagement });
+  // The WebUI's own scheduled tasks. Registered unconditionally for the same
+  // reason the other eighteen are: the port type requires the methods, so the
+  // registry contents must not depend on which host fills them. A host that
+  // cannot serve them throws inside the handler and the dispatcher reports it
+  // as `harness_error` with the host's own message.
+  registerOperation(registry, { operation: listScheduledTasksOperation, handle: handlers.listScheduledTasks });
+  registerOperation(registry, { operation: createScheduledTaskOperation, handle: handlers.createScheduledTask });
+  registerOperation(registry, { operation: updateScheduledTaskOperation, handle: handlers.updateScheduledTask });
+  registerOperation(registry, { operation: deleteScheduledTaskOperation, handle: handlers.deleteScheduledTask });
+  registerOperation(registry, { operation: triggerScheduledTaskNowOperation, handle: handlers.triggerScheduledTaskNow });
+  registerOperation(registry, { operation: getScheduledTaskCapabilityOperation, handle: handlers.getScheduledTaskCapability });
   registerOperation(registry, { operation: getPermissionModeOperation, handle: handlers.getPermissionMode });
   registerOperation(registry, { operation: setPermissionModeOperation, handle: handlers.setPermissionMode });
   registerOperation(registry, { operation: getSessionUsageOperation, handle: handlers.getSessionUsage });

@@ -67,6 +67,30 @@ import { createHarnessPortFromHost } from "../../src/server/host.js";
  * the matching `WebuiHarnessPort` field. Forgetting a member fails the
  * compile instead of silently returning `undefined`.
  */
+/** Structural zero for the scheduled-task surface, per this file's convention. */
+const INVARIANT_SCHEDULED_TASK = {
+  taskId: "invariant",
+  name: "invariant",
+  agentName: "invariant",
+  sessionTarget: "existing" as const,
+  sessionId: "invariant",
+  prompt: "invariant",
+  scheduleKind: "once" as const,
+  runAtMs: 0,
+  intervalMs: null,
+  enabled: false,
+  lastRunAtMs: null,
+  lastStatus: null,
+  lastError: null,
+  lastResult: null,
+  lastSessionId: null,
+  nextRunAtMs: null,
+  missedCount: 0,
+  lastMissedAtMs: null,
+  createdAtMs: 0,
+  updatedAtMs: 0,
+};
+
 class FullPort implements WebuiHarnessPort {
   version() {
     return { version: "invariant-test", protocolVersion: 1 };
@@ -383,6 +407,27 @@ class FullPort implements WebuiHarnessPort {
     // `requestCompaction` exists on every implementor; the runner's
     // `/compact` slash command reaches it through `runWebuiCommand`.
     return { success: true as const };
+  }
+  // Added with the WebUI scheduled-task surface. The invariant port exists to
+  // turn a forgotten port member into a compile error, so these land here
+  // rather than being left to an optional hook.
+  async listScheduledTasks() {
+    return { tasks: [{ ...INVARIANT_SCHEDULED_TASK }], total: 1 };
+  }
+  async createScheduledTask() {
+    return { ...INVARIANT_SCHEDULED_TASK };
+  }
+  async updateScheduledTask() {
+    return { ...INVARIANT_SCHEDULED_TASK };
+  }
+  async deleteScheduledTask() {
+    return { success: false };
+  }
+  async triggerScheduledTaskNow() {
+    return { taskId: "invariant", started: false, status: "already_running" as const };
+  }
+  async getScheduledTaskCapability() {
+    return { available: false as const, source: "none" as const, reason: "invariant port" };
   }
   async close() {
     // no-op

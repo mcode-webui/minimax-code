@@ -6,6 +6,7 @@
   "include": [
     "test/unit/webui-service.test.ts",
     "test/unit/webui-host-shape-invariant.test.ts",
+    "test/unit/webui-scheduled-task-upstream-probe.test.ts",
     "src/server/**/*.ts",
     "src/shared/**/*.ts",
     "src/client/contracts.ts",

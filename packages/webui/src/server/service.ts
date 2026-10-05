@@ -25,6 +25,7 @@ import {
   createOperationRegistry,
   type WebuiOperationRegistryEntry,
 } from "./operation/operations.js";
+import { WebuiScheduledTaskRuntime } from "./scheduled-task-scheduler.js";
 import {
   createWebuiCredential,
   credentialMatches,
@@ -45,6 +46,15 @@ import { webuiSessionTransferFileName } from "./session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
+
+/**
+ * How often the scheduled-task loop looks for due work. Deliberately coarse:
+ * a task is a prompt sent to an agent, and the loop's real job is to notice
+ * due slots — not to hit them to the millisecond. The runtime treats anything
+ * later than its grace window as "the process was not running", so this value
+ * also sets how much lateness is tolerated before a slot counts as missed.
+ */
+export const WEBUI_SCHEDULED_TASK_TICK_MS = 30_000;
 
 /**
  * Truthy env-var spellings that turn the development mode on. Anything that
@@ -80,8 +90,32 @@ export interface WebuiServiceOptions {
   readonly maxMessageBytes?: number;
   /** Override the liveness sweep interval; tests use a short interval. */
   readonly webSocketHeartbeatIntervalMs?: number;
+  /**
+   * Override the scheduled-task tick interval. Independent of
+   * `scheduledTasks` on purpose: a caller that wants a faster loop but the
+   * service's own runtime (or no runtime at all) should not have to construct
+   * one just to change a period. Defaults to 30s.
+   */
+  readonly scheduledTaskTickIntervalMs?: number;
   /** Optional credential override; tests supply one to assert its shape. */
   readonly credential?: WebuiCredential;
+  /**
+   * The WebUI's own scheduled-task runtime. The service is what drives it:
+   * a tick timer starts beside the heartbeat in `start()` and is cleared in
+   * `close()`, so the schedule lives exactly as long as the process does.
+   *
+   * The service also answers the six scheduled-task port methods from this
+   * runtime rather than from the harness port. That is the point of the
+   * surface — it is WebUI-owned state, not harness state — and it means a
+   * host that ships no scheduled-task runtime still serves the panel.
+   * Omit the option and the six methods fall through to the harness port,
+   * which fails closed with its own reason.
+   */
+  readonly scheduledTasks?: {
+    readonly runtime: WebuiScheduledTaskRuntime;
+    /** Tick period. Defaults to 30s; the runtime is told so it can size its grace window. */
+    readonly tickIntervalMs?: number;
+  };
   /** Optional server factory; tests inject an HTTP server without listening. */
   readonly httpServerFactory?: () => Server;
   /**
@@ -136,6 +170,9 @@ export class WebuiService {
   private readonly connectionSignals = new Map<WebSocket, AbortController>();
   private readonly connectionAlive = new WeakMap<WebSocket, boolean>();
   private heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  private scheduledTaskTimer: ReturnType<typeof setInterval> | undefined;
+  private readonly scheduledTasks: WebuiScheduledTaskRuntime | undefined;
+  private readonly scheduledTaskIntervalMs: number;
   private accepting = true;
   private startedPromise: Promise<WebuiServiceInfo> | undefined;
   private bound: { info: WebuiServiceInfo } | undefined;
@@ -152,6 +189,12 @@ export class WebuiService {
     this.webSocketHeartbeatIntervalMs =
       options.webSocketHeartbeatIntervalMs ?? WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS;
     this.credential = options.credential ?? createWebuiCredential();
+    this.scheduledTaskIntervalMs =
+      options.scheduledTaskTickIntervalMs ??
+      options.scheduledTasks?.tickIntervalMs ??
+      WEBUI_SCHEDULED_TASK_TICK_MS;
+    this.scheduledTasks =
+      options.scheduledTasks?.runtime ?? this.buildScheduledTaskRuntime();
     this.protocolVersion = options.protocolVersion ?? WEBUI_PROTOCOL_VERSION;
     // The option is the source of truth for tests; the env var is the
     // convenience for the dev preview launcher. The option must win
@@ -191,6 +234,33 @@ export class WebuiService {
       createGoal: (request) => this.port.createGoal(request),
       patchGoal: (request) => this.port.patchGoal(request),
       clearGoal: (request) => this.port.clearGoal(request),
+      // Scheduled tasks come from the service's own runtime when it has one,
+      // and from the harness port otherwise. Both halves are the same port
+      // contract, so the registry and the wire are identical either way.
+      listScheduledTasks: (request) =>
+        this.scheduledTasks
+          ? this.scheduledTasks.listScheduledTasks(request)
+          : this.port.listScheduledTasks(request),
+      createScheduledTask: (request) =>
+        this.scheduledTasks
+          ? this.scheduledTasks.createScheduledTask(request)
+          : this.port.createScheduledTask(request),
+      updateScheduledTask: (request) =>
+        this.scheduledTasks
+          ? this.scheduledTasks.updateScheduledTask(request)
+          : this.port.updateScheduledTask(request),
+      deleteScheduledTask: (request) =>
+        this.scheduledTasks
+          ? this.scheduledTasks.deleteScheduledTask(request)
+          : this.port.deleteScheduledTask(request),
+      triggerScheduledTaskNow: (request) =>
+        this.scheduledTasks
+          ? this.scheduledTasks.triggerScheduledTaskNow(request)
+          : this.port.triggerScheduledTaskNow(request),
+      getScheduledTaskCapability: () =>
+        this.scheduledTasks
+          ? this.scheduledTasks.getScheduledTaskCapability()
+          : this.port.getScheduledTaskCapability(),
       listWorkspaceFileTree: (request) => this.port.listWorkspaceFileTree(request),
       readWorkspaceFile: (request) => this.port.readWorkspaceFile(request),
       getWorkspaceEnvironment: (request) => this.port.getWorkspaceEnvironment(request),
@@ -631,6 +701,7 @@ export class WebuiService {
             boundUrl: `ws://${this.host}:${tcpPort}`,
           };
           this.bound = { info };
+          this.startScheduledTaskLoop();
           resolve(info);
         } catch (error) {
           reject(error);
@@ -649,6 +720,77 @@ export class WebuiService {
   }
 
   /**
+   * Build the WebUI's own scheduled-task runtime from the `dataDir` the port
+   * already reports, rather than adding another injection point for it.
+   *
+   * `version()` is where a host states its data directory, and the service
+   * already reads it for the version frame — so the store lands in
+   * `<dataDir>/webui/`, beside the credentials the assembly reads from the
+   * same place, with no change to the assembly or to either launcher. A host
+   * that reports no `dataDir` (every test double) gets no runtime, and the
+   * capability probe says so instead of the surface failing at first click.
+   *
+   * Delivery goes through the port's own `sendMessage` and `createSession`,
+   * which is the same path the panel's own send button takes. The scheduler
+   * therefore has no privileged route into the harness that a user-initiated
+   * turn does not also have.
+   */
+  private buildScheduledTaskRuntime(): WebuiScheduledTaskRuntime | undefined {
+    const dataDir = this.port.version().dataDir;
+    // Only an absolute path *in this platform's terms*. A host can report a
+    // data directory for another platform — `session-transfer-route.test.ts`
+    // reports `C:/data` — and on POSIX `path.join` would treat that as a
+    // relative path and quietly create the tree inside the working directory.
+    // A directory that is not ours to write is a host we do not persist for.
+    if (!dataDir || !path.isAbsolute(dataDir)) return undefined;
+    return new WebuiScheduledTaskRuntime({
+      databaseFile: path.join(dataDir, "webui", "scheduled-tasks.sqlite"),
+      tickIntervalMs: this.scheduledTaskIntervalMs,
+      createSession: (request) => this.port.createSession({ name: request.name }),
+      sendMessage: async (request) => {
+        const result = await this.port.sendMessage(request);
+        // The runtime drains the stream to learn the outcome; the WebUI's own
+        // frame projection is a rendering concern and has no place here.
+        return result.ok
+          ? {
+              ok: true as const,
+              source: result.source as
+                | AsyncIterable<unknown>
+                | Iterable<unknown>,
+            }
+          : {
+              ok: false as const,
+              status: result.status,
+              body: result.body,
+            };
+      },
+    });
+  }
+
+  /**
+   * Start the scheduled-task loop, one instance per process, beside the
+   * WebSocket heartbeat and on the same terms.
+   *
+   * `unref` matters here for the same reason it does on the heartbeat: the
+   * timer must never be the reason a process stays alive. A run in progress is
+   * allowed to finish — the tick's promise is not awaited by the timer — and
+   * the store is released by the runtime's own `dispose`.
+   *
+   * A tick that throws is swallowed on purpose. The loop is a background
+   * courtesy to the user, and a transient store error must not become an
+   * unhandled rejection that takes the service down; the next tick retries, and
+   * a task that cannot be delivered records its own failure.
+   */
+  private startScheduledTaskLoop(): void {
+    const runtime = this.scheduledTasks;
+    if (!runtime || this.scheduledTaskTimer !== undefined) return;
+    this.scheduledTaskTimer = setInterval(() => {
+      void runtime.tick().catch(() => undefined);
+    }, this.scheduledTaskIntervalMs);
+    this.scheduledTaskTimer.unref?.();
+  }
+
+  /**
    * Stop accepting new operations, drain every connection, then close
    * the harness port. The order is the one step 13 of the assembly
    * checklist requires: refuse new work first, then release resources,
@@ -662,6 +804,13 @@ export class WebuiService {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = undefined;
     }
+    if (this.scheduledTaskTimer !== undefined) {
+      clearInterval(this.scheduledTaskTimer);
+      this.scheduledTaskTimer = undefined;
+    }
+    // The store is this process's own file handle; leaving it open would keep
+    // the WAL alive after the last operation is gone.
+    this.scheduledTasks?.dispose();
     // Force-terminate every connection before the server closes; otherwise
     // `wsServer.close()` waits for the client to ack the close handshake
     // and can hang for the duration of the platform TCP timeout.

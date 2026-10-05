@@ -265,6 +265,8 @@
       "packages/webui/test/unit/webui-w0-css-structure.test.ts",
       "packages/webui/test/unit/webui-w2-effect-reducer.test.ts",
       "packages/webui/test/unit/webui-host-shape-invariant.test.ts",
+      "packages/webui/test/unit/webui-scheduled-task.test.ts",
+      "packages/webui/test/unit/webui-scheduled-task-upstream-probe.test.ts",
       "packages/webui/test/unit/composer-intent.test.ts",
       "packages/webui/test/unit/transcript-shape.test.ts",
       "packages/webui/test/unit/slash-classification.test.ts",

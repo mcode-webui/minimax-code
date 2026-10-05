@@ -4910,6 +4910,25 @@
     display: flex;
     align-items: center;
   }
+  /* The MCP row's connection state, between the copy and the actions. The
+   * reason line truncates with an ellipsis (the full text rides on the
+   * element's title) so a long server error cannot push the 编辑/删除/开关
+   * strip out of the row. */
+  .webui-plugin-mcp-status {
+    display: flex;
+    flex: 0 1 auto;
+    max-width: 40%;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 8px;
+    text-align: right;
+  }
+  .webui-plugin-mcp-status small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   /* Pinned full-bleed bar. A sticky element has to carry its own opaque
    * background and span the scroll container, so the constrained row lives on
    * `webui-plugin-header-inner` instead of on the header itself. The vertical

@@ -24,6 +24,51 @@ const sameSelection = (
   left.view === right.view &&
   left.query === right.query &&
   left.category === right.category;
+
+/**
+ * One MCP server's connection state, as the row shows it.
+ *
+ * The runtime already classifies every server
+ * (`LocalMcpPublicServerStatus`: `available` / `configured` / `disabled` /
+ * `error` / `unavailable`) and attaches the failure's own reason to the two
+ * trouble states — the D-3 gap was that the row rendered none of it, so a
+ * server that could not connect was indistinguishable from a healthy one
+ * unless you already knew to look elsewhere. `configured` is deliberately
+ * NOT trouble: it means enabled and not currently connected, which is the
+ * resting state of a server that connects on use.
+ */
+export interface WebuiMcpServerStatusView {
+  readonly key:
+    | "available"
+    | "configured"
+    | "disabled"
+    | "error"
+    | "unavailable"
+    | "unknown";
+  readonly label: string;
+  readonly tone: string;
+  readonly reason?: string;
+}
+
+export function describeWebuiMcpServerStatus(item: Row): WebuiMcpServerStatusView {
+  const status = read(item, "status");
+  const reason = read(item, "error", "errorMessage") || undefined;
+  switch (status) {
+    case "available":
+      return { key: "available", label: "已连接", tone: "text-text_default_secondary" };
+    case "configured":
+      return { key: "configured", label: "未连接", tone: "text-text_default_tertiary" };
+    case "disabled":
+      return { key: "disabled", label: "已停用", tone: "text-text_default_tertiary" };
+    case "error":
+      return { key: "error", label: "连接失败", tone: "text-text_label_danger_secondary_default", reason };
+    case "unavailable":
+      return { key: "unavailable", label: "不可用", tone: "text-text_label_warning_secondary_default", reason };
+    default:
+      return { key: "unknown", label: "未知状态", tone: "text-text_default_tertiary" };
+  }
+}
+
 const CATEGORIES: readonly { id: Area; label: string }[] = [
   { id: "plugins", label: "插件" },
   { id: "skills", label: "技能" },
@@ -1083,6 +1128,10 @@ export function PluginManagement({
             const name = nameOf(item) || `item-${index}`;
             const isOn = enabled(item);
             const description = read(item, "description", "summary");
+            // Computed for every row, read only in the mcp branch: the loose
+            // read is side-effect-free, and narrowing `area` inside the JSX
+            // below cannot narrow this binding.
+            const mcpStatus = describeWebuiMcpServerStatus(item);
             const action =
               area === "plugins"
                 ? view === "market"
@@ -1195,7 +1244,30 @@ export function PluginManagement({
                     {appStatus(item)}
                   </span>
                 ) : area === "mcp" ? (
-                  <div className="webui-plugin-actions">
+                  <>
+                    {/* The status the runtime already knows, on the row
+                     * itself: a server that cannot connect is labelled
+                     * 连接失败 with its own reason inline — visible text, not
+                     * a tooltip, because nobody hovers a row they believe
+                     * is healthy. Mirrors the apps area's status slot. */}
+                    <div className="webui-plugin-mcp-status">
+                      <span
+                        className={`text-size_12 ${mcpStatus.tone}`}
+                        data-webui-mcp-status={mcpStatus.key}
+                      >
+                        {mcpStatus.label}
+                      </span>
+                      {mcpStatus.reason ? (
+                        <small
+                          className="text-size_12 text-text_default_tertiary"
+                          data-webui-mcp-status-reason={mcpStatus.key}
+                          title={mcpStatus.reason}
+                        >
+                          {mcpStatus.reason}
+                        </small>
+                      ) : null}
+                    </div>
+                    <div className="webui-plugin-actions">
                     <button onClick={() => void prepareMcp(item)}>编辑</button>
                     <button
                       onClick={() =>
@@ -1214,6 +1286,7 @@ export function PluginManagement({
                       }
                     />
                   </div>
+                  </>
                 ) : (
                   <div className="webui-plugin-actions">
                     <ToggleSwitch

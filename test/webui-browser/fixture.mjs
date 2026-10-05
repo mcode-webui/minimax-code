@@ -47,7 +47,7 @@ export function installFixtureTransport() {
   // With the tree answering `[]` the disclosure button never renders and the
   // child row is unreachable in a browser -- the same "valid server answer,
   // useless fixture" trap the project list was.
-  const tree = {
+  let tree = {
     sessions: [{ session: sessions[0], childSessions: [child] }],
     hasMore: false,
   };
@@ -66,7 +66,7 @@ export function installFixtureTransport() {
   const matches = (body, condition) => Object.entries(condition).every(([key, value]) => body?.[key] === value);
   const responseFor = (operation, body) => {
     if (operation === "listSessions") return { sessions, hasMore: false };
-    if (operation === "getSessionTree") return tree;
+    if (operation === "getSessionTree") return clone(tree);
     if (operation === "listVisibleProjects") return projects;
     if (operation === "getMessages") {
       if (body?.before) return { messages: [{ msgId: `older-${body.before}`, role: "user", msgContent: "Older synthetic page", timestamp: 1_699_999_999_999 }], hasMore: false };
@@ -178,6 +178,11 @@ export function installFixtureTransport() {
     // blocking — the transcript's own request is the second of the three.
     delayEvery(operation, condition) { held.push({ operation, condition }); },
     setPage(sessionId, page) { pages[sessionId] = clone(page); },
+    // The tree projection the rail and the composer both read. Mutable for the
+    // same reason `setPage` is: the app fetches it on boot, so a test that only
+    // wants to poison it later has no other way to say what the server answers
+    // on the NEXT request.
+    setTree(next) { tree = clone(next); },
     // The server's authoritative view of what is running right now. A
     // client whose `session.start` was missed reads this to recover.
     setActiveTurn(turn) { activeTurn = turn ? clone(turn) : undefined; },

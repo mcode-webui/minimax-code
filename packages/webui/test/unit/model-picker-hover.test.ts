@@ -252,7 +252,7 @@ describe("model picker — the hover wiring", () => {
       picker.indexOf("const handleRowFocus = (key: string, rowId: string) => {"),
     );
     const body = focus.slice(0, focus.indexOf("};"));
-    expect(body).toContain("setFocused({ key, rowId })");
+    expect(body).toContain("setFocusedRow({ key, rowId })");
     expect(body).not.toContain("clearPendingHover");
     expect(body).not.toContain("setTier");
   });

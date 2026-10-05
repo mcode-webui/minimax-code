@@ -56,10 +56,43 @@ function formatContextWindow(value: number): string {
   return String(value);
 }
 
-/** A measured anchor, in viewport space. */
-export interface FlyoutAnchor {
-  readonly rect: FlyoutRect;
-  readonly element: HTMLElement;
+/** The inline placement a measured fly-out is rendered with. */
+type FlyoutStyle = {
+  readonly position: "fixed";
+  readonly left: string;
+  readonly top: string;
+};
+
+/**
+ * Where the fly-out is anchored, resolved AT MEASURE TIME.
+ *
+ * A resolver, not a captured element. The row it points at is a React node the
+ * list is free to replace on any commit — committing a setting re-derives the
+ * catalogue, which remounts the row — and an element captured at render time
+ * outlives the node it was captured from, so the next measure reads a detached
+ * node's all-zero rect and places the panel against the viewport's origin.
+ *
+ * Asked from a layout effect the same lookup answers correctly, because by then
+ * the commit that remounted the row has attached its ref. So the anchor is
+ * asked, not remembered.
+ *
+ * Asking is necessary and not sufficient. The row's ID is derived from the model
+ * and the group rendering it, so a commit can rename the row outright — which
+ * is what switching a two-state model's thinking off does to its own row — and
+ * then there is no id to look up. `reconcileFocusedRow` in `ModelPicker.tsx`
+ * keeps that id pointing at a row that exists; this contract only says that
+ * `undefined` here means "no row to measure", and the panel is then not placed.
+ */
+export type FlyoutAnchor = () => FlyoutRect | undefined;
+
+/** Two placements that render identically, compared by value not identity. */
+function sameStyle(
+  a: FlyoutStyle | undefined,
+  b: FlyoutStyle | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.position === b.position && a.left === b.left && a.top === b.top;
 }
 
 /**
@@ -84,31 +117,46 @@ export interface FlyoutAnchor {
 function useFlyoutPlacement(
   anchor: FlyoutAnchor | undefined,
   surfaceRef: RefObject<HTMLElement | null>,
-): { readonly position: "fixed"; readonly left: string; readonly top: string } | undefined {
-  const [style, setStyle] = useState<
-    { readonly position: "fixed"; readonly left: string; readonly top: string } | undefined
-  >(undefined);
+): FlyoutStyle | undefined {
+  const [style, setStyle] = useState<FlyoutStyle | undefined>(undefined);
+
+  /**
+   * The placement currently applied, so a re-measure is free.
+   *
+   * `useState` compares by identity and `flyoutStyle` builds a fresh object on
+   * every call, so an unguarded `setStyle` would schedule a render for a
+   * measurement that changed nothing — and the layout effect below measures on
+   * every render, which would spin. Comparing the two numbers that reach the
+   * screen is what makes "measure again" safe to run unconditionally.
+   */
+  const applied = useRef<FlyoutStyle | undefined>(undefined);
 
   const measure = useCallback(() => {
     const surface = surfaceRef.current;
-    if (!anchor || !surface) {
-      setStyle(undefined);
-      return;
-    }
-    // Measured BEFORE the placement style is applied, so this is the surface's
-    // natural size. That is the size the clamp arithmetic needs, and applying
-    // it cannot change it back.
-    const rect = surface.getBoundingClientRect();
-    setStyle(
-      flyoutStyle(
+    const anchorRect = anchor && surface ? anchor() : undefined;
+    const next = (() => {
+      if (!anchorRect || !surface) return undefined;
+      const rect = surface.getBoundingClientRect();
+      return flyoutStyle(
         positionFlyout({
-          anchor: anchor.element.getBoundingClientRect(),
+          anchor: anchorRect,
           surface: { width: rect.width, height: rect.height },
           viewport: { width: window.innerWidth, height: window.innerHeight },
         }),
-      ),
-    );
+      );
+    })();
+    if (sameStyle(applied.current, next)) return;
+    applied.current = next;
+    setStyle(next);
   }, [anchor, surfaceRef]);
+
+  // Re-measure after EVERY render, not only when the anchor's identity changes.
+  // The list moves under a panel that is still anchored to the same row — a
+  // catalogue refresh relayouts the whole menu — and the row's rect is the one
+  // thing that says where the panel belongs. Nothing else reports that move:
+  // the observers below watch the SURFACE, the scroll and resize listeners
+  // watch the window, and none of them see a sibling shifting.
+  useLayoutEffect(measure);
 
   useLayoutEffect(() => {
     measure();

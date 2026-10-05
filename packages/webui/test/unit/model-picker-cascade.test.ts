@@ -264,6 +264,60 @@ describe("fly-out placement — one engine, so the tiers cannot disagree", () =>
   });
 });
 
+describe("fly-out placement — the anchor is asked, not remembered", () => {
+  const picker = readComponent("ModelPicker.tsx");
+  const flyout = readComponent("ModelSettingsFlyout.tsx");
+
+  it("resolves the row inside the resolver, not when the anchor is built", () => {
+    // Committing a setting re-derives the catalogue and REMOUNTS the row. A
+    // ref map is only consistent after that commit, so resolving during render
+    // finds nothing in the gap and the panel loses `position: fixed` and lands
+    // wherever the flow puts it — the drift, seen as a panel sitting far below
+    // the row it describes.
+    expect(picker).toContain("rowElements.current.get(focused.rowId)");
+    expect(picker).toMatch(/const flyoutAnchor: FlyoutAnchor = useCallback\(/);
+    // The lookup lives INSIDE the callback, not in the props it produces.
+    expect(picker).not.toMatch(/flyoutAnchor =[\s\S]{0,200}rowElements\.current\.get/);
+  });
+
+  it("reads the anchor at measure time rather than off a captured element", () => {
+    // A captured element outlives the node it was captured from, and a
+    // detached node's rect is all zeros — which places the panel against the
+    // viewport's origin. Asked from the layout effect, the same lookup is
+    // correct because the commit has already attached the new element.
+    expect(flyout).toContain("anchor && surface ? anchor() : undefined");
+    expect(flyout).not.toContain("anchor.element");
+  });
+
+  it("re-measures on every render, and only re-renders when it moved", () => {
+    // The list can shift under a panel still anchored to the same row, and
+    // nothing else reports that: the ResizeObserver watches the SURFACE, the
+    // scroll and resize listeners watch the window. So the measure runs after
+    // every render — which is only safe because it compares before setting
+    // state, or the two would feed each other.
+    expect(flyout).toContain("useLayoutEffect(measure)");
+    expect(flyout).toContain("if (sameStyle(applied.current, next)) return;");
+  });
+
+  it("re-points the row ID during render, before the fly-out measures", () => {
+    // Asking the anchor is not enough on its own: a row ID names a row in the
+    // map, and committing a setting re-derives the very things an ID is built
+    // from. Switching a two-state model's thinking off rewrites the model's
+    // VARIANT, so the row the panel is anchored to is renamed by the panel's
+    // own control and the lookup resolves nothing at all. Derived during
+    // render — not in an effect — because the fly-out measures in a LAYOUT
+    // effect, so a correction made after paint would still show the drift.
+    expect(picker).toMatch(
+      /const focused = useMemo\(\s*\(\) => reconcileFocusedRow\(focusedRow, groupedModels\)/,
+    );
+    expect(picker).toContain("rowElements.current.get(focused.rowId)");
+    // The rows have to be grouped before the reconciliation can read them.
+    expect(picker.indexOf("const groupedModels = useMemo(")).toBeLessThan(
+      picker.indexOf("reconcileFocusedRow(focusedRow, groupedModels)"),
+    );
+  });
+});
+
 describe("cascade — the shape the source has to keep", () => {
   const picker = readComponent("ModelPicker.tsx");
   const flyout = readComponent("ModelSettingsFlyout.tsx");

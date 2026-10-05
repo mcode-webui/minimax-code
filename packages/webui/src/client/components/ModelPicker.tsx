@@ -22,6 +22,7 @@
  * The runtime projection is the source of truth after the menu is reopened.
  */
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -60,6 +61,7 @@ import {
   ModelSettingsFlyout,
   type FlyoutAnchor,
 } from "./ModelSettingsFlyout.js";
+import type { FlyoutRect } from "../projection/flyout-position.js";
 
 // Re-export so existing importers keep their import path stable.
 export type { WebuiModelPickerDraft, WebuiModelPickerEntry };
@@ -177,6 +179,68 @@ export function modelKey(model: WebuiModelPickerEntry): string {
  */
 export function rowIdOf(groupId: string, key: string): string {
   return `${groupId}::${key}`;
+}
+
+/**
+ * The part of a model key that survives the model's OWN settings changing.
+ *
+ * A key carries the variant, because a model offering an off/on pair is two
+ * rows and a star on one of them is a statement about that row. Which makes the
+ * key a poor thing to hold onto across a change made TO that row: switching the
+ * thinking toggle off rewrites the variant, the re-derived catalogue renames the
+ * row, and the key captured a moment earlier now names a row nobody renders.
+ */
+export function modelIdentity(key: string): string {
+  const at = key.lastIndexOf("/");
+  return at === -1 ? key : key.slice(0, at);
+}
+
+/** The row the pointer or the keyboard is on: which model, and which line of it. */
+export interface FocusedRow {
+  readonly key: string;
+  readonly rowId: string;
+}
+
+/**
+ * The focused row, re-pointed at the row that exists NOW.
+ *
+ * A row id is derived, not durable: it is built from the model and the group the
+ * model is rendered in, and BOTH are re-derived whenever a setting is committed.
+ * The user pressing the fly-out's own switch is one of those commits, so the act
+ * of configuring a two-state model renames that model's row — and the highlight
+ * goes dark while the fly-out loses its anchor, cannot measure, and drops out of
+ * the flow it was anchored to. Nothing recovers it but moving the pointer, so the
+ * panel stays beside nothing until the user goes back to the row and re-opens it.
+ *
+ * So the id is checked against the rows on screen rather than trusted to have
+ * survived. Returns its argument UNCHANGED when the row is still there, which
+ * keeps a stable input referentially stable — a fresh object every render would
+ * rebuild the fly-out's anchor resolver and its scroll listeners with it. Returns
+ * it unchanged when the row is genuinely GONE as well: a row that is not there
+ * has nothing to re-point at, and the paths that remove rows (a search
+ * keystroke, a filter) retract the panel themselves.
+ */
+export function reconcileFocusedRow(
+  focused: FocusedRow | undefined,
+  groups: readonly WebuiModelProviderGroup[],
+): FocusedRow | undefined {
+  if (!focused) return undefined;
+  const identity = modelIdentity(focused.key);
+  let sameModel: FocusedRow | undefined;
+  let sameIdentity: FocusedRow | undefined;
+  for (const group of groups) {
+    for (const model of group.models) {
+      const key = modelKey(model);
+      const rowId = rowIdOf(group.id, key);
+      if (rowId === focused.rowId) return focused;
+      if (key === focused.key) sameModel ??= { key, rowId };
+      if (modelIdentity(key) === identity) sameIdentity ??= { key, rowId };
+    }
+  }
+  // The same model under a new group is this very row, re-homed. Failing that,
+  // the same model under a new VARIANT is the row the pointer is still on, and
+  // the switch that was just pressed is what renamed it.
+  return sameModel ?? sameIdentity ?? focused;
 }
 
 function formatContextWindow(value: number): string {
@@ -415,23 +479,59 @@ export function WebuiModelPicker({
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
   /**
-   * The row the pointer or the keyboard is on, and the model that row describes.
+   * The row the pointer or the keyboard pointed at, and the model that row
+   * described AT THE TIME.
    *
    * One state holding both, because the two have to agree: a row id with no
    * model cannot anchor a panel, and a model with no row cannot say WHICH line
    * on screen the panel belongs to. Two separate states would be two chances to
    * disagree, and the disagreement is invisible until the panel opens beside the
    * wrong line.
+   *
+   * What is stored is the user's ANSWER; which line that answer points at today
+   * is `focused` below, re-derived from it. A row id is built out of the model
+   * and its group, and committing a setting re-derives both — so the stored id
+   * is a record of where the pointer was, not a promise that the line is still
+   * there. Holding the promise instead is what let the fly-out's own thinking
+   * switch rename the row it was anchored to.
    */
-  const [focused, setFocused] = useState<
-    { readonly key: string; readonly rowId: string } | undefined
-  >(undefined);
+  const [focusedRow, setFocusedRow] = useState<FocusedRow | undefined>(undefined);
   const [tier, setTier] = useState<CascadeTier>("list");
   const [query, setQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<readonly string[]>([]);
   const [drafts, setDrafts] = useState<
     Readonly<Record<string, WebuiModelPickerDraft>>
   >({});
+
+  // Order matters and is deliberate: filter FIRST, then hoist. Hoisting on the
+  // unfiltered list would keep a starred model visible while the user is
+  // searching for something else, which is the one thing a search must not do.
+  // The other order would also mean the favourites section is rebuilt on every
+  // keystroke even when no star is in the result set.
+  const groupedModels = useMemo(() => {
+    const grouped = groupModelsByProvider(models);
+    const filtered = filterModelGroups(grouped, query);
+    return orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
+  }, [models, query, favoriteIds]);
+
+  /**
+   * Where the pointer's answer points NOW, which is not always where it pointed
+   * when it was given.
+   *
+   * Memoised on the rows rather than recomputed inline: `reconcileFocusedRow`
+   * hands back the very object it was given whenever the row survived, so an
+   * unchanged menu keeps a stable `focused` and the fly-out's anchor resolver
+   * and its scroll listeners are not rebuilt on every render. Deriving it during
+   * render rather than in an effect is also what keeps the correction invisible
+   * — the fly-out measures in a layout effect, which runs after this and before
+   * anything is painted, so a re-pointed row is already anchored by the time the
+   * panel is on screen.
+   */
+  const focused = useMemo(
+    () => reconcileFocusedRow(focusedRow, groupedModels),
+    [focusedRow, groupedModels],
+  );
+
   const rootRef = useRef<HTMLDivElement | null>(null);
   /**
    * Every mounted row, so the fly-out can measure the one it is anchored to.
@@ -487,7 +587,7 @@ export function WebuiModelPicker({
   const retractFlyout = () => {
     clearPendingHover();
     setTier("list");
-    setFocused(undefined);
+    setFocusedRow(undefined);
   };
 
   // Keep the local mirror through model-catalog refreshes while the menu is
@@ -581,7 +681,7 @@ export function WebuiModelPicker({
     // visit, and keeping the menu open would strand the user on a surface they
     // have already answered.
     setOpen(false);
-    setFocused(undefined);
+    setFocusedRow(undefined);
   };
 
   /**
@@ -604,7 +704,7 @@ export function WebuiModelPicker({
     clearPendingHover();
     const model = modelsRef.current.find((entry) => modelKey(entry) === key);
     if (!model) return;
-    setFocused({ key, rowId });
+    setFocusedRow({ key, rowId });
     // A row with nothing to configure retracts the fly-out rather than
     // leaving the previous row's panel up: the panel would then describe a
     // model the pointer has already left.
@@ -627,7 +727,7 @@ export function WebuiModelPicker({
    * panel through `handleHoverIntent`.
    */
   const handleRowFocus = (key: string, rowId: string) => {
-    setFocused({ key, rowId });
+    setFocusedRow({ key, rowId });
   };
 
   /**
@@ -685,7 +785,7 @@ export function WebuiModelPicker({
     clearPendingHover();
     setTier((current) => {
       if (current === "settings") {
-        setFocused(undefined);
+        setFocusedRow(undefined);
         return "list";
       }
       setOpen(false);
@@ -700,25 +800,27 @@ export function WebuiModelPicker({
   // made the panel a dead end that could only be read — the user had to click
   // the row first to unlock it, which is the step the fly-out exists to save.
   const flyoutIsPreview = isPreview(focusedKeyString, selectedKeyString);
-  const flyoutAnchor =
-    focused?.rowId && tier === "settings"
-      ? (() => {
-          const element = rowElements.current.get(focused.rowId);
-          if (!element) return undefined;
-          return { rect: element.getBoundingClientRect(), element };
-        })()
-      : undefined;
-
-  // Order matters and is deliberate: filter FIRST, then hoist. Hoisting on the
-  // unfiltered list would keep a starred model visible while the user is
-  // searching for something else, which is the one thing a search must not do.
-  // The other order would also mean the favourites section is rebuilt on every
-  // keystroke even when no star is in the result set.
-  const groupedModels = useMemo(() => {
-    const grouped = groupModelsByProvider(models);
-    const filtered = filterModelGroups(grouped, query);
-    return orderModelGroups(filtered, favoriteIds, "收藏", modelKey);
-  }, [models, query, favoriteIds]);
+  /**
+   * Ask the row where it is, rather than remembering where it was.
+   *
+   * Two things move a row under an open panel, and this answers only the first.
+   * The ELEMENT is replaced whenever the list re-renders, so a row captured
+   * during render is a detached node by the next commit, and its rectangle
+   * measures all zeroes — which places the panel against the viewport's origin
+   * instead of against the row. Resolving here, from a callback the fly-out
+   * calls out of its own layout effect, reads the row that is mounted NOW.
+   *
+   * The row's ID is the other thing, and `reconcileFocusedRow` is what handles
+   * it: a key that names no rendered row resolves to nothing at all, and nothing
+   * that measures can recover from that. Both are needed — the resolver cannot
+   * invent a row that is not in the map, and the reconciliation cannot resurrect
+   * an element that has already been replaced.
+   */
+  const flyoutAnchor: FlyoutAnchor = useCallback((): FlyoutRect | undefined => {
+    if (tier !== "settings" || !focused) return undefined;
+    const element = rowElements.current.get(focused.rowId);
+    return element ? element.getBoundingClientRect() : undefined;
+  }, [focused, tier]);
 
   /**
    * Move the focused row by `delta` through the VISIBLE rows, and return where
@@ -855,7 +957,7 @@ export function WebuiModelPicker({
     onSettingChange(focusedModel, draft);
     onSelect(focusedModel, draft);
     setOpen(false);
-    setFocused(undefined);
+    setFocusedRow(undefined);
   };
 
   return (

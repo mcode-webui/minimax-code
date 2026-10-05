@@ -3487,6 +3487,8 @@ function renderDialog(patch: Partial<WebuiScheduledTaskDraft> = {}): string {
     createElement(WebuiCronCreateDialog, {
       draft: filled(patch),
       onDraftChange: () => undefined,
+      onSubmit: () => undefined,
+      onClose: () => undefined,
       agents: ["main", "reviewer"],
       sessions: [{ sessionId: "session-1", title: "整理" }],
     }),
@@ -3573,6 +3575,8 @@ describe("WebUI 定时任务 panel", () => {
       createElement(WebuiCronCreateDialog, {
         draft: { ...empty, name: "整理提交" },
         onDraftChange: noop,
+        onSubmit: noop,
+        onClose: noop,
         agents: ["main"],
       }),
     );
@@ -3798,6 +3802,8 @@ describe("WebUI 定时任务 panel", () => {
       createElement(WebuiCronCreateDialog, {
         draft: emptyScheduledTaskDraft(DEFAULT_AGENT_NAME),
         onDraftChange: () => undefined,
+        onSubmit: () => undefined,
+        onClose: () => undefined,
         agents: [],
       }),
     );

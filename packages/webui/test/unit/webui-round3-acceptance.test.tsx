@@ -357,6 +357,11 @@ describe("round-3 goal and questionnaire behavior", () => {
       id: "q-1",
       title: "Choose",
       presentation: { replaceComposer: false, showProgress: true, allowBackNavigation: true },
+      // `purpose: 1` (QuestionnairePurpose.Goal): the countdown renders only
+      // inside the goal auto-reply window — the runtime's scheduler replies
+      // only for goal questionnaires, so any other expiry would be a promise
+      // nothing keeps.
+      purpose: 1,
       expiresAt: Date.now() + 10_000,
       steps: [
         { id: "one", question: "One", selectionMode: 0, required: true, allowOther: false, otherPlaceholder: "" , options: [{ id: "a", label: "A" }] },

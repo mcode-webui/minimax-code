@@ -58,6 +58,12 @@ export function installFixtureTransport() {
   const pending = [];
   const delayed = [];
   const held = [];
+  // The questionnaire the pending-questionnaire poll will answer. Mutable for
+  // the same reason `setPage` is: the composer polls `getPendingQuestionnaire`
+  // on mount and on every session switch, so a test that wants to stage a
+  // questionnaire has no other way to say what the server answers on the NEXT
+  // poll. `undefined` keeps the old "no pending questionnaire" answer.
+  let questionnaire;
   let activeTurn;
   const requests = [];
   const sockets = new Set();
@@ -76,6 +82,7 @@ export function installFixtureTransport() {
     if (operation === "listSkills") return { skills: [] };
     if (operation === "listPendingPermissions") return { requests: [] };
     if (operation === "getActiveTurn") return activeTurn;
+    if (operation === "getPendingQuestionnaire") return questionnaire ? { request: questionnaire } : {};
     if (operation === "dismissQuestionnaire") return { ok: true };
     if (operation === "replyQuestionnaire") return { ok: true };
     if (operation === "listQueueMessages") return { items: [] };
@@ -200,6 +207,11 @@ export function installFixtureTransport() {
     // The server's authoritative view of what is running right now. A
     // client whose `session.start` was missed reads this to recover.
     setActiveTurn(turn) { activeTurn = turn ? clone(turn) : undefined; },
+    // The pending questionnaire the next poll answers. The goal auto-reply
+    // scheduler lives in the real runtime, not here: the fixture's transport
+    // is inert on purpose, so a staged questionnaire stays pending until the
+    // test answers, dismisses, or replaces it.
+    setQuestionnaire(request) { questionnaire = request ? clone(request) : undefined; },
     resolve(operation, condition, result) {
       const index = pending.findIndex((entry) => entry.operation === operation && matches(entry.body, condition));
       if (index < 0) throw new Error(`No pending fixture request: ${operation} ${JSON.stringify(condition)}`);

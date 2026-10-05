@@ -55,10 +55,20 @@ export function WebuiInteractionPanel({
   );
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  // The expiry countdown is the GOAL flow's auto-reply window, not a property
+  // of questionnaires in general: the runtime's
+  // `QuestionnaireAutoReplyScheduler` fires only for `purpose === 'goal'`
+  // (`QuestionnairePurpose.Goal === 1` on this wire), applying each step's
+  // recommended option. An ordinary questionnaire that happens to carry
+  // `expiresAt` gets no runtime reply, so showing it a countdown would be a
+  // promise nothing keeps — the TUI gates the same way
+  // (`goalAutoReplyDeadline` in `questionnaire-picker.ts`).
+  const goalAutoReplyWindow =
+    questionnaire?.purpose === 1 && questionnaire.expiresAt !== undefined;
   const [remainingSeconds, setRemainingSeconds] = useState<number | undefined>(() =>
-    questionnaire?.expiresAt === undefined
-      ? undefined
-      : Math.max(0, Math.ceil((questionnaire.expiresAt - Date.now()) / 1000)),
+    goalAutoReplyWindow
+      ? Math.max(0, Math.ceil((questionnaire!.expiresAt! - Date.now()) / 1000))
+      : undefined,
   );
   useEffect(() => {
     setSelections({});
@@ -67,15 +77,18 @@ export function WebuiInteractionPanel({
     setCurrentStep(0);
   }, [questionnaire?.id]);
   useEffect(() => {
-    if (!questionnaire?.expiresAt) {
+    if (!goalAutoReplyWindow) {
       setRemainingSeconds(undefined);
       return undefined;
     }
-    const update = () => setRemainingSeconds(Math.max(0, Math.ceil((questionnaire.expiresAt! - Date.now()) / 1000)));
+    const update = () => setRemainingSeconds(Math.max(0, Math.ceil((questionnaire!.expiresAt! - Date.now()) / 1000)));
     update();
     const timer = window.setInterval(update, 1_000);
     return () => window.clearInterval(timer);
-  }, [questionnaire?.expiresAt]);
+    // `id` rides along so replacing one goal questionnaire with another at the
+    // same deadline re-derives the window instead of leaving the old interval
+    // comparing against a deadline that no longer exists.
+  }, [questionnaire?.id, questionnaire?.purpose, questionnaire?.expiresAt]);
   const visiblePermissions = permissions.filter(
     (permission) => permission.sessionId === sessionId,
   );
@@ -202,9 +215,19 @@ export function WebuiInteractionPanel({
             >
               ×
             </button>
-            {questionnaire.steps.length > 1 && questionnaire.presentation.showProgress ? (
+          {/* `presentation` is optional at the reader: the wire type marks it
+           * required, but the runtime's view builder materialises it with a
+           * spread (`{...request.presentation}`), which yields `{}` — not a
+           * defaulted block — for a payload that never had one. Every
+           * producer-side normaliser defaults these three fields to true
+           * (`DEFAULT_PRESENTATION` in local-runtime, the TUI's
+           * event-normalizer), so `?? true` here is the same convention the
+           * `replaceComposer` read two siblings up already follows. The bare
+           * reads used to throw for a multi-step request with no presentation
+           * block — the render died before the boundary existed. */}
+          {questionnaire.steps.length > 1 && (questionnaire.presentation?.showProgress ?? true) ? (
               <span className="webui-questionnaire-progress" data-testid="questionnaire-progress" aria-label={`${currentStep + 1}/${questionnaire.steps.length}`}>
-                <button type="button" data-testid="questionnaire-progress-prev" aria-label="上一步" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))} disabled={submitting || !questionnaire.presentation.allowBackNavigation || currentStep === 0}>‹</button>
+                <button type="button" data-testid="questionnaire-progress-prev" aria-label="上一步" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))} disabled={submitting || !(questionnaire.presentation?.allowBackNavigation ?? true) || currentStep === 0}>‹</button>
                 <span>{currentStep + 1}/{questionnaire.steps.length}</span>
                 <button type="button" data-testid="questionnaire-progress-next" aria-label="下一步" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))} disabled={submitting || currentStep >= questionnaire.steps.length - 1}>›</button>
               </span>
@@ -216,7 +239,21 @@ export function WebuiInteractionPanel({
           >
             智能体需要你的回答
           </p>
-          {remainingSeconds !== undefined ? <span className="webui-questionnaire-countdown" data-testid="questionnaire-auto-reply-countdown" title={`将在 ${remainingSeconds} 秒后自动提交`}>⏱ {remainingSeconds}s</span> : null}
+          {remainingSeconds !== undefined ? (
+            <span
+              className="webui-questionnaire-countdown"
+              data-testid="questionnaire-auto-reply-countdown"
+              title={remainingSeconds > 0 ? `将在 ${remainingSeconds} 秒后自动采用推荐选项` : "已到期，正在采用推荐选项"}
+            >
+              {remainingSeconds > 0
+                ? `⏱ ${remainingSeconds}s`
+                // The runtime's scheduler owns the actual reply (and a manual
+                // answer beats it via its CAS arbitration), so zero is a
+                // "hold on" state, not an error — the TUI shows the same
+                // "Time is up · applying the recommended option…" beat.
+                : "⏱ 时间到 · 正在采用推荐选项…"}
+            </span>
+          ) : null}
           <div data-testid="questionnaire-composer-body">
           {questionnaire.steps.slice(currentStep, currentStep + 1).map((step) => {
             const selected = optionIdsForStep(selections, step.id);
@@ -276,6 +313,16 @@ export function WebuiInteractionPanel({
                       </span>
                       <span>
                         {option.label}
+                        {/* The TUI appends "(Recommended)" while the goal
+                            auto-reply countdown runs, because that is the
+                            option the runtime will apply if the reader does
+                            nothing — the countdown alone does not say which
+                            one it is. */}
+                        {option.recommended && remainingSeconds !== undefined ? (
+                          <small className="ml-1 text-text_default_secondary" data-testid={`questionnaire-recommended-${option.id}`}>
+                            （推荐）
+                          </small>
+                        ) : null}
                         {option.description ? (
                           <small className="ml-1 text-text_default_secondary">
                             {option.description}

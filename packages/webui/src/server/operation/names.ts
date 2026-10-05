@@ -101,3 +101,7 @@ export const GET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "getGlobalInstructions" as
 export const SET_GLOBAL_INSTRUCTIONS_OPERATION_NAME = "setGlobalInstructions" as const;
 export const GET_AGENT_MEMORY_OPERATION_NAME = "getAgentMemory" as const;
 export const SET_AGENT_MEMORY_OPERATION_NAME = "setAgentMemory" as const;
+export const GET_USER_PROFILE_OPERATION_NAME = "getUserProfile" as const;
+export const SET_USER_PROFILE_OPERATION_NAME = "setUserProfile" as const;
+export const GET_MEMORY_SETTINGS_OPERATION_NAME = "getMemorySettings" as const;
+export const SET_MEMORY_SETTINGS_OPERATION_NAME = "setMemorySettings" as const;

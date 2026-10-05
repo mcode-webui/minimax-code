@@ -155,6 +155,42 @@ export interface WebuiAgentMemoryView {
   readonly content?: string;
 }
 
+/**
+ * The `关于你` region of `user.md` — the text between the personalization
+ * markers, not the whole file.
+ *
+ * `exists` means "the file holds a profile region", not "the file is on disk":
+ * a `user.md` that only carries runtime-appended entries is a real file with
+ * no region, and the panel must show an empty editor rather than the memory
+ * collector's output.
+ *
+ * `malformed` is a third state, separate from both. Exactly one marker present
+ * means the file was damaged by something outside this module; reads report it
+ * so the panel can refuse to offer a save that would drop the runtime's
+ * entries, and writes throw `USER_PROFILE_MALFORMED`.
+ */
+export interface WebuiUserProfileView {
+  readonly content: string;
+  readonly exists: boolean;
+  readonly malformed: boolean;
+  readonly path: string;
+  readonly sizeBytes: number;
+  readonly maxChars: number;
+}
+
+/**
+ * The two long-term-memory switches, as a closed shape.
+ *
+ * Deliberately not a config patch. The shared config file holds plaintext API
+ * keys under other roots, and the runtime masks them on read — writing a
+ * general config payload back would clobber the real values with the masks.
+ * Exposing exactly two booleans makes that hazard unrepresentable.
+ */
+export interface WebuiMemorySettingsView {
+  readonly enabled: boolean;
+  readonly proactive: boolean;
+}
+
 /* Attachment shape — used by the components layer, declared here so the
  * projection layer can return an `attachments` array without importing the
  * React component. The actual component lives at
@@ -691,6 +727,15 @@ export interface WebuiTransport {
    */
   readonly getAgentMemory?: (request?: { readonly includeContent?: boolean }) => Promise<WebuiAgentMemoryView>;
   readonly setAgentMemory?: (request: { readonly content: string }) => Promise<WebuiAgentMemoryView>;
+  /** The `关于你` region of `user.md`; the server owns the markers. */
+  readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
+  readonly setUserProfile?: (request: { readonly content: string }) => Promise<WebuiUserProfileView>;
+  /** The two memory switches. Absent on a host that predates the surface. */
+  readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
+  readonly setMemorySettings?: (request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }) => Promise<WebuiMemorySettingsView>;
   readonly selectModel?: (
     request: WebuiModelSelectionRequest,
   ) => Promise<{ readonly success?: boolean }>;

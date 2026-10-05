@@ -49,6 +49,7 @@ import { dirname, join, resolve } from "node:path";
 import type {
   WebuiAgentMemoryView,
   WebuiGlobalInstructionsView,
+  WebuiUserProfileView,
 } from "../client/contracts.js";
 
 /**
@@ -70,11 +71,44 @@ export const GLOBAL_INSTRUCTIONS_MAX_BYTES = 32 * 1024;
 
 const MAIN_MEMORY_FILE = "MEMORY.md";
 const GLOBAL_INSTRUCTIONS_FILE = "AGENTS.md";
+const USER_MEMORY_FILE = "user.md";
+
+/**
+ * Mirrors `MEMORY_TAIL_INJECTION_CAP_CHARS` in `packages/shared/src/memory-limits.ts`.
+ *
+ * This is a soft ceiling, not a rejection: the composer truncates the profile
+ * to its tail once it passes this mark, so anything the user writes above it is
+ * accepted on disk and then never reaches the model. The panel reports the
+ * number so the user learns that from the editor instead of from silence.
+ */
+export const USER_PROFILE_MAX_CHARS = 10 * 1024;
+
+/**
+ * The `关于你` region of `user.md`.
+ *
+ * `user.md` is shared, and only part of it is the user's answer to "关于你".
+ * The runtime appends `<!-- mem-append-reason: ... -->` entries to the same
+ * file, and the `<user_profile>` prompt block is built from the text between
+ * these two markers — not from the whole file. Editing the whole file would
+ * therefore show the user machine-written entries they never wrote, and let
+ * them change text the model never reads.
+ *
+ * Nothing in this repository writes these markers: the format is owned by the
+ * desktop surface, and `LocalPromptMemoryReader` — the interface that feeds
+ * the composer — has no implementation here. So the literals below are a
+ * copied contract, pinned by `profile-files.test.ts` against the same strings,
+ * and a write that finds them absent or half-present fails loudly instead of
+ * guessing.
+ */
+const USER_PROFILE_START = "<!-- mavis-personalization:start -->";
+const USER_PROFILE_END = "<!-- mavis-personalization:end -->";
 
 export type WebuiProfileFileErrorCode =
   | "AGENT_MEMORY_UNAVAILABLE"
   | "GLOBAL_INSTRUCTIONS_UNAVAILABLE"
-  | "GLOBAL_INSTRUCTIONS_TOO_LARGE";
+  | "GLOBAL_INSTRUCTIONS_TOO_LARGE"
+  | "USER_PROFILE_UNAVAILABLE"
+  | "USER_PROFILE_MALFORMED";
 
 /**
  * `operation-dispatch.ts` only forwards a thrown `code` verbatim when it is a
@@ -228,6 +262,161 @@ export async function writeAgentMemory(
 
   await writeFileAtomic(filePath, content, ".memory-tmp", "AGENT_MEMORY_UNAVAILABLE");
   return readAgentMemory(dataDir, agentName);
+}
+
+/* -------------------------------------------------------------------------- */
+/* User profile — the marked region of user.md                                */
+/* -------------------------------------------------------------------------- */
+
+export function userMemoryPath(dataDir: string): string {
+  return join(dataDir, "memory", USER_MEMORY_FILE);
+}
+
+type UserProfileRegion =
+  | { readonly kind: "absent" }
+  | { readonly kind: "region"; readonly before: string; readonly after: string }
+  | { readonly kind: "malformed" };
+
+/**
+ * Splits the file around the markers without interpreting anything else in it.
+ *
+ * "Absent" and "malformed" are different answers on purpose. A file with no
+ * markers has nothing to overwrite, so a write appends a fresh region. A file
+ * with exactly one marker — or with the end marker ahead of the start — is
+ * damaged, and rewriting it would either delete runtime-appended entries or
+ * duplicate the region, so it is refused.
+ */
+function locateUserProfileRegion(source: string): UserProfileRegion {
+  const startIndex = source.indexOf(USER_PROFILE_START);
+  const endIndex = source.indexOf(USER_PROFILE_END);
+
+  if (startIndex === -1 && endIndex === -1) return { kind: "absent" };
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return { kind: "malformed" };
+  }
+
+  const bodyStart = startIndex + USER_PROFILE_START.length;
+  return {
+    kind: "region",
+    before: source.slice(0, bodyStart),
+    after: source.slice(endIndex),
+  };
+}
+
+function renderUserProfileRegion(
+  region: UserProfileRegion,
+  content: string,
+): string | undefined {
+  if (region.kind === "malformed") return undefined;
+  if (region.kind === "absent") {
+    // Nothing to replace: the caller keeps every existing byte and appends
+    // this block at the end of the file.
+    if (!content.trim()) return undefined;
+    return `${USER_PROFILE_START}\n${content.trim()}\n${USER_PROFILE_END}\n`;
+  }
+  return `${region.before}${content.trim()}\n${region.after}`;
+}
+
+export async function readUserProfile(
+  dataDir: string,
+): Promise<WebuiUserProfileView> {
+  const filePath = userMemoryPath(dataDir);
+  let source: string;
+  try {
+    source = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      return {
+        content: "",
+        exists: false,
+        malformed: false,
+        path: filePath,
+        sizeBytes: 0,
+        maxChars: USER_PROFILE_MAX_CHARS,
+      };
+    }
+    throw new WebuiProfileFileError("USER_PROFILE_UNAVAILABLE");
+  }
+
+  const region = locateUserProfileRegion(source);
+  if (region.kind === "malformed") {
+    return {
+      content: "",
+      exists: false,
+      malformed: true,
+      path: filePath,
+      sizeBytes: Buffer.byteLength(source, "utf8"),
+      maxChars: USER_PROFILE_MAX_CHARS,
+    };
+  }
+  if (region.kind === "absent") {
+    return {
+      content: "",
+      exists: false,
+      malformed: false,
+      path: filePath,
+      sizeBytes: Buffer.byteLength(source, "utf8"),
+      maxChars: USER_PROFILE_MAX_CHARS,
+    };
+  }
+
+  return {
+    content: source
+      .slice(
+        region.before.length,
+        source.length - region.after.length,
+      )
+      .trim(),
+    exists: true,
+    malformed: false,
+    path: filePath,
+    sizeBytes: Buffer.byteLength(source, "utf8"),
+    maxChars: USER_PROFILE_MAX_CHARS,
+  };
+}
+
+/**
+ * Rewrites only the region.
+ *
+ * Unlike AGENTS.md and main memory, a blank write never deletes the file:
+ * `user.md` holds runtime-appended entries the WebUI does not own, and
+ * dropping them would delete memory the runtime collected. Clearing the
+ * profile leaves the markers in place with an empty body, which reads as "no
+ * profile" to the composer without touching anything else.
+ */
+export async function writeUserProfile(
+  dataDir: string,
+  content: string,
+): Promise<WebuiUserProfileView> {
+  const filePath = userMemoryPath(dataDir);
+  let source = "";
+  try {
+    source = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (!isNodeError(error) || error.code !== "ENOENT") {
+      throw new WebuiProfileFileError("USER_PROFILE_UNAVAILABLE");
+    }
+  }
+
+  const region = locateUserProfileRegion(source);
+  if (region.kind === "malformed") {
+    throw new WebuiProfileFileError("USER_PROFILE_MALFORMED");
+  }
+
+  const next = renderUserProfileRegion(region, content);
+  if (next === undefined) {
+    // A blank write against a file that has no region: nothing to do, and
+    // nothing should be created.
+    return readUserProfile(dataDir);
+  }
+
+  await writeFileAtomic(
+    filePath,
+    region.kind === "absent" && source ? `${source.replace(/\s*$/, "")}\n\n${next}` : next,
+    ".user-profile-tmp",
+    "USER_PROFILE_UNAVAILABLE",
+  );
+  return readUserProfile(dataDir);
 }
 
 /* -------------------------------------------------------------------------- */

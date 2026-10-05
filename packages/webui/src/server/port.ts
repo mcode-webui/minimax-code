@@ -1283,6 +1283,28 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   setAgentMemory?(request: {
     readonly content: string;
   }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  /**
+   * The `关于你` region of `memory/user.md` — the text between the
+   * personalization markers. The rest of that file belongs to the memory
+   * collector, so a write must never be able to express "replace the file".
+   * A file whose markers are only half-present refuses the write rather than
+   * guessing where the region ends.
+   */
+  getUserProfile?(): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  setUserProfile?(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  /**
+   * The two memory switches. Optional because a host that predates the
+   * configuration capability still has to satisfy this port; a missing method
+   * is a capability gap, not a boolean value, and the handler reports it as
+   * such instead of rendering the panel as "memory is off".
+   */
+  getMemorySettings?(): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
+  setMemorySettings?(request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
   close(): Promise<void>;
 }
 

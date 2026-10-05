@@ -27,6 +27,8 @@ import type { WebuiHarnessPort } from "../../src/server/port.js";
 import type {
   WebuiAgentMemoryView,
   WebuiGlobalInstructionsView,
+  WebuiMemorySettingsView,
+  WebuiUserProfileView,
 } from "../../src/client/contracts.js";
 
 const INSTRUCTIONS: WebuiGlobalInstructionsView = {
@@ -41,6 +43,15 @@ const MEMORY: WebuiAgentMemoryView = {
   exists: true,
   sizeBytes: 111860,
 };
+const PROFILE: WebuiUserProfileView = {
+  content: "# User profile\nOccupation: staff engineer",
+  exists: true,
+  malformed: false,
+  path: "/data/memory/user.md",
+  sizeBytes: 1529,
+  maxChars: 10 * 1024,
+};
+const SWITCHES: WebuiMemorySettingsView = { enabled: true, proactive: false };
 
 /** A port that implements the four operations with unmistakable sentinels. */
 function portWithPersonalization(over: Partial<WebuiHarnessPort> = {}): WebuiHarnessPort {
@@ -61,6 +72,10 @@ function portWithPersonalization(over: Partial<WebuiHarnessPort> = {}): WebuiHar
     setGlobalInstructions: async () => INSTRUCTIONS,
     getAgentMemory: async () => MEMORY,
     setAgentMemory: async () => MEMORY,
+    getUserProfile: async () => PROFILE,
+    setUserProfile: async () => PROFILE,
+    getMemorySettings: async () => SWITCHES,
+    setMemorySettings: async () => SWITCHES,
     ...over,
   } as unknown as WebuiHarnessPort;
 }
@@ -124,6 +139,10 @@ describe("personalization operations reach the harness port through the service"
     ["setGlobalInstructions", { content: "# x\n" }, INSTRUCTIONS],
     ["getAgentMemory", undefined, MEMORY],
     ["setAgentMemory", { content: "# x\n" }, MEMORY],
+    ["getUserProfile", undefined, PROFILE],
+    ["setUserProfile", { content: "# x\n" }, PROFILE],
+    ["getMemorySettings", undefined, SWITCHES],
+    ["setMemorySettings", { proactive: true }, SWITCHES],
   ])("%s returns the port's own body", async (operation, body, expected) => {
     const url = await serve(portWithPersonalization());
     const frame = await call(url, operation, body);
@@ -145,5 +164,44 @@ describe("personalization operations reach the harness port through the service"
       requestId: "probe-getAgentMemory",
     });
     expect(String(frame.message)).toContain("does not expose agent memory");
+  });
+
+  it.each([
+    ["getUserProfile", "user profile reads"],
+    ["setMemorySettings", "memory settings updates"],
+  ])("reports %s as a gap rather than as a value", async (operation, expectedMessage) => {
+    // The switches are the case where "absent" and "off" are easy to confuse.
+    // A missing port member has to come back as an error frame, because a body
+    // of `{ enabled: false }` would render as a working panel that claims the
+    // user turned memory off.
+    const url = await serve(portWithPersonalization({ [operation]: undefined }));
+    const frame = await call(url, operation, operation === "setMemorySettings" ? { enabled: false } : undefined);
+
+    expect(frame).toMatchObject({
+      kind: "error",
+      code: WebuiErrorCode.harnessError,
+      requestId: `probe-${operation}`,
+    });
+    expect(String(frame.message)).toContain(expectedMessage);
+  });
+
+  it("passes the switch patch through to the port unchanged", async () => {
+    // The value has to arrive as the user set it. An optimistic UI that
+    // renders the toggle before the write is fine; a port that receives
+    // something other than the two booleans is not.
+    const seen: unknown[] = [];
+    const url = await serve(
+      portWithPersonalization({
+        setMemorySettings: async (request) => {
+          seen.push(request);
+          return { enabled: request?.enabled ?? true, proactive: request?.proactive ?? false };
+        },
+      }),
+    );
+
+    const frame = await call(url, "setMemorySettings", { enabled: false });
+
+    expect(seen).toEqual([{ enabled: false }]);
+    expect(frame.body).toEqual({ enabled: false, proactive: false });
   });
 });

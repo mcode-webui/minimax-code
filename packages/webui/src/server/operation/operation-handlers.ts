@@ -121,6 +121,10 @@ export type WebuiOperationPort = Pick<
   | "setGlobalInstructions"
   | "getAgentMemory"
   | "setAgentMemory"
+  | "getUserProfile"
+  | "setUserProfile"
+  | "getMemorySettings"
+  | "setMemorySettings"
 >;
 
 export type WebuiOperationHandlers = {
@@ -235,6 +239,22 @@ export function createOperationHandlers(
     setAgentMemory: async (_context, body) => {
       if (!port.setAgentMemory) throw new Error("runtime host does not expose agent memory updates");
       return { body: await port.setAgentMemory(body) };
+    },
+    getUserProfile: async () => {
+      if (!port.getUserProfile) throw new Error("runtime host does not expose user profile reads");
+      return { body: await port.getUserProfile() };
+    },
+    setUserProfile: async (_context, body) => {
+      if (!port.setUserProfile) throw new Error("runtime host does not expose user profile updates");
+      return { body: await port.setUserProfile(body) };
+    },
+    getMemorySettings: async () => {
+      if (!port.getMemorySettings) throw new Error("runtime host does not expose memory settings");
+      return { body: await port.getMemorySettings() };
+    },
+    setMemorySettings: async (_context, body) => {
+      if (!port.setMemorySettings) throw new Error("runtime host does not expose memory settings updates");
+      return { body: await port.setMemorySettings(body) };
     },
     getSessionUsage: async (_context, body) => ({ body: await port.getSessionUsage(body) }),
     getUsageQuota: async (_context, body) => ({ body: await port.getUsageQuota(body) }),

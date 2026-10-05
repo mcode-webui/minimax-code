@@ -43,13 +43,22 @@ import {
   isInsideDataDir,
   readAgentMemory,
   readGlobalInstructions,
+  readUserProfile,
+  USER_PROFILE_MAX_CHARS,
+  userMemoryPath,
+  WebuiProfileFileError,
   WEBUI_DEFAULT_AGENT_NAME,
   writeAgentMemory,
   writeGlobalInstructions,
+  writeUserProfile,
 } from "../../src/server/profile-files.js";
 import {
   getAgentMemoryOperation,
+  getMemorySettingsOperation,
+  getUserProfileOperation,
   setAgentMemoryOperation,
+  setMemorySettingsOperation,
+  setUserProfileOperation,
 } from "../../src/server/operation/operations.js";
 import { WebuiErrorCode } from "../../src/server/envelope.js";
 
@@ -68,6 +77,237 @@ describe("limits copied from the runtime", () => {
   it("pins the AGENTS.md cap and the default agent name", () => {
     expect(GLOBAL_INSTRUCTIONS_MAX_BYTES).toBe(32 * 1024);
     expect(WEBUI_DEFAULT_AGENT_NAME).toBe("mavis");
+  });
+});
+
+/**
+ * The personalization markers are a copied contract, not a shared import:
+ * nothing in this repository writes them, and `LocalPromptMemoryReader` — the
+ * interface that feeds the prompt composer — has no implementation here. So the
+ * literals are pinned below. If the desktop surface renames or re-pairs them,
+ * this suite fails instead of the panel quietly editing the wrong region.
+ */
+const PROFILE_START = "<!-- mavis-personalization:start -->";
+const PROFILE_END = "<!-- mavis-personalization:end -->";
+
+describe("the user profile marker contract", () => {
+  it("pins both marker literals and the injection ceiling", () => {
+    expect(PROFILE_START).toBe("<!-- mavis-personalization:start -->");
+    expect(PROFILE_END).toBe("<!-- mavis-personalization:end -->");
+    // `MEMORY_TAIL_INJECTION_CAP_CHARS` in `packages/shared/src/memory-limits.ts`.
+    // The composer truncates the profile to its tail past this mark, so text
+    // above it is stored but never reaches the model.
+    expect(USER_PROFILE_MAX_CHARS).toBe(10 * 1024);
+  });
+});
+
+describe("readUserProfile", () => {
+  it("returns the marked region and never the collector's entries", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      [
+        PROFILE_START,
+        "# User profile",
+        "Occupation: staff engineer",
+        PROFILE_END,
+        '<!-- mem-append-reason: collected -->',
+        "### a preference the runtime learned",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const view = await readUserProfile(dataDir);
+
+    expect(view.exists).toBe(true);
+    expect(view.malformed).toBe(false);
+    expect(view.content).toBe("# User profile\nOccupation: staff engineer");
+    // The size reported is the whole file, because the file is what the user
+    // would inspect on disk; the content is only the region.
+    expect(view.sizeBytes).toBeGreaterThan(view.content.length);
+  });
+
+  it("reports an absent file without creating one", async () => {
+    const dataDir = await tempDataDir();
+
+    const view = await readUserProfile(dataDir);
+
+    expect(view).toMatchObject({ content: "", exists: false, malformed: false, sizeBytes: 0 });
+    await expect(readFile(userMemoryPath(dataDir), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("treats a file with only collector entries as having no region", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      '<!-- mem-append-reason: collected -->\nsomething learned\n',
+      "utf8",
+    );
+
+    const view = await readUserProfile(dataDir);
+
+    // The file exists and is non-empty, but it holds no profile. Reporting
+    // this as "no profile" is the whole point: the panel must not show the
+    // collector's output as if the user had written it.
+    expect(view.exists).toBe(false);
+    expect(view.malformed).toBe(false);
+    expect(view.content).toBe("");
+    expect(view.sizeBytes).toBeGreaterThan(0);
+  });
+
+  it("flags a half-present marker pair instead of guessing the region", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}\nhalf a region\n`, "utf8");
+
+    const view = await readUserProfile(dataDir);
+
+    expect(view.malformed).toBe(true);
+    expect(view.exists).toBe(false);
+    expect(view.content).toBe("");
+  });
+});
+
+describe("writeUserProfile", () => {
+  it("replaces only the region and preserves everything around it", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    const before = `${PROFILE_START}\nold profile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`;
+    await writeFile(userMemoryPath(dataDir), before, "utf8");
+
+    const view = await writeUserProfile(dataDir, "new profile");
+
+    expect(view.content).toBe("new profile");
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    expect(after).toContain(PROFILE_START);
+    expect(after).toContain(PROFILE_END);
+    expect(after).toContain("<!-- mem-append-reason: kept -->");
+    expect(after).not.toContain("old profile");
+  });
+
+  it("appends a region to a file that has none, keeping the existing bytes", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(userMemoryPath(dataDir), "<!-- mem-append-reason: kept -->\nentry\n", "utf8");
+
+    await writeUserProfile(dataDir, "hello");
+
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    expect(after).toContain("<!-- mem-append-reason: kept -->");
+    expect(after).toContain(PROFILE_START);
+    expect((await readUserProfile(dataDir)).content).toBe("hello");
+  });
+
+  it("clears the region without deleting the file the collector appends to", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      `${PROFILE_START}\nprofile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\n`,
+      "utf8",
+    );
+
+    const view = await writeUserProfile(dataDir, "   ");
+
+    expect(view.content).toBe("");
+    // Blanking the profile must not remove the file: the entries in it were
+    // written by the memory collector, not by the user, and deleting them
+    // would lose memory the runtime gathered.
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    expect(after).toContain("<!-- mem-append-reason: kept -->");
+    expect(after).toContain(PROFILE_END);
+  });
+
+  it("creates nothing when asked to clear a file that has no region", async () => {
+    const dataDir = await tempDataDir();
+
+    await writeUserProfile(dataDir, "");
+
+    await expect(readFile(userMemoryPath(dataDir), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("refuses to write a half-marked file rather than duplicating the region", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    const damaged = `${PROFILE_START}\nhalf a region\n`;
+    await writeFile(userMemoryPath(dataDir), damaged, "utf8");
+
+    await expect(writeUserProfile(dataDir, "new profile")).rejects.toMatchObject({
+      code: "USER_PROFILE_MALFORMED",
+    });
+    // Unchanged, not repaired: a repair here would be a guess about where the
+    // region ends, and the wrong guess drops whatever sits after it.
+    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(damaged);
+  });
+
+  it("round-trips content the user would actually type", async () => {
+    const dataDir = await tempDataDir();
+    const profile = "Nickname: izzy\n\n## More about you\n\n- 开发走 dev-izzy\n- 不擅自 push";
+
+    await writeUserProfile(dataDir, profile);
+
+    expect((await readUserProfile(dataDir)).content).toBe(profile);
+  });
+
+  it("surfaces a stable error code rather than the raw filesystem error", async () => {
+    const dataDir = await tempDataDir();
+    // A directory where the file should be: readFile reports EISDIR, and the
+    // panel needs a code it can branch on rather than a platform string.
+    await mkdir(userMemoryPath(dataDir), { recursive: true });
+
+    await expect(readUserProfile(dataDir)).rejects.toBeInstanceOf(WebuiProfileFileError);
+  });
+});
+
+describe("user profile and memory settings operations", () => {
+  it("takes no parameters on the two reads, matching the agent-memory read", () => {
+    // The transport sends `{}` for every read, so an object body is accepted
+    // and ignored rather than rejected — the same contract `getAgentMemory`
+    // already has. Only a non-object frame is a protocol error.
+    expect(getUserProfileOperation.validate(undefined)).toEqual({ ok: true, body: undefined });
+    expect(getUserProfileOperation.validate({})).toEqual({ ok: true, body: undefined });
+    expect(getMemorySettingsOperation.validate({})).toEqual({ ok: true, body: undefined });
+    expect(getUserProfileOperation.validate([])).toMatchObject({ ok: false });
+    expect(getMemorySettingsOperation.validate("x")).toMatchObject({ ok: false });
+  });
+
+  it("requires a string content on the profile write", () => {
+    expect(setUserProfileOperation.validate({ content: "x" })).toEqual({
+      ok: true,
+      body: { content: "x" },
+    });
+    // An absent content must not read as "clear the profile": the user never
+    // opened the editor, and a malformed frame is not consent to delete.
+    expect(setUserProfileOperation.validate({})).toMatchObject({
+      ok: false,
+      code: WebuiErrorCode.invalidBody,
+    });
+    expect(setUserProfileOperation.validate({ content: 1 })).toMatchObject({ ok: false });
+  });
+
+  it("accepts either switch alone and rejects anything else", () => {
+    expect(setMemorySettingsOperation.validate({ enabled: false })).toEqual({
+      ok: true,
+      body: { enabled: false },
+    });
+    expect(setMemorySettingsOperation.validate({ proactive: true })).toEqual({
+      ok: true,
+      body: { proactive: true },
+    });
+    // The frame is two booleans and nothing else. A general config payload
+    // would let a caller reach the API-key roots through this operation.
+    expect(setMemorySettingsOperation.validate({ minmax_api: { key: "x" } })).toEqual({
+      ok: true,
+      body: {},
+    });
+    expect(setMemorySettingsOperation.validate({ enabled: "off" })).toMatchObject({
+      ok: false,
+      code: WebuiErrorCode.invalidBody,
+    });
+    expect(setMemorySettingsOperation.validate(null)).toMatchObject({ ok: false });
   });
 });
 

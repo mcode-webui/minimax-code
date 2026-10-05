@@ -741,6 +741,39 @@ function createPeripheralApplication(
         readLocalPermissionMode(host.apiHost.configGetter().permissionMode),
       setPermissionMode: ({ mode }) =>
         host.apiHost.setProcessLocalPermissionMode(mode),
+      /**
+       * Reads the two long-term-memory switches with the same defaults the
+       * config declares (`packages/config/src/config.ts`: `enabled` true,
+       * `proactive` false). A missing `memory` tree is not an error — it is the
+       * documented default state, and reporting it as "off" would be a lie the
+       * settings UI would then write back.
+       */
+      getMemorySettings: async () => {
+        const memory = host.apiHost.configGetter().memory;
+        return {
+          enabled: memory?.enabled !== false,
+          proactive: memory?.proactive === true,
+        };
+      },
+      /**
+       * `put` rather than the `preparedCommitPayload` argument: that path does
+       * a shallow `Object.assign`, so passing `{ memory: { enabled, proactive } }`
+       * would silently drop `memory.dailyDigest` from the user's config. `put`
+       * deep-merges into the existing subtree and touches one key per call.
+       */
+      setMemorySettings: async ({ enabled, proactive }) => {
+        const put: Record<string, boolean> = {};
+        if (enabled !== undefined) put.enabled = enabled;
+        if (proactive !== undefined) put.proactive = proactive;
+        if (Object.keys(put).length > 0) {
+          await updateLocalConfigFile({ field: "memory", put });
+        }
+        const memory = host.apiHost.configGetter().memory;
+        return {
+          enabled: memory?.enabled !== false,
+          proactive: memory?.proactive === true,
+        };
+      },
     },
     backgroundTasks: {
       list: async ({

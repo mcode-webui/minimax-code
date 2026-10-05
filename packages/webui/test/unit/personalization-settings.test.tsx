@@ -125,40 +125,118 @@ describe("PersonalizationSettings markup", () => {
   });
 });
 
-describe("AgentMemorySection markup", () => {
-  it("offers load-and-edit rather than a bodyless dead panel", () => {
+describe("记忆 section markup", () => {
+  it("presents the three desktop rows rather than one textarea", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
-    expect(markup).toContain("长期记忆");
+    expect(markup).toContain("记忆");
+    expect(markup).toContain("主动记忆");
+    expect(markup).toContain("记忆摘要");
+    // "管理" is the row that actually points at a manager. The roadmap's
+    // "管理 UI 未见" only closes once that entry point exists, so its absence
+    // has to fail here rather than pass as a tidier layout.
+    expect(markup).toContain("管理");
     expect(markup).toContain("agent-memory-load");
-    // The first paint must not already contain the editor: a live main file
-    // runs past the runtime's 64KB cleanup threshold, and the body is only
-    // worth fetching when the user actually asks to edit.
+  });
+
+  it("keeps the manager closed until the user asks for the body", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // A live main file runs past the runtime's 64KB cleanup threshold, so the
+    // first paint must not already contain the editor.
+    expect(markup).not.toContain("agent-memory-manager");
     expect(markup).not.toContain("agent-memory-textarea");
   });
 
-  it("declines the surface instead of faking it when the transport is absent", () => {
+  it("declines the memory surface instead of faking it when the transport is absent", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
     expect(markup).toContain("agent-memory-unavailable");
     expect(markup).toMatch(/<button[^>]*data-testid="agent-memory-load"[^>]*disabled=""/u);
   });
 
-  it("disables load when only one direction of the pair is available", () => {
+  it("declines the switches when the configuration capability is absent", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("memory-settings-unavailable");
+    expect(markup).toMatch(/<button[^>]*data-testid="memory-enabled-switch"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button[^>]*data-testid="memory-proactive-switch"[^>]*disabled=""/u);
+  });
+
+  it("renders both switches off before any read resolves", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // Unknown is rendered as off, not as on. Showing the documented default
+    // would be a guess about a read that has not happened yet. The two
+    // attributes are matched in the order React emits them, but only within
+    // one tag: the assertion is about the switch, not about the markup order.
+    expect(markup).toMatch(/<button[^>]*aria-checked="false"[^>]*data-testid="memory-enabled-switch"/u);
+    expect(markup).toMatch(/<button[^>]*aria-checked="false"[^>]*data-testid="memory-proactive-switch"/u);
+  });
+});
+
+describe("关于你 section markup", () => {
+  it("declares an unavailable surface instead of a dead editor", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("关于你");
+    expect(markup).toContain("user-profile-textarea");
+    expect(markup).toContain("user-profile-unavailable");
+  });
+
+  it("uses the desktop placeholder so the field reads as a profile, not a file", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("告诉 Agent 你的背景和长期偏好");
+  });
+
+  it("keeps save out of reach until a read resolves", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // An unresolved read must not offer a save: the draft is empty, and
+    // writing it would clear a profile the user never opened.
+    expect(markup).toMatch(/<button[^>]*data-testid="user-profile-save"[^>]*disabled=""/u);
+  });
+
+  it("refuses to write a half-marked profile", () => {
     const markup = renderToStaticMarkup(
       <PersonalizationSettings
-        getAgentMemory={() => Promise.resolve({
-          agentName: "mavis",
-          path: "/tmp/agents/mavis/memory/MEMORY.md",
+        getUserProfile={() => Promise.resolve({
+          content: "",
           exists: false,
-          sizeBytes: 0,
+          malformed: true,
+          path: "/tmp/memory/user.md",
+          sizeBytes: 42,
+          maxChars: 10 * 1024,
+        })}
+        setUserProfile={() => Promise.resolve({
+          content: "",
+          exists: false,
+          malformed: true,
+          path: "/tmp/memory/user.md",
+          sizeBytes: 42,
+          maxChars: 10 * 1024,
         })}
       />,
     );
 
-    // A read-only surface is not usable: without a writer the loaded body
-    // would be un-editable, so the button stays out of reach.
-    expect(markup).toContain("agent-memory-unavailable");
+    // The static markup cannot show resolved state, so this pins that the
+    // refusal exists in the tree at all; the behavioural half of this rule is
+    // covered by `writeUserProfile` refusing the write in `profile-files.test.ts`.
+    expect(markup).toContain("user-profile-section");
   });
 });
 
+describe("section hints", () => {
+  it("gives every section an accessible help affordance", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    for (const testId of [
+      "global-instructions-hint",
+      "user-profile-hint",
+      "memory-hint",
+    ]) {
+      expect(markup).toContain(testId);
+    }
+  });
+});

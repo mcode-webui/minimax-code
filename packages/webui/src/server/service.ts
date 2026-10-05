@@ -323,6 +323,22 @@ export class WebuiService {
         if (!this.port.setAgentMemory) throw new Error("runtime host does not expose agent memory updates");
         return this.port.setAgentMemory(request);
       },
+      getUserProfile: async () => {
+        if (!this.port.getUserProfile) throw new Error("runtime host does not expose user profile reads");
+        return this.port.getUserProfile();
+      },
+      setUserProfile: async (request) => {
+        if (!this.port.setUserProfile) throw new Error("runtime host does not expose user profile updates");
+        return this.port.setUserProfile(request);
+      },
+      getMemorySettings: async () => {
+        if (!this.port.getMemorySettings) throw new Error("runtime host does not expose memory settings");
+        return this.port.getMemorySettings();
+      },
+      setMemorySettings: async (request) => {
+        if (!this.port.setMemorySettings) throw new Error("runtime host does not expose memory settings updates");
+        return this.port.setMemorySettings(request);
+      },
       getSessionUsage: (request) => this.port.getSessionUsage(request),
       getUsageQuota: (request) => this.port.getUsageQuota(request),
       getSigninPanel: () => this.port.getSigninPanel(),

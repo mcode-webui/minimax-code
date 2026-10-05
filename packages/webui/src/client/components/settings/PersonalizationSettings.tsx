@@ -1,21 +1,32 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { ToggleSwitch } from "../ToggleSwitch.js";
 import type {
   WebuiAgentMemoryView,
   WebuiGlobalInstructionsView,
+  WebuiMemorySettingsView,
+  WebuiUserProfileView,
 } from "../../contracts.js";
 
 /**
- * Personalization panel — the profile-wide `AGENTS.md` editor.
+ * Personalization panel — the three blocks the desktop surface ships:
+ * 自定义指令, 关于你, 记忆.
  *
- * Scope note for reviewers: this lands in the same settings modal that the P
- * area (设置中心) also touches, but the two do not overlap in behaviour. P owns
- * the shell — tab list, groups, search filtering. This component owns one tab
- * body and the two transport calls behind it. The only shared line is the
- * `disabled` flag on the `custom-instructions` tab definition in
- * `SettingsModal.tsx`, which this PR removes.
+ * Shape note for reviewers: the desktop presents 记忆 as a card of three rows
+ * (two switches plus a 管理 action that opens the memory manager), not as a
+ * single textarea. The earlier revision rendered a standalone 长期记忆 editor;
+ * it was the same file and the same operations, just a different surface, and
+ * the roadmap's "管理 UI 未见" is only closed by the row that points at a
+ * manager.
+ *
+ * Scope note: this lands in the same settings modal that the P area (设置中心)
+ * also touches, but the two do not overlap in behaviour. P owns the shell — tab
+ * list, groups, search filtering. This component owns one tab body and the
+ * transport calls behind it. The only shared line is the `disabled` flag on the
+ * `custom-instructions` tab definition in `SettingsModal.tsx`, which the earlier
+ * PR removed.
  */
 
-const PLACEHOLDER = [
+const INSTRUCTIONS_PLACEHOLDER = [
   "# Agents 全局设定",
   "",
   "## 技术背景",
@@ -28,6 +39,77 @@ const PLACEHOLDER = [
   "留空保存会删除该文件。",
 ].join("\n");
 
+const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
+
+/**
+ * The section title's help affordance.
+ *
+ * A `title` attribute rather than a hover popover: it needs no portal, no
+ * positioning and no timer, and it is what the browser already exposes to
+ * assistive tech as the accessible name. The text is the same string the
+ * desktop puts in its popover, so the two surfaces do not drift apart.
+ */
+function InfoHint({ text, testId }: { readonly text: string; readonly testId: string }): ReactElement {
+  return (
+    <span
+      data-testid={testId}
+      className="webui-settings-info-hint"
+      role="img"
+      aria-label={text}
+      title={text}
+    >
+      i
+    </span>
+  );
+}
+
+function SectionHeader({
+  title,
+  hintTestId,
+  hint,
+  children,
+}: {
+  readonly title: string;
+  readonly hint: string;
+  readonly hintTestId: string;
+  readonly children?: ReactNode;
+}): ReactElement {
+  return (
+    <div className="webui-personalization-header">
+      {/* Title and hint travel together: the header is `space-between`, so
+          three loose children would push the action button into the middle. */}
+      <div className="webui-personalization-title">
+        <h3>{title}</h3>
+        <InfoHint text={hint} testId={hintTestId} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** One switch row inside the 记忆 card. Mirrors the desktop's row grammar. */
+function MemoryRow({
+  title,
+  description,
+  testId,
+  children,
+}: {
+  readonly title: string;
+  readonly description: string;
+  readonly testId: string;
+  readonly children: ReactNode;
+}): ReactElement {
+  return (
+    <div data-testid={testId} className="webui-generic-row">
+      <div className="webui-generic-row-copy">
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </div>
+      <div className="webui-generic-row-control">{children}</div>
+    </div>
+  );
+}
+
 export interface PersonalizationSettingsProps {
   readonly getGlobalInstructions?: () => Promise<WebuiGlobalInstructionsView>;
   readonly setGlobalInstructions?: (request: {
@@ -39,6 +121,15 @@ export interface PersonalizationSettingsProps {
   readonly setAgentMemory?: (request: {
     readonly content: string;
   }) => Promise<WebuiAgentMemoryView>;
+  readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
+  readonly setUserProfile?: (request: {
+    readonly content: string;
+  }) => Promise<WebuiUserProfileView>;
+  readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
+  readonly setMemorySettings?: (request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }) => Promise<WebuiMemorySettingsView>;
 }
 
 /**
@@ -81,11 +172,27 @@ export function resolveEditorSeed(input: {
   return input.legacyDraft.trim() ? input.legacyDraft : "";
 }
 
-export function PersonalizationSettings({
+export function PersonalizationSettings(props: PersonalizationSettingsProps): ReactElement {
+  return (
+    <div data-testid="content-body" className="webui-personalization-page">
+      <GlobalInstructionsSection {...props} />
+      <UserProfileSection
+        getUserProfile={props.getUserProfile}
+        setUserProfile={props.setUserProfile}
+      />
+      <MemorySection
+        getAgentMemory={props.getAgentMemory}
+        setAgentMemory={props.setAgentMemory}
+        getMemorySettings={props.getMemorySettings}
+        setMemorySettings={props.setMemorySettings}
+      />
+    </div>
+  );
+}
+
+function GlobalInstructionsSection({
   getGlobalInstructions,
   setGlobalInstructions,
-  getAgentMemory,
-  setAgentMemory,
 }: PersonalizationSettingsProps): ReactElement {
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState<string>();
@@ -151,107 +258,273 @@ export function PersonalizationSettings({
   }, [draft, overLimit, saving, setGlobalInstructions]);
 
   return (
-    <div data-testid="content-body" className="webui-personalization-page">
-      <section
-        data-testid="global-instructions-section"
-        className="webui-generic-section"
+    <section
+      data-testid="global-instructions-section"
+      className="webui-generic-section"
+    >
+      <SectionHeader
+        title="自定义指令"
+        hint="注入每个会话的项目级自定义指令（AGENTS.md）。"
+        hintTestId="global-instructions-hint"
       >
-        <div className="webui-personalization-header">
-          <h3>自定义指令</h3>
-          <button
-            type="button"
-            data-testid="global-instructions-save"
-            className="webui-mavis-button webui-mavis-button-gray"
-            disabled={!dirty || saving || overLimit || !setGlobalInstructions}
-            onClick={() => void save()}
+        <button
+          type="button"
+          data-testid="global-instructions-save"
+          className="webui-mavis-button webui-mavis-button-gray"
+          disabled={!dirty || saving || overLimit || !setGlobalInstructions}
+          onClick={() => void save()}
+        >
+          保存
+        </button>
+      </SectionHeader>
+      <div className="webui-generic-card">
+        <textarea
+          data-testid="global-instructions-textarea"
+          className="webui-personalization-textarea"
+          value={draft}
+          spellCheck={false}
+          placeholder={INSTRUCTIONS_PLACEHOLDER}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSaved(false);
+          }}
+        />
+        <div className="webui-personalization-meta">
+          <span data-testid="global-instructions-path">{filePath}</span>
+          <span
+            data-testid="global-instructions-size"
+            className={overLimit ? "is-over-limit" : undefined}
           >
-            保存
-          </button>
+            {byteLength} / {maxBytes} 字节
+          </span>
         </div>
-        <div className="webui-generic-card">
-          <textarea
-            data-testid="global-instructions-textarea"
-            className="webui-personalization-textarea"
-            value={draft}
-            spellCheck={false}
-            placeholder={PLACEHOLDER}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setSaved(false);
-            }}
-          />
-          <div className="webui-personalization-meta">
-            <span data-testid="global-instructions-path">{filePath}</span>
-            <span
-              data-testid="global-instructions-size"
-              className={overLimit ? "is-over-limit" : undefined}
-            >
-              {byteLength} / {maxBytes} 字节
-            </span>
-          </div>
-          {overLimit ? (
-            <p role="alert" data-testid="global-instructions-over-limit" className="webui-settings-error">
-              内容超出 {maxBytes} 字节上限，请精简后再保存。
-            </p>
-          ) : null}
-          {error ? (
-            <p role="alert" data-testid="global-instructions-error" className="webui-settings-error">
-              {error}
-            </p>
-          ) : null}
-          {saved && !dirty ? (
-            <p data-testid="global-instructions-saved" className="webui-personalization-saved">
-              已保存
-            </p>
-          ) : null}
-          {!setGlobalInstructions ? (
-            <p data-testid="global-instructions-unavailable" className="webui-settings-error">
-              当前运行时不支持自定义指令读写。
-            </p>
-          ) : null}
-        </div>
-      </section>
-      <AgentMemorySection
-        getAgentMemory={getAgentMemory}
-        setAgentMemory={setAgentMemory}
-      />
-    </div>
+        {overLimit ? (
+          <p role="alert" data-testid="global-instructions-over-limit" className="webui-settings-error">
+            内容超出 {maxBytes} 字节上限，请精简后再保存。
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" data-testid="global-instructions-error" className="webui-settings-error">
+            {error}
+          </p>
+        ) : null}
+        {saved && !dirty ? (
+          <p data-testid="global-instructions-saved" className="webui-personalization-saved">
+            已保存
+          </p>
+        ) : null}
+        {!setGlobalInstructions ? (
+          <p data-testid="global-instructions-unavailable" className="webui-settings-error">
+            当前运行时不支持自定义指令读写。
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
-export interface AgentMemorySectionProps {
+export interface UserProfileSectionProps {
+  readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
+  readonly setUserProfile?: (request: {
+    readonly content: string;
+  }) => Promise<WebuiUserProfileView>;
+}
+
+/**
+ * 关于你 — the marked region of `user.md`.
+ *
+ * The editor shows the region and nothing else. The same file also carries
+ * `mem-append-reason` entries the memory collector appends, and the
+ * `<user_profile>` prompt block is built from the marked region only, so
+ * exposing the whole file would both leak entries the user never wrote and let
+ * them edit text the model never reads.
+ *
+ * A malformed file (one marker without the other) renders as a refusal rather
+ * than an empty editor: an empty editor invites a save, and that save is
+ * exactly the write the server refuses.
+ */
+export function UserProfileSection({
+  getUserProfile,
+  setUserProfile,
+}: UserProfileSectionProps): ReactElement {
+  const [draft, setDraft] = useState<string>();
+  const [maxChars, setMaxChars] = useState(10 * 1024);
+  const [malformed, setMalformed] = useState(false);
+  const [filePath, setFilePath] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!getUserProfile) return;
+    let cancelled = false;
+    void getUserProfile()
+      .then((value) => {
+        if (cancelled || !value) return;
+        setDraft(value.content);
+        setMaxChars(value.maxChars);
+        setMalformed(value.malformed);
+        setFilePath(value.path);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getUserProfile]);
+
+  const length = draft?.length ?? 0;
+  const overLimit = length > maxChars;
+  const saveable =
+    draft !== undefined && !malformed && Boolean(setUserProfile) && !overLimit;
+
+  const save = useCallback(async () => {
+    if (!setUserProfile || saving || draft === undefined || malformed) return;
+    setSaving(true);
+    setError(undefined);
+    try {
+      const next = await setUserProfile({ content: draft });
+      if (next) {
+        setDraft(next.content);
+        setMaxChars(next.maxChars);
+        setMalformed(next.malformed);
+        setFilePath(next.path);
+      }
+      setSaved(true);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, malformed, saving, setUserProfile]);
+
+  return (
+    <section data-testid="user-profile-section" className="webui-generic-section">
+      <SectionHeader
+        title="关于你"
+        hint="注入每个会话的 <user_profile>，只包含这段标记之间的内容。"
+        hintTestId="user-profile-hint"
+      >
+        <button
+          type="button"
+          data-testid="user-profile-save"
+          className="webui-mavis-button webui-mavis-button-gray"
+          disabled={!saveable || saving}
+          onClick={() => void save()}
+        >
+          保存
+        </button>
+      </SectionHeader>
+      <div className="webui-generic-card">
+        <textarea
+          data-testid="user-profile-textarea"
+          className="webui-personalization-textarea"
+          value={draft ?? ""}
+          spellCheck={false}
+          placeholder={PROFILE_PLACEHOLDER}
+          disabled={malformed || draft === undefined}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSaved(false);
+          }}
+        />
+        <div className="webui-personalization-meta">
+          <span data-testid="user-profile-path">{filePath}</span>
+          <span
+            data-testid="user-profile-size"
+            className={overLimit ? "is-over-limit" : undefined}
+          >
+            {length} / {maxChars} 字符
+          </span>
+        </div>
+        {overLimit ? (
+          <p role="alert" data-testid="user-profile-over-limit" className="webui-settings-error">
+            超过 {maxChars} 字符后，超出部分不会注入提示，请精简后再保存。
+          </p>
+        ) : null}
+        {malformed ? (
+          <p role="alert" data-testid="user-profile-malformed" className="webui-settings-error">
+            user.md 的标记不完整，为避免覆盖记忆中已收集的内容，这里不做写入。
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" data-testid="user-profile-error" className="webui-settings-error">
+            {error}
+          </p>
+        ) : null}
+        {saved && !saving ? (
+          <p data-testid="user-profile-saved" className="webui-personalization-saved">
+            已保存
+          </p>
+        ) : null}
+        {!getUserProfile || !setUserProfile ? (
+          <p data-testid="user-profile-unavailable" className="webui-settings-error">
+            当前运行时不支持「关于你」读写。
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export interface MemorySectionProps {
   readonly getAgentMemory?: (request?: {
     readonly includeContent?: boolean;
   }) => Promise<WebuiAgentMemoryView>;
   readonly setAgentMemory?: (request: {
     readonly content: string;
   }) => Promise<WebuiAgentMemoryView>;
+  readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
+  readonly setMemorySettings?: (request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }) => Promise<WebuiMemorySettingsView>;
 }
 
 /**
- * 长期记忆 — the per-agent main memory file.
+ * 记忆 — the two switches plus the entry point to the memory manager.
  *
- * Summary first, body on request. A live main file runs past the runtime's
- * 64KB cleanup threshold (the profile this was built against held 110KB), so
- * the section renders the size and mtime from a bodyless read and only fetches
- * the text when the user asks to edit it. Rendering the whole file into a
- * textarea up front would make the settings tab pay for a large payload and a
- * large DOM on every open to display a row of metadata.
+ * Both switches write through to the shared config, so they are global: the
+ * WebUI is one surface of the desktop app, not a separate settings scope. That
+ * is why the panel reports what it wrote rather than implying a per-session
+ * effect, and why `memory.enabled` is the only switch here — it is the master
+ * gate the runtime already honours, and the second one is meaningless without
+ * it.
  *
- * This is main memory, not `writeMemorySummary` — the runtime rejects summary
- * content over 4KB, and the desktop's 记忆概要 modal shows a 68KB document, so
- * the two cannot be the same store.
+ * The manager stays closed until the user asks for it: a live main file runs
+ * past the runtime's 64KB cleanup threshold, so the row must not pull the body
+ * on every panel open.
  */
-export function AgentMemorySection({
+export function MemorySection({
   getAgentMemory,
   setAgentMemory,
-}: AgentMemorySectionProps): ReactElement {
+  getMemorySettings,
+  setMemorySettings,
+}: MemorySectionProps): ReactElement {
+  const [settings, setSettings] = useState<WebuiMemorySettingsView>();
+  const [toggling, setToggling] = useState(false);
   const [summary, setSummary] = useState<WebuiAgentMemoryView>();
-  const [draft, setDraft] = useState<string>();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!getMemorySettings) return;
+    let cancelled = false;
+    void getMemorySettings()
+      .then((value) => {
+        if (cancelled || !value) return;
+        setSettings(value);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getMemorySettings]);
 
   useEffect(() => {
     if (!getAgentMemory) return;
@@ -270,16 +543,144 @@ export function AgentMemorySection({
     };
   }, [getAgentMemory]);
 
+  const toggle = useCallback(
+    async (patch: { readonly enabled?: boolean; readonly proactive?: boolean }) => {
+      if (!setMemorySettings || toggling) return;
+      setToggling(true);
+      setError(undefined);
+      // Optimistic, so the switch does not lag a click by a round trip; a
+      // failed write puts the server's value back rather than leaving the UI
+      // claiming a state the config never took.
+      const previous = settings;
+      setSettings((current) => ({ enabled: current?.enabled ?? true, proactive: current?.proactive ?? false, ...patch }));
+      try {
+        const next = await setMemorySettings(patch);
+        if (next) setSettings(next);
+      } catch (cause: unknown) {
+        if (previous) setSettings(previous);
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setToggling(false);
+      }
+    },
+    [setMemorySettings, settings, toggling],
+  );
+
+  return (
+    <section data-testid="memory-section" className="webui-generic-section">
+      <SectionHeader
+        title="记忆"
+        hint="长期记忆的开关与查看入口。开关写入共享配置，对整个桌面端生效。"
+        hintTestId="memory-hint"
+      />
+      <div className="webui-generic-card">
+        <MemoryRow
+          title="记忆"
+          description="在提示、提醒和自动维护中使用已保存的记忆"
+          testId="memory-enabled-row"
+        >
+          <ToggleSwitch
+            checked={settings?.enabled ?? false}
+            label="记忆"
+            testId="memory-enabled-switch"
+            disabled={toggling || !setMemorySettings}
+            onChange={(checked) => void toggle({ enabled: checked })}
+          />
+        </MemoryRow>
+        <MemoryRow
+          title="主动记忆"
+          description="主动识别并通过 Memory 保存值得长期保留的偏好和可复用经验"
+          testId="memory-proactive-row"
+        >
+          <ToggleSwitch
+            checked={settings?.proactive ?? false}
+            label="主动记忆"
+            testId="memory-proactive-switch"
+            disabled={toggling || !setMemorySettings}
+            onChange={(checked) => void toggle({ proactive: checked })}
+          />
+        </MemoryRow>
+        <MemoryRow
+          title="记忆摘要"
+          description="查看、编辑或删除 MiniMax 已整理的长期记忆。"
+          testId="memory-summary-row"
+        >
+          <span data-testid="memory-summary-size" className="webui-personalization-meta">
+            {summary?.exists ? `${summary.sizeBytes} 字节` : "暂无"}
+          </span>
+          <button
+            type="button"
+            data-testid="agent-memory-load"
+            className="webui-mavis-button webui-mavis-button-gray"
+            disabled={!getAgentMemory || !setAgentMemory}
+            onClick={() => setManaging((open) => !open)}
+          >
+            管理
+          </button>
+        </MemoryRow>
+        {!getMemorySettings || !setMemorySettings ? (
+          <p data-testid="memory-settings-unavailable" className="webui-settings-error">
+            当前运行时不支持记忆开关。
+          </p>
+        ) : null}
+        {!getAgentMemory || !setAgentMemory ? (
+          <p data-testid="agent-memory-unavailable" className="webui-settings-error">
+            当前运行时不支持长期记忆读写。
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" data-testid="memory-error" className="webui-settings-error">
+            {error}
+          </p>
+        ) : null}
+        {managing ? (
+          <AgentMemoryManager
+            getAgentMemory={getAgentMemory}
+            setAgentMemory={setAgentMemory}
+          />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export interface AgentMemoryManagerProps {
+  readonly getAgentMemory?: (request?: {
+    readonly includeContent?: boolean;
+  }) => Promise<WebuiAgentMemoryView>;
+  readonly setAgentMemory?: (request: {
+    readonly content: string;
+  }) => Promise<WebuiAgentMemoryView>;
+}
+
+/**
+ * The body behind 管理.
+ *
+ * Summary first, body on request: the first paint must not already contain the
+ * editor, because a live main file runs past the runtime's 64KB cleanup
+ * threshold and the row that opened the manager only needed the size.
+ *
+ * This is main memory, not `writeMemorySummary` — the runtime rejects summary
+ * content over 4KB, so a textarea wired to the summary would reject exactly the
+ * content this panel exists to show.
+ */
+export function AgentMemoryManager({
+  getAgentMemory,
+  setAgentMemory,
+}: AgentMemoryManagerProps): ReactElement {
+  const [draft, setDraft] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string>();
+
   const load = useCallback(async () => {
     if (!getAgentMemory || loading) return;
     setLoading(true);
     setError(undefined);
     try {
       const value = await getAgentMemory({ includeContent: true });
-      if (value) {
-        setSummary(value);
-        setDraft(value.content ?? "");
-      }
+      if (value) setDraft(value.content ?? "");
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -292,8 +693,7 @@ export function AgentMemorySection({
     setSaving(true);
     setError(undefined);
     try {
-      const next = await setAgentMemory({ content: draft });
-      if (next) setSummary(next);
+      await setAgentMemory({ content: draft });
       setSaved(true);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -302,16 +702,21 @@ export function AgentMemorySection({
     }
   }, [draft, saving, setAgentMemory]);
 
-  const editing = draft !== undefined;
-
   return (
-    <section
-      data-testid="agent-memory-section"
-      className="webui-generic-section"
-    >
+    <div data-testid="agent-memory-manager" className="webui-personalization-manager">
       <div className="webui-personalization-header">
-        <h3>长期记忆</h3>
-        {editing ? (
+        <span className="webui-personalization-meta">记忆内容</span>
+        {draft === undefined ? (
+          <button
+            type="button"
+            data-testid="agent-memory-body-load"
+            className="webui-mavis-button webui-mavis-button-gray"
+            disabled={loading || !getAgentMemory}
+            onClick={() => void load()}
+          >
+            {loading ? "加载中…" : "加载并编辑"}
+          </button>
+        ) : (
           <button
             type="button"
             data-testid="agent-memory-save"
@@ -321,53 +726,34 @@ export function AgentMemorySection({
           >
             保存
           </button>
-        ) : (
-          <button
-            type="button"
-            data-testid="agent-memory-load"
-            className="webui-mavis-button webui-mavis-button-gray"
-            disabled={loading || !getAgentMemory}
-            onClick={() => void load()}
-          >
-            {loading ? "加载中…" : "加载并编辑"}
-          </button>
         )}
       </div>
-      <div className="webui-generic-card">
-        {editing ? (
-          <textarea
-            data-testid="agent-memory-textarea"
-            className="webui-personalization-textarea"
-            value={draft}
-            spellCheck={false}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setSaved(false);
-            }}
-          />
-        ) : (
-          <p data-testid="agent-memory-summary" className="webui-personalization-meta">
-            {summary?.exists
-              ? `${summary.sizeBytes} 字节 · ${summary.path}`
-              : "暂无长期记忆文件"}
-          </p>
-        )}
-        {error ? (
-          <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
-            {error}
-          </p>
-        ) : null}
-        {saved && !saving ? (
-          <p data-testid="agent-memory-saved" className="webui-personalization-saved">
-            已保存
-          </p>
-        ) : null}
-        {!getAgentMemory || !setAgentMemory ? (
-          <p data-testid="agent-memory-unavailable" className="webui-settings-error">
-            当前运行时不支持长期记忆读写。
-          </p>
-        ) : null}
-      </div>
-    </section>
+      {draft === undefined ? (
+        <p data-testid="agent-memory-summary" className="webui-personalization-meta">
+          加载后可查看、编辑或删除长期记忆。
+        </p>
+      ) : (
+        <textarea
+          data-testid="agent-memory-textarea"
+          className="webui-personalization-textarea"
+          value={draft}
+          spellCheck={false}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSaved(false);
+          }}
+        />
+      )}
+      {error ? (
+        <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
+          {error}
+        </p>
+      ) : null}
+      {saved && !saving ? (
+        <p data-testid="agent-memory-saved" className="webui-personalization-saved">
+          已保存
+        </p>
+      ) : null}
+    </div>
   );
 }

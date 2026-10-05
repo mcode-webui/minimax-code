@@ -352,6 +352,9 @@
    * the card below keeps the generic horizontal inset. */
   .webui-personalization-page { display: flex; width: 100%; min-height: 0; max-width: 704px; flex: 1; margin: 0 auto; flex-direction: column; gap: var(--spacing_16); padding: 0 0 var(--spacing_32); }
   .webui-personalization-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
+  .webui-personalization-title { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); }
+  .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
+  .webui-personalization-manager { display: flex; width: 100%; flex-direction: column; gap: var(--spacing_8); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   .webui-personalization-textarea { width: 100%; min-height: 320px; resize: vertical; border: none; outline: none; background: transparent; padding: var(--spacing_12); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
   .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }

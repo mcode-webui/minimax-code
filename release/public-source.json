@@ -3671,6 +3671,7 @@
     "packages/webui/test/unit/context-breakdown.test.ts",
     "packages/webui/test/unit/context-usage-popover.test.ts",
     "packages/webui/test/unit/conversation-usage-banner.test.tsx",
+    "packages/webui/test/unit/diff-mutation-error.test.tsx",
     "packages/webui/test/unit/fork-session-operation.test.ts",
     "packages/webui/test/unit/markdown-autolink-double-anchor.test.tsx",
     "packages/webui/test/unit/markdown-codeblock-c1-highlight.test.tsx",

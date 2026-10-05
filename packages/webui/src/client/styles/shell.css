@@ -4255,6 +4255,52 @@
     opacity: 0.5;
   }
 
+  /* A revert/reapply that did not apply. Deliberately a footnote on the live
+     card rather than a replacement for it: the file list above is stale, but
+     hiding the card would also hide the control that retries. */
+  .webui-diff-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 12px;
+    border-top: 0.5px solid var(--border_default);
+    background: var(--bg_interaction_secondary_default);
+    font-size: 12px;
+  }
+
+  .webui-diff-error-copy {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .webui-diff-error-title {
+    color: var(--text_default_primary);
+  }
+
+  /* The reason is whatever the runtime reported, so it can be long and will
+     often be a path; wrapping it keeps the dismiss control on the card. */
+  .webui-diff-error-reason {
+    color: var(--text_label_danger_secondary_default);
+    overflow-wrap: anywhere;
+  }
+
+  .webui-diff-error-dismiss {
+    flex: none;
+    height: 24px;
+    padding: 0 8px;
+    border: 0.5px solid var(--border_default);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text_default_secondary);
+  }
+
+  .webui-diff-error-dismiss:hover {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+
   /* ===== Phase 5: message actions, goal banner, and questionnaire states ===== */
   .webui-message-actions {
     display: flex;

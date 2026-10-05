@@ -43,19 +43,107 @@ export function reduceWebuiDiffState(
 ): WebuiDiffState {
   switch (action.type) {
     case "loaded":
-      return { ...state, view: action.view, unsupported: false, busy: false };
+      return { ...state, view: action.view, unsupported: false, busy: false, mutationError: undefined };
     case "unsupported":
+      return { ...state, unsupported: true, busy: false, mutationError: undefined };
+    /* A failed mutation is not an absent capability: the runtime answered, it
+     * just declined this operation. Keeping `unsupported` false is what leaves
+     * the card interactive, and `buildWebuiDiffMutationRequest` gating on
+     * `unsupported` is what otherwise makes the first failure permanent. */
     case "mutation-failed":
-      return { ...state, unsupported: true, busy: false };
+      return { ...state, unsupported: false, busy: false, mutationError: trimmedOrUndefined(action.error) };
     case "begin-mutation":
-      return state.busy ? state : { ...state, busy: true };
+      // A retry supersedes the previous reason; leaving it up would report a
+      // stale failure next to an attempt that is still running.
+      return state.busy ? state : { ...state, busy: true, mutationError: undefined };
     case "mutation-succeeded":
-      return { ...state, view: action.view, unsupported: false, busy: false };
+      return { ...state, view: action.view, unsupported: false, busy: false, mutationError: undefined };
+    case "dismiss-mutation-error":
+      return { ...state, mutationError: undefined };
     case "toggle-expanded":
       return { ...state, expanded: !state.expanded };
     case "toggle-review":
       return { ...state, reviewing: !state.reviewing };
   }
+}
+
+/** A blank or whitespace-only reason explains nothing, so it is dropped
+ * rather than rendered as an empty banner. */
+function trimmedOrUndefined(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+/* What the runtime says when a revert or reapply does not apply, and what a
+ * person can do about it.
+ *
+ * The reasons are machine tokens, and the authoritative one is
+ * `applyLocalTurnDiffSnapshotMutation`'s `unsafe_path`. Read the runtime, not
+ * the name: `normalizeCapturePath` *accepts* a path resolving outside the
+ * workspace, and returns `undefined` for in-workspace paths the capture layer
+ * filters (`.git/`, `node_modules/`, the root itself). The `safeCapturedPath`
+ * check also sits inside the write loop, so the operation is NOT all-or-nothing
+ * — earlier entries have already been written or `fs.rm`'d. The copy below
+ * therefore says the run was interrupted and earlier files may have changed,
+ * because that is what happened. Surfacing the raw token tells the user
+ * nothing, and the other codes read the same way — `conflict` in particular
+ * does not say that the files changed *after* the turn, which is the part that
+ * matters.
+ *
+ * A reason not in this table is passed through unchanged. That is deliberate:
+ * `git apply` failures arrive as free-form stderr, and discarding them would
+ * replace a real message with a guess. */
+const WEBUI_DIFF_FAILURE_COPY: Readonly<Record<string, string>> = {
+  unsafe_path: "这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。",
+  conflict: "这轮改动之后文件又被修改过，撤销前请先确认当前内容。",
+  not_undoable: "这轮文件改动没有留下可撤销的快照。",
+  "Turn diff not found": "找不到这轮文件改动。",
+  "Only the latest turn diff can be changed": "只能撤销最近一轮的文件改动。",
+  "Turn diff is not undoable": "这轮文件改动没有可撤销的补丁。",
+};
+
+export function describeWebuiDiffFailure(reason: string | undefined): string | undefined {
+  const trimmed = trimmedOrUndefined(reason);
+  if (!trimmed) return undefined;
+  return WEBUI_DIFF_FAILURE_COPY[trimmed] ?? trimmed;
+}
+
+/** Decides what a revert/reapply round trip meant.
+ *
+ * The two operations nest the resulting view differently, and reading either
+ * shape as success is a silent failure:
+ *
+ *  * `revertTurnDiff` answers `{ success?, error?, turnDiff? }` — the view
+ *    lives under `turnDiff`, and a refusal carries only `error`.
+ *  * `reapplyTurnDiff` answers with the view itself (`success` required,
+ *    `error` optional), so for reapply the result *is* the next view.
+ *
+ * Two independent things are therefore checked: whether the runtime said it
+ * worked, and whether it handed back an applied file list. A view with no
+ * files applied nothing, and the card renders `null` for an empty file list,
+ * so accepting one would delete the card with no message at all. */
+export function resolveWebuiDiffMutation(
+  action: "revert" | "reapply",
+  result: WebuiRevertTurnDiffResult | WebuiReapplyTurnDiffResult | undefined,
+  thrown?: unknown,
+): WebuiDiffStateAction {
+  if (thrown !== undefined) {
+    const message = thrown instanceof Error ? thrown.message : undefined;
+    return { type: "mutation-failed", error: describeWebuiDiffFailure(message) };
+  }
+  // `success` is required on reapply and optional on revert; an explicit
+  // `false` is a refusal even if a view rode along beside it.
+  if (result?.success === false) {
+    return { type: "mutation-failed", error: describeWebuiDiffFailure(result.error) };
+  }
+  const nextView =
+    action === "revert"
+      ? (result as WebuiRevertTurnDiffResult | undefined)?.turnDiff
+      : (result as WebuiReapplyTurnDiffResult | undefined);
+  if (nextView && (nextView.fileChanges ?? []).length > 0) {
+    return { type: "mutation-succeeded", view: nextView };
+  }
+  return { type: "mutation-failed", error: describeWebuiDiffFailure(result?.error) };
 }
 
 export function buildWebuiDiffMutationRequest(
@@ -103,7 +191,7 @@ export function WebuiDiffCard({
     ...initialState,
     ...(initialView ? { view: initialView } : {}),
   }));
-  const { view, unsupported, busy, expanded, reviewing } = diffState;
+  const { view, unsupported, busy, expanded, reviewing, mutationError } = diffState;
   const request = useMemo<WebuiGetTurnDiffRequest | undefined>(() => {
     if (!sessionId || !getTurnDiff) return undefined;
     // The runtime keys a turn diff by the turn: an `assistantMessageId` is
@@ -150,13 +238,9 @@ export function WebuiDiffCard({
     setDiffState((current) => confirmWebuiDiffMutation(current, confirmed));
     try {
       const result = await handler(mutationRequest);
-      const nextView = action === "revert"
-        ? (result as WebuiRevertTurnDiffResult).turnDiff
-        : (result as WebuiReapplyTurnDiffResult);
-      if (nextView) setDiffState((current) => reduceWebuiDiffState(current, { type: "mutation-succeeded", view: nextView }));
-      else setDiffState((current) => reduceWebuiDiffState(current, { type: "mutation-failed" }));
-    } catch {
-      setDiffState((current) => reduceWebuiDiffState(current, { type: "mutation-failed" }));
+      setDiffState((current) => reduceWebuiDiffState(current, resolveWebuiDiffMutation(action, result)));
+    } catch (error) {
+      setDiffState((current) => reduceWebuiDiffState(current, resolveWebuiDiffMutation(action, undefined, error)));
     } finally {
       setDiffState((current) => ({ ...current, busy: false }));
     }
@@ -246,6 +330,20 @@ export function WebuiDiffCard({
               {file.diff ? <pre>{file.diff}</pre> : file.patch ? <pre>{JSON.stringify(file.patch, null, 2)}</pre> : <p>当前运行时没有提供该文件的 patch 预览。</p>}
             </details>
           ))}
+        </div>
+      ) : null}
+      {mutationError ? (
+        /* `role="alert"` because this replaces what used to be no feedback at
+         * all: the operation did nothing, and the file list above is now known
+         * to be out of date. The controls stay live so the user can retry. */
+        <div className="webui-diff-error" role="alert" data-webui-diff-error="true" data-testid="turn-diff-mutation-error">
+          <span className="webui-diff-error-copy">
+            <span className="webui-diff-error-title">这轮文件改动没有生效</span>
+            <span className="webui-diff-error-reason" data-testid="turn-diff-mutation-error-reason">{mutationError}</span>
+          </span>
+          <button type="button" className="webui-diff-error-dismiss" data-testid="turn-diff-mutation-error-dismiss" onClick={() => setDiffState((current) => reduceWebuiDiffState(current, { type: "dismiss-mutation-error" }))}>
+            知道了
+          </button>
         </div>
       ) : null}
     </div>

@@ -107,14 +107,42 @@ test("the account tab is enabled where the unfinished tabs are still disabled", 
   // The other half, and the reason the assertion above is not vacuous: the nav
   // really does still ship disabled items, so "enabled" is a fact about this
   // tab rather than a property of every button in the sidebar. A nav that
-  // silently enabled 语音/快捷键/连接/代码审查 would pass the first two lines.
-  for (const key of ["voice", "shortcuts", "connection", "coding"]) {
+  // silently enabled 语音/快捷键/连接 would pass the first two lines.
+  //
+  // 代码审查 and 工作树 left this list when their pages were built — they are
+  // real panels now, not empty panes behind a clickable label. The three that
+  // remain have no content behind them, which is what the `disabled` gate is
+  // still for.
+  for (const key of ["voice", "shortcuts", "connection"]) {
     await expect(settingsNavItem(page, key)).toBeDisabled();
   }
   // The app behind the modal is still mounted: the modal is a `document.body`
   // portal, so it renders over a live app rather than replacing it. A fallback
   // here would mean the crash surface is showing while settings are open.
   await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);
+});
+
+test("the code-review and worktree tabs open their own panels instead of an empty pane", async ({ page }) => {
+  await openApp(page, "#session=A");
+  await openSettings(page);
+
+  // Same argument as the account tab above, and the reason the unit suite
+  // cannot stand in: `disabled: false` is a flag on the definition, while
+  // "clicking it lands on the page" is the feature. The empty-pane
+  // placeholder is the failure this has to rule out — a clickable label with
+  // nothing behind it is exactly the state these two tabs were in.
+  await expect(settingsNavItem(page, "coding")).toBeEnabled();
+  await settingsNavItem(page, "coding").click();
+  await expect(page.locator('[data-testid="settings-review-page"]')).toBeVisible();
+  // One status marker, and it is the review page's own: with no workspace
+  // selected the page says so instead of rendering a bare heading.
+  await expect(page.locator("[data-webui-review-state]")).toHaveCount(1);
+  await expect(page.locator(".webui-settings-empty-panel")).toHaveCount(0);
+
+  await expect(settingsNavItem(page, "worktree")).toBeEnabled();
+  await settingsNavItem(page, "worktree").click();
+  await expect(page.locator('[data-testid="settings-worktree-page"]')).toBeVisible();
+  await expect(page.locator(".webui-settings-empty-panel")).toHaveCount(0);
 });
 
 test("clicking the account tab shows the account panel", async ({ page }) => {

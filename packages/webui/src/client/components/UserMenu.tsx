@@ -37,6 +37,12 @@ interface UserMenuProps {
   readonly dataDir?: string;
   readonly version?: WebuiVersionInfo;
   readonly sessionId?: string;
+  /** Forwarded to the settings modal so the code-review page knows which
+   *  workspace to read a change set from. */
+  readonly workspaceDir?: string;
+  /** Forwarded to the settings modal. The review page turns a diff line into
+   *  a real editor jump through it. */
+  readonly onOpenFileLine?: (path: string, line: number) => void;
   /** Capability source for the menu's own panels and the settings modal.
    *  Typed as the narrow 9-member contract so neither the menu nor the
    *  modal can accidentally start reading members they do not consume. */
@@ -685,6 +691,8 @@ export function UserMenu({
   dataDir,
   sessionId,
   version,
+  workspaceDir,
+  onOpenFileLine,
   transport,
   getSigninPanel,
   claimSignin,
@@ -860,6 +868,6 @@ export function UserMenu({
         </div>
       </div> : null}
     </div>
-    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} transport={transport} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} transport={transport} />}
+    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />}
   </>;
 }

@@ -1271,6 +1271,15 @@ export function WebuiClientFoundationApp(
                   dataDir={dataDir}
                   version={runtimeVersion}
                   sessionId={selectedSessionId}
+                  workspaceDir={selectedSession?.workspaceDir}
+                  onOpenFileLine={(path, line) => {
+                    // The open-file command needs a concrete session and
+                    // workspace; the review page is only reachable from a
+                    // selected session, so both are present in practice, but
+                    // a jump must never fire a command with holes in it.
+                    if (!selectedSessionId || !selectedSession?.workspaceDir) return;
+                    dispatchWorkspacePanel({ type: "open-file", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir, path, lineStart: line, lineEnd: line });
+                  }}
                   transport={transport}
                   getSigninPanel={transport?.getSigninPanel}
                   claimSignin={transport?.claimSignin}

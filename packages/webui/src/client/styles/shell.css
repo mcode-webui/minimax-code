@@ -659,6 +659,8 @@
   .webui-context-usage-reset { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 16px; }
   @media (prefers-reduced-motion: reduce) { .webui-context-usage-chevron, .webui-context-usage-popover, .webui-context-usage-label, .webui-context-usage-bar span, .webui-context-usage-quota-bar span { transition: none; } }
 
+  @media (prefers-reduced-motion: reduce) { .webui-thinking-label { transition: none; } }
+
   /* The approval trigger. A pill with the current mode's own glyph, its label,
    * and a chevron — the same three-part affordance the model picker uses, so
    * both read as dropdowns. The fill is a hover affordance, not a resting
@@ -1815,6 +1817,7 @@
    * so a blue brain beside the word "Default" would assert a state nothing in
    * this process can verify. The neutral tone is the honest one, and the label
    * beside it carries the truth. */
+  .webui-thinking-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
   .webui-thinking-trigger {
     display: flex;
     width: 28px;
@@ -1826,6 +1829,14 @@
     background: transparent;
     transition: background-color 120ms ease;
   }
+  /* The brain's hover bubble: the same dark shape with an arrow as
+   * `.webui-context-usage-label` two controls away, so a tooltip here and a
+   * tooltip there are one object rather than two. A native `title` was the
+   * alternative and it never appeared — it is drawn by the window chrome, not
+   * by this page, and in this shell it stayed invisible. */
+  .webui-thinking-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-thinking-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-thinking-label[data-webui-thinking-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
   .webui-thinking-trigger:hover:not(:disabled) {
     background: var(--bg_interaction_tertiary_hover);
   }

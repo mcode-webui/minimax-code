@@ -217,7 +217,7 @@ describe("thinking trigger — what it renders", () => {
     });
     expect(on).toContain('data-webui-thinking-tone="on"');
     expect(on).toContain('aria-pressed="true"');
-    expect(on).toContain('title="关闭思考"');
+    expect(on).toContain('data-webui-thinking-label="false">关闭思考<');
 
     const off = render({
       options: BINARY, recorded: undefined, variant: "",
@@ -225,7 +225,7 @@ describe("thinking trigger — what it renders", () => {
     });
     expect(off).toContain('data-webui-thinking-tone="off"');
     expect(off).toContain('aria-pressed="false"');
-    expect(off).toContain('title="开启思考"');
+    expect(off).toContain('data-webui-thinking-label="false">开启思考<');
   });
 
   it("names no level in the title, because a switch has none", () => {
@@ -255,9 +255,9 @@ describe("thinking trigger — what it renders", () => {
   it("tells an unstated switch what pressing it does", () => {
     // 「思考由引擎决定」 is a state with no invitation in it, which reads as an
     // answer rather than a control. On the one control whose whole job is to
-    // be clicked, the title has to name the action.
+    // be clicked, the bubble has to name the action.
     const html = render({ options: BINARY, recorded: "", preview: false, onChange: () => undefined });
-    expect(html).toContain('title="开启思考"');
+    expect(html).toContain(">开启思考<");
     expect(html).not.toContain("思考由引擎决定");
   });
 
@@ -281,13 +281,38 @@ describe("thinking trigger — what it renders", () => {
 
   it("titles a stated state with the press that would reverse it", () => {
     // `renderToStaticMarkup` cannot click, so what this pins is the half of the
-    // toggle that decides the payload: the title follows the state, and the
+    // toggle that decides the payload: the bubble follows the state, and the
     // handler reads the same `on === true` test. The click itself is asserted
     // from the source in the test above.
     const on = render({ options: BINARY, recorded: "on", preview: false, onChange: () => undefined });
-    expect(on).toContain('title="关闭思考"');
+    expect(on).toContain(">关闭思考<");
     const off = render({ options: BINARY, recorded: "off", preview: false, onChange: () => undefined });
-    expect(off).toContain('title="开启思考"');
+    expect(off).toContain(">开启思考<");
+  });
+
+  it("shows the name in the shell's own bubble, not a native title", () => {
+    // The bubble was a native `title`, which is drawn by the window chrome and
+    // not by this page — it never appeared here, so a control whose whole job is
+    // to be pressed looked inert until it was pressed. The context ring two
+    // controls away already had the real bubble, which is what made this read
+    // as one broken control rather than as a platform quirk.
+    const html = render({ options: BINARY, recorded: "on", preview: false, onChange: () => undefined });
+    expect(html).toContain('class="webui-thinking-label"');
+    // Still a toggle for assistive technology, and the bubble does not repeat
+    // what the button's own name already said.
+    expect(html).toContain('aria-label="关闭思考"');
+    expect(html).toContain('class="webui-thinking-label" aria-hidden="true"');
+    // No native title left, or the same words would appear twice over — once
+    // from the page, once from the chrome.
+    expect(html).not.toContain("title=");
+  });
+
+  it("keeps the bubble away while the control is inert", () => {
+    // A disabled control promises nothing, so a bubble naming a press it will
+    // refuse is a promise the control does not keep.
+    const html = render({ options: BINARY, recorded: "on", preview: true, onChange: () => undefined });
+    expect(html).toContain('data-webui-thinking-label="false"');
+    expect(html).toContain("disabled");
   });
 
   it("gives a depth-scale model no brain at all", () => {

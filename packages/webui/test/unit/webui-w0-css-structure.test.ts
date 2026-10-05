@@ -423,11 +423,11 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       rule.context.some((entry) => entry.includes("prefers-reduced-motion")),
     );
 
-    // Five blocks in shell.css, six rules inside them (the settings block
+    // Six blocks in shell.css, seven rules inside them (the settings block
     // disables two selectors). Deleting one of these is the failure mode this
     // assertion exists for: the base rule would keep animating for a user who
     // asked for reduced motion.
-    expect(reducedMotion).toHaveLength(6);
+    expect(reducedMotion).toHaveLength(7);
     for (const rule of reducedMotion)
       expect(rule.body).toMatch(/(?:animation|transition):\s*none/u);
 
@@ -441,6 +441,9 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       ".webui-context-usage-chevron, .webui-context-usage-popover, .webui-context-usage-label, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
       ".webui-message-actions",
       ".webui-settings-content",
+      // Added with the brain trigger's hover bubble, which fades and slides in
+      // its base rule.
+      ".webui-thinking-label",
       // Renamed from `.webui-settings-toggle span` when the toggle became the
       // shared `.webui-toggle-switch` control.
       ".webui-toggle-switch, .webui-toggle-switch > span",

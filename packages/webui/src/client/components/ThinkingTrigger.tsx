@@ -16,10 +16,18 @@
  * settings fly-out — so the value is stated once and editable once, and the
  * toolbar carries no dead glyph beside it.
  *
- * The trigger is the ICON ALONE. 「开启」 in a label said what the brain beside
- * it already said, two controls apart in the same toolbar.
+ * The trigger is the ICON ALONE at rest. 「开启」 in a label said what the brain
+ * beside it already said, two controls apart in the same toolbar.
+ *
+ * Hovering it says what the press will do, in the shell's own bubble — the same
+ * dark shape the context ring beside it uses. It was a native `title`, and a
+ * native title is drawn by the window chrome rather than by the page: it arrives
+ * late, it is styled by nothing here, and in this shell it did not arrive at
+ * all, so a control whose entire job is to be pressed looked inert until it was
+ * pressed. The ring two buttons away had a real bubble, which is what made the
+ * inconsistency read as this one being broken rather than as a platform quirk.
  */
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 
 import {
   brainHoverLabel,
@@ -127,6 +135,7 @@ export function ThinkingTrigger({
   // separately — the two always agree, and a caller free to pass both is a
   // caller free to pass them disagreeing.
   const hover = brainHoverLabel(tone);
+  const [hovered, setHovered] = useState(false);
 
   // A two-state model's brain IS the switch — the whole point of it is that
   // thinking turns on and off from here without opening anything. So an
@@ -141,22 +150,37 @@ export function ThinkingTrigger({
   //
   // `aria-pressed` stays false while unstated: the brain is not claiming
   // thinking is on, it is offering to turn it on.
+  // `aria-hidden` because the button's own label already announces this, and a
+  // bubble that repeats what assistive technology was just told is read twice.
+  // The label is the visible half only.
   return (
-    <button
-      type="button"
-      // Disabled rather than absent while previewing: the control exists for
-      // the model under the pointer, and saying so by removing it would make
-      // the toolbar jump around as the pointer crosses rows.
-      disabled={preview}
-      aria-pressed={on === true}
-      aria-label={hover}
-      title={hover}
-      className="webui-thinking-trigger"
-      data-webui-thinking-trigger="true"
-      data-webui-thinking-tone={tone}
-      onClick={() => onChange(on === true ? "off" : "on")}
+    <span
+      className="webui-thinking-anchor"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <BrainGlyph className={`webui-thinking-brain ${TONE_CLASS[tone]}`} />
-    </button>
+      <span
+        className="webui-thinking-label"
+        aria-hidden="true"
+        data-webui-thinking-label={hovered && !preview ? "true" : "false"}
+      >
+        {hover}
+      </span>
+      <button
+        type="button"
+        // Disabled rather than absent while previewing: the control exists for
+        // the model under the pointer, and saying so by removing it would make
+        // the toolbar jump around as the pointer crosses rows.
+        disabled={preview}
+        aria-pressed={on === true}
+        aria-label={hover}
+        className="webui-thinking-trigger"
+        data-webui-thinking-trigger="true"
+        data-webui-thinking-tone={tone}
+        onClick={() => onChange(on === true ? "off" : "on")}
+      >
+        <BrainGlyph className={`webui-thinking-brain ${TONE_CLASS[tone]}`} />
+      </button>
+    </span>
   );
 }

@@ -3752,6 +3752,7 @@
     "packages/webui/test/unit/webui-error-boundary.test.tsx",
     "packages/webui/test/unit/webui-host-shape-invariant.test.ts",
     "packages/webui/test/unit/webui-package.test.ts",
+    "packages/webui/test/unit/webui-personalization-wiring.test.ts",
     "packages/webui/test/unit/webui-plan-mode.test.ts",
     "packages/webui/test/unit/webui-round3-acceptance.test.tsx",
     "packages/webui/test/unit/webui-runtime-environment.test.ts",

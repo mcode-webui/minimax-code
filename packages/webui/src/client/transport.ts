@@ -479,6 +479,9 @@ export function createWebuiTransport({
     triggerScheduledTaskNow: (body) => request("triggerScheduledTaskNow", body),
     getScheduledTaskCapability: () => request("getScheduledTaskCapability", {}),
     signOut: () => request("signOut", {}),
+    beginAccountLogin: () => request("beginAccountLogin", {}),
+    getAccountLoginStatus: () => request("getAccountLoginStatus", {}),
+    cancelAccountLogin: () => request("cancelAccountLogin", {}),
     runCommand: (body) => request("runCommand", body),
   } satisfies Required<WebuiTransport>;
 }

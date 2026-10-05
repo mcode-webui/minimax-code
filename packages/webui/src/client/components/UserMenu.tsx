@@ -18,6 +18,7 @@ import type {
 } from "../../server/port.js";
 import type { WebuiTransport } from "../contracts.js";
 import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsModal.js";
+import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
 
 type AccountStatus = Record<string, unknown>;
@@ -581,7 +582,13 @@ function videoValueLabel(video: WebuiUsageQuotaVideoView): string {
 
 const AUTH_ERROR_PATTERN = /cookie|unauthori[sz]ed|token|login/iu;
 
-function UsageReady({ result }: { readonly result?: WebuiUsageQuotaResult }): ReactElement {
+function UsageReady({
+  result,
+  onLogin,
+}: {
+  readonly result?: WebuiUsageQuotaResult;
+  readonly onLogin?: () => void;
+}): ReactElement {
   if (!result || result.signedIn === false) {
     return (
       <div
@@ -589,6 +596,23 @@ function UsageReady({ result }: { readonly result?: WebuiUsageQuotaResult }): Re
         data-testid="usage-popover-no-workspace"
       >
         登录后查看用量
+        {/* The button's mousedown is default-prevented: focus would bubble
+         * (focusin) to the usage anchor's onFocus → loadUsage, whose loading
+         * state swaps this block for the skeleton — the pressed node is
+         * replaced mid-click and the browser never dispatches the click.
+         * Keeping the focus where it was makes the first click land like
+         * every later one. */}
+        {onLogin ? (
+          <button
+            type="button"
+            className="webui-button-secondary"
+            data-testid="usage-sign-in-button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onLogin}
+          >
+            登录
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -660,9 +684,12 @@ function UsageReady({ result }: { readonly result?: WebuiUsageQuotaResult }): Re
 export function UsagePanel({
   state,
   onRetry,
+  onLogin,
 }: {
   readonly state: UsageState;
   readonly onRetry: () => void;
+  /** Opens the account login dialog from the signed-out usage block. */
+  readonly onLogin?: () => void;
 }): ReactElement {
   return (
     <div className="webui-user-menu-usage-panel" role="dialog" aria-label="用量">
@@ -680,7 +707,7 @@ export function UsagePanel({
           </button>
         </div>
       ) : null}
-      {state.status === "ready" ? <UsageReady result={state.result} /> : null}
+      {state.status === "ready" ? <UsageReady result={state.result} onLogin={onLogin} /> : null}
     </div>
   );
 }
@@ -697,13 +724,21 @@ export function UserMenu({
   getSigninPanel,
   claimSignin,
 }: UserMenuProps): ReactElement {
-  const { getUsageQuota, getAccountStatus } = useMemo(() => ({
+  // Bound once per transport, not per render: the login dialog's effects
+  // key on these callbacks, and a fresh binding every render would restart
+  // its poll (and its begin) on every unrelated re-render.
+  const { getUsageQuota, getAccountStatus, beginAccountLogin, getAccountLoginStatus, cancelAccountLogin, signOut } = useMemo(() => ({
     getUsageQuota: transport?.getUsageQuota?.bind(transport),
     getAccountStatus: transport?.getAccountStatus?.bind(transport),
+    beginAccountLogin: transport?.beginAccountLogin?.bind(transport),
+    getAccountLoginStatus: transport?.getAccountLoginStatus?.bind(transport),
+    cancelAccountLogin: transport?.cancelAccountLogin?.bind(transport),
+    signOut: transport?.signOut?.bind(transport),
   }), [transport]);
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [usage, setUsage] = useState<UsageState>({ status: "idle" });
   const [signinOpen, setSigninOpen] = useState(false);
@@ -840,6 +875,7 @@ export function UserMenu({
         <div className="webui-user-menu-uid" aria-label="用户 ID">UID : {uid ?? "—"}</div>
         <div className="webui-user-menu-list">
           <button type="button" className="webui-user-menu-item" role="menuitem" data-testid="user-menu-settings" onClick={() => { setOpen(false); setSettingsOpen(true); }}><UsageGlyph kind="settings" /><span>设置</span><span className="webui-user-menu-shortcut">Ctrl+,</span></button>
+          <button type="button" className="webui-user-menu-item" role="menuitem" data-testid="user-menu-account-login" onClick={() => { setOpen(false); setLoginOpen(true); }}><UsageGlyph kind="signin" /><span>账号与登录</span></button>
           <MenuDivider />
           <div className="webui-user-menu-signin-anchor" onMouseEnter={() => loadSignin()} onFocus={() => loadSignin()} onClick={(event) => { event.stopPropagation(); if (!signinOpen) loadSignin(); }}>
             <button type="button" className="webui-user-menu-item" role="menuitem" aria-haspopup="dialog" aria-expanded={signinOpen} data-testid="user-menu-signin"><UsageGlyph kind="signin" /><span>每日签到</span><Chevron /></button>
@@ -863,11 +899,22 @@ export function UserMenu({
           </div>
           <div className="webui-user-menu-usage-anchor" onMouseEnter={() => loadUsage()} onFocus={() => loadUsage()}>
             <button type="button" className="webui-user-menu-item" role="menuitem" aria-haspopup="dialog" aria-expanded={usageOpen} data-testid="user-menu-usage" onClick={() => loadUsage()}><WebuiIconCommandUsage /><span>用量</span><Chevron /></button>
-            {usageOpen ? <UsagePanel state={usage} onRetry={() => loadUsage(true)} /> : null}
+            {usageOpen ? <UsagePanel state={usage} onRetry={() => loadUsage(true)} onLogin={() => { setOpen(false); setLoginOpen(true); }} /> : null}
           </div>
         </div>
       </div> : null}
     </div>
+    <AccountLoginDialog
+      open={loginOpen}
+      onClose={() => setLoginOpen(false)}
+      onAuthenticated={() => {
+        loadUsage(true);
+      }}
+      beginAccountLogin={beginAccountLogin}
+      getAccountLoginStatus={getAccountLoginStatus}
+      cancelAccountLogin={cancelAccountLogin}
+      signOut={signOut}
+    />
     {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />}
   </>;
 }

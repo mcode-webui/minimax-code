@@ -56,6 +56,22 @@ declare module "@mavis/oauth-core" {
     readonly audience: "agent-backend";
   }
 
+  /** The device-authorization prompt `login()` emits before the human
+   *  authorizes — the terminal client prints it; the WebUI renders it. */
+  export interface DeviceAuthorizationPrompt {
+    readonly userCode: string;
+    readonly verificationUri: string;
+    readonly verificationUriComplete?: string;
+    readonly expiresInSec: number;
+  }
+
+  export interface AuthStatusSnapshot {
+    readonly status: string;
+    readonly generation: number;
+    readonly scopes: readonly string[];
+    readonly expiresAtMs?: number;
+  }
+
   export class MCodeOAuthCore {
     constructor(options: {
       readonly namespace: unknown;
@@ -72,5 +88,18 @@ declare module "@mavis/oauth-core" {
       readonly loginEpoch?: string;
     }): Promise<"retry" | "logout">;
     watch(listener: (status: { readonly status: string }) => void): () => void;
+    /** Device-authorization login; resolves once the user authorizes.
+     *  Concurrent calls share one attempt (the core's own dedupe). */
+    login(options?: {
+      onDeviceAuthorization?: (authorization: DeviceAuthorizationPrompt) => void;
+    }): Promise<{ readonly status: "authenticated"; readonly generation: number }>;
+    cancelLogin(): Promise<void>;
+    /** Removes the credential. `revoke: true` also revokes it server-side;
+     *  the local wipe happens either way. */
+    logout(options: { readonly revoke: boolean }): Promise<{
+      readonly status: "anonymous" | "logout_pending";
+      readonly generation: number;
+    }>;
+    getStatus(): Promise<AuthStatusSnapshot>;
   }
 }

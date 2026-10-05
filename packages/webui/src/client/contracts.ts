@@ -109,6 +109,7 @@ import type {
   WebuiUpdateSessionResult,
   WebuiUsageQuotaResult,
   WebuiVersionInfo,
+  WebuiAccountLoginView,
   WebuiAttachmentInput,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceDirectoryListing,
@@ -650,6 +651,11 @@ export interface WebuiTransport {
   }) => Promise<WebuiUsageQuotaResult>;
   readonly getSigninPanel?: () => Promise<WebuiSigninPanelView>;
   readonly claimSignin?: () => Promise<WebuiClaimSigninView>;
+  /** Account login (device authorization) and its polling/cancel pair.
+   *  Optional like every capability: an un-wired host shows no login entry. */
+  readonly beginAccountLogin?: () => Promise<WebuiAccountLoginView>;
+  readonly getAccountLoginStatus?: () => Promise<WebuiAccountLoginView>;
+  readonly cancelAccountLogin?: () => Promise<{ readonly ok: true }>;
   readonly getAccountStatus?: (request?: {
     readonly sessionId?: string;
   }) => Promise<Record<string, unknown>>;

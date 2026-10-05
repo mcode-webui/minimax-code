@@ -72,6 +72,17 @@ export function installFixtureTransport() {
   // listing it wants (an MCP server list with connection states, say) and
   // every other action keeps the empty default.
   const pluginManagementResults = {};
+  // Account login state machine for the three login operations. `begin`
+  // starts "pending" with a deterministic prompt; a test flips the state
+  // (authenticated / error) with setAccountLoginState to drive the dialog's
+  // poll — the real server observes the credential; the fixture observes
+  // the test.
+  let accountLoginState = { state: "idle" };
+  let accountLoginSequence = 0;
+  // The usage quota answer, overridable so a test can stage the signed-out
+  // block (`{}` — the default — has no signedIn field and reads as signed
+  // in but quota-less, not as signed out).
+  let usageQuotaResult = {};
   let activeTurn;
   const requests = [];
   const sockets = new Set();
@@ -91,6 +102,23 @@ export function installFixtureTransport() {
     if (operation === "listPendingPermissions") return { requests: [] };
     if (operation === "getActiveTurn") return activeTurn;
     if (operation === "getPendingQuestionnaire") return questionnaire ? { request: questionnaire } : {};
+    if (operation === "beginAccountLogin") {
+      accountLoginState = {
+        state: "pending",
+        prompt: {
+          userCode: "TEST-CODE",
+          verificationUri: "https://example.invalid/device",
+          verificationUriComplete: "https://example.invalid/device?code=TEST-CODE",
+          expiresAtMs: Date.now() + 600_000,
+        },
+      };
+      return clone(accountLoginState);
+    }
+    if (operation === "getAccountLoginStatus") return clone(accountLoginState);
+    if (operation === "cancelAccountLogin") {
+      accountLoginState = { state: "idle" };
+      return { ok: true };
+    }
     if (operation === "pluginManagement") {
       const action = typeof body?.action === "string" ? body.action : "";
       return pluginManagementResults[action] ?? {};
@@ -99,7 +127,7 @@ export function installFixtureTransport() {
     if (operation === "replyQuestionnaire") return { ok: true };
     if (operation === "listQueueMessages") return { items: [] };
     if (operation === "listModels" || operation === "loadProjects") return [];
-    if (operation === "getUsageQuota") return {};
+    if (operation === "getUsageQuota") return clone(usageQuotaResult);
     if (operation === "isGoalEnabled") return false;
     if (operation === "getPermissionMode") return { mode: "default" };
     if (operation === "getSessionUsage") return {};
@@ -237,6 +265,8 @@ export function installFixtureTransport() {
     // is inert on purpose, so a staged questionnaire stays pending until the
     // test answers, dismisses, or replaces it.
     setQuestionnaire(request) { questionnaire = request ? clone(request) : undefined; },
+    setAccountLoginState(state) { accountLoginState = clone(state); },
+    setUsageQuotaResult(result) { usageQuotaResult = clone(result); },
     setPluginManagementResult(action, result) {
       pluginManagementResults[action] = result === undefined ? undefined : clone(result);
     },

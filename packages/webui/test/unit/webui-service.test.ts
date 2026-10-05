@@ -476,6 +476,23 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     };
   }
 
+  // Added with the N-zone account login contract.
+  async beginAccountLogin() {
+    return { state: "idle" as const };
+  }
+
+  async getAccountLoginStatus() {
+    return { state: "idle" as const };
+  }
+
+  async cancelAccountLogin() {
+    return { ok: true as const };
+  }
+
+  async signOutAccount() {
+    return { status: "anonymous", generation: 0 };
+  }
+
   async getAccountStatus() {
     return { available: true };
   }
@@ -3812,6 +3829,18 @@ describe("WebUI shutdown order (criterion 7)", () => {
           panel: { scene: 0, days: [] },
         };
       },
+      async beginAccountLogin() {
+        return { state: "idle" as const };
+      },
+      async getAccountLoginStatus() {
+        return { state: "idle" as const };
+      },
+      async cancelAccountLogin() {
+        return { ok: true as const };
+      },
+      async signOutAccount() {
+        return { status: "anonymous", generation: 0 };
+      },
       async listScheduledTasks() {
         return { tasks: [], total: 0 };
       },
@@ -4211,6 +4240,19 @@ describe("WebUI shutdown order (criterion 7)", () => {
           expire_at_ms: 0,
           panel: { scene: 0, days: [] },
         };
+      },
+
+      async beginAccountLogin() {
+        return { state: "idle" as const };
+      },
+      async getAccountLoginStatus() {
+        return { state: "idle" as const };
+      },
+      async cancelAccountLogin() {
+        return { ok: true as const };
+      },
+      async signOutAccount() {
+        return { status: "anonymous", generation: 0 };
       },
       async listScheduledTasks() {
         return { tasks: [], total: 0 };

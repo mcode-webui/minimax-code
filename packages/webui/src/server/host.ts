@@ -336,6 +336,16 @@ export interface WebuiRuntimeHostHandle {
   readonly getSigninPanel?: () => Promise<import("./port.js").WebuiSigninPanelView>;
   readonly claimSignin?: () => Promise<import("./port.js").WebuiClaimSigninView>;
   /**
+   * Account login (device authorization) and real sign-out. Supplied by the
+   * assembly from its `MCodeOAuthCore` — the same credential store the quota
+   * lease reads — so a login completed in the browser is the same credential
+   * the terminal client uses, and a sign-out actually removes it.
+   */
+  readonly beginAccountLogin?: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly getAccountLoginStatus?: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly cancelAccountLogin?: () => Promise<void>;
+  readonly signOutAccount?: () => Promise<{ readonly status: string; readonly generation: number }>;
+  /**
    * Source of every harness command the WebUI maps to operations. Owned by
    * the runtime host; the WebUI only needs the structural shape to forward.
    */
@@ -720,6 +730,27 @@ export function createHarnessPortFromHost(
       if (!host.claimSignin)
         throw new Error("runtime host does not expose the daily check-in client");
       return host.claimSignin();
+    },
+    async beginAccountLogin() {
+      if (!host.beginAccountLogin)
+        throw new Error("runtime host does not expose account login");
+      return host.beginAccountLogin();
+    },
+    async getAccountLoginStatus() {
+      if (!host.getAccountLoginStatus)
+        throw new Error("runtime host does not expose account login");
+      return host.getAccountLoginStatus();
+    },
+    async cancelAccountLogin() {
+      if (!host.cancelAccountLogin)
+        throw new Error("runtime host does not expose account login");
+      await host.cancelAccountLogin();
+      return { ok: true as const };
+    },
+    async signOutAccount() {
+      if (!host.signOutAccount)
+        throw new Error("runtime host does not expose account sign-out");
+      return host.signOutAccount();
     },
     async getAccountStatus(request) {
       return requireCliService(host).getAccountStatus(request);

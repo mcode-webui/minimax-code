@@ -353,6 +353,19 @@ class FullPort implements WebuiHarnessPort {
       panel: { scene: 0, days: [] },
     };
   }
+  // Added with the N-zone account login contract.
+  async beginAccountLogin() {
+    return { state: "idle" as const };
+  }
+  async getAccountLoginStatus() {
+    return { state: "idle" as const };
+  }
+  async cancelAccountLogin() {
+    return { ok: true as const };
+  }
+  async signOutAccount() {
+    return { status: "anonymous", generation: 0 };
+  }
   async getAccountStatus() {
     return { available: true };
   }

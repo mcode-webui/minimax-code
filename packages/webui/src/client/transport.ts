@@ -48,6 +48,12 @@ import type {
   WebuiGoalPatchRequest,
   WebuiGoalEnabledResult,
 } from "../server/port.js";
+import {
+  markWebuiEventWatcherDown,
+  markWebuiEventWatcherHealthy,
+  registerWebuiEventWatcher,
+  unregisterWebuiEventWatcher,
+} from "./connection-health.js";
 
 declare const document: {
   readonly visibilityState: string;
@@ -248,6 +254,12 @@ export function createWebuiTransport({
      */
     onReconnect?: () => void,
   ): () => void {
+    // This socket is the page's only long-lived link while no turn runs, so
+    // its health is the user's "am I still connected" signal between turns.
+    // Reported from inside the transport so every watcher — the shell's and
+    // any panel's — counts without each call site wiring callbacks; the
+    // store's ever-healthy rule keeps boot quiet.
+    const watcherToken = registerWebuiEventWatcher();
     let stopped = false;
     let socket: WebuiSocket | undefined;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -287,6 +299,7 @@ export function createWebuiTransport({
         if (frame.requestId !== requestId) return;
         if (frame.kind === "error") return;
         if (frame.kind === "response") {
+          markWebuiEventWatcherHealthy(watcherToken);
           if (acknowledged) return;
           acknowledged = true;
           // Fires once per connection: the first ack is the initial
@@ -302,6 +315,7 @@ export function createWebuiTransport({
       ws.addEventListener("close", () => {
         if (stopped || socket !== ws) return;
         socket = undefined;
+        markWebuiEventWatcherDown(watcherToken);
         reconnectTimer = setTimeout(connect, 250);
       });
       ws.addEventListener("error", () => undefined);
@@ -332,6 +346,7 @@ export function createWebuiTransport({
       if (typeof window !== "undefined")
         window.removeEventListener("online", reconnectWhenAvailable);
       socket?.close();
+      unregisterWebuiEventWatcher(watcherToken);
     };
   }
 

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { useSessionRuntimeState } from "./session-runtime-store.js";
+import { useWebuiEventChannelDegraded } from "./connection-health.js";
 import type { WebuiStreamState } from "./stream.js";
 
 /**
@@ -88,7 +89,19 @@ export function ConnectionStatus({
   retryLabel = "重试连接",
 }: ConnectionStatusProps): ReactElement | null {
   const { state } = useSessionRuntimeState(sessionId);
-  const connection = projectWebuiConnectionState(state.stream.phase);
+  // Two independent signals, merged: the selected session's stream phase (a
+  // turn that failed mid-flight) and the event channel's health (the
+  // always-on watcher, which is the only live link while the page is idle).
+  // Either one saying "trouble" shows the region; a terminal stream failure
+  // outranks a degraded-but-retrying channel.
+  const streamConnection = projectWebuiConnectionState(state.stream.phase);
+  const channelDegraded = useWebuiEventChannelDegraded();
+  const connection =
+    streamConnection === "failed"
+      ? "failed"
+      : streamConnection === "reconnecting" || channelDegraded
+        ? "reconnecting"
+        : "connected";
   if (hideWhenConnected && connection === "connected") return null;
   const copy = COPY[connection];
   // A failure usually carries the server's own reason (`refusal`), and `status`

@@ -85,6 +85,10 @@ export type WebuiOperationPort = Pick<
   | "getUsageQuota"
   | "getSigninPanel"
   | "claimSignin"
+  | "beginAccountLogin"
+  | "getAccountLoginStatus"
+  | "cancelAccountLogin"
+  | "signOutAccount"
   | "getAccountStatus"
   | "listUserModelProviders"
   | "createUserModelProvider"
@@ -215,6 +219,9 @@ export function createOperationHandlers(
     getSessionUsage: async (_context, body) => ({ body: await port.getSessionUsage(body) }),
     getUsageQuota: async (_context, body) => ({ body: await port.getUsageQuota(body) }),
     getSigninPanel: async () => ({ body: await port.getSigninPanel() }),
+    beginAccountLogin: async () => ({ body: await port.beginAccountLogin() }),
+    getAccountLoginStatus: async () => ({ body: await port.getAccountLoginStatus() }),
+    cancelAccountLogin: async () => ({ body: await port.cancelAccountLogin() }),
     claimSignin: async () => ({ body: await port.claimSignin() }),
     getAccountStatus: async (_context, body) => ({ body: await port.getAccountStatus(body) }),
     listUserModelProviders: async () => ({ body: await port.listUserModelProviders() }),
@@ -238,7 +245,12 @@ export function createOperationHandlers(
     refreshModels: async () => ({ body: await port.refreshModels() }),
     runCommand: async (_context, body) => ({ body: await runWebuiCommand(port, body) }),
     signOut: async () => {
-      await port.invalidateAuth();
+      // The real sign-out removes the credential (revoke + wipe). The
+      // invalidation-only path remains as a fallback for hosts assembled
+      // before `signOutAccount` existed; on those, sign-out degrades to the
+      // historical behaviour instead of failing the operation.
+      if (port.signOutAccount) await port.signOutAccount();
+      else await port.invalidateAuth();
       return { body: { success: true as const } };
     },
     watchEvents: (context) => ({

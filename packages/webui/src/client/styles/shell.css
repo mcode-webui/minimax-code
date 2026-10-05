@@ -219,6 +219,19 @@
   .webui-xterm-host .xterm-viewport { background: var(--bg_default_secondary) !important; }
   .webui-terminal-actions { display: flex; gap: var(--spacing_8); }
   .webui-settings-mask { position: fixed; inset: 0; z-index: 100; display: flex; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
+  /* The account login dialog: the settings mask's overlay treatment around a
+   * small centered card — a dialog, not a full page, because the entry points
+   * (user menu, usage panel) are popovers over the live shell. */
+  .webui-account-login-mask { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
+  .webui-account-login { display: flex; width: min(420px, calc(100vw - 48px)); flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--radius_12); background: var(--bg_default_secondary_elevated); color: var(--text_default_primary); animation: webui-modal-enter 200ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-account-login-header { display: flex; align-items: center; justify-content: space-between; }
+  .webui-account-login-header button { border: 0; background: transparent; color: var(--text_default_secondary); font-size: 18px; cursor: pointer; }
+  .webui-account-login-body { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+  .webui-account-login-hint { margin: 0; color: var(--text_default_secondary); }
+  .webui-account-login-code { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+  .webui-account-login-uri { color: var(--text_default_primary); }
+  .webui-account-login-status { margin: 0; color: var(--text_default_tertiary); }
+  .webui-account-login-actions { display: flex; gap: 8px; justify-content: center; }
   .webui-settings-modal { display: flex; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg_default_primary); color: var(--text_default_primary); animation: webui-modal-enter 200ms cubic-bezier(.2, .7, .2, 1) both; }
   .webui-settings-sidebar { width: 260px; flex: 0 0 260px; overflow-y: hidden; }
   .webui-settings-back, .webui-settings-nav-item { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); border: 0; background: transparent; color: var(--text_default_secondary); text-align: left; }
@@ -3495,6 +3508,10 @@
   }
 
   .webui-user-menu-usage-signed-out {
+    /* Flex so the 登录 button sits beside the copy, not under it. */
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
     color: var(--text_default_secondary);
     font-size: 13px;

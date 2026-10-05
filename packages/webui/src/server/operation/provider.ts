@@ -2,7 +2,7 @@ import { WebuiErrorCode } from "../envelope.js";
 import { requireRecord } from "./operation-contract.js";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
 import { validateSessionIdBody } from "./common.js";
-import { ARCHIVE_SESSION_OPERATION_NAME, DELETE_SESSION_OPERATION_NAME, UPDATE_SESSION_OPERATION_NAME, GET_SESSION_FORK_OPTIONS_OPERATION_NAME, FORK_SESSION_OPERATION_NAME, LIST_USER_MODEL_PROVIDERS_OPERATION_NAME, CREATE_USER_MODEL_PROVIDER_OPERATION_NAME, UPDATE_USER_MODEL_PROVIDER_OPERATION_NAME, DELETE_USER_MODEL_PROVIDER_OPERATION_NAME, TEST_USER_MODEL_PROVIDER_OPERATION_NAME, TEST_USER_MODEL_OPERATION_NAME, DISCOVER_USER_MODELS_CANDIDATE_OPERATION_NAME, SAVE_USER_MODEL_PROVIDER_CANDIDATE_OPERATION_NAME, LIST_PROVIDER_PRESETS_OPERATION_NAME, GET_MINIMAX_API_KEY_STATUS_OPERATION_NAME, UPSERT_MINIMAX_API_KEY_OPERATION_NAME, GET_CODEX_OAUTH_STATUS_OPERATION_NAME, GET_MINIMAX_MODEL_SOURCE_OPERATION_NAME, SET_MINIMAX_MODEL_SOURCE_OPERATION_NAME, TEST_USER_MODEL_CANDIDATE_OPERATION_NAME, REVEAL_MODEL_PROVIDER_API_KEY_OPERATION_NAME, START_CODEX_OAUTH_LOGIN_OPERATION_NAME, CANCEL_CODEX_OAUTH_LOGIN_OPERATION_NAME, REFRESH_MODELS_OPERATION_NAME, RUN_COMMAND_OPERATION_NAME, GET_SIGNIN_PANEL_OPERATION_NAME, CLAIM_SIGNIN_OPERATION_NAME, SIGN_OUT_OPERATION_NAME } from "./names.js";
+import { ARCHIVE_SESSION_OPERATION_NAME, DELETE_SESSION_OPERATION_NAME, UPDATE_SESSION_OPERATION_NAME, GET_SESSION_FORK_OPTIONS_OPERATION_NAME, FORK_SESSION_OPERATION_NAME, LIST_USER_MODEL_PROVIDERS_OPERATION_NAME, CREATE_USER_MODEL_PROVIDER_OPERATION_NAME, UPDATE_USER_MODEL_PROVIDER_OPERATION_NAME, DELETE_USER_MODEL_PROVIDER_OPERATION_NAME, TEST_USER_MODEL_PROVIDER_OPERATION_NAME, TEST_USER_MODEL_OPERATION_NAME, DISCOVER_USER_MODELS_CANDIDATE_OPERATION_NAME, SAVE_USER_MODEL_PROVIDER_CANDIDATE_OPERATION_NAME, LIST_PROVIDER_PRESETS_OPERATION_NAME, GET_MINIMAX_API_KEY_STATUS_OPERATION_NAME, UPSERT_MINIMAX_API_KEY_OPERATION_NAME, GET_CODEX_OAUTH_STATUS_OPERATION_NAME, GET_MINIMAX_MODEL_SOURCE_OPERATION_NAME, SET_MINIMAX_MODEL_SOURCE_OPERATION_NAME, TEST_USER_MODEL_CANDIDATE_OPERATION_NAME, REVEAL_MODEL_PROVIDER_API_KEY_OPERATION_NAME, START_CODEX_OAUTH_LOGIN_OPERATION_NAME, CANCEL_CODEX_OAUTH_LOGIN_OPERATION_NAME, REFRESH_MODELS_OPERATION_NAME, RUN_COMMAND_OPERATION_NAME, GET_SIGNIN_PANEL_OPERATION_NAME, CLAIM_SIGNIN_OPERATION_NAME, SIGN_OUT_OPERATION_NAME, BEGIN_ACCOUNT_LOGIN_OPERATION_NAME, GET_ACCOUNT_LOGIN_STATUS_OPERATION_NAME, CANCEL_ACCOUNT_LOGIN_OPERATION_NAME } from "./names.js";
 function validateProviderRecord(name: string, body: unknown): WebuiOperationValidation<Record<string, unknown>> {
   return requireRecord(name, body);
 }
@@ -137,6 +137,41 @@ export const claimSigninOperation: WebuiOperation<
       return { ok: false, code: WebuiErrorCode.invalidBody, message: "claimSignin body must be an empty object" };
     return { ok: true, body: {} };
   },
+};
+
+const emptyBody = (name: string) => (body: unknown) => {
+  if (body === null || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 0)
+    return { ok: false, code: WebuiErrorCode.invalidBody, message: `${name} body must be an empty object` } as const;
+  return { ok: true, body: {} } as const;
+};
+
+// Account login over the device-authorization flow: `begin` starts (or
+// re-attaches to) an attempt and usually answers with the prompt on the
+// first reply; `status` is what the dialog polls; `cancel` aborts without
+// touching the credential. Bodies are empty on purpose — the login session
+// is server-owned, one per service, exactly like the check-in panel.
+export const beginAccountLoginOperation: WebuiOperation<
+  Record<string, never>,
+  import("../port.js").WebuiAccountLoginView
+> = {
+  name: BEGIN_ACCOUNT_LOGIN_OPERATION_NAME,
+  validate: emptyBody("beginAccountLogin"),
+};
+
+export const getAccountLoginStatusOperation: WebuiOperation<
+  Record<string, never>,
+  import("../port.js").WebuiAccountLoginView
+> = {
+  name: GET_ACCOUNT_LOGIN_STATUS_OPERATION_NAME,
+  validate: emptyBody("getAccountLoginStatus"),
+};
+
+export const cancelAccountLoginOperation: WebuiOperation<
+  Record<string, never>,
+  { readonly ok: true }
+> = {
+  name: CANCEL_ACCOUNT_LOGIN_OPERATION_NAME,
+  validate: emptyBody("cancelAccountLogin"),
 };
 
 export const signOutOperation: WebuiOperation<Record<string, never>, { readonly success: true }> = {

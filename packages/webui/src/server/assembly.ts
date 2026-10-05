@@ -36,6 +36,7 @@ import {
   createWebuiAuthContextReader,
   type WebuiAuthContext,
 } from "./auth-context.js";
+import { createWebuiAccountLoginSession } from "./account-login.js";
 import { createHarnessPortFromHost } from "./host.js";
 import type { WebuiRuntimeCliService } from "./host.js";
 import type { WebuiHarnessPort } from "./port.js";
@@ -66,6 +67,16 @@ export interface WebuiAssembledHost {
   }) => Promise<import("./port.js").WebuiUsageQuotaResult>;
   readonly getSigninPanel: () => Promise<import("./port.js").WebuiSigninPanelView>;
   readonly claimSignin: () => Promise<import("./port.js").WebuiClaimSigninView>;
+  /**
+   * Account login (device authorization) over the same `MCodeOAuthCore` the
+   * quota lease reads, plus the sign-out that removes the credential. The
+   * core is assembly-owned (never produced by the runtime factory), so these
+   * are enrichment slots like `getUsageQuota`, not harness capabilities.
+   */
+  readonly beginAccountLogin: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly getAccountLoginStatus: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly cancelAccountLogin: () => Promise<void>;
+  readonly signOutAccount: () => Promise<{ readonly status: string; readonly generation: number }>;
   /**
    * Conversation compaction is opt-in on the live harness: `local-runtime-v2`
    * exposes `CliService.requestCompaction?` and the WebUI host surface
@@ -155,7 +166,14 @@ export type WebuiRuntimeHostFactory = (
 ) => Promise<
   Omit<
     WebuiAssembledHost,
-    "invalidateAuth" | "getUsageQuota" | "getSigninPanel" | "claimSignin"
+    | "invalidateAuth"
+    | "getUsageQuota"
+    | "getSigninPanel"
+    | "claimSignin"
+    | "beginAccountLogin"
+    | "getAccountLoginStatus"
+    | "cancelAccountLogin"
+    | "signOutAccount"
   >
 >;
 
@@ -394,7 +412,14 @@ export async function createWebuiRuntimeHost(
   // because the typecheck can't see the upstream shape.
   let host: Omit<
     WebuiAssembledHost,
-    "invalidateAuth" | "getUsageQuota" | "getSigninPanel" | "claimSignin"
+    | "invalidateAuth"
+    | "getUsageQuota"
+    | "getSigninPanel"
+    | "claimSignin"
+    | "beginAccountLogin"
+    | "getAccountLoginStatus"
+    | "cancelAccountLogin"
+    | "signOutAccount"
   >;
   try {
     host = await factory(
@@ -500,6 +525,10 @@ export async function createWebuiRuntimeHost(
   // enrichments must live on `host` itself — otherwise `getUsageQuota`
   // only exists on `harnessPort` and the live panel fails with
   // "runtime host does not expose the usage quota client".
+  // The account-login session shares the quota core deliberately: one
+  // credential store, one watch — a login (here or in the terminal client)
+  // refreshes both, and a sign-out clears both.
+  const accountLogin = createWebuiAccountLoginSession(quotaOauthCore);
   const hostHandle = {
     ...host,
     appVersion: options.appVersion ?? host.appVersion ?? "webui",
@@ -508,6 +537,18 @@ export async function createWebuiRuntimeHost(
       usageQuota.getUsageQuota(request),
     getSigninPanel: () => dailyCheckin.getSigninPanel(),
     claimSignin: () => dailyCheckin.claimSignin(),
+    beginAccountLogin: () => accountLogin.begin(),
+    getAccountLoginStatus: () => accountLogin.status(),
+    cancelAccountLogin: () => accountLogin.cancel(),
+    // The real sign-out: revoke + remove the credential, then clear this
+    // process's projections. `invalidateAuth` alone only cleared projections
+    // — the credential survived and the next lease refresh signed straight
+    // back in, which is why 退出登录 never actually logged out.
+    signOutAccount: async () => {
+      const result = await quotaOauthCore.logout({ revoke: true });
+      invalidateAuth();
+      return result;
+    },
   };
   const harnessPort = createHarnessPortFromHost(hostHandle);
   return {
@@ -532,6 +573,13 @@ const defaultWebuiRuntimeHostFactory: WebuiRuntimeHostFactory = async (
     options,
   )) as unknown as Omit<
     WebuiAssembledHost,
-    "invalidateAuth" | "getUsageQuota" | "getSigninPanel" | "claimSignin"
+    | "invalidateAuth"
+    | "getUsageQuota"
+    | "getSigninPanel"
+    | "claimSignin"
+    | "beginAccountLogin"
+    | "getAccountLoginStatus"
+    | "cancelAccountLogin"
+    | "signOutAccount"
   >;
 };

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { WebuiReviewPanel } from "../../src/client/components/SettingsModal.js";
+import { WebuiReviewPanel, WebuiReviewWorkspacePicker } from "../../src/client/components/SettingsModal.js";
 import {
   initialWebuiReviewState,
   reduceWebuiReviewState,
@@ -12,6 +12,7 @@ import {
   isWebuiReviewFiltering,
   type WebuiReviewFile,
 } from "../../src/client/projection/review-state.js";
+import { groupWebuiWorktreeWorkspaces } from "../../src/client/projection/worktree-state.js";
 
 /* Why this file asserts on markup rather than on clicks:
  *
@@ -184,6 +185,88 @@ describe("the search box reflects filter state", () => {
   });
 });
 
+/* Roadmap E 区 follow-up: the review page refused to do anything until the
+ * selected session already carried a workspace, and the refusal named the
+ * problem without offering a way out of it. Opening a workspace-bound session
+ * was the only route, and that route is not reachable from the page — the
+ * settings dialog is `aria-modal`, so the rail cannot be clicked while it is
+ * open. That is the same shape of defect as the disabled tabs: the user is
+ * parked in a state they cannot leave.
+ *
+ * The picker is a pure presentational component, exactly like
+ * `WebuiReviewPanel`, so the list it renders is assertable here. Choosing one
+ * is a click, and the click's effect on the review load is wiring — asserted
+ * at the bottom of this file alongside the tab routing. */
+describe("choosing a workspace to review", () => {
+  const workspaces = groupWebuiWorktreeWorkspaces([
+    { sessionId: "s1", title: "主线", updatedAt: 20, workspaceDir: "C:\\repo\\alpha", isDefaultWorkspace: true },
+    { sessionId: "s2", title: "实验", updatedAt: 10, workspaceDir: "C:\\repo\\alpha-wt" },
+  ]);
+
+  const picker = (props: Record<string, unknown> = {}): string =>
+    renderToStaticMarkup(createElement(WebuiReviewWorkspacePicker, props as never));
+
+  it("offers every reviewable workspace as a control that carries its path", () => {
+    const markup = picker({ workspaces });
+    expect(markup).toContain('data-testid="review-workspace-picker"');
+    expect(markup).toContain('data-webui-workspace-dir="C:\\repo\\alpha"');
+    expect(markup).toContain('data-webui-workspace-dir="C:\\repo\\alpha-wt"');
+    expect(markup).toContain('data-testid="review-workspace-option"');
+  });
+
+  /* The same checkout spelled two ways is one workspace. If the picker did its
+   * own grouping it would offer the same directory twice. */
+  it("does not offer the same checkout twice when the path spelling differs", () => {
+    const markup = picker({
+      workspaces: groupWebuiWorktreeWorkspaces([
+        { sessionId: "s1", title: "A", updatedAt: 20, workspaceDir: "C:\\repo\\alpha" },
+        { sessionId: "s2", title: "B", updatedAt: 10, workspaceDir: "C:/repo/alpha/" },
+      ]),
+    });
+    expect(markup.match(/data-testid="review-workspace-option"/gu)?.length).toBe(1);
+  });
+
+  it("marks which workspace is being reviewed", () => {
+    const markup = picker({ workspaces, selected: "C:\\repo\\alpha" });
+    expect(markup).toContain('data-webui-workspace-current="true"');
+    const current = markup.split('data-webui-workspace-current="true"')[0]?.split('<button')?.at(-1) ?? "";
+    expect(current).toContain("C:\\repo\\alpha");
+  });
+
+  /* With nothing to pick, the honest thing is to say why. An empty list under
+   * the same heading reads as a bug, which is the thing this page is fixing. */
+  it("explains why there is nothing to pick instead of rendering an empty list", () => {
+    const markup = picker({ workspaces: [] });
+    expect(markup).toContain('data-testid="review-workspace-empty"');
+    expect(markup).not.toContain('data-testid="review-workspace-option"');
+  });
+
+  /* The other half of the same sentence: while there is something to pick, the
+   * explanation is not shown. Without this, "there is nothing here" can sit
+   * above a full list and still pass. */
+  it("does not claim there is nothing to pick while there is something to pick", () => {
+    expect(picker({ workspaces })).not.toContain('data-testid="review-workspace-empty"');
+  });
+
+  it("says it is loading rather than claiming there are no workspaces", () => {
+    const markup = picker({ workspaces: [], loading: true });
+    expect(markup).toContain('data-webui-workspace-state="loading"');
+    expect(markup).not.toContain('data-testid="review-workspace-empty"');
+  });
+
+  /* The path is the identity of a workspace; the basename alone would make two
+   * checkouts named the same impossible to tell apart. The assertion reads the
+   * visible paragraph rather than the whole markup: every option also carries
+   * the path in `data-webui-workspace-dir`, so a whole-markup `toContain` is
+   * satisfied by the attribute even when the displayed text is the basename
+   * alone. */
+  it("shows the full path, not just the folder name", () => {
+    const shown = [...picker({ workspaces }).matchAll(/<p class="webui-worktree-path"[^>]*>([^<]*)<\/p>/gu)].map((match) => match[1] ?? "");
+    expect(shown.join("|")).toContain("C:\\repo\\alpha");
+    expect(shown.join("|")).toContain("C:\\repo\\alpha-wt");
+  });
+});
+
 /* Why these two are source assertions and not render assertions:
  *
  * `SettingsModal` opens on the `desktop` tab and only moves to another one
@@ -222,5 +305,44 @@ describe("tab-to-page wiring", () => {
     const fallback = source.split('webui-settings-empty-panel')[0]?.split('{active === "archived"')?.at(-1) ?? "";
     expect(fallback).toContain('active !== "coding"');
     expect(fallback).toContain('active !== "worktree"');
+  });
+});
+
+/* The picker's markup is asserted above; these two close the loop from a click
+ * to the review load, which no render here can reach — the choice is held in
+ * component state and the load lives in an effect. The assertions quote the
+ * exact expressions, so removing the picker call or hard-coding the prop back
+ * in turns them red. */
+describe("the chosen workspace reaches the review load", () => {
+  const source = readFileSync(
+    fileURLToPath(new URL("../../src/client/components/SettingsModal.tsx", import.meta.url)),
+    "utf8",
+  );
+  const page = source.slice(source.indexOf("function SettingsReviewPage"), source.indexOf("function SettingsWorktreePage"));
+
+  /* Without this the picker would render a list built from nothing. Scoped to
+   * the review page's own call: the worktree page is handed the same loader, so
+   * an unscoped substring check is satisfied by that call alone — which is
+   * exactly what the first negative-injection run found. */
+  it("gives the review page the session loader it lists workspaces from", () => {
+    expect(source).toMatch(/<SettingsReviewPage[^>]*loadSessions=\{loadSessions\}/u);
+  });
+
+  /* Asserting that the picker component exists would still pass if the page
+   * never rendered it, which is how the branch that shows it went untested. */
+  it("shows the picker when no workspace is bound", () => {
+    expect(page).toContain("if (!effectiveWorkspaceDir)");
+    expect(page).toContain("<WebuiReviewWorkspacePicker");
+  });
+
+  /* The prop is the selected session's workspace. If the pick were folded into
+   * the prop instead of an override, choosing a workspace here would appear to
+   * do nothing until the user changed session. */
+  it("treats a chosen workspace as an override of the session's, not as the prop", () => {
+    expect(page).toContain("workspaceDir?.trim() || pickedWorkspaceDir");
+  });
+
+  it("loads the summary for the effective workspace, not the raw prop", () => {
+    expect(page).toContain("getWorkspaceReviewSummary({ workspaceDir: effectiveWorkspaceDir })");
   });
 });

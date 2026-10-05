@@ -11,9 +11,14 @@ import { WebuiErrorCode } from "../../src/server/envelope.js";
 import {
   getGlobalInstructionsOperation,
   setGlobalInstructionsOperation,
+  type WebuiOperation,
 } from "../../src/server/operation/operations.js";
 
-function expectInvalid(operation: typeof setGlobalInstructionsOperation, body: unknown): void {
+// Shared by the read and the write operation, so pin only the contract the
+// helper actually uses. Their body types differ, and a generic `Body` is what
+// lets both through: `Record<string, never>` carries an index signature but no
+// declared `content`, so it is not assignable to the write body type.
+function expectInvalid<Body>(operation: WebuiOperation<Body>, body: unknown): void {
   expect(operation.validate(body)).toMatchObject({
     ok: false,
     code: WebuiErrorCode.invalidBody,

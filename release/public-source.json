@@ -3848,6 +3848,7 @@
     "test/webui-browser/rail-pin.spec.mjs",
     "test/webui-browser/rail-search.spec.mjs",
     "test/webui-browser/rail-star.spec.mjs",
+    "test/webui-browser/recovered-surfaces.spec.mjs",
     "test/webui-browser/server.mjs",
     "test/webui-browser/settings-account-tab.spec.mjs",
     "test/webui-browser/transcript.spec.mjs",

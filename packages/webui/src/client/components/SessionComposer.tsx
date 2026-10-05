@@ -39,6 +39,12 @@ import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projecti
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";
 import {
+  contextUsagePopoverStyle,
+  positionContextUsagePopover,
+  sameContextUsagePlacement,
+  type ContextUsagePlacement,
+} from "../projection/context-usage-popover.js";
+import {
   breakdownSegmentPercent,
   breakdownShareLabel,
   breakdownSwatchStyle,
@@ -2515,6 +2521,59 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
   // because of something they did a minute ago.
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const [placement, setPlacement] = useState<ContextUsagePlacement | undefined>(undefined);
+  /**
+   * Place the panel from the ring's rectangle rather than from CSS offsets.
+   *
+   * It was `position: absolute` with `right: -4px` and `bottom: calc(100% + 8px)`,
+   * which reads as "anchored to the ring" and is not. Those offsets resolve
+   * against the nearest POSITIONED ancestor, and the session column above the
+   * composer is `overflow: hidden` — so a 480px panel right-aligned to a ring
+   * about a third of the way across that column reaches past the column's own
+   * left edge and the clip silently takes the rest. On a 240px rail that is a
+   * panel missing its heading, its figures and the label of every plan meter.
+   *
+   * `fixed` is the fix for THAT, and it is the same fix `flyout-position.ts`
+   * gives the model fly-out for the same reason: an overlay has to escape the
+   * surface that happens to contain it. It is not the whole fix — the composer
+   * also sits inside a stacking context that the rail outranks, which no amount
+   * of measuring from here can reach. See the overlay's own rule in the sheet.
+   *
+   * Measured on every render while open, because the panel is its own worst
+   * witness: opening the disclosure adds six rows and a taller panel, which moves
+   * the top edge and can push the last row off screen if the placement was frozen
+   * at the closed height. `sameContextUsagePlacement` is what makes measuring
+   * that often free.
+   */
+  const measurePanel = useCallback(() => {
+    const anchor = anchorRef.current;
+    const surface = surfaceRef.current;
+    if (!anchor || !surface) return;
+    const rect = surface.getBoundingClientRect();
+    setPlacement((current) => {
+      const next = positionContextUsagePopover({
+        anchor: anchor.getBoundingClientRect(),
+        surface: { width: rect.width, height: rect.height },
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+      });
+      return sameContextUsagePlacement(current, next) ? current : next;
+    });
+  }, []);
+  useLayoutEffect(() => {
+    if (open) measurePanel();
+  });
+  useEffect(() => {
+    if (!open) return undefined;
+    // The ring is in a column that scrolls, and the panel is fixed, so without
+    // this it would stay put while the composer moved out from under it.
+    window.addEventListener("scroll", measurePanel, true);
+    window.addEventListener("resize", measurePanel);
+    return () => {
+      window.removeEventListener("scroll", measurePanel, true);
+      window.removeEventListener("resize", measurePanel);
+    };
+  }, [open, measurePanel]);
   useEffect(() => {
     const refresh = () => setEnabled(window.localStorage?.getItem("webui-context-window-usage") !== "false");
     window.addEventListener("storage", refresh);
@@ -2643,10 +2702,12 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
         上下文窗口
       </span>
       <div
+        ref={surfaceRef}
         className={`webui-context-usage-popover${open ? " is-open" : ""}`}
         role="dialog"
         aria-label="上下文窗口使用情况"
         aria-hidden={!open}
+        style={placement ? contextUsagePopoverStyle(placement) : undefined}
       >
           {/*
             The heading is the panel's own disclosure control. The panel opens

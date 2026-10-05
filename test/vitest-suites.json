@@ -231,6 +231,7 @@
       "packages/webui/test/unit/webui-stream.test.ts",
       "packages/webui/test/unit/webui-auth-context.test.ts",
       "packages/webui/test/unit/context-breakdown.test.ts",
+      "packages/webui/test/unit/context-usage-popover.test.ts",
       "packages/webui/test/unit/webui-runtime-environment.test.ts",
       "packages/webui/test/unit/projections.test.ts",
       "packages/webui/test/unit/commands.test.ts",

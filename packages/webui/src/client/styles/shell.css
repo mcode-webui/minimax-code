@@ -620,7 +620,20 @@
   .webui-context-usage-track, .webui-context-usage-value { fill: none; stroke-width: 2; }
   .webui-context-usage-track { stroke: var(--border_light); }
   .webui-context-usage-value { stroke: var(--text_default_accent); stroke-linecap: round; transition: stroke-dashoffset 180ms ease; }
-  .webui-context-usage-popover { position: absolute; z-index: 60; right: -4px; bottom: calc(100% + 8px); width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto; padding: 16px 18px; border: 1px solid var(--border_default); border-radius: 18px; background: var(--bg_grouped_secondary_elevated); box-shadow: 0 8px 24px rgb(0 0 0 / 10%); color: var(--text_default_primary); opacity: 0; pointer-events: none; transform: translateY(5px) scale(.99); transform-origin: bottom right; visibility: hidden; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 150ms step-end; }
+  /* `fixed`, not `absolute`, and NOT offset by `right`/`bottom`. Those offsets
+   * resolve against the nearest POSITIONED ancestor, not against the ring, and
+   * the session column above the composer is `overflow: hidden`: a 480px panel
+   * right-aligned to a ring a third of the way across that column reaches past
+   * the column's own left edge and the clip silently takes the rest. `left`/`top`
+   * are measured instead; see `projection/context-usage-popover.ts`.
+   *
+   * The 60 here is only ever compared INSIDE the composer's overlay, which is
+   * itself a stacking context — the panel cannot outrank the rail from in there,
+   * and the rule that lets it is the overlay's own.
+   *
+   * `width` stays on `100vw` rather than the column: the panel is free to sit
+   * over the rail, which is what makes it a panel rather than a card. */
+  .webui-context-usage-popover { position: fixed; z-index: 60; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto; padding: 16px 18px; border: 1px solid var(--border_default); border-radius: 18px; background: var(--bg_grouped_secondary_elevated); box-shadow: 0 8px 24px rgb(0 0 0 / 10%); color: var(--text_default_primary); opacity: 0; pointer-events: none; transform: translateY(5px) scale(.99); transform-origin: bottom right; visibility: hidden; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 150ms step-end; }
   .webui-context-usage-popover::before { position: absolute; top: -10px; right: 0; left: 0; height: 10px; content: ""; }
   .webui-context-usage-popover.is-open { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); visibility: visible; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 0s; }
   .webui-context-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--size_14); line-height: 20px; }
@@ -2370,7 +2383,20 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 20;
+    /* 60, not 20, and not for the transcript: because this is a POSITIONED
+     * element with a z-index it is a STACKING CONTEXT, so everything the
+     * composer opens is ranked inside it and can never outrank the rail's
+     * z-50 outside it — however high its own z-index says. The context-usage
+     * panel is what exposed that: it is 480px wide and right-aligned to a ring
+     * near the middle of the column, so it reaches left over the rail, and at
+     * 20 the rail painted straight over its heading, its figures and the label
+     * of every plan meter. Raising the panel to 1000 changed nothing, which is
+     * the signature of a trapped context rather than a missing one.
+     *
+     * 60 is the next layer up that the sheet already uses, and it changes
+     * nothing where the two do not overlap — which is everywhere except a panel
+     * the composer deliberately grew over the rail. */
+    z-index: 60;
     padding: 0 24px 16px;
     background: linear-gradient(
       to top,

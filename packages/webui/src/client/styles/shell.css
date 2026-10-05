@@ -356,7 +356,15 @@
   .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
   .webui-personalization-manager { display: flex; width: 100%; flex-direction: column; gap: var(--spacing_8); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
-  .webui-personalization-textarea { width: 100%; min-height: 320px; resize: vertical; border: none; outline: none; background: transparent; padding: var(--spacing_12); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
+  /* `height` rather than `min-height`: the panel opens at a predictable
+     300px instead of a height that depends on the content already in the
+     file. `min-height` alone left a 3.5KB AGENTS.md rendering as a wall of
+     text and an empty profile rendering as an empty wall, with the two
+     editors at visibly different heights for no reason. `resize: vertical`
+     keeps the drag handle, and the browser writes the dragged size back as
+     an inline style, so the user's choice survives until they reload —
+     `min-height` is the floor their drag cannot go below. */
+  .webui-personalization-textarea { width: 100%; height: 300px; min-height: 300px; resize: vertical; border: none; outline: none; background: transparent; padding: var(--spacing_12); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
   .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }
   .webui-personalization-meta { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-personalization-meta span:first-child { min-width: 0; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }

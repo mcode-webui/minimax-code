@@ -63,6 +63,7 @@ import {
 } from "../projection/shell-surface.js";
 import { ConversationUsageBanner } from "./ConversationUsageBanner.js";
 import { PluginManagement } from "./PluginManagement.js";
+import { SchedulesPanel } from "./SchedulesPanel.js";
 import { WebuiComposer } from "./SessionComposer.js";
 import { WebuiSessionTranscript } from "./SessionTranscript.js";
 import {
@@ -273,6 +274,16 @@ export function WebuiClientFoundationApp(
   const dispatchShellSurface = useCallback((command: WebuiShellSurfaceCommand) => {
     setShellSurface((current) => reduceWebuiShellSurface(current, command));
   }, []);
+  // The 「定时」 page is a second replacement surface next to plugin management.
+  // It is local state rather than a third `WebuiShellSurface` variant because
+  // that union is read by the rail's active state and by the reducer tests;
+  // widening it for one page would change every reader.
+  const [schedulesOpen, setSchedulesOpen] = useState(false);
+  // The 在对话中创建 path opens a real session for the user to talk in, then
+  // leaves the closing 「完成并创建」 action behind in this page. The id lives
+  // here rather than in the panel because the view switches to the conversation
+  // in between: the panel unmounts, and the rail brings it back.
+  const [scheduledTaskChatSessionId, setScheduledTaskChatSessionId] = useState<string | undefined>();
   const [selectedSessionId, setSelectedSessionId] =
     useSelectedSessionId(locationHash);
   // Rail session links are plain `#session=<id>` anchors, so the navigation runs
@@ -285,6 +296,13 @@ export function WebuiClientFoundationApp(
   useEffect(() => {
     dispatchShellSurface({ type: "show-conversation" });
   }, [dispatchShellSurface, selectedSessionId]);
+  // The schedules page replaces the conversation the same way plugin
+  // management does, so it leaves on the same funnel — the rail is its only
+  // way back. A sibling effect rather than a second statement in the one above,
+  // because that effect's exact body is asserted by `shell-surface.test.ts`.
+  useEffect(() => {
+    setSchedulesOpen(false);
+  }, [selectedSessionId]);
   // Composer input history + per-session drafts (roadmap Module B:
   // 输入历史/草稿). One persisted store keyed by session (home has its own
   // slot), so a draft survives both a session switch and a reload, and ↑ in
@@ -889,8 +907,15 @@ export function WebuiClientFoundationApp(
   const pluginManagementArea = webuiPluginManagementArea(shellSurface);
   const pluginManagementOpen = isPluginManagementSurface(shellSurface);
   const openPluginManagement = useCallback((area: WebuiPluginManagementArea) => {
+    // The two pages replace the same column, so opening one closes the other.
+    setSchedulesOpen(false);
     dispatchShellSurface({ type: "open-plugin-management", area });
   }, [dispatchShellSurface]);
+  const openSchedules = useCallback(() => {
+    dispatchShellSurface({ type: "close-plugin-management" });
+    setSchedulesOpen(true);
+  }, [dispatchShellSurface]);
+  const closeSchedules = useCallback(() => setSchedulesOpen(false), []);
   const [workspacePanelStates, setWorkspacePanelStates] = useState<WorkspacePanelSessionStates>(() => new Map());
   // ---- Rail activity: which sessions are running, and when each last moved.
   //
@@ -1186,7 +1211,7 @@ export function WebuiClientFoundationApp(
                     <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
                       <div className="space-y-px pb-2">
                         <RailRow label="插件" icon={<WebuiIconPlugins />} active={pluginManagementOpen} onSelect={() => openPluginManagement("plugins")} />
-                        <RailRow label="定时" icon={<WebuiIconSchedule />} inert />
+                        <RailRow label="定时" icon={<WebuiIconSchedule />} active={schedulesOpen} onSelect={openSchedules} />
                         <RailRow label="网站" icon={<WebuiIconSites />} inert />
                         <RailRow label="远程" icon={<WebuiIconRemote />} inert />
                       </div>
@@ -1269,7 +1294,7 @@ export function WebuiClientFoundationApp(
             data-webui-shell-region="surface"
             className="relative flex min-h-0 min-w-0 flex-1 flex-row"
           >
-            {pluginManagementArea ? <PluginManagement transport={transport} initialArea={pluginManagementArea} onChatWithAgent={async (name) => {
+            {schedulesOpen ? <SchedulesPanel transport={transport} onClose={closeSchedules} currentSessionId={selectedSessionId} chatSessionId={scheduledTaskChatSessionId} onChatSessionCreated={(sessionId) => { setScheduledTaskChatSessionId(sessionId); setSchedulesOpen(false); dispatchShellSurface({ type: "show-conversation" }); handleSessionCreated(sessionId); }} onChatSessionFinished={() => setScheduledTaskChatSessionId(undefined)} /> : pluginManagementArea ? <PluginManagement transport={transport} initialArea={pluginManagementArea} onChatWithAgent={async (name) => {
               if (!transport?.createSession) throw new Error("当前 WebUI 未连接会话创建服务");
               const created = await transport.createSession({ name });
               const sessionId = created.sessionId ?? created.session?.sessionId;

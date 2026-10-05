@@ -457,6 +457,12 @@ export function createWebuiTransport({
     startCodexOAuthLogin: (body) => request("startCodexOAuthLogin", body ?? {}),
     cancelCodexOAuthLogin: (body) => request("cancelCodexOAuthLogin", body),
     refreshModels: () => request("refreshModels", undefined),
+    listScheduledTasks: (body) => request("listScheduledTasks", body ?? {}),
+    createScheduledTask: (body) => request("createScheduledTask", body),
+    updateScheduledTask: (body) => request("updateScheduledTask", body),
+    deleteScheduledTask: (body) => request("deleteScheduledTask", body),
+    triggerScheduledTaskNow: (body) => request("triggerScheduledTaskNow", body),
+    getScheduledTaskCapability: () => request("getScheduledTaskCapability", {}),
     signOut: () => request("signOut", {}),
     runCommand: (body) => request("runCommand", body),
   } satisfies Required<WebuiTransport>;

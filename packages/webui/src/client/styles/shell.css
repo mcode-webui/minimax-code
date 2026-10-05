@@ -606,17 +606,59 @@
   .webui-context-usage-trigger:hover, .webui-context-usage-trigger[aria-expanded="true"] { background: var(--bg_interaction_tertiary_hover); color: var(--icon_default_secondary); }
   .webui-context-usage-trigger:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-context-usage-trigger svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
+  /* Hover label: the ring's NAME, and the whole of what hovering produces.
+   * The dark bubble with an arrow is the shell's existing tooltip shape (see
+   * `.webui-signin-credits-tooltip`), reused rather than re-invented so a
+   * tooltip here and a tooltip there are the same object.
+   *
+   * `left: 50%` with a translate centres the bubble on the ring; the popover
+   * below is right-anchored, because a 480px panel centred on a 28px control
+   * would hang off the left edge of a narrow window. */
+  .webui-context-usage-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-context-usage-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-context-usage-label[data-webui-context-usage-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
   .webui-context-usage-track, .webui-context-usage-value { fill: none; stroke-width: 2; }
   .webui-context-usage-track { stroke: var(--border_light); }
   .webui-context-usage-value { stroke: var(--text_default_accent); stroke-linecap: round; transition: stroke-dashoffset 180ms ease; }
-  .webui-context-usage-popover { position: absolute; z-index: 60; right: -4px; bottom: calc(100% + 8px); width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto; padding: 16px 18px; border: 1px solid var(--border_default); border-radius: 18px; background: var(--bg_grouped_secondary_elevated); box-shadow: 0 8px 24px rgb(0 0 0 / 10%); color: var(--text_default_primary); opacity: 0; pointer-events: none; transform: translateY(5px) scale(.99); transform-origin: bottom right; visibility: hidden; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 150ms step-end; }
+  /* `fixed`, not `absolute`, and NOT offset by `right`/`bottom`. Those offsets
+   * resolve against the nearest POSITIONED ancestor, not against the ring, and
+   * the session column above the composer is `overflow: hidden`: a 480px panel
+   * right-aligned to a ring a third of the way across that column reaches past
+   * the column's own left edge and the clip silently takes the rest. `left`/`top`
+   * are measured instead; see `projection/context-usage-popover.ts`.
+   *
+   * The 60 here is only ever compared INSIDE the composer's overlay, which is
+   * itself a stacking context — the panel cannot outrank the rail from in there,
+   * and the rule that lets it is the overlay's own.
+   *
+   * `width` stays on `100vw` rather than the column: the panel is free to sit
+   * over the rail, which is what makes it a panel rather than a card. */
+  .webui-context-usage-popover { position: fixed; z-index: 60; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto; padding: 16px 18px; border: 1px solid var(--border_default); border-radius: 18px; background: var(--bg_grouped_secondary_elevated); box-shadow: 0 8px 24px rgb(0 0 0 / 10%); color: var(--text_default_primary); opacity: 0; pointer-events: none; transform: translateY(5px) scale(.99); transform-origin: bottom right; visibility: hidden; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 150ms step-end; }
   .webui-context-usage-popover::before { position: absolute; top: -10px; right: 0; left: 0; height: 10px; content: ""; }
   .webui-context-usage-popover.is-open { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); visibility: visible; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1), transform 150ms cubic-bezier(.2, .7, .2, 1), visibility 0s; }
   .webui-context-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--size_14); line-height: 20px; }
+  /* The heading doubles as the panel's disclosure control, so it is a real
+   * button and has to be reset as one: a native button brings a border, a
+   * background and its own font, and the panel's heading is a line of text. */
+  .webui-context-usage-disclosure { width: 100%; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .webui-context-usage-disclosure:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; border-radius: 4px; }
+  .webui-context-usage-heading-value { display: inline-flex; align-items: center; gap: 4px; }
+  /* A rotation rather than two glyphs: the same arrow is both the promise that
+   * there is more below and the report that there now is. */
+  .webui-context-usage-chevron { display: inline-flex; width: 16px; height: 16px; color: var(--icon_default_tertiary); transform: rotate(0deg); transition: transform 150ms cubic-bezier(.2, .7, .2, 1); }
+  .webui-context-usage-chevron svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .webui-context-usage-chevron.is-open { transform: rotate(180deg); }
   .webui-context-usage-bar { display: flex; height: 4px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: var(--border_light); }
   .webui-context-usage-bar span { display: block; height: 100%; flex: 0 0 auto; background: var(--text_default_accent); transition: width 180ms ease; }
   .webui-context-usage-tokens { margin-top: 8px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 16px; }
   .webui-context-usage-components { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  /* The folded state, stated to the cascade rather than assumed from it.
+   * `hidden` is what keeps the six rows out of the tab order and out of the
+   * accessibility tree, and it carries `display: none` from the UA stylesheet —
+   * which the `display: flex` above outranks, because an author rule beats a
+   * UA rule at equal specificity. Without this line the rows stayed in the
+   * accessibility tree AND on screen, folded in the markup only. */
+  .webui-context-usage-components[hidden] { display: none; }
   .webui-context-usage-component, .webui-context-usage-component-label { display: flex; align-items: center; }
   .webui-context-usage-component { justify-content: space-between; gap: 12px; font-size: var(--size_14); line-height: 20px; }
   .webui-context-usage-component-label { min-width: 0; gap: 7px; }
@@ -628,7 +670,9 @@
   .webui-context-usage-quota-bar { height: 4px; overflow: hidden; border-radius: 999px; background: var(--border_light); }
   .webui-context-usage-quota-bar span { display: block; height: 100%; border-radius: inherit; background: var(--text_default_accent); transition: width 180ms ease; }
   .webui-context-usage-reset { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 16px; }
-  @media (prefers-reduced-motion: reduce) { .webui-context-usage-popover, .webui-context-usage-bar span, .webui-context-usage-quota-bar span { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .webui-context-usage-chevron, .webui-context-usage-popover, .webui-context-usage-label, .webui-context-usage-bar span, .webui-context-usage-quota-bar span { transition: none; } }
+
+  @media (prefers-reduced-motion: reduce) { .webui-thinking-label { transition: none; } }
 
   /* The approval trigger. A pill with the current mode's own glyph, its label,
    * and a chevron — the same three-part affordance the model picker uses, so
@@ -1819,10 +1863,14 @@
   .webui-model-context-option:hover {
     background: var(--bg_interaction_tertiary_hover);
   }
+  /* Same shape as `.webui-model-effort-group` above, and deliberately gap-less:
+   * both are lists of pickable sizes, and a 4px gap in one of them and not the
+   * other would read as the context list being a different kind of control from
+   * the level list, which is the one thing they are not. */
   .webui-model-context-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing_4, 4px);
+    gap: 0;
   }
   .webui-model-context-option {
     display: flex;
@@ -1856,6 +1904,15 @@
   .webui-model-option-tick {
     color: var(--text_default_secondary);
   }
+  /* The provider a repeated row was carried in from, on the favourites section
+   * only. Set in the same voice as the group header it stands in for — one step
+   * down from the model name, which is what a sub-label is. */
+  .webui-model-option-origin {
+    display: block;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
   .webui-model-option[data-focused="true"] {
     background-color: var(--bg_interaction_tertiary_hover, rgba(0, 0, 0, 0.06));
   }
@@ -1878,6 +1935,207 @@
   .webui-model-option[aria-selected="true"],
   .webui-workspace-option[aria-selected="true"] {
     background-color: var(--bg_interaction_tertiary_hover);
+  }
+  /* The picker's left column: the search box sits above the scrolling list, so
+   * the two live in one grid cell rather than becoming two grid children. The
+   * list then has to give up `height: 100%` — that height is measured against
+   * the COLUMN, and with a search box above it the list would overflow the
+   * menu by exactly the search box's height. */
+  /* The cascade. One column, sized to the list: the settings live in a fly-out
+   * beside the hovered row, so the menu no longer reserves a second column for
+   * a model the user may never have hovered. The width is what the list needs
+   * to read model names, not what a settings panel would need. */
+  .webui-model-menu--cascade {
+    display: flex;
+    flex-direction: column;
+    width: min(320px, calc(100vw - 32px));
+    max-height: min(420px, calc(100dvh - 112px));
+    padding: var(--spacing_8);
+    overflow: visible;
+  }
+  /* The fly-out is `position: fixed` and placed by the shared
+   * `positionFlyout` engine, so it escapes this list's own `overflow-y: auto`.
+   * It is NOT a child of the menu: a nested surface would be clipped by the
+   * very scrolling container it needs to escape.
+   *
+   * `min-width` rather than `width`: the surface is MEASURED for its clamp and
+   * flip, and a model with two context sizes is legitimately narrower than one
+   * with five. The floor keeps a two-size list from collapsing to a column of
+   * digits. */
+  .webui-model-flyout {
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_8);
+    min-width: 176px;
+    padding: var(--spacing_8);
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_12);
+    background: var(--bg_grouped_secondary_elevated);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+    color: var(--text_default_primary);
+  }
+  /* A preview describes a model the user has not picked. The options stay
+   * visible — the point is to see what the model offers before committing to
+   * it — but they are not committable, and saying so with the disabled state is
+   * clearer than hiding the control and leaving the user wondering. */
+  .webui-model-flyout[data-webui-model-preview="true"] {
+    opacity: 0.92;
+  }
+  /* The context sizes, listed in place inside the settings fly-out.
+   * `.webui-model-context-group` is the listbox wrapper and
+   * `.webui-model-context-option` each size; both are shared with the thinking
+   * level rows, which is why the option rule sits with them above. */
+  .webui-model-context-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .webui-model-context-option:focus-visible,
+  .webui-model-effort-option:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: -2px;
+  }
+  /* The thinking trigger. Three tones, and the third is the one that matters:
+   * `unstated` is NOT `off`. The wire says an empty effort means "no override,
+   * the engine picks", and the engine never reports back which level it chose,
+   * so a blue brain beside the word "Default" would assert a state nothing in
+   * this process can verify. The neutral tone is the honest one, and the label
+   * beside it carries the truth. */
+  .webui-thinking-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
+  .webui-thinking-trigger {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    transition: background-color 120ms ease;
+  }
+  /* The brain's hover bubble: the same dark shape with an arrow as
+   * `.webui-context-usage-label` two controls away, so a tooltip here and a
+   * tooltip there are one object rather than two. A native `title` was the
+   * alternative and it never appeared — it is drawn by the window chrome, not
+   * by this page, and in this shell it stayed invisible. */
+  .webui-thinking-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-thinking-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-thinking-label[data-webui-thinking-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
+  .webui-thinking-trigger:hover:not(:disabled) {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-thinking-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .webui-thinking-trigger:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 1px;
+  }
+  .webui-thinking-brain {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+  .webui-thinking-brain--on {
+    color: var(--text_default_accent);
+  }
+  .webui-thinking-brain--off,
+  .webui-thinking-brain--unstated {
+    color: var(--icon_default_tertiary);
+  }
+  /* No `.webui-thinking-brain-slot` rule, and deliberately none: a depth
+   * model has no brain at all. It used to render a non-interactive glyph to
+   * "indicate" the level, and its slot styling went with it — a
+   * control-shaped thing that cannot be controlled is an affordance for a
+   * choice the user has to make somewhere else, and the level is already on
+   * the model chip. */
+  /* No `.webui-thinking-level` rule, and deliberately none. The level rides
+   * the model name in the chip (`.webui-model-chip-level` in ModelPicker) and
+   * is chosen in the picker's settings fly-out, so a control repeating that
+   * word one slot along the toolbar would answer nothing the chip had not. */
+  .webui-model-menu-column {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: var(--spacing_8);
+  }
+  .webui-model-menu-column > .webui-model-menu-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+  .webui-model-menu-search {
+    flex: 0 0 auto;
+  }
+  .webui-model-search-field {
+    display: block;
+  }
+  .webui-model-search-input {
+    width: 100%;
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_8);
+    background: var(--bg_grouped_tertiary);
+    padding: var(--spacing_6) var(--spacing_12);
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+  }
+  .webui-model-search-input::placeholder {
+    color: var(--text_default_tertiary);
+  }
+  .webui-model-search-input:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: -1px;
+  }
+  .webui-model-search-empty {
+    flex: 1 1 auto;
+    padding: var(--spacing_16) var(--spacing_12);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    text-align: center;
+  }
+  /* A row owns the star, so the option has to yield the width instead of
+   * claiming 100% of a box that now has a sibling. `min-width: 0` is what
+   * stops a long model name from pushing the star off the edge instead of
+   * truncating. */
+  .webui-model-option-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_4);
+  }
+  .webui-model-option-row > .webui-model-option {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+  /* The star is a control, not a glyph in a row of text: it needs its own hit
+   * area and its own focus ring, or it is unreachable by keyboard and
+   * unhittable on the rows where the name truncates. */
+  .webui-model-option-star {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing_24);
+    height: var(--spacing_24);
+    border-radius: var(--radius_8);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_14);
+    line-height: 1;
+    transition: color 120ms ease, background-color 120ms ease;
+  }
+  .webui-model-option-star:hover {
+    background-color: var(--bg_interaction_tertiary_hover);
+    color: var(--text_default_secondary);
+  }
+  .webui-model-option-star[aria-pressed="true"] {
+    color: var(--text_default_primary);
+  }
+  .webui-model-option-star:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: -2px;
   }
   /* Slash palette rows reproduce the desktop's icon, bold title, dim
      description pattern. The leading icon is the command glyph; the trailing
@@ -2296,7 +2554,20 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 20;
+    /* 60, not 20, and not for the transcript: because this is a POSITIONED
+     * element with a z-index it is a STACKING CONTEXT, so everything the
+     * composer opens is ranked inside it and can never outrank the rail's
+     * z-50 outside it — however high its own z-index says. The context-usage
+     * panel is what exposed that: it is 480px wide and right-aligned to a ring
+     * near the middle of the column, so it reaches left over the rail, and at
+     * 20 the rail painted straight over its heading, its figures and the label
+     * of every plan meter. Raising the panel to 1000 changed nothing, which is
+     * the signature of a trapped context rather than a missing one.
+     *
+     * 60 is the next layer up that the sheet already uses, and it changes
+     * nothing where the two do not overlap — which is everywhere except a panel
+     * the composer deliberately grew over the rail. */
+    z-index: 60;
     padding: 0 24px 16px;
     background: linear-gradient(
       to top,

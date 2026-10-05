@@ -143,7 +143,18 @@ export interface WebuiModelPickerEntry {
   readonly contextWindowOptions?: readonly number[];
   readonly contextWindowOptionHints?: Readonly<Record<string, string>>;
   readonly contextLimit?: number;
-  readonly thinkingConfig?: { readonly mode?: string };
+  /**
+   * The runtime's thinking contract for this model.
+   *
+   * `default_value` is the runtime's own statement that a `switchable` model
+   * has an on/off thinking switch, and it arrives here whether or not the
+   * variant list does. `resolveEffortOptions` reads it so the brain icon does
+   * not depend on a second field surviving the trip.
+   */
+  readonly thinkingConfig?: {
+    readonly mode?: string;
+    readonly default_value?: "true" | "false";
+  };
   readonly thinking?: { readonly effort?: string };
   readonly [key: string]: unknown;
 }

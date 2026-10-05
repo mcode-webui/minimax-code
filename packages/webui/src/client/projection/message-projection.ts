@@ -428,7 +428,25 @@ export function projectWebuiMessageToStreamMessage(
     ? normalized.toolCalls
     : undefined;
   const usage = readMessageUsage(message);
-  const contextUsage = normalized.contextUsage;
+  // `contextUsage` is the field the composer's readout and `latestContextUsage`
+  // read. Two different producers write context consumption, and the readout
+  // must survive either one:
+  //
+  //   - `context_usage` (camelCase inside: `contextWindowTokens` /
+  //     `usedTokens` / `components`) is the Electron-local live snapshot. It
+  //     rides the stream only, never the cloud, and never reaches the database.
+  //   - `usage` (`total_tokens` / `context_window`) is the turn-level token
+  //     usage in `agent-core/src/protocol/agent-message.ts`, and it is what a
+  //     reloaded session actually has.
+  //
+  // Reading `normalized.contextUsage` alone left the field undefined for every
+  // persisted message, so a reloaded session's readout had no input at all and
+  // rendered nothing — with no error to point at it. Prefer the explicit
+  // snapshot when a live message carries one (it is the richer shape, and the
+  // only one with a per-category `components` breakdown) and fall back to the
+  // turn usage otherwise, so the readout works on both live and reloaded
+  // sessions.
+  const contextUsage = normalized.contextUsage ?? usage;
   return {
     id,
     answer: normalized.msgContent ?? "",

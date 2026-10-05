@@ -24,8 +24,11 @@ export function projectContextSnapshot(input: {
     if (compaction && usage) break;
   }
   if (!usage) return { status: input.active ? "loading" : "empty", ...(compaction ? { compaction } : {}) };
-  const window = numberValue(usage.contextWindowTokens);
-  const usedTokens = numberValue(usage.usedTokens);
+  // The runtime protocol's names, not invented ones. `total_tokens` is what the
+  // turn CONSUMED against `context_window`, which is what the readout's
+  // percentage is; the wire has no separate "used" field to prefer.
+  const window = numberValue(usage.context_window);
+  const usedTokens = numberValue(usage.total_tokens);
   return {
     status: input.active ? "stale" : "live",
     usage,
@@ -45,7 +48,13 @@ function readUsage(rawJson: string): Record<string, unknown> | undefined {
   try {
     const value: unknown = JSON.parse(rawJson);
     if (!isRecord(value)) return undefined;
-    return isRecord(value.contextUsage) ? value.contextUsage : isRecord(value.context_usage) ? value.context_usage : undefined;
+    // The persisted shape is `usage`, with the field names the runtime
+    // protocol fixes: `total_tokens` / `context_window`
+    // (`agent-core/src/protocol/agent-message.ts`). Reading `contextUsage` /
+    // `context_usage` here instead matched nothing in the database — which is
+    // what made the composer's context readout render nowhere at all, with no
+    // error to point at it.
+    return isRecord(value.usage) ? value.usage : undefined;
   } catch {
     return undefined;
   }

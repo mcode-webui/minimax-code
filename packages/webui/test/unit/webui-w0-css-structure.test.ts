@@ -423,13 +423,13 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       rule.context.some((entry) => entry.includes("prefers-reduced-motion")),
     );
 
-    // Six blocks in shell.css, seven rules inside them (the settings block
+    // Seven blocks in shell.css, eight rules inside them (the settings block
     // disables two selectors). Deleting one of these is the failure mode this
     // assertion exists for: the base rule would keep animating for a user who
     // asked for reduced motion. The exact list is the point -- adding an
     // animated rule without registering its override here is the same defect,
     // in the other direction.
-    expect(reducedMotion).toHaveLength(7);
+    expect(reducedMotion).toHaveLength(8);
     for (const rule of reducedMotion)
       expect(rule.body).toMatch(/(?:animation|transition):\s*none/u);
 
@@ -437,9 +437,10 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
     expect(selectors).toEqual([
       ".message-animate-in",
       ".signin-card-collapsing, .signin-day-claimed-animation",
-      // Added with the context-usage indicator: the popover, the bar fill and
-      // the quota bar fill all transition in their base rules.
-      ".webui-context-usage-popover, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
+      // Added with the context-usage indicator: the chevron, the hover label,
+      // the popover, the bar fill and the quota bar fill all transition in
+      // their base rules.
+      ".webui-context-usage-chevron, .webui-context-usage-popover, .webui-context-usage-label, .webui-context-usage-bar span, .webui-context-usage-quota-bar span",
       ".webui-message-actions",
       // Added with the rail activity spinner. It spins forever by design, so a
       // reader who asked for reduced motion would otherwise get an animation
@@ -447,6 +448,9 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       // busy.
       ".webui-rail-spinner",
       ".webui-settings-content",
+      // Added with the brain trigger's hover bubble, which fades and slides in
+      // its base rule.
+      ".webui-thinking-label",
       // Renamed from `.webui-settings-toggle span` when the toggle became the
       // shared `.webui-toggle-switch` control.
       ".webui-toggle-switch, .webui-toggle-switch > span",

@@ -19,6 +19,12 @@ const skipped = new Set([
   ".turbo",
   ".idea",
   ".DS_Store",
+  // A machine-local code index, in the same category as `.idea` and `.cache`
+  // above: a per-machine database that git ignores and that is not source. It
+  // carries its own `.gitignore`, so the directory is invisible to `git status`
+  // but not to this scan, and without the entry any developer who happens to have
+  // the tool installed fails `check:source` over a file they never wrote.
+  ".codegraph",
 ]);
 function filesIn(directory, prefix = "") {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

@@ -276,6 +276,7 @@
 "packages/webui/test/unit/rail-buckets.test.ts",
 "packages/webui/test/unit/rail-pin-affordance.test.ts",
 "packages/webui/test/unit/rail-star-favorites.test.ts",
+"packages/webui/test/unit/rail-context-menu.test.ts",
 "packages/webui/test/unit/queue-panel.test.ts",
       "packages/webui/test/unit/vite-dev-proxy.test.ts",
       "packages/webui/test/unit/session-transfer-route.test.ts",

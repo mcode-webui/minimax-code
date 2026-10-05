@@ -656,7 +656,21 @@ export function WebuiProjectList({
           heading={activeTabLabel}
           emptyLabel={activeTab?.emptyLabel}
           preserveOrder
+          onSessionContextMenu={openSessionMenu}
         />
+        {/* The menu render exists in BOTH return branches on purpose. The flat
+         * views open the same `contextMenu` state the projects view does, but
+         * this early return predates the menu: rendering the portal from the
+         * projects branch alone left a right-click here setting state that no
+         * subtree ever painted — the row appeared to do nothing. */}
+        {contextMenu ? (
+          <WebuiContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.items}
+            onClose={() => setContextMenu(undefined)}
+          />
+        ) : null}
       </section>
     );
   }
@@ -1088,6 +1102,7 @@ export function WebuiSessionList({
   heading,
   emptyLabel,
   preserveOrder,
+  onSessionContextMenu,
 }: {
   readonly page: WebuiClientSessionPage;
   readonly loading: boolean;
@@ -1125,6 +1140,18 @@ export function WebuiSessionList({
    * would be undone by the default sort below.
    */
   readonly preserveOrder?: boolean;
+  /**
+   * Opens the session context menu on a right-click. The flat views (收藏 /
+   * 运行中 / 未读) list the same root sessions the projects view groups under
+   * their project, so they offer the same menu: a row that only responds in
+   * one tab reads as broken in the other three. Optional because this list is
+   * also rendered outside the app (SSR fixtures, un-wired hosts) — a host that
+   * passes nothing keeps the native context menu these rows always had.
+   */
+  readonly onSessionContextMenu?: (
+    event: MouseEvent<HTMLElement>,
+    session: WebuiClientSession,
+  ) => void;
 }): ReactElement {
   const sessions = useMemo(
     () =>
@@ -1174,6 +1201,7 @@ export function WebuiSessionList({
                   selectedSessionId === session.sessionId ? "true" : "false"
                 }
                 title={session.workspaceDir ?? undefined}
+                onContextMenu={(event) => onSessionContextMenu?.(event, session)}
                 className="webui-session-card text-text_default_primary"
               >
                 <span className="flex h-[31px] w-[18px] flex-shrink-0 items-center justify-center">

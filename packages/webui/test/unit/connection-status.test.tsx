@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
+import {
+  markWebuiEventWatcherDown,
+  markWebuiEventWatcherHealthy,
+  registerWebuiEventWatcher,
+  unregisterWebuiEventWatcher,
+} from "../../src/client/connection-health.js";
 import {
   ConnectionStatus,
   projectWebuiConnectionState,
@@ -173,5 +179,54 @@ describe("ConnectionStatus host layout calls", () => {
     expect(mount).toContain("hideWhenConnected");
     expect(mount).toContain("onRetry={retrySessionStream}");
     expect(mount).toContain('sessionId={selectedSessionId}');
+  });
+});
+
+describe("ConnectionStatus and the idle event channel", () => {
+  // The health store is module-level and shared with every other suite in
+  // this worker, so each case's watcher is unregistered before the next.
+  let token: number | undefined;
+  afterEach(() => {
+    if (token !== undefined) unregisterWebuiEventWatcher(token);
+    token = undefined;
+  });
+
+  it("shows 正在重连 when the event channel degrades while the stream is idle", () => {
+    // Q-b's exact shape: no turn running (phase idle, which alone reads as
+    // connected) while the always-on watcher's link is down. Before the
+    // merge this rendered nothing at all.
+    token = registerWebuiEventWatcher();
+    markWebuiEventWatcherHealthy(token);
+    markWebuiEventWatcherDown(token);
+    const markup = renderToStaticMarkup(
+      <ConnectionStatus sessionId="cs-idle-degraded" hideWhenConnected />,
+    );
+    expect(markup).toContain('data-connection-state="reconnecting"');
+    expect(markup).toContain("正在重连");
+    expect(markup).toContain("连接中断，正在自动恢复");
+  });
+
+  it("stays hidden when the channel is merely booting or healthy again", () => {
+    // Never-accepted (boot) is unknown, not degraded; a restored link clears
+    // it. Both halves keep the idle page free of a standing banner.
+    token = registerWebuiEventWatcher();
+    expect(renderToStaticMarkup(<ConnectionStatus sessionId="cs-boot" hideWhenConnected />)).toBe("");
+    markWebuiEventWatcherHealthy(token);
+    expect(renderToStaticMarkup(<ConnectionStatus sessionId="cs-healthy" hideWhenConnected />)).toBe("");
+  });
+
+  it("keeps a terminal stream failure outranking a degraded channel", () => {
+    token = registerWebuiEventWatcher();
+    markWebuiEventWatcherHealthy(token);
+    markWebuiEventWatcherDown(token);
+    const failed = seed("cs-both", { phase: "refused", refusal: "连接被重置" });
+    // Both signals are live; the region must name the failure (with its
+    // reason and its retry affordance), not the recoverable reconnect.
+    const markup = renderToStaticMarkup(
+      <ConnectionStatus sessionId={failed} hideWhenConnected onRetry={() => {}} />,
+    );
+    expect(markup).toContain('data-connection-state="failed"');
+    expect(markup).toContain("连接被重置");
+    expect(markup).toContain('data-testid="webui-connection-status-retry"');
   });
 });

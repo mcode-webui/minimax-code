@@ -58,6 +58,9 @@ export function installFixtureTransport() {
   const pending = [];
   const delayed = [];
   const held = [];
+  // See the constructor: open = sockets behave normally; closed = new sockets
+  // die on arrival.
+  let socketGateOpen = true;
   // The questionnaire the pending-questionnaire poll will answer. Mutable for
   // the same reason `setPage` is: the composer polls `getPendingQuestionnaire`
   // on mount and on every session switch, so a test that wants to stage a
@@ -100,6 +103,19 @@ export function installFixtureTransport() {
       this.listeners = new Map();
       this.closed = false;
       this.request = undefined;
+      // The gate simulates a dead server for NEW connections: the socket
+      // errors and closes without ever opening, which is exactly what a
+      // real WebSocket to a downed backend does. Existing sockets are
+      // unaffected until `dropAll()` closes them — that pair is what an
+      // "idle disconnect" is: everything was healthy, then the server went
+      // away between turns.
+      if (!socketGateOpen) {
+        queueMicrotask(() => {
+          this.emit("error", {});
+          this.close();
+        });
+        return;
+      }
       sockets.add(this);
       queueMicrotask(() => this.emit("open", {}));
     }
@@ -212,6 +228,12 @@ export function installFixtureTransport() {
     // is inert on purpose, so a staged questionnaire stays pending until the
     // test answers, dismisses, or replaces it.
     setQuestionnaire(request) { questionnaire = request ? clone(request) : undefined; },
+    // Kill every live socket (the "server went away" moment) and/or decide
+    // whether new connections may form. Between a dropAll() and reopening
+    // the gate, the client is fully disconnected — with no turn running,
+    // which is the idle-disconnect shape.
+    gateSockets(open) { socketGateOpen = open; },
+    dropAll() { for (const socket of [...sockets]) if (!socket.closed) socket.close(); },
     resolve(operation, condition, result) {
       const index = pending.findIndex((entry) => entry.operation === operation && matches(entry.body, condition));
       if (index < 0) throw new Error(`No pending fixture request: ${operation} ${JSON.stringify(condition)}`);

@@ -100,3 +100,45 @@ test("an unresumable drop shows 连接失败 with its reason, and 重试连接 d
   await emitStream(page, "A", { dataJson: "[DONE]" });
   await expect(page.getByText("重试后恢复的回复")).toBeVisible();
 });
+
+test("an idle disconnect between turns shows 正在重连 and clears when the link returns", async ({ page }) => {
+  await openApp(page, "#session=A");
+
+  // Idle and healthy: no banner — the stream phase alone reads connected and
+  // the event channel holds its link. This negative is what makes the next
+  // assertion "appeared", not "was always there".
+  const banner = page.locator('[data-testid="webui-connection-status"]');
+  await expect(banner).toHaveCount(0);
+
+  // The idle-disconnect shape (Q-b): no turn running, every live socket
+  // dropped, new connections gated shut — a server that went away between
+  // turns. Before the fix this produced no visible signal at all (reproduced
+  // against the unfixed build: banner count 0, no role=alert, no 重连 text
+  // anywhere on the page).
+  await page.evaluate(() => {
+    window.__fixture.gateSockets(false);
+    window.__fixture.dropAll();
+  });
+  await expect(banner).toBeVisible();
+  await expect(banner).toHaveAttribute("data-connection-state", "reconnecting");
+  await expect(banner).toContainText("正在重连");
+
+  // It stays: the transport's 250ms reconnect loop keeps hitting the gate,
+  // and an honest signal does not blink out while the outage holds.
+  await page.waitForTimeout(600);
+  await expect(banner).toBeVisible();
+
+  // The server returns; the watcher's own reconnect (no manual action) is
+  // accepted and the banner leaves on its own.
+  await page.evaluate(() => window.__fixture.gateSockets(true));
+  await expect(banner).toHaveCount(0);
+
+  // And the state machine repeats: a second outage shows again, so recovery
+  // did not wedge the signal off.
+  await page.evaluate(() => {
+    window.__fixture.gateSockets(false);
+    window.__fixture.dropAll();
+  });
+  await expect(banner).toBeVisible();
+  await expect(banner).toHaveAttribute("data-connection-state", "reconnecting");
+});

@@ -63,69 +63,93 @@ different chip.
 
 ---
 
-## 2. The thinking switch does not persist
+## 2. Does a committed thinking choice survive a reload?
 
-**Status:** open. Blocked on a runtime contract this repository does not have.
+**Status:** open, and the symptom behind it is now **unverified**. It is
+recorded here because the control's contract gap is real; the behaviour it used
+to cause has not been re-measured since the escape hatch landed.
 
-### Symptom
+### What was measured, and when
 
-On a two-state model (M3), the brain icon is a real button and accepts clicks.
-Committing a click does not stick: the icon returns to its unstated state.
+The symptom this section originally described was: on a two-state model (M3) the
+brain icon accepts a click and then returns to its unstated state — the control
+was operable and the result discarded. That was a live observation at the time.
+
+**It has not been reproduced since.** A browser run after this branch merged
+confirmed the toggle now emits `variant: "thinking"` when switched on and
+`variant: ""` when switched off (`variantForEffort`, `ModelPicker.tsx:302`).
+Nobody has checked whether either survives a page reload, which is what the
+original symptom was actually about. Until someone does, treat the old symptom
+as history, not as the current state.
 
 This is NOT the same as the disabled-button bug fixed in `a440ad5`. That fix
-made the control operable; this is the control being operable and the runtime
-discarding the result.
+made the control operable at all.
 
-### Root cause
+### The contract gap that remains real
 
-`resolveEffortOptions` (`ModelPicker.tsx`) decides a model is a two-state
-switch from `thinkingConfig.mode === "switchable"` PLUS a
-`supportedVariants` array containing both an empty and a non-empty entry:
+`resolveEffortOptions` (`ModelPicker.tsx:252`) infers that a model is a
+two-state switch from `thinkingConfig.mode === "switchable"` PLUS a
+`supportedVariants` array holding both an empty and a non-empty entry:
 
 ```ts
 if (model.thinkingConfig?.mode === "switchable") {
-  const variants = model.supportedVariants ?? [];   // always undefined
-  const hasOff = variants.includes("");
-  const hasOn = variants.some((variant) => Boolean(variant));
-  if (hasOff && hasOn) return ["off", "on"];
+  const variants = model.supportedVariants ?? [];
+  const hasOff = variants.includes("") || variants.includes("none-thinking");
+  const hasOn = variants.some((variant) => variant && variant !== "none-thinking");
+  const declaredSwitch = model.thinkingConfig?.default_value !== undefined;
+  if ((hasOff && hasOn) || declaredSwitch) return ["off", "on"];
 }
 ```
 
 `supportedVariants` is declared on the client contract
-(`client/contracts.ts:102`) but **not** on the server's `WebuiModelEntry`
-(`server/port.ts:739-758`). The server never sends it, so the branch never
-runs, and the option list falls through to whatever `effortOptions` carries.
+(`client/contracts.ts:140`) but **still not** on the server's `WebuiModelEntry`
+— it appears nowhere in `server/port.ts`, so the server never sends it and the
+`hasOff && hasOn` inference never runs.
 
-The model's own configuration is correct and complete — `~/.minimax/config.yaml`
-gives M3 both `variants: { none-thinking, thinking }` and
-`thinking_config: { mode: switchable }`. The data exists; it stops at the
-webui port.
+What changed is the second half of that condition. `declaredSwitch` reads
+`thinkingConfig.default_value`, and `thinkingConfig` **is** on the server
+contract (`server/port.ts:870`). So the switch now surfaces through the
+runtime's own statement that the model has one, and no longer depends on a
+second field arriving intact. That is why the symptom above is unverified
+rather than confirmed: the path that used to fail is no longer the one being
+taken.
 
-A second mismatch sits behind it: `variantForEffort` returns `""` for "off",
-while the configured variant is named `none-thinking`. Even with the field
-wired through, turning thinking OFF would send a name the model does not have.
+The model's configuration is complete — `~/.minimax/config.yaml` gives M3 both
+`variants: { none-thinking, thinking }` and `thinking_config: { mode:
+switchable }`.
 
-### Why it is not fixed here
+### Correction: there is no `""` / `none-thinking` mismatch
 
-The fix is a data-contract change, not a UI change: add `supportedVariants` to
-`WebuiModelEntry`, populate it from the model's configured `variants`, and
-teach `variantForEffort` the `none-thinking` spelling. That crosses into
-`local-runtime-v2`'s model system, which is outside the scope of "port the H
-task's UI".
+An earlier revision of this section claimed a second, deeper problem:
+`variantForEffort` returns `""` for "off" while the configured variant is named
+`none-thinking`, so switching thinking off "would send a name the model does not
+have".
 
-It is also pre-existing, not introduced by this branch: the dependency on
-`supportedVariants` dates to `0536fce`, and before `a440ad5` the button was
-disabled outright, so the same pick never persisted. This branch made the
-failure visible by making the control work.
+**That is wrong, and acting on it would break working code.** The two spellings
+are not compared at the same layer. The runtime normalises the catalogue before
+it ever reaches the client
+(`local-runtime/src/model-provider/list-models.ts:136`):
 
-### What a decision changes
+```ts
+.map(([variant]) => (variant === 'none-thinking' ? '' : variant));
+```
 
-- **Fix now** — the switch becomes a switch. Two files in `local-runtime-v2`,
-  one field in `server/port.ts`, one branch in `ModelPicker.tsx`.
-- **Fix separately** — this branch merges with the icon and menu work; the
-  contract gap gets its own change with its own review.
+So a client reading `supportedVariants` sees `["", "thinking"]` — `none-thinking`
+does not exist on the wire. Sending `""` is the correct spelling, and the
+`variants.includes("none-thinking")` clause in the read side is there for
+catalogues that never passed through that normalisation.
 
-### How to decide
+### What is actually open
 
-Nothing about the UI argues either way. The only question is whether a runtime
-contract change should ride along with a UI port or land on its own.
+1. **Does the choice survive a reload?** One browser test settles it. Nothing
+   about it argues for or against — it is a measurement nobody has taken.
+2. **Should `supportedVariants` be wired through anyway?** It would remove the
+   reliance on `default_value` as an escape hatch and let the client infer the
+   switch from the catalogue. That is a data-contract change: one field on
+   `WebuiModelEntry` plus a population site in the runtime's model system, which
+   is outside "port the H task's UI".
+
+Both predate this branch. The dependency on `supportedVariants` dates to
+`0536fce`, and before `a440ad5` the button was disabled outright, so the same
+pick never persisted either. This branch made the control work, which is what
+turned the question from "is the button live" into "does the answer stick".

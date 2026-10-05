@@ -10,3 +10,4 @@ dist-webui/
 !.env.example
 .DS_Store
 .idea/
+.codegraph/

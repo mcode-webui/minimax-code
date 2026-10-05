@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ConnectionStatus,
@@ -105,5 +106,72 @@ describe("ConnectionStatus", () => {
     const markup = renderToStaticMarkup(<ConnectionStatus sessionId="cs-class" className="ml-2" />);
     expect(markup).toContain("ml-2");
     expect(markup).toContain("webui-connection-status");
+  });
+});
+
+describe("ConnectionStatus host layout calls", () => {
+  it("collapses the connected state when the host asks it to", () => {
+    // The shell's usage: 已连接 earns zero pixels. The null return (not an
+    // empty div) is the contract — a zero-height leftover would still claim
+    // the banner slot's gap and nudge the transcript on every state change.
+    const markup = renderToStaticMarkup(
+      <ConnectionStatus sessionId="cs-hide-connected" hideWhenConnected />,
+    );
+    expect(markup).toBe("");
+  });
+
+  it("still renders the attention states under hideWhenConnected", () => {
+    // The prop is a layout call on the healthy state only: both states that
+    // need the reader collapse for nobody.
+    const reconnecting = seed("cs-hide-reconnect", { phase: "reconnecting" });
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId={reconnecting} hideWhenConnected />),
+    ).toContain('data-connection-state="reconnecting"');
+    const failed = seed("cs-hide-failed", { phase: "refused", refusal: "连接被重置" });
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId={failed} hideWhenConnected />),
+    ).toContain('data-connection-state="failed"');
+  });
+
+  it("offers the retry button only in the failed state, and only when wired", () => {
+    const retry = () => {};
+    // No callback, no button — a host without a recovery path must not offer
+    // one (the same rule the rail's pin/star buttons follow).
+    const failedUnwired = seed("cs-retry-unwired", { phase: "refused" });
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId={failedUnwired} onRetry={retry} />),
+    ).toContain('data-testid="webui-connection-status-retry"');
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId={failedUnwired} />),
+    ).not.toContain("webui-connection-status-retry");
+    // Reconnecting is the automatic loop mid-attempt; a button there would
+    // race the recovery it duplicates.
+    const reconnecting = seed("cs-retry-reconnect", { phase: "reconnecting" });
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId={reconnecting} onRetry={retry} />),
+    ).not.toContain("webui-connection-status-retry");
+    // The healthy state never carries it either.
+    expect(
+      renderToStaticMarkup(<ConnectionStatus sessionId="cs-retry-ok" onRetry={retry} />),
+    ).not.toContain("webui-connection-status-retry");
+  });
+
+  it("is mounted by the shell with the collapsed-when-healthy layout call", () => {
+    // Source-level, the same convention the child-row meta and rail wiring
+    // tests use: `renderToStaticMarkup` cannot fire the store subscription a
+    // real mount needs, and the browser spec proves the placed region for
+    // real. What this pins is that the shell actually renders the component —
+    // before Q-1 the component existed with zero consumers, which is exactly
+    // the gap that made every connection state invisible.
+    const source = readFileSync(
+      new URL("../../src/client/components/WebuiClientFoundationApp.tsx", import.meta.url),
+      "utf8",
+    );
+    const mountAt = source.indexOf("<ConnectionStatus");
+    expect(mountAt, "the shell no longer mounts ConnectionStatus").toBeGreaterThanOrEqual(0);
+    const mount = source.slice(mountAt, mountAt + 300);
+    expect(mount).toContain("hideWhenConnected");
+    expect(mount).toContain("onRetry={retrySessionStream}");
+    expect(mount).toContain('sessionId={selectedSessionId}');
   });
 });

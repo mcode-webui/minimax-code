@@ -130,6 +130,8 @@ import {
   migrateSessionRuntimeState,
   useSessionRuntimeState,
 } from "../session-runtime-store.js";
+import { createSessionStreamRetry } from "../session-stream-retry.js";
+import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
 import { deriveRecentWorkspaceDirs } from "../projection/composer-state.js";
 
@@ -668,6 +670,18 @@ export function WebuiClientFoundationApp(
       })
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
+  // The manual arm of the stream loop's recovery — see
+  // `session-stream-retry.ts` for why it clears the refusal and re-runs the
+  // attach loop. Undefined on the home screen (no session to resume) and on
+  // hosts without a `resumeSession` transport: no recovery path, no button.
+  const retrySessionStream =
+    selectedSessionId && transport?.resumeSession
+      ? createSessionStreamRetry({
+          sessionId: selectedSessionId,
+          resumeSession: transport.resumeSession,
+          loadMessages: transport.loadMessages,
+        })
+      : undefined;
   const homeMode = !selectedSessionId;
   const usageNotice = useMemo(
     () => deriveConversationUsageNotice(usageQuota),
@@ -1323,6 +1337,18 @@ export function WebuiClientFoundationApp(
                       onDismiss={() => setDismissedUsageNoticeKey(usageNoticeKey)}
                     />
                   ) : null}
+                  {/* The connection region earns its pixels only when
+                   * something needs the reader: `hideWhenConnected` keeps
+                   * 已连接 off the page, so the banner appears for
+                   * 正在重连 and 连接失败 only. Same slot as the usage
+                   * banner so the two never stack surprises in different
+                   * places. */}
+                  <ConnectionStatus
+                    sessionId={selectedSessionId}
+                    hideWhenConnected
+                    onRetry={retrySessionStream}
+                    className="w-full max-w-[743px] justify-center rounded-lg border border-border_default bg-bg_default_secondary px-spacing_8 py-spacing_4"
+                  />
 
                   <div
                     className={

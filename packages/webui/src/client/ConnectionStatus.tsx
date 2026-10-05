@@ -51,6 +51,23 @@ export interface ConnectionStatusProps {
   /** Omitted on the home screen, which the store keys as its home runtime. */
   readonly sessionId?: string;
   readonly className?: string;
+  /**
+   * The host's layout call on whether a healthy connection earns a standing
+   * line. The shell passes true: 已连接 is the state worth zero pixels, and
+   * the region earns its place only when something needs the reader's
+   * attention. Omitted, all three states render — the component itself stays
+   * state-complete for any host that wants a permanent indicator.
+   */
+  readonly hideWhenConnected?: boolean;
+  /**
+   * Offers a manual retry from the failed state. The shell wires this to a
+   * fresh stream-loop run anchored on the last cursor this client applied.
+   * Omitted, no button renders — a host with no recovery path should not
+   * offer one.
+   */
+  readonly onRetry?: () => void;
+  /** The retry affordance's label, overridable the way the boundary's is. */
+  readonly retryLabel?: string;
 }
 
 /**
@@ -63,9 +80,16 @@ export interface ConnectionStatusProps {
  * `data-connection-state`; whether a healthy connection should be visible or
  * collapsed is the host's layout call, not this component's.
  */
-export function ConnectionStatus({ sessionId, className }: ConnectionStatusProps): ReactElement {
+export function ConnectionStatus({
+  sessionId,
+  className,
+  hideWhenConnected,
+  onRetry,
+  retryLabel = "重试连接",
+}: ConnectionStatusProps): ReactElement | null {
   const { state } = useSessionRuntimeState(sessionId);
   const connection = projectWebuiConnectionState(state.stream.phase);
+  if (hideWhenConnected && connection === "connected") return null;
   const copy = COPY[connection];
   // A failure usually carries the server's own reason (`refusal`), and `status`
   // is the looser status string. Both are preferred over the generic detail so
@@ -82,6 +106,19 @@ export function ConnectionStatus({ sessionId, className }: ConnectionStatusProps
     >
       <span data-testid="webui-connection-status-label">{copy.label}</span>
       <span data-testid="webui-connection-status-detail">{reason ?? copy.detail}</span>
+      {/* Only the terminal state gets an affordance: `reconnecting` is the
+       * automatic loop already mid-attempt, and a button there would race the
+       * recovery it duplicates. */}
+      {connection === "failed" && onRetry ? (
+        <button
+          type="button"
+          data-testid="webui-connection-status-retry"
+          className="webui-button-secondary"
+          onClick={onRetry}
+        >
+          {retryLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

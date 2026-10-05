@@ -129,6 +129,20 @@ export function installFixtureTransport() {
       }
       if (["sendMessage", "resumeSession"].includes(frame.operation)) {
         this.isStream = true;
+        // The hold/delay check comes BEFORE the auto-answer so a stream
+        // operation can be parked too: the transient states between a send
+        // and its answer (the client's `reconnecting` window, most notably)
+        // are otherwise unobservable — the auto-answer closes them within a
+        // microtask. A held stream still marks `isStream`, so after
+        // `resolve(...)` the socket receives `emitStream` frames like any
+        // other stream socket.
+        const isHeld = held.some((entry) => entry.operation === frame.operation && matches(frame.body, entry.condition));
+        const waitIndex = delayed.findIndex((entry) => entry.operation === frame.operation && matches(frame.body, entry.condition));
+        if (isHeld || waitIndex >= 0) {
+          if (!isHeld) delayed.splice(waitIndex, 1);
+          pending.push({ operation: frame.operation, body: clone(frame.body ?? {}), resolve: (result) => this.respond(frame, result) });
+          return;
+        }
         // The server acknowledges a stream before pumping it. Stream
         // consumers ignore the acknowledgement and act on `event` frames,
         // so the fixture sends it to keep the wire shape faithful.

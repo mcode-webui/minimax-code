@@ -1,17 +1,26 @@
 // Unit tests for the MCP server status the plugin panel puts on each row.
 //
-// Roadmap D-3 (as transcribed): 「MCP 插件连不上时，界面上要看得见」. The
-// runtime already classifies every server (`LocalMcpPublicServerStatus`:
-// available / configured / disabled / error / unavailable) and attaches the
-// failure's own reason to the two trouble states — the gap was that the
-// panel's MCP rows rendered none of it, so a server that could not connect
-// was visually identical to a healthy one.
+// Roadmap D-3 (as transcribed): 「MCP 插件连不上时，界面上要看得见」. The row
+// markup, the six-state mapping and the browser spec all landed with #27.
 //
-// The mapping is extracted as a pure function so this suite can pin each
-// state's label and tone without a DOM; the row wiring is pinned as a
-// source-level assertion (the suite's `renderToStaticMarkup` convention —
-// rows load through an async effect no static render runs), and the browser
-// spec proves the placed, loaded, visible thing end to end.
+// Read the premise carefully, because it is not what it looks like. The
+// runtime's `LocalMcpPublicServerStatus` does classify every server
+// (available / configured / disabled / error / unavailable) — but that is the
+// *MCP tool surface* (`LocalMcpPublicFacade`). The plugin page calls
+// `listMcpServers` → `listConfiguredServers` → `configuredSummary`, which
+// returns only `name / enabled / transport / description / endpoint /
+// configJson`, with `configJson` hardcoded to `"{}"`. No `status`, no `error`,
+// not even `available`. So on the real wire **every row reads 未知状态** and the
+// badge will stay inert until that path carries the field. The mapping below is
+// correct and the UI is in place; what is missing is upstream. The contract test
+// at the end pins today's honest answer so the day the field arrives is a
+// visible change rather than a silent one.
+//
+// The row wiring is pinned as a source-level assertion: the rows load through
+// an async effect, so no static render exercises them. That assertion only
+// proves the markup is still there — it cannot prove the badge works, which is
+// why the browser spec exists, and why the contract test below matters more
+// than either.
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -89,6 +98,26 @@ describe("describeWebuiMcpServerStatus", () => {
 });
 
 describe("the MCP row wiring", () => {
+  it("claims nothing when handed the shape the server actually returns", () => {
+    // `listConfiguredServers` → `configuredSummary` produces exactly this and
+    // nothing more. A row fed it must say 未知状态: any other label would be
+    // claiming a state the server never sent. When `configuredSummary` starts
+    // carrying the real status this test goes red, which is the point — the
+    // badge is inert until then, and this is the line that says so.
+    const rowAsTheServerSendsIt = {
+      name: "real-shaped-stdio",
+      enabled: true,
+      transport: "stdio",
+      description: "",
+      endpoint: "",
+      configJson: "{}",
+    };
+    expect(describeWebuiMcpServerStatus(rowAsTheServerSendsIt)).toMatchObject({
+      key: "unknown",
+      label: "未知状态",
+    });
+  });
+
   it("renders the status view on the row, reason included", () => {
     const statusAt = SOURCE.indexOf('data-webui-mcp-status={mcpStatus.key}');
     expect(statusAt, "the mcp row no longer renders the status chip").toBeGreaterThanOrEqual(0);

@@ -4,10 +4,25 @@ import { useWebuiEventChannelDegraded } from "./connection-health.js";
 import type { WebuiStreamState } from "./stream.js";
 
 /**
- * The three states a user can act on. Deliberately not a transport-level
- * liveness probe: nothing in the client exposes one, so the honest signal is
- * the turn stream's own phase, which the reconnect paths in `stream.ts` and
- * `SessionComposer.tsx` already drive.
+ * The three states a user can act on.
+ *
+ * Two signals feed this, and they are deliberately kept apart:
+ *
+ * - `projectWebuiConnectionState` still projects **only** the turn stream's own
+ *   phase, which the reconnect paths in `stream.ts` and `SessionComposer.tsx`
+ *   drive. It says nothing about a link that is not carrying a turn.
+ * - `useWebuiEventChannelDegraded` is the **transport-level** signal, and it
+ *   exists because the projection above cannot answer that question. The
+ *   long-lived `watchEvents` socket marks itself healthy on an ack and degraded
+ *   on `close`, and the component merges the two: failed beats reconnecting
+ *   beats connected.
+ *
+ * What the channel signal does **not** cover, so nothing downstream over-trusts
+ * it: the client sends no heartbeat on that socket, so detection is
+ * close-edge only and a half-open link is invisible; and a watcher that was
+ * never accepted stays "unknown" rather than degraded, so a host that is
+ * already unreachable at load time reads as connected until something else
+ * moves.
  */
 export type WebuiConnectionState = "connected" | "reconnecting" | "failed";
 

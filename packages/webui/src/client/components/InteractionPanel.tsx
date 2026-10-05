@@ -62,9 +62,14 @@ export function WebuiInteractionPanel({
   // recommended option. An ordinary questionnaire that happens to carry
   // `expiresAt` gets no runtime reply, so showing it a countdown would be a
   // promise nothing keeps — the TUI gates the same way
-  // (`goalAutoReplyDeadline` in `questionnaire-picker.ts`).
+  // (`goalAutoReplyDeadline` in `questionnaire-picker.ts`). The `typeof` and
+  // `isFinite` pair is that function's guard: without it a null or NaN
+  // `expiresAt` lands on `Math.max(0, ...)` and the countdown renders
+  // "time is up" for a value that never was a deadline.
   const goalAutoReplyWindow =
-    questionnaire?.purpose === 1 && questionnaire.expiresAt !== undefined;
+    questionnaire?.purpose === 1 &&
+    typeof questionnaire.expiresAt === "number" &&
+    Number.isFinite(questionnaire.expiresAt);
   const [remainingSeconds, setRemainingSeconds] = useState<number | undefined>(() =>
     goalAutoReplyWindow
       ? Math.max(0, Math.ceil((questionnaire!.expiresAt! - Date.now()) / 1000))

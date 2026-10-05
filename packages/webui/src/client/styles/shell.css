@@ -252,6 +252,52 @@
   .webui-archived-delete-all { display: inline-flex; height: 36px; align-items: center; gap: 6px; border: 0; border-radius: 12px; padding: 0 12px; background: rgba(255, 59, 48, .1); color: #e5484d; font: inherit; font-size: var(--size_14); cursor: pointer; }
   .webui-archived-delete-all:hover { background: rgba(255, 59, 48, .16); }
   .webui-archived-delete-all:disabled { opacity: .45; cursor: default; }
+
+  /* Code review (roadmap E 区 Review 审查模式 / 修复建议+跳转). */
+  .webui-review-page { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 var(--spacing_20) var(--spacing_32); }
+  .webui-review-totals { display: flex; align-items: center; gap: var(--spacing_8); margin-bottom: var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-review-search { display: flex; min-width: 0; height: 38px; align-items: center; gap: var(--spacing_8); margin-bottom: var(--spacing_12); border: 1px solid var(--border_default); border-radius: 12px; padding: 0 12px; background: var(--bg_default_primary); color: var(--text_default_secondary); }
+  .webui-review-search:focus-within { border-color: var(--border_accent); }
+  .webui-review-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text_default_primary); font: inherit; font-size: var(--size_14); }
+  .webui-review-clear { flex: none; border: 0; background: transparent; color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-review-files { display: flex; flex-direction: column; gap: var(--spacing_4); margin: 0; padding: 0; list-style: none; }
+  .webui-review-file { border: 0.5px solid var(--border_default); border-radius: 10px; overflow: hidden; }
+  .webui-review-file-heading { display: flex; width: 100%; min-width: 0; align-items: center; gap: var(--spacing_8); padding: 10px 12px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+  .webui-review-file-heading:hover { background: var(--bg_interaction_secondary_default); }
+  .webui-review-file-path { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text_default_primary); font-size: var(--size_12); }
+  .webui-review-file-status { flex: none; color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-review-file-stats { display: inline-flex; flex: none; gap: 4px; font-size: var(--size_12); }
+  .webui-review-file-body { border-top: 0.5px solid var(--border_default); background: var(--bg_default_primary); }
+  .webui-review-file-error { margin: 0; padding: 10px 12px; color: var(--text_label_danger_secondary_default); font-size: var(--size_12); }
+  .webui-review-lines { max-height: 420px; margin: 0; padding: 0; overflow: auto; list-style: none; font-family: var(--font-mono, monospace); font-size: var(--size_12); line-height: 1.6; }
+  .webui-review-line { display: flex; min-width: max-content; }
+  .webui-review-line--addition { background: var(--bg_status_positive); color: #17251d; }
+  .webui-review-line--deletion { background: var(--bg_status_error); color: #302022; }
+  .webui-review-line--hunk { background: var(--bg_interaction_secondary_default); color: var(--text_default_tertiary); }
+  .webui-review-line--meta { color: var(--text_default_tertiary); }
+  .webui-review-line-number { flex: none; width: 48px; padding-right: 8px; opacity: .6; text-align: right; user-select: none; }
+  .webui-review-line-text { flex: 1; padding-right: 12px; white-space: pre; }
+  /* Only a line that survives into the working tree can be jumped to, so the
+     clickable surface is deliberately absent on deletions. */
+  .webui-review-line-jump { display: flex; min-width: max-content; width: 100%; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .webui-review-line-jump:hover { text-decoration: underline; }
+  .webui-review-line-static { display: flex; min-width: max-content; width: 100%; }
+  .webui-review-loading, .webui-review-empty { margin: 0; padding: var(--spacing_16) 0; color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-review-error { margin: 0 0 var(--spacing_8); color: var(--text_label_danger_secondary_default); font-size: var(--size_12); }
+
+  /* Worktree list (roadmap E 区 工作树隔离). */
+  .webui-worktree-section-title { margin: var(--spacing_20) 0 var(--spacing_8); color: var(--text_default_primary); font-size: var(--size_14); }
+  .webui-worktree-branches { display: flex; flex-direction: column; gap: var(--spacing_8); margin: 0; padding: 0; list-style: none; }
+  .webui-worktree-group { padding: 10px 12px; border: 0.5px solid var(--border_default); border-radius: 10px; }
+  .webui-worktree-heading { display: flex; align-items: center; gap: var(--spacing_8); }
+  .webui-worktree-name { display: inline-flex; min-width: 0; flex: 1; align-items: center; gap: 6px; overflow: hidden; color: var(--text_default_primary); font-size: var(--size_14); }
+  .webui-worktree-kind { flex: none; color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-worktree-path { margin: 4px 0 0; overflow: hidden; color: var(--text_default_tertiary); font-size: var(--size_12); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-worktree-sessions { display: flex; flex-direction: column; gap: 2px; margin: var(--spacing_8) 0 0; padding: 0; list-style: none; }
+  .webui-worktree-session { display: flex; min-width: 0; align-items: center; gap: var(--spacing_8); font-size: var(--size_12); }
+  .webui-worktree-session-link { min-width: 0; flex: 1; overflow: hidden; color: var(--text_default_secondary); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+  .webui-worktree-session-link:hover { color: var(--text_default_primary); text-decoration: underline; }
+  .webui-worktree-forked { flex: none; color: var(--text_default_tertiary); }
   .webui-archived-page { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 var(--spacing_20) var(--spacing_32); }
   .webui-archived-filters { display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: var(--spacing_24); }
   .webui-archived-search { display: flex; min-width: 0; height: 38px; align-items: center; gap: var(--spacing_8); border: 1px solid var(--border_default); border-radius: 12px; padding: 0 12px; background: var(--bg_default_primary); color: var(--text_default_secondary); }

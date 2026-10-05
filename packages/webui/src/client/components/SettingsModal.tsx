@@ -1,6 +1,24 @@
-import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
-import type { WebuiModelEntry, WebuiSessionListItem, WebuiVersionInfo } from "../../server/port.js";
+import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import type { WebuiModelEntry, WebuiSessionListItem, WebuiVersionInfo, WebuiWorkspaceReviewFileDiff } from "../../server/port.js";
 import type { WebuiTransport } from "../contracts.js";
+import {
+  initialWebuiReviewState,
+  isWebuiReviewFiltering,
+  projectWebuiReviewLines,
+  reduceWebuiReviewState,
+  selectWebuiReviewVisibleFiles,
+  webuiReviewLineTarget,
+  WEBUI_REVIEW_DIFF_BATCH_SIZE,
+  type WebuiReviewFile,
+  type WebuiReviewState,
+} from "../projection/review-state.js";
+import {
+  groupWebuiWorktreeWorkspaces,
+  selectWebuiPrimaryWorkspace,
+  selectWebuiWorktreeWorkspaces,
+  type WebuiWorktreeSourceSession,
+  type WebuiWorktreeWorkspace,
+} from "../projection/worktree-state.js";
 import { ToggleSwitch as Switch } from "./ToggleSwitch.js";
 import { UsageModelSettings } from "./settings/UsageModelSettings.js";
 
@@ -8,7 +26,7 @@ export type SettingsTabKey = "desktop" | "shortcuts" | "voice" | "custom-instruc
 export interface SettingsTabDefinition { readonly key: SettingsTabKey; readonly group: "preferences" | "management" | "coding" | "archived"; readonly label: string; readonly icon: string; readonly disabled?: boolean; }
 export const DESKTOP_SETTINGS_TABS: readonly SettingsTabDefinition[] = [
   { key: "desktop", group: "preferences", label: "通用", icon: "desktop" }, { key: "voice", group: "preferences", label: "语音", icon: "voice", disabled: true }, { key: "shortcuts", group: "preferences", label: "快捷键", icon: "shortcuts", disabled: true }, { key: "custom-instructions", group: "preferences", label: "个性化", icon: "custom-instructions", disabled: true },
-  { key: "usage", group: "management", label: "用量与模型", icon: "chart" }, { key: "connection", group: "management", label: "连接", icon: "link", disabled: true }, { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding", disabled: true }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree", disabled: true }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
+  { key: "usage", group: "management", label: "用量与模型", icon: "chart" }, { key: "connection", group: "management", label: "连接", icon: "link", disabled: true }, { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding" }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree" }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
 ];
 export const SETTINGS_GROUPS = [{ key: "preferences", label: "偏好" }, { key: "management", label: "管理" }, { key: "coding", label: "编码" }, { key: "archived", label: "归档" }] as const;
 export function resolveThemePreference(preference: string, systemDark: boolean): "light" | "dark" { return preference === "system" ? (systemDark ? "dark" : "light") : preference === "dark" ? "dark" : "light"; }
@@ -73,6 +91,10 @@ export type WebuiSettingsModalCapabilities = Pick<
   | "startCodexOAuthLogin"
   | "cancelCodexOAuthLogin"
   | "refreshModels"
+  | "getWorkspaceReviewSummary"
+  | "listWorkspaceReviewFileDiffs"
+  | "searchWorkspaceReviewDiffs"
+  | "loadSessions"
 >;
 
 interface SettingsModalProps {
@@ -81,13 +103,20 @@ interface SettingsModalProps {
   readonly dataDir?: string;
   readonly version?: WebuiVersionInfo;
   readonly sessionId?: string;
-  /** Capability source for the modal. Typed as the narrow 9-member
-   *  contract so the modal cannot accidentally start reading members it
-   *  does not consume. */
+  /** Workspace the code-review page reads its change set from. Every
+   *  workspace review operation is keyed by an absolute directory, so without
+   *  this the page has nothing to ask about. */
+  readonly workspaceDir?: string;
+  /** Opens a file at a line. This is what makes a review line a real jump
+   *  rather than decoration: the editor receives the path and the new-side
+   *  line number the diff projection resolved. */
+  readonly onOpenFileLine?: (path: string, line: number) => void;
+  /** Capability source for the modal. Typed as the narrow contract so the
+   *  modal cannot accidentally start reading members it does not consume. */
   readonly transport?: WebuiSettingsModalCapabilities;
 }
 
-export function SettingsModal({ open, onClose, dataDir, version, sessionId, transport }: SettingsModalProps): ReactElement | null {
+export function SettingsModal({ open, onClose, dataDir, version, sessionId, workspaceDir, onOpenFileLine, transport }: SettingsModalProps): ReactElement | null {
   // The transport is optional. Each capability is optional too, so we bind
   // only when both are present; otherwise we surface `undefined` and let the
   // call sites do their existing null checks.
@@ -119,6 +148,10 @@ export function SettingsModal({ open, onClose, dataDir, version, sessionId, tran
     startCodexOAuthLogin: transport?.startCodexOAuthLogin?.bind(transport),
     cancelCodexOAuthLogin: transport?.cancelCodexOAuthLogin?.bind(transport),
     refreshModels: transport?.refreshModels?.bind(transport),
+    getWorkspaceReviewSummary: transport?.getWorkspaceReviewSummary?.bind(transport),
+    listWorkspaceReviewFileDiffs: transport?.listWorkspaceReviewFileDiffs?.bind(transport),
+    searchWorkspaceReviewDiffs: transport?.searchWorkspaceReviewDiffs?.bind(transport),
+    loadSessions: transport?.loadSessions?.bind(transport),
   }), [transport]);
   const {
     listModels, selectModel, getUsageQuota, getAccountStatus,
@@ -130,6 +163,8 @@ export function SettingsModal({ open, onClose, dataDir, version, sessionId, tran
     getMiniMaxModelSource, setMiniMaxModelSource, testUserModelCandidate,
     revealModelProviderApiKey, startCodexOAuthLogin, cancelCodexOAuthLogin,
     refreshModels,
+    getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs,
+    loadSessions,
   } = boundCapabilities;
   const usageCapabilities: WebuiSettingsModalCapabilities = useMemo(() => ({
     getUsageQuota, getMiniMaxApiKeyStatus, listUserModelProviders, createUserModelProvider,
@@ -146,7 +181,7 @@ export function SettingsModal({ open, onClose, dataDir, version, sessionId, tran
   const visibleTabs = useMemo(() => filterSettingsTabs(query), [query]); if (!open) return null; const selected = models.find((model) => model.selected); const modelValue = selected ? `${selected.providerId}/${selected.modelId}/${selected.variant ?? ""}` : ""; const groups = SETTINGS_GROUPS.map((group) => ({ ...group, tabs: visibleTabs.filter((tab) => tab.group === group.key) })).filter((group) => group.tabs.length > 0); const label = DESKTOP_SETTINGS_TABS.find((tab) => tab.key === active)?.label;
   const changeModel = async (value: string) => { const model = models.find((candidate) => `${candidate.providerId}/${candidate.modelId}/${candidate.variant ?? ""}` === value); if (!model || !selectModel) return; await selectModel({ providerId: model.providerId, modelId: model.modelId, ...(model.variant ? { variant: model.variant } : {}), ...(sessionId ? { sessionId } : {}) }); }; const handleSignOut = async () => { if (!signOut) return; try { setSignOutError(undefined); await signOut(); onClose(); } catch (error) { setSignOutError(error instanceof Error ? error.message : String(error)); } };
   const handleDeleteAllArchived = async () => { if (!deleteSession || !archived.length || !window.confirm("确定删除全部已归档任务吗？此操作无法撤销。")) return; const ids = archived.map((session) => session.sessionId); try { await Promise.all(ids.map((id) => deleteSession({ id }))); setArchived([]); } catch (error) { window.alert(`删除失败：${error instanceof Error ? error.message : String(error)}`); } };
-  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
+  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active === "coding" ? <SettingsReviewPage workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} getWorkspaceReviewSummary={getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={searchWorkspaceReviewDiffs} /> : null}{active === "worktree" ? <SettingsWorktreePage loadSessions={loadSessions} /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" && active !== "coding" && active !== "worktree" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
 }
 
 function GenericPage({ theme, setTheme, wrap, setWrap, newTab, setNewTab, contextWindow, setContextWindow, version }: { readonly theme: string; readonly setTheme: (value: string) => void; readonly wrap: boolean; readonly setWrap: (value: boolean) => void; readonly newTab: boolean; readonly setNewTab: (value: boolean) => void; readonly contextWindow: boolean; readonly setContextWindow: (value: boolean) => void; readonly version: string }): ReactElement {
@@ -155,6 +190,321 @@ function GenericPage({ theme, setTheme, wrap, setWrap, newTab, setNewTab, contex
 function Appearance({ theme, setTheme }: { readonly theme: string; readonly setTheme: (value: string) => void }): ReactElement { return <SettingRow title="外观" description="选择应用的显示主题" testId="mavis-settings-appearance-row"><div className="mavis-settings-theme-selector">{([['light', '浅色模式', 'light.d3fbb1aa.svg'], ['dark', '深色模式', 'dark.14c569ba.svg'], ['system', '跟随系统', 'system.aba90841.svg']] as const).map(([value, text, src]) => <button type="button" key={value} aria-pressed={theme === value} className="mavis-settings-theme-option" onClick={() => setTheme(value)}><span className={`mavis-settings-theme-preview${theme === value ? " is-selected" : ""}`}><span><img src={`/assets/img/${src}`} alt={`${text}预览`} draggable="false" /></span></span><span>{text}</span></button>)}</div></SettingRow>; }
 function ModeCard({ testId, title, description, icon, selected = false }: { readonly testId: string; readonly title: string; readonly description: string; readonly icon: string; readonly selected?: boolean }): ReactElement { return <button type="button" data-testid={testId} data-selected={selected} aria-pressed={selected} disabled className="webui-mode-card"><span className="webui-mode-inner"><span className="webui-mode-icon"><Icon name={icon} size={24} /></span><span className="webui-mode-copy"><strong data-testid={`${testId}-title`}>{title}</strong><span data-testid={`${testId}-description`}>{description}</span></span><span data-testid={`${testId}-radio`} className={`webui-mode-radio${selected ? " is-selected" : ""}`}><svg aria-hidden="true" width={selected ? 20 : 16} height={selected ? 20 : 16} viewBox="0 0 20 20" fill="none">{selected ? <><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.25" /><circle cx="10" cy="10" r="4.5" fill="currentColor" /></> : <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.25" />}</svg></span></span></button>; }
 function SettingPanel({ title, children }: { readonly title: string; readonly children: ReactNode }): ReactElement { return <section className="webui-settings-panel"><h3>{title}</h3><div>{children}</div></section>; }
+/** The subset of the settings capability contract the code-review page reads.
+ *  Named so the page cannot quietly grow a dependency on a member the modal
+ *  does not otherwise use. */
+type WebuiSettingsReviewCapabilities = Pick<
+  WebuiSettingsModalCapabilities,
+  "getWorkspaceReviewSummary" | "listWorkspaceReviewFileDiffs" | "searchWorkspaceReviewDiffs"
+>;
+
+type WebuiReviewStateAction = Parameters<typeof reduceWebuiReviewState>[1];
+
+/** Roadmap E 区「Review 审查模式」and「修复建议+跳转」.
+ *
+ * The review capability was already wired end to end; what was missing was a
+ * place to read a whole change set. Every decision that does not need the
+ * network lives in `review-state.ts` so it can be tested without a DOM — this
+ * component is the thin shell that fetches and renders. */
+function SettingsReviewPage({ workspaceDir, onOpenFileLine, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs }: {
+  readonly workspaceDir?: string;
+  readonly onOpenFileLine?: (path: string, line: number) => void;
+} & WebuiSettingsReviewCapabilities): ReactElement {
+  const [state, setState] = useState<WebuiReviewState>(initialWebuiReviewState);
+  const dispatch = useCallback((action: WebuiReviewStateAction) => {
+    setState((current) => reduceWebuiReviewState(current, action));
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceDir || !getWorkspaceReviewSummary) return;
+    let cancelled = false;
+    dispatch({ type: "load-begun" });
+    void getWorkspaceReviewSummary({ workspaceDir })
+      .then((summary) => {
+        if (cancelled) return;
+        const snapshotId = summary?.reviewSnapshotId;
+        const files = summary?.files ?? [];
+        // A workspace with nothing staged against it is a normal state, and
+        // showing it as a failure would put a red banner on every fresh repo.
+        if (!snapshotId || !files.length) {
+          dispatch({ type: "unavailable", reason: "当前工作区没有待审查的变更" });
+          return;
+        }
+        const totals = summary?.totals ?? {
+          files: files.length,
+          additions: files.reduce((sum, file) => sum + (file.additions ?? 0), 0),
+          deletions: files.reduce((sum, file) => sum + (file.deletions ?? 0), 0),
+        };
+        dispatch({ type: "summary-loaded", reviewSnapshotId: snapshotId, files: [...files], totals });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        dispatch({ type: "load-failed", reason: error instanceof Error ? error.message : String(error) });
+      });
+    return () => { cancelled = true; };
+  }, [dispatch, getWorkspaceReviewSummary, workspaceDir]);
+
+  /* The snapshot id and the query are passed in rather than read back out of
+   * state: reading a `useState` value from inside a setter callback is a type
+   * error waiting to happen and silently captures whatever the reducer saw,
+   * not what the caller meant. */
+  const loadDiffs = useCallback(async (fileIds: readonly string[], reviewSnapshotId: string) => {
+    if (!workspaceDir || !listWorkspaceReviewFileDiffs || !fileIds.length) return;
+    dispatch({ type: "diffs-begun", fileIds });
+    for (let index = 0; index < fileIds.length; index += WEBUI_REVIEW_DIFF_BATCH_SIZE) {
+      const batch = fileIds.slice(index, index + WEBUI_REVIEW_DIFF_BATCH_SIZE);
+      try {
+        const result = await listWorkspaceReviewFileDiffs({ workspaceDir, reviewSnapshotId, fileIds: [...batch] });
+        const diffs: Record<string, string> = {};
+        const errors: Record<string, string> = {};
+        for (const entry of (result?.diffs ?? []) as readonly WebuiWorkspaceReviewFileDiff[]) {
+          if (entry.error) errors[entry.fileId] = entry.error;
+          else if (entry.diff?.type === "text" && entry.diff.content) diffs[entry.fileId] = entry.diff.content;
+          else if (entry.diff?.type === "binary") errors[entry.fileId] = "二进制文件没有可显示的补丁";
+          else errors[entry.fileId] = "运行时没有返回这个文件的补丁";
+        }
+        dispatch({ type: "diffs-loaded", diffs, errors });
+      } catch (error: unknown) {
+        dispatch({ type: "diffs-loaded", diffs: {}, errors: Object.fromEntries(batch.map((fileId) => [fileId, error instanceof Error ? error.message : String(error)])) });
+      }
+    }
+  }, [dispatch, listWorkspaceReviewFileDiffs, workspaceDir]);
+
+  const runSearch = useCallback(async (reviewSnapshotId: string, query: string) => {
+    if (!workspaceDir || !searchWorkspaceReviewDiffs || !query.trim()) return;
+    dispatch({ type: "search-begun" });
+    try {
+      const result = await searchWorkspaceReviewDiffs({ workspaceDir, reviewSnapshotId, query, includeUntrackedFiles: true });
+      dispatch({ type: "search-settled", fileIds: (result?.matchedFiles ?? []).map((entry) => entry.fileId) });
+    } catch {
+      // A failed search must not leave the list filtered by the previous one.
+      dispatch({ type: "search-settled", fileIds: [] });
+    }
+  }, [dispatch, searchWorkspaceReviewDiffs, workspaceDir]);
+
+  const visible = selectWebuiReviewVisibleFiles(state);
+  const filtering = isWebuiReviewFiltering(state);
+
+  if (!workspaceDir) {
+    return <WebuiReviewPanel state={{ ...state, status: "unavailable" }} note="先打开一个工作区，再来审查它的变更。" empty="先打开一个工作区，再来审查它的变更。" />;
+  }
+  if (state.status === "idle" || state.status === "loading") {
+    return <WebuiReviewPanel state={state} loading />;
+  }
+  if (state.status === "unavailable" || state.status === "error") {
+    return <WebuiReviewPanel state={state} note={state.error} empty={state.status === "error" ? "读取待审查的变更失败" : "当前工作区没有待审查的变更。"} workspaceDir={workspaceDir} />;
+  }
+
+  return <WebuiReviewPanel
+    state={state}
+    visible={visible}
+    filtering={filtering}
+    onQueryChange={(query) => {
+      dispatch({ type: "query-changed", query });
+      // Live search: the server is asked for every keystroke, and the
+      // reducer drops the previous matches first so the list never shows
+      // results for a query that is no longer in the box.
+      if (state.reviewSnapshotId && query.trim()) void runSearch(state.reviewSnapshotId, query);
+    }}
+    onClearFilters={() => dispatch({ type: "clear-filters" })}
+    onToggleFile={(fileId, willExpand, file) => {
+      dispatch({ type: "toggle-file", fileId });
+      if (willExpand && !state.diffs[fileId] && !state.diffErrors[fileId] && state.reviewSnapshotId) {
+        void loadDiffs([fileId], state.reviewSnapshotId);
+      }
+      void file;
+    }}
+    onOpenFileLine={onOpenFileLine}
+  />;
+}
+
+/** Presentational half of the code-review page.
+ *
+ * Split from the fetching shell on purpose: `renderToStaticMarkup` runs the
+ * first render and never runs effects, so a page that only reaches its
+ * populated state through an effect cannot be asserted on at all. Everything
+ * that depends on data is decided upstream in `review-state.ts` and arrives
+ * here as a plain value, which makes the populated render reachable from a
+ * test without a DOM. */
+export function WebuiReviewPanel({ state, visible, filtering, loading, note, empty, workspaceDir, onQueryChange, onClearFilters, onToggleFile, onOpenFileLine }: {
+  readonly state: WebuiReviewState;
+  readonly visible?: readonly WebuiReviewFile[];
+  readonly filtering?: boolean;
+  readonly loading?: boolean;
+  readonly note?: string;
+  readonly empty?: string;
+  readonly workspaceDir?: string;
+  readonly onQueryChange?: (query: string) => void;
+  readonly onClearFilters?: () => void;
+  readonly onToggleFile?: (fileId: string, willExpand: boolean, file: WebuiReviewFile) => void;
+  readonly onOpenFileLine?: (path: string, line: number) => void;
+}): ReactElement {
+  const rows = visible ?? state.files;
+  const filterActive = filtering ?? isWebuiReviewFiltering(state);
+  return <div className="webui-review-page" data-testid="settings-review-page" data-webui-review-state={state.status} data-webui-review-snapshot={state.reviewSnapshotId}>
+    {state.status === "ready" ? <div className="webui-review-totals" data-testid="review-totals">
+      <span>{state.totals.files} 个文件</span>
+      <span className="webui-diff-add">{`+${state.totals.additions}`}</span>
+      <span className="webui-diff-del">{`-${state.totals.deletions}`}</span>
+    </div> : null}
+    {state.status === "ready" ? <div className="webui-review-search">
+      <SearchIcon />
+      <input
+        aria-label="在变更里搜索"
+        placeholder="在变更里搜索"
+        data-testid="review-search-input"
+        value={state.query}
+        onChange={(event) => onQueryChange?.(event.target.value)}
+      />
+      {filterActive ? <button type="button" className="webui-review-clear" data-testid="review-search-clear" onClick={() => onClearFilters?.()}>清除</button> : null}
+    </div> : null}
+    {loading || state.searchPending ? <p className="webui-review-loading" role="status">{loading ? "正在读取待审查的变更…" : "正在搜索…"}</p> : null}
+    {note || state.error ? <p className={state.status === "error" ? "webui-review-error" : "webui-review-empty"} role={state.status === "error" ? "alert" : undefined} data-testid="review-note">{note ?? state.error}</p> : null}
+    {workspaceDir ? <p className="webui-review-empty" data-testid="review-workspace">{workspaceDir}</p> : null}
+    {empty && !note ? <p className="webui-review-empty" data-testid="review-empty">{empty}</p> : null}
+    {state.status === "ready" && rows.length === 0 ? <p className="webui-review-empty" data-testid="review-empty">{filterActive ? "没有匹配的文件" : "没有可显示的文件"}</p> : null}
+    <ul className="webui-review-files">
+      {rows.map((file) => {
+        const expanded = state.expandedFileIds.includes(file.fileId);
+        const diff = state.diffs[file.fileId];
+        const diffError = state.diffErrors[file.fileId];
+        const pending = state.loadingFileIds.includes(file.fileId);
+        return <li className="webui-review-file" key={file.fileId} data-testid="review-file" data-file-id={file.fileId} data-webui-review-file-status={file.status}>
+          <button
+            type="button"
+            className="webui-review-file-heading"
+            data-testid="review-file-toggle"
+            aria-expanded={expanded}
+            onClick={() => onToggleFile?.(file.fileId, !expanded, file)}
+          >
+            <span className="webui-review-file-path" title={file.path}>{file.path}</span>
+            <span className="webui-review-file-status">{file.status}</span>
+            <span className="webui-review-file-stats">
+              <span className="webui-diff-add">{`+${file.additions}`}</span>
+              {file.deletions > 0 ? <span className="webui-diff-del">{`-${file.deletions}`}</span> : null}
+            </span>
+          </button>
+          {expanded ? <div className="webui-review-file-body" data-testid="review-file-body">
+            {pending ? <p className="webui-review-loading" role="status">正在读取这个文件的补丁…</p> : null}
+            {diffError ? <p className="webui-review-file-error" role="status" data-testid="review-file-error">{diffError}</p> : null}
+            {diff ? <ol className="webui-review-lines" data-testid="review-lines">
+              {projectWebuiReviewLines(diff).map((line, index) => {
+                const target = webuiReviewLineTarget(line);
+                const text = (
+                  <>
+                    <span className="webui-review-line-number">{line.newLine ?? ""}</span>
+                    <span className="webui-review-line-text">{line.text}</span>
+                  </>
+                );
+                return <li className={`webui-review-line webui-review-line--${line.kind}`} key={index} data-webui-review-line-kind={line.kind} data-webui-review-line={line.newLine ?? ""}>
+                  {target === undefined || !onOpenFileLine
+                    ? <span className="webui-review-line-static">{text}</span>
+                    : <button type="button" className="webui-review-line-jump" data-testid="review-line-jump" data-webui-review-jump-line={target} onClick={() => onOpenFileLine(file.path, target)}>{text}</button>}
+                </li>;
+              })}
+            </ol> : null}
+          </div> : null}
+        </li>;
+      })}
+    </ul>
+  </div>;
+}
+
+/** Roadmap E 区「工作树隔离」.
+ *
+ * Creating an isolated worktree already works from the rail's context menu;
+ * this is the other half of the row — being able to see which parallel
+ * experiment branches exist and switch into one. Grouping is done by
+ * `groupWebuiWorktreeWorkspaces`, so the list a test asserts on is the same
+ * list the page renders. */
+function SettingsWorktreePage({ loadSessions }: {
+  readonly loadSessions?: WebuiSettingsModalCapabilities["loadSessions"];
+}): ReactElement {
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [sessions, setSessions] = useState<readonly WebuiWorktreeSourceSession[]>([]);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!loadSessions) return;
+    let cancelled = false;
+    setStatus("loading");
+    void loadSessions()
+      .then((page) => {
+        if (cancelled) return;
+        setSessions((page?.sessions ?? []) as readonly WebuiWorktreeSourceSession[]);
+        setStatus("ready");
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setError(cause instanceof Error ? cause.message : String(cause));
+        setStatus("error");
+      });
+    return () => { cancelled = true; };
+  }, [loadSessions]);
+
+  const workspaces = groupWebuiWorktreeWorkspaces(sessions);
+  const worktrees = selectWebuiWorktreeWorkspaces(workspaces);
+  const primary = selectWebuiPrimaryWorkspace(workspaces);
+
+  if (status === "error") {
+    return <WebuiWorktreePanel workspaces={workspaces} error={error} />;
+  }
+  if (status === "loading") {
+    return <div className="webui-review-page" data-testid="settings-worktree-page" data-webui-worktree-state="loading">
+      <p className="webui-review-loading" role="status">正在读取工作树…</p>
+    </div>;
+  }
+  return <WebuiWorktreePanel workspaces={workspaces} worktrees={worktrees} primary={primary} />;
+}
+
+/** Presentational half of the worktree page, split for the same reason as
+ * `WebuiReviewPanel`: `renderToStaticMarkup` runs no effects, so a page that
+ * only reaches its populated state through a fetch cannot be asserted on. */
+export function WebuiWorktreePanel({ workspaces, worktrees, primary, error }: {
+  readonly workspaces: readonly WebuiWorktreeWorkspace[];
+  readonly worktrees?: readonly WebuiWorktreeWorkspace[];
+  readonly primary?: WebuiWorktreeWorkspace;
+  readonly error?: string;
+}): ReactElement {
+  const branches = worktrees ?? selectWebuiWorktreeWorkspaces(workspaces);
+  const main = primary ?? selectWebuiPrimaryWorkspace(workspaces);
+  return <div className="webui-review-page" data-testid="settings-worktree-page" data-webui-worktree-state={error ? "error" : branches.length ? "ready" : "empty"}>
+    {error ? <p className="webui-review-error" role="alert" data-testid="worktree-error">{error}</p> : null}
+    {main ? <section className="webui-worktree-group" data-testid="worktree-primary" data-webui-worktree-primary="true">
+      <header className="webui-worktree-heading">
+        <span className="webui-worktree-name"><FolderIcon />{main.name}</span>
+        <span className="webui-worktree-kind">主检出</span>
+      </header>
+      <p className="webui-worktree-path" title={main.workspaceDir}>{main.workspaceDir}</p>
+      <ul className="webui-worktree-sessions">
+        {main.sessions.map((entry) => <li className="webui-worktree-session" key={entry.sessionId} data-testid="worktree-session">
+          <span className="webui-worktree-session-title" title={entry.title}>{entry.title}</span>
+        </li>)}
+      </ul>
+    </section> : null}
+    <h3 className="webui-worktree-section-title">并行实验分支</h3>
+    {branches.length === 0 ? <p className="webui-review-empty" data-testid="worktree-empty">还没有工作树。在会话的右键菜单里选「复制到新工作树」即可开一个。</p> : null}
+    <ul className="webui-worktree-branches">
+      {branches.map((branch) => <li className="webui-worktree-group" key={branch.workspaceDir} data-testid="worktree-branch" data-webui-worktree-dir={branch.workspaceDir}>
+        <header className="webui-worktree-heading">
+          <span className="webui-worktree-name"><FolderIcon />{branch.name}</span>
+          <span className="webui-worktree-kind">{branch.sessions.length} 个会话</span>
+        </header>
+        <p className="webui-worktree-path" title={branch.workspaceDir}>{branch.workspaceDir}</p>
+        <ul className="webui-worktree-sessions">
+          {branch.sessions.map((entry) => <li className="webui-worktree-session" key={entry.sessionId} data-testid="worktree-session" data-webui-worktree-session={entry.sessionId}>
+            {/* Session navigation in this shell is the `#session=<id>` hash,
+                which is what the rail's own links use. Reusing it keeps one
+                navigation path instead of adding a second one. */}
+            <a className="webui-worktree-session-link" href={`#session=${entry.sessionId}`} title={entry.title}>{entry.title}</a>
+            {entry.parentSessionId ? <span className="webui-worktree-forked" title={`派生自 ${entry.parentSessionId}`}>派生</span> : null}
+          </li>)}
+        </ul>
+      </li>)}
+    </ul>
+  </div>;
+}
+
 function ArchivedSessionsPage({ sessions, canDelete, canUnarchive, onDelete, onUnarchive }: { readonly sessions: readonly WebuiSessionListItem[]; readonly canDelete: boolean; readonly canUnarchive: boolean; readonly onDelete: (id: string) => Promise<void>; readonly onUnarchive: (id: string) => Promise<void> }): ReactElement {
   const [search, setSearch] = useState("");
   const [actionError, setActionError] = useState("");

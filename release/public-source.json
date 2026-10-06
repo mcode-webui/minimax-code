@@ -3850,6 +3850,7 @@
     "test/webui-browser/rail-star.spec.mjs",
     "test/webui-browser/server.mjs",
     "test/webui-browser/settings-account-tab.spec.mjs",
+    "test/webui-browser/settings-theme.spec.mjs",
     "test/webui-browser/transcript.spec.mjs",
     "test/webui-browser/turn-lifecycle.spec.mjs",
     "test/webui-browser/workspace-progress-live.spec.mjs",

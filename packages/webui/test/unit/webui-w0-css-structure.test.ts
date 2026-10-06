@@ -308,6 +308,11 @@ describe("W0 · the memory manager's header controls", () => {
       ".webui-memory-manager-editor .webui-personalization-textarea",
     ).body;
     expect(declaration(editor, "field-sizing")).toBe("content");
+    // Load-bearing, and invisible when wrong: `field-sizing` only takes effect
+    // when height is `auto`, the shared rule still declares `height: 300px`, and
+    // without this the property was silently inert -- 348px box, text scrolling
+    // under the count, nothing reported anywhere.
+    expect(declaration(editor, "height")).toBe("auto");
     expect(declaration(editor, "min-height")).toBe("348px");
     expect(declaration(editor, "max-height")).toBe("612px");
     // The desktop marks the field `shrink-0`: its height is its content's, not

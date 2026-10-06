@@ -419,13 +419,20 @@
      browser measures the content and drives `height`, no script involved. Where
      it is unsupported the editor simply keeps `min-height` and the dialog stays
      usable, so the fallback is the old behaviour rather than a broken one.
+   *
+     `height: auto` is load-bearing, not tidying. `field-sizing` only has an
+     effect when height is `auto`; the shared rule still sets `height: 300px`,
+     so without this the property was silently inert, the box sat on its
+     `min-height` at 348px, and the text scrolled underneath the count. Nothing
+     errors and nothing is visible in devtools — the declaration is simply
+     ignored.
      `flex: none` because the desktop marks the field `shrink-0`: its height is
      its content's, not the leftover space in the dialog.
    *
      The face changes too. This is prose, not an editor of code: the desktop
      runs it at `!text-sm !leading-6` in the UI face, and we were running 12px
      monospace, which is also why a "13 row" floor was not 312px here. */
-  .webui-memory-manager-editor .webui-personalization-textarea { flex: none; field-sizing: content; min-height: 348px; max-height: 612px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; font-family: inherit; font-size: var(--size_14); line-height: 24px; }
+  .webui-memory-manager-editor .webui-personalization-textarea { flex: none; height: auto; field-sizing: content; min-height: 348px; max-height: 612px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; font-family: inherit; font-size: var(--size_14); line-height: 24px; }
   .webui-memory-manager-editor .webui-personalization-textarea:hover { border-color: var(--border_heavy); outline: none; box-shadow: none; }
   .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--blue_500); outline: none; box-shadow: none; }
   /* The character count sits INSIDE the editor, bottom-right, 14px from each

@@ -353,7 +353,33 @@
   .webui-personalization-page { display: flex; width: 100%; min-height: 0; max-width: 704px; flex: 1; margin: 0 auto; flex-direction: column; gap: var(--spacing_16); padding: 0 0 var(--spacing_32); }
   .webui-personalization-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
   .webui-personalization-title { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); }
-  .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
+  .webui-settings-info-hint-anchor { position: relative; display: inline-flex; flex: none; }
+  /* Reset as a button: a native one brings a border, a background and its own
+   * font, and this control is a 14px circle drawn over the section title. */
+  .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; background: transparent; padding: 0; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
+  .webui-settings-info-hint:hover { border-color: var(--border_accent); color: var(--text_default_secondary); }
+  .webui-settings-info-hint:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  /* The dark bubble with an arrow is the shell's existing tooltip shape (see
+   * `.webui-signin-credits-tooltip`); measured against the desktop, its 6px
+   * radius, 8/12 padding and 18px line height are the same three numbers, so
+   * this is a third call site on one shape rather than a third shape.
+   *
+   * The 250 is the desktop's own, and it is deliberately NOT the 340 the two
+   * sibling bubbles carry: all three desktop bubbles were measured and the
+   * two-line and three-line ones both wrap at exactly 250, which is where
+   * `width: max-content` stops. The 340 on the siblings is a pre-existing
+   * mismatch, left alone here because those two surfaces have no screenshot
+   * to re-measure against and this change is not the place to guess at them.
+   *
+   * `position: absolute` against the anchor, NOT `fixed`: absolute travels
+   * with the section when the panel scrolls, which is what a tooltip attached
+   * to a heading has to do. `pointer-events: none` for the same reason the
+   * context-usage label is — otherwise the pointer leaving the glyph toward
+   * the bubble drops the hover that is showing it. */
+  .webui-settings-info-hint-bubble { position: absolute; bottom: calc(100% + var(--spacing_8)); left: 50%; z-index: 60; width: max-content; max-width: 250px; padding: var(--spacing_8) var(--spacing_12); border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); box-shadow: 0 6px 16px rgb(0 0 0 / 18%); color: #fff; font-size: var(--size_12); line-height: var(--line_height_18); white-space: normal; text-align: left; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-settings-info-hint-bubble::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-settings-info-hint-anchor:hover .webui-settings-info-hint-bubble,
+  .webui-settings-info-hint:focus-visible ~ .webui-settings-info-hint-bubble { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
   /* The memory manager is a dialog, not an expansion. It is portalled to the
      body, so the z-index is compared against everything else at the root: the
      settings shell is 100, and this sits above it. */

@@ -26,6 +26,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   MEMORY_HANDOFF_PROMPT,
+  PERSONALIZATION_SECTION_HINTS,
   PersonalizationSettings,
   formatMemorySize,
   formatMemoryTimestamp,
@@ -314,5 +315,39 @@ describe("section hints", () => {
     ]) {
       expect(markup).toContain(testId);
     }
+  });
+
+  // A real bubble replaced a native `title` on this control. Three things had
+  // to be true at the same time, and each is separately breakable: the glyph
+  // has to stay keyboard-reachable (a `role="img"` span is not), the visible
+  // sentence has to be the same one the name announces (two literals drift),
+  // and no `title` may come back (the browser's own bubble would paint on top
+  // of ours, about a second late, with no arrow).
+  it("renders each hint as a focusable control whose bubble repeats its name", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("webui-settings-info-hint-bubble");
+    // The old affordance, if either half of it returns, fails here.
+    expect(markup).not.toContain('role="img"');
+    expect(markup).not.toMatch(/<[^>]*\stitle=/u);
+
+    for (const hint of Object.values(PERSONALIZATION_SECTION_HINTS)) {
+      // Once as the control's accessible name, once as the visible sentence.
+      expect(markup.split(`aria-label="${hint}"`)).toHaveLength(2);
+      expect(markup).toContain(`>${hint}</span>`);
+    }
+  });
+
+  it("carries the desktop's own wording for all three sections", () => {
+    // The previous strings described the mechanism instead of the effect
+    // ("注入每个会话的 <user_profile>…"), which is a note to whoever debugs
+    // the injection rather than a line that tells a user what the field is
+    // for. These three are copied from the desktop bubbles character for
+    // character, so the two surfaces cannot drift on the same control.
+    expect(Object.values(PERSONALIZATION_SECTION_HINTS)).toEqual([
+      "定义 Agent 应该如何工作、回答和执行任务，为此设备上的所有 Agent 提供额外指令和上下文。",
+      "告诉 Agent 你的背景和长期偏好。",
+      "设置在此电脑上如何收集、保留和整合本地记忆。",
+    ]);
   });
 });

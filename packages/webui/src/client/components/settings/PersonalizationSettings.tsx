@@ -51,23 +51,44 @@ const INSTRUCTIONS_PLACEHOLDER = [
 const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
 
 /**
+ * The three section bubbles, copied from the desktop word for word.
+ *
+ * Exported because the test asserts the exact strings: a tooltip is copy the
+ * user reads, and a paraphrase that reads fine still means the WebUI and the
+ * desktop stop saying the same thing about the same control.
+ */
+export const PERSONALIZATION_SECTION_HINTS = {
+  globalInstructions:
+    "定义 Agent 应该如何工作、回答和执行任务，为此设备上的所有 Agent 提供额外指令和上下文。",
+  userProfile: "告诉 Agent 你的背景和长期偏好。",
+  memory: "设置在此电脑上如何收集、保留和整合本地记忆。",
+} as const;
+
+/**
  * The section title's help affordance.
  *
- * A `title` attribute rather than a hover popover: it needs no portal, no
- * positioning and no timer, and it is what the browser already exposes to
- * assistive tech as the accessible name. The text is the same string the
- * desktop puts in its popover, so the two surfaces do not drift apart.
+ * A real bubble rather than a native `title`, because the desktop hangs a dark
+ * bubble with an arrow above the glyph and a `title` cannot match it: the
+ * browser draws its own surface, delays it about a second, and paints no
+ * arrow. The shape itself is not new — `.webui-signin-credits-tooltip` and
+ * `.webui-context-usage-label` already carry it, and this is the third call
+ * site against the same object rather than a third design.
+ *
+ * Two decisions worth stating. It is a real `button`, not the `role="img"`
+ * span it replaces, so the affordance is reachable by keyboard; the bubble is
+ * `aria-hidden` because `aria-label` already reads as the control's name and
+ * a `role="tooltip"` nothing references would be a second, dangling
+ * announcement of the same sentence.
  */
 function InfoHint({ text, testId }: { readonly text: string; readonly testId: string }): ReactElement {
   return (
-    <span
-      data-testid={testId}
-      className="webui-settings-info-hint"
-      role="img"
-      aria-label={text}
-      title={text}
-    >
-      i
+    <span className="webui-settings-info-hint-anchor">
+      <button type="button" data-testid={testId} className="webui-settings-info-hint" aria-label={text}>
+        i
+      </button>
+      <span aria-hidden="true" className="webui-settings-info-hint-bubble">
+        {text}
+      </span>
     </span>
   );
 }
@@ -278,7 +299,7 @@ function GlobalInstructionsSection({
     >
       <SectionHeader
         title="自定义指令"
-        hint="注入每个会话的项目级自定义指令（AGENTS.md）。"
+        hint={PERSONALIZATION_SECTION_HINTS.globalInstructions}
         hintTestId="global-instructions-hint"
       >
         <button
@@ -418,7 +439,7 @@ export function UserProfileSection({
     <section data-testid="user-profile-section" className="webui-generic-section">
       <SectionHeader
         title="关于你"
-        hint="注入每个会话的 <user_profile>，只包含这段标记之间的内容。"
+        hint={PERSONALIZATION_SECTION_HINTS.userProfile}
         hintTestId="user-profile-hint"
       >
         <button
@@ -597,7 +618,7 @@ export function MemorySection({
     <section data-testid="memory-section" className="webui-generic-section">
       <SectionHeader
         title="记忆"
-        hint="长期记忆的开关与查看入口。开关写入共享配置，对整个桌面端生效。"
+        hint={PERSONALIZATION_SECTION_HINTS.memory}
         hintTestId="memory-hint"
       />
       <div className="webui-generic-card">

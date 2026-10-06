@@ -409,7 +409,23 @@
      which is this app's `blue_500` and antd's themed `colorPrimary`. The pixel
      won: a rule that no longer matches what the control draws is not worth
      copying. Hover still deepens to `--border_heavy`. */
-  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; }
+  /* Height follows the desktop's `autoSize: {minRows: 13, maxRows: 24}` at
+     `!leading-6`. Measured off the desktop dialog: 24px between baselines, and
+     a 593px box for content long enough to cap out — which is 24 rows. So
+     13 rows + 8px top padding + the 28px the count needs is the floor, and 24
+     rows is the ceiling.
+   *
+     `field-sizing: content` is the native equivalent of antd's autoSize: the
+     browser measures the content and drives `height`, no script involved. Where
+     it is unsupported the editor simply keeps `min-height` and the dialog stays
+     usable, so the fallback is the old behaviour rather than a broken one.
+     `flex: none` because the desktop marks the field `shrink-0`: its height is
+     its content's, not the leftover space in the dialog.
+   *
+     The face changes too. This is prose, not an editor of code: the desktop
+     runs it at `!text-sm !leading-6` in the UI face, and we were running 12px
+     monospace, which is also why a "13 row" floor was not 312px here. */
+  .webui-memory-manager-editor .webui-personalization-textarea { flex: none; field-sizing: content; min-height: 348px; max-height: 612px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; font-family: inherit; font-size: var(--size_14); line-height: 24px; }
   .webui-memory-manager-editor .webui-personalization-textarea:hover { border-color: var(--border_heavy); outline: none; box-shadow: none; }
   .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--blue_500); outline: none; box-shadow: none; }
   /* The character count sits INSIDE the editor, bottom-right, 14px from each
@@ -430,7 +446,17 @@
      the last line of text cannot scroll under it -- the desktop does not reserve
      anything, and the count there overlaps whenever the text is long enough to
      scroll. */
-  .webui-memory-manager-editor .webui-personalization-meta { position: absolute; right: 14px; bottom: 8px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
+  /* The count gets its own class rather than riding on
+     `.webui-personalization-meta`. That shared rule carries `width: 100%`,
+     `display: flex` and `padding: 8px 12px` for the 「path · size」 row; scoping
+     over it only overrides the properties the scoped rule happens to declare,
+     so the full width survived and `position: absolute` + `width: 100%` +
+     `right: 14px` put the box's left edge at -14px. The digits were then
+     `space-between`-aligned to that left edge, inside 12px of padding — bottom
+     left, floating over the text, on a phantom surface. A shared class is not
+     a base for a one-off control, and the earlier scoped override was the same
+     mistake as the save button's missing `cursor`. */
+  .webui-memory-manager-count { position: absolute; right: 14px; bottom: 8px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }

@@ -1157,7 +1157,7 @@ export function MemoryManagerDialog({
                 setSaved(false);
               }}
             />
-            <span data-testid="agent-memory-chars" className="webui-personalization-meta">
+            <span data-testid="agent-memory-chars" className="webui-memory-manager-count">
               {draft.length}
             </span>
           </div>

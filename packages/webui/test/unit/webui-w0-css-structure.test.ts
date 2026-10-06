@@ -266,12 +266,17 @@ describe("W0 · the memory manager's header controls", () => {
 
   it("parks the character count inside the editor, 14px off both edges", () => {
     // Measured off the desktop dialog at 1:1 -- the digits sit 14px left of the
-    // border and 14px above it, inside the field. Two earlier shapes were wrong:
-    // floating transparently over the panel, and then a full-width sibling row
-    // *below* the editor, which put the number outside the control it counts.
-    const count = winning(
-      ".webui-memory-manager-editor .webui-personalization-meta",
-    ).body;
+    // border and 14px above it, inside the field.
+    //
+    // On its own class, and the assertion is deliberately narrow. The count used
+    // to ride on `.webui-personalization-meta`, whose shared rule carries
+    // `width: 100%` for the 「path · size」 row. A scoped override only wins the
+    // properties it declares, so the width survived: `position: absolute` +
+    // `width: 100%` + `right: 14px` put the box's left edge at -14px, and
+    // `space-between` then aligned the digits to it -- bottom left, inside 12px
+    // of the shared padding, on top of the text. The fix was the class, not the
+    // offsets; `width` below is what has to stay unset for that to hold.
+    const count = winning(".webui-memory-manager-count").body;
     expect(declaration(count, "position")).toBe("absolute");
     expect(declaration(count, "right")).toBe("14px");
     // 8px against a 16px line box is the 14px gap to the glyphs, the same
@@ -279,23 +284,42 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(count, "bottom")).toBe("8px");
     expect(declaration(count, "color")).toBe("var(--text_default_tertiary)");
 
-    // The row has no fill of its own: the digits sit on the editor's surface.
-    // An earlier version painted one next to the editor's own grey, which drew
-    // two shades meeting at the bottom edge.
+    // No fill, no stretch, no flex row, no padding: the digits sit on the
+    // editor's own surface, hugging the corner.
     expect(declaration(count, "background")).toBeUndefined();
-    // It is no longer a stretched full-width row, so the stretch is gone too.
     expect(declaration(count, "width")).toBeUndefined();
-    expect(declaration(count, "margin-left")).toBeUndefined();
+    expect(declaration(count, "display")).toBeUndefined();
+    expect(declaration(count, "padding")).toBeUndefined();
+    expect(declaration(count, "justify-content")).toBeUndefined();
 
-    // The editor reserves room for it, so the last line of text cannot scroll
-    // underneath. The desktop reserves nothing and overlaps once the text is
-    // long enough to scroll; that is a defect worth not copying.
+    // The shared rule must not reach it. If a future edit puts the shared class
+    // back on the element, the scoped rules here stop winning by default and
+    // the count drifts to the bottom left again.
+    const shared = winning(".webui-personalization-meta").body;
+    expect(declaration(shared, "width")).toBe("100%");
+  });
+
+  it("sizes the dialog editor by content, 13 to 24 rows", () => {
+    // The desktop's `autoSize: {minRows: 13, maxRows: 24}` at `!leading-6`:
+    // 24px between baselines, and a 593px box for content long enough to cap
+    // out, which is 24 rows. 13 rows + 8px top padding + the 28px the count
+    // needs is the floor; 24 rows is the ceiling.
     const editor = winning(
       ".webui-memory-manager-editor .webui-personalization-textarea",
     ).body;
-    expect(declaration(editor, "padding")).toBe(
-      "var(--spacing_8) 0 28px",
-    );
+    expect(declaration(editor, "field-sizing")).toBe("content");
+    expect(declaration(editor, "min-height")).toBe("348px");
+    expect(declaration(editor, "max-height")).toBe("612px");
+    // The desktop marks the field `shrink-0`: its height is its content's, not
+    // the leftover space in the dialog. `flex: 1` is what pinned it at 239px.
+    expect(declaration(editor, "flex")).toBe("none");
+    // Prose, not code: the desktop runs it at `!text-sm !leading-6` in the UI
+    // face. 12px monospace is also why a "13 row" floor was not 312px here.
+    expect(declaration(editor, "font-family")).toBe("inherit");
+    expect(declaration(editor, "font-size")).toBe("var(--size_14)");
+    expect(declaration(editor, "line-height")).toBe("24px");
+    // The count's row is reserved so the last line cannot scroll under it.
+    expect(declaration(editor, "padding")).toBe("var(--spacing_8) 0 28px");
   });
 
   it("keeps the dialog editor bordered while the settings-page editors are not", () => {

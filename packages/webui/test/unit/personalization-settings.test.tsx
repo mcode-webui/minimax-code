@@ -22,6 +22,7 @@
 // decision the component makes, plus that it declines to fake support.
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
@@ -55,6 +56,25 @@ describe("记忆摘要 save button states", () => {
     // Neither in-flight state may be clickable.
     expect(isMemorySaveable({ ...base, draft: "x", loading: true })).toBe(false);
     expect(isMemorySaveable({ ...base, draft: "x", saving: true })).toBe(false);
+  });
+
+  it("gives the count its own class, not the shared meta row", () => {
+    // The regression this guards: the count rode on
+    // `.webui-personalization-meta`, which is the 「path · size」 row and
+    // carries `width: 100%`. Scoped rules only win what they declare, so the
+    // width survived and the count rendered bottom-left inside 12px of padding.
+    // The element itself is the fix, so it is asserted here rather than left to
+    // the stylesheet test.
+    const source = readFileSync(
+      new URL(
+        "../../src/client/components/settings/PersonalizationSettings.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const count = source.slice(source.indexOf('data-testid="agent-memory-chars"'));
+    expect(count.slice(0, 200)).toContain("webui-memory-manager-count");
+    expect(count.slice(0, 200)).not.toContain("webui-personalization-meta");
   });
 
   it("renders the save button disabled on open", () => {

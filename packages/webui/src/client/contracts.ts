@@ -744,7 +744,16 @@ export interface WebuiTransport {
   readonly setAgentMemory?: (request: { readonly content: string }) => Promise<WebuiAgentMemoryView>;
   /** The `关于你` region of `user.md`; the server owns the markers. */
   readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
-  readonly setUserProfile?: (request: { readonly content: string }) => Promise<WebuiUserProfileView>;
+  // The three fields, not one blob: the region is a structured record, and the
+  // server-side port has taken `WebuiUserProfileFields` since the profile split
+  // out of a single `content` string. Declaring `content` here left this call
+  // site passing a shape the server never accepted, and the mismatch was
+  // invisible to `test:webui` because the tests transpile without typechecking.
+  readonly setUserProfile?: (request: {
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
+  }) => Promise<WebuiUserProfileView>;
   /** The two memory switches. Absent on a host that predates the surface. */
   readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
   readonly setMemorySettings?: (request: {

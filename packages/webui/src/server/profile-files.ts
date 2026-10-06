@@ -49,6 +49,7 @@ import { dirname, join, resolve } from "node:path";
 import type {
   WebuiAgentMemoryView,
   WebuiGlobalInstructionsView,
+  WebuiUserProfileFields,
   WebuiUserProfileView,
 } from "../client/contracts.js";
 

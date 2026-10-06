@@ -219,7 +219,9 @@ export interface PersonalizationSettingsProps {
   }) => Promise<WebuiAgentMemoryView>;
   readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
   readonly setUserProfile?: (request: {
-    readonly content: string;
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
   }) => Promise<WebuiUserProfileView>;
   readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
   readonly setMemorySettings?: (request: {
@@ -427,7 +429,9 @@ function GlobalInstructionsSection({
 export interface UserProfileSectionProps {
   readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
   readonly setUserProfile?: (request: {
-    readonly content: string;
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
   }) => Promise<WebuiUserProfileView>;
 }
 
@@ -954,7 +958,10 @@ export function MemoryManagerDialog({
   const saveable = isMemorySaveable({ draft, baseline, loading, saving });
 
   const save = useCallback(async () => {
-    if (!setAgentMemory || !saveable) return;
+    // `saveable` already rules an undefined draft out, but it is a plain boolean
+    // to the type checker, so the narrowing has to be restated here or `draft`
+    // reaches the write as `string | undefined`.
+    if (!setAgentMemory || !saveable || draft === undefined) return;
     setSaving(true);
     setError(undefined);
     try {

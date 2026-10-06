@@ -31,9 +31,48 @@ import {
   MemoryManagerDialog,
   PersonalizationSettings,
   formatMemoryTimestamp,
+  isMemorySaveable,
   isProfileSaveable,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
+
+describe("记忆摘要 save button states", () => {
+  it("stays disabled until the text actually changes", () => {
+    // The desktop's predicate, lifted so it can be tested without an effect
+    // flush: `!loading && !saving && draft !== baseline && draft.length > 0`.
+    // This is what was missing -- the button was live the moment the dialog
+    // opened, offering a write that rewrites the file byte-for-byte.
+    const base = { draft: "# hello", baseline: "# hello", loading: false, saving: false };
+    expect(isMemorySaveable(base)).toBe(false);
+
+    // An edit turns it on.
+    expect(isMemorySaveable({ ...base, draft: "# hello\n" })).toBe(true);
+    // So does the state right after a load lands: the server's text is the
+    // baseline, so an untouched file is not a pending write.
+    expect(isMemorySaveable({ ...base, draft: undefined })).toBe(false);
+    // An emptied editor is a delete, and that lives behind the ⋯ menu.
+    expect(isMemorySaveable({ ...base, draft: "" })).toBe(false);
+    // Neither in-flight state may be clickable.
+    expect(isMemorySaveable({ ...base, draft: "x", loading: true })).toBe(false);
+    expect(isMemorySaveable({ ...base, draft: "x", saving: true })).toBe(false);
+  });
+
+  it("renders the save button disabled on open", () => {
+    // The half of the wiring a static render can see. `draft` is undefined
+    // until the first read lands, so the button must already be disabled in
+    // this frame -- it is the frame the user sees before any load resolves.
+    //
+    // What this cannot catch: swapping the predicate at the call site for a
+    // laxer one. `renderToStaticMarkup` runs no effects, so no test here can
+    // drive the button into its enabled state; the predicate itself is covered
+    // above, the one-line wiring is not independently testable.
+    const markup = renderToStaticMarkup(
+      <MemoryManagerDialog onClose={() => {}} />,
+    );
+    const save = markup.slice(markup.indexOf('data-testid="agent-memory-save"'));
+    expect(save.slice(0, save.indexOf(">"))).toContain("disabled");
+  });
+});
 
 describe("记忆摘要 dialog markup", () => {
   it("pairs a grey 取消 with a black 保存, as the desktop does", () => {

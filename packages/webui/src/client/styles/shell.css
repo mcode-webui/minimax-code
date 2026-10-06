@@ -399,33 +399,38 @@
   .webui-memory-manager-editor { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
   /* The dialog's own editor is the *base* `.mavis-textarea`, not the
      `mavis-personalization-editor` the two settings-page editors carry, so it
-     keeps a border where those two have none: `.mavis-textarea:hover` and
-     `:focus` restate only `border-color` to `--border_heavy`, which is dead
-     weight on a control whose border is `0`. `box-shadow` is cleared at every
-     state so the focus reads as a darker edge rather than a glow.
-     `!rounded-xl` on the call site is what overrides the base radius. */
-  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0; }
+     keeps a border where those two have none. `!rounded-xl` on the call site is
+     what sets the 12px radius, and `box-shadow` is cleared at every state so the
+     focus reads as a recoloured edge rather than a glow.
+   *
+     The focus border is `--blue_500`, not `--border_heavy`. The bundle's
+     `.mavis-textarea:focus{border-color:var(--border_heavy)}` says otherwise,
+     but the desktop renders that field with a 1px `#0077d9` edge while focused,
+     which is this app's `blue_500` and antd's themed `colorPrimary`. The pixel
+     won: a rule that no longer matches what the control draws is not worth
+     copying. Hover still deepens to `--border_heavy`. */
+  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; }
   .webui-memory-manager-editor .webui-personalization-textarea:hover { border-color: var(--border_heavy); outline: none; box-shadow: none; }
-  .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--border_heavy); outline: none; box-shadow: none; }
-  /* The character count is a full-width strip on its own line, not a number
-     floating over the last row of text.
+  .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--blue_500); outline: none; box-shadow: none; }
+  /* The character count sits INSIDE the editor, bottom-right, 14px from each
+     edge. Measured off the desktop dialog at 1:1: the digits land 14px left of
+     the border and 14px above it, and the editor's own border is 1px of
+     `--blue_500` while it holds focus.
    *
-   * Absolutely positioning it inside the editor put it exactly where the
-     desktop puts it horizontally -- bottom-right -- but it landed *on top of*
-     the text with the textarea's own background showing through, so the digits
-     collided with whatever line happened to scroll under them.
+     Two earlier shapes were wrong. Absolutely positioned over the editor it
+     floated transparently on the panel; as a full-width sibling row below the
+     editor it was outside the control it counts, which is not where the desktop
+     puts it. The desktop's antd `showCount` widens the count suffix to
+     `width:100%` and right-aligns it *inside* the field, so the number and the
+     text share one surface and one border.
    *
-     Back in flow and stretched, which is what makes the background span the
-     row. `space-between` with a single child parks it left, so the count is
-     pushed right with `margin-left: auto` instead.
-   *
-     The band takes the editor's own `--bg_grouped_tertiary` rather than a
-     second grey. The desktop puts the count inside the TextArea, so the count
-     and the text it counts always sit on one surface; an
-     `--bg_interaction_secondary_default` band next to a
-     `--bg_grouped_tertiary` editor drew two different greys meeting at the
-     editor's bottom edge, which read as a seam rather than as one control. */
-  .webui-memory-manager-editor .webui-personalization-meta { width: 100%; margin-left: auto; }
+     `bottom: 8px` against a 16px line box is what produces the measured 14px
+     gap to the glyphs, the same arithmetic the desktop's `padding: 8px 0` on
+     the suffix does. The editor reserves 28px of bottom padding for the row so
+     the last line of text cannot scroll under it -- the desktop does not reserve
+     anything, and the count there overlaps whenever the text is long enough to
+     scroll. */
+  .webui-memory-manager-editor .webui-personalization-meta { position: absolute; right: 14px; bottom: 8px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }

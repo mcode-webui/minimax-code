@@ -264,27 +264,38 @@ describe("W0 · the memory manager's header controls", () => {
     );
   });
 
-  it("stretches the character count to a full row with no fill of its own", () => {
-    // The desktop does not paint the count. It widens antd's count suffix to
-    // `width:100%;justify-content:flex-end`, so the digits land on whatever
-    // surface the editor already has. Giving the row its own grey next to a
-    // `--bg_grouped_tertiary` editor drew two shades meeting at the bottom edge,
-    // which read as a seam rather than as one control -- so the fill is asserted
-    // *absent*, not merely unset.
+  it("parks the character count inside the editor, 14px off both edges", () => {
+    // Measured off the desktop dialog at 1:1 -- the digits sit 14px left of the
+    // border and 14px above it, inside the field. Two earlier shapes were wrong:
+    // floating transparently over the panel, and then a full-width sibling row
+    // *below* the editor, which put the number outside the control it counts.
     const count = winning(
       ".webui-memory-manager-editor .webui-personalization-meta",
     ).body;
-    expect(declaration(count, "width")).toBe("100%");
-    expect(declaration(count, "background")).toBeUndefined();
-    // In flow it is the only child of a `space-between` row, which collapses to
-    // left alignment -- hence `margin-left: auto` rather than a bare stretch.
-    expect(declaration(count, "margin-left")).toBe("auto");
+    expect(declaration(count, "position")).toBe("absolute");
+    expect(declaration(count, "right")).toBe("14px");
+    // 8px against a 16px line box is the 14px gap to the glyphs, the same
+    // arithmetic the desktop's `padding: 8px 0` on the count suffix does.
+    expect(declaration(count, "bottom")).toBe("8px");
+    expect(declaration(count, "color")).toBe("var(--text_default_tertiary)");
 
-    // The offsets only exist to pin an out-of-flow element; leaving them behind
-    // is inert, so they are asserted absent rather than merely unset.
-    expect(declaration(count, "position")).toBeUndefined();
-    expect(declaration(count, "right")).toBeUndefined();
-    expect(declaration(count, "bottom")).toBeUndefined();
+    // The row has no fill of its own: the digits sit on the editor's surface.
+    // An earlier version painted one next to the editor's own grey, which drew
+    // two shades meeting at the bottom edge.
+    expect(declaration(count, "background")).toBeUndefined();
+    // It is no longer a stretched full-width row, so the stretch is gone too.
+    expect(declaration(count, "width")).toBeUndefined();
+    expect(declaration(count, "margin-left")).toBeUndefined();
+
+    // The editor reserves room for it, so the last line of text cannot scroll
+    // underneath. The desktop reserves nothing and overlaps once the text is
+    // long enough to scroll; that is a defect worth not copying.
+    const editor = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea",
+    ).body;
+    expect(declaration(editor, "padding")).toBe(
+      "var(--spacing_8) 0 28px",
+    );
   });
 
   it("keeps the dialog editor bordered while the settings-page editors are not", () => {
@@ -302,11 +313,21 @@ describe("W0 · the memory manager's header controls", () => {
 
     // Hover and focus restate only `border-color`; the focus must not add a glow
     // on top of it.
-    const focus = winning(
+    const hover = winning(
       ".webui-memory-manager-editor .webui-personalization-textarea:hover",
     ).body;
-    expect(declaration(focus, "border-color")).toBe("var(--border_heavy)");
+    expect(declaration(hover, "border-color")).toBe("var(--border_heavy)");
+    expect(declaration(hover, "box-shadow")).toBe("none");
+
+    // The focus edge is the app's blue, measured 1:1 off the desktop dialog as a
+    // 1px #0077d9. The bundle's `.mavis-textarea:focus{border_heavy}` rule says
+    // otherwise, but the control does not draw that, so the pixel wins.
+    const focus = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea:focus",
+    ).body;
+    expect(declaration(focus, "border-color")).toBe("var(--blue_500)");
     expect(declaration(focus, "box-shadow")).toBe("none");
+    expect(declaration(focus, "outline")).toBe("none");
 
     // The shared rule is the `mavis-personalization-editor` half. `resize: none`
     // is global on the desktop (`.mavis-textarea textarea{resize:none!important}`

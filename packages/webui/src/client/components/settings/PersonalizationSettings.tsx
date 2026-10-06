@@ -802,6 +802,30 @@ export function MemorySection({
  * footer nobody can screenshot-compare. Returns `""` for a missing or
  * unparseable stamp rather than "Invalid Date".
  */
+/**
+ * The desktop's own predicate, lifted out so it can be tested directly:
+ * `!loading && !saving && draft !== baseline && draft.length > 0`.
+ *
+ * All four clauses matter. Without the dirty check the button is live the moment
+ * the dialog opens, offering a write that rewrites the file byte-for-byte;
+ * without the length check an emptied editor would save a delete from a control
+ * that is not the delete control, behind no confirmation.
+ */
+export function isMemorySaveable(input: {
+  readonly draft: string | undefined;
+  readonly baseline: string | undefined;
+  readonly loading: boolean;
+  readonly saving: boolean;
+}): boolean {
+  return (
+    !input.loading &&
+    !input.saving &&
+    input.draft !== undefined &&
+    input.draft !== input.baseline &&
+    input.draft.length > 0
+  );
+}
+
 export function formatMemoryTimestamp(value: string | undefined): string {
   if (!value) return "";
   const date = new Date(value);
@@ -858,6 +882,11 @@ export function MemoryManagerDialog({
   onCreateInSession,
 }: MemoryManagerDialogProps): ReactElement {
   const [draft, setDraft] = useState<string>();
+  // The text the server last returned, as opposed to what is in the box now.
+  // Without it there is no way to tell an edit from a re-render, and the save
+  // button sits live on open — offering a write that rewrites the file
+  // byte-for-byte.
+  const [baseline, setBaseline] = useState<string>();
   const [updatedAt, setUpdatedAt] = useState<string>();
   const [filePath, setFilePath] = useState<string>();
   const [fileSize, setFileSize] = useState(0);
@@ -884,6 +913,7 @@ export function MemoryManagerDialog({
       const value = await reader({ includeContent: true });
       if (!value) return;
       setDraft(value.content ?? "");
+      setBaseline(value.content ?? "");
       setUpdatedAt(value.updatedAt);
       setFilePath(value.path);
       setFileSize(value.sizeBytes);
@@ -915,19 +945,30 @@ export function MemoryManagerDialog({
     if (reader) void load(reader);
   }, [load]);
 
+  /**
+   * The desktop's own predicate: `!loading && !saving && draft !== baseline &&
+   * draft.length > 0`. All four matter — a live button on open offers a write
+   * that rewrites the file byte-for-byte, and an empty draft is the delete
+   * path, which lives behind the ⋯ menu.
+   */
+  const saveable = isMemorySaveable({ draft, baseline, loading, saving });
+
   const save = useCallback(async () => {
-    if (!setAgentMemory || saving || draft === undefined) return;
+    if (!setAgentMemory || !saveable) return;
     setSaving(true);
     setError(undefined);
     try {
-      await setAgentMemory({ content: draft });
+      const written = await setAgentMemory({ content: draft });
+      // Whatever came back is the new baseline; a save that the server
+      // normalised must not leave the button live on a file that already matches.
+      setBaseline(written?.content ?? draft);
       setSaved(true);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [draft, saving, setAgentMemory]);
+  }, [draft, saveable, saving, setAgentMemory]);
 
   /**
    * 删除记忆 is a blank write, not a new capability.
@@ -945,6 +986,8 @@ export function MemoryManagerDialog({
     setError(undefined);
     try {
       await setAgentMemory({ content: "" });
+      setBaseline("");
+      setDraft("");
       setDraft(undefined);
       setUpdatedAt(undefined);
       setFileSize(0);
@@ -1152,7 +1195,7 @@ export function MemoryManagerDialog({
               type="button"
               data-testid="agent-memory-save"
               className="webui-mavis-button webui-mavis-button-black"
-              disabled={saving || loading || draft === undefined || !setAgentMemory}
+              disabled={!saveable || !setAgentMemory}
               onClick={() => void save()}
             >
               {saving ? "保存中…" : "保存"}

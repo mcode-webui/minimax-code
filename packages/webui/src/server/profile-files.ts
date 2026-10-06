@@ -314,7 +314,18 @@ function renderUserProfileRegion(
     if (!content.trim()) return undefined;
     return `${USER_PROFILE_START}\n${content.trim()}\n${USER_PROFILE_END}\n`;
   }
-  return `${region.before}${content.trim()}\n${region.after}`;
+  // `region.before` stops at the last character of the start marker, so the
+  // newline the source had between the marker and the body is not part of it.
+  // Re-emitting that one is the whole fix: without it `<start>` ends up glued
+  // to the first line of the profile, and because the reader trims the body
+  // the panel keeps showing the right text, so the damage is invisible until
+  // something else reads the raw file. Emitting it also makes a second save a
+  // no-op — the reconstruction always lands on the same bytes.
+  //
+  // An empty body gets the newline but not a second one, so clearing a profile
+  // leaves `<start>\n<end>` rather than a blank line between the markers.
+  const body = content.trim();
+  return `${region.before}\n${body}${body ? "\n" : ""}${region.after}`;
 }
 
 export async function readUserProfile(

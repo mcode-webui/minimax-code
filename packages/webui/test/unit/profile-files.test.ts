@@ -188,6 +188,74 @@ describe("writeUserProfile", () => {
     expect(after).not.toContain("old profile");
   });
 
+  it("keeps a newline between the start marker and the body", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      `${PROFILE_START}\nold profile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+      "utf8",
+    );
+
+    await writeUserProfile(dataDir, "Nickname: izzy");
+
+    // The exact layout, not "contains the profile". The reader trims the body,
+    // so a missing separator is invisible in the panel — the file just reads
+    // `<start># User profile` to every other tool that opens it raw, and no
+    // assertion on `content` would ever have caught it.
+    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(
+      `${PROFILE_START}\nNickname: izzy\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+    );
+  });
+
+  it("repairs a region whose separator was already lost", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    // The shape an earlier write left on disk: the body glued to the marker.
+    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}# User profile\n${PROFILE_END}\n`, "utf8");
+
+    const view = await writeUserProfile(dataDir, "# User profile");
+
+    expect(view.content).toBe("# User profile");
+    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(
+      `${PROFILE_START}\n# User profile\n${PROFILE_END}\n`,
+    );
+  });
+
+  it("is byte-idempotent across repeated saves", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      `${PROFILE_START}\nold\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+      "utf8",
+    );
+
+    await writeUserProfile(dataDir, "  padded  ");
+    const once = await readFile(userMemoryPath(dataDir), "utf8");
+    await writeUserProfile(dataDir, "  padded  ");
+    await writeUserProfile(dataDir, "  padded  ");
+
+    // A write that drifts by a byte per save is the failure mode this pins: the
+    // separators around the body are rebuilt from scratch every time, so three
+    // saves have to land on the same file as one.
+    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(once);
+    expect(once).toBe(`${PROFILE_START}\npadded\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`);
+  });
+
+  it("leaves no blank line when the profile is cleared", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}\nold\n${PROFILE_END}\nentry\n`, "utf8");
+
+    await writeUserProfile(dataDir, "   ");
+
+    // One newline, not two: the body is empty, so there is nothing between the
+    // markers to separate, and an extra blank line would read as a stray edit
+    // to anyone looking at the file.
+    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(`${PROFILE_START}\n${PROFILE_END}\nentry\n`);
+  });
+
   it("appends a region to a file that has none, keeping the existing bytes", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });

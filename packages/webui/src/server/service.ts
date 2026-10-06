@@ -303,6 +303,42 @@ export class WebuiService {
         if (!this.port.setPermissionMode) throw new Error("runtime host does not expose permission mode updates");
         return this.port.setPermissionMode(request);
       },
+      // These four are optional on `WebuiHarnessPort`, so the projection has to
+      // forward them explicitly. Omitting one is silent: the handler layer sees
+      // `undefined` and throws "runtime host does not expose ... reads", which
+      // looks like a host problem instead of a missing forwarding line.
+      getGlobalInstructions: async () => {
+        if (!this.port.getGlobalInstructions) throw new Error("runtime host does not expose global instructions reads");
+        return this.port.getGlobalInstructions();
+      },
+      setGlobalInstructions: async (request) => {
+        if (!this.port.setGlobalInstructions) throw new Error("runtime host does not expose global instructions updates");
+        return this.port.setGlobalInstructions(request);
+      },
+      getAgentMemory: async (request) => {
+        if (!this.port.getAgentMemory) throw new Error("runtime host does not expose agent memory reads");
+        return this.port.getAgentMemory(request);
+      },
+      setAgentMemory: async (request) => {
+        if (!this.port.setAgentMemory) throw new Error("runtime host does not expose agent memory updates");
+        return this.port.setAgentMemory(request);
+      },
+      getUserProfile: async () => {
+        if (!this.port.getUserProfile) throw new Error("runtime host does not expose user profile reads");
+        return this.port.getUserProfile();
+      },
+      setUserProfile: async (request) => {
+        if (!this.port.setUserProfile) throw new Error("runtime host does not expose user profile updates");
+        return this.port.setUserProfile(request);
+      },
+      getMemorySettings: async () => {
+        if (!this.port.getMemorySettings) throw new Error("runtime host does not expose memory settings");
+        return this.port.getMemorySettings();
+      },
+      setMemorySettings: async (request) => {
+        if (!this.port.setMemorySettings) throw new Error("runtime host does not expose memory settings updates");
+        return this.port.setMemorySettings(request);
+      },
       getSessionUsage: (request) => this.port.getSessionUsage(request),
       getUsageQuota: (request) => this.port.getUsageQuota(request),
       getSigninPanel: () => this.port.getSigninPanel(),

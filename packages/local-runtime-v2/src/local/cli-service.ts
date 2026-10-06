@@ -827,6 +827,33 @@ export class CliService {
     ).setPermissionMode(input);
   }
 
+  /**
+   * The memory switches are optional on the capability, so a host that
+   * predates the surface must produce one clear failure here rather than a
+   * `TypeError` from calling `undefined`. Absence means "this host cannot
+   * answer" — it is deliberately not reported as a boolean value, because
+   * `false` would read as "the user turned memory off".
+   */
+  getMemorySettings(): Promise<{ enabled: boolean; proactive: boolean }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.getMemorySettings)
+      throw new Error("Runtime host does not expose memory settings");
+    return configuration.getMemorySettings();
+  }
+
+  setMemorySettings(
+    input: Parameters<
+      NonNullable<
+        NonNullable<LocalRuntimeApplication["configuration"]>["setMemorySettings"]
+      >
+    >[0],
+  ): Promise<{ enabled: boolean; proactive: boolean }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.setMemorySettings)
+      throw new Error("Runtime host does not expose memory settings");
+    return configuration.setMemorySettings(input);
+  }
+
   listModels(
     input?: Parameters<
       NonNullable<LocalRuntimeApplication["models"]>["list"]

@@ -8,6 +8,10 @@ import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOpera
 import { pluginManagementOperation } from "./plugin-management.js";
 import { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 import { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
+import { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
+import { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
+import { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
+import { getMemorySettingsOperation, setMemorySettingsOperation } from "./memory-settings.js";
 import { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
 export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, getSessionTreeOperation, createSessionOperation, getSessionOperation, getActiveTurnOperation } from "./session.js";
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
@@ -19,6 +23,10 @@ export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOpera
 export { pluginManagementOperation } from "./plugin-management.js";
 export { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 export { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
+export { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
+export { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
+export { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
+export { getMemorySettingsOperation, setMemorySettingsOperation } from "./memory-settings.js";
 export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
 import { createOperationHandlers, type WebuiOperationPort } from "./operation-handlers.js";
 import type {
@@ -124,6 +132,14 @@ export function createOperationRegistry(
   registerOperation(registry, { operation: getScheduledTaskCapabilityOperation, handle: handlers.getScheduledTaskCapability });
   registerOperation(registry, { operation: getPermissionModeOperation, handle: handlers.getPermissionMode });
   registerOperation(registry, { operation: setPermissionModeOperation, handle: handlers.setPermissionMode });
+  registerOperation(registry, { operation: getGlobalInstructionsOperation, handle: handlers.getGlobalInstructions });
+  registerOperation(registry, { operation: setGlobalInstructionsOperation, handle: handlers.setGlobalInstructions });
+  registerOperation(registry, { operation: getAgentMemoryOperation, handle: handlers.getAgentMemory });
+  registerOperation(registry, { operation: setAgentMemoryOperation, handle: handlers.setAgentMemory });
+  registerOperation(registry, { operation: getUserProfileOperation, handle: handlers.getUserProfile });
+  registerOperation(registry, { operation: setUserProfileOperation, handle: handlers.setUserProfile });
+  registerOperation(registry, { operation: getMemorySettingsOperation, handle: handlers.getMemorySettings });
+  registerOperation(registry, { operation: setMemorySettingsOperation, handle: handlers.setMemorySettings });
   registerOperation(registry, { operation: getSessionUsageOperation, handle: handlers.getSessionUsage });
   registerOperation(registry, { operation: getUsageQuotaOperation, handle: handlers.getUsageQuota });
   registerOperation(registry, { operation: getSigninPanelOperation, handle: handlers.getSigninPanel });

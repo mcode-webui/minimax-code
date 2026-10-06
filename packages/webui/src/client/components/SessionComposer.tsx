@@ -156,6 +156,7 @@ import {
   removeWebuiSlashToken,
   replaceWebuiSlashToken,
   webuiAttachmentLimitError,
+  webuiTextAttachmentDataUrl,
   type WebuiMentionRange,
 } from "../projection/composer-interactions.js";
 import {
@@ -616,6 +617,7 @@ export function WebuiComposer({
   workspaceDir,
   onSelectSession,
   onOpenPluginManagement,
+  seedAttachment,
 }: {
   readonly sessionId?: string;
   readonly sessionStatus?: unknown;
@@ -661,6 +663,23 @@ export function WebuiComposer({
   /** The draft lives on the shell so it survives silent first-session creation. */
   readonly draft: string;
   readonly onDraftChange: (next: string) => void;
+  /**
+   * A file dropped into the composer from outside it — 记忆摘要's 「在会话中创建」
+   * hands the memory file over this way, because the composer is the only
+   * surface that can render an attachment chip and the only one that can put it
+   * on the wire.
+   *
+   * One-shot by `token`: the shell keeps the seed around across the view switch
+   * that opens the composer, so an effect keyed on anything else would re-attach
+   * the same 74KB file on every re-render of this 3000-line component.
+   */
+  readonly seedAttachment?: {
+    readonly token: string;
+    readonly fileName: string;
+    readonly mimeType: string;
+    readonly sizeBytes: number;
+    readonly content: string;
+  };
   /**
    * Submitted-input history for ↑ recall (roadmap Module B: 输入历史/草稿).
    * Keyed by session on the shell; the composer only walks it with the pure
@@ -1520,6 +1539,31 @@ export function WebuiComposer({
       setAttachmentBusy(false);
     }
   };
+  const seededTokenRef = useRef<string>();
+  useEffect(() => {
+    const seed = seedAttachment;
+    if (!seed || seededTokenRef.current === seed.token) return;
+    // Mark it consumed before anything that can bail. A seed the composer
+    // refuses has to stay refused; retrying on every attachment change would
+    // pin the error in place.
+    seededTokenRef.current = seed.token;
+    const limitError = webuiAttachmentLimitError(attachments, [{ sizeBytes: seed.sizeBytes }]);
+    if (limitError) {
+      setInteractionError(limitError);
+      return;
+    }
+    setAttachments((current) => [
+      ...current,
+      {
+        id: `seed-${seed.token}`,
+        fileName: seed.fileName,
+        mimeType: seed.mimeType,
+        sizeBytes: seed.sizeBytes,
+        dataUrl: webuiTextAttachmentDataUrl(seed.mimeType, seed.content),
+        kind: "file",
+      },
+    ]);
+  }, [attachments, seedAttachment]);
   const attachmentWire = attachments.map((attachment) => ({
     meta: {
       attachmentType: attachment.kind,

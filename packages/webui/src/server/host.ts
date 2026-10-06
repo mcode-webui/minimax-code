@@ -14,6 +14,15 @@
 import { posix as pathPosix } from "node:path";
 import { stat } from "node:fs/promises";
 import path from "node:path";
+import {
+  readAgentMemory,
+  readGlobalInstructions,
+  readUserProfile,
+  writeAgentMemory,
+  writeGlobalInstructions,
+  writeUserProfile,
+  WEBUI_DEFAULT_AGENT_NAME,
+} from "./profile-files.js";
 import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
 import {
   extractWorkspaceArchiveDirectory,
@@ -77,6 +86,10 @@ import type {
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
 } from "./port.js";
+import type {
+  WebuiGlobalInstructionsView,
+  WebuiMemorySettingsView,
+} from "../client/contracts.js";
 
 /**
  * The exact surface of the runtime `cliService` the WebUI talks to. The
@@ -265,6 +278,31 @@ export interface WebuiRuntimeCliService {
   setPermissionMode(request: {
     readonly mode: "default" | "auto" | "bypassPermissions";
   }): Promise<unknown>;
+  getGlobalInstructions(): Promise<WebuiGlobalInstructionsView>;
+  setGlobalInstructions(request: {
+    readonly content: string;
+  }): Promise<WebuiGlobalInstructionsView>;
+  getAgentMemory(request?: { readonly includeContent?: boolean }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  setAgentMemory(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  getUserProfile(): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  setUserProfile(request: {
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
+  }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  /**
+   * Optional on purpose, like the scheduled-task block above: a host without
+   * the configuration capability still has to type-check. The handlers below
+   * fail closed with one clear message rather than crashing on `undefined` —
+   * a missing method is not the same statement as `enabled: false`.
+   */
+  getMemorySettings?(): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
+  setMemorySettings?(request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
   selectModel(request: {
     readonly providerId: string;
     readonly modelId: string;
@@ -713,6 +751,42 @@ export function createHarnessPortFromHost(
     async setPermissionMode(request) {
       return requireCliService(host).setPermissionMode(request);
     },
+    async getGlobalInstructions() {
+      return readGlobalInstructions(requireDataDir(host));
+    },
+    async setGlobalInstructions(request) {
+      return writeGlobalInstructions(requireDataDir(host), request.content);
+    },
+    async getAgentMemory(request) {
+      return readAgentMemory(
+        requireDataDir(host),
+        WEBUI_DEFAULT_AGENT_NAME,
+        { includeContent: request?.includeContent === true },
+      );
+    },
+    async setAgentMemory(request) {
+      return writeAgentMemory(
+        requireDataDir(host),
+        WEBUI_DEFAULT_AGENT_NAME,
+        request.content,
+      );
+    },
+    async getUserProfile() {
+      return readUserProfile(requireDataDir(host));
+    },
+    async setUserProfile(request) {
+      return writeUserProfile(requireDataDir(host), {
+        nickname: request.nickname,
+        occupation: request.occupation,
+        moreAbout: request.moreAbout,
+      });
+    },
+    async getMemorySettings() {
+      return requireMemorySettings(host).get();
+    },
+    async setMemorySettings(request) {
+      return requireMemorySettings(host).set(request);
+    },
     async getSessionUsage(request) {
       return requireCliService(host).getSessionUsage(request);
     },
@@ -846,6 +920,34 @@ function requireCliService(host: WebuiRuntimeHostHandle): WebuiRuntimeCliService
   if (!host.cliService)
     throw new Error("runtime host does not expose the CLI service");
   return host.cliService;
+}
+
+function requireDataDir(host: WebuiRuntimeHostHandle): string {
+  if (!host.dataDir)
+    throw new Error("runtime host does not expose a data directory");
+  return host.dataDir;
+}
+
+/**
+ * The memory switches reach the shared config through the runtime's own
+ * `configuration` capability, so the whitelist and the mask hazard stay where
+ * they already live — the WebUI only forwards two booleans.
+ */
+function requireMemorySettings(host: WebuiRuntimeHostHandle): {
+  get(): Promise<WebuiMemorySettingsView>;
+  set(request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }): Promise<WebuiMemorySettingsView>;
+} {
+  const cliService = requireCliService(host);
+  const { getMemorySettings, setMemorySettings } = cliService;
+  if (!getMemorySettings || !setMemorySettings)
+    throw new Error("runtime host does not expose memory settings");
+  return {
+    get: () => getMemorySettings.call(cliService),
+    set: (request) => setMemorySettings.call(cliService, request),
+  };
 }
 
 function permissionReplyValue(reply: WebuiPermissionDecision): number {

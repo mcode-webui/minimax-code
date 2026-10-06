@@ -155,6 +155,257 @@ beforeAll(() => {
   shellRules = parseRules(shellCss);
 });
 
+describe("W0 · the section save button's three states", () => {
+  it("is the desktop's black primary, 76x30, fading to half on disable", () => {
+    // Both personalization headers pass `variant: "black"` in the desktop
+    // bundle, which is a filled primary — not the light `gray` fill this
+    // button used to draw. `black` has no disabled override of its own, so the
+    // generic rule is the whole disabled state: the fill and the label stay put
+    // and the control goes half-transparent.
+    const black = winning(".webui-mavis-button-black").body;
+    expect(declaration(black, "background")).toBe(
+      "var(--bg_interaction_primary_default)",
+    );
+    expect(declaration(black, "color")).toBe(
+      "var(--text_label_primary_default)",
+    );
+
+    const geometry = winning(".webui-section-save-button").body;
+    expect(declaration(geometry, "width")).toBe("76px");
+    expect(declaration(geometry, "min-width")).toBe("76px");
+    expect(declaration(geometry, "height")).toBe("30px");
+    expect(declaration(geometry, "padding")).toBe("0");
+    expect(declaration(geometry, "text-align")).toBe("center");
+    expect(declaration(geometry, "line-height")).toBe("var(--line_height_20)");
+
+    // `opacity: .5` is the desktop's `.mavis-button.disabled` value, not the
+    // shared `.6`. The shared rule also pins `cursor: default` and wins the
+    // cascade unless this button restates it, so the cursor is asserted too.
+    const disabled = winning(".webui-section-save-button:disabled").body;
+    expect(declaration(disabled, "opacity")).toBe(".5");
+    expect(declaration(disabled, "cursor")).toBe("not-allowed");
+    // A black variant has no disabled fill to override, so none is declared
+    // here. One appearing would be a leftover from the grey version.
+    expect(declaration(disabled, "background")).toBeUndefined();
+    expect(declaration(disabled, "color")).toBeUndefined();
+
+    // The live state's hover lifts the fill to 80% black. There is deliberately
+    // no hover on the disabled state — a control that cannot act must not look
+    // like one that can.
+    const hover = winning(".webui-section-save-button:not(:disabled):hover").body;
+    expect(declaration(hover, "background")).toBe(
+      "var(--bg_interaction_primary_hover)",
+    );
+    expect(declaration(hover, "color")).toBeUndefined();
+
+    // The dark theme fades the whole control instead of restating the fill.
+    const dark = winning(".dark .webui-section-save-button:not(:disabled):hover")
+      .body;
+    expect(declaration(dark, "opacity")).toBe(".8");
+  });
+});
+
+describe("W0 · the memory manager's header controls", () => {
+  it("sizes the controls off the bundle: 26px, 8px apart, tertiary fill", () => {
+    // Transcribed, not measured. The dialog's title row states all of it:
+    // `size-[26px]`, `rounded-lg`, `gap-2`, and a rest fill of
+    // `bg-bg_interaction_tertiary_default` that the hover rule replaces.
+    //
+    // That token is `--opacity_black_1_0` in the light theme, so the rest fill
+    // is declared rather than left off: it is transparent here, and it is not
+    // transparent in a theme that raises it. An earlier pass dropped the boxes
+    // to 20px on a 4px gap from a dark capture whose two ink centres measured
+    // 24px apart -- but a centre distance cannot pin a box size without knowing
+    // the glyph inset, and the bundle states the box outright.
+    const actions = winning(".webui-memory-manager-header-actions").body;
+    expect(declaration(actions, "gap")).toBe("var(--spacing_8)");
+
+    const button = winning(
+      ".webui-memory-manager-header-actions .webui-settings-icon-button",
+    ).body;
+    expect(declaration(button, "width")).toBe("26px");
+    expect(declaration(button, "height")).toBe("26px");
+    expect(declaration(button, "border-radius")).toBe("var(--radius_8)");
+    expect(declaration(button, "background")).toBe(
+      "var(--bg_interaction_tertiary_default)",
+    );
+
+    const hover = winning(
+      ".webui-memory-manager-header-actions .webui-settings-icon-button:hover",
+    ).body;
+    expect(declaration(hover, "background")).toBe(
+      "var(--bg_interaction_tertiary_hover)",
+    );
+
+    // `tertiary_selected` is deliberately absent -- in the light theme it is the
+    // same `--opacity_black_1_4` as `tertiary_hover`, so a selected fill would
+    // be indistinguishable from a hover.
+    const restFills = shellRules
+      .filter(isCascading)
+      .filter((rule) => rule.selector.includes(".webui-settings-icon-button"))
+      .filter((rule) => !/:hover|:focus-visible|:active/u.test(rule.selector))
+      .map((rule) => declaration(rule.body, "background"))
+      .filter((value) => value !== undefined && value !== "transparent");
+    expect(restFills).toEqual(["var(--bg_interaction_tertiary_default)"]);
+  });
+
+  it("lines the controls up with the editor's right border", () => {
+    // `.webui-personalization-header` indents its children by 16px, while the
+    // editor is a *sibling* of that header and starts at the surface's own
+    // padding -- so the controls sat inboard of the text below them.
+    //
+    // Zeroing the header's right padding, not a negative margin. The header is a
+    // stretched flex item, so its box and padding do not resolve the way a
+    // block's would: `margin-right: -16px` still left the controls ~19px short
+    // of the border when measured off a capture.
+    const header = winning(
+      ".webui-memory-manager-surface .webui-personalization-header",
+    ).body;
+    expect(declaration(header, "padding-right")).toBe("0");
+    expect(declaration(header, "margin-right")).toBeUndefined();
+  });
+
+  it("parks the character count inside the editor, 14px off both edges", () => {
+    // Measured off the desktop dialog at 1:1 -- the digits sit 14px left of the
+    // border and 14px above it, inside the field.
+    //
+    // On its own class, and the assertion is deliberately narrow. The count used
+    // to ride on `.webui-personalization-meta`, whose shared rule carries
+    // `width: 100%` for the 「path · size」 row. A scoped override only wins the
+    // properties it declares, so the width survived: `position: absolute` +
+    // `width: 100%` + `right: 14px` put the box's left edge at -14px, and
+    // `space-between` then aligned the digits to it -- bottom left, inside 12px
+    // of the shared padding, on top of the text. The fix was the class, not the
+    // offsets; `width` below is what has to stay unset for that to hold.
+    const count = winning(".webui-memory-manager-count").body;
+    expect(declaration(count, "position")).toBe("absolute");
+    expect(declaration(count, "right")).toBe("0");
+    expect(declaration(count, "bottom")).toBe("0");
+    // The whole reserved band, painted: it has to read as the count's row
+    // rather than as a gap the summary text shows through.
+    expect(declaration(count, "left")).toBe("0");
+    expect(declaration(count, "height")).toBe("28px");
+    expect(declaration(count, "background")).toBe("var(--bg_grouped_secondary)");
+    expect(declaration(count, "justify-content")).toBe("flex-end");
+    expect(declaration(count, "padding")).toBe("0 14px");
+    expect(declaration(count, "color")).toBe("var(--text_default_tertiary)");
+    // The band's bottom corners, paired with the editor's radius below. The band
+    // paints after the textarea -- it is positioned, the textarea is not -- so an
+    // opaque square band covered the editor's 12px corner curve and the corner
+    // read as a right angle. Concentric with the editor's border box, because
+    // `.webui-memory-manager-editor` has no padding or border and the textarea
+    // has no margin: `right/bottom/left: 0` lands on the same box, so the outer
+    // radius matches as-is with no 1px inset arithmetic.
+    expect(declaration(count, "border-radius")).toBe(
+      "0 0 var(--radius_12) var(--radius_12)",
+    );
+
+    // The shared rule must not reach it. If a future edit puts the shared class
+    // back on the element, the scoped rules here stop winning by default and
+    // the count drifts to the bottom left again.
+    const shared = winning(".webui-personalization-meta").body;
+    expect(declaration(shared, "width")).toBe("100%");
+  });
+
+  it("sizes the dialog editor by content, 13 to 24 rows", () => {
+    // The desktop's `autoSize: {minRows: 13, maxRows: 24}` at `!leading-6`:
+    // 24px between baselines, and a 593px box for content long enough to cap
+    // out, which is 24 rows. 13 rows + 8px top padding + the 28px the count
+    // needs is the floor; 24 rows is the ceiling.
+    const editor = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea",
+    ).body;
+    expect(declaration(editor, "field-sizing")).toBe("content");
+    // Load-bearing, and invisible when wrong: `field-sizing` only takes effect
+    // when height is `auto`, the shared rule still declares `height: 300px`, and
+    // without this the property was silently inert -- 348px box, text scrolling
+    // under the count, nothing reported anywhere.
+    expect(declaration(editor, "height")).toBe("auto");
+    expect(declaration(editor, "min-height")).toBe("348px");
+    expect(declaration(editor, "max-height")).toBe("612px");
+    // The desktop marks the field `shrink-0`: its height is its content's, not
+    // the leftover space in the dialog. `flex: 1` is what pinned it at 239px.
+    expect(declaration(editor, "flex")).toBe("none");
+    // Prose, not code: the desktop runs it at `!text-sm !leading-6` in the UI
+    // face. 12px monospace is also why a "13 row" floor was not 312px here.
+    expect(declaration(editor, "font-family")).toBe("inherit");
+    expect(declaration(editor, "font-size")).toBe("var(--size_14)");
+    expect(declaration(editor, "line-height")).toBe("24px");
+    // The count's row is reserved so the last line cannot scroll under it.
+    expect(declaration(editor, "padding")).toBe("var(--spacing_8) 0 28px");
+  });
+
+  it("keeps the dialog editor bordered while the settings-page editors are not", () => {
+    // Three editors, two looks, and the split is on which class the call site
+    // carries. The dialog uses the base `.mavis-textarea`, which keeps a border
+    // and takes `!rounded-xl` from the call site. 关于你 and 自定义指令 both add
+    // `mavis-personalization-editor`, which zeroes the border and fills with
+    // `--bg_grouped_tertiary` at 16px.
+    const dialog = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea",
+    ).body;
+    expect(declaration(dialog, "border")).toBe("1px solid var(--border_default)");
+    expect(declaration(dialog, "border-radius")).toBe("var(--radius_12)");
+    expect(declaration(dialog, "background")).toBe("transparent");
+
+    // Hover and focus restate only `border-color`; the focus must not add a glow
+    // on top of it.
+    const hover = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea:hover",
+    ).body;
+    expect(declaration(hover, "border-color")).toBe("var(--border_heavy)");
+    expect(declaration(hover, "box-shadow")).toBe("none");
+
+    // The focus ring is an outline outside the box, and the border goes back to
+    // its resting colour. Drawing the blue as the border instead costs the
+    // content 1px and leaves the text sitting against the ring; `outline` paints
+    // on the border edge without taking layout, so the content box is the same
+    // focused and unfocused. The blue itself is the app's `blue_500`, measured
+    // 1:1 off the desktop dialog, not the `border_heavy` the bundle names.
+    const focus = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea:focus",
+    ).body;
+    expect(declaration(focus, "outline")).toBe("1px solid var(--blue_500)");
+    expect(declaration(focus, "border-color")).toBe("var(--border_default)");
+    expect(declaration(focus, "box-shadow")).toBe("none");
+    // The ring must not be drawn as the border: that is the 1px it would cost
+    // the content, and the reason this is asserted as a pair.
+    expect(declaration(focus, "border-color")).not.toBe("var(--blue_500)");
+
+    // The shared rule is the `mavis-personalization-editor` half. `resize: none`
+    // is global on the desktop (`.mavis-textarea textarea{resize:none!important}`
+    // beats even the inline `resize:vertical` one call site passes), so no
+    // editor in this dialog can be dragged taller.
+    const shared = winning(".webui-personalization-textarea").body;
+    expect(declaration(shared, "resize")).toBe("none");
+    expect(declaration(shared, "border")).toBe("none");
+    expect(declaration(shared, "background")).toBe("var(--bg_grouped_tertiary)");
+    expect(declaration(shared, "border-radius")).toBe("var(--radius_16)");
+    // The two settings-page editors are height-clamped, not free. The desktop
+    // passes `minHeight: 144, maxHeight: 200` in the style object, and
+    // `field-sizing: content` with `height: auto` is what makes those two
+    // numbers the whole rule -- the field grows with its text and stops at
+    // 200px. The dialog overrides both for its own 13-to-24-row range.
+    expect(declaration(shared, "height")).toBe("auto");
+    expect(declaration(shared, "field-sizing")).toBe("content");
+    expect(declaration(shared, "min-height")).toBe("144px");
+    expect(declaration(shared, "max-height")).toBe("200px");
+  });
+
+  it("separates the dialog's footer with space, not a rule", () => {
+    // The desktop's last row is `flex justify-between`: the timestamp on the
+    // left, 取消/保存 on the right, 20px from the editor above and 16px between
+    // the two buttons. There is no divider -- the gap is the divider.
+    const footer = winning(".webui-memory-manager-footer").body;
+    expect(declaration(footer, "gap")).toBe("var(--spacing_20)");
+    expect(declaration(footer, "border-top")).toBeUndefined();
+    expect(declaration(footer, "padding-top")).toBeUndefined();
+
+    const actions = winning(".webui-memory-manager-actions").body;
+    expect(declaration(actions, "gap")).toBe("var(--spacing_16)");
+  });
+});
+
 describe("W0 · stylesheet composition", () => {
   it("layers the stylesheets in the documented order", () => {
     const imports = [...indexCss.matchAll(/@import\s+"([^"]+)"/gu)].map(
@@ -537,11 +788,16 @@ describe("W0 · stacking order", () => {
       // and the composer overlay (20) and the workspace panel controls (50),
       // and it stays under the model/workspace menus (70) and the dialog
       // bands (100+).
+      // 140 is `.webui-memory-confirm-mask`, the 删除记忆 confirmation. It is a
+      // second modal stacked on the memory manager rather than part of it, so it
+      // has to sit above that dialog's own 120 scrim while staying far below the
+      // portal-rendered 1400 — it dims one dialog, it does not outrank the whole
+      // shell.
       // 1400 is `.webui-message-dialog`, the portal-rendered modal shared by
       // the fork, rewind-preview and goal-clear dialogs. It mounts outside the
       // shell's stacking context, so it cannot join the 100-121 in-shell
       // dialog band and has to clear all of it.
-      1, 2, 4, 20, 40, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 1400,
+      1, 2, 4, 20, 40, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 140, 1400,
     ]);
   });
 });

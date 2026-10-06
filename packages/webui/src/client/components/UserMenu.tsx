@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { WebuiIconBell, WebuiIconBrand, WebuiIconCommandUsage } from "../icons.js";
 import {
@@ -19,6 +19,7 @@ import type {
 import type { WebuiTransport } from "../contracts.js";
 import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsModal.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
+import type { MemoryHandoff } from "./settings/PersonalizationSettings.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
 
 type AccountStatus = Record<string, unknown>;
@@ -50,6 +51,9 @@ interface UserMenuProps {
   readonly transport?: WebuiUserMenuCapabilities;
   readonly getSigninPanel?: () => Promise<WebuiSigninPanelView>;
   readonly claimSignin?: () => Promise<WebuiClaimSigninView>;
+  /** Forwarded to the settings modal, which owns 记忆摘要's 「在会话中创建」.
+   *  The menu neither interprets nor stores it. */
+  readonly onCreateMemorySession?: (input: MemoryHandoff) => void;
 }
 
 interface UsageState {
@@ -723,6 +727,7 @@ export function UserMenu({
   transport,
   getSigninPanel,
   claimSignin,
+  onCreateMemorySession,
 }: UserMenuProps): ReactElement {
   // Bound once per transport, not per render: the login dialog's effects
   // key on these callbacks, and a fresh binding every render would restart
@@ -736,6 +741,14 @@ export function UserMenu({
     signOut: transport?.signOut?.bind(transport),
   }), [transport]);
   const anchorRef = useRef<HTMLDivElement>(null);
+  // The settings modal is the menu's own state, so the menu is also the only
+  // thing that can dismiss it. Handing the memory to a conversation moves the
+  // user off this surface entirely; leaving the modal parked over the home
+  // composer would hide the very composer the hand-off just filled.
+  const handleCreateMemorySession = useCallback((input: MemoryHandoff) => {
+    setSettingsOpen(false);
+    onCreateMemorySession?.(input);
+  }, [onCreateMemorySession]);
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -915,6 +928,6 @@ export function UserMenu({
       cancelAccountLogin={cancelAccountLogin}
       signOut={signOut}
     />
-    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} />}
+    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
   </>;
 }

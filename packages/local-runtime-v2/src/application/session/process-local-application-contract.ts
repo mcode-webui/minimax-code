@@ -260,6 +260,25 @@ export interface LocalRuntimeApplication {
     setPermissionMode(input: {
       mode: "default" | "acceptEdits" | "bypassPermissions" | "auto" | "off";
     }): Promise<unknown>;
+    /**
+     * The two long-term-memory switches, read and written as their own
+     * narrow surface rather than as a general config patch.
+     *
+     * Optional because a host that predates this surface still has to
+     * type-check, and every consumer must fail closed with one clear
+     * message instead of crashing on an absent method — the same rule the
+     * permission-mode pair already follows. Callers must not treat a missing
+     * method as "off": absence means "this host cannot answer", which is a
+     * different statement from either boolean value.
+     */
+    getMemorySettings?(): Promise<{
+      enabled: boolean;
+      proactive: boolean;
+    }>;
+    setMemorySettings?(input: {
+      enabled?: boolean;
+      proactive?: boolean;
+    }): Promise<{ enabled: boolean; proactive: boolean }>;
   };
   readonly models?: {
     list(input?: { sessionId?: string }): Promise<readonly unknown[]>;

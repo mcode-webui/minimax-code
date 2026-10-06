@@ -1248,6 +1248,7 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   getSigninPanel(): Promise<WebuiSigninPanelView>;
   claimSignin(): Promise<WebuiClaimSigninView>;
   /**
+/**
    * Account login over the device-authorization flow, and the sign-out that
    * actually removes the credential. See `account-login.ts` for why the
    * session lives server-side; supplied by the assembly alongside the host.
@@ -1256,6 +1257,56 @@ export interface WebuiHarnessPort extends WebuiScheduledTaskPort {
   getAccountLoginStatus(): Promise<WebuiAccountLoginView>;
   cancelAccountLogin(): Promise<{ readonly ok: true }>;
   signOutAccount(): Promise<{ readonly status: string; readonly generation: number }>;
+  /**
+   * Profile-wide `AGENTS.md`, the file Turn assembly already reads through
+   * `GlobalInstructions.readForPrompt`. Read-only on the v2 `instructions`
+   * capability (`listSources` returns paths, not content), so the WebUI reads
+   * and writes the file itself over the same `dataDir` the turn path uses — one
+   * file, one writer, no second source of truth.
+   */
+  getGlobalInstructions?(): Promise<
+    import("../client/contracts.js").WebuiGlobalInstructionsView
+  >;
+  /** Writing empty content deletes the file, matching `GlobalInstructions.write`. */
+  setGlobalInstructions?(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiGlobalInstructionsView>;
+  /**
+   * Per-agent main memory (`agents/<name>/memory/MEMORY.md`). Summary-only by
+   * default; `includeContent` pulls the body, which runs past the 64KB
+   * cleanup threshold on a live profile. Writing empty content deletes the
+   * file, matching the runtime's write contract.
+   */
+  getAgentMemory?(request?: {
+    readonly includeContent?: boolean;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  setAgentMemory?(request: {
+    readonly content: string;
+  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  /**
+   * The `关于你` region of `memory/user.md` — the three fields between the
+   * personalization markers. The rest of that file belongs to the memory
+   * collector, so a write must never be able to express "replace the file".
+   * A file whose markers are only half-present refuses the write rather than
+   * guessing where the region ends.
+   */
+  getUserProfile?(): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  setUserProfile?(request: {
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
+  }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  /**
+   * The two memory switches. Optional because a host that predates the
+   * configuration capability still has to satisfy this port; a missing method
+   * is a capability gap, not a boolean value, and the handler reports it as
+   * such instead of rendering the panel as "memory is off".
+   */
+  getMemorySettings?(): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
+  setMemorySettings?(request: {
+    readonly enabled?: boolean;
+    readonly proactive?: boolean;
+  }): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
   close(): Promise<void>;
 }
 

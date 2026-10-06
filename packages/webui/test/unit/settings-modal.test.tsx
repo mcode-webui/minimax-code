@@ -90,22 +90,26 @@ describe("desktop settings registry", () => {
 });
 
 describe("account tab gating", () => {
-  it("leaves the implemented tabs clickable while the unimplemented tabs stay disabled", () => {
+it("leaves the implemented tabs clickable while the unimplemented tabs stay disabled", () => {
     // A fully implemented panel must not carry the `disabled` gate the
     // not-yet-built panels still need. `account` (email row, sign-out button,
-    // sign-out error region), `coding` (workspace review) and `worktree`
-    // (parallel experiment branches) are all built now, so all three sit in
-    // the ungated group. The rest have no content behind them and clicking
-    // one would land on an empty pane, so they must stay disabled.
-    for (const key of ["account", "coding", "worktree"]) {
+    // sign-out error region), `coding` (workspace review), `worktree` (parallel
+    // experiment branches) and `custom-instructions` (profile-wide AGENTS.md
+    // editor) are all built, so all four sit in the ungated group. The rest have
+    // no content behind them and clicking one would land on an empty pane.
+    for (const key of ["account", "coding", "worktree", "custom-instructions"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBeUndefined();
     }
-    for (const key of ["voice", "shortcuts", "custom-instructions", "connection"]) {
+    for (const key of ["voice", "shortcuts", "connection"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBe(true);
     }
   });
 
   it("keeps the account tab reachable through the settings search", () => {
     expect(filterSettingsTabs("账户").map((tab) => tab.key)).toContain("account");
+  });
+
+  it("keeps the personalization tab reachable through the settings search", () => {
+    expect(filterSettingsTabs("个性化").map((tab) => tab.key)).toEqual(["custom-instructions"]);
   });
 });

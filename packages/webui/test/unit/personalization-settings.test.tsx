@@ -326,33 +326,47 @@ describe("关于你 section markup", () => {
     expect(markup).toContain("user-profile-unavailable");
   });
 
-  it("offers one control per field instead of one blob of region text", () => {
+  it("renders exactly one control, bound to moreAbout", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
-    // The region is a structured record on disk — a `Nickname: ` line, an
-    // `Occupation: ` line, then free text under a `## More about you` heading.
-    // A single editor handed the whole region to the user, so a profile they
-    // never filled in rendered as a full page of the skeleton's own labels.
-    expect(markup).toContain('data-testid="user-profile-nickname"');
-    expect(markup).toContain('data-testid="user-profile-occupation"');
+    // The desktop's `personalization-profile-section` renders a single TextArea
+    // bound to `moreAbout`. `nickname` and `occupation` live only in the file
+    // layer — the reader and the writer still handle their `Nickname: ` /
+    // `Occupation: ` lines — and the desktop draws no control for either.
+    //
+    // Rendering inputs for them put two permanently empty boxes above the one
+    // editable field: a profile that never filled them in showed as a pair of
+    // blank rectangles, which read as a broken form rather than as an empty one.
     expect(markup).toContain('data-testid="user-profile-more-about"');
+    expect(markup).not.toContain('data-testid="user-profile-nickname"');
+    expect(markup).not.toContain('data-testid="user-profile-occupation"');
     // The old single-textarea editor is gone with the model it belonged to.
     expect(markup).not.toContain("user-profile-textarea");
+    // Exactly one control inside the section. Scoped by offset rather than by a
+    // page-wide count: `webui-personalization-meta` is a shared class that the
+    // 自定义指令 section above also renders, so the first match is not this
+    // section's.
+    const start = markup.indexOf('class="webui-user-profile-fields"');
+    expect(start).toBeGreaterThan(-1);
+    const end = markup.indexOf("webui-personalization-meta", start);
+    expect(end).toBeGreaterThan(start);
+    const fields = markup.slice(start, end);
+    expect([...fields.matchAll(/<textarea\b/gu)]).toHaveLength(1);
+    expect(fields).not.toContain("<input");
   });
 
-  it("labels the three controls only for assistive tech", () => {
+  it("names the control for assistive tech without a label column", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
-    // The desktop draws the three fields bare. A visible label column pushed
-    // them left of the card they sit in, so the names moved to `aria-label`
-    // where they still name the control without occupying a column.
-    expect(markup).toContain('aria-label="昵称"');
-    expect(markup).toContain('aria-label="职业"');
     expect(markup).toContain('aria-label="更多关于你"');
     expect(markup).not.toContain("<span>昵称</span>");
     expect(markup).not.toContain("<span>职业</span>");
-    // No per-field wrapper either: the controls are direct children of the
-    // column, which is what lets them span the card's full width.
+    // The desktop's own placeholder is the i18n key
+    // `settings.personalization_more_about_placeholder`; ours is the Chinese
+    // rendering of it. Asserted so the field is never left unlabelled.
+    expect(markup).toContain("placeholder=");
+    // No per-field wrapper either: the control is a direct child of the column,
+    // which is what lets it span the card's full width.
     expect(markup).toContain('class="webui-user-profile-fields"');
     expect(markup).not.toContain("<label");
   });

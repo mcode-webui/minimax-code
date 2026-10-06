@@ -493,11 +493,13 @@ export function UserProfileSection({
     (draft?.occupation.length ?? 0) +
     (draft?.moreAbout.length ?? 0);
   const overLimit = length > maxChars;
-  // Three states, matching the desktop: disabled while the three fields still
-  // match what the server returned, live once one of them differs, and live
-  // again after a save because the returned view *is* the new baseline. Without
-  // the dirty check the button is clickable on open, and a save that rewrites
-  // the file byte-for-byte is a write the user never asked for.
+  // Three states, matching the desktop: disabled while the fields still match
+  // what the server returned, live once one of them differs, and live again
+  // after a save because the returned view *is* the new baseline. Without the
+  // dirty check the button is clickable on open, and a save that rewrites the
+  // file byte-for-byte is a write the user never asked for. Only `moreAbout` is
+  // editable, so the other two always compare equal — they are kept in the
+  // comparison because the file layer still round-trips them.
   const saveable = isProfileSaveable(draft, baseline, {
     malformed,
     overLimit,
@@ -558,27 +560,14 @@ export function UserProfileSection({
       </SectionHeader>
       <div className="webui-generic-card">
         <div className="webui-user-profile-fields">
-          {/* No visible labels. The desktop draws these three controls bare, and
-              a label column next to each one pushed the fields left of the card
-              it was supposed to sit in. The names survive on `aria-label`, so
-              the form is still addressable by a screen reader — the desktop
-              gets the same effect from its placeholders. */}
-          <input
-            type="text"
-            aria-label="昵称"
-            data-testid="user-profile-nickname"
-            value={draft?.nickname ?? ""}
-            disabled={disabled}
-            onChange={(event) => update("nickname", event.target.value)}
-          />
-          <input
-            type="text"
-            aria-label="职业"
-            data-testid="user-profile-occupation"
-            value={draft?.occupation ?? ""}
-            disabled={disabled}
-            onChange={(event) => update("occupation", event.target.value)}
-          />
+          {/* One control, not three. The desktop's `personalization-profile-section`
+             renders a single TextArea bound to `moreAbout` — the `nickname` and
+             `occupation` keys exist only in the *file* layer, where the reader
+             and the writer still parse and re-emit their `Nickname: ` /
+             `Occupation: ` lines so an existing profile is not truncated on the
+             next save. Rendering inputs for them produced two permanently empty
+             boxes above the real field, which is what they showed: the user's
+             own `user.md` has both labels with nothing after the colon. */}
           <textarea
             aria-label="更多关于你"
             data-testid="user-profile-more-about"

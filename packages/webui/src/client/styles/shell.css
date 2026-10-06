@@ -477,16 +477,13 @@
   .webui-memory-confirm-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
   .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
-  /* 关于你 is three bare controls, not one blob: the desktop's region is a
-     `Nickname: ` line, an `Occupation: ` line, and free text under a
-     `## More about you` heading, so the two short values get single-line inputs
-     and only the free-text field gets the tall editor. No visible labels — the
-     desktop draws them bare, and a label column dragged the fields left of the
-     card they belong to. The names live on `aria-label` instead. */
+  /* 关于你 is ONE control. The desktop's `personalization-profile-section`
+     renders a single TextArea bound to `moreAbout`; `nickname` and `occupation`
+     exist only in the file layer, which still parses and re-emits their
+     `Nickname: ` / `Occupation: ` lines so an existing profile survives a save
+     intact. Drawing inputs for them put two permanently empty boxes above the
+     one field that is actually editable. */
   .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_8); }
-  .webui-user-profile-fields > input { width: 100%; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_22); }
-  .webui-user-profile-fields > input:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
-  .webui-user-profile-fields > input:disabled { cursor: default; opacity: .72; }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the
@@ -558,8 +555,14 @@
    * bound to a token that a future palette step would move.
    *
    * Scoped to this button on purpose: the opacity fade stays correct for the
-   * dialog footers, where a faded fill *is* what the desktop draws. */
-  .webui-section-save-button:disabled { background: var(--bg_interaction_secondary_default); color: #868686; opacity: 1; }
+   * dialog footers, where a faded fill *is* what the desktop draws.
+   *
+   * `cursor` is restated here because the shared `.webui-mavis-button:disabled`
+   * rule wins the cascade otherwise and pins it to `default`. The desktop
+   * carries it on `.mavis-button.disabled` — `opacity:.5;cursor:not-allowed`.
+   * Restating beats deleting the shared rule, since `default` is the right
+   * cursor for a dialog button that closes instead of saving. */
+  .webui-section-save-button:disabled { background: var(--bg_interaction_secondary_default); color: #868686; opacity: 1; cursor: not-allowed; }
   /* The live state's hover, also measured: the fill deepens one step while the
      label goes darker. No hover on the disabled state — a control that cannot
      act must not advertise that it can. */

@@ -169,6 +169,12 @@ describe("W0 · the section save button's three states", () => {
     );
     expect(declaration(disabled, "color")).toBe("#868686");
 
+    // The shared `.webui-mavis-button:disabled` pins `cursor: default` and wins
+    // the cascade unless this button restates it. The desktop carries the cursor
+    // on `.mavis-button.disabled` — `opacity:.5;cursor:not-allowed` — so a
+    // disabled 保存 refuses the click instead of silently ignoring it.
+    expect(declaration(disabled, "cursor")).toBe("not-allowed");
+
     // The live state's hover deepens the fill. There is deliberately no hover
     // on the disabled state — a control that cannot act must not look like one
     // that can.

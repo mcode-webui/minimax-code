@@ -346,15 +346,21 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(hover, "border-color")).toBe("var(--border_heavy)");
     expect(declaration(hover, "box-shadow")).toBe("none");
 
-    // The focus edge is the app's blue, measured 1:1 off the desktop dialog as a
-    // 1px #0077d9. The bundle's `.mavis-textarea:focus{border_heavy}` rule says
-    // otherwise, but the control does not draw that, so the pixel wins.
+    // The focus ring is an outline outside the box, and the border goes back to
+    // its resting colour. Drawing the blue as the border instead costs the
+    // content 1px and leaves the text sitting against the ring; `outline` paints
+    // on the border edge without taking layout, so the content box is the same
+    // focused and unfocused. The blue itself is the app's `blue_500`, measured
+    // 1:1 off the desktop dialog, not the `border_heavy` the bundle names.
     const focus = winning(
       ".webui-memory-manager-editor .webui-personalization-textarea:focus",
     ).body;
-    expect(declaration(focus, "border-color")).toBe("var(--blue_500)");
+    expect(declaration(focus, "outline")).toBe("1px solid var(--blue_500)");
+    expect(declaration(focus, "border-color")).toBe("var(--border_default)");
     expect(declaration(focus, "box-shadow")).toBe("none");
-    expect(declaration(focus, "outline")).toBe("none");
+    // The ring must not be drawn as the border: that is the 1px it would cost
+    // the content, and the reason this is asserted as a pair.
+    expect(declaration(focus, "border-color")).not.toBe("var(--blue_500)");
 
     // The shared rule is the `mavis-personalization-editor` half. `resize: none`
     // is global on the desktop (`.mavis-textarea textarea{resize:none!important}`

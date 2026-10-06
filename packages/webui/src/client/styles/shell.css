@@ -403,12 +403,16 @@
      what sets the 12px radius, and `box-shadow` is cleared at every state so the
      focus reads as a recoloured edge rather than a glow.
    *
-     The focus border is `--blue_500`, not `--border_heavy`. The bundle's
-     `.mavis-textarea:focus{border-color:var(--border_heavy)}` says otherwise,
-     but the desktop renders that field with a 1px `#0077d9` edge while focused,
-     which is this app's `blue_500` and antd's themed `colorPrimary`. The pixel
-     won: a rule that no longer matches what the control draws is not worth
-     copying. Hover still deepens to `--border_heavy`. */
+     The focus ring is an `outline` outside the box, not a recoloured border.
+     The blue itself is `--blue_500` -- the 1px `#0077d9` the desktop draws,
+     which is this app's blue and antd's themed `colorPrimary`, not the
+     `--border_heavy` the bundle's `.mavis-textarea:focus` rule names. But
+     drawing it *as* the border costs the content 1px and leaves the text
+     sitting right against the ring. `outline` paints on the border edge
+     without taking layout, so the content box is identical focused and
+     unfocused and the blue ring sits outside it; `border-color` returns to its
+     resting value for the same reason. Hover still deepens the border itself
+     to `--border_heavy`. */
   /* Height follows the desktop's `autoSize: {minRows: 13, maxRows: 24}` at
      `!leading-6`. Measured off the desktop dialog: 24px between baselines, and
      a 593px box for content long enough to cap out — which is 24 rows. So
@@ -434,7 +438,7 @@
      monospace, which is also why a "13 row" floor was not 312px here. */
   .webui-memory-manager-editor .webui-personalization-textarea { flex: none; height: auto; field-sizing: content; min-height: 348px; max-height: 612px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0 28px; font-family: inherit; font-size: var(--size_14); line-height: 24px; }
   .webui-memory-manager-editor .webui-personalization-textarea:hover { border-color: var(--border_heavy); outline: none; box-shadow: none; }
-  .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--blue_500); outline: none; box-shadow: none; }
+  .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--border_default); outline: 1px solid var(--blue_500); box-shadow: none; }
   /* The character count sits INSIDE the editor, bottom-right, 14px from each
      edge. Measured off the desktop dialog at 1:1: the digits land 14px left of
      the border and 14px above it, and the editor's own border is 1px of

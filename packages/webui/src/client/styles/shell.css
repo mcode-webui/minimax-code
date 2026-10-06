@@ -364,6 +364,18 @@
    * radius, 8/12 padding and 18px line height are the same three numbers, so
    * this is a third call site on one shape rather than a third shape.
    *
+   * The hardcoded `rgb(0 0 0 / 85%)` / `#fff` is DELIBERATE and must not be
+   * rebound to a token. The desktop draws these hints with antd's `Tooltip`,
+   * whose colours come from the `colorBgSpotlight` and `colorTextLightSolid`
+   * global tokens — documented defaults `rgba(0,0,0,0.85)` and `#fff` — and
+   * those are theme-independent: the desktop ships a black bubble under BOTH
+   * `.light` and `.dark`, confirmed by looking at it in each. The same source
+   * explains the 6px radius and the 250px max width, which are antd's
+   * `borderRadius` and Tooltip `maxWidth` defaults rather than measurements.
+   * Everything else on this surface is token-driven because it *should* follow
+   * the theme; this bubble should not, so a token binding here would be a
+   * fidelity regression dressed up as a fix.
+   *
    * The 250 is the desktop's own, and it is deliberately NOT the 340 the two
    * sibling bubbles carry: all three desktop bubbles were measured and the
    * two-line and three-line ones both wrap at exactly 250, which is where

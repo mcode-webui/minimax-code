@@ -180,46 +180,82 @@ describe("W0 · the section save button's three states", () => {
 });
 
 describe("W0 · the memory manager's header controls", () => {
-  it("draws ⋯ as the desktop's filled 26px tile, 34px from ×", () => {
-    // Measured off the desktop dialog: the ⋯ tile is exactly 26×26 and already
-    // filled before hover, × stays transparent until hovered, and the two ink
-    // centres sit 34px apart. Both controls were unstyled bare buttons, which
-    // is what made the pair read as unaligned here.
+  it("leaves both controls unfilled until hover, 24px apart", () => {
+    // Measured off the desktop dialog's *dark* capture: both glyphs sit bare on
+    // the panel with no tile at all, their ink centres 24px apart at the same
+    // height. The 26×26 `#f1f1ef` tile measured earlier came from the *light*
+    // capture, which had the pointer parked on ⋯ — that was a hover state read
+    // as a rest state, which is exactly why ⋯ rendered permanently selected
+    // next to a transparent ×.
     const actions = winning(".webui-memory-manager-header-actions").body;
-    expect(declaration(actions, "gap")).toBe("var(--spacing_8)");
+    expect(declaration(actions, "gap")).toBe("var(--spacing_4)");
 
     const button = winning(
       ".webui-memory-manager-header-actions .webui-settings-icon-button",
     ).body;
-    expect(declaration(button, "width")).toBe("26px");
-    expect(declaration(button, "height")).toBe("26px");
-    expect(declaration(button, "border-radius")).toBe("7px");
+    expect(declaration(button, "width")).toBe("20px");
+    expect(declaration(button, "height")).toBe("20px");
+    expect(declaration(button, "border-radius")).toBe("6px");
+    expect(declaration(button, "background")).toBe("transparent");
 
-    // The fill lives on the rest state, not only on hover: flattening both to
-    // "hover only" is the mismatch this replaced.
-    const rest = winning(
-      ".webui-memory-manager-header-actions .webui-settings-icon-button:first-child",
+    const hover = winning(
+      ".webui-memory-manager-header-actions .webui-settings-icon-button:hover",
     ).body;
-    expect(declaration(rest, "background")).toBe(
+    expect(declaration(hover, "background")).toBe(
       "var(--bg_interaction_tertiary_hover)",
+    );
+
+    // Asserted across every rest-state rule rather than against the one
+    // selector this bug arrived on: any non-hover fill on these controls reads
+    // as "selected", and `:first-child` is only the shape it happened to take.
+    // `tertiary_selected` is deliberately absent — in the light theme it is the
+    // same `--opacity_black_1_4` as `tertiary_hover`, so a selected fill would
+    // be indistinguishable from a hover.
+    const restFills = shellRules
+      .filter(isCascading)
+      .filter((rule) => rule.selector.includes(".webui-settings-icon-button"))
+      .filter((rule) => !/:hover|:focus-visible|:active/u.test(rule.selector))
+      .map((rule) => declaration(rule.body, "background"))
+      .filter((value) => value !== undefined && value !== "transparent");
+    expect(restFills).toEqual([]);
+  });
+
+  it("pulls the header out to the surface padding so × lines up with the editor", () => {
+    // `.webui-personalization-header` indents its children by 16px, while the
+    // editor is a *sibling* of that header and therefore starts at the surface's
+    // own padding — so the buttons sat 16px further in than the text below them.
+    // Measured on the desktop: × ink ends 11px short of the editor's right
+    // border. The negative margin cancels the header's inset without moving the
+    // title, which shares the same row.
+    const header = winning(
+      ".webui-memory-manager-surface .webui-personalization-header",
+    ).body;
+    expect(declaration(header, "margin-right")).toBe(
+      "calc(-1 * var(--spacing_16))",
     );
   });
 
-  it("anchors the character count inside the editor's bottom-right", () => {
-    // In flow it was the only child of a `space-between` row, which collapsed
-    // to left alignment and parked the count under the text's left edge. The
-    // desktop has it 15px off the right border and 14px off the bottom.
-    const editor = winning(".webui-memory-manager-editor").body;
-    expect(declaration(editor, "position")).toBe("relative");
-
+  it("draws the character count as a full-width band below the editor", () => {
+    // It used to be absolutely positioned in the editor's bottom-right corner,
+    // which matched the desktop horizontally but laid the digits *over* the last
+    // row of text with the textarea's own background showing through. The
+    // desktop draws a band: full width, its own background, its own line.
     const count = winning(
       ".webui-memory-manager-editor .webui-personalization-meta",
     ).body;
-    expect(declaration(count, "position")).toBe("absolute");
-    expect(declaration(count, "right")).toBe("0");
-    expect(declaration(count, "bottom")).toBe("0");
-    // Out of flow, the row's own padding is what would offset it.
-    expect(declaration(count, "padding")).toBe("0");
+    expect(declaration(count, "width")).toBe("100%");
+    expect(declaration(count, "background")).toBe(
+      "var(--bg_interaction_secondary_default)",
+    );
+    // In flow it is the only child of a `space-between` row, which collapses to
+    // left alignment — hence `margin-left: auto` rather than a bare stretch.
+    expect(declaration(count, "margin-left")).toBe("auto");
+
+    // The offsets only exist to pin an out-of-flow element; leaving them behind
+    // is inert, so they are asserted absent rather than merely unset.
+    expect(declaration(count, "position")).toBeUndefined();
+    expect(declaration(count, "right")).toBeUndefined();
+    expect(declaration(count, "bottom")).toBeUndefined();
   });
 });
 

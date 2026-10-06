@@ -398,47 +398,51 @@
   .webui-memory-manager-surface { display: flex; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
   .webui-memory-manager-editor { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
   .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; }
-  /* The character count lives *inside* the editor's bottom-right corner, the way
-     the desktop draws it, not in a row under the text. It is absolutely
-     positioned rather than left in flow because in flow it is the only child of
-     a `space-between` flex row, which collapses to left alignment and parks the
-     number under the text's left edge — the desktop has it 15px off the right
-     border and 14px off the bottom.
-     `.webui-personalization-meta` cannot be reused here: its `padding` is what
-     produced the offset, and taking it out of flow is what makes the padding
-     measurable against the textarea's own box. */
-  .webui-memory-manager-editor .webui-personalization-meta { position: absolute; right: 0; bottom: 0; width: auto; padding: 0; }
+  /* The character count is a full-width strip on its own line, not a number
+     floating over the last row of text.
+   *
+   * Absolutely positioning it inside the editor put it exactly where the
+     desktop puts it horizontally — bottom-right, 15px off the border — but it
+     landed *on top of* the text with the textarea's own background showing
+     through, so the digits collided with whatever line happened to scroll
+     under them. The desktop draws the count as a band: full width, its own
+     background, sitting on the editor's bottom edge.
+   *
+     Back in flow and stretched, which is what makes the background span the
+     row. `space-between` with a single child parks it left, so the count is
+     pushed right with `margin-left: auto` instead. */
+  .webui-memory-manager-editor .webui-personalization-meta { width: 100%; margin-left: auto; background: var(--bg_interaction_secondary_default); }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
-  /* The memory manager's header controls, measured off the desktop dialog.
+  /* The memory manager's header controls, measured off the desktop dialog in
+     its dark theme.
    *
-   * Deliberately not `.webui-icon-button`: that one is 28px with a transparent
-   * background that only appears on hover, and the desktop draws a 26px square
-   * that is *already* filled before the pointer arrives. Measured on the
-   * desktop capture — the ⋯ tile is exactly 26×26 at `#f1f1ef`, its ink is a
-   * 14×3 three-dot run, and the two controls' ink centres both sit at y≈76.5
-   * with 34px between them. The ⋯ and × therefore are aligned on the desktop;
-   * they only looked wrong here because both were unstyled bare buttons and the
-   * 4px gap left the pair reading as one blob.
+   * Neither control carries a fill at rest. An earlier reading of the light
+     capture concluded the ⋯ tile was permanently filled at `#f1f1ef`, but that
+     capture had the pointer parked on it: the dark capture of the same dialog
+     shows both glyphs bare on the panel, and its two ink centres sit 24px
+     apart at the same height. The fill is hover-only, so it is written once,
+     on `:hover`, for both buttons — the `:first-child` rest rule that pinned
+     one of them is what made ⋯ read as permanently selected next to ×.
    *
-   * `gap: 8px` is what turns that measured 34px centre distance into geometry:
-   * 26 + 8 + 26 = 60 between the centres' outer edges, and the ink itself is
-   * inset within each 26px box, so the visible gap lands on 34. 7px is the
-   * nearest step on the radius ramp; the corner arc is the only place the
-   * desktop's true radius and this one differ. */
-  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
-  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 26px; height: 26px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 7px; padding: 0; color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
-  /* The desktop keeps ⋯ filled at rest and only deepens it on hover; × stays
-     transparent until hovered. Flattening both to "hover only" is what made the
-     pair look mismatched in the first place.
-     `press`, not `selected`: in the light theme `tertiary_hover` and
-     `tertiary_selected` are the same `--opacity_black_1_4`, so a selected hover
-     would render as no change at all. `press` is the next step up. */
-  .webui-memory-manager-header-actions .webui-settings-icon-button:first-child { background: var(--bg_interaction_tertiary_hover); }
-  .webui-memory-manager-header-actions .webui-settings-icon-button:hover { background: var(--bg_interaction_tertiary_press); color: var(--text_default_secondary); }
+   * `gap: 4px` is what turns that measured 24px centre distance into geometry
+   * for 20px boxes with 8px glyphs inside them. 6px is the nearest step on the
+   * radius ramp. */
+  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_4); }
+  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 20px; height: 20px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+  .webui-memory-manager-header-actions .webui-settings-icon-button:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
   .webui-memory-manager-header-actions .webui-settings-icon-button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
-  .webui-memory-manager-surface .webui-personalization-header { position: relative; }
+  /* Pull the controls out to the surface's own padding so their right edge
+     lines up with the editor's.
+   *
+   * `.webui-personalization-header` indents its children by 16px, and the
+     manager's editor is a *sibling* of that header rather than a child of it —
+     so the editor starts at the surface's padding and the buttons started 16px
+     further in. Measured on the desktop: the × ink ends 11px short of the
+     editor's right border, and the header's own negative margin is what
+     closes that gap without moving the title. */
+  .webui-memory-manager-surface .webui-personalization-header { position: relative; margin-right: calc(-1 * var(--spacing_16)); }
   .webui-memory-manager-menu { position: absolute; z-index: 1; top: calc(100% + var(--spacing_4)); right: var(--spacing_16); display: flex; min-width: 168px; flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_4); box-shadow: 0 8px 24px rgb(0 0 0 / 28%); }
   .webui-memory-manager-menu button { display: flex; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_4); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
   .webui-memory-manager-menu button:hover:not(:disabled) { background: var(--bg_interaction_tertiary_hover); }

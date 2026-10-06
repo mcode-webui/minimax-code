@@ -103,12 +103,91 @@ export const USER_PROFILE_MAX_CHARS = 10 * 1024;
 const USER_PROFILE_START = "<!-- mavis-personalization:start -->";
 const USER_PROFILE_END = "<!-- mavis-personalization:end -->";
 
+/**
+ * The three field labels and the free-text heading inside the region.
+ *
+ * These are the desktop's own literals, recovered from its settings bundle: it
+ * declares `Nickname: `, `Occupation: ` and `## More about you` alongside the
+ * two markers, reads the region by splitting on newlines and pulling the value
+ * off whichever line starts with a label, and treats everything after the
+ * heading as free text. The region is therefore a *structured* record, not one
+ * blob of prose — reading it as a single string is what made the panel show a
+ * filled document where the desktop shows an empty profile, because
+ * `Nickname: ` and `Occupation: ` are prefixes, and with nothing after either
+ * colon every field parses to the empty string.
+ */
+const USER_PROFILE_NICKNAME_LABEL = "Nickname: ";
+const USER_PROFILE_OCCUPATION_LABEL = "Occupation: ";
+const USER_PROFILE_MORE_ABOUT_HEADING = "## More about you";
+
+/** The desktop's own field normaliser: collapse every whitespace run, trim. */
+function normalizeProfileField(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+/** The value of the first line starting with `label`, or "" when there is none. */
+function readProfileField(lines: readonly string[], label: string): string {
+  const line = lines.find((candidate) => candidate.startsWith(label));
+  return line?.slice(label.length).trim() ?? "";
+}
+
+/** The desktop's parse: split the region, then cut at the free-text heading. */
+export function parseUserProfileRegion(body: string): WebuiUserProfileFields {
+  const lines = body.trim().split("\n");
+  const headingIndex = lines.findIndex(
+    (line) => line.trim() === USER_PROFILE_MORE_ABOUT_HEADING,
+  );
+  return {
+    nickname: readProfileField(lines, USER_PROFILE_NICKNAME_LABEL),
+    occupation: readProfileField(lines, USER_PROFILE_OCCUPATION_LABEL),
+    moreAbout:
+      headingIndex < 0
+        ? ""
+        : lines.slice(headingIndex + 1).join("\n").trim(),
+  };
+}
+
+/**
+ * The desktop's write, transcribed.
+ *
+ * The skeleton is fixed and the empty string in the middle is a real blank line
+ * produced by the join, so `## More about you` is always present on disk even
+ * when there is no free text under it — that is the desktop's own output, not a
+ * damaged file, and reproducing it is what keeps a file this WebUI writes
+ * byte-identical to one the desktop wrote.
+ *
+ * `filter(Boolean)` is applied to the *outer* three parts only, so an absent
+ * `before` or `after` collapses the separator instead of leaving a hole. Note
+ * the two blank lines that survive when both neighbours are present: the
+ * runtime-appended entries sit one blank line away from the closing marker.
+ */
+function composeUserProfileFile(
+  before: string,
+  fields: WebuiUserProfileFields,
+  after: string,
+): string {
+  const block = [
+    USER_PROFILE_START,
+    "# User profile",
+    `${USER_PROFILE_NICKNAME_LABEL}${normalizeProfileField(fields.nickname)}`,
+    `${USER_PROFILE_OCCUPATION_LABEL}${normalizeProfileField(fields.occupation)}`,
+    "",
+    USER_PROFILE_MORE_ABOUT_HEADING,
+    fields.moreAbout.trim(),
+    USER_PROFILE_END,
+  ].join("\n");
+  return [before.trimEnd(), block, after.trimStart()]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export type WebuiProfileFileErrorCode =
   | "AGENT_MEMORY_UNAVAILABLE"
   | "GLOBAL_INSTRUCTIONS_UNAVAILABLE"
   | "GLOBAL_INSTRUCTIONS_TOO_LARGE"
   | "USER_PROFILE_UNAVAILABLE"
-  | "USER_PROFILE_MALFORMED";
+  | "USER_PROFILE_MALFORMED"
+  | "USER_PROFILE_TOO_LARGE";
 
 /**
  * `operation-dispatch.ts` only forwards a thrown `code` verbatim when it is a
@@ -295,37 +374,15 @@ function locateUserProfileRegion(source: string): UserProfileRegion {
     return { kind: "malformed" };
   }
 
-  const bodyStart = startIndex + USER_PROFILE_START.length;
+  // Both halves exclude their marker, because the composed block re-emits the
+  // start marker and the end marker itself. Slicing `before` up to the
+  // marker would print it twice on every save; leaving the end marker in
+  // `after` would append another one.
   return {
     kind: "region",
-    before: source.slice(0, bodyStart),
-    after: source.slice(endIndex),
+    before: source.slice(0, startIndex),
+    after: source.slice(endIndex + USER_PROFILE_END.length),
   };
-}
-
-function renderUserProfileRegion(
-  region: UserProfileRegion,
-  content: string,
-): string | undefined {
-  if (region.kind === "malformed") return undefined;
-  if (region.kind === "absent") {
-    // Nothing to replace: the caller keeps every existing byte and appends
-    // this block at the end of the file.
-    if (!content.trim()) return undefined;
-    return `${USER_PROFILE_START}\n${content.trim()}\n${USER_PROFILE_END}\n`;
-  }
-  // `region.before` stops at the last character of the start marker, so the
-  // newline the source had between the marker and the body is not part of it.
-  // Re-emitting that one is the whole fix: without it `<start>` ends up glued
-  // to the first line of the profile, and because the reader trims the body
-  // the panel keeps showing the right text, so the damage is invisible until
-  // something else reads the raw file. Emitting it also makes a second save a
-  // no-op — the reconstruction always lands on the same bytes.
-  //
-  // An empty body gets the newline but not a second one, so clearing a profile
-  // leaves `<start>\n<end>` rather than a blank line between the markers.
-  const body = content.trim();
-  return `${region.before}\n${body}${body ? "\n" : ""}${region.after}`;
 }
 
 export async function readUserProfile(
@@ -338,7 +395,9 @@ export async function readUserProfile(
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return {
-        content: "",
+        nickname: "",
+        occupation: "",
+        moreAbout: "",
         exists: false,
         malformed: false,
         path: filePath,
@@ -352,7 +411,9 @@ export async function readUserProfile(
   const region = locateUserProfileRegion(source);
   if (region.kind === "malformed") {
     return {
-      content: "",
+      nickname: "",
+      occupation: "",
+      moreAbout: "",
       exists: false,
       malformed: true,
       path: filePath,
@@ -362,7 +423,9 @@ export async function readUserProfile(
   }
   if (region.kind === "absent") {
     return {
-      content: "",
+      nickname: "",
+      occupation: "",
+      moreAbout: "",
       exists: false,
       malformed: false,
       path: filePath,
@@ -371,13 +434,16 @@ export async function readUserProfile(
     };
   }
 
+  // Sliced from the two marker boundaries rather than by subtracting
+  // `after.length`: `after` no longer contains the end marker, so the
+  // subtraction would leave it inside the body and the free-text field would
+  // read back the closing marker.
+  const body = source.slice(
+    region.before.length + USER_PROFILE_START.length,
+    source.length - region.after.length - USER_PROFILE_END.length,
+  );
   return {
-    content: source
-      .slice(
-        region.before.length,
-        source.length - region.after.length,
-      )
-      .trim(),
+    ...parseUserProfileRegion(body),
     exists: true,
     malformed: false,
     path: filePath,
@@ -391,13 +457,13 @@ export async function readUserProfile(
  *
  * Unlike AGENTS.md and main memory, a blank write never deletes the file:
  * `user.md` holds runtime-appended entries the WebUI does not own, and
- * dropping them would delete memory the runtime collected. Clearing the
- * profile leaves the markers in place with an empty body, which reads as "no
- * profile" to the composer without touching anything else.
+ * dropping them would delete memory the runtime collected. Writing three empty
+ * fields still emits the desktop's skeleton, which reads as "no profile" to the
+ * composer without touching anything else.
  */
 export async function writeUserProfile(
   dataDir: string,
-  content: string,
+  fields: WebuiUserProfileFields,
 ): Promise<WebuiUserProfileView> {
   const filePath = userMemoryPath(dataDir);
   let source = "";
@@ -414,16 +480,22 @@ export async function writeUserProfile(
     throw new WebuiProfileFileError("USER_PROFILE_MALFORMED");
   }
 
-  const next = renderUserProfileRegion(region, content);
-  if (next === undefined) {
-    // A blank write against a file that has no region: nothing to do, and
-    // nothing should be created.
-    return readUserProfile(dataDir);
+  // The budget is checked on what will actually be written, not on one of the
+  // three fields: a long `moreAbout` alone can cross it. Byte length, not
+  // `.length`, because a half-cap document in Chinese characters is three times
+  // that in UTF-8.
+  const next = composeUserProfileFile(
+    region.kind === "region" ? region.before : "",
+    fields,
+    region.kind === "region" ? region.after : source,
+  );
+  if (next.length > USER_PROFILE_MAX_CHARS) {
+    throw new WebuiProfileFileError("USER_PROFILE_TOO_LARGE");
   }
 
   await writeFileAtomic(
     filePath,
-    region.kind === "absent" && source ? `${source.replace(/\s*$/, "")}\n\n${next}` : next,
+    next,
     ".user-profile-tmp",
     "USER_PROFILE_UNAVAILABLE",
   );

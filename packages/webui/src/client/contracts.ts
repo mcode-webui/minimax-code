@@ -156,7 +156,23 @@ export interface WebuiAgentMemoryView {
 }
 
 /**
- * The `关于你` region of `user.md` — the text between the personalization
+ * The three fields the `关于你` region holds.
+ *
+ * The region is a structured record, not one blob of prose: the desktop writes
+ * a fixed skeleton of `Nickname: `, `Occupation: ` and a `## More about you`
+ * heading, and reads each label back off whichever line carries it. Exposing
+ * the three fields separately is what lets an all-empty region render as an
+ * empty form — reading the region as one string shows the skeleton itself, so a
+ * user who never filled anything in is looking at a full page of text.
+ */
+export interface WebuiUserProfileFields {
+  readonly nickname: string;
+  readonly occupation: string;
+  readonly moreAbout: string;
+}
+
+/**
+ * The `关于你` region of `user.md` — the three fields between the personalization
  * markers, not the whole file.
  *
  * `exists` means "the file holds a profile region", not "the file is on disk":
@@ -169,8 +185,7 @@ export interface WebuiAgentMemoryView {
  * so the panel can refuse to offer a save that would drop the runtime's
  * entries, and writes throw `USER_PROFILE_MALFORMED`.
  */
-export interface WebuiUserProfileView {
-  readonly content: string;
+export interface WebuiUserProfileView extends WebuiUserProfileFields {
   readonly exists: boolean;
   readonly malformed: boolean;
   readonly path: string;

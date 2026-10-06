@@ -288,7 +288,9 @@ export interface WebuiRuntimeCliService {
   }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
   getUserProfile(): Promise<import("../client/contracts.js").WebuiUserProfileView>;
   setUserProfile(request: {
-    readonly content: string;
+    readonly nickname: string;
+    readonly occupation: string;
+    readonly moreAbout: string;
   }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
   /**
    * Optional on purpose, like the scheduled-task block above: a host without
@@ -773,7 +775,11 @@ export function createHarnessPortFromHost(
       return readUserProfile(requireDataDir(host));
     },
     async setUserProfile(request) {
-      return writeUserProfile(requireDataDir(host), request.content);
+      return writeUserProfile(requireDataDir(host), {
+        nickname: request.nickname,
+        occupation: request.occupation,
+        moreAbout: request.moreAbout,
+      });
     },
     async getMemorySettings() {
       return requireMemorySettings(host).get();

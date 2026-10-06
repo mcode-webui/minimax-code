@@ -44,7 +44,9 @@ const MEMORY: WebuiAgentMemoryView = {
   sizeBytes: 111860,
 };
 const PROFILE: WebuiUserProfileView = {
-  content: "# User profile\nOccupation: staff engineer",
+  nickname: "izzy",
+  occupation: "staff engineer",
+  moreAbout: "prefers terse answers",
   exists: true,
   malformed: false,
   path: "/data/memory/user.md",
@@ -140,7 +142,7 @@ describe("personalization operations reach the harness port through the service"
     ["getAgentMemory", undefined, MEMORY],
     ["setAgentMemory", { content: "# x\n" }, MEMORY],
     ["getUserProfile", undefined, PROFILE],
-    ["setUserProfile", { content: "# x\n" }, PROFILE],
+    ["setUserProfile", { nickname: "izzy", occupation: "", moreAbout: "" }, PROFILE],
     ["getMemorySettings", undefined, SWITCHES],
     ["setMemorySettings", { proactive: true }, SWITCHES],
   ])("%s returns the port's own body", async (operation, body, expected) => {

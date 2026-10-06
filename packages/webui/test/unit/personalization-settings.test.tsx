@@ -321,8 +321,60 @@ describe("关于你 section markup", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
     expect(markup).toContain("关于你");
-    expect(markup).toContain("user-profile-textarea");
+    expect(markup).toContain("user-profile-more-about");
     expect(markup).toContain("user-profile-unavailable");
+  });
+
+  it("offers one control per field instead of one blob of region text", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // The region is a structured record on disk — a `Nickname: ` line, an
+    // `Occupation: ` line, then free text under a `## More about you` heading.
+    // A single editor handed the whole region to the user, so a profile they
+    // never filled in rendered as a full page of the skeleton's own labels.
+    expect(markup).toContain('data-testid="user-profile-nickname"');
+    expect(markup).toContain('data-testid="user-profile-occupation"');
+    expect(markup).toContain('data-testid="user-profile-more-about"');
+    expect(markup).toContain("昵称");
+    expect(markup).toContain("职业");
+    expect(markup).toContain("更多关于你");
+    // The old single-textarea editor is gone with the model it belonged to.
+    expect(markup).not.toContain("user-profile-textarea");
+  });
+
+  it("shows an untouched region as three empty fields, not as its own text", () => {
+    const markup = renderToStaticMarkup(
+      <PersonalizationSettings
+        getUserProfile={() =>
+          Promise.resolve({
+            nickname: "",
+            occupation: "",
+            moreAbout: "",
+            exists: true,
+            malformed: false,
+            path: "/tmp/user.md",
+            sizeBytes: 180,
+            maxChars: 10 * 1024,
+          })
+        }
+        setUserProfile={() => Promise.resolve({
+          nickname: "",
+          occupation: "",
+          moreAbout: "",
+          exists: true,
+          malformed: false,
+          path: "/tmp/user.md",
+          sizeBytes: 180,
+          maxChars: 10 * 1024,
+        })}
+      />,
+    );
+
+    // The first paint is the pre-read state, so the fields render empty. The
+    // labels are present but no value is: `Nickname: ` with nothing after the
+    // colon is an empty field, not a line of text the user wrote.
+    expect(markup).not.toContain("Nickname: ");
+    expect(markup).not.toContain("# User profile");
   });
 
   it("uses the desktop placeholder so the field reads as a profile, not a file", () => {

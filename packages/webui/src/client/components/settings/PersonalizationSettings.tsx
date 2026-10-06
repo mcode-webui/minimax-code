@@ -13,6 +13,7 @@ import type {
   WebuiAgentMemoryView,
   WebuiGlobalInstructionsView,
   WebuiMemorySettingsView,
+  WebuiUserProfileFields,
   WebuiUserProfileView,
 } from "../../contracts.js";
 
@@ -49,6 +50,22 @@ const INSTRUCTIONS_PLACEHOLDER = [
 ].join("\n");
 
 const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
+
+/**
+ * The editable half of a profile view.
+ *
+ * Narrowing here rather than passing the whole view around keeps the draft a
+ * plain three-field record, so an update cannot accidentally carry the server's
+ * `path` or `sizeBytes` back into a `setUserProfile` request that only accepts
+ * the three.
+ */
+function pickProfileFields(view: WebuiUserProfileView): WebuiUserProfileFields {
+  return {
+    nickname: view.nickname,
+    occupation: view.occupation,
+    moreAbout: view.moreAbout,
+  };
+}
 
 /**
  * The three section bubbles, copied from the desktop word for word.
@@ -382,23 +399,29 @@ export interface UserProfileSectionProps {
 }
 
 /**
- * 关于你 — the marked region of `user.md`.
+ * 关于你 — the marked region of `user.md`, as the three fields it holds.
  *
- * The editor shows the region and nothing else. The same file also carries
+ * The region is a structured record on disk: a `Nickname: ` line, an
+ * `Occupation: ` line, then a `## More about you` heading followed by free text.
+ * Editing it as one blob is what made an untouched profile render as a full page
+ * of text — the skeleton itself is what the user was being shown. So each field
+ * gets its own control, and the region is never exposed as a string.
+ *
+ * The three fields are still only part of the file. The same `user.md` carries
  * `mem-append-reason` entries the memory collector appends, and the
- * `<user_profile>` prompt block is built from the marked region only, so
- * exposing the whole file would both leak entries the user never wrote and let
- * them edit text the model never reads.
+ * `<user_profile>` prompt block is built from the marked region only, so the
+ * editor never shows entries the user did not write nor lets them edit text the
+ * model never reads.
  *
  * A malformed file (one marker without the other) renders as a refusal rather
- * than an empty editor: an empty editor invites a save, and that save is
- * exactly the write the server refuses.
+ * than empty inputs: empty inputs invite a save, and that save is exactly the
+ * write the server refuses.
  */
 export function UserProfileSection({
   getUserProfile,
   setUserProfile,
 }: UserProfileSectionProps): ReactElement {
-  const [draft, setDraft] = useState<string>();
+  const [draft, setDraft] = useState<WebuiUserProfileFields>();
   const [maxChars, setMaxChars] = useState(10 * 1024);
   const [malformed, setMalformed] = useState(false);
   const [filePath, setFilePath] = useState("");
@@ -412,7 +435,7 @@ export function UserProfileSection({
     void getUserProfile()
       .then((value) => {
         if (cancelled || !value) return;
-        setDraft(value.content);
+        setDraft(pickProfileFields(value));
         setMaxChars(value.maxChars);
         setMalformed(value.malformed);
         setFilePath(value.path);
@@ -426,19 +449,33 @@ export function UserProfileSection({
     };
   }, [getUserProfile]);
 
-  const length = draft?.length ?? 0;
+  // Counted across all three fields, because that is what the server checks:
+  // the write is capped on the composed file, so a `moreAbout` alone can cross
+  // the budget while the two short fields stay far below it.
+  const length =
+    (draft?.nickname.length ?? 0) +
+    (draft?.occupation.length ?? 0) +
+    (draft?.moreAbout.length ?? 0);
   const overLimit = length > maxChars;
   const saveable =
     draft !== undefined && !malformed && Boolean(setUserProfile) && !overLimit;
+
+  const update = useCallback(
+    (field: keyof WebuiUserProfileFields, value: string) => {
+      setDraft((current) => (current ? { ...current, [field]: value } : current));
+      setSaved(false);
+    },
+    [],
+  );
 
   const save = useCallback(async () => {
     if (!setUserProfile || saving || draft === undefined || malformed) return;
     setSaving(true);
     setError(undefined);
     try {
-      const next = await setUserProfile({ content: draft });
+      const next = await setUserProfile(draft);
       if (next) {
-        setDraft(next.content);
+        setDraft(pickProfileFields(next));
         setMaxChars(next.maxChars);
         setMalformed(next.malformed);
         setFilePath(next.path);
@@ -450,6 +487,8 @@ export function UserProfileSection({
       setSaving(false);
     }
   }, [draft, malformed, saving, setUserProfile]);
+
+  const disabled = malformed || draft === undefined;
 
   return (
     <section data-testid="user-profile-section" className="webui-generic-section">
@@ -469,18 +508,40 @@ export function UserProfileSection({
         </button>
       </SectionHeader>
       <div className="webui-generic-card">
-        <textarea
-          data-testid="user-profile-textarea"
-          className="webui-personalization-textarea"
-          value={draft ?? ""}
-          spellCheck={false}
-          placeholder={PROFILE_PLACEHOLDER}
-          disabled={malformed || draft === undefined}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setSaved(false);
-          }}
-        />
+        <div className="webui-user-profile-fields">
+          <label className="webui-user-profile-field">
+            <span>昵称</span>
+            <input
+              type="text"
+              data-testid="user-profile-nickname"
+              value={draft?.nickname ?? ""}
+              disabled={disabled}
+              onChange={(event) => update("nickname", event.target.value)}
+            />
+          </label>
+          <label className="webui-user-profile-field">
+            <span>职业</span>
+            <input
+              type="text"
+              data-testid="user-profile-occupation"
+              value={draft?.occupation ?? ""}
+              disabled={disabled}
+              onChange={(event) => update("occupation", event.target.value)}
+            />
+          </label>
+          <label className="webui-user-profile-field is-stacked">
+            <span>更多关于你</span>
+            <textarea
+              data-testid="user-profile-more-about"
+              className="webui-personalization-textarea"
+              value={draft?.moreAbout ?? ""}
+              spellCheck={false}
+              placeholder={PROFILE_PLACEHOLDER}
+              disabled={disabled}
+              onChange={(event) => update("moreAbout", event.target.value)}
+            />
+          </label>
+        </div>
         <div className="webui-personalization-meta">
           <span data-testid="user-profile-path">{filePath}</span>
           <span

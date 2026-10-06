@@ -473,6 +473,20 @@
   .webui-memory-confirm-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
   .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
+  /* 关于你 is three fields, not one blob: the desktop's region is a `Nickname: `
+     line, an `Occupation: ` line, and free text under a `## More about you`
+     heading, so the two short values get single-line inputs and only the
+     free-text field gets the tall editor. Laying them out in one column with
+     the labels above the controls keeps the three stacked the way the desktop
+     stacks them, and `is-stacked` is what reuses the editor's own box for the
+     last one. */
+  .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_12); }
+  .webui-user-profile-field { display: flex; align-items: center; gap: var(--spacing_12); }
+  .webui-user-profile-field.is-stacked { align-items: stretch; flex-direction: column; gap: var(--spacing_8); }
+  .webui-user-profile-field > span { flex: none; color: var(--text_default_secondary); font-size: var(--size_12); line-height: var(--line_height_20); }
+  .webui-user-profile-field > input { flex: 1; min-width: 0; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_22); }
+  .webui-user-profile-field > input:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  .webui-user-profile-field > input:disabled { cursor: default; opacity: .72; }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the

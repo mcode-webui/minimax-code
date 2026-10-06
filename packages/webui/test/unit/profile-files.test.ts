@@ -102,7 +102,7 @@ describe("the user profile marker contract", () => {
 });
 
 describe("readUserProfile", () => {
-  it("returns the marked region and never the collector's entries", async () => {
+  it("parses the region into the three fields the desktop writes", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
     await writeFile(
@@ -110,7 +110,11 @@ describe("readUserProfile", () => {
       [
         PROFILE_START,
         "# User profile",
+        "Nickname: izzy",
         "Occupation: staff engineer",
+        "",
+        "## More about you",
+        "prefers terse answers",
         PROFILE_END,
         '<!-- mem-append-reason: collected -->',
         "### a preference the runtime learned",
@@ -123,10 +127,41 @@ describe("readUserProfile", () => {
 
     expect(view.exists).toBe(true);
     expect(view.malformed).toBe(false);
-    expect(view.content).toBe("# User profile\nOccupation: staff engineer");
+    expect(view).toMatchObject({
+      nickname: "izzy",
+      occupation: "staff engineer",
+      moreAbout: "prefers terse answers",
+    });
     // The size reported is the whole file, because the file is what the user
-    // would inspect on disk; the content is only the region.
-    expect(view.sizeBytes).toBeGreaterThan(view.content.length);
+    // would inspect on disk; the fields are only the region.
+    expect(view.sizeBytes).toBeGreaterThan(view.nickname.length);
+  });
+
+  it("reads an untouched skeleton as three empty fields, not as text", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    // The shape a first-run desktop write leaves: the labels are present but
+    // every value after them is blank. Reading the region as one string would
+    // hand the panel the skeleton itself and make an empty profile look filled.
+    await writeFile(
+      userMemoryPath(dataDir),
+      [
+        PROFILE_START,
+        "# User profile",
+        "Nickname: ",
+        "Occupation: ",
+        "",
+        "## More about you",
+        PROFILE_END,
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const view = await readUserProfile(dataDir);
+
+    expect(view.exists).toBe(true);
+    expect(view).toMatchObject({ nickname: "", occupation: "", moreAbout: "" });
   });
 
   it("reports an absent file without creating one", async () => {
@@ -134,7 +169,14 @@ describe("readUserProfile", () => {
 
     const view = await readUserProfile(dataDir);
 
-    expect(view).toMatchObject({ content: "", exists: false, malformed: false, sizeBytes: 0 });
+    expect(view).toMatchObject({
+      nickname: "",
+      occupation: "",
+      moreAbout: "",
+      exists: false,
+      malformed: false,
+      sizeBytes: 0,
+    });
     await expect(readFile(userMemoryPath(dataDir), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -154,7 +196,7 @@ describe("readUserProfile", () => {
     // collector's output as if the user had written it.
     expect(view.exists).toBe(false);
     expect(view.malformed).toBe(false);
-    expect(view.content).toBe("");
+    expect(view).toMatchObject({ nickname: "", occupation: "", moreAbout: "" });
     expect(view.sizeBytes).toBeGreaterThan(0);
   });
 
@@ -167,59 +209,159 @@ describe("readUserProfile", () => {
 
     expect(view.malformed).toBe(true);
     expect(view.exists).toBe(false);
-    expect(view.content).toBe("");
-  });
-});
-
-describe("writeUserProfile", () => {
-  it("replaces only the region and preserves everything around it", async () => {
-    const dataDir = await tempDataDir();
-    await mkdir(join(dataDir, "memory"), { recursive: true });
-    const before = `${PROFILE_START}\nold profile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`;
-    await writeFile(userMemoryPath(dataDir), before, "utf8");
-
-    const view = await writeUserProfile(dataDir, "new profile");
-
-    expect(view.content).toBe("new profile");
-    const after = await readFile(userMemoryPath(dataDir), "utf8");
-    expect(after).toContain(PROFILE_START);
-    expect(after).toContain(PROFILE_END);
-    expect(after).toContain("<!-- mem-append-reason: kept -->");
-    expect(after).not.toContain("old profile");
+    expect(view).toMatchObject({ nickname: "", occupation: "", moreAbout: "" });
   });
 
-  it("keeps a newline between the start marker and the body", async () => {
+  it("keeps text above the heading out of the free-text field", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
     await writeFile(
       userMemoryPath(dataDir),
-      `${PROFILE_START}\nold profile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+      [PROFILE_START, "stray line", "Nickname: izzy", "## More about you", "kept", PROFILE_END, ""].join("\n"),
       "utf8",
     );
 
-    await writeUserProfile(dataDir, "Nickname: izzy");
+    const view = await readUserProfile(dataDir);
 
-    // The exact layout, not "contains the profile". The reader trims the body,
-    // so a missing separator is invisible in the panel — the file just reads
-    // `<start># User profile` to every other tool that opens it raw, and no
-    // assertion on `content` would ever have caught it.
+    // Only what follows the heading is free text. A line the desktop never
+    // writes still parses, and it must not be silently appended to the user's
+    // notes on the next save.
+    expect(view.nickname).toBe("izzy");
+    expect(view.moreAbout).toBe("kept");
+  });
+});
+
+describe("writeUserProfile", () => {
+  it("writes the desktop's skeleton verbatim", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+
+    await writeUserProfile(dataDir, {
+      nickname: "izzy",
+      occupation: "staff engineer",
+      moreAbout: "prefers terse answers",
+    });
+
+    // The exact bytes, transcribed from the desktop's own join. There is no
+    // trailing newline: the block ends at the end marker, and the desktop adds
+    // one only because a file that has entries after the region has to put
+    // them somewhere — which the next test covers.
     expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(
-      `${PROFILE_START}\nNickname: izzy\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+      [
+        PROFILE_START,
+        "# User profile",
+        "Nickname: izzy",
+        "Occupation: staff engineer",
+        "",
+        "## More about you",
+        "prefers terse answers",
+        PROFILE_END,
+      ].join("\n"),
     );
   });
 
-  it("repairs a region whose separator was already lost", async () => {
+  it("keeps the heading and a blank line even when every field is empty", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
-    // The shape an earlier write left on disk: the body glued to the marker.
-    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}# User profile\n${PROFILE_END}\n`, "utf8");
 
-    const view = await writeUserProfile(dataDir, "# User profile");
+    await writeUserProfile(dataDir, { nickname: "", occupation: "", moreAbout: "" });
 
-    expect(view.content).toBe("# User profile");
+    // `filter(Boolean)` in the desktop's own compose applies to the three outer
+    // parts only, so the empty string inside the block survives the join. The
+    // blank line after `## More about you` and the one between `Occupation: `
+    // and the heading are both real and both load-bearing: a file written
+    // without them is one the desktop did not write.
     expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(
-      `${PROFILE_START}\n# User profile\n${PROFILE_END}\n`,
+      [
+        PROFILE_START,
+        "# User profile",
+        "Nickname: ",
+        "Occupation: ",
+        "",
+        "## More about you",
+        "",
+        PROFILE_END,
+      ].join("\n"),
     );
+  });
+
+  it("preserves the collector's entries on both sides of the region", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(
+      userMemoryPath(dataDir),
+      `header\n${PROFILE_START}\nold\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`,
+      "utf8",
+    );
+
+    await writeUserProfile(dataDir, { nickname: "izzy", occupation: "", moreAbout: "" });
+
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    expect(after).toContain("header");
+    expect(after).toContain("<!-- mem-append-reason: kept -->");
+    expect(after).toContain("entry");
+    expect(after).not.toContain("old");
+    // One blank line separates each neighbour, on both sides — `trimEnd` and
+    // `trimStart` collapse what used to hug the markers, and the join puts the
+    // single blank line back. The trailing newline survives because only the
+    // *leading* whitespace of the tail is trimmed; the file keeps ending the
+    // way it already did.
+    expect(after).toBe(
+      [
+        "header",
+        "",
+        PROFILE_START,
+        "# User profile",
+        "Nickname: izzy",
+        "Occupation: ",
+        "",
+        "## More about you",
+        "",
+        PROFILE_END,
+        "",
+        "<!-- mem-append-reason: kept -->",
+        "entry",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("collapses the separator when a neighbour is empty", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+    await writeFile(userMemoryPath(dataDir), "<!-- mem-append-reason: kept -->\nentry\n", "utf8");
+
+    await writeUserProfile(dataDir, { nickname: "", occupation: "", moreAbout: "" });
+
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    // No leading blank line: there is nothing before the region to separate
+    // from, and `filter(Boolean)` drops the empty head rather than joining it.
+    expect(after.startsWith(PROFILE_START)).toBe(true);
+    expect(after).toContain("<!-- mem-append-reason: kept -->");
+  });
+
+  it("normalises each field the way the desktop does", async () => {
+    const dataDir = await tempDataDir();
+    await mkdir(join(dataDir, "memory"), { recursive: true });
+
+    await writeUserProfile(dataDir, {
+      nickname: "  izzy\n  ",
+      occupation: "staff   engineer",
+      moreAbout: "  padded  ",
+    });
+
+    // The desktop collapses every whitespace run in the two label fields, and
+    // trims the free text. A value that kept its newline would re-split into a
+    // second line on the next parse and the field would read back as truncated.
+    const after = await readFile(userMemoryPath(dataDir), "utf8");
+    expect(after).toContain("Nickname: izzy\n");
+    expect(after).toContain("Occupation: staff engineer\n");
+    const view = await readUserProfile(dataDir);
+    expect(view).toMatchObject({
+      nickname: "izzy",
+      occupation: "staff engineer",
+      moreAbout: "padded",
+    });
   });
 
   it("is byte-idempotent across repeated saves", async () => {
@@ -231,56 +373,47 @@ describe("writeUserProfile", () => {
       "utf8",
     );
 
-    await writeUserProfile(dataDir, "  padded  ");
+    const fields = { nickname: "izzy", occupation: "engineer", moreAbout: "note" };
+    await writeUserProfile(dataDir, fields);
     const once = await readFile(userMemoryPath(dataDir), "utf8");
-    await writeUserProfile(dataDir, "  padded  ");
-    await writeUserProfile(dataDir, "  padded  ");
+    await writeUserProfile(dataDir, fields);
+    await writeUserProfile(dataDir, fields);
 
     // A write that drifts by a byte per save is the failure mode this pins: the
-    // separators around the body are rebuilt from scratch every time, so three
-    // saves have to land on the same file as one.
+    // whole block is rebuilt from the three fields every time, so three saves
+    // have to land on the same file as one.
     expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(once);
-    expect(once).toBe(`${PROFILE_START}\npadded\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\nentry\n`);
   });
 
-  it("leaves no blank line when the profile is cleared", async () => {
+  it("refuses a write that would push the composed file over the cap", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
-    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}\nold\n${PROFILE_END}\nentry\n`, "utf8");
+    await writeFile(userMemoryPath(dataDir), `${PROFILE_START}\nold\n${PROFILE_END}\n`, "utf8");
 
-    await writeUserProfile(dataDir, "   ");
-
-    // One newline, not two: the body is empty, so there is nothing between the
-    // markers to separate, and an extra blank line would read as a stray edit
-    // to anyone looking at the file.
-    expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(`${PROFILE_START}\n${PROFILE_END}\nentry\n`);
+    // The cap is checked against what is written, not against one field: the
+    // skeleton is ~120 characters on its own, and a single long `moreAbout` is
+    // what crosses the budget.
+    await expect(
+      writeUserProfile(dataDir, {
+        nickname: "",
+        occupation: "",
+        moreAbout: "x".repeat(USER_PROFILE_MAX_CHARS + 1),
+      }),
+    ).rejects.toMatchObject({ code: "USER_PROFILE_TOO_LARGE" });
   });
 
-  it("appends a region to a file that has none, keeping the existing bytes", async () => {
-    const dataDir = await tempDataDir();
-    await mkdir(join(dataDir, "memory"), { recursive: true });
-    await writeFile(userMemoryPath(dataDir), "<!-- mem-append-reason: kept -->\nentry\n", "utf8");
-
-    await writeUserProfile(dataDir, "hello");
-
-    const after = await readFile(userMemoryPath(dataDir), "utf8");
-    expect(after).toContain("<!-- mem-append-reason: kept -->");
-    expect(after).toContain(PROFILE_START);
-    expect((await readUserProfile(dataDir)).content).toBe("hello");
-  });
-
-  it("clears the region without deleting the file the collector appends to", async () => {
+  it("clears the fields without deleting the file the collector appends to", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
     await writeFile(
       userMemoryPath(dataDir),
-      `${PROFILE_START}\nprofile\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\n`,
+      `${PROFILE_START}\nNickname: izzy\n${PROFILE_END}\n<!-- mem-append-reason: kept -->\n`,
       "utf8",
     );
 
-    const view = await writeUserProfile(dataDir, "   ");
+    const view = await writeUserProfile(dataDir, { nickname: "", occupation: "", moreAbout: "" });
 
-    expect(view.content).toBe("");
+    expect(view).toMatchObject({ nickname: "", occupation: "", moreAbout: "" });
     // Blanking the profile must not remove the file: the entries in it were
     // written by the memory collector, not by the user, and deleting them
     // would lose memory the runtime gathered.
@@ -289,44 +422,18 @@ describe("writeUserProfile", () => {
     expect(after).toContain(PROFILE_END);
   });
 
-  it("creates nothing when asked to clear a file that has no region", async () => {
-    const dataDir = await tempDataDir();
-
-    await writeUserProfile(dataDir, "");
-
-    await expect(readFile(userMemoryPath(dataDir), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
-  });
-
   it("refuses to write a half-marked file rather than duplicating the region", async () => {
     const dataDir = await tempDataDir();
     await mkdir(join(dataDir, "memory"), { recursive: true });
     const damaged = `${PROFILE_START}\nhalf a region\n`;
     await writeFile(userMemoryPath(dataDir), damaged, "utf8");
 
-    await expect(writeUserProfile(dataDir, "new profile")).rejects.toMatchObject({
-      code: "USER_PROFILE_MALFORMED",
-    });
-    // Unchanged, not repaired: a repair here would be a guess about where the
-    // region ends, and the wrong guess drops whatever sits after it.
+    await expect(
+      writeUserProfile(dataDir, { nickname: "izzy", occupation: "", moreAbout: "" }),
+    ).rejects.toMatchObject({ code: "USER_PROFILE_MALFORMED" });
+    // And the file is left exactly as it was: a refused write must not be a
+    // partial write that dropped one marker.
     expect(await readFile(userMemoryPath(dataDir), "utf8")).toBe(damaged);
-  });
-
-  it("round-trips content the user would actually type", async () => {
-    const dataDir = await tempDataDir();
-    const profile = "Nickname: izzy\n\n## More about you\n\n- 开发走 dev-izzy\n- 不擅自 push";
-
-    await writeUserProfile(dataDir, profile);
-
-    expect((await readUserProfile(dataDir)).content).toBe(profile);
-  });
-
-  it("surfaces a stable error code rather than the raw filesystem error", async () => {
-    const dataDir = await tempDataDir();
-    // A directory where the file should be: readFile reports EISDIR, and the
-    // panel needs a code it can branch on rather than a platform string.
-    await mkdir(userMemoryPath(dataDir), { recursive: true });
-
-    await expect(readUserProfile(dataDir)).rejects.toBeInstanceOf(WebuiProfileFileError);
   });
 });
 
@@ -342,18 +449,28 @@ describe("user profile and memory settings operations", () => {
     expect(getMemorySettingsOperation.validate("x")).toMatchObject({ ok: false });
   });
 
-  it("requires a string content on the profile write", () => {
-    expect(setUserProfileOperation.validate({ content: "x" })).toEqual({
+  it("requires all three profile fields, as strings", () => {
+    expect(
+      setUserProfileOperation.validate({ nickname: "izzy", occupation: "", moreAbout: "" }),
+    ).toEqual({
       ok: true,
-      body: { content: "x" },
+      body: { nickname: "izzy", occupation: "", moreAbout: "" },
     });
-    // An absent content must not read as "clear the profile": the user never
-    // opened the editor, and a malformed frame is not consent to delete.
+    // An absent field must not read as "blank that one": the user never opened
+    // it, and a malformed frame is not consent to erase a value.
+    for (const missing of ["nickname", "occupation", "moreAbout"] as const) {
+      expect(setUserProfileOperation.validate({ nickname: "", occupation: "", moreAbout: "", [missing]: undefined })).toMatchObject({
+        ok: false,
+        code: WebuiErrorCode.invalidBody,
+      });
+    }
     expect(setUserProfileOperation.validate({})).toMatchObject({
       ok: false,
       code: WebuiErrorCode.invalidBody,
     });
-    expect(setUserProfileOperation.validate({ content: 1 })).toMatchObject({ ok: false });
+    expect(
+      setUserProfileOperation.validate({ nickname: 1, occupation: "", moreAbout: "" }),
+    ).toMatchObject({ ok: false });
   });
 
   it("accepts either switch alone and rejects anything else", () => {

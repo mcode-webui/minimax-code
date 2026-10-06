@@ -6,9 +6,9 @@ import { GET_USER_PROFILE_OPERATION_NAME, SET_USER_PROFILE_OPERATION_NAME } from
  * The `关于你` region of `user.md`.
  *
  * No body: the server owns the file path and the marker pair, and the client
- * has no business choosing either. What it may change is the text between the
- * markers, and nothing else — a save that dropped the runtime's appended
- * entries would delete memory the collector wrote.
+ * has no business choosing either. What it may change is the three fields
+ * between the markers, and nothing else — a save that dropped the runtime's
+ * appended entries would delete memory the collector wrote.
  */
 export const getUserProfileOperation: WebuiOperation<
   undefined,
@@ -27,7 +27,7 @@ export const getUserProfileOperation: WebuiOperation<
 };
 
 export const setUserProfileOperation: WebuiOperation<
-  { readonly content: string },
+  { readonly nickname: string; readonly occupation: string; readonly moreAbout: string },
   unknown
 > = {
   name: SET_USER_PROFILE_OPERATION_NAME,
@@ -38,16 +38,25 @@ export const setUserProfileOperation: WebuiOperation<
         code: WebuiErrorCode.invalidBody,
         message: "setUserProfile body must be an object",
       };
-    const content = (body as Record<string, unknown>).content;
-    // Empty is legal and means "clear the profile". A missing or non-string
-    // content must never reach the writer: it would clear a region the user
-    // never opened.
-    if (typeof content !== "string")
-      return {
-        ok: false,
-        code: WebuiErrorCode.invalidBody,
-        message: "setUserProfile requires a string content",
-      };
-    return { ok: true, body: { content } };
+    const record = body as Record<string, unknown>;
+    // Empty is legal for every field and means "this one is blank". A missing
+    // or non-string field must never reach the writer: defaulting one to ""
+    // would silently erase a value the user never touched.
+    for (const field of ["nickname", "occupation", "moreAbout"] as const) {
+      if (typeof record[field] !== "string")
+        return {
+          ok: false,
+          code: WebuiErrorCode.invalidBody,
+          message: `setUserProfile requires a string ${field}`,
+        };
+    }
+    return {
+      ok: true,
+      body: {
+        nickname: record.nickname as string,
+        occupation: record.occupation as string,
+        moreAbout: record.moreAbout as string,
+      },
+    };
   },
 };

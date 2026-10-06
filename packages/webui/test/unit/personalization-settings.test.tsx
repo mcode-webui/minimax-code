@@ -262,6 +262,7 @@ describe("PersonalizationSettings markup", () => {
         getAgentMemory={() => Promise.resolve({
           content: "lesson",
           exists: true,
+          agentName: "mavis",
           path: "/tmp/MEMORY.md",
           sizeBytes: 123_240,
           updatedAt: "2026-10-06T04:48:48.000Z",
@@ -269,6 +270,7 @@ describe("PersonalizationSettings markup", () => {
         setAgentMemory={() => Promise.resolve({
           content: "",
           exists: false,
+          agentName: "mavis",
           path: "/tmp/MEMORY.md",
           sizeBytes: 0,
         })}
@@ -294,6 +296,7 @@ describe("PersonalizationSettings markup", () => {
           return Promise.resolve({
             content: "",
             exists: false,
+          agentName: "mavis",
             path: "/tmp/MEMORY.md",
             sizeBytes: 0,
           });
@@ -301,6 +304,7 @@ describe("PersonalizationSettings markup", () => {
         setAgentMemory={() => Promise.resolve({
           content: "",
           exists: false,
+          agentName: "mavis",
           path: "/tmp/MEMORY.md",
           sizeBytes: 0,
         })}
@@ -566,7 +570,9 @@ describe("关于你 section markup", () => {
     const markup = renderToStaticMarkup(
       <PersonalizationSettings
         getUserProfile={() => Promise.resolve({
-          content: "",
+          nickname: "",
+          occupation: "",
+          moreAbout: "",
           exists: false,
           malformed: true,
           path: "/tmp/memory/user.md",
@@ -574,7 +580,9 @@ describe("关于你 section markup", () => {
           maxChars: 10 * 1024,
         })}
         setUserProfile={() => Promise.resolve({
-          content: "",
+          nickname: "",
+          occupation: "",
+          moreAbout: "",
           exists: false,
           malformed: true,
           path: "/tmp/memory/user.md",

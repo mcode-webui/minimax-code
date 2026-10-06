@@ -473,20 +473,16 @@
   .webui-memory-confirm-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
   .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
-  /* 关于你 is three fields, not one blob: the desktop's region is a `Nickname: `
-     line, an `Occupation: ` line, and free text under a `## More about you`
-     heading, so the two short values get single-line inputs and only the
-     free-text field gets the tall editor. Laying them out in one column with
-     the labels above the controls keeps the three stacked the way the desktop
-     stacks them, and `is-stacked` is what reuses the editor's own box for the
-     last one. */
-  .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_12); }
-  .webui-user-profile-field { display: flex; align-items: center; gap: var(--spacing_12); }
-  .webui-user-profile-field.is-stacked { align-items: stretch; flex-direction: column; gap: var(--spacing_8); }
-  .webui-user-profile-field > span { flex: none; color: var(--text_default_secondary); font-size: var(--size_12); line-height: var(--line_height_20); }
-  .webui-user-profile-field > input { flex: 1; min-width: 0; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_22); }
-  .webui-user-profile-field > input:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
-  .webui-user-profile-field > input:disabled { cursor: default; opacity: .72; }
+  /* 关于你 is three bare controls, not one blob: the desktop's region is a
+     `Nickname: ` line, an `Occupation: ` line, and free text under a
+     `## More about you` heading, so the two short values get single-line inputs
+     and only the free-text field gets the tall editor. No visible labels — the
+     desktop draws them bare, and a label column dragged the fields left of the
+     card they belong to. The names live on `aria-label` instead. */
+  .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_8); }
+  .webui-user-profile-fields > input { width: 100%; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_22); }
+  .webui-user-profile-fields > input:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  .webui-user-profile-fields > input:disabled { cursor: default; opacity: .72; }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the
@@ -545,6 +541,25 @@
   .webui-mavis-button-danger { background: var(--bg_interaction_danger_primary_default); color: var(--text_label_danger_primary_default); }
   .webui-mavis-button-danger:hover:not(:disabled) { background: var(--bg_interaction_danger_primary_hover); }
   .webui-mavis-button:disabled { cursor: default; opacity: .6; }
+  /* The section save button, measured off the desktop.
+   *
+   * `.webui-mavis-button:disabled` fades the whole control with `opacity`,
+   * which washes the fill out along with the label. The desktop's disabled
+   * 保存 keeps the identical `#f3f3f1` fill and dims only the text — the two
+   * states differ in the label's colour and in nothing else, so the button
+   * still reads as a button you cannot press rather than as a pale ghost.
+   *
+   * `#868686` is the measured disabled label. The shared `--gray_400` is
+   * `#949494`, one step lighter, and the value is restated here rather than
+   * bound to a token that a future palette step would move.
+   *
+   * Scoped to this button on purpose: the opacity fade stays correct for the
+   * dialog footers, where a faded fill *is* what the desktop draws. */
+  .webui-section-save-button:disabled { background: var(--bg_interaction_secondary_default); color: #868686; opacity: 1; }
+  /* The live state's hover, also measured: the fill deepens one step while the
+     label goes darker. No hover on the disabled state — a control that cannot
+     act must not advertise that it can. */
+  .webui-section-save-button:not(:disabled):hover { background: var(--bg_interaction_secondary_hover); color: var(--text_default_primary); }
   .webui-segmented { gap: 0; background: var(--gray_75); }
   .webui-segmented button { height: 28px; border: 0; border-radius: 6px; background: transparent; padding: 0 var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-segmented button.is-selected { background: #fff; }

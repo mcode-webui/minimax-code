@@ -155,6 +155,30 @@ beforeAll(() => {
   shellRules = parseRules(shellCss);
 });
 
+describe("W0 · the section save button's three states", () => {
+  it("dims the label without fading the fill", () => {
+    // `.webui-mavis-button:disabled` fades the whole control with `opacity`,
+    // washing the fill out along with the text. The desktop's disabled 保存
+    // measures #f3f3f1 in both states and differs only in the label colour:
+    // #202020 when live, #868686 when not.
+    const disabled = winning(".webui-section-save-button:disabled").body;
+    // `opacity: 1` is the whole point: without it the inherited `.6` wins.
+    expect(declaration(disabled, "opacity")).toBe("1");
+    expect(declaration(disabled, "background")).toBe(
+      "var(--bg_interaction_secondary_default)",
+    );
+    expect(declaration(disabled, "color")).toBe("#868686");
+
+    // The live state's hover deepens the fill. There is deliberately no hover
+    // on the disabled state — a control that cannot act must not look like one
+    // that can.
+    const hover = winning(".webui-section-save-button:not(:disabled):hover").body;
+    expect(declaration(hover, "background")).toBe(
+      "var(--bg_interaction_secondary_hover)",
+    );
+  });
+});
+
 describe("W0 · the memory manager's header controls", () => {
   it("draws ⋯ as the desktop's filled 26px tile, 34px from ×", () => {
     // Measured off the desktop dialog: the ⋯ tile is exactly 26×26 and already

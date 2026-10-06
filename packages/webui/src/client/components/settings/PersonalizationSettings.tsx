@@ -67,6 +67,39 @@ function pickProfileFields(view: WebuiUserProfileView): WebuiUserProfileFields {
   };
 }
 
+/** Field-by-field, so the dirty check is not a string-concatenation trap. */
+function fieldsEqual(
+  left: WebuiUserProfileFields,
+  right: WebuiUserProfileFields,
+): boolean {
+  return (
+    left.nickname === right.nickname &&
+    left.occupation === right.occupation &&
+    left.moreAbout === right.moreAbout
+  );
+}
+
+/**
+ * The save button's three states, as one predicate.
+ *
+ * Exported so the transition can be tested directly: `renderToStaticMarkup`
+ * paints one frame and never resolves the read, so every assertion made through
+ * it sees the pre-load state — where the button is disabled for an unrelated
+ * reason and would stay green with this check deleted.
+ */
+export function isProfileSaveable(
+  draft: WebuiUserProfileFields | undefined,
+  baseline: WebuiUserProfileFields | undefined,
+  options: { readonly malformed: boolean; readonly overLimit: boolean; readonly canWrite: boolean },
+): boolean {
+  if (draft === undefined || !options.canWrite) return false;
+  if (options.malformed || options.overLimit) return false;
+  // No baseline yet means the read has not landed, which is the same "there is
+  // nothing to save" state as an untouched form.
+  if (baseline === undefined) return false;
+  return !fieldsEqual(draft, baseline);
+}
+
 /**
  * The three section bubbles, copied from the desktop word for word.
  *
@@ -338,7 +371,7 @@ function GlobalInstructionsSection({
         <button
           type="button"
           data-testid="global-instructions-save"
-          className="webui-mavis-button webui-mavis-button-gray"
+          className="webui-mavis-button webui-mavis-button-gray webui-section-save-button"
           disabled={!dirty || saving || overLimit || !setGlobalInstructions}
           onClick={() => void save()}
         >
@@ -422,6 +455,7 @@ export function UserProfileSection({
   setUserProfile,
 }: UserProfileSectionProps): ReactElement {
   const [draft, setDraft] = useState<WebuiUserProfileFields>();
+  const [baseline, setBaseline] = useState<WebuiUserProfileFields>();
   const [maxChars, setMaxChars] = useState(10 * 1024);
   const [malformed, setMalformed] = useState(false);
   const [filePath, setFilePath] = useState("");
@@ -435,7 +469,9 @@ export function UserProfileSection({
     void getUserProfile()
       .then((value) => {
         if (cancelled || !value) return;
-        setDraft(pickProfileFields(value));
+        const fields = pickProfileFields(value);
+        setDraft(fields);
+        setBaseline(fields);
         setMaxChars(value.maxChars);
         setMalformed(value.malformed);
         setFilePath(value.path);
@@ -457,8 +493,16 @@ export function UserProfileSection({
     (draft?.occupation.length ?? 0) +
     (draft?.moreAbout.length ?? 0);
   const overLimit = length > maxChars;
-  const saveable =
-    draft !== undefined && !malformed && Boolean(setUserProfile) && !overLimit;
+  // Three states, matching the desktop: disabled while the three fields still
+  // match what the server returned, live once one of them differs, and live
+  // again after a save because the returned view *is* the new baseline. Without
+  // the dirty check the button is clickable on open, and a save that rewrites
+  // the file byte-for-byte is a write the user never asked for.
+  const saveable = isProfileSaveable(draft, baseline, {
+    malformed,
+    overLimit,
+    canWrite: Boolean(setUserProfile),
+  });
 
   const update = useCallback(
     (field: keyof WebuiUserProfileFields, value: string) => {
@@ -475,7 +519,12 @@ export function UserProfileSection({
     try {
       const next = await setUserProfile(draft);
       if (next) {
-        setDraft(pickProfileFields(next));
+        // The server's answer is the new baseline, including whatever it
+        // normalised: re-reading it is what makes the button go quiet again
+        // after a save instead of staying live on a file that already matches.
+        const fields = pickProfileFields(next);
+        setDraft(fields);
+        setBaseline(fields);
         setMaxChars(next.maxChars);
         setMalformed(next.malformed);
         setFilePath(next.path);
@@ -500,7 +549,7 @@ export function UserProfileSection({
         <button
           type="button"
           data-testid="user-profile-save"
-          className="webui-mavis-button webui-mavis-button-gray"
+          className="webui-mavis-button webui-mavis-button-gray webui-section-save-button"
           disabled={!saveable || saving}
           onClick={() => void save()}
         >
@@ -509,38 +558,37 @@ export function UserProfileSection({
       </SectionHeader>
       <div className="webui-generic-card">
         <div className="webui-user-profile-fields">
-          <label className="webui-user-profile-field">
-            <span>昵称</span>
-            <input
-              type="text"
-              data-testid="user-profile-nickname"
-              value={draft?.nickname ?? ""}
-              disabled={disabled}
-              onChange={(event) => update("nickname", event.target.value)}
-            />
-          </label>
-          <label className="webui-user-profile-field">
-            <span>职业</span>
-            <input
-              type="text"
-              data-testid="user-profile-occupation"
-              value={draft?.occupation ?? ""}
-              disabled={disabled}
-              onChange={(event) => update("occupation", event.target.value)}
-            />
-          </label>
-          <label className="webui-user-profile-field is-stacked">
-            <span>更多关于你</span>
-            <textarea
-              data-testid="user-profile-more-about"
-              className="webui-personalization-textarea"
-              value={draft?.moreAbout ?? ""}
-              spellCheck={false}
-              placeholder={PROFILE_PLACEHOLDER}
-              disabled={disabled}
-              onChange={(event) => update("moreAbout", event.target.value)}
-            />
-          </label>
+          {/* No visible labels. The desktop draws these three controls bare, and
+              a label column next to each one pushed the fields left of the card
+              it was supposed to sit in. The names survive on `aria-label`, so
+              the form is still addressable by a screen reader — the desktop
+              gets the same effect from its placeholders. */}
+          <input
+            type="text"
+            aria-label="昵称"
+            data-testid="user-profile-nickname"
+            value={draft?.nickname ?? ""}
+            disabled={disabled}
+            onChange={(event) => update("nickname", event.target.value)}
+          />
+          <input
+            type="text"
+            aria-label="职业"
+            data-testid="user-profile-occupation"
+            value={draft?.occupation ?? ""}
+            disabled={disabled}
+            onChange={(event) => update("occupation", event.target.value)}
+          />
+          <textarea
+            aria-label="更多关于你"
+            data-testid="user-profile-more-about"
+            className="webui-personalization-textarea"
+            value={draft?.moreAbout ?? ""}
+            spellCheck={false}
+            placeholder={PROFILE_PLACEHOLDER}
+            disabled={disabled}
+            onChange={(event) => update("moreAbout", event.target.value)}
+          />
         </div>
         <div className="webui-personalization-meta">
           <span data-testid="user-profile-path">{filePath}</span>

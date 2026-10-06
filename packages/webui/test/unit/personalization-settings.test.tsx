@@ -30,6 +30,7 @@ import {
   PERSONALIZATION_SECTION_HINTS,
   PersonalizationSettings,
   formatMemoryTimestamp,
+  isProfileSaveable,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
 
@@ -335,11 +336,65 @@ describe("关于你 section markup", () => {
     expect(markup).toContain('data-testid="user-profile-nickname"');
     expect(markup).toContain('data-testid="user-profile-occupation"');
     expect(markup).toContain('data-testid="user-profile-more-about"');
-    expect(markup).toContain("昵称");
-    expect(markup).toContain("职业");
-    expect(markup).toContain("更多关于你");
     // The old single-textarea editor is gone with the model it belonged to.
     expect(markup).not.toContain("user-profile-textarea");
+  });
+
+  it("labels the three controls only for assistive tech", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    // The desktop draws the three fields bare. A visible label column pushed
+    // them left of the card they sit in, so the names moved to `aria-label`
+    // where they still name the control without occupying a column.
+    expect(markup).toContain('aria-label="昵称"');
+    expect(markup).toContain('aria-label="职业"');
+    expect(markup).toContain('aria-label="更多关于你"');
+    expect(markup).not.toContain("<span>昵称</span>");
+    expect(markup).not.toContain("<span>职业</span>");
+    // No per-field wrapper either: the controls are direct children of the
+    // column, which is what lets them span the card's full width.
+    expect(markup).toContain('class="webui-user-profile-fields"');
+    expect(markup).not.toContain("<label");
+  });
+
+  it("keeps the section save disabled until a field actually changes", () => {
+    // The desktop has three states: disabled while the fields still match what
+    // the server returned, live once one differs, and quiet again after a save
+    // because the server's own answer becomes the new baseline.
+    //
+    // `renderToStaticMarkup` cannot see this: it paints one frame and never
+    // resolves the read, so the button is disabled for the pre-load reason
+    // whatever this logic says. Hence the predicate below is tested directly.
+    const base = { nickname: "izzy", occupation: "engineer", moreAbout: "note" };
+    const ok = { malformed: false, overLimit: false, canWrite: true };
+
+    expect(isProfileSaveable(base, base, ok)).toBe(false);
+    expect(isProfileSaveable({ ...base, nickname: "izzy2" }, base, ok)).toBe(true);
+    expect(isProfileSaveable({ ...base, occupation: "designer" }, base, ok)).toBe(true);
+    expect(isProfileSaveable({ ...base, moreAbout: "other" }, base, ok)).toBe(true);
+    // Clearing a field is a change like any other.
+    expect(isProfileSaveable({ ...base, moreAbout: "" }, base, ok)).toBe(true);
+  });
+
+  it("keeps the save disabled when the form is not the obstacle", () => {
+    const base = { nickname: "a", occupation: "b", moreAbout: "c" };
+    const changed = { ...base, nickname: "changed" };
+
+    // A save already in flight, a half-marked file, an over-cap draft, and a
+    // host that cannot write all keep the button dead regardless of the dirty
+    // check.
+    expect(isProfileSaveable(changed, base, { malformed: true, overLimit: false, canWrite: true })).toBe(false);
+    expect(isProfileSaveable(changed, base, { malformed: false, overLimit: true, canWrite: true })).toBe(false);
+    expect(isProfileSaveable(changed, base, { malformed: false, overLimit: false, canWrite: false })).toBe(false);
+    // No read has landed yet.
+    expect(isProfileSaveable(changed, undefined, { malformed: false, overLimit: false, canWrite: true })).toBe(false);
+  });
+
+  it("renders the save button with the state class the CSS hangs off", () => {
+    const markup = renderToStaticMarkup(<PersonalizationSettings />);
+
+    expect(markup).toContain("webui-section-save-button");
+    expect(markup).toContain('data-testid="user-profile-save"');
   });
 
   it("shows an untouched region as three empty fields, not as its own text", () => {

@@ -156,32 +156,52 @@ beforeAll(() => {
 });
 
 describe("W0 · the section save button's three states", () => {
-  it("dims the label without fading the fill", () => {
-    // `.webui-mavis-button:disabled` fades the whole control with `opacity`,
-    // washing the fill out along with the text. The desktop's disabled 保存
-    // measures #f3f3f1 in both states and differs only in the label colour:
-    // #202020 when live, #868686 when not.
-    const disabled = winning(".webui-section-save-button:disabled").body;
-    // `opacity: 1` is the whole point: without it the inherited `.6` wins.
-    expect(declaration(disabled, "opacity")).toBe("1");
-    expect(declaration(disabled, "background")).toBe(
-      "var(--bg_interaction_secondary_default)",
+  it("is the desktop's black primary, 76x30, fading to half on disable", () => {
+    // Both personalization headers pass `variant: "black"` in the desktop
+    // bundle, which is a filled primary — not the light `gray` fill this
+    // button used to draw. `black` has no disabled override of its own, so the
+    // generic rule is the whole disabled state: the fill and the label stay put
+    // and the control goes half-transparent.
+    const black = winning(".webui-mavis-button-black").body;
+    expect(declaration(black, "background")).toBe(
+      "var(--bg_interaction_primary_default)",
     );
-    expect(declaration(disabled, "color")).toBe("#868686");
+    expect(declaration(black, "color")).toBe(
+      "var(--text_label_primary_default)",
+    );
 
-    // The shared `.webui-mavis-button:disabled` pins `cursor: default` and wins
-    // the cascade unless this button restates it. The desktop carries the cursor
-    // on `.mavis-button.disabled` — `opacity:.5;cursor:not-allowed` — so a
-    // disabled 保存 refuses the click instead of silently ignoring it.
+    const geometry = winning(".webui-section-save-button").body;
+    expect(declaration(geometry, "width")).toBe("76px");
+    expect(declaration(geometry, "min-width")).toBe("76px");
+    expect(declaration(geometry, "height")).toBe("30px");
+    expect(declaration(geometry, "padding")).toBe("0");
+    expect(declaration(geometry, "text-align")).toBe("center");
+    expect(declaration(geometry, "line-height")).toBe("var(--line_height_20)");
+
+    // `opacity: .5` is the desktop's `.mavis-button.disabled` value, not the
+    // shared `.6`. The shared rule also pins `cursor: default` and wins the
+    // cascade unless this button restates it, so the cursor is asserted too.
+    const disabled = winning(".webui-section-save-button:disabled").body;
+    expect(declaration(disabled, "opacity")).toBe(".5");
     expect(declaration(disabled, "cursor")).toBe("not-allowed");
+    // A black variant has no disabled fill to override, so none is declared
+    // here. One appearing would be a leftover from the grey version.
+    expect(declaration(disabled, "background")).toBeUndefined();
+    expect(declaration(disabled, "color")).toBeUndefined();
 
-    // The live state's hover deepens the fill. There is deliberately no hover
-    // on the disabled state — a control that cannot act must not look like one
-    // that can.
+    // The live state's hover lifts the fill to 80% black. There is deliberately
+    // no hover on the disabled state — a control that cannot act must not look
+    // like one that can.
     const hover = winning(".webui-section-save-button:not(:disabled):hover").body;
     expect(declaration(hover, "background")).toBe(
-      "var(--bg_interaction_secondary_hover)",
+      "var(--bg_interaction_primary_hover)",
     );
+    expect(declaration(hover, "color")).toBeUndefined();
+
+    // The dark theme fades the whole control instead of restating the fill.
+    const dark = winning(".dark .webui-section-save-button:not(:disabled):hover")
+      .body;
+    expect(declaration(dark, "opacity")).toBe(".8");
   });
 });
 

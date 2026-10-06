@@ -371,7 +371,7 @@ function GlobalInstructionsSection({
         <button
           type="button"
           data-testid="global-instructions-save"
-          className="webui-mavis-button webui-mavis-button-gray webui-section-save-button"
+          className="webui-mavis-button webui-mavis-button-black webui-section-save-button"
           disabled={!dirty || saving || overLimit || !setGlobalInstructions}
           onClick={() => void save()}
         >
@@ -551,7 +551,7 @@ export function UserProfileSection({
         <button
           type="button"
           data-testid="user-profile-save"
-          className="webui-mavis-button webui-mavis-button-gray webui-section-save-button"
+          className="webui-mavis-button webui-mavis-button-black webui-section-save-button"
           disabled={!saveable || saving}
           onClick={() => void save()}
         >

@@ -538,35 +538,39 @@
   .webui-ant-select select:disabled { cursor: default; opacity: .6; }
   .webui-mavis-button { min-width: 80px; height: 36px; border: 0; border-radius: var(--radius_8); padding: 0 var(--spacing_12); font-size: var(--size_14); font-weight: var(--weight_medium); }
   .webui-mavis-button-gray { background: var(--bg_interaction_secondary_default); color: var(--text_default_primary); }
-  .webui-mavis-button-black { background: var(--gray_1000); color: #fff; }
+  .webui-mavis-button-black { background: var(--bg_interaction_primary_default); color: var(--text_label_primary_default); }
   .webui-mavis-button-danger { background: var(--bg_interaction_danger_primary_default); color: var(--text_label_danger_primary_default); }
   .webui-mavis-button-danger:hover:not(:disabled) { background: var(--bg_interaction_danger_primary_hover); }
-  .webui-mavis-button:disabled { cursor: default; opacity: .6; }
-  /* The section save button, measured off the desktop.
+  /* The section save button, transcribed from the desktop rather than measured
+   * off a capture.
    *
-   * `.webui-mavis-button:disabled` fades the whole control with `opacity`,
-   * which washes the fill out along with the label. The desktop's disabled
-   * 保存 keeps the identical `#f3f3f1` fill and dims only the text — the two
-   * states differ in the label's colour and in nothing else, so the button
-   * still reads as a button you cannot press rather than as a pale ghost.
+   * Both personalization sections render the same control -- the 关于你 header's
+   * `action` and 自定义指令's save are identical in the bundle down to the
+   * geometry overrides -- and both pass `variant: "black"`. That variant is a
+   * filled primary: `.mavis-button.black` is `bg_interaction_primary_default`
+   * with `text_label_primary_default`, and its hover is
+   * `bg_interaction_primary_hover` (80% black). We had been drawing them as
+   * `gray`, which is a light fill -- that is the 记忆摘要「管理」button's
+   * variant, not theirs.
    *
-   * `#868686` is the measured disabled label. The shared `--gray_400` is
-   * `#949494`, one step lighter, and the value is restated here rather than
-   * bound to a token that a future palette step would move.
+   * The disabled state needed no colour of its own, and there is no
+   * `.mavis-button.black.disabled` in the bundle to copy: the generic
+   * `.mavis-button.disabled{opacity:.5;cursor:not-allowed}` is the whole rule.
+   * A disabled 保存 therefore keeps the black fill and the white label and goes
+   * half-transparent. Only the `gray` variant overrides its own disabled fill,
+   * which is why the earlier grey version could keep a fill here at all.
    *
-   * Scoped to this button on purpose: the opacity fade stays correct for the
-   * dialog footers, where a faded fill *is* what the desktop draws.
+   * The geometry comes from the same call site: `!h-[30px] !w-[76px]
+   * !min-w-[76px] !px-0 !py-0 !text-center !font-medium !leading-5`, against a
+   * shared base of 36px tall and 80px wide.
    *
-   * `cursor` is restated here because the shared `.webui-mavis-button:disabled`
-   * rule wins the cascade otherwise and pins it to `default`. The desktop
-   * carries it on `.mavis-button.disabled` — `opacity:.5;cursor:not-allowed`.
-   * Restating beats deleting the shared rule, since `default` is the right
-   * cursor for a dialog button that closes instead of saving. */
-  .webui-section-save-button:disabled { background: var(--bg_interaction_secondary_default); color: #868686; opacity: 1; cursor: not-allowed; }
-  /* The live state's hover, also measured: the fill deepens one step while the
-     label goes darker. No hover on the disabled state — a control that cannot
-     act must not advertise that it can. */
-  .webui-section-save-button:not(:disabled):hover { background: var(--bg_interaction_secondary_hover); color: var(--text_default_primary); }
+   * `cursor` is restated rather than taken from `.webui-mavis-button:disabled`,
+   * which pins `default` and wins the cascade on the properties it declares.
+   * `default` stays right for a dialog button that closes rather than saves. */
+  .webui-section-save-button { width: 76px; min-width: 76px; height: 30px; padding: 0; text-align: center; line-height: var(--line_height_20); }
+  .webui-section-save-button:not(:disabled):hover { background: var(--bg_interaction_primary_hover); }
+  .webui-section-save-button:disabled { opacity: .5; cursor: not-allowed; }
+  .dark .webui-section-save-button:not(:disabled):hover { opacity: .8; }
   .webui-segmented { gap: 0; background: var(--gray_75); }
   .webui-segmented button { height: 28px; border: 0; border-radius: 6px; background: transparent; padding: 0 var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-segmented button.is-selected { background: #fff; }

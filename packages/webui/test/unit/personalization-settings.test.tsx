@@ -409,6 +409,11 @@ describe("关于你 section markup", () => {
 
     expect(markup).toContain("webui-section-save-button");
     expect(markup).toContain('data-testid="user-profile-save"');
+    // The variant class decides the whole look — filled primary vs light fill —
+    // so it is pinned here and not only in the stylesheet test. Both section
+    // headers pass `variant: "black"` in the desktop bundle.
+    expect(markup).toContain("webui-mavis-button-black");
+    expect(markup).not.toContain("webui-mavis-button-gray webui-section-save-button");
   });
 
   it("shows an untouched region as three empty fields, not as its own text", () => {

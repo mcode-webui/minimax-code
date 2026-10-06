@@ -28,11 +28,49 @@ import {
   MEMORY_DELETE_CONFIRM,
   MEMORY_HANDOFF_PROMPT,
   PERSONALIZATION_SECTION_HINTS,
+  MemoryManagerDialog,
   PersonalizationSettings,
   formatMemoryTimestamp,
   isProfileSaveable,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
+
+describe("记忆摘要 dialog markup", () => {
+  it("pairs a grey 取消 with a black 保存, as the desktop does", () => {
+    // The desktop's last row is `flex justify-between` with the timestamp on the
+    // left; the two buttons are `variant:"gray"` for 取消 and `variant:"black"`
+    // for 保存. Drawing both grey made the committing action the quieter of the
+    // two, which is the opposite of the intent.
+    const markup = renderToStaticMarkup(
+      <MemoryManagerDialog onClose={() => {}} />,
+    );
+
+    const footer = markup.slice(markup.indexOf("webui-memory-manager-footer"));
+    expect(footer).toContain('data-testid="agent-memory-save"');
+    expect(footer).toContain("webui-mavis-button-black");
+    // 取消 keeps the light fill it is given.
+    expect(footer).toContain("webui-mavis-button-gray");
+    expect(footer).not.toContain(
+      "webui-mavis-button-gray webui-mavis-button-gray",
+    );
+  });
+
+  it("keeps the timestamp in the footer row, below the editor", () => {
+    // The desktop's order is: editor, then one `justify-between` row holding the
+    // timestamp on the left and 取消/保存 on the right. The editor itself is not
+    // asserted here -- `draft` only exists after the first read, and
+    // `renderToStaticMarkup` runs no effects, so the count row never paints in
+    // this render. Its geometry is covered in `webui-w0-css-structure.test.ts`.
+    const markup = renderToStaticMarkup(
+      <MemoryManagerDialog onClose={() => {}} />,
+    );
+    expect(markup).toContain('class="webui-memory-manager-footer"');
+    expect(markup).toContain('data-testid="agent-memory-updated"');
+    expect(markup.indexOf("webui-memory-manager-footer")).toBeGreaterThan(
+      markup.indexOf('data-testid="agent-memory-manage'),
+    );
+  });
+});
 
 describe("「在会话中创建」 hand-off", () => {
   it("leaves the line the desktop's composer already has typed", () => {

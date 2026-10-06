@@ -1151,7 +1151,7 @@ export function MemoryManagerDialog({
             <button
               type="button"
               data-testid="agent-memory-save"
-              className="webui-mavis-button webui-mavis-button-gray"
+              className="webui-mavis-button webui-mavis-button-black"
               disabled={saving || loading || draft === undefined || !setAgentMemory}
               onClick={() => void save()}
             >

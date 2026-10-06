@@ -397,40 +397,54 @@
   .webui-memory-manager-mask { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
   .webui-memory-manager-surface { display: flex; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
   .webui-memory-manager-editor { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
-  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; }
+  /* The dialog's own editor is the *base* `.mavis-textarea`, not the
+     `mavis-personalization-editor` the two settings-page editors carry, so it
+     keeps a border where those two have none: `.mavis-textarea:hover` and
+     `:focus` restate only `border-color` to `--border_heavy`, which is dead
+     weight on a control whose border is `0`. `box-shadow` is cleared at every
+     state so the focus reads as a darker edge rather than a glow.
+     `!rounded-xl` on the call site is what overrides the base radius. */
+  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; border: 1px solid var(--border_default); border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8) 0; }
+  .webui-memory-manager-editor .webui-personalization-textarea:hover { border-color: var(--border_heavy); outline: none; box-shadow: none; }
+  .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--border_heavy); outline: none; box-shadow: none; }
   /* The character count is a full-width strip on its own line, not a number
      floating over the last row of text.
    *
    * Absolutely positioning it inside the editor put it exactly where the
-     desktop puts it horizontally — bottom-right, 15px off the border — but it
-     landed *on top of* the text with the textarea's own background showing
-     through, so the digits collided with whatever line happened to scroll
-     under them. The desktop draws the count as a band: full width, its own
-     background, sitting on the editor's bottom edge.
+     desktop puts it horizontally -- bottom-right -- but it landed *on top of*
+     the text with the textarea's own background showing through, so the digits
+     collided with whatever line happened to scroll under them.
    *
      Back in flow and stretched, which is what makes the background span the
      row. `space-between` with a single child parks it left, so the count is
-     pushed right with `margin-left: auto` instead. */
-  .webui-memory-manager-editor .webui-personalization-meta { width: 100%; margin-left: auto; background: var(--bg_interaction_secondary_default); }
+     pushed right with `margin-left: auto` instead.
+   *
+     The band takes the editor's own `--bg_grouped_tertiary` rather than a
+     second grey. The desktop puts the count inside the TextArea, so the count
+     and the text it counts always sit on one surface; an
+     `--bg_interaction_secondary_default` band next to a
+     `--bg_grouped_tertiary` editor drew two different greys meeting at the
+     editor's bottom edge, which read as a seam rather than as one control. */
+  .webui-memory-manager-editor .webui-personalization-meta { width: 100%; margin-left: auto; }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
-  .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
-  .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
-  /* The memory manager's header controls, measured off the desktop dialog in
-     its dark theme.
+  .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
+  .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }
+  /* The memory manager's header controls, transcribed from the desktop dialog
+     rather than measured off a capture.
    *
-   * Neither control carries a fill at rest. An earlier reading of the light
-     capture concluded the ⋯ tile was permanently filled at `#f1f1ef`, but that
-     capture had the pointer parked on it: the dark capture of the same dialog
-     shows both glyphs bare on the panel, and its two ink centres sit 24px
-     apart at the same height. The fill is hover-only, so it is written once,
-     on `:hover`, for both buttons — the `:first-child` rest rule that pinned
-     one of them is what made ⋯ read as permanently selected next to ×.
+     The bundle states all of this: `size-[26px]`, `rounded-lg`, `gap-2`, and a
+     rest fill of `bg-bg_interaction_tertiary_default` that the hover rule
+     replaces with `bg_interaction_tertiary_hover`. That token is
+     `--opacity_black_1_0` in the light theme, so the fill is declared rather
+     than left off -- it is transparent here and not transparent in a theme that
+     raises it, and the desktop's own rule is the thing to copy either way.
    *
-   * `gap: 4px` is what turns that measured 24px centre distance into geometry
-   * for 20px boxes with 8px glyphs inside them. 6px is the nearest step on the
-   * radius ramp. */
-  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_4); }
-  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 20px; height: 20px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+     An earlier pass took the box down to 20px on a 4px gap, from a dark capture
+     whose two ink centres measured 24px apart. That reading was wrong twice
+     over: the capture gave centres, not boxes, and a centre distance cannot pin
+     a box size without knowing the glyph inset. */
+  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
+  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 26px; height: 26px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); padding: 0; background: var(--bg_interaction_tertiary_default); color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
   .webui-memory-manager-header-actions .webui-settings-icon-button:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
   .webui-memory-manager-header-actions .webui-settings-icon-button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   /* Pull the controls out to the surface's own padding so their right edge
@@ -493,7 +507,7 @@
      keeps the drag handle, and the browser writes the dragged size back as
      an inline style, so the user's choice survives until they reload —
      `min-height` is the floor their drag cannot go below. */
-  .webui-personalization-textarea { width: 100%; height: 300px; min-height: 300px; resize: vertical; border: none; outline: none; background: transparent; padding: var(--spacing_12); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
+  .webui-personalization-textarea { width: 100%; height: 300px; min-height: 300px; resize: none; border: none; outline: none; background: var(--bg_grouped_tertiary); border-radius: var(--radius_16); padding: 10px var(--spacing_16); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
   .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }
   .webui-personalization-meta { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-personalization-meta span:first-child { min-width: 0; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }

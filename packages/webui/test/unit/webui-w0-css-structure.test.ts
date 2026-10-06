@@ -206,23 +206,29 @@ describe("W0 · the section save button's three states", () => {
 });
 
 describe("W0 · the memory manager's header controls", () => {
-  it("leaves both controls unfilled until hover, 24px apart", () => {
-    // Measured off the desktop dialog's *dark* capture: both glyphs sit bare on
-    // the panel with no tile at all, their ink centres 24px apart at the same
-    // height. The 26×26 `#f1f1ef` tile measured earlier came from the *light*
-    // capture, which had the pointer parked on ⋯ — that was a hover state read
-    // as a rest state, which is exactly why ⋯ rendered permanently selected
-    // next to a transparent ×.
+  it("sizes the controls off the bundle: 26px, 8px apart, tertiary fill", () => {
+    // Transcribed, not measured. The dialog's title row states all of it:
+    // `size-[26px]`, `rounded-lg`, `gap-2`, and a rest fill of
+    // `bg-bg_interaction_tertiary_default` that the hover rule replaces.
+    //
+    // That token is `--opacity_black_1_0` in the light theme, so the rest fill
+    // is declared rather than left off: it is transparent here, and it is not
+    // transparent in a theme that raises it. An earlier pass dropped the boxes
+    // to 20px on a 4px gap from a dark capture whose two ink centres measured
+    // 24px apart -- but a centre distance cannot pin a box size without knowing
+    // the glyph inset, and the bundle states the box outright.
     const actions = winning(".webui-memory-manager-header-actions").body;
-    expect(declaration(actions, "gap")).toBe("var(--spacing_4)");
+    expect(declaration(actions, "gap")).toBe("var(--spacing_8)");
 
     const button = winning(
       ".webui-memory-manager-header-actions .webui-settings-icon-button",
     ).body;
-    expect(declaration(button, "width")).toBe("20px");
-    expect(declaration(button, "height")).toBe("20px");
-    expect(declaration(button, "border-radius")).toBe("6px");
-    expect(declaration(button, "background")).toBe("transparent");
+    expect(declaration(button, "width")).toBe("26px");
+    expect(declaration(button, "height")).toBe("26px");
+    expect(declaration(button, "border-radius")).toBe("var(--radius_8)");
+    expect(declaration(button, "background")).toBe(
+      "var(--bg_interaction_tertiary_default)",
+    );
 
     const hover = winning(
       ".webui-memory-manager-header-actions .webui-settings-icon-button:hover",
@@ -231,10 +237,7 @@ describe("W0 · the memory manager's header controls", () => {
       "var(--bg_interaction_tertiary_hover)",
     );
 
-    // Asserted across every rest-state rule rather than against the one
-    // selector this bug arrived on: any non-hover fill on these controls reads
-    // as "selected", and `:first-child` is only the shape it happened to take.
-    // `tertiary_selected` is deliberately absent — in the light theme it is the
+    // `tertiary_selected` is deliberately absent -- in the light theme it is the
     // same `--opacity_black_1_4` as `tertiary_hover`, so a selected fill would
     // be indistinguishable from a hover.
     const restFills = shellRules
@@ -243,7 +246,7 @@ describe("W0 · the memory manager's header controls", () => {
       .filter((rule) => !/:hover|:focus-visible|:active/u.test(rule.selector))
       .map((rule) => declaration(rule.body, "background"))
       .filter((value) => value !== undefined && value !== "transparent");
-    expect(restFills).toEqual([]);
+    expect(restFills).toEqual(["var(--bg_interaction_tertiary_default)"]);
   });
 
   it("pulls the header out to the surface padding so × lines up with the editor", () => {
@@ -261,20 +264,20 @@ describe("W0 · the memory manager's header controls", () => {
     );
   });
 
-  it("draws the character count as a full-width band below the editor", () => {
-    // It used to be absolutely positioned in the editor's bottom-right corner,
-    // which matched the desktop horizontally but laid the digits *over* the last
-    // row of text with the textarea's own background showing through. The
-    // desktop draws a band: full width, its own background, its own line.
+  it("stretches the character count to a full row with no fill of its own", () => {
+    // The desktop does not paint the count. It widens antd's count suffix to
+    // `width:100%;justify-content:flex-end`, so the digits land on whatever
+    // surface the editor already has. Giving the row its own grey next to a
+    // `--bg_grouped_tertiary` editor drew two shades meeting at the bottom edge,
+    // which read as a seam rather than as one control -- so the fill is asserted
+    // *absent*, not merely unset.
     const count = winning(
       ".webui-memory-manager-editor .webui-personalization-meta",
     ).body;
     expect(declaration(count, "width")).toBe("100%");
-    expect(declaration(count, "background")).toBe(
-      "var(--bg_interaction_secondary_default)",
-    );
+    expect(declaration(count, "background")).toBeUndefined();
     // In flow it is the only child of a `space-between` row, which collapses to
-    // left alignment — hence `margin-left: auto` rather than a bare stretch.
+    // left alignment -- hence `margin-left: auto` rather than a bare stretch.
     expect(declaration(count, "margin-left")).toBe("auto");
 
     // The offsets only exist to pin an out-of-flow element; leaving them behind
@@ -282,6 +285,51 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(count, "position")).toBeUndefined();
     expect(declaration(count, "right")).toBeUndefined();
     expect(declaration(count, "bottom")).toBeUndefined();
+  });
+
+  it("keeps the dialog editor bordered while the settings-page editors are not", () => {
+    // Three editors, two looks, and the split is on which class the call site
+    // carries. The dialog uses the base `.mavis-textarea`, which keeps a border
+    // and takes `!rounded-xl` from the call site. 关于你 and 自定义指令 both add
+    // `mavis-personalization-editor`, which zeroes the border and fills with
+    // `--bg_grouped_tertiary` at 16px.
+    const dialog = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea",
+    ).body;
+    expect(declaration(dialog, "border")).toBe("1px solid var(--border_default)");
+    expect(declaration(dialog, "border-radius")).toBe("var(--radius_12)");
+    expect(declaration(dialog, "background")).toBe("transparent");
+
+    // Hover and focus restate only `border-color`; the focus must not add a glow
+    // on top of it.
+    const focus = winning(
+      ".webui-memory-manager-editor .webui-personalization-textarea:hover",
+    ).body;
+    expect(declaration(focus, "border-color")).toBe("var(--border_heavy)");
+    expect(declaration(focus, "box-shadow")).toBe("none");
+
+    // The shared rule is the `mavis-personalization-editor` half. `resize: none`
+    // is global on the desktop (`.mavis-textarea textarea{resize:none!important}`
+    // beats even the inline `resize:vertical` one call site passes), so no
+    // editor in this dialog can be dragged taller.
+    const shared = winning(".webui-personalization-textarea").body;
+    expect(declaration(shared, "resize")).toBe("none");
+    expect(declaration(shared, "border")).toBe("none");
+    expect(declaration(shared, "background")).toBe("var(--bg_grouped_tertiary)");
+    expect(declaration(shared, "border-radius")).toBe("var(--radius_16)");
+  });
+
+  it("separates the dialog's footer with space, not a rule", () => {
+    // The desktop's last row is `flex justify-between`: the timestamp on the
+    // left, 取消/保存 on the right, 20px from the editor above and 16px between
+    // the two buttons. There is no divider -- the gap is the divider.
+    const footer = winning(".webui-memory-manager-footer").body;
+    expect(declaration(footer, "gap")).toBe("var(--spacing_20)");
+    expect(declaration(footer, "border-top")).toBeUndefined();
+    expect(declaration(footer, "padding-top")).toBeUndefined();
+
+    const actions = winning(".webui-memory-manager-actions").body;
+    expect(declaration(actions, "gap")).toBe("var(--spacing_16)");
   });
 });
 

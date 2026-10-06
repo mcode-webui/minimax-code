@@ -441,8 +441,8 @@
   .webui-memory-manager-editor .webui-personalization-textarea:focus { border-color: var(--border_default); outline: 1px solid var(--blue_500); box-shadow: none; }
   /* The character count sits INSIDE the editor, bottom-right, 14px from each
      edge. Measured off the desktop dialog at 1:1: the digits land 14px left of
-     the border and 14px above it, and the editor's own border is 1px of
-     `--blue_500` while it holds focus.
+     the border and 14px above it, and the focus ring around the field reads as
+     1px of `--blue_500`.
    *
      Two earlier shapes were wrong. Absolutely positioned over the editor it
      floated transparently on the panel; as a full-width sibling row below the
@@ -451,9 +451,11 @@
      `width:100%` and right-aligns it *inside* the field, so the number and the
      text share one surface and one border.
    *
-     `bottom: 8px` against a 16px line box is what produces the measured 14px
-     gap to the glyphs, the same arithmetic the desktop's `padding: 8px 0` on
-     the suffix does. The editor reserves 28px of bottom padding for the row so
+     `padding: 0 14px` is the measured inset, and `align-items: center` against
+     a 16px line box in the 28px band is what leaves the same 14px to the
+     glyphs. An earlier `bottom: 8px` did the same arithmetic from the band
+     instead; the band is now flush with the editor's bottom edge, so that
+     offset is gone. The editor reserves 28px of bottom padding for the row so
      the last line of text cannot scroll under it -- the desktop does not reserve
      anything, and the count there overlaps whenever the text is long enough to
      scroll. */
@@ -471,8 +473,25 @@
      It spans the full width and paints the surface, because the reserved band
      has to read as the count's row rather than as a gap the text shows
      through. The 28px here is the same 28px the editor reserves as
-     `padding-bottom`, so the two must move together. */
-  .webui-memory-manager-count { position: absolute; right: 0; bottom: 0; left: 0; display: flex; height: 28px; align-items: center; justify-content: flex-end; padding: 0 14px; background: var(--bg_grouped_secondary); color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
+     `padding-bottom`, so the two must move together.
+
+     The bottom radii are the editor's own `--radius_12`, not a value invented
+     to look right. The band is painted after the textarea (it is positioned,
+     the textarea is not), so an opaque square band covers whatever the editor
+     drew underneath it — including the 12px corner curve and the 1px bottom
+     border under it. `.webui-memory-manager-editor` has no padding, no border
+     and the textarea carries no margin, so `right/bottom/left: 0` puts the
+     band's box exactly on the editor's border box: the same outer radius
+     concentric, and no 1px inset arithmetic is needed.
+   *
+     Not fixed: the band's bottom edge is flush with the editor's, so the 1px
+     bottom border is still covered along the full width. The desktop puts its
+     count in antd's `.ant-input-suffix`, which is a sibling of the textarea
+     inside the bordered box, so that border reads all the way around. Closing
+     this would mean insetting the band by 1px and using 11px corners, which
+     moves the already-measured 14px inset to 15px. Left alone pending a
+     pixel check against the desktop. */
+  .webui-memory-manager-count { position: absolute; right: 0; bottom: 0; left: 0; display: flex; height: 28px; align-items: center; justify-content: flex-end; padding: 0 14px; border-radius: 0 0 var(--radius_12) var(--radius_12); background: var(--bg_grouped_secondary); color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }

@@ -289,6 +289,16 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(count, "justify-content")).toBe("flex-end");
     expect(declaration(count, "padding")).toBe("0 14px");
     expect(declaration(count, "color")).toBe("var(--text_default_tertiary)");
+    // The band's bottom corners, paired with the editor's radius below. The band
+    // paints after the textarea -- it is positioned, the textarea is not -- so an
+    // opaque square band covered the editor's 12px corner curve and the corner
+    // read as a right angle. Concentric with the editor's border box, because
+    // `.webui-memory-manager-editor` has no padding or border and the textarea
+    // has no margin: `right/bottom/left: 0` lands on the same box, so the outer
+    // radius matches as-is with no 1px inset arithmetic.
+    expect(declaration(count, "border-radius")).toBe(
+      "0 0 var(--radius_12) var(--radius_12)",
+    );
 
     // The shared rule must not reach it. If a future edit puts the shared class
     // back on the element, the scoped rules here stop winning by default and

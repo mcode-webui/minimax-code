@@ -249,19 +249,20 @@ describe("W0 · the memory manager's header controls", () => {
     expect(restFills).toEqual(["var(--bg_interaction_tertiary_default)"]);
   });
 
-  it("pulls the header out to the surface padding so × lines up with the editor", () => {
+  it("lines the controls up with the editor's right border", () => {
     // `.webui-personalization-header` indents its children by 16px, while the
-    // editor is a *sibling* of that header and therefore starts at the surface's
-    // own padding — so the buttons sat 16px further in than the text below them.
-    // Measured on the desktop: × ink ends 11px short of the editor's right
-    // border. The negative margin cancels the header's inset without moving the
-    // title, which shares the same row.
+    // editor is a *sibling* of that header and starts at the surface's own
+    // padding -- so the controls sat inboard of the text below them.
+    //
+    // Zeroing the header's right padding, not a negative margin. The header is a
+    // stretched flex item, so its box and padding do not resolve the way a
+    // block's would: `margin-right: -16px` still left the controls ~19px short
+    // of the border when measured off a capture.
     const header = winning(
       ".webui-memory-manager-surface .webui-personalization-header",
     ).body;
-    expect(declaration(header, "margin-right")).toBe(
-      "calc(-1 * var(--spacing_16))",
-    );
+    expect(declaration(header, "padding-right")).toBe("0");
+    expect(declaration(header, "margin-right")).toBeUndefined();
   });
 
   it("parks the character count inside the editor, 14px off both edges", () => {
@@ -278,19 +279,16 @@ describe("W0 · the memory manager's header controls", () => {
     // offsets; `width` below is what has to stay unset for that to hold.
     const count = winning(".webui-memory-manager-count").body;
     expect(declaration(count, "position")).toBe("absolute");
-    expect(declaration(count, "right")).toBe("14px");
-    // 8px against a 16px line box is the 14px gap to the glyphs, the same
-    // arithmetic the desktop's `padding: 8px 0` on the count suffix does.
-    expect(declaration(count, "bottom")).toBe("8px");
+    expect(declaration(count, "right")).toBe("0");
+    expect(declaration(count, "bottom")).toBe("0");
+    // The whole reserved band, painted: it has to read as the count's row
+    // rather than as a gap the summary text shows through.
+    expect(declaration(count, "left")).toBe("0");
+    expect(declaration(count, "height")).toBe("28px");
+    expect(declaration(count, "background")).toBe("var(--bg_grouped_secondary)");
+    expect(declaration(count, "justify-content")).toBe("flex-end");
+    expect(declaration(count, "padding")).toBe("0 14px");
     expect(declaration(count, "color")).toBe("var(--text_default_tertiary)");
-
-    // No fill, no stretch, no flex row, no padding: the digits sit on the
-    // editor's own surface, hugging the corner.
-    expect(declaration(count, "background")).toBeUndefined();
-    expect(declaration(count, "width")).toBeUndefined();
-    expect(declaration(count, "display")).toBeUndefined();
-    expect(declaration(count, "padding")).toBeUndefined();
-    expect(declaration(count, "justify-content")).toBeUndefined();
 
     // The shared rule must not reach it. If a future edit puts the shared class
     // back on the element, the scoped rules here stop winning by default and
@@ -367,6 +365,15 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(shared, "border")).toBe("none");
     expect(declaration(shared, "background")).toBe("var(--bg_grouped_tertiary)");
     expect(declaration(shared, "border-radius")).toBe("var(--radius_16)");
+    // The two settings-page editors are height-clamped, not free. The desktop
+    // passes `minHeight: 144, maxHeight: 200` in the style object, and
+    // `field-sizing: content` with `height: auto` is what makes those two
+    // numbers the whole rule -- the field grows with its text and stops at
+    // 200px. The dialog overrides both for its own 13-to-24-row range.
+    expect(declaration(shared, "height")).toBe("auto");
+    expect(declaration(shared, "field-sizing")).toBe("content");
+    expect(declaration(shared, "min-height")).toBe("144px");
+    expect(declaration(shared, "max-height")).toBe("200px");
   });
 
   it("separates the dialog's footer with space, not a rule", () => {

@@ -462,8 +462,13 @@
      `space-between`-aligned to that left edge, inside 12px of padding — bottom
      left, floating over the text, on a phantom surface. A shared class is not
      a base for a one-off control, and the earlier scoped override was the same
-     mistake as the save button's missing `cursor`. */
-  .webui-memory-manager-count { position: absolute; right: 14px; bottom: 8px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
+     mistake as the save button's missing `cursor`.
+   *
+     It spans the full width and paints the surface, because the reserved band
+     has to read as the count's row rather than as a gap the text shows
+     through. The 28px here is the same 28px the editor reserves as
+     `padding-bottom`, so the two must move together. */
+  .webui-memory-manager-count { position: absolute; right: 0; bottom: 0; left: 0; display: flex; height: 28px; align-items: center; justify-content: flex-end; padding: 0 14px; background: var(--bg_grouped_secondary); color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }
@@ -494,7 +499,19 @@
      further in. Measured on the desktop: the × ink ends 11px short of the
      editor's right border, and the header's own negative margin is what
      closes that gap without moving the title. */
-  .webui-memory-manager-surface .webui-personalization-header { position: relative; margin-right: calc(-1 * var(--spacing_16)); }
+  /* The controls sit on the header row, but the editor they must line up with
+     is a *sibling* of that header, not a child: the editor starts at the
+     surface's own padding while `.webui-personalization-header` indents its
+     children by another 16px. Zeroing the header's right padding puts the
+     controls' right edge on the surface's content edge, which is the editor's
+     edge, by construction.
+   *
+     A negative `margin-right` was the first attempt and did not get there --
+     the header is a stretched flex item, so the box and its padding do not
+     resolve the way a block's would, and the controls landed ~19px short of
+     the border. A padding override is decided by the cascade and does not
+     depend on that. */
+  .webui-memory-manager-surface .webui-personalization-header { position: relative; padding-right: 0; }
   .webui-memory-manager-menu { position: absolute; z-index: 1; top: calc(100% + var(--spacing_4)); right: var(--spacing_16); display: flex; min-width: 168px; flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_4); box-shadow: 0 8px 24px rgb(0 0 0 / 28%); }
   .webui-memory-manager-menu button { display: flex; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_4); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
   .webui-memory-manager-menu button:hover:not(:disabled) { background: var(--bg_interaction_tertiary_hover); }
@@ -534,18 +551,16 @@
      exist only in the file layer, which still parses and re-emits their
      `Nickname: ` / `Occupation: ` lines so an existing profile survives a save
      intact. Drawing inputs for them put two permanently empty boxes above the
-     one field that is actually editable. */
+     one field that is actually editable.
+   *
+     The two settings-page editors are height-clamped rather than free: the
+     desktop passes `minHeight: 144, maxHeight: 200` in the style object and
+     `field-sizing: content` is what makes those two numbers the whole rule --
+     the field grows with its text and stops at 200px, exactly as antd resolves
+     a textarea with min/max and no autoSize. The memory dialog overrides both
+     for its own 13-to-24-row range. */
   .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_8); }
-  .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
-  /* `height` rather than `min-height`: the panel opens at a predictable
-     300px instead of a height that depends on the content already in the
-     file. `min-height` alone left a 3.5KB AGENTS.md rendering as a wall of
-     text and an empty profile rendering as an empty wall, with the two
-     editors at visibly different heights for no reason. `resize: vertical`
-     keeps the drag handle, and the browser writes the dragged size back as
-     an inline style, so the user's choice survives until they reload —
-     `min-height` is the floor their drag cannot go below. */
-  .webui-personalization-textarea { width: 100%; height: 300px; min-height: 300px; resize: none; border: none; outline: none; background: var(--bg_grouped_tertiary); border-radius: var(--radius_16); padding: 10px var(--spacing_16); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
+.webui-personalization-textarea { width: 100%; height: auto; field-sizing: content; min-height: 144px; max-height: 200px; resize: none; border: none; outline: none; background: var(--bg_grouped_tertiary); border-radius: var(--radius_16); padding: 10px var(--spacing_16); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
   .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }
   .webui-personalization-meta { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-personalization-meta span:first-child { min-width: 0; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }

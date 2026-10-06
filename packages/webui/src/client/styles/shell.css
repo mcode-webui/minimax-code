@@ -354,7 +354,16 @@
   .webui-personalization-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
   .webui-personalization-title { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); }
   .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
-  .webui-personalization-manager { display: flex; width: 100%; flex-direction: column; gap: var(--spacing_8); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
+  /* The memory manager is a dialog, not an expansion. It is portalled to the
+     body, so the z-index is compared against everything else at the root: the
+     settings shell is 100, and this sits above it. */
+  .webui-memory-manager-mask { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
+  .webui-memory-manager-surface { display: flex; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
+  .webui-memory-manager-editor { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
+  .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; }
+  .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
+  .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
+  .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the

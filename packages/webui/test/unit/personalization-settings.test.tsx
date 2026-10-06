@@ -26,8 +26,31 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   PersonalizationSettings,
+  formatMemoryTimestamp,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
+
+describe("formatMemoryTimestamp", () => {
+  // The desktop footer reads `更新于 2026-10-06 04:48:48`. Hand-rolled rather
+  // than `toLocaleString`, so these assertions are the thing that keeps the
+  // shape from quietly following the host locale.
+  it("renders the stamp in the desktop's own shape", () => {
+    const stamp = formatMemoryTimestamp(new Date(2026, 9, 6, 4, 48, 48).toISOString());
+    expect(stamp).toMatch(/^更新于 2026-10-06 \d{2}:\d{2}:\d{2}$/u);
+  });
+
+  it("zero-pads the single-digit parts", () => {
+    const stamp = formatMemoryTimestamp(new Date(2026, 0, 2, 3, 4, 5).toISOString());
+    expect(stamp).toBe("更新于 2026-01-02 03:04:05");
+  });
+
+  it("says nothing rather than printing Invalid Date", () => {
+    // A missing stamp is a file the server could not stat, and an unparseable
+    // one is a contract that drifted. Neither should reach the footer as text.
+    expect(formatMemoryTimestamp(undefined)).toBe("");
+    expect(formatMemoryTimestamp("not-a-date")).toBe("");
+  });
+});
 
 describe("resolveEditorSeed", () => {
   it("prefers the live profile file over a stale browser-local draft", () => {
@@ -139,13 +162,32 @@ describe("记忆 section markup", () => {
     expect(markup).toContain("agent-memory-load");
   });
 
-  it("keeps the manager closed until the user asks for the body", () => {
+  it("renders no memory body until 管理 is pressed", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
-    // A live main file runs past the runtime's 64KB cleanup threshold, so the
-    // first paint must not already contain the editor.
+    // The dialog loads its own body on open, so the panel's first paint still
+    // has to stay free of the editor: a live main file is ~115KB and shipping
+    // it with the panel would make the tab slow to open for a row that only
+    // needed the size.
     expect(markup).not.toContain("agent-memory-manager");
     expect(markup).not.toContain("agent-memory-textarea");
+  });
+
+  it("declines to open a manager it cannot save through", () => {
+    const markup = renderToStaticMarkup(
+      <PersonalizationSettings
+        getAgentMemory={() => Promise.resolve({
+          agentName: "mavis",
+          path: "/tmp/agents/mavis/memory/MEMORY.md",
+          exists: false,
+          sizeBytes: 0,
+        })}
+      />,
+    );
+
+    // A read-only manager would open a body the user could not change, so the
+    // entry point stays out of reach rather than leading somewhere useless.
+    expect(markup).toMatch(/<button[^>]*data-testid="agent-memory-load"[^>]*disabled=""/u);
   });
 
   it("declines the memory surface instead of faking it when the transport is absent", () => {

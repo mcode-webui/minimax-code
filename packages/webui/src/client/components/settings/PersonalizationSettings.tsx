@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { ToggleSwitch } from "../ToggleSwitch.js";
 import type {
   WebuiAgentMemoryView,
@@ -570,6 +579,11 @@ export function MemorySection({
     [setMemorySettings, settings, toggling],
   );
 
+  // Stable identity on purpose: the dialog moves focus in on mount and hands it
+  // back on unmount, and a callback that changes every render would re-run that
+  // effect on every keystroke inside the editor.
+  const closeManager = useCallback(() => setManaging(false), []);
+
   return (
     <section data-testid="memory-section" className="webui-generic-section">
       <SectionHeader
@@ -638,9 +652,10 @@ export function MemorySection({
           </p>
         ) : null}
         {managing ? (
-          <AgentMemoryManager
+          <MemoryManagerDialog
             getAgentMemory={getAgentMemory}
             setAgentMemory={setAgentMemory}
+            onClose={closeManager}
           />
         ) : null}
       </div>
@@ -648,13 +663,32 @@ export function MemorySection({
   );
 }
 
-export interface AgentMemoryManagerProps {
+/**
+ * `更新于 2026-10-06 04:48:48`, the shape the desktop footer uses.
+ *
+ * Formatted by hand rather than through `toLocaleString` so the separators do
+ * not follow the host locale — the panel is Chinese, but the browser can be
+ * running under any locale, and a footer that changes shape with the OS is a
+ * footer nobody can screenshot-compare. Returns `""` for a missing or
+ * unparseable stamp rather than "Invalid Date".
+ */
+export function formatMemoryTimestamp(value: string | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number): string => String(part).padStart(2, "0");
+  const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `更新于 ${stamp}`;
+}
+
+export interface MemoryManagerDialogProps {
   readonly getAgentMemory?: (request?: {
     readonly includeContent?: boolean;
   }) => Promise<WebuiAgentMemoryView>;
   readonly setAgentMemory?: (request: {
     readonly content: string;
   }) => Promise<WebuiAgentMemoryView>;
+  readonly onClose: () => void;
 }
 
 /**
@@ -668,41 +702,53 @@ export interface AgentMemoryManagerProps {
  * content over 4KB, so a textarea wired to the summary would reject exactly the
  * content this panel exists to show.
  */
-export function AgentMemoryManager({
+export function MemoryManagerDialog({
   getAgentMemory,
   setAgentMemory,
-}: AgentMemoryManagerProps): ReactElement {
+  onClose,
+}: MemoryManagerDialogProps): ReactElement {
   const [draft, setDraft] = useState<string>();
+  const [updatedAt, setUpdatedAt] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
-  const rootRef = useRef<HTMLDivElement | null>(null);
 
-  /**
-   * The 记忆 section is the last block in the tab, so expanding the manager
-   * pushed its content past the bottom of the scroll container. The button
-   * appeared to do nothing: the panel really opened, just where the user
-   * could not see it. `nearest` scrolls the minimum distance that brings the
-   * new content into view, so an already-visible manager does not jump.
-   */
-  useEffect(() => {
-    rootRef.current?.scrollIntoView({ block: "nearest" });
-  }, []);
-
-  const load = useCallback(async () => {
-    if (!getAgentMemory || loading) return;
+  const load = useCallback(async (reader: NonNullable<MemoryManagerDialogProps["getAgentMemory"]>) => {
     setLoading(true);
     setError(undefined);
     try {
-      const value = await getAgentMemory({ includeContent: true });
-      if (value) setDraft(value.content ?? "");
+      const value = await reader({ includeContent: true });
+      if (!value) return;
+      setDraft(value.content ?? "");
+      setUpdatedAt(value.updatedAt);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setLoading(false);
     }
-  }, [getAgentMemory, loading]);
+  }, []);
+
+  /**
+   * The body loads on open. The desktop takes 管理 straight into the editor,
+   * and a second click to start reading is a step the user has to learn for
+   * nothing — the file is the whole point of opening the dialog.
+   *
+   * The reader is reached through a ref and the effect is keyed on nothing, on
+   * purpose. Keyed on `getAgentMemory`, any parent that hands down a fresh
+   * closure would re-run this after every keystroke and replace the text being
+   * typed: the editor would look like it was refreshing, and the edit would be
+   * silently discarded. A load that can fire more than once per open is worse
+   * than no load at all.
+   */
+  const readerRef = useRef(getAgentMemory);
+  useEffect(() => {
+    readerRef.current = getAgentMemory;
+  }, [getAgentMemory]);
+  useEffect(() => {
+    const reader = readerRef.current;
+    if (reader) void load(reader);
+  }, [load]);
 
   const save = useCallback(async () => {
     if (!setAgentMemory || saving || draft === undefined) return;
@@ -718,58 +764,135 @@ export function AgentMemoryManager({
     }
   }, [draft, saving, setAgentMemory]);
 
-  return (
-    <div ref={rootRef} data-testid="agent-memory-manager" className="webui-personalization-manager">
-      <div className="webui-personalization-header">
-        <span className="webui-personalization-meta">记忆内容</span>
-        {draft === undefined ? (
+  /**
+   * Escape has to be heard on the document, and focus has to be moved in by
+   * hand. The dialog is portalled to `document.body`, so it is not a DOM
+   * descendant of the row that opened it: a `keydown` handler on the surface
+   * only ever sees keys typed after focus happens to land inside, and on open
+   * focus is still on 管理. Listening on the surface alone therefore left the
+   * one key every modal is expected to honour doing nothing.
+   *
+   * Unmount restores focus to whatever held it before, so closing with Escape
+   * leaves the keyboard on the row the user came from.
+   */
+  const surfaceRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const restoreTo = document.activeElement;
+    surfaceRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (restoreTo instanceof HTMLElement) restoreTo.focus();
+    };
+  }, [onClose]);
+
+  const dialog = (
+    <div
+      data-testid="agent-memory-manager"
+      className="webui-memory-manager-mask"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        ref={surfaceRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="记忆摘要"
+        className="webui-memory-manager-surface"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="webui-personalization-header">
+          <h3>记忆摘要</h3>
           <button
             type="button"
-            data-testid="agent-memory-body-load"
-            className="webui-mavis-button webui-mavis-button-gray"
-            disabled={loading || !getAgentMemory}
-            onClick={() => void load()}
+            aria-label="关闭"
+            data-testid="agent-memory-close"
+            className="webui-settings-icon-button"
+            onClick={onClose}
           >
-            {loading ? "加载中…" : "加载并编辑"}
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+            </svg>
           </button>
-        ) : (
-          <button
-            type="button"
-            data-testid="agent-memory-save"
-            className="webui-mavis-button webui-mavis-button-gray"
-            disabled={saving || !setAgentMemory}
-            onClick={() => void save()}
-          >
-            保存
-          </button>
+        </div>
+        {loading ? (
+          <p data-testid="agent-memory-loading" className="webui-personalization-meta">
+            加载中…
+          </p>
+        ) : draft === undefined ? null : (
+          <div className="webui-memory-manager-editor">
+            <textarea
+              data-testid="agent-memory-textarea"
+              className="webui-personalization-textarea"
+              value={draft}
+              spellCheck={false}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setSaved(false);
+              }}
+            />
+            <span data-testid="agent-memory-chars" className="webui-personalization-meta">
+              {draft.length}
+            </span>
+          </div>
         )}
-      </div>
-      {draft === undefined ? (
-        <p data-testid="agent-memory-summary" className="webui-personalization-meta">
-          加载后可查看、编辑或删除长期记忆。
-        </p>
-      ) : (
-        <textarea
-          data-testid="agent-memory-textarea"
-          className="webui-personalization-textarea"
-          value={draft}
-          spellCheck={false}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setSaved(false);
-          }}
-        />
-      )}
-      {error ? (
-        <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
-          {error}
-        </p>
-      ) : null}
-      {saved && !saving ? (
-        <p data-testid="agent-memory-saved" className="webui-personalization-saved">
-          已保存
-        </p>
-      ) : null}
+        {error ? (
+          <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
+            {error}
+          </p>
+        ) : null}
+        {error && draft === undefined && getAgentMemory ? (
+          <button
+            type="button"
+            data-testid="agent-memory-retry"
+            className="webui-mavis-button webui-mavis-button-gray"
+            disabled={loading}
+            onClick={() => void load(getAgentMemory)}
+          >
+            重试
+          </button>
+        ) : null}
+        {saved && !saving ? (
+          <p data-testid="agent-memory-saved" className="webui-personalization-saved">
+            已保存
+          </p>
+        ) : null}
+        <footer className="webui-memory-manager-footer">
+          <span data-testid="agent-memory-updated" className="webui-personalization-meta">
+            {formatMemoryTimestamp(updatedAt)}
+          </span>
+          <div className="webui-memory-manager-actions">
+            <button type="button" className="webui-mavis-button webui-mavis-button-gray" onClick={onClose}>
+              取消
+            </button>
+            <button
+              type="button"
+              data-testid="agent-memory-save"
+              className="webui-mavis-button webui-mavis-button-gray"
+              disabled={saving || loading || draft === undefined || !setAgentMemory}
+              onClick={() => void save()}
+            >
+              {saving ? "保存中…" : "保存"}
+            </button>
+          </div>
+        </footer>
+      </section>
     </div>
   );
+
+  /**
+   * Portalled to the body on purpose. The settings shell is a `z-index: 100`
+   * fixed overlay, and anything with a position and a z-index becomes a
+   * stacking context — a dialog rendered inside it can never paint above the
+   * shell no matter how large its own z-index is. The same reason
+   * `UserMenu` portals the settings modal itself out of the rail.
+   */
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
 }

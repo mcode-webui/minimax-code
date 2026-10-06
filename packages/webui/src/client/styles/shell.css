@@ -376,12 +376,11 @@
    * the theme; this bubble should not, so a token binding here would be a
    * fidelity regression dressed up as a fix.
    *
-   * The 250 is the desktop's own, and it is deliberately NOT the 340 the two
-   * sibling bubbles carry: all three desktop bubbles were measured and the
-   * two-line and three-line ones both wrap at exactly 250, which is where
-   * `width: max-content` stops. The 340 on the siblings is a pre-existing
-   * mismatch, left alone here because those two surfaces have no screenshot
-   * to re-measure against and this change is not the place to guess at them.
+   * The 250 is antd's `Tooltip` `maxWidth` default, which the desktop does not
+   * override — so all three of these bubbles now share one width, and the 340
+   * that used to sit on `.webui-signin-credits-tooltip` is gone. Two more
+   * labels still read 220, but both are under `white-space: nowrap` where the
+   * ceiling cannot shape anything; see the note on `.webui-context-usage-label`.
    *
    * `position: absolute` against the anchor, NOT `fixed`: absolute travels
    * with the section when the panel scrolls, which is what a tooltip attached
@@ -397,12 +396,48 @@
      settings shell is 100, and this sits above it. */
   .webui-memory-manager-mask { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
   .webui-memory-manager-surface { display: flex; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
-  .webui-memory-manager-editor { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
+  .webui-memory-manager-editor { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
   .webui-memory-manager-editor .webui-personalization-textarea { flex: 1; min-height: 240px; }
+  /* The character count lives *inside* the editor's bottom-right corner, the way
+     the desktop draws it, not in a row under the text. It is absolutely
+     positioned rather than left in flow because in flow it is the only child of
+     a `space-between` flex row, which collapses to left alignment and parks the
+     number under the text's left edge — the desktop has it 15px off the right
+     border and 14px off the bottom.
+     `.webui-personalization-meta` cannot be reused here: its `padding` is what
+     produced the offset, and taking it out of flow is what makes the padding
+     measurable against the textarea's own box. */
+  .webui-memory-manager-editor .webui-personalization-meta { position: absolute; right: 0; bottom: 0; width: auto; padding: 0; }
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
-  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_4); }
+  /* The memory manager's header controls, measured off the desktop dialog.
+   *
+   * Deliberately not `.webui-icon-button`: that one is 28px with a transparent
+   * background that only appears on hover, and the desktop draws a 26px square
+   * that is *already* filled before the pointer arrives. Measured on the
+   * desktop capture — the ⋯ tile is exactly 26×26 at `#f1f1ef`, its ink is a
+   * 14×3 three-dot run, and the two controls' ink centres both sit at y≈76.5
+   * with 34px between them. The ⋯ and × therefore are aligned on the desktop;
+   * they only looked wrong here because both were unstyled bare buttons and the
+   * 4px gap left the pair reading as one blob.
+   *
+   * `gap: 8px` is what turns that measured 34px centre distance into geometry:
+   * 26 + 8 + 26 = 60 between the centres' outer edges, and the ink itself is
+   * inset within each 26px box, so the visible gap lands on 34. 7px is the
+   * nearest step on the radius ramp; the corner arc is the only place the
+   * desktop's true radius and this one differ. */
+  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
+  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 26px; height: 26px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 7px; padding: 0; color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+  /* The desktop keeps ⋯ filled at rest and only deepens it on hover; × stays
+     transparent until hovered. Flattening both to "hover only" is what made the
+     pair look mismatched in the first place.
+     `press`, not `selected`: in the light theme `tertiary_hover` and
+     `tertiary_selected` are the same `--opacity_black_1_4`, so a selected hover
+     would render as no change at all. `press` is the next step up. */
+  .webui-memory-manager-header-actions .webui-settings-icon-button:first-child { background: var(--bg_interaction_tertiary_hover); }
+  .webui-memory-manager-header-actions .webui-settings-icon-button:hover { background: var(--bg_interaction_tertiary_press); color: var(--text_default_secondary); }
+  .webui-memory-manager-header-actions .webui-settings-icon-button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-memory-manager-surface .webui-personalization-header { position: relative; }
   .webui-memory-manager-menu { position: absolute; z-index: 1; top: calc(100% + var(--spacing_4)); right: var(--spacing_16); display: flex; min-width: 168px; flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_4); box-shadow: 0 8px 24px rgb(0 0 0 / 28%); }
   .webui-memory-manager-menu button { display: flex; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_4); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
@@ -410,9 +445,34 @@
   .webui-memory-manager-menu button:disabled { opacity: 0.4; }
   .webui-memory-manager-menu button.is-danger { color: var(--text_label_danger_secondary_default); }
   .webui-memory-manager-menu-icon { flex: none; }
-  .webui-memory-manager-confirm { display: flex; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_12); background: var(--bg_grouped_primary_elevated); padding: var(--spacing_16); }
-  .webui-memory-manager-confirm p { margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_20); }
-  .webui-memory-manager-confirm .webui-memory-manager-actions { justify-content: flex-end; }
+  /* 删除记忆's confirmation, measured off the desktop's modal.
+   *
+   * A second modal, not a panel inside the first: the desktop dims the editor
+   * behind a centred dialog, which an inline block cannot do — there is nothing
+   * behind it inside the surface to dim. The scrim is therefore its own
+   * fixed layer at 140, above `.webui-memory-manager-mask`'s 120, because this
+   * dialog is stacked on top of that one rather than inside it.
+   *
+   * 480 wide and 18-radius are the measured values; 20 is the nearest step on
+   * the radius ramp, and the difference only shows on the corner arc. Padding
+   * 24 plus a 22 title line, a 16 gap, two 22 body lines, a 20 gap and a 30
+   * button adds up to the measured 183, which is the number that says the
+   * vertical rhythm is the desktop's and not a guess.
+   *
+   * The footer reuses `.webui-mavis-button-gray` and `-danger` unchanged: those
+   * already resolve to the desktop's own values in the light theme — danger is
+   * `red_400` on `gray_0` text, which is exactly the #f73646 the button measures,
+   * and gray is `bg_interaction_secondary_default`, ~#f5f5f5 against the
+   * measured #f7f7f7. Restating those colours here would be a second place to
+   * drift. */
+  .webui-memory-confirm-mask { position: fixed; inset: 0; z-index: 140; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); }
+  .webui-memory-confirm { position: relative; display: flex; width: min(480px, calc(100vw - 32px)); flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_20); background: var(--bg_grouped_secondary); padding: var(--spacing_24); outline: none; }
+  .webui-memory-confirm-title { margin: 0; padding-right: var(--spacing_32); color: var(--text_default_primary); font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_22); }
+  .webui-memory-confirm-close { position: absolute; top: var(--spacing_12); right: var(--spacing_12); display: flex; width: 32px; height: 32px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); background: transparent; padding: 0; color: var(--text_default_tertiary); cursor: pointer; }
+  .webui-memory-confirm-close:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
+  .webui-memory-confirm-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
+  .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the
@@ -755,7 +815,16 @@
    *
    * `left: 50%` with a translate centres the bubble on the ring; the popover
    * below is right-anchored, because a 480px panel centred on a 28px control
-   * would hang off the left edge of a narrow window. */
+   * would hang off the left edge of a narrow window.
+   *
+   * The 220 is a ceiling nothing reaches: `white-space: nowrap` below means the
+   * text never wraps, `width: max-content` sizes the box to the unwrapped run,
+   * and there is no `overflow: hidden` to clip it, so this label can only
+   * overflow its own max-width rather than being shaped by it. It is left at
+   * 220 — and `.webui-thinking-label` with it — because changing an inert
+   * number would only hide where it came from. The live width on this shape is
+   * the 250 on `.webui-settings-info-hint-bubble` and
+   * `.webui-signin-credits-tooltip`, which is antd's `Tooltip` `maxWidth`. */
   .webui-context-usage-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
   .webui-context-usage-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
   .webui-context-usage-label[data-webui-context-usage-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
@@ -3930,7 +3999,16 @@
     transform: translateX(-50%);
     z-index: 120;
     width: max-content;
-    max-width: 340px;
+    /* 250, not the 340 this used to carry. The desktop draws every one of
+     * these with antd's `Tooltip`, whose documented `maxWidth` default is 250,
+     * and it never overrides that width — the desktop stylesheet only touches
+     * `.ant-tooltip-inner` typography. The 6px radius and the 8/12 padding on
+     * the next two rules are antd's `borderRadius` / `paddingSM`+`paddingXS`
+     * defaults for the same reason, so 340 was the one number on this bubble
+     * that came from nowhere. Unlike its two siblings below, this one wraps
+     * (`white-space: normal`), so the width is live and the old value was
+     * showing. */
+    max-width: 250px;
     padding: 8px 12px;
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.85);

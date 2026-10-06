@@ -65,6 +65,22 @@ export const PERSONALIZATION_SECTION_HINTS = {
 } as const;
 
 /**
+ * The delete confirmation's copy, copied from the desktop word for word.
+ *
+ * The half-width `?` is the desktop's, not a typo to tidy up: a full-width
+ * `？` carries a full em of advance and visibly opens a gap after 忆, and the
+ * measured dialog does not have one. The body deliberately carries no byte
+ * count — the desktop's does not either, and the row above the button already
+ * shows the figure the user would compare it against.
+ */
+export const MEMORY_DELETE_CONFIRM = {
+  title: "删除记忆?",
+  body: "MiniMax Code 将不再记住关于你的重要信息，你的使用体验将少一些个性化。",
+  cancel: "取消",
+  confirm: "删除",
+} as const;
+
+/**
  * The section title's help affordance.
  *
  * A real bubble rather than a native `title`, because the desktop hangs a dark
@@ -542,7 +558,6 @@ export function MemorySection({
 }: MemorySectionProps): ReactElement {
   const [settings, setSettings] = useState<WebuiMemorySettingsView>();
   const [toggling, setToggling] = useState(false);
-  const [summary, setSummary] = useState<WebuiAgentMemoryView>();
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -563,24 +578,13 @@ export function MemorySection({
     };
   }, [getMemorySettings]);
 
-  const readSummary = useCallback(() => {
-    if (!getAgentMemory) return;
-    let cancelled = false;
-    void getAgentMemory()
-      .then((value) => {
-        if (cancelled || !value) return;
-        setSummary(value);
-      })
-      .catch((cause: unknown) => {
-        if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : String(cause));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [getAgentMemory]);
-
-  useEffect(readSummary, [readSummary]);
+  // No read on open. The desktop's 记忆摘要 row shows only the title, the
+  // description and 管理 — the column that sits between them names the owning
+  // product, not the file size. The byte count that used to live there was a
+  // second, differently-scaled reading of the same file (the manager shows
+  // characters), so dropping it removed the reason this read existed: opening
+  // the settings pane no longer fetches the whole memory document just to
+  // measure it. The dialog still loads the content when 管理 is pressed.
 
   const toggle = useCallback(
     async (patch: { readonly enabled?: boolean; readonly proactive?: boolean }) => {
@@ -653,9 +657,6 @@ export function MemorySection({
           description="查看、编辑或删除 MiniMax 已整理的长期记忆。"
           testId="memory-summary-row"
         >
-          <span data-testid="memory-summary-size" className="webui-personalization-meta">
-            {summary?.exists ? `${summary.sizeBytes} 字节` : "暂无"}
-          </span>
           <button
             type="button"
             data-testid="agent-memory-load"
@@ -686,7 +687,6 @@ export function MemorySection({
             getAgentMemory={getAgentMemory}
             setAgentMemory={setAgentMemory}
             onClose={closeManager}
-            onChanged={readSummary}
             {...(onCreateInSession ? { onCreateInSession } : {})}
           />
         ) : null}
@@ -713,14 +713,6 @@ export function formatMemoryTimestamp(value: string | undefined): string {
   return `更新于 ${stamp}`;
 }
 
-/** Byte count for the delete confirmation. Plain KB above a kilobyte so the
- *  number in front of an irreversible action is the one the user can compare
- *  against the row's 字节 figure, not a unit conversion they have to undo. */
-export function formatMemorySize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} 字节`;
-  return `${Math.round(bytes / 1024)} KB`;
-}
-
 /** What 「在会话中创建」 leaves in the composer, beside the attached file.
  *  The desktop lands on the home surface with exactly this one line already
  *  typed, so the user's next action is to add what they actually want changed. */
@@ -733,9 +725,6 @@ export interface MemoryManagerDialogProps {  readonly getAgentMemory?: (request?
     readonly content: string;
   }) => Promise<WebuiAgentMemoryView>;
   readonly onClose: () => void;
-  /** Re-read the row's size after a write or a delete, so 记忆摘要 cannot keep
-   *  reporting the size of a file this dialog just changed. */
-  readonly onChanged?: () => void;
   /** Hand the memory to a conversation instead of editing it here. Omitted when
    *  the host has nowhere to put it — the item then stays out of the menu rather
    *  than opening a composer the shell cannot reach. */
@@ -768,7 +757,6 @@ export function MemoryManagerDialog({
   getAgentMemory,
   setAgentMemory,
   onClose,
-  onChanged,
   onCreateInSession,
 }: MemoryManagerDialogProps): ReactElement {
   const [draft, setDraft] = useState<string>();
@@ -786,6 +774,10 @@ export function MemoryManagerDialog({
   // cannot close over `menuOpen`; this ref is how it still sees the flag.
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
+  // Same reason as `menuOpenRef`: the Escape handler below is keyed on `onClose`
+  // alone, so it cannot close over the confirmation's state.
+  const confirmOpenRef = useRef(false);
+  confirmOpenRef.current = confirmingDelete;
 
   const load = useCallback(async (reader: NonNullable<MemoryManagerDialogProps["getAgentMemory"]>) => {
     setLoading(true);
@@ -832,13 +824,12 @@ export function MemoryManagerDialog({
     try {
       await setAgentMemory({ content: draft });
       setSaved(true);
-      onChanged?.();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [draft, saving, setAgentMemory, onChanged]);
+  }, [draft, saving, setAgentMemory]);
 
   /**
    * 删除记忆 is a blank write, not a new capability.
@@ -861,13 +852,12 @@ export function MemoryManagerDialog({
       setFileSize(0);
       setConfirmingDelete(false);
       setMenuOpen(false);
-      onChanged?.();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [saving, setAgentMemory, onChanged]);
+  }, [saving, setAgentMemory]);
 
   const handoffSequence = useRef(0);
   const handoff = useCallback(() => {
@@ -903,9 +893,14 @@ export function MemoryManagerDialog({
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
-      // An open menu is a layer above the dialog, so Escape sheds that layer
-      // first. Dismissing the whole dialog instead would throw away the
-      // 74KB draft behind it, which is not what pressing Escape once means.
+      // Two layers sit above the editor, and Escape sheds the topmost one so
+      // that a second press has to be a second press. Dismissing the editor
+      // instead would throw away the draft behind an open menu or an open
+      // confirmation, which is not what pressing Escape once means.
+      if (confirmOpenRef.current) {
+        setConfirmingDelete(false);
+        return;
+      }
       if (menuOpenRef.current) {
         setMenuOpen(false);
         return;
@@ -1005,27 +1000,6 @@ export function MemoryManagerDialog({
             </div>
           ) : null}
         </div>
-        {confirmingDelete ? (
-          <div role="alertdialog" aria-modal="true" aria-label="确认删除记忆" data-testid="agent-memory-delete-confirm" className="webui-memory-manager-confirm">
-            <p>
-              将删除 <strong>{formatMemorySize(fileSize)}</strong> 的长期记忆文件，删除后无法恢复。
-            </p>
-            <div className="webui-memory-manager-actions">
-              <button type="button" className="webui-mavis-button webui-mavis-button-gray" data-testid="agent-memory-delete-cancel" onClick={() => setConfirmingDelete(false)}>
-                取消
-              </button>
-              <button
-                type="button"
-                className="webui-mavis-button webui-mavis-button-danger"
-                data-testid="agent-memory-delete-confirm-button"
-                disabled={saving}
-                onClick={() => void remove()}
-              >
-                {saving ? "删除中…" : "删除"}
-              </button>
-            </div>
-          </div>
-        ) : null}
         {loading ? (
           <p data-testid="agent-memory-loading" className="webui-personalization-meta">
             加载中…
@@ -1092,11 +1066,99 @@ export function MemoryManagerDialog({
   );
 
   /**
+   * The confirmation is a second modal, not a panel inside the first.
+   *
+   * The desktop dims the editor behind a centred dialog with its own title, a
+   * × and a right-aligned footer. Rendering it inline — which is what this used
+   * to do — cannot get there: an inline block cannot dim what is behind it, and
+   * a scrim over the editor has to be portalled for the same reason the editor
+   * is. The scrim sits above `.webui-memory-manager-mask` (120) because it is a
+   * layer above that dialog rather than part of it.
+   *
+   * Focus moves in on open and back out on close for the same portal reason as
+   * the editor above: the confirm is not a DOM descendant of the button that
+   * opened it, so nothing focuses it and the keyboard stays on a menu item that
+   * has since unmounted.
+   */
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const restoreTo = document.activeElement;
+    confirmRef.current?.focus();
+    return () => {
+      if (restoreTo instanceof HTMLElement && restoreTo.isConnected) restoreTo.focus();
+    };
+  }, [confirmingDelete]);
+
+  const confirm = confirmingDelete ? (
+    <div
+      className="webui-memory-confirm-mask"
+      data-testid="agent-memory-delete-confirm"
+      onMouseDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        setConfirmingDelete(false);
+      }}
+    >
+      <div
+        ref={confirmRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="webui-memory-confirm-title"
+        tabIndex={-1}
+        className="webui-memory-confirm"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <h2 id="webui-memory-confirm-title" className="webui-memory-confirm-title">
+          {MEMORY_DELETE_CONFIRM.title}
+        </h2>
+        <button
+          type="button"
+          aria-label="关闭"
+          data-testid="agent-memory-delete-dismiss"
+          className="webui-memory-confirm-close"
+          onClick={() => setConfirmingDelete(false)}
+        >
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+          </svg>
+        </button>
+        <p className="webui-memory-confirm-body">{MEMORY_DELETE_CONFIRM.body}</p>
+        <div className="webui-memory-confirm-actions">
+          <button
+            type="button"
+            className="webui-mavis-button webui-mavis-button-gray"
+            data-testid="agent-memory-delete-cancel"
+            onClick={() => setConfirmingDelete(false)}
+          >
+            {MEMORY_DELETE_CONFIRM.cancel}
+          </button>
+          <button
+            type="button"
+            className="webui-mavis-button webui-mavis-button-danger"
+            data-testid="agent-memory-delete-confirm-button"
+            disabled={saving}
+            onClick={() => void remove()}
+          >
+            {saving ? "删除中…" : MEMORY_DELETE_CONFIRM.confirm}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  /**
    * Portalled to the body on purpose. The settings shell is a `z-index: 100`
    * fixed overlay, and anything with a position and a z-index becomes a
    * stacking context — a dialog rendered inside it can never paint above the
    * shell no matter how large its own z-index is. The same reason
    * `UserMenu` portals the settings modal itself out of the rail.
    */
-  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
+  if (typeof document === "undefined") return dialog;
+  return createPortal(
+    <>
+      {dialog}
+      {confirm}
+    </>,
+    document.body,
+  );
 }

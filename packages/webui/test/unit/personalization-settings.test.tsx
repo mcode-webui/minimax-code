@@ -25,10 +25,10 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  MEMORY_DELETE_CONFIRM,
   MEMORY_HANDOFF_PROMPT,
   PERSONALIZATION_SECTION_HINTS,
   PersonalizationSettings,
-  formatMemorySize,
   formatMemoryTimestamp,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
@@ -41,16 +41,26 @@ describe("「在会话中创建」 hand-off", () => {
   });
 });
 
-describe("formatMemorySize", () => {
-  it("keeps small files in the unit the row already shows", () => {
-    expect(formatMemorySize(0)).toBe("0 字节");
-    expect(formatMemorySize(1023)).toBe("1023 字节");
+describe("the delete confirmation's copy", () => {
+  it("matches the desktop's modal word for word", () => {
+    // Transcribed from the desktop modal after zooming it: the title ends on a
+    // half-width `?` (a full-width one carries a full em of advance and opens a
+    // visible gap), the body's comma and full stop are full-width, and there is
+    // no byte count in the body — the row above the button already shows one.
+    expect(MEMORY_DELETE_CONFIRM).toEqual({
+      title: "删除记忆?",
+      body: "MiniMax Code 将不再记住关于你的重要信息，你的使用体验将少一些个性化。",
+      cancel: "取消",
+      confirm: "删除",
+    });
   });
 
-  it("switches to KB above a kilobyte, rounded", () => {
-    // 115122 bytes is the live MEMORY.md. The number in front of an
-    // irreversible delete is the one the user can compare against the row.
-    expect(formatMemorySize(115_122)).toBe("112 KB");
+  it("does not smuggle a byte count back into the body", () => {
+    // The WebUI's earlier confirmation opened with "将删除 112 KB 的长期记忆
+    // 文件". The desktop says nothing of the kind, and a paraphrase here is the
+    // whole thing this suite exists to prevent.
+    expect(MEMORY_DELETE_CONFIRM.body).not.toMatch(/KB|字节/);
+    expect(MEMORY_DELETE_CONFIRM.title).not.toMatch(/KB|字节/);
   });
 });
 
@@ -148,8 +158,62 @@ describe("PersonalizationSettings markup", () => {
     expect(markup).toContain("字节");
   });
 
-  it("keeps save disabled before anything is loaded", () => {
+  it("shows no file size on the 记忆摘要 row, matching the desktop", () => {
     const markup = renderToStaticMarkup(
+      <PersonalizationSettings
+        getAgentMemory={() => Promise.resolve({
+          content: "lesson",
+          exists: true,
+          path: "/tmp/MEMORY.md",
+          sizeBytes: 123_240,
+          updatedAt: "2026-10-06T04:48:48.000Z",
+        })}
+        setAgentMemory={() => Promise.resolve({
+          content: "",
+          exists: false,
+          path: "/tmp/MEMORY.md",
+          sizeBytes: 0,
+        })}
+      />,
+    );
+
+    // The desktop row carries the title, the description and 管理 — nothing
+    // between them. A byte count here was a second, differently-scaled reading
+    // of the same file (the manager shows characters), and it is also the
+    // reason opening the pane used to fetch the whole memory document.
+    expect(markup).toContain("记忆摘要");
+    expect(markup).toContain("管理");
+    expect(markup).not.toContain("123240");
+    expect(markup).not.toContain("memory-summary-size");
+  });
+
+  it("does not read the memory document just to render the settings pane", () => {
+    const calls: string[] = [];
+    renderToStaticMarkup(
+      <PersonalizationSettings
+        getAgentMemory={() => {
+          calls.push("getAgentMemory");
+          return Promise.resolve({
+            content: "",
+            exists: false,
+            path: "/tmp/MEMORY.md",
+            sizeBytes: 0,
+          });
+        }}
+        setAgentMemory={() => Promise.resolve({
+          content: "",
+          exists: false,
+          path: "/tmp/MEMORY.md",
+          sizeBytes: 0,
+        })}
+      />,
+    );
+
+    // The manager loads the content when 管理 is pressed, not before.
+    expect(calls).toEqual([]);
+  });
+
+  it("keeps save disabled before anything is loaded", () => {    const markup = renderToStaticMarkup(
       <PersonalizationSettings
         getGlobalInstructions={() => Promise.resolve({
           content: "",

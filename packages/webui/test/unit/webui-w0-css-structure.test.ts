@@ -155,6 +155,50 @@ beforeAll(() => {
   shellRules = parseRules(shellCss);
 });
 
+describe("W0 · the memory manager's header controls", () => {
+  it("draws ⋯ as the desktop's filled 26px tile, 34px from ×", () => {
+    // Measured off the desktop dialog: the ⋯ tile is exactly 26×26 and already
+    // filled before hover, × stays transparent until hovered, and the two ink
+    // centres sit 34px apart. Both controls were unstyled bare buttons, which
+    // is what made the pair read as unaligned here.
+    const actions = winning(".webui-memory-manager-header-actions").body;
+    expect(declaration(actions, "gap")).toBe("var(--spacing_8)");
+
+    const button = winning(
+      ".webui-memory-manager-header-actions .webui-settings-icon-button",
+    ).body;
+    expect(declaration(button, "width")).toBe("26px");
+    expect(declaration(button, "height")).toBe("26px");
+    expect(declaration(button, "border-radius")).toBe("7px");
+
+    // The fill lives on the rest state, not only on hover: flattening both to
+    // "hover only" is the mismatch this replaced.
+    const rest = winning(
+      ".webui-memory-manager-header-actions .webui-settings-icon-button:first-child",
+    ).body;
+    expect(declaration(rest, "background")).toBe(
+      "var(--bg_interaction_tertiary_hover)",
+    );
+  });
+
+  it("anchors the character count inside the editor's bottom-right", () => {
+    // In flow it was the only child of a `space-between` row, which collapsed
+    // to left alignment and parked the count under the text's left edge. The
+    // desktop has it 15px off the right border and 14px off the bottom.
+    const editor = winning(".webui-memory-manager-editor").body;
+    expect(declaration(editor, "position")).toBe("relative");
+
+    const count = winning(
+      ".webui-memory-manager-editor .webui-personalization-meta",
+    ).body;
+    expect(declaration(count, "position")).toBe("absolute");
+    expect(declaration(count, "right")).toBe("0");
+    expect(declaration(count, "bottom")).toBe("0");
+    // Out of flow, the row's own padding is what would offset it.
+    expect(declaration(count, "padding")).toBe("0");
+  });
+});
+
 describe("W0 · stylesheet composition", () => {
   it("layers the stylesheets in the documented order", () => {
     const imports = [...indexCss.matchAll(/@import\s+"([^"]+)"/gu)].map(
@@ -537,11 +581,16 @@ describe("W0 · stacking order", () => {
       // and the composer overlay (20) and the workspace panel controls (50),
       // and it stays under the model/workspace menus (70) and the dialog
       // bands (100+).
+      // 140 is `.webui-memory-confirm-mask`, the 删除记忆 confirmation. It is a
+      // second modal stacked on the memory manager rather than part of it, so it
+      // has to sit above that dialog's own 120 scrim while staying far below the
+      // portal-rendered 1400 — it dims one dialog, it does not outrank the whole
+      // shell.
       // 1400 is `.webui-message-dialog`, the portal-rendered modal shared by
       // the fork, rewind-preview and goal-clear dialogs. It mounts outside the
       // shell's stacking context, so it cannot join the 100-121 in-shell
       // dialog band and has to clear all of it.
-      1, 2, 4, 20, 40, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 1400,
+      1, 2, 4, 20, 40, 45, 50, 60, 70, 80, 100, 110, 111, 120, 121, 140, 1400,
     ]);
   });
 });

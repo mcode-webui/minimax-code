@@ -40,6 +40,7 @@ import {
 } from "./LeftRail.js";
 import { Transcript } from "./Transcript.js";
 import { UserMenu } from "./UserMenu.js";
+import { MEMORY_HANDOFF_PROMPT, type MemoryHandoff } from "./settings/PersonalizationSettings.js";
 import {
   WebuiWorkspacePanel,
   WebuiProgressOverviewPanel,
@@ -832,6 +833,29 @@ export function WebuiClientFoundationApp(
       );
     }
   };
+
+  /**
+   * 「在会话中创建」 on 记忆摘要: land on the home composer with the memory
+   * file attached and one line already typed.
+   *
+   * The line is written from an effect rather than here, and the wait is not
+   * ceremony. Drafts are stored per session, and `startNewTask` clears the
+   * *old* session's slot before `selectedSessionId` changes — writing the
+   * prompt inline would put it in whichever slot the shell still considered
+   * current, so starting from a session would type it somewhere the user never
+   * sees. Once no session is selected the key is the home slot, which is the
+   * slot the desktop's screenshot is showing.
+   */
+  const [memoryHandoff, setMemoryHandoff] = useState<MemoryHandoff>();
+  const createMemorySession = useCallback((input: MemoryHandoff) => {
+    setMemoryHandoff(input);
+    startNewTask();
+  }, []);
+  useEffect(() => {
+    if (!memoryHandoff || selectedSessionId) return;
+    setDraft(MEMORY_HANDOFF_PROMPT);
+  }, [memoryHandoff, selectedSessionId, setDraft]);
+
   const handleWorkspaceSubagentClick = useCallback(
     (subagent: WebuiWorkspaceSubagent) => {
       setSelectedSessionId(subagent.sessionId);
@@ -1283,6 +1307,7 @@ export function WebuiClientFoundationApp(
                   transport={transport}
                   getSigninPanel={transport?.getSigninPanel}
                   claimSignin={transport?.claimSignin}
+                  onCreateMemorySession={createMemorySession}
                 />
               </div> : null}
             </aside>
@@ -1444,6 +1469,7 @@ export function WebuiClientFoundationApp(
                     getAccountStatus={transport?.getAccountStatus}
                     draft={draft}
                     onDraftChange={setDraft}
+                    seedAttachment={memoryHandoff}
                     inputHistory={composerStore.history[composerKey] ?? []}
                     onInputSubmitted={recordComposerInput}
                     teamModeOff={composerTeamModeOff}

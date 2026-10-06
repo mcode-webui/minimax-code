@@ -364,6 +364,17 @@
   .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
   .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-top: 1px solid var(--border_light); padding-top: var(--spacing_12); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
+  .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_4); }
+  .webui-memory-manager-surface .webui-personalization-header { position: relative; }
+  .webui-memory-manager-menu { position: absolute; z-index: 1; top: calc(100% + var(--spacing_4)); right: var(--spacing_16); display: flex; min-width: 168px; flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_4); box-shadow: 0 8px 24px rgb(0 0 0 / 28%); }
+  .webui-memory-manager-menu button { display: flex; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_4); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
+  .webui-memory-manager-menu button:hover:not(:disabled) { background: var(--bg_interaction_tertiary_hover); }
+  .webui-memory-manager-menu button:disabled { opacity: 0.4; }
+  .webui-memory-manager-menu button.is-danger { color: var(--text_label_danger_secondary_default); }
+  .webui-memory-manager-menu-icon { flex: none; }
+  .webui-memory-manager-confirm { display: flex; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_12); background: var(--bg_grouped_primary_elevated); padding: var(--spacing_16); }
+  .webui-memory-manager-confirm p { margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_20); }
+  .webui-memory-manager-confirm .webui-memory-manager-actions { justify-content: flex-end; }
   .webui-personalization-header h3 { margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
   /* `height` rather than `min-height`: the panel opens at a predictable
      300px instead of a height that depends on the content already in the
@@ -419,6 +430,8 @@
   .webui-mavis-button { min-width: 80px; height: 36px; border: 0; border-radius: var(--radius_8); padding: 0 var(--spacing_12); font-size: var(--size_14); font-weight: var(--weight_medium); }
   .webui-mavis-button-gray { background: var(--bg_interaction_secondary_default); color: var(--text_default_primary); }
   .webui-mavis-button-black { background: var(--gray_1000); color: #fff; }
+  .webui-mavis-button-danger { background: var(--bg_interaction_danger_primary_default); color: var(--text_label_danger_primary_default); }
+  .webui-mavis-button-danger:hover:not(:disabled) { background: var(--bg_interaction_danger_primary_hover); }
   .webui-mavis-button:disabled { cursor: default; opacity: .6; }
   .webui-segmented { gap: 0; background: var(--gray_75); }
   .webui-segmented button { height: 28px; border: 0; border-radius: 6px; background: transparent; padding: 0 var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); }

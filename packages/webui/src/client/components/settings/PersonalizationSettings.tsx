@@ -139,6 +139,10 @@ export interface PersonalizationSettingsProps {
     readonly enabled?: boolean;
     readonly proactive?: boolean;
   }) => Promise<WebuiMemorySettingsView>;
+  /** 「在会话中创建」. Optional on purpose: without a host that can receive the
+   *  hand-off the menu item is not rendered at all, rather than rendered and
+   *  quietly doing nothing when clicked. */
+  readonly onCreateInSession?: (input: MemoryHandoff) => void;
 }
 
 /**
@@ -194,6 +198,7 @@ export function PersonalizationSettings(props: PersonalizationSettingsProps): Re
         setAgentMemory={props.setAgentMemory}
         getMemorySettings={props.getMemorySettings}
         setMemorySettings={props.setMemorySettings}
+        {...(props.onCreateInSession ? { onCreateInSession: props.onCreateInSession } : {})}
       />
     </div>
   );
@@ -490,6 +495,7 @@ export interface MemorySectionProps {
     readonly enabled?: boolean;
     readonly proactive?: boolean;
   }) => Promise<WebuiMemorySettingsView>;
+  readonly onCreateInSession?: (input: MemoryHandoff) => void;
 }
 
 /**
@@ -511,6 +517,7 @@ export function MemorySection({
   setAgentMemory,
   getMemorySettings,
   setMemorySettings,
+  onCreateInSession,
 }: MemorySectionProps): ReactElement {
   const [settings, setSettings] = useState<WebuiMemorySettingsView>();
   const [toggling, setToggling] = useState(false);
@@ -535,7 +542,7 @@ export function MemorySection({
     };
   }, [getMemorySettings]);
 
-  useEffect(() => {
+  const readSummary = useCallback(() => {
     if (!getAgentMemory) return;
     let cancelled = false;
     void getAgentMemory()
@@ -551,6 +558,8 @@ export function MemorySection({
       cancelled = true;
     };
   }, [getAgentMemory]);
+
+  useEffect(readSummary, [readSummary]);
 
   const toggle = useCallback(
     async (patch: { readonly enabled?: boolean; readonly proactive?: boolean }) => {
@@ -656,6 +665,8 @@ export function MemorySection({
             getAgentMemory={getAgentMemory}
             setAgentMemory={setAgentMemory}
             onClose={closeManager}
+            onChanged={readSummary}
+            {...(onCreateInSession ? { onCreateInSession } : {})}
           />
         ) : null}
       </div>
@@ -681,14 +692,44 @@ export function formatMemoryTimestamp(value: string | undefined): string {
   return `更新于 ${stamp}`;
 }
 
-export interface MemoryManagerDialogProps {
-  readonly getAgentMemory?: (request?: {
+/** Byte count for the delete confirmation. Plain KB above a kilobyte so the
+ *  number in front of an irreversible action is the one the user can compare
+ *  against the row's 字节 figure, not a unit conversion they have to undo. */
+export function formatMemorySize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} 字节`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
+/** What 「在会话中创建」 leaves in the composer, beside the attached file.
+ *  The desktop lands on the home surface with exactly this one line already
+ *  typed, so the user's next action is to add what they actually want changed. */
+export const MEMORY_HANDOFF_PROMPT = "我想调整下这个记忆文件";
+
+export interface MemoryManagerDialogProps {  readonly getAgentMemory?: (request?: {
     readonly includeContent?: boolean;
   }) => Promise<WebuiAgentMemoryView>;
   readonly setAgentMemory?: (request: {
     readonly content: string;
   }) => Promise<WebuiAgentMemoryView>;
   readonly onClose: () => void;
+  /** Re-read the row's size after a write or a delete, so 记忆摘要 cannot keep
+   *  reporting the size of a file this dialog just changed. */
+  readonly onChanged?: () => void;
+  /** Hand the memory to a conversation instead of editing it here. Omitted when
+   *  the host has nowhere to put it — the item then stays out of the menu rather
+   *  than opening a composer the shell cannot reach. */
+  readonly onCreateInSession?: (input: MemoryHandoff) => void;
+}
+
+/** What 「在会话中创建」 carries across: the body plus the identity the composer
+ *  chip needs. `token` makes the hand-off one-shot — the composer remembers the
+ *  last token it consumed, so a re-render cannot double-attach a 74KB file. */
+export interface MemoryHandoff {
+  readonly token: string;
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number;
+  readonly content: string;
 }
 
 /**
@@ -706,13 +747,24 @@ export function MemoryManagerDialog({
   getAgentMemory,
   setAgentMemory,
   onClose,
+  onChanged,
+  onCreateInSession,
 }: MemoryManagerDialogProps): ReactElement {
   const [draft, setDraft] = useState<string>();
   const [updatedAt, setUpdatedAt] = useState<string>();
+  const [filePath, setFilePath] = useState<string>();
+  const [fileSize, setFileSize] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // The document-level Escape handler below is keyed on `onClose` alone so it
+  // never tears down and re-steals focus on every keystroke. It therefore
+  // cannot close over `menuOpen`; this ref is how it still sees the flag.
+  const menuOpenRef = useRef(false);
+  menuOpenRef.current = menuOpen;
 
   const load = useCallback(async (reader: NonNullable<MemoryManagerDialogProps["getAgentMemory"]>) => {
     setLoading(true);
@@ -722,6 +774,8 @@ export function MemoryManagerDialog({
       if (!value) return;
       setDraft(value.content ?? "");
       setUpdatedAt(value.updatedAt);
+      setFilePath(value.path);
+      setFileSize(value.sizeBytes);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -757,12 +811,58 @@ export function MemoryManagerDialog({
     try {
       await setAgentMemory({ content: draft });
       setSaved(true);
+      onChanged?.();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [draft, saving, setAgentMemory]);
+  }, [draft, saving, setAgentMemory, onChanged]);
+
+  /**
+   * 删除记忆 is a blank write, not a new capability.
+   *
+   * `writeAgentMemory` already treats empty content as "remove the file" — the
+   * runtime's own write contract does the same — so the menu item is a named
+   * shortcut for something the editor could already do by emptying the textarea
+   * and saving. That is worth stating plainly, because it is also the reason
+   * this needs a confirmation: the path it takes is the one that unlinks a
+   * 74KB file of accumulated lessons, with nothing to undo it from.
+   */
+  const remove = useCallback(async () => {
+    if (!setAgentMemory || saving) return;
+    setSaving(true);
+    setError(undefined);
+    try {
+      await setAgentMemory({ content: "" });
+      setDraft(undefined);
+      setUpdatedAt(undefined);
+      setFileSize(0);
+      setConfirmingDelete(false);
+      setMenuOpen(false);
+      onChanged?.();
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, setAgentMemory, onChanged]);
+
+  const handoffSequence = useRef(0);
+  const handoff = useCallback(() => {
+    if (!onCreateInSession || draft === undefined || !filePath) return;
+    const fileName = filePath.split("/").pop() ?? "MEMORY.md";
+    handoffSequence.current += 1;
+    onCreateInSession({
+      token: `${fileName}:${fileSize}:${handoffSequence.current}`,
+      fileName,
+      mimeType: fileName.toLowerCase().endsWith(".md") ? "text/markdown" : "text/plain",
+      sizeBytes: fileSize,
+      content: draft,
+    });
+    setMenuOpen(false);
+    onClose();
+  }, [draft, filePath, fileSize, onClose, onCreateInSession]);
 
   /**
    * Escape has to be heard on the document, and focus has to be moved in by
@@ -782,6 +882,13 @@ export function MemoryManagerDialog({
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
+      // An open menu is a layer above the dialog, so Escape sheds that layer
+      // first. Dismissing the whole dialog instead would throw away the
+      // 74KB draft behind it, which is not what pressing Escape once means.
+      if (menuOpenRef.current) {
+        setMenuOpen(false);
+        return;
+      }
       onClose();
     };
     document.addEventListener("keydown", onKeyDown);
@@ -796,7 +903,14 @@ export function MemoryManagerDialog({
       data-testid="agent-memory-manager"
       className="webui-memory-manager-mask"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        // Shed the menu before the dialog: a click on the scrim with a menu
+        // open means "put that away", not "discard the memory editor".
+        if (event.target !== event.currentTarget) return;
+        if (menuOpenRef.current) {
+          setMenuOpen(false);
+          return;
+        }
+        onClose();
       }}
     >
       <section
@@ -810,18 +924,87 @@ export function MemoryManagerDialog({
       >
         <div className="webui-personalization-header">
           <h3>记忆摘要</h3>
-          <button
-            type="button"
-            aria-label="关闭"
-            data-testid="agent-memory-close"
-            className="webui-settings-icon-button"
-            onClick={onClose}
-          >
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-            </svg>
-          </button>
+          <div className="webui-memory-manager-header-actions">
+            <button
+              type="button"
+              aria-label="更多操作"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              data-testid="agent-memory-menu"
+              className="webui-settings-icon-button"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="3" cy="8" r="1.4" />
+                <circle cx="8" cy="8" r="1.4" />
+                <circle cx="13" cy="8" r="1.4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="关闭"
+              data-testid="agent-memory-close"
+              className="webui-settings-icon-button"
+              onClick={onClose}
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          {menuOpen ? (
+            <div role="menu" aria-label="记忆操作" data-testid="agent-memory-menu-panel" className="webui-memory-manager-menu">
+              {onCreateInSession ? (
+                <button type="button" role="menuitem" data-testid="agent-memory-create-in-session" onClick={handoff}>
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" className="webui-memory-manager-menu-icon">
+                    <path d="M14 10.5a2 2 0 0 1-2 2H6l-3.5 2.5V4.5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 2 2v6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                  在会话中创建
+                </button>
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="agent-memory-delete"
+                className="is-danger"
+                disabled={!setAgentMemory || draft === undefined}
+                onClick={() => {
+                  // Shed the menu as it opens the confirmation: leaving it up
+                  // puts a second copy of 删除记忆 on top of the thing it just
+                  // opened, so the panel looks like it has two delete buttons.
+                  setMenuOpen(false);
+                  setConfirmingDelete(true);
+                }}
+              >
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" className="webui-memory-manager-menu-icon">
+                  <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                删除记忆
+              </button>
+            </div>
+          ) : null}
         </div>
+        {confirmingDelete ? (
+          <div role="alertdialog" aria-modal="true" aria-label="确认删除记忆" data-testid="agent-memory-delete-confirm" className="webui-memory-manager-confirm">
+            <p>
+              将删除 <strong>{formatMemorySize(fileSize)}</strong> 的长期记忆文件，删除后无法恢复。
+            </p>
+            <div className="webui-memory-manager-actions">
+              <button type="button" className="webui-mavis-button webui-mavis-button-gray" data-testid="agent-memory-delete-cancel" onClick={() => setConfirmingDelete(false)}>
+                取消
+              </button>
+              <button
+                type="button"
+                className="webui-mavis-button webui-mavis-button-danger"
+                data-testid="agent-memory-delete-confirm-button"
+                disabled={saving}
+                onClick={() => void remove()}
+              >
+                {saving ? "删除中…" : "删除"}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {loading ? (
           <p data-testid="agent-memory-loading" className="webui-personalization-meta">
             加载中…

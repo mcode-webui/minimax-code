@@ -15,6 +15,7 @@ import {
   removeWebuiSlashToken,
   replaceWebuiSlashToken,
   webuiAttachmentLimitError,
+  webuiTextAttachmentDataUrl,
 } from "../../src/client/projection/composer-interactions.js";
 import { sendMessageOperation, enqueueMessageOperation } from "../../src/server/operation/operations.js";
 import { setPermissionModeOperation } from "../../src/server/operation/permission-mode.js";
@@ -483,8 +484,25 @@ describe("Desktop composer interaction contracts", () => {
     ).toEqual({ value: "/deep-research ", caret: 15 });
   });
 
-  it("applies attachment count and WebSocket payload caps before reading files", () => {
-    expect(webuiAttachmentLimitError(
+  it("round-trips a hand-seeded text attachment through the same data-URL shape a picked file uses", () => {
+    const decode = (dataUrl: string): string => {
+      expect(dataUrl.startsWith("data:text/markdown;base64,")).toBe(true);
+      const bytes = Uint8Array.from(atob(dataUrl.slice("data:text/markdown;base64,".length)), (c) => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    };
+
+    // The whole reason this helper exists: `btoa` throws above U+00FF, and the
+    // one file it carries — MEMORY.md — is almost entirely Chinese. An ASCII
+    // case would pass against a broken implementation.
+    expect(decode(webuiTextAttachmentDataUrl("text/markdown", "记忆"))).toBe("记忆");
+    expect(decode(webuiTextAttachmentDataUrl("text/markdown", ""))).toBe("");
+    expect(decode(webuiTextAttachmentDataUrl("text/markdown", "a中b\n🙂"))).toBe("a中b\n🙂");
+    // Past the 32KB chunk boundary the builder concatenates, so a body longer
+    // than one chunk is where a chunking bug would show up.
+    expect(decode(webuiTextAttachmentDataUrl("text/markdown", "x".repeat(0x8000 * 2 + 7)))).toHaveLength(0x8000 * 2 + 7);
+  });
+
+  it("applies attachment count and WebSocket payload caps before reading files", () => {    expect(webuiAttachmentLimitError(
       Array.from({ length: 10 }, () => ({ sizeBytes: 0 })),
       [{ sizeBytes: 1 }],
     )).toBe("最多添加 10 个文件");

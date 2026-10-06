@@ -103,3 +103,24 @@ export function webuiAttachmentLimitError(
     return "附件总大小不能超过 70 MB";
   return undefined;
 }
+
+/**
+ * The data URL a hand-seeded text attachment needs, in the same
+ * `data:<mime>;base64,…` shape `readAsDataURL` produces for a picked file.
+ *
+ * UTF-8 first, then base64 — never `btoa(text)` directly. `btoa` throws on
+ * anything above U+00FF, and the one file this exists to carry is almost
+ * entirely Chinese, so the naive call fails on the real input and passes on
+ * every ASCII test.
+ */
+export function webuiTextAttachmentDataUrl(mimeType: string, text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  // Chunked so a 100KB memory file does not build one enormous string via
+  // repeated concatenation; the per-byte loop is the slow part either way.
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return `data:${mimeType};base64,${btoa(binary)}`;
+}

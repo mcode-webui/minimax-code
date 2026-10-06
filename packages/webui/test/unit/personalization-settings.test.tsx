@@ -25,10 +25,33 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  MEMORY_HANDOFF_PROMPT,
   PersonalizationSettings,
+  formatMemorySize,
   formatMemoryTimestamp,
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
+
+describe("「在会话中创建」 hand-off", () => {
+  it("leaves the line the desktop's composer already has typed", () => {
+    // Read off the desktop screenshot, not invented: it is the whole text the
+    // user finds waiting, and the attachment chip carries the file identity.
+    expect(MEMORY_HANDOFF_PROMPT).toBe("我想调整下这个记忆文件");
+  });
+});
+
+describe("formatMemorySize", () => {
+  it("keeps small files in the unit the row already shows", () => {
+    expect(formatMemorySize(0)).toBe("0 字节");
+    expect(formatMemorySize(1023)).toBe("1023 字节");
+  });
+
+  it("switches to KB above a kilobyte, rounded", () => {
+    // 115122 bytes is the live MEMORY.md. The number in front of an
+    // irreversible delete is the one the user can compare against the row.
+    expect(formatMemorySize(115_122)).toBe("112 KB");
+  });
+});
 
 describe("formatMemoryTimestamp", () => {
   // The desktop footer reads `更新于 2026-10-06 04:48:48`. Hand-rolled rather

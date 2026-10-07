@@ -20,6 +20,14 @@ import {
   type WebuiWorktreeWorkspace,
 } from "../projection/worktree-state.js";
 import {
+  WEBUI_VOICE_LANGUAGES,
+  WEBUI_VOICE_SETTINGS_KEY,
+  parseWebuiVoiceSettings,
+  resolveWebuiVoiceSupport,
+  type WebuiVoiceSettings as WebuiVoiceSettingsValue,
+  type WebuiVoiceSupport,
+} from "../projection/voice-state.js";
+import {
   WEBUI_SHORTCUT_COMMANDS,
   WEBUI_SHORTCUT_OVERRIDES_KEY,
   findWebuiShortcutConflict,
@@ -37,7 +45,7 @@ import { PersonalizationSettings, type MemoryHandoff } from "./settings/Personal
 export type SettingsTabKey = "desktop" | "shortcuts" | "voice" | "custom-instructions" | "usage" | "connection" | "account" | "coding" | "worktree" | "archived";
 export interface SettingsTabDefinition { readonly key: SettingsTabKey; readonly group: "preferences" | "management" | "coding" | "archived"; readonly label: string; readonly icon: string; readonly disabled?: boolean; }
 export const DESKTOP_SETTINGS_TABS: readonly SettingsTabDefinition[] = [
-{ key: "desktop", group: "preferences", label: "通用", icon: "desktop" }, { key: "voice", group: "preferences", label: "语音", icon: "voice", disabled: true }, { key: "shortcuts", group: "preferences", label: "快捷键", icon: "shortcuts" }, { key: "custom-instructions", group: "preferences", label: "个性化", icon: "custom-instructions" },
+{ key: "desktop", group: "preferences", label: "通用", icon: "desktop" }, { key: "voice", group: "preferences", label: "语音", icon: "voice" }, { key: "shortcuts", group: "preferences", label: "快捷键", icon: "shortcuts" }, { key: "custom-instructions", group: "preferences", label: "个性化", icon: "custom-instructions" },
   { key: "usage", group: "management", label: "用量与模型", icon: "chart" }, { key: "connection", group: "management", label: "连接", icon: "link", disabled: true }, { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding" }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree" }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
 ];
 export const SETTINGS_GROUPS = [{ key: "preferences", label: "偏好" }, { key: "management", label: "管理" }, { key: "coding", label: "编码" }, { key: "archived", label: "归档" }] as const;
@@ -219,7 +227,7 @@ refreshModels,
   const visibleTabs = useMemo(() => filterSettingsTabs(query), [query]); if (!open) return null; const selected = models.find((model) => model.selected); const modelValue = selected ? `${selected.providerId}/${selected.modelId}/${selected.variant ?? ""}` : ""; const groups = SETTINGS_GROUPS.map((group) => ({ ...group, tabs: visibleTabs.filter((tab) => tab.group === group.key) })).filter((group) => group.tabs.length > 0); const label = DESKTOP_SETTINGS_TABS.find((tab) => tab.key === active)?.label;
   const changeModel = async (value: string) => { const model = models.find((candidate) => `${candidate.providerId}/${candidate.modelId}/${candidate.variant ?? ""}` === value); if (!model || !selectModel) return; await selectModel({ providerId: model.providerId, modelId: model.modelId, ...(model.variant ? { variant: model.variant } : {}), ...(sessionId ? { sessionId } : {}) }); }; const handleSignOut = async () => { if (!signOut) return; try { setSignOutError(undefined); await signOut(); onClose(); } catch (error) { setSignOutError(error instanceof Error ? error.message : String(error)); } };
   const handleDeleteAllArchived = async () => { if (!deleteSession || !archived.length || !window.confirm("确定删除全部已归档任务吗？此操作无法撤销。")) return; const ids = archived.map((session) => session.sessionId); try { await Promise.all(ids.map((id) => deleteSession({ id }))); setArchived([]); } catch (error) { window.alert(`删除失败：${error instanceof Error ? error.message : String(error)}`); } };
-  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "custom-instructions" ? <PersonalizationSettings getGlobalInstructions={getGlobalInstructions} setGlobalInstructions={setGlobalInstructions} getAgentMemory={getAgentMemory} setAgentMemory={setAgentMemory} getUserProfile={getUserProfile} setUserProfile={setUserProfile} getMemorySettings={getMemorySettings} setMemorySettings={setMemorySettings} {...(onCreateMemorySession ? { onCreateInSession: onCreateMemorySession } : {})} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active === "coding" ? <SettingsReviewPage workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} loadSessions={loadSessions} getWorkspaceReviewSummary={getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={searchWorkspaceReviewDiffs} /> : null}{active === "worktree" ? <SettingsWorktreePage loadSessions={loadSessions} /> : null}{active === "shortcuts" ? <SettingsShortcutsPage /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" && active !== "coding" && active !== "worktree" && active !== "shortcuts" && active !== "custom-instructions" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
+  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "custom-instructions" ? <PersonalizationSettings getGlobalInstructions={getGlobalInstructions} setGlobalInstructions={setGlobalInstructions} getAgentMemory={getAgentMemory} setAgentMemory={setAgentMemory} getUserProfile={getUserProfile} setUserProfile={setUserProfile} getMemorySettings={getMemorySettings} setMemorySettings={setMemorySettings} {...(onCreateMemorySession ? { onCreateInSession: onCreateMemorySession } : {})} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active === "coding" ? <SettingsReviewPage workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} loadSessions={loadSessions} getWorkspaceReviewSummary={getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={searchWorkspaceReviewDiffs} /> : null}{active === "worktree" ? <SettingsWorktreePage loadSessions={loadSessions} /> : null}{active === "voice" ? <SettingsVoicePage /> : null}{active === "shortcuts" ? <SettingsShortcutsPage /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" && active !== "coding" && active !== "worktree" && active !== "voice" && active !== "shortcuts" && active !== "custom-instructions" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
 }
 
 function GenericPage({ theme, setTheme, wrap, setWrap, newTab, setNewTab, contextWindow, setContextWindow, version }: { readonly theme: string; readonly setTheme: (value: string) => void; readonly wrap: boolean; readonly setWrap: (value: boolean) => void; readonly newTab: boolean; readonly setNewTab: (value: boolean) => void; readonly contextWindow: boolean; readonly setContextWindow: (value: boolean) => void; readonly version: string }): ReactElement {
@@ -451,7 +459,67 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
   </div>;
 }
 
-/* Roadmap P 区「快捷键管理」.
+/* Roadmap P 区「语音输入」.
+ *
+ * The page says the one thing a user cannot work out on their own: whether
+ * this browser can listen at all. Firefox has never shipped the Web Speech
+ * API, and on it a mic button is a control that costs a click and explains
+ * nothing. Everything else on this page is the plain setting behind it. */
+export function WebuiVoiceSettings({ settings, support, onToggle, onLanguageChange }: {
+  readonly settings: WebuiVoiceSettingsValue;
+  readonly support: WebuiVoiceSupport;
+  readonly onToggle?: (enabled: boolean) => void;
+  readonly onLanguageChange?: (language: string) => void;
+}): ReactElement {
+  return <div className="webui-settings-voice" data-testid="settings-voice-page">
+    {support === "unsupported" ? (
+      <p className="webui-settings-voice-unsupported" role="status" data-testid="voice-unsupported">
+        当前浏览器不支持语音识别，输入框里的麦克风按钮不会出现。换 Chrome 或 Edge 就能用。
+      </p>
+    ) : null}
+    <label className="webui-settings-row">
+      <span>启用语音输入</span>
+      <Switch label="启用语音输入" checked={settings.enabled} onChange={(next: boolean) => onToggle?.(next)} testId="voice-enabled" />
+    </label>
+    <label className="webui-settings-row">
+      <span>识别语言</span>
+      <select
+        className="webui-settings-voice-language"
+        data-testid="voice-language"
+        value={settings.language}
+        disabled={!settings.enabled}
+        onChange={(event) => onLanguageChange?.(event.target.value)}
+      >
+        {WEBUI_VOICE_LANGUAGES.map((entry) => <option key={entry.tag} value={entry.tag}>{entry.label}（{entry.tag}）</option>)}
+      </select>
+    </label>
+    <p className="webui-settings-voice-hint">识别到的文字会插入光标位置，中途结果会实时更新。</p>
+  </div>;
+}
+
+function SettingsVoicePage(): ReactElement {
+  const [settings, setSettings] = useState<WebuiVoiceSettingsValue>(() => parseWebuiVoiceSettings(null));
+  const [support, setSupport] = useState<WebuiVoiceSupport>("unknown");
+
+  useEffect(() => {
+    setSettings(parseWebuiVoiceSettings(localStorage.getItem(WEBUI_VOICE_SETTINGS_KEY)));
+    setSupport(typeof window === "undefined" ? "unknown" : resolveWebuiVoiceSupport(window));
+  }, []);
+
+  const write = useCallback((next: WebuiVoiceSettingsValue) => {
+    setSettings(next);
+    localStorage.setItem(WEBUI_VOICE_SETTINGS_KEY, JSON.stringify(next));
+  }, []);
+
+  return <WebuiVoiceSettings
+    settings={settings}
+    support={support}
+    onToggle={(enabled) => write({ ...settings, enabled })}
+    onLanguageChange={(language) => write({ ...settings, language })}
+  />;
+}
+
+/* Rebindable command list (roadmap P 区「快捷键管理」).
  *
  * Presentational like the review and worktree panels, so the rows it renders
  * are assertable without a DOM. Which commands exist and how a binding is

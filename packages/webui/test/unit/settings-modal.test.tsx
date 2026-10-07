@@ -95,13 +95,14 @@ describe("account tab gating", () => {
     // not-yet-built panels still need. `account` (email row, sign-out button,
     // sign-out error region), `coding` (workspace review), `worktree` (parallel
     // experiment branches), `custom-instructions` (profile-wide AGENTS.md
-    // editor) and `shortcuts` (rebindable command registry) are all built, so
-    // all five sit in the ungated group. The rest have no content behind them
-    // and clicking one would land on an empty pane.
-    for (const key of ["account", "coding", "worktree", "custom-instructions", "shortcuts"]) {
+    // editor), `shortcuts` (rebindable command registry) and `voice` (browser
+    // speech support and language) are all built, so all six sit in the
+    // ungated group. The rest have no content behind them and clicking one
+    // would land on an empty pane.
+    for (const key of ["account", "coding", "worktree", "custom-instructions", "shortcuts", "voice"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBeUndefined();
     }
-    for (const key of ["voice", "connection"]) {
+    for (const key of ["connection"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBe(true);
     }
   });

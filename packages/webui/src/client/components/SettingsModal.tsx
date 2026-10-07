@@ -19,6 +19,17 @@ import {
   type WebuiWorktreeSourceSession,
   type WebuiWorktreeWorkspace,
 } from "../projection/worktree-state.js";
+import {
+  WEBUI_SHORTCUT_COMMANDS,
+  WEBUI_SHORTCUT_OVERRIDES_KEY,
+  findWebuiShortcutConflict,
+  formatWebuiShortcut,
+  parseWebuiShortcutOverrides,
+  resetWebuiShortcutOverrides,
+  resolveWebuiShortcutBindings,
+  webuiShortcutFromEvent,
+  type WebuiShortcutOverride,
+} from "../projection/shortcut-state.js";
 import { ToggleSwitch as Switch } from "./ToggleSwitch.js";
 import { UsageModelSettings } from "./settings/UsageModelSettings.js";
 import { PersonalizationSettings, type MemoryHandoff } from "./settings/PersonalizationSettings.js";
@@ -26,7 +37,7 @@ import { PersonalizationSettings, type MemoryHandoff } from "./settings/Personal
 export type SettingsTabKey = "desktop" | "shortcuts" | "voice" | "custom-instructions" | "usage" | "connection" | "account" | "coding" | "worktree" | "archived";
 export interface SettingsTabDefinition { readonly key: SettingsTabKey; readonly group: "preferences" | "management" | "coding" | "archived"; readonly label: string; readonly icon: string; readonly disabled?: boolean; }
 export const DESKTOP_SETTINGS_TABS: readonly SettingsTabDefinition[] = [
-{ key: "desktop", group: "preferences", label: "通用", icon: "desktop" }, { key: "voice", group: "preferences", label: "语音", icon: "voice", disabled: true }, { key: "shortcuts", group: "preferences", label: "快捷键", icon: "shortcuts", disabled: true }, { key: "custom-instructions", group: "preferences", label: "个性化", icon: "custom-instructions" },
+{ key: "desktop", group: "preferences", label: "通用", icon: "desktop" }, { key: "voice", group: "preferences", label: "语音", icon: "voice", disabled: true }, { key: "shortcuts", group: "preferences", label: "快捷键", icon: "shortcuts" }, { key: "custom-instructions", group: "preferences", label: "个性化", icon: "custom-instructions" },
   { key: "usage", group: "management", label: "用量与模型", icon: "chart" }, { key: "connection", group: "management", label: "连接", icon: "link", disabled: true }, { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding" }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree" }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
 ];
 export const SETTINGS_GROUPS = [{ key: "preferences", label: "偏好" }, { key: "management", label: "管理" }, { key: "coding", label: "编码" }, { key: "archived", label: "归档" }] as const;
@@ -208,7 +219,7 @@ refreshModels,
   const visibleTabs = useMemo(() => filterSettingsTabs(query), [query]); if (!open) return null; const selected = models.find((model) => model.selected); const modelValue = selected ? `${selected.providerId}/${selected.modelId}/${selected.variant ?? ""}` : ""; const groups = SETTINGS_GROUPS.map((group) => ({ ...group, tabs: visibleTabs.filter((tab) => tab.group === group.key) })).filter((group) => group.tabs.length > 0); const label = DESKTOP_SETTINGS_TABS.find((tab) => tab.key === active)?.label;
   const changeModel = async (value: string) => { const model = models.find((candidate) => `${candidate.providerId}/${candidate.modelId}/${candidate.variant ?? ""}` === value); if (!model || !selectModel) return; await selectModel({ providerId: model.providerId, modelId: model.modelId, ...(model.variant ? { variant: model.variant } : {}), ...(sessionId ? { sessionId } : {}) }); }; const handleSignOut = async () => { if (!signOut) return; try { setSignOutError(undefined); await signOut(); onClose(); } catch (error) { setSignOutError(error instanceof Error ? error.message : String(error)); } };
   const handleDeleteAllArchived = async () => { if (!deleteSession || !archived.length || !window.confirm("确定删除全部已归档任务吗？此操作无法撤销。")) return; const ids = archived.map((session) => session.sessionId); try { await Promise.all(ids.map((id) => deleteSession({ id }))); setArchived([]); } catch (error) { window.alert(`删除失败：${error instanceof Error ? error.message : String(error)}`); } };
-  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "custom-instructions" ? <PersonalizationSettings getGlobalInstructions={getGlobalInstructions} setGlobalInstructions={setGlobalInstructions} getAgentMemory={getAgentMemory} setAgentMemory={setAgentMemory} getUserProfile={getUserProfile} setUserProfile={setUserProfile} getMemorySettings={getMemorySettings} setMemorySettings={setMemorySettings} {...(onCreateMemorySession ? { onCreateInSession: onCreateMemorySession } : {})} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active === "coding" ? <SettingsReviewPage workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} loadSessions={loadSessions} getWorkspaceReviewSummary={getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={searchWorkspaceReviewDiffs} /> : null}{active === "worktree" ? <SettingsWorktreePage loadSessions={loadSessions} /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" && active !== "coding" && active !== "worktree" && active !== "custom-instructions" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
+  return <div role="dialog" aria-modal="true" aria-label="设置" className="webui-settings-mask" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="webui-settings-modal" onMouseDown={(event) => event.stopPropagation()}><aside className="webui-settings-sidebar"><button type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}><Icon name="back" /><span>返回应用</span></button><div className="webui-settings-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索设置..." aria-label="搜索设置" />{query ? <button type="button" aria-label="清空设置搜索" onClick={() => setQuery("")}><Icon name="close" /></button> : null}</div><nav aria-label="设置分类" className="webui-settings-nav">{groups.length ? groups.map((group) => <div key={group.key} className="webui-settings-group"><h3>{group.label}</h3>{group.tabs.map((tab) => <button type="button" key={tab.key} data-menu-key={tab.key} disabled={tab.disabled} className={`webui-settings-nav-item menu-item${active === tab.key ? " is-active active" : ""}`} aria-current={active === tab.key ? "page" : undefined} onClick={() => setActive(tab.key)}><span className="menu-icon"><Icon name={tab.icon} /></span><span className="menu-label">{tab.label}</span></button>)}</div>) : <p className="webui-settings-no-results">没有匹配的设置</p>}</nav></aside><main className="webui-settings-content" key={active}><header className="webui-settings-content-header"><h2>{label}</h2>{active === "archived" ? <button type="button" className="webui-archived-delete-all" disabled={!archived.length || !deleteSession} onClick={() => void handleDeleteAllArchived()}><TrashIcon />全部删除</button> : null}</header>{active === "desktop" ? <GenericPage theme={theme} setTheme={setTheme} wrap={wrap} setWrap={setWrap} newTab={newTab} setNewTab={setNewTab} contextWindow={contextWindow} setContextWindow={setContextWindow} version={version?.version ?? ""} /> : null}{active === "custom-instructions" ? <PersonalizationSettings getGlobalInstructions={getGlobalInstructions} setGlobalInstructions={setGlobalInstructions} getAgentMemory={getAgentMemory} setAgentMemory={setAgentMemory} getUserProfile={getUserProfile} setUserProfile={setUserProfile} getMemorySettings={getMemorySettings} setMemorySettings={setMemorySettings} {...(onCreateMemorySession ? { onCreateInSession: onCreateMemorySession } : {})} /> : null}{active === "usage" ? <UsageModelSettings capabilities={usageCapabilities} sessionId={sessionId} /> : null}{active === "account" ? <div className="webui-settings-panels"><SettingPanel title="账户"><SettingRow title="账户信息" description={typeof account?.email === "string" ? account.email : ""} /><Button disabled={!signOut} onClick={handleSignOut}>退出登录</Button>{signOutError ? <p role="alert" className="webui-settings-error">{signOutError}</p> : null}</SettingPanel></div> : null}{active === "archived" ? <ArchivedSessionsPage sessions={archived} canDelete={Boolean(deleteSession)} canUnarchive={Boolean(archiveSession)} onDelete={async (id) => { if (!deleteSession) return; await deleteSession({ id }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} onUnarchive={async (id) => { if (!archiveSession) return; await archiveSession({ id, archived: false }); setArchived((items) => items.filter((item) => item.sessionId !== id)); }} /> : null}{active === "coding" ? <SettingsReviewPage workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} loadSessions={loadSessions} getWorkspaceReviewSummary={getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={searchWorkspaceReviewDiffs} /> : null}{active === "worktree" ? <SettingsWorktreePage loadSessions={loadSessions} /> : null}{active === "shortcuts" ? <SettingsShortcutsPage /> : null}{active !== "desktop" && active !== "usage" && active !== "account" && active !== "archived" && active !== "coding" && active !== "worktree" && active !== "shortcuts" && active !== "custom-instructions" ? <div className="webui-settings-empty-panel" aria-label="空设置面板" /> : null}{active === "desktop" && dataDir ? <p className="webui-settings-data-dir">{dataDir}</p> : null}</main></section></div>;
 }
 
 function GenericPage({ theme, setTheme, wrap, setWrap, newTab, setNewTab, contextWindow, setContextWindow, version }: { readonly theme: string; readonly setTheme: (value: string) => void; readonly wrap: boolean; readonly setWrap: (value: boolean) => void; readonly newTab: boolean; readonly setNewTab: (value: boolean) => void; readonly contextWindow: boolean; readonly setContextWindow: (value: boolean) => void; readonly version: string }): ReactElement {
@@ -438,6 +449,134 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
       </li>)}
     </ul>
   </div>;
+}
+
+/* Roadmap P 区「快捷键管理」.
+ *
+ * Presentational like the review and worktree panels, so the rows it renders
+ * are assertable without a DOM. Which commands exist and how a binding is
+ * parsed live in `shortcut-state.ts`; nothing here decides anything. */
+export function WebuiShortcutSettings({ overrides, platform, editing, conflict, onStartEdit, onReset, onCancelEdit }: {
+  readonly overrides: readonly WebuiShortcutOverride[];
+  readonly platform?: string;
+  readonly editing?: string;
+  readonly conflict?: { readonly commandId: string; readonly label: string } | undefined;
+  readonly onStartEdit?: (commandId: string) => void;
+  readonly onReset?: (commandId: string) => void;
+  readonly onCancelEdit?: () => void;
+}): ReactElement {
+  const bindings = resolveWebuiShortcutBindings(overrides);
+  const overridden = new Set(overrides.map((override) => override.id));
+  const groups = [...new Set(WEBUI_SHORTCUT_COMMANDS.map((command) => command.group))];
+  return <div className="webui-settings-shortcuts" data-testid="settings-shortcut-page">
+    {groups.map((group) => <section className="webui-settings-shortcut-group" key={group}>
+      <h3 className="webui-settings-shortcut-group-name">{group}</h3>
+      <ul className="webui-settings-shortcut-list">
+        {WEBUI_SHORTCUT_COMMANDS.filter((command) => command.group === group).map((command) => {
+          const isOverridden = overridden.has(command.id);
+          return <li
+            className="webui-settings-shortcut-row"
+            key={command.id}
+            data-webui-shortcut-id={command.id}
+            data-webui-shortcut-overridden={isOverridden ? "true" : undefined}
+          >
+            <span className="webui-settings-shortcut-label">{command.label}</span>
+            {editing === command.id ? (
+              <span className="webui-settings-shortcut-capture" data-testid="shortcut-capture">按下新的组合键，Esc 取消</span>
+            ) : (
+              <button
+                type="button"
+                className="webui-settings-shortcut-key"
+                data-testid="shortcut-binding"
+                onClick={() => onStartEdit?.(command.id)}
+              >
+                {formatWebuiShortcut(bindings.get(command.id) ?? command.defaultBinding, platform)}
+              </button>
+            )}
+            {isOverridden ? (
+              <button
+                type="button"
+                className="webui-settings-shortcut-reset"
+                data-testid="shortcut-reset"
+                onClick={() => onReset?.(command.id)}
+              >
+                恢复默认
+              </button>
+            ) : null}
+          </li>;
+        })}
+      </ul>
+    </section>)}
+    {conflict ? (
+      <p className="webui-settings-shortcut-conflict" role="alert" data-testid="shortcut-conflict">
+        这个组合键已经被「{conflict.label}」占用了，换一个。
+      </p>
+    ) : null}
+    {editing ? (
+      <button type="button" className="webui-settings-shortcut-cancel" data-testid="shortcut-cancel" onClick={() => onCancelEdit?.()}>
+        取消
+      </button>
+    ) : null}
+  </div>;
+}
+
+/** Reads overrides once on mount and owns the capture gesture while a row is
+ * being rebound. The shell's global handler reads the same storage key. */
+function SettingsShortcutsPage(): ReactElement {
+  const [overrides, setOverrides] = useState<readonly WebuiShortcutOverride[]>([]);
+  const [editing, setEditing] = useState<string | undefined>(undefined);
+  const [conflict, setConflict] = useState<{ readonly commandId: string; readonly label: string } | undefined>(undefined);
+  const [platform, setPlatform] = useState("");
+
+  useEffect(() => {
+    setOverrides(parseWebuiShortcutOverrides(localStorage.getItem(WEBUI_SHORTCUT_OVERRIDES_KEY)));
+    setPlatform(typeof navigator === "undefined" ? "" : navigator.platform || "");
+  }, []);
+
+  const write = useCallback((next: readonly WebuiShortcutOverride[]) => {
+    setOverrides(next);
+    localStorage.setItem(WEBUI_SHORTCUT_OVERRIDES_KEY, JSON.stringify(next));
+  }, []);
+
+  useEffect(() => {
+    if (!editing) return undefined;
+    /* Capture phase, so the row wins over the shell's own global dispatcher
+     * for the duration of the gesture rather than after it. */
+    const onKeyDown = (event: KeyboardEvent): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === "Escape") {
+        setEditing(undefined);
+        setConflict(undefined);
+        return;
+      }
+      const binding = webuiShortcutFromEvent(event);
+      if (!binding) return;
+      const clash = findWebuiShortcutConflict(binding, editing, resolveWebuiShortcutBindings(overrides));
+      if (clash) {
+        setConflict({
+          commandId: clash,
+          label: WEBUI_SHORTCUT_COMMANDS.find((command) => command.id === clash)?.label ?? clash,
+        });
+        return;
+      }
+      write([...resetWebuiShortcutOverrides(overrides, editing), { id: editing, binding }]);
+      setEditing(undefined);
+      setConflict(undefined);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [editing, overrides, write]);
+
+  return <WebuiShortcutSettings
+    overrides={overrides}
+    platform={platform}
+    editing={editing}
+    conflict={conflict}
+    onStartEdit={(commandId) => { setEditing(commandId); setConflict(undefined); }}
+    onReset={(commandId) => { write(resetWebuiShortcutOverrides(overrides, commandId)); setConflict(undefined); }}
+    onCancelEdit={() => { setEditing(undefined); setConflict(undefined); }}
+  />;
 }
 
 export function WebuiReviewPanel({ state, visible, filtering, loading, note, empty, workspaceDir, onQueryChange, onClearFilters, onToggleFile, onOpenFileLine }: {

@@ -154,3 +154,28 @@ export function parseWebuiVoiceSettings(raw: string | null | undefined): WebuiVo
     return DEFAULT_VOICE_SETTINGS;
   }
 }
+
+const SETTINGS_LISTENERS = new Set<(next: WebuiVoiceSettings) => void>();
+
+/**
+ * The composer reads its settings when it mounts. Nothing re-runs that effect
+ * when the settings page writes, so without this the switch says "on" in one
+ * place and the mic stays absent in the other until a reload.
+ *
+ * A module-level subscription rather than a DOM event: both ends are React
+ * state in the same bundle, and an event bus would buy nothing here.
+ */
+export function subscribeWebuiVoiceSettings(listener: (next: WebuiVoiceSettings) => void): () => void {
+  SETTINGS_LISTENERS.add(listener);
+  return () => {
+    SETTINGS_LISTENERS.delete(listener);
+  };
+}
+
+/** The one place that writes the setting. Persists it, then tells the readers. */
+export function writeWebuiVoiceSettings(next: WebuiVoiceSettings): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(WEBUI_VOICE_SETTINGS_KEY, JSON.stringify(next));
+  }
+  for (const listener of SETTINGS_LISTENERS) listener(next);
+}

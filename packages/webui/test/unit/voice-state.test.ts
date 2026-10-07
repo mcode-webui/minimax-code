@@ -36,6 +36,8 @@ import {
   reduceWebuiVoiceState,
   resolveWebuiVoiceSupport,
   parseWebuiVoiceSettings,
+  subscribeWebuiVoiceSettings,
+  writeWebuiVoiceSettings,
   type WebuiVoiceSettings as WebuiVoiceSettingsValue,
 } from "../../src/client/projection/voice-state.js";
 
@@ -178,6 +180,41 @@ describe("settings that survive a reload", () => {
   });
 });
 
+describe("a switch flipped after the page loaded", () => {
+  /* The composer reads the setting when it mounts. Without a way to tell it
+   * the setting changed, turning voice on in settings and then walking back to
+   * the composer leaves the button missing until a reload — the setting page
+   * says "on" and the composer says "off", which is the same "structure is
+   * right, the thing does not work" failure this row started as. */
+  it("tells every reader when the stored settings change", () => {
+    const seen: WebuiVoiceSettingsValue[] = [];
+    const unsubscribe = subscribeWebuiVoiceSettings((next) => seen.push(next));
+
+    writeWebuiVoiceSettings({ enabled: true, language: "en-US" });
+    unsubscribe();
+    // After unsubscribing, a later write must not reach this listener.
+    writeWebuiVoiceSettings({ enabled: false, language: "ja-JP" });
+
+    expect(seen).toEqual([{ enabled: true, language: "en-US" }]);
+  });
+
+  it("persists what it tells the readers", () => {
+    // The suite runs in node, where there is no localStorage at all.
+    const calls: Array<[string, string]> = [];
+    const scope = globalThis as Record<string, unknown>;
+    const had = "localStorage" in scope;
+    const previous = scope.localStorage;
+    scope.localStorage = { setItem: (key: string, value: string) => calls.push([key, value]) };
+    try {
+      writeWebuiVoiceSettings({ enabled: true, language: "en-US" });
+    } finally {
+      if (had) scope.localStorage = previous;
+      else delete scope.localStorage;
+    }
+    expect(calls).toEqual([[WEBUI_VOICE_SETTINGS_KEY, JSON.stringify({ enabled: true, language: "en-US" })]]);
+  });
+});
+
 /* The page renders below. These close the loops a static render cannot: that
  * the tab reaches it, and that the composer has somewhere to put a mic. A mic
  * that no button drives is the same class of defect as the disabled tab. */
@@ -229,6 +266,46 @@ describe("wiring", () => {
       "utf8",
     );
     expect(hook).toContain("if (!voiceTouchedRef.current || state.draft === draft) return;");
+  });
+
+  /* The two ends of that switch. Turning voice on is a write from the settings
+   * page; the mic showing up is a read in a composer that mounted long before.
+   * Nothing re-runs that composer's mount effect when the settings page
+   * changes, so the two ends only agree if the page writes through the
+   * notifying writer AND the composer subscribes. Either half on its own leaves
+   * the user with a switch reading "on" over a composer with no mic — which is
+   * precisely the bug this row shipped the first time round.
+   *
+   * Source assertions, for the reason the rest of this block is: the
+   * subscription lives in a hook effect, the webui suite runs in
+   * `environment: "node"` with no jsdom or test renderer, and
+   * `renderToStaticMarkup` does not run effects. The behaviour of both halves
+   * is proved above; what is left is the join between them. */
+  it("has the composer subscribe inside the effect that reads the setting", () => {
+    const hook = readFileSync(
+      fileURLToPath(new URL("../../src/client/use-webui-voice.ts", import.meta.url)),
+      "utf8",
+    );
+    const start = hook.indexOf("setSettings(parseWebuiVoiceSettings(localStorage.getItem(");
+    expect(start, "the composer no longer reads the stored setting on mount").toBeGreaterThanOrEqual(0);
+    const end = hook.indexOf("}, []);", start);
+    expect(end, "the mount effect no longer closes on an empty dependency array").toBeGreaterThan(start);
+    // Returned, not merely called. The returned cleanup is what React runs on
+    // unmount, and without it every later write pokes a component long gone.
+    expect(hook.slice(start, end)).toContain("return subscribeWebuiVoiceSettings(setSettings);");
+  });
+
+  it("has the settings page write through the notifying writer", () => {
+    const start = source.indexOf("const write = useCallback((next: WebuiVoiceSettingsValue) => {");
+    expect(start, "the voice settings page's write callback moved").toBeGreaterThanOrEqual(0);
+    const end = source.indexOf("}, []);", start);
+    expect(end, "the voice settings page's write callback no longer closes on an empty dependency array").toBeGreaterThan(start);
+    const body = source.slice(start, end);
+    expect(body).toContain("writeWebuiVoiceSettings(next)");
+    // A bare setItem persists the value and tells nobody. That is the bug
+    // itself, not a near miss of it: the switch looks right and the mic stays
+    // missing until a reload.
+    expect(body).not.toContain("localStorage.setItem");
   });
 });
 

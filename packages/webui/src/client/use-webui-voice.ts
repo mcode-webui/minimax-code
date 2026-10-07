@@ -18,6 +18,7 @@ import {
   parseWebuiVoiceSettings,
   reduceWebuiVoiceState,
   resolveWebuiVoiceSupport,
+  subscribeWebuiVoiceSettings,
   type WebuiVoiceSettings,
   type WebuiVoiceState,
 } from "./projection/voice-state.js";
@@ -85,6 +86,9 @@ export function useWebuiVoice(options: {
       type: "support-resolved",
       support: speechRecognitionCtor() ? "supported" : "unsupported",
     }));
+    // The settings page can flip voice on at any time, including after this
+    // component mounted. Reading once left the mic missing until a reload.
+    return subscribeWebuiVoiceSettings(setSettings);
   }, []);
 
   // The reducer decides what the draft becomes; this only pushes that out, and

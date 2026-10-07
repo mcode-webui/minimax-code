@@ -24,6 +24,7 @@ import {
   WEBUI_VOICE_SETTINGS_KEY,
   parseWebuiVoiceSettings,
   resolveWebuiVoiceSupport,
+  writeWebuiVoiceSettings,
   type WebuiVoiceSettings as WebuiVoiceSettingsValue,
   type WebuiVoiceSupport,
 } from "../projection/voice-state.js";
@@ -508,7 +509,7 @@ function SettingsVoicePage(): ReactElement {
 
   const write = useCallback((next: WebuiVoiceSettingsValue) => {
     setSettings(next);
-    localStorage.setItem(WEBUI_VOICE_SETTINGS_KEY, JSON.stringify(next));
+    writeWebuiVoiceSettings(next);
   }, []);
 
   return <WebuiVoiceSettings

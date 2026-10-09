@@ -56,7 +56,7 @@ import {
 } from "../../src/server/operation/operations.js";
 import { createOperationHandlers, type WebuiOperationPort } from "../../src/server/operation/operation-handlers.js";
 import { dispatchWebuiFrame } from "../../src/server/operation/operation-dispatch.js";
-import { WEBUI_PROTOCOL_VERSION, WebuiErrorCode } from "../../src/server/envelope.js";
+import { WEBUI_PROTOCOL_VERSION, WebuiErrorCode } from "../../src/shared/envelope.js";
 import WebSocket from "ws";
 import { createHarnessPortFromHost } from "../../src/server/host.js";
 

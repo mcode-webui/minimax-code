@@ -38,7 +38,7 @@ import {
 import {
   WebuiErrorCode,
   WEBUI_PROTOCOL_VERSION,
-} from "./envelope.js";
+} from "../shared/envelope.js";
 import type { WebuiHarnessPort } from "./port.js";
 import type { WebuiSessionInfo } from "../shared/contracts/session.js";
 import { WebuiTerminalManager } from "./terminal.js";

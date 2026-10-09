@@ -1,4 +1,4 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import type {
   WebuiInteractionReplyResult,
@@ -6,7 +6,7 @@ import type {
   WebuiQuestionnaireAnswer,
 } from "../../shared/contracts/interactions.js";
 import { validateOptionalObjectBody, validateNamedSessionBody, validatePermissionDecision } from "./common.js";
-import { WATCH_EVENTS_OPERATION_NAME, LIST_PENDING_PERMISSIONS_OPERATION_NAME, GET_PENDING_QUESTIONNAIRE_OPERATION_NAME, REPLY_PERMISSION_OPERATION_NAME, REPLY_QUESTIONNAIRE_OPERATION_NAME, DISMISS_QUESTIONNAIRE_OPERATION_NAME } from "./names.js";
+import { WATCH_EVENTS_OPERATION_NAME, LIST_PENDING_PERMISSIONS_OPERATION_NAME, GET_PENDING_QUESTIONNAIRE_OPERATION_NAME, REPLY_PERMISSION_OPERATION_NAME, REPLY_QUESTIONNAIRE_OPERATION_NAME, DISMISS_QUESTIONNAIRE_OPERATION_NAME } from "../../shared/operation-names.js";
 export const watchEventsOperation: WebuiOperation<Record<string, unknown>> = {
   name: WATCH_EVENTS_OPERATION_NAME,
   // The event watcher is the only stream the client has to reason about

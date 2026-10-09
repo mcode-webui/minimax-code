@@ -1,4 +1,4 @@
-import { WebuiErrorCode, type WebuiErrorCodeValue } from "../envelope.js";
+import { WebuiErrorCode, type WebuiErrorCodeValue } from "../../shared/envelope.js";
 import type {
   WebuiSendMessageResult,
   WebuiWatchEventsResult,

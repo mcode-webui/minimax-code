@@ -1,12 +1,12 @@
 import type { WebSocket } from "ws";
+import { isWebuiFrame } from "../envelope.js";
 import {
-  isWebuiFrame,
   WebuiErrorCode,
   WEBUI_PROTOCOL_VERSION,
   type WebuiErrorFrame,
   type WebuiEventFrame,
   type WebuiResponseFrame,
-} from "../envelope.js";
+} from "../../shared/envelope.js";
 import type { WebuiOperationRegistryEntry } from "./operations.js";
 
 export async function dispatchWebuiFrame(

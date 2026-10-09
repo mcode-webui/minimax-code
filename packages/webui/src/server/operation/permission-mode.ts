@@ -1,9 +1,9 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import {
   GET_PERMISSION_MODE_OPERATION_NAME,
   SET_PERMISSION_MODE_OPERATION_NAME,
-} from "./names.js";
+} from "../../shared/operation-names.js";
 
 export type WebuiPermissionMode = "default" | "auto" | "bypassPermissions";
 

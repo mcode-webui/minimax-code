@@ -1,6 +1,6 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
-import { GET_USER_PROFILE_OPERATION_NAME, SET_USER_PROFILE_OPERATION_NAME } from "./names.js";
+import { GET_USER_PROFILE_OPERATION_NAME, SET_USER_PROFILE_OPERATION_NAME } from "../../shared/operation-names.js";
 
 /**
  * The `关于你` region of `user.md`.

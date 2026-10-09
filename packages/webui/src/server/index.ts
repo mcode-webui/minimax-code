@@ -34,10 +34,10 @@ export {
   credentialMatches,
   type WebuiCredential,
 } from "./credentials.js";
+export { isWebuiFrame } from "./envelope.js";
 export {
   WEBUI_PROTOCOL_VERSION,
   WebuiErrorCode,
-  isWebuiFrame,
   type WebuiRequestFrame,
   type WebuiResponseFrame,
   type WebuiErrorFrame,
@@ -47,7 +47,7 @@ export {
   type WebuiFrame,
   type WebuiEnvelopeKind,
   type WebuiErrorCodeValue,
-} from "./envelope.js";
+} from "../shared/envelope.js";
 export type { WebuiHarnessPort } from "./port.js";
 export type { WebuiVersionInfo } from "../shared/contracts/version.js";
 export type {

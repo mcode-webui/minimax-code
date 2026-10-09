@@ -21,7 +21,7 @@ import type { RawData } from "ws";
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/server/envelope.js";
+import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
 import { WebuiService } from "../../src/server/service.js";
 import type { WebuiHarnessPort } from "../../src/server/port.js";
 import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiMemorySettingsView, WebuiUserProfileView } from "../../src/client/contracts/settings-port.js";

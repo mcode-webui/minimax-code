@@ -41,16 +41,6 @@
       "occurrences": null
     },
     {
-      "from": "server/host.ts",
-      "to": "server/envelope.ts",
-      "layerFrom": "runtime",
-      "layerTo": "server",
-      "rule": "runtime -> server",
-      "category": "runtime-to-server-envelope",
-      "stage": 2,
-      "reason": "The runtime-mapped harness host reaches the server envelope module. After extraction the runtime depends on shared contracts, not server code."
-    },
-    {
       "from": "server/index.ts",
       "to": "server/assembly.ts",
       "layerFrom": "server",

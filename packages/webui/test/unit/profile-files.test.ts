@@ -60,7 +60,7 @@ import {
   setMemorySettingsOperation,
   setUserProfileOperation,
 } from "../../src/server/operation/operations.js";
-import { WebuiErrorCode } from "../../src/server/envelope.js";
+import { WebuiErrorCode } from "../../src/shared/envelope.js";
 
 const tempDirs: string[] = [];
 afterEach(async () => {

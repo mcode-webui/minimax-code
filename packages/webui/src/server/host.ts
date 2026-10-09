@@ -23,7 +23,7 @@ import {
   writeUserProfile,
   WEBUI_DEFAULT_AGENT_NAME,
 } from "./profile-files.js";
-import { WEBUI_PROTOCOL_VERSION } from "./envelope.js";
+import { WEBUI_PROTOCOL_VERSION } from "../shared/envelope.js";
 import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,

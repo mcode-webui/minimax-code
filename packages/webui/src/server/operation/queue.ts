@@ -1,7 +1,7 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import { validateSessionIdBody, validateOptionalObjectBody } from "./common.js";
-import { ABORT_SESSION_OPERATION_NAME, LIST_QUEUE_MESSAGES_OPERATION_NAME, DELETE_QUEUE_ITEM_OPERATION_NAME, LIST_MODELS_OPERATION_NAME, SELECT_MODEL_OPERATION_NAME, LIST_SKILLS_OPERATION_NAME, GET_SESSION_USAGE_OPERATION_NAME, GET_USAGE_QUOTA_OPERATION_NAME, GET_ACCOUNT_STATUS_OPERATION_NAME } from "./names.js";
+import { ABORT_SESSION_OPERATION_NAME, LIST_QUEUE_MESSAGES_OPERATION_NAME, DELETE_QUEUE_ITEM_OPERATION_NAME, LIST_MODELS_OPERATION_NAME, SELECT_MODEL_OPERATION_NAME, LIST_SKILLS_OPERATION_NAME, GET_SESSION_USAGE_OPERATION_NAME, GET_USAGE_QUOTA_OPERATION_NAME, GET_ACCOUNT_STATUS_OPERATION_NAME } from "../../shared/operation-names.js";
 export const abortSessionOperation: WebuiOperation<
   {
     readonly id: string;

@@ -1,4 +1,4 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import {
   invalidBody,
   requireNonEmptyString,
@@ -16,7 +16,7 @@ import type {
   WebuiSessionTreePage,
 } from "../../shared/contracts/session.js";
 import { validateAbsoluteDirectory, validateSessionIdBody } from "./common.js";
-import { VERSION_OPERATION_NAME, LIST_SESSIONS_OPERATION_NAME, LIST_VISIBLE_PROJECTS_OPERATION_NAME, GET_SESSION_TREE_OPERATION_NAME, CREATE_SESSION_OPERATION_NAME, GET_SESSION_OPERATION_NAME, GET_ACTIVE_TURN_OPERATION_NAME } from "./names.js";
+import { VERSION_OPERATION_NAME, LIST_SESSIONS_OPERATION_NAME, LIST_VISIBLE_PROJECTS_OPERATION_NAME, GET_SESSION_TREE_OPERATION_NAME, CREATE_SESSION_OPERATION_NAME, GET_SESSION_OPERATION_NAME, GET_ACTIVE_TURN_OPERATION_NAME } from "../../shared/operation-names.js";
 type VersionRequestBody = undefined;
 
 interface VersionResponseBody {

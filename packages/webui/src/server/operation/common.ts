@@ -1,4 +1,4 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import { statSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { invalidBody, requireNonEmptyString, requireRecord } from "./operation-contract.js";

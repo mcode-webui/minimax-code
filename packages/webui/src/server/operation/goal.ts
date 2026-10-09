@@ -1,4 +1,4 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
 import type {
   WebuiGoal,
@@ -7,7 +7,7 @@ import type {
   WebuiGoalPatchRequest,
 } from "../../shared/contracts/goal.js";
 import { validateGoalSessionBody } from "./common.js";
-import { IS_GOAL_ENABLED_OPERATION_NAME, GET_GOAL_OPERATION_NAME, CREATE_GOAL_OPERATION_NAME, PATCH_GOAL_OPERATION_NAME, CLEAR_GOAL_OPERATION_NAME } from "./names.js";
+import { IS_GOAL_ENABLED_OPERATION_NAME, GET_GOAL_OPERATION_NAME, CREATE_GOAL_OPERATION_NAME, PATCH_GOAL_OPERATION_NAME, CLEAR_GOAL_OPERATION_NAME } from "../../shared/operation-names.js";
 const GOAL_STATUSES = new Set(["active", "paused", "blocked", "complete", "budget_limited", "usage_limited"]);
 
 export const isGoalEnabledOperation: WebuiOperation<undefined, WebuiGoalEnabledResult> = {

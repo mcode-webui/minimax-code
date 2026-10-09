@@ -20,14 +20,7 @@ import {
   type ReactElement,
 } from "react";
 import { ArchonShell } from "./ArchonShell.js";
-import {
-  loadWebuiComposerPersisted,
-  migrateWebuiHomeComposerState,
-  recordWebuiInputHistory,
-  saveWebuiComposerPersisted,
-  WEBUI_COMPOSER_HOME_KEY,
-  type WebuiComposerPersisted,
-} from "../projection/composer-history.js";
+import { WEBUI_COMPOSER_HOME_KEY } from "../projection/composer-history.js";
 import { Composer } from "./Composer.js";
 import { GreetingSkeleton } from "./TranscriptSkeletons.js";
 import {
@@ -95,7 +88,8 @@ import type {
 } from "../projection/workspace-progress.js";
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
-import { createWebuiRailActivityCommands } from "../application/rail-activity.js";
+import { createWebuiCommandWorkflows } from "../application/command-workflows.js";
+import { createWebuiComposerStore } from "../application/composer-store.js";
 import {
   createWebuiSessionStore,
   type WebuiSessionStore,
@@ -279,7 +273,6 @@ export function WebuiClientFoundationApp(
   const getVersion = transport?.version;
   const getSessionForkOptions = transport?.getSessionForkOptions;
   const forkSession = transport?.forkSession;
-  const loadProjects = transport?.loadProjects;
 
   const [runtimeVersion, setRuntimeVersion] = useState(version);
   useEffect(() => { if (!runtimeVersion && getVersion) void getVersion().then(setRuntimeVersion); }, [getVersion, runtimeVersion]);
@@ -306,21 +299,30 @@ export function WebuiClientFoundationApp(
       createWebuiSessionWorkflows({
         store: sessionStore,
         port: transport ?? {},
+        importSession: importWebuiSessionFile,
       }),
     [sessionStore, transport],
   );
   const [projectRecords, setProjectRecords] = useState<readonly WebuiClientProject[] | undefined>();
   useEffect(() => {
-    if (!loadProjects) return;
+    // The project list is a session business request, so it goes through the
+    // workflow rather than the transport from the shell.
+    if (!sessionWorkflows.canLoadProjects) return;
     let cancelled = false;
-    void loadProjects().then((projects) => {
+    void sessionWorkflows.loadProjects().then((projects) => {
       if (!cancelled) setProjectRecords(projects);
     }).catch(() => {
       // Keep the session-derived view available when a runtime predates the
       // project-list operation.
     });
     return () => { cancelled = true; };
-  }, [loadProjects]);
+  }, [sessionWorkflows]);
+  // The slash-command runner the composer submits through (ticket #49
+  // criterion 8): the component holds no transport call, it calls the workflow.
+  const commandWorkflows = useMemo(
+    () => createWebuiCommandWorkflows({ port: transport ?? {} }),
+    [transport],
+  );
   // Which surface the main column renders. Plugin management replaces the
   // conversation rather than floating above it, so the rail stays the only way
   // back out of it — every conversation navigation has to return here.
@@ -341,61 +343,35 @@ export function WebuiClientFoundationApp(
     dispatchShellSurface({ type: "show-conversation" });
   }, [dispatchShellSurface, selectedSessionId]);
   // Composer input history + per-session drafts (roadmap Module B:
-  // 输入历史/草稿). One persisted store keyed by session (home has its own
-  // slot), so a draft survives both a session switch and a reload, and ↑ in
-  // the composer recalls that session's submitted inputs. The store is
-  // best-effort: `localStorage` unavailability degrades to memory.
-  const [composerStore, setComposerStore] = useState<WebuiComposerPersisted>(
-    () => loadWebuiComposerPersisted(),
+  // 输入历史/草稿). The one owner is the application composer store, created
+  // once here and handed to the application; the shell subscribes and submits
+  // named changes (ticket #49 criterion 5). One persisted store keyed by
+  // session (home has its own slot), so a draft survives both a session switch
+  // and a reload, and ↑ recalls that session's submitted inputs.
+  const composerStore = useMemo(() => createWebuiComposerStore(), []);
+  const composerState = useSyncExternalStore(
+    composerStore.subscribe,
+    composerStore.getSnapshot,
+    composerStore.getSnapshot,
   );
   const composerKey = selectedSessionId ?? WEBUI_COMPOSER_HOME_KEY;
   const composerKeyRef = useRef(composerKey);
   composerKeyRef.current = composerKey;
-  const draft = composerStore.drafts[composerKey] ?? "";
-  // One updater for every composer-store write: apply the change, persist,
-  // and keep the named slot alive through the prune. `keepKeys` matters
-  // because the store's prune keeps the newest-inserted slots, and an
-  // active session's slot does not re-insert merely by being written to.
-  const applyComposerStore = useCallback(
-    (
-      update: (current: WebuiComposerPersisted) => WebuiComposerPersisted,
-      keepKey: string,
-    ) => {
-      setComposerStore((current) => {
-        const state = update(current);
-        if (state === current) return current;
-        saveWebuiComposerPersisted(state, undefined, [keepKey]);
-        return state;
-      });
-    },
-    [],
-  );
+  const draft = composerState.drafts[composerKey] ?? "";
   const setDraft = useCallback(
     (next: string) => {
-      applyComposerStore((current) => {
-        const drafts = { ...current.drafts };
-        if (next) drafts[composerKeyRef.current] = next;
-        else delete drafts[composerKeyRef.current];
-        return { ...current, drafts };
-      }, composerKeyRef.current);
+      composerStore.setDraft(composerKeyRef.current, next);
     },
-    [applyComposerStore],
+    [composerStore],
   );
   // Recording rides the same store: a committed submission lands in the
-  // current slot's history (home while no session exists yet; the created
-  // session inherits the entry below in `handleSessionCreated`).
+  // current slot's history (home while no session exists yet; adoption moves it
+  // onto the created session in one transition below).
   const recordComposerInput = useCallback(
     (text: string) => {
-      applyComposerStore((current) => {
-        const key = composerKeyRef.current;
-        const history = {
-          ...current.history,
-          [key]: recordWebuiInputHistory(current.history[key] ?? [], text),
-        };
-        return { ...current, history };
-      }, composerKeyRef.current);
+      composerStore.recordInput(composerKeyRef.current, text);
     },
-    [applyComposerStore],
+    [composerStore],
   );
   const [teamModeOff, setTeamModeOff] = useState(readTeamModeOff);
   const [teamModeChoices, setTeamModeChoices] =
@@ -627,7 +603,7 @@ export function WebuiClientFoundationApp(
     setSessionImportBusy(true);
     void (async () => {
       try {
-        const result = await importWebuiSessionFile(file, {
+        const result = await sessionWorkflows.importSession(file, {
           // The caller's context, never the file's session block: a downloaded
           // file must not be able to name the working directory.
           agentName: "main",
@@ -732,19 +708,11 @@ export function WebuiClientFoundationApp(
     [],
   );
   const handleSessionCreated = (id: string) => {
-    // The first turn streams into the home key before the session exists;
-    // carry it (and the sending flag) across the view switch so the reply
-    // stays on screen, and leave home clean.
-    sessionStore.migrateSession(WEBUI_HOME_SESSION_KEY, id);
-    // The composer store follows the same home → session migration: the
-    // input just submitted was recorded under the home slot, and the new
-    // session's history (and any unsent draft) should own it from here on.
-    // `keepKey` is the NEW session id — `composerKeyRef` still reads "home"
-    // until the next render, and home is being deleted anyway.
-    applyComposerStore(
-      (current) => migrateWebuiHomeComposerState(current, id),
-      id,
-    );
+    // Home→session adoption is one committed transition (ticket #49 criterion
+    // 5): the application carries the home turn's live record onto the created
+    // session, moves the composer's home slot onto it and selects it — no
+    // separate migration + composer migration + selection.
+    application.adoptHomeSession(id);
     setSelectedSessionId(id);
     writeTeamModeSessionChoice(id, teamModeOff);
     setTeamModeChoices((current) => ({ ...current, [id]: teamModeOff }));
@@ -898,20 +866,13 @@ export function WebuiClientFoundationApp(
   // never delivered.
   // The activity slice lives on a single application store, not in component
   // state (plan §7.6 "Unread"; ticket #45 prerequisite 3). The shell subscribes
-  // to the slice and submits commands — it holds no writer for it.
+  // to the slice; the application unread controller owns the writes and the
+  // hydration ordering (ticket #49 criterion 4).
   const sessionActivity = useSyncExternalStore(
     sessionStore.subscribe,
     () => sessionStore.getSnapshot().activity,
     () => sessionStore.getSnapshot().activity,
   );
-  const activityCommands = useMemo(
-    () => createWebuiRailActivityCommands(sessionStore),
-    [sessionStore],
-  );
-  // Flips once the stored counts have been read back, and is the only thing that
-  // stands between the first render and a write of the empty map. See the
-  // persist effect below for why that write is destructive.
-  const [unreadCountsReady, setUnreadCountsReady] = useState(false);
   const [activityNow, setActivityNow] = useState(() => Date.now());
   // Bumped on reconnect to re-probe: the events that would have told us a turn
   // started were missed while the stream was down, and the stream cannot
@@ -982,6 +943,14 @@ export function WebuiClientFoundationApp(
         store: sessionStore,
         readActiveSessionId: () => selectedSessionIdRef.current,
         effects: applicationEffects,
+        // The unread controller hydrates from the same storage adapter the
+        // shell used (same key, same validation, same format) — injected
+        // because the application layer may not import infrastructure.
+        unreadStorage: {
+          read: readWebuiUnreadCounts,
+          write: writeWebuiUnreadCounts,
+        },
+        composer: composerStore,
         turns: {
           resumeSession: transport?.resumeSession ?? (async () => {}),
           ...(transport?.loadMessages
@@ -992,6 +961,7 @@ export function WebuiClientFoundationApp(
     [
       applicationEffects,
       sessionStore,
+      composerStore,
       transport?.loadMessages,
       transport?.resumeSession,
       watchEvents,
@@ -1010,28 +980,18 @@ export function WebuiClientFoundationApp(
         }
       : undefined;
 
-  // Persist the counts. Without this the badge is worse than none: a session
-  // that ran four turns would go clean on reload and the only thing the user
-  // would conclude is that it never ran.
-  //
-  // Gated on `unreadCountsReady`, and the gate is load-bearing. Effects run in
-  // declaration order within a commit, so an ungated writer placed above the
-  // restore would serialise the empty map it sees on the first render and
-  // `removeItem` the key -- and the restore below would then read nothing and
-  // put the badge back only until the next reload. The count would survive
-  // exactly zero reloads, which is the case persistence exists for.
-  useEffect(() => {
-    if (!unreadCountsReady) return;
-    activityCommands.persistUnreadCounts(writeWebuiUnreadCounts);
-  }, [sessionActivity, unreadCountsReady]);
+  // Persistence is the unread controller's job now (ticket #49 criterion 4):
+  // it subscribes to the activity slice and writes the positive counts after
+  // hydration, so the shell holds no `ready` flag and no persist effect. The
+  // ordering guarantee — restore before the first write — lives in one place.
 
   // Opening a session is what marks it read. Keyed on the id rather than run on
   // mount, so arriving *at* a session from a link does not clear the badge the
   // user was about to see on the row they came from.
   useEffect(() => {
     if (!selectedSessionId) return;
-    activityCommands.markRead(selectedSessionId);
-  }, [selectedSessionId]);
+    application.unread.markRead(selectedSessionId);
+  }, [application, selectedSessionId]);
 
   // The age labels are a function of the clock, not of the data. Without a tick
   // they would freeze at whatever they read when the last event arrived, and
@@ -1041,41 +1001,34 @@ export function WebuiClientFoundationApp(
     return () => clearInterval(timer);
   }, []);
 
-  // Two effects where there was one, because the two halves have different
-  // triggers and merging them made the restore a per-render operation.
-  //
-  // `railPage` is a fresh object on every refresh and on every search
-  // keystroke, so an effect depending on it re-ran constantly -- and each run
-  // re-read storage and re-applied it over the live counts. A badge that had
-  // counted three turns would drop back to whatever was last written, and a
-  // failed write (quota, private mode) makes the stored value permanently
-  // stale, so the badge would shrink every time the user typed in the search
-  // box. Seeding genuinely needs the page; restoring does not.
+  // Seeding needs the page; the restore does not, which is why they are two
+  // effects. `railPage` is a fresh object on every refresh and on every search
+  // keystroke, so folding the restore into this one would re-read storage and
+  // re-apply it over the live counts on every keystroke.
   useEffect(() => {
-    activityCommands.seed(railPage.sessions);
-  }, [railPage]);
+    application.unread.seed(railPage.sessions);
+  }, [application, railPage]);
 
+  // Re-hydrate when the open session changes: the active session is excluded
+  // from the restore, so arriving at a different one must not inherit the badge
+  // the previous one cleared. The controller marks itself hydrated on the first
+  // call (the composition root hydrates before the channel opens), and this
+  // later call only re-applies the floor.
   useEffect(() => {
-    activityCommands.restoreUnreadCounts(
-      readWebuiUnreadCounts(),
-      selectedSessionId,
-    );
-    // Flipped after the restore is queued, so the writer's very next run sees a
-    // map that has the counts in it rather than the empty one it started from.
-    setUnreadCountsReady(true);
-  }, [selectedSessionId]);
+    application.unread.hydrate(selectedSessionId);
+  }, [application, selectedSessionId]);
 
   useEffect(() => {
     if (!activeTurnProbe) return;
     // Once per list change, for every visible row. Not once per event: the
     // stream already answers for turns it saw, and the reconnect nonce is the
     // only other moment a re-probe is warranted.
-    return activityCommands.probeActiveTurns({
+    return application.unread.probeActiveTurns({
       sessions: railPage.sessions,
       probe: activeTurnProbe,
       now: () => Date.now(),
     });
-  }, [activeTurnProbe, railPage, activityProbeNonce]);
+  }, [application, activeTurnProbe, railPage, activityProbeNonce]);
 
   const sessionPanelState = selectedSessionId
     ? getWorkspacePanelSessionState(workspacePanelStates, selectedSessionId)
@@ -1321,8 +1274,9 @@ export function WebuiClientFoundationApp(
             className="relative flex min-h-0 min-w-0 flex-1 flex-row"
           >
             {pluginManagementArea ? <PluginManagement transport={transport} initialArea={pluginManagementArea} onChatWithAgent={async (name) => {
-              if (!transport?.createSession) throw new Error("当前 WebUI 未连接会话创建服务");
-              const created = await transport.createSession({ name });
+              const creator = sessionWorkflows.createSession;
+              if (!creator) throw new Error("当前 WebUI 未连接会话创建服务");
+              const created = await creator({ name });
               const sessionId = created.sessionId ?? created.session?.sessionId;
               if (!sessionId) throw new Error("创建 Agent 会话失败");
               handleSessionCreated(sessionId);
@@ -1416,13 +1370,13 @@ export function WebuiClientFoundationApp(
                     sessionLayout={!homeMode}
                     usageQuota={usageQuota}
                     agentName={selectedAgentName}
-                    createSession={transport?.createSession}
+                    createSession={sessionWorkflows.createSession}
                     createSessionWorkspaceDir={newTaskWorkspaceDir}
                     onWorkspaceChange={handleWorkspaceChange}
                     workspaceMenuOpen={workspaceMenuOpen}
                     setWorkspaceMenuOpen={setWorkspaceMenuOpen}
                     recentWorkspaceDirs={recentWorkspaceDirs}
-                    runCommand={transport?.runCommand}
+                    runCommand={commandWorkflows.canRunCommand ? commandWorkflows.runCommand : undefined}
                     sendMessage={transport?.sendMessage}
                     enqueueMessage={transport?.enqueueMessage}
                     resumeSession={transport?.resumeSession}
@@ -1461,7 +1415,7 @@ export function WebuiClientFoundationApp(
                     draft={draft}
                     onDraftChange={setDraft}
                     seedAttachment={memoryHandoff}
-                    inputHistory={composerStore.history[composerKey] ?? []}
+                    inputHistory={composerState.history[composerKey] ?? []}
                     onInputSubmitted={recordComposerInput}
                     teamModeOff={composerTeamModeOff}
                     sessions={page.sessions}

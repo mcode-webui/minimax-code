@@ -765,11 +765,12 @@ describe("host wiring", () => {
       "utf8",
     ),
   );
-  // The activity slice now lives in the application layer. Its half of each
-  // guarantee is asserted alongside the shell's delegation, so neither side can
-  // be emptied — the shell stops calling in, or the module stops doing the
-  // work — without a red test.
-  const railSource = strip(
+  // The activity/unread slice now lives in the application layer. Its half of
+  // each guarantee is asserted alongside the shell's delegation, so neither
+  // side can be emptied — the shell stops calling in, or the module stops doing
+  // the work — without a red test. The module was `rail-activity.ts`; ticket
+  // #49 evolved it into the unread controller that owns hydration ordering.
+  const unreadSource = strip(
     readFileSync(
       path.join(
         import.meta.dirname,
@@ -778,14 +779,15 @@ describe("host wiring", () => {
         "src",
         "client",
         "application",
-        "rail-activity.ts",
+        "unread.ts",
       ),
       "utf8",
     ),
   );
   // The shell's event handling moved onto the application event coordinator in
-  // the atomic ingress flip; its half of the guarantee (the activity reduction)
-  // is asserted against the coordinator, the one consumer of the channel.
+  // the atomic ingress flip; ticket #49 moved the activity reduction off the
+  // coordinator and onto the unread controller, which is what gates counted
+  // events on hydration.
   const coordinatorSource = strip(
     readFileSync(
       path.join(
@@ -796,6 +798,22 @@ describe("host wiring", () => {
         "client",
         "application",
         "event-coordinator.ts",
+      ),
+      "utf8",
+    ),
+  );
+  // The composition root creates the one unread controller and hydrates it
+  // before it opens the channel — the ordering guarantee.
+  const applicationSource = strip(
+    readFileSync(
+      path.join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "src",
+        "client",
+        "application",
+        "create-application.ts",
       ),
       "utf8",
     ),
@@ -822,18 +840,19 @@ describe("host wiring", () => {
 
   it("hands the single event ingress to the application coordinator", () => {
     // The shell no longer opens a `watchEvents` subscription of its own. The
-    // application event coordinator is the channel's single consumer and
-    // reduces each event into the retained activity slice, so the old
-    // "one subscription across session switches" shape is replaced by one
-    // subscription that belongs to the application (ticket #45, atomic flip).
+    // application event coordinator is the channel's single consumer, and it
+    // now routes every event to the unread controller rather than reducing the
+    // activity map itself (ticket #49 criterion 4).
     expect(appSource).toMatch(/createWebuiApplication\(/u);
     expect(appSource).toMatch(/createWebuiOpenEventChannel\(watchEvents\)/u);
     // No call site opens a second channel.
     expect(appSource).not.toMatch(/watchEvents\?\.\(/u);
 
-    // The activity reduction lives in the coordinator now, over the same
-    // retained reducer the shell used.
-    expect(coordinatorSource).toMatch(/reduceWebuiSessionActivity\(/u);
+    // The coordinator delegates the activity reduction to the one unread
+    // controller; it no longer reduces the map inline.
+    expect(coordinatorSource).toMatch(/unread\.recordEvent\(/u);
+    expect(coordinatorSource).not.toMatch(/reduceWebuiSessionActivity\(/u);
+    expect(unreadSource).toMatch(/reduceWebuiSessionActivity\(/u);
 
     // And the ref is kept current, so the single subscription always judges
     // the turn against the session the user has open.
@@ -843,62 +862,73 @@ describe("host wiring", () => {
   });
 
   it("clears the count when the user opens a session", () => {
-    expect(effect("activityCommands.markRead(")).toMatch(
-      /activityCommands\.markRead\(\s*selectedSessionId\s*\)/u,
+    expect(effect("application.unread.markRead(")).toMatch(
+      /application\.unread\.markRead\(\s*selectedSessionId\s*\)/u,
     );
-    expect(railSource).toMatch(
-      /markWebuiSessionRead\(\s*current\s*,\s*sessionId\s*\)/u,
+    expect(unreadSource).toMatch(
+      /markWebuiSessionRead\(current, sessionId\)/u,
     );
   });
 
-  it("persists the counts on every change", () => {
-    expect(effect("activityCommands.persistUnreadCounts(")).toMatch(
-      /activityCommands\.persistUnreadCounts\(\s*writeWebuiUnreadCounts\s*\)\s*;/u,
+  it("has exactly one persistence owner, in the unread controller", () => {
+    // The shell holds no persist effect and no command surface for unread; the
+    // controller owns the write and the positive-count filter.
+    expect(appSource).not.toMatch(/persistUnreadCounts/u);
+    expect(appSource).not.toMatch(/unreadCountsReady/u);
+    expect(appSource).not.toMatch(/activityCommands/u);
+    expect(unreadSource).toMatch(/write\(counts\)\s*;/u);
+    // The positive-count filter, byte for byte.
+    expect(unreadSource).toMatch(
+      /entry\.unread\s*&&\s*entry\.unread\s*>\s*0/u,
     );
-    // The positive-count filter moved below the boundary with the writer.
-    expect(railSource).toMatch(/write\(\s*counts\s*\)\s*;/u);
   });
 
   it("re-applies stored counts when the open session changes", () => {
     // The active session is excluded from the restore, so the restore has to
     // run again when the user moves: opening a session marks it read, and
     // arriving at a different one must not inherit that.
-    const block = effect("readWebuiUnreadCounts()");
-    expect(block).toMatch(/readWebuiUnreadCounts\(\s*\)/u);
-    expect(block).toMatch(/activityCommands\.restoreUnreadCounts/u);
-    expect(railSource).toMatch(/applyWebuiUnreadCounts/u);
+    const block = effect("application.unread.hydrate(");
+    expect(block).toMatch(/application\.unread\.hydrate\(\s*selectedSessionId\s*\)/u);
+    expect(unreadSource).toMatch(/applyWebuiUnreadCounts/u);
   });
 
   it("does not re-run the restore every time the rail re-renders", () => {
     // `railPage` is a new object on every refresh and on every keystroke in the
-    // search box. With it in this effect's dependencies, each of those re-read
-    // storage and re-applied it over the live counts -- so a badge that had
-    // counted three turns dropped back to whatever was last written, and a
+    // search box. With it in the hydrate effect's dependencies, each of those
+    // re-read storage and re-applied it over the live counts -- so a badge that
+    // had counted three turns dropped back to whatever was last written, and a
     // failed write (quota, private mode) made the stored value permanently
     // stale, which turned it into a badge that shrank while the user typed.
     //
     // The re-read is still needed, so the assertion is that the trigger is the
     // session and not the list. Seeding the list is a separate effect that does
     // depend on `railPage`, and is asserted to still exist.
-    const block = effect("readWebuiUnreadCounts()");
-    expect(block).toMatch(/\}\s*,\s*\[\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u);
+    const block = effect("application.unread.hydrate(");
+    expect(block).toMatch(/\}\s*,\s*\[\s*application\s*,\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u);
     expect(block).not.toMatch(/railPage/u);
-    expect(effect("activityCommands.seed(")).toMatch(/railPage/u);
-    expect(railSource).toMatch(/seedWebuiSessionActivity/u);
+    expect(effect("application.unread.seed(")).toMatch(/railPage/u);
+    expect(unreadSource).toMatch(/seedWebuiSessionActivity/u);
   });
 
-  it("never writes the empty map before the stored counts are read back", () => {
-    // This one is a real bug that shipped once and was caught only in a browser.
-    // Effects run in declaration order inside a commit, so a writer sitting
-    // above the restore serialises the empty map it sees on the first render,
-    // `removeItem`s the key, and the restore two lines later reads back nothing.
-    // The badge then survives exactly zero reloads, which is the one case
-    // persistence exists for. The gate is asserted on both halves: the early
-    // return in the writer, and the flag being raised by the restore.
-    const writer = effect("activityCommands.persistUnreadCounts(");
-    expect(writer).toMatch(/if\s*\(\s*!unreadCountsReady\s*\)\s*return\s*;/u);
-    expect(writer).toMatch(/\[\s*sessionActivity\s*,\s*unreadCountsReady\s*,?\s*\]/u);
-    const restore = effect("readWebuiUnreadCounts()");
-    expect(restore).toMatch(/setUnreadCountsReady\(\s*true\s*\)/u);
+  it("hydrates before it accepts counted events, in one implementation", () => {
+    // This one is a real bug that shipped once and was caught only in a browser:
+    // an ungated writer above the restore serialised the empty map it saw on
+    // the first render, `removeItem`ed the key, and the restore then read back
+    // nothing. Ticket #49 moves the whole ordering into the unread controller.
+    //
+    // The gate is asserted on all three halves:
+    //   * `recordEvent` refuses a counted event until hydration;
+    //   * `persist` refuses to write until hydration;
+    //   * the composition root hydrates synchronously before it opens the
+    //     channel, so no counted event can ever arrive against an empty map.
+    const gate = unreadSource.match(/if\s*\(!hydrated\)\s*return\s*;/gu) ?? [];
+    expect(gate.length).toBeGreaterThanOrEqual(2);
+    expect(unreadSource).toMatch(/hydrated = true\s*;/u);
+
+    const hydrateAt = applicationSource.indexOf("unread.hydrate(");
+    const attachAt = applicationSource.indexOf("events.attach(");
+    expect(hydrateAt).toBeGreaterThan(-1);
+    expect(attachAt).toBeGreaterThan(-1);
+    expect(hydrateAt).toBeLessThan(attachAt);
   });
 });

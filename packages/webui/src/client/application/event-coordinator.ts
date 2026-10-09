@@ -30,7 +30,6 @@ import {
 import type { WebuiEffectHandlers } from "../projection/effect-reducer.js";
 import {
   readWebuiEventSessionId,
-  reduceWebuiSessionActivity,
 } from "../projection/session-activity.js";
 import {
   recogniseWebuiStreamPayload,
@@ -96,7 +95,25 @@ export interface WebuiEventCoordinatorDeps {
   readonly store: WebuiSessionStore;
   readonly leases: WebuiStreamLeaseController;
   readonly readActiveSessionId: () => string | undefined;
+  /**
+   * The unread controller, which owns the activity reduction and gates counted
+   * events on hydration (plan §7.6 "Unread"). The coordinator routes every
+   * event to it instead of reducing the activity map itself, so there is one
+   * implementation of the activity write path.
+   */
+  readonly unread: WebuiActivityIngress;
   readonly effects?: WebuiEventEffects;
+}
+
+/**
+ * The activity ingress the coordinator routes events to. A
+ * `WebuiUnreadController` satisfies it structurally.
+ */
+export interface WebuiActivityIngress {
+  readonly recordEvent: (
+    event: WebuiRuntimeEvent,
+    activeSessionId: string | undefined,
+  ) => void;
 }
 
 export interface WebuiEventCoordinator {
@@ -112,7 +129,7 @@ export interface WebuiEventCoordinator {
 export function createWebuiEventCoordinator(
   deps: WebuiEventCoordinatorDeps,
 ): WebuiEventCoordinator {
-  const { store, leases, readActiveSessionId } = deps;
+  const { store, leases, readActiveSessionId, unread } = deps;
   const effects = deps.effects ?? {};
   let unsubscribe: (() => void) | undefined;
 
@@ -150,13 +167,10 @@ export function createWebuiEventCoordinator(
   const handleEvent = (event: WebuiRuntimeEvent): void => {
     if (store.isDisposed()) return;
     const activeSessionId = readActiveSessionId();
-    store.updateActivity((current) =>
-      reduceWebuiSessionActivity(
-        current,
-        event,
-        activeSessionId ? { activeSessionId } : {},
-      ),
-    );
+    // The unread controller owns the activity reduction, and accepts a counted
+    // event only once hydration has completed — one write path, not the shell's
+    // effect plus the coordinator's.
+    unread.recordEvent(event, activeSessionId);
     // A workspace-git event carries no session id. It is routed to the
     // application-wide invalidation hook, not a per-session effect, so the
     // workspace panels' git and review queries are invalidated through the

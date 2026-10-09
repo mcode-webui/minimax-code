@@ -14,7 +14,7 @@
 // page shapes the rail consumes. The store that owns the single writable copy
 // and the command surface over these reducers live in `application/` siblings,
 // exactly as the activity slice was split (`session-store.ts` writes it,
-// `rail-activity.ts` names the changes).
+// `unread.ts` names the changes).
 
 import type {
   WebuiClientSession,

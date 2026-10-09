@@ -13,8 +13,11 @@
 // This module is framework-free — no React, no DOM, no storage — so it can be
 // unit-tested against a scripted port.
 
-import type { SessionPort } from "../contracts/session-port.js";
-import type { WebuiClientSessionPage } from "../contracts/session-view.js";
+import type { SessionPort, WebuiClientSessionCreator } from "../contracts/session-port.js";
+import type {
+  WebuiClientProject,
+  WebuiClientSessionPage,
+} from "../contracts/session-view.js";
 import {
   patchWebuiCatalogEntity,
   reduceWebuiCatalogFlatAppended,
@@ -34,7 +37,26 @@ export interface WebuiSessionCatalogStore {
   ) => void;
 }
 
-type QueryPort = Pick<SessionPort, "loadSessions" | "loadSessionTree">;
+/**
+ * The session-import capability, injected because the implementation is
+ * browser IO (`infrastructure/session-import.ts`) and this module is the
+ * application layer. The composition root supplies
+ * `importWebuiSessionFile`; the shell submits `importSession` and never calls
+ * the importer itself.
+ */
+export type WebuiSessionImporter = (
+  file: Blob,
+  options?: {
+    readonly agentName?: string;
+    readonly workspaceDir?: string;
+    readonly signal?: AbortSignal;
+  },
+) => Promise<{ readonly sessionId: string }>;
+
+type QueryPort = Pick<
+  SessionPort,
+  "loadSessions" | "loadSessionTree" | "loadProjects"
+>;
 type MutationPort = Pick<
   SessionPort,
   | "updateSession"
@@ -42,6 +64,7 @@ type MutationPort = Pick<
   | "deleteSession"
   | "getSessionForkOptions"
   | "forkSession"
+  | "createSession"
 >;
 
 export interface WebuiSessionWorkflows {
@@ -78,13 +101,34 @@ export interface WebuiSessionWorkflows {
     sessionId: string,
     createIsolatedWorktree: boolean,
   ) => Promise<{ readonly sessionId?: string } | undefined>;
+  /** Whether a session-creation capability is wired. */
+  readonly canCreateSession: boolean;
+  /** Create a session — the agent-chat / plugin surface's session request. */
+  readonly createSession: WebuiClientSessionCreator | undefined;
+  /** Whether a session-import capability is wired. */
+  readonly canImportSession: boolean;
+  /** Import a transfer file into a new session; returns its id. */
+  readonly importSession: (
+    file: Blob,
+    context: {
+      readonly agentName?: string;
+      readonly workspaceDir?: string;
+      readonly signal?: AbortSignal;
+    },
+  ) => Promise<{ readonly sessionId: string }>;
+  /** Whether the rail's project list is wired. */
+  readonly canLoadProjects: boolean;
+  /** Load the visible project list the rail reads (best effort). */
+  readonly loadProjects: () => Promise<readonly WebuiClientProject[]>;
 }
 
 export function createWebuiSessionWorkflows(deps: {
   readonly store: WebuiSessionCatalogStore;
   readonly port: QueryPort & MutationPort;
+  /** Injected browser IO; absent means the import operation is not wired. */
+  readonly importSession?: WebuiSessionImporter;
 }): WebuiSessionWorkflows {
-  const { store, port } = deps;
+  const { store, port, importSession } = deps;
   const message = (reason: unknown): string =>
     reason instanceof Error ? reason.message : String(reason);
 
@@ -207,5 +251,15 @@ export function createWebuiSessionWorkflows(deps: {
       await refresh();
       return result.session;
     },
+    canCreateSession: port.createSession !== undefined,
+    createSession: port.createSession,
+    canImportSession: importSession !== undefined,
+    importSession: async (file, context) => {
+      if (!importSession)
+        throw new Error("当前 WebUI 未连接会话导入服务");
+      return importSession(file, context);
+    },
+    canLoadProjects: port.loadProjects !== undefined,
+    loadProjects: async () => port.loadProjects?.() ?? [],
   };
 }

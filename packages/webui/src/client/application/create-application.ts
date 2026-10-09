@@ -27,11 +27,20 @@ import {
   type WebuiStreamLeaseController,
 } from "./stream-lease-controller.js";
 import type { WebuiApplicationState } from "./state.js";
+import { WEBUI_HOME_SESSION_KEY } from "./state.js";
 import {
   createWebuiTurnCoordinator,
   type WebuiTurnCoordinator,
 } from "./turn-coordinator.js";
 import type { WebuiTurnCoordinatorDeps } from "./turn-coordinator.js";
+import {
+  createWebuiUnreadController,
+  type WebuiUnreadController,
+} from "./unread.js";
+import {
+  createWebuiComposerStore,
+  type WebuiComposerStore,
+} from "./composer-store.js";
 
 export interface WebuiApplicationDeps {
   /** Opens the process-event channel. Called exactly once per instance. */
@@ -48,6 +57,18 @@ export interface WebuiApplicationDeps {
   readonly effects?: WebuiEventEffects;
   /** Transport-facing dependencies of the turn coordinator. */
   readonly turns: Omit<WebuiTurnCoordinatorDeps, "store" | "leases">;
+  /**
+   * The unread storage adapter (`infrastructure/storage.ts`), injected because
+   * the application layer may not import infrastructure. Absent degrades to a
+   * no-op: hydration completes immediately against no stored counts, which is
+   * the correct behaviour for SSR and unit tests.
+   */
+  readonly unreadStorage?: {
+    readonly read?: () => Readonly<Record<string, number>>;
+    readonly write?: (counts: Readonly<Record<string, number>>) => void;
+  };
+  /** Seed for the composer store (SSR / tests). */
+  readonly composer?: WebuiComposerStore;
 }
 
 export interface WebuiApplication {
@@ -60,6 +81,17 @@ export interface WebuiApplication {
   readonly leases: WebuiStreamLeaseController;
   readonly events: WebuiEventCoordinator;
   readonly turns: WebuiTurnCoordinator;
+  /** The one owner of unread hydration ordering (plan §7.6). */
+  readonly unread: WebuiUnreadController;
+  /** The one owner of composer drafts and input history (plan §7.6). */
+  readonly composer: WebuiComposerStore;
+  /**
+   * Commit home→session adoption as one transition: carry the home turn's live
+   * record onto the created session, move the home composer slot onto it and
+   * select it. Both store writes are no-notify; the caller writes the hash and
+   * the React selection once.
+   */
+  readonly adoptHomeSession: (sessionId: string) => void;
   /** Tear down: detach the coordinator, dispose the store, close the channel. */
   readonly dispose: () => void;
 }
@@ -71,10 +103,21 @@ export function createWebuiApplication(
   const leases = createWebuiStreamLeaseController(store);
   const readActiveSessionId =
     deps.readActiveSessionId ?? (() => store.getSelectedSessionId());
+  // The one unread controller: hydration ordering and the single persistence
+  // writer. It is hydrated *before* the channel is opened, so a counted event
+  // can never arrive against an un-hydrated map (the gate `recordEvent` holds).
+  const unread = createWebuiUnreadController({
+    store,
+    ...(deps.unreadStorage?.read ? { read: deps.unreadStorage.read } : {}),
+    ...(deps.unreadStorage?.write ? { write: deps.unreadStorage.write } : {}),
+  });
+  unread.hydrate(readActiveSessionId());
+  const composer = deps.composer ?? createWebuiComposerStore();
   const events = createWebuiEventCoordinator({
     store,
     leases,
     readActiveSessionId,
+    unread,
     ...(deps.effects ? { effects: deps.effects } : {}),
   });
   const turns = createWebuiTurnCoordinator({
@@ -95,6 +138,17 @@ export function createWebuiApplication(
     leases,
     events,
     turns,
+    unread,
+    composer,
+    adoptHomeSession: (sessionId) => {
+      // One committed transition: the home turn's live record moves onto the
+      // created session, the composer's home slot moves onto it, and the
+      // session is selected. Migration is no-notify (the view switching keys
+      // re-reads the target in its own effect); selection notifies once.
+      store.migrateSession(WEBUI_HOME_SESSION_KEY, sessionId);
+      composer.adoptHome(sessionId);
+      store.select(sessionId);
+    },
     dispose: () => {
       detach();
       store.dispose();

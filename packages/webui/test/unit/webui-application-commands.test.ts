@@ -1,5 +1,5 @@
 // Unit tests for ticket #45 prerequisite 2: the composer's send/queue/attach
-// commands and the rail-activity slice, both now application-owned, plus the
+// commands and the unread controller, both now application-owned, plus the
 // deduplicated active-turn probe they share.
 //
 // The suite drives the application modules directly (the webui suite has no DOM
@@ -12,9 +12,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createWebuiActiveTurnProbe, webuiActiveTurnProbeFor } from "../../src/client/application/active-turn-probe.js";
 import {
-  createWebuiRailActivityCommands,
-  type WebuiRailActivityStore,
-} from "../../src/client/application/rail-activity.js";
+  createWebuiUnreadController,
+  type WebuiUnreadStore,
+} from "../../src/client/application/unread.js";
 import { queueWebuiTurn } from "../../src/client/application/queue-command.js";
 import {
   recoverMissedWebuiTurn,
@@ -24,8 +24,16 @@ import {
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
 import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiActiveTurn } from "../../src/shared/contracts/session.js";
+import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+function runtimeEvent(
+  type: string,
+  payload: Record<string, unknown>,
+): WebuiRuntimeEvent {
+  return { type, payload, timestamp: 1, source: "test" };
+}
 
 describe("the deduplicated active-turn probe", () => {
   it("coalesces concurrent same-session requests into one round trip", async () => {
@@ -64,17 +72,25 @@ describe("the deduplicated active-turn probe", () => {
   });
 });
 
-describe("the rail-activity command surface", () => {
+describe("the unread controller command surface", () => {
   function makeStore(initial: WebuiSessionActivityMap): {
-    readonly store: WebuiRailActivityStore;
+    readonly store: WebuiUnreadStore;
     readonly read: () => WebuiSessionActivityMap;
   } {
     let activity = initial;
+    const listeners = new Set<() => void>();
     return {
       store: {
         getSnapshot: () => ({ activity }),
         updateActivity: (fn) => {
           activity = fn(activity);
+          for (const listener of [...listeners]) listener();
+        },
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => {
+            listeners.delete(listener);
+          };
         },
       },
       read: () => activity,
@@ -83,36 +99,61 @@ describe("the rail-activity command surface", () => {
 
   it("seeds first-paint times and marks a session read", () => {
     const { store, read } = makeStore({ s1: { lastActivityAt: 0, unread: 3 } });
-    const commands = createWebuiRailActivityCommands(store);
-    commands.seed([{ sessionId: "s1", updatedAt: 5_000 }] as never);
+    const controller = createWebuiUnreadController({ store });
+    controller.seed([{ sessionId: "s1", updatedAt: 5_000 }] as never);
     expect(read().s1?.lastActivityAt).toBe(5_000);
     expect(read().s1?.unread).toBe(3);
 
-    commands.markRead("s1");
+    controller.markRead("s1");
     expect(read().s1?.unread).toBeUndefined();
   });
 
-  it("restores stored counts as a floor, excluding the open session", () => {
+  it("hydrates stored counts as a floor, excluding the open session", () => {
     const { store, read } = makeStore({
       s1: { lastActivityAt: 0 },
       s2: { lastActivityAt: 0, unread: 5 },
     });
-    const commands = createWebuiRailActivityCommands(store);
-    commands.restoreUnreadCounts({ s1: 2, s2: 3 }, "s2");
+    const controller = createWebuiUnreadController({
+      store,
+      read: () => ({ s1: 2, s2: 3 }),
+    });
+    expect(controller.isHydrated()).toBe(false);
+    controller.hydrate("s2");
+    expect(controller.isHydrated()).toBe(true);
     expect(read().s1?.unread).toBe(2);
     // The open session keeps its live count; the lower stored one is ignored.
     expect(read().s2?.unread).toBe(5);
   });
 
-  it("persists only the positive counts", () => {
+  it("persists only the positive counts, and only once hydrated", () => {
     const write = vi.fn();
     const { store } = makeStore({
       s1: { lastActivityAt: 0, unread: 2 },
       s2: { lastActivityAt: 0, unread: 0 },
       s3: { lastActivityAt: 0 },
     });
-    createWebuiRailActivityCommands(store).persistUnreadCounts(write);
+    const controller = createWebuiUnreadController({ store, write });
+    // The gate: an un-hydrated writer is silent, so the empty map cannot land.
+    controller.persist();
+    expect(write).not.toHaveBeenCalled();
+    controller.hydrate(undefined);
     expect(write).toHaveBeenCalledWith({ s1: 2 });
+  });
+
+  it("refuses a counted event until hydration, then accepts it", () => {
+    const { store, read } = makeStore({});
+    const controller = createWebuiUnreadController({ store });
+    controller.recordEvent(
+      runtimeEvent("session.start", { sessionId: "s1", turnId: "t1" }),
+      undefined,
+    );
+    expect(read()).toEqual({});
+    controller.hydrate(undefined);
+    controller.recordEvent(
+      runtimeEvent("session.start", { sessionId: "s1", turnId: "t1" }),
+      undefined,
+    );
+    expect(read().s1?.busy?.turnId).toBe("t1");
   });
 
   it("probes every visible session and drops answers after cancel", async () => {
@@ -122,7 +163,7 @@ describe("the rail-activity command surface", () => {
       locallyOwned: false,
     }));
     const { store } = makeStore({});
-    const cancel = createWebuiRailActivityCommands(store).probeActiveTurns({
+    const cancel = createWebuiUnreadController({ store }).probeActiveTurns({
       sessions: [{ sessionId: "s1" }, { sessionId: "s2" }],
       probe: { probe },
       now: () => 1,

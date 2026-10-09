@@ -21,6 +21,20 @@ export interface WorkspacePanelSessionState {
   readonly progressPanelOpen: boolean;
 }
 
+/**
+ * The coordinator-produced signal that a workspace's git state changed. It is
+ * what replaces the panels' own `watchEvents` subscription (ticket #45): the
+ * application event coordinator receives `workspace.git.changed` on the single
+ * channel and hands the payload here, and the panels react to the signal rather
+ * than to a raw process event. `revision` bumps on every signal so an effect
+ * keyed on it re-runs even when two events name the same workspace.
+ */
+export interface WebuiWorkspaceGitChangedSignal {
+  readonly revision: number;
+  readonly workspace?: string;
+  readonly aliases?: readonly string[];
+}
+
 export type WorkspacePanelSessionStates = ReadonlyMap<string, WorkspacePanelSessionState>;
 
 export function getWorkspacePanelSessionState(

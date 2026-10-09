@@ -783,6 +783,23 @@ describe("host wiring", () => {
       "utf8",
     ),
   );
+  // The shell's event handling moved onto the application event coordinator in
+  // the atomic ingress flip; its half of the guarantee (the activity reduction)
+  // is asserted against the coordinator, the one consumer of the channel.
+  const coordinatorSource = strip(
+    readFileSync(
+      path.join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "src",
+        "client",
+        "application",
+        "event-coordinator.ts",
+      ),
+      "utf8",
+    ),
+  );
 
   /**
    * The `useEffect` block that mentions `marker`, from its `useEffect(` up to
@@ -803,30 +820,23 @@ describe("host wiring", () => {
     return appSource.slice(open < 0 ? 0 : open, close < 0 ? undefined : close).trim();
   };
 
-  it("holds one subscription across session switches", () => {
-    // The callback decides whether a finishing turn counts as unread, so it
-    // needs the *current* open session. This used to be satisfied by putting
-    // `selectedSessionId` in the effect's dependencies, on the reasoning that a
-    // closure would otherwise keep deciding on behalf of the previous session.
-    //
-    // That reasoning is wrong, and the cost of believing it was a hole in the
-    // one thing this layer exists to do. Tearing down and re-creating the
-    // subscription on every switch means the events arriving between the two
-    // belong to neither: a turn that finishes in another session while the
-    // user clicks through the rail is dropped, which is precisely the case the
-    // unread badge was added for.
-    //
-    // The ref is the standard answer and the test asserts the whole shape,
-    // because asserting only half of it is how the defect came back: the
-    // dependency has to go *and* the callback has to read through the ref, or
-    // the callback is genuinely stale.
-    const block = effect("activityCommands.recordEvent(event, selectedSessionIdRef.current)");
-    expect(block).toMatch(/\}\s*,\s*\[\s*watchEvents\s*,?\s*\]\s*\)\s*;?\s*$/u);
-    expect(block).not.toMatch(/\[\s*watchEvents\s*,\s*selectedSessionId/u);
-    expect(block).toMatch(/recordEvent\(\s*event\s*,\s*selectedSessionIdRef\.current\s*\)/u);
+  it("hands the single event ingress to the application coordinator", () => {
+    // The shell no longer opens a `watchEvents` subscription of its own. The
+    // application event coordinator is the channel's single consumer and
+    // reduces each event into the retained activity slice, so the old
+    // "one subscription across session switches" shape is replaced by one
+    // subscription that belongs to the application (ticket #45, atomic flip).
+    expect(appSource).toMatch(/createWebuiApplication\(/u);
+    expect(appSource).toMatch(/createWebuiOpenEventChannel\(watchEvents\)/u);
+    // No call site opens a second channel.
+    expect(appSource).not.toMatch(/watchEvents\?\.\(/u);
 
-    // And the ref is kept current, or the single subscription is no better
-    // than the one that was tearing down.
+    // The activity reduction lives in the coordinator now, over the same
+    // retained reducer the shell used.
+    expect(coordinatorSource).toMatch(/reduceWebuiSessionActivity\(/u);
+
+    // And the ref is kept current, so the single subscription always judges
+    // the turn against the session the user has open.
     expect(appSource).toMatch(
       /selectedSessionIdRef\.current\s*=\s*selectedSessionId\s*;/u,
     );

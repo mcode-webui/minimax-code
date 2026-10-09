@@ -124,7 +124,10 @@ import {
   projectWebuiWorkspaceHistory,
   webuiWorkspaceSubagentStatus,
 } from "../projection/workspace-progress.js";
-import { createSessionStreamRetry } from "../session-stream-retry.js";
+import { createWebuiApplication, type WebuiApplication } from "../application/create-application.js";
+import type { WebuiEventEffects } from "../application/event-coordinator.js";
+import { createWebuiOpenEventChannel } from "../bindings/event-channel-adapter.js";
+import type { WebuiWorkspaceGitChangedSignal } from "../projection/workspace-panel-state.js";
 import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
 import { deriveRecentWorkspaceDirs } from "../projection/composer-state.js";
@@ -239,10 +242,10 @@ export function WebuiClientFoundationApp(
     [providedSessionStore],
   );
   // The one per-session effects registry for this mount (plan §7.1
-  // `application/event-coordinator.ts`; ticket #45 pre-flip bridge). The shell
-  // holds it and provides it; the composer registers its session's effect
-  // handlers here, and `asWebuiEventEffects()` is what the coordinator will
-  // consume when the `watchEvents` switch lands. It is inert until then.
+  // `application/event-coordinator.ts`; ticket #45). The shell holds it and
+  // provides it; the composer registers its session's effect handlers here and
+  // `asWebuiEventEffects()` is what the application coordinator consumes over
+  // the single process-event channel.
   const eventEffectsRegistry = useMemo(
     () => createWebuiEventEffectsRegistry(),
     [],
@@ -707,19 +710,6 @@ export function WebuiClientFoundationApp(
       })
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
-  // The manual arm of the stream loop's recovery — see
-  // `session-stream-retry.ts` for why it clears the refusal and re-runs the
-  // attach loop. Undefined on the home screen (no session to resume) and on
-  // hosts without a `resumeSession` transport: no recovery path, no button.
-  const retrySessionStream =
-    selectedSessionId && transport?.resumeSession
-      ? createSessionStreamRetry({
-          store: sessionStore,
-          sessionId: selectedSessionId,
-          resumeSession: transport.resumeSession,
-          loadMessages: transport.loadMessages,
-        })
-      : undefined;
   const homeMode = !selectedSessionId;
   const usageNotice = useMemo(
     () => deriveConversationUsageNotice(usageQuota),
@@ -996,35 +986,88 @@ export function WebuiClientFoundationApp(
     [getActiveTurn],
   );
 
-  // The subscription reads the open session through a ref rather than closing
-  // over it, and this is the reason the effect below depends on `watchEvents`
-  // alone.
+  // The application instance is built from the live process-event ingress
+  // (ticket #45, the atomic ingress flip). One call opens exactly one
+  // `watchEvents` channel; the event coordinator is its sole consumer,
+  // reducing each event into the retained activity slice and running the
+  // session effects the composer registered. Components subscribe to
+  // application snapshots and never open a channel of their own — the shell's
+  // own subscription, the composer's and the two panels' are all gone.
   //
-  // Re-subscribing on every session switch tears the old subscription down and
-  // builds a new one, and the events that arrive in between belong to neither:
-  // the teardown has already run, the new listener is not attached yet. That
-  // window is exactly what this layer exists to catch -- a turn finishing in
-  // another session while the user clicks through the rail -- and losing it
-  // is how a running session looks idle and a finished one looks silent.
-  //
-  // A ref is the standard answer, and the objection that made the dependency
-  // look necessary does not survive it: a closure captures a value once, but
-  // `ref.current` is reassigned on every render, so the one long-lived
-  // callback always reads the current session. This file already uses that
-  // shape for `composerKeyRef` two hundred lines up.
+  // The open session is read through a ref rather than closing over it, so the
+  // single subscription never tears down on a session switch: the events
+  // arriving during a switch would otherwise belong to neither the old nor the
+  // new closure, and a turn finishing while the user clicks through the rail
+  // would be lost.
   const selectedSessionIdRef = useRef(selectedSessionId);
   selectedSessionIdRef.current = selectedSessionId;
-  useEffect(() => {
-    if (!watchEvents) return;
-    return watchEvents(
-      (event) =>
-        activityCommands.recordEvent(event, selectedSessionIdRef.current),
-      () => {
+
+  // The application-wide effects the coordinator runs. It composes the
+  // per-session registry the composer registers into with the shell's own
+  // reach: the channel-accepted signal re-probes the rail (a reconnect can miss
+  // a `session.start`), and a workspace-git event invalidates the panel
+  // git/review queries through the same coordinator.
+  const [workspaceGitChanged, setWorkspaceGitChanged] =
+    useState<WebuiWorkspaceGitChangedSignal>();
+  const applicationEffects = useMemo<WebuiEventEffects>(
+    () => ({
+      ...eventEffectsRegistry.asWebuiEventEffects(),
+      workspaceGitChanged: (payload) =>
+        setWorkspaceGitChanged((previous) => ({
+          revision: (previous?.revision ?? 0) + 1,
+          ...payload,
+        })),
+      channelReady: () => {
+        eventEffectsRegistry.asWebuiEventEffects().channelReady?.();
         setActivityNow(Date.now());
         setActivityProbeNonce((nonce) => nonce + 1);
       },
-    );
-  }, [watchEvents]);
+    }),
+    [eventEffectsRegistry],
+  );
+
+  // Exactly one application per mount. It owns the one session store (the same
+  // map the shell reads its slices off) and the one channel; disposing it
+  // detaches the coordinator and closes the channel.
+  const application: WebuiApplication = useMemo(
+    () =>
+      createWebuiApplication({
+        // The live ingress: the transport's `watchEvents` watcher, adapted to
+        // the application channel shape. With no transport wired (SSR, tests)
+        // the application still exists but opens nothing.
+        openEventChannel: watchEvents
+          ? createWebuiOpenEventChannel(watchEvents)
+          : () => ({ subscribe: () => () => undefined }),
+        store: sessionStore,
+        readActiveSessionId: () => selectedSessionIdRef.current,
+        effects: applicationEffects,
+        turns: {
+          resumeSession: transport?.resumeSession ?? (async () => {}),
+          ...(transport?.loadMessages
+            ? { loadMessages: transport.loadMessages }
+            : {}),
+        },
+      }),
+    [
+      applicationEffects,
+      sessionStore,
+      transport?.loadMessages,
+      transport?.resumeSession,
+      watchEvents,
+    ],
+  );
+  useEffect(() => () => application.dispose(), [application]);
+
+  // The manual arm of the stream loop's recovery. Undefined on the home screen
+  // (no session to resume) and on hosts without a `resumeSession` transport: no
+  // recovery path, no button. It runs through the turn coordinator, which owns
+  // the refusal reset, the recorded cursor and one attempt per click.
+  const retrySessionStream =
+    selectedSessionId && transport?.resumeSession
+      ? () => {
+          void application.turns.retry(selectedSessionId);
+        }
+      : undefined;
 
   // Persist the counts. Without this the badge is worse than none: a session
   // that ran four turns would go clean on reload and the only thing the user
@@ -1121,7 +1164,7 @@ export function WebuiClientFoundationApp(
     setWorkspaceSubagentsCollapsed(false);
   }, [selectedSessionId]);
 
-  const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} getWorkspaceEnvironment={transport?.getWorkspaceEnvironment} watchEvents={transport?.watchEvents} mutateWorkspaceGit={transport?.mutateWorkspaceGit} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
+  const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} getWorkspaceEnvironment={transport?.getWorkspaceEnvironment} gitChanged={workspaceGitChanged} mutateWorkspaceGit={transport?.mutateWorkspaceGit} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
 
   return (
     <WebuiEventEffectsRegistryProvider registry={eventEffectsRegistry}>
@@ -1457,7 +1500,6 @@ export function WebuiClientFoundationApp(
                     patchGoal={transport?.patchGoal}
                     clearGoal={transport?.clearGoal}
                     isGoalEnabled={transport?.isGoalEnabled}
-                    watchEvents={transport?.watchEvents}
                     listPendingPermissions={transport?.listPendingPermissions}
                     getPendingQuestionnaire={transport?.getPendingQuestionnaire}
                     replyPermission={transport?.replyPermission}
@@ -1535,7 +1577,7 @@ export function WebuiClientFoundationApp(
                 </aside>
               </div>
             ) : null}
-            {!homeMode && workspacePanel.open ? <WebuiWorkspacePanel state={workspacePanel} dispatch={dispatchWorkspacePanel} sessionId={selectedSessionId} workspaceDir={selectedSession?.workspaceDir} listWorkspaceFileTree={transport?.listWorkspaceFileTree} readWorkspaceFile={transport?.readWorkspaceFile} workspaceFileUrl={transport?.workspaceFileUrl} readWorkspaceArchive={transport?.readWorkspaceArchive} extractWorkspaceArchive={transport?.extractWorkspaceArchive} readCanvas={transport?.readCanvas} applyCanvas={transport?.applyCanvas} createTerminal={transport?.createTerminal} listTerminals={transport?.listTerminals} writeTerminal={transport?.writeTerminal} disposeTerminal={transport?.disposeTerminal} watchTerminal={transport?.watchTerminal} getWorkspaceReviewSummary={transport?.getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={transport?.listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={transport?.searchWorkspaceReviewDiffs} onClose={() => dispatchWorkspacePanel({ type: "close-panel" })} /> : null}
+            {!homeMode && workspacePanel.open ? <WebuiWorkspacePanel state={workspacePanel} dispatch={dispatchWorkspacePanel} sessionId={selectedSessionId} workspaceDir={selectedSession?.workspaceDir} listWorkspaceFileTree={transport?.listWorkspaceFileTree} readWorkspaceFile={transport?.readWorkspaceFile} workspaceFileUrl={transport?.workspaceFileUrl} readWorkspaceArchive={transport?.readWorkspaceArchive} extractWorkspaceArchive={transport?.extractWorkspaceArchive} readCanvas={transport?.readCanvas} applyCanvas={transport?.applyCanvas} createTerminal={transport?.createTerminal} listTerminals={transport?.listTerminals} writeTerminal={transport?.writeTerminal} disposeTerminal={transport?.disposeTerminal} watchTerminal={transport?.watchTerminal} gitChanged={workspaceGitChanged} getWorkspaceReviewSummary={transport?.getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={transport?.listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={transport?.searchWorkspaceReviewDiffs} onClose={() => dispatchWorkspacePanel({ type: "close-panel" })} /> : null}
             </>}
           </main>
         </div>

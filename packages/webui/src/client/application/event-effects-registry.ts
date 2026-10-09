@@ -15,12 +15,12 @@
 // — it is a registration surface, not a store, and it never subscribes to the
 // channel itself.
 //
-// It is deliberately **not** wired into the live ingress yet: the composer
-// registers its handlers here, but nothing consumes `asWebuiEventEffects()`
-// until the atomic `watchEvents` switch (the next slice), so production
-// behaviour is unchanged.
+// It is the live seam: the composer registers its handlers here and the
+// application coordinator consumes `asWebuiEventEffects()` over the single
+// process-event channel (ticket #45, the atomic ingress flip).
 
 import type { WebuiEventEffects } from "./event-coordinator.js";
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
 
 export interface WebuiEventEffectsRegistry {
   /**
@@ -63,6 +63,8 @@ export function createWebuiEventEffectsRegistry(): WebuiEventEffectsRegistry {
         perSession.get(sessionId)?.refreshGoal?.(sessionId),
       attachStream: (sessionId, turnId, mode) =>
         perSession.get(sessionId)?.attachStream?.(sessionId, turnId, mode),
+      setGoal: (sessionId: string, goal: WebuiGoal | undefined) =>
+        perSession.get(sessionId)?.setGoal?.(sessionId, goal),
       resumeOverflow: (sessionId) =>
         perSession.get(sessionId)?.resumeOverflow?.(sessionId),
       // The channel was accepted; re-read authoritative state per session. Not

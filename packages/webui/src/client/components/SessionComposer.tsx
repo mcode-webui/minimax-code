@@ -25,7 +25,7 @@ import {
   type FormEvent,
   type ReactElement,
 } from "react";
-import type { WebuiClientEventWatcher, WebuiClientMessageEnqueuer, WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
+import type { WebuiClientMessageEnqueuer, WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
 import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 import type { WebuiModelSelectionRequest } from "../contracts/model-view.js";
 import type { WebuiClientSessionCreator } from "../contracts/session-port.js";
@@ -140,9 +140,6 @@ import {
   type WebuiIconProps,
 } from "../icons.js";
 import { OutputError } from "./OutputError.js";
-import {
-  createWebuiWatchEventCallback,
-} from "../projection/effect-reducer.js";
 import {
   buildWebuiComposerHandlers,
   submitWebuiGoal,
@@ -594,7 +591,6 @@ export function WebuiComposer({
   patchGoal,
   clearGoal,
   isGoalEnabled,
-  watchEvents,
   listPendingPermissions,
   getPendingQuestionnaire,
   replyPermission,
@@ -654,7 +650,6 @@ export function WebuiComposer({
   readonly createGoal?: (request: WebuiGoalCreateRequest) => Promise<WebuiGoal>;
 
   readonly isGoalEnabled?: () => Promise<WebuiGoalEnabledResult>;
-  readonly watchEvents?: WebuiClientEventWatcher;
   readonly listPendingPermissions?: () => Promise<{ readonly requests: readonly WebuiPendingPermission[] }>;
   readonly getPendingQuestionnaire?: (request: { readonly name: string; readonly sessionId: string }) => Promise<{ readonly request?: WebuiQuestionnaireRequest }>;
   readonly replyPermission?: (request: { readonly name: string; readonly requestId: string; readonly reply: "allowOnce" | "allowAlways" | "deny" }) => Promise<WebuiInteractionReplyResult>;
@@ -711,11 +706,11 @@ export function WebuiComposer({
   const { stream, sending } = useWebuiSessionState(sessionId);
   const { commands, readStream } = useWebuiSessionCommands(sessionId);
   const createTurnWriter = useWebuiTurnWriter();
-  // The per-session effects registry the shell provides (ticket #45 pre-flip
-  // bridge). The composer registers this session's event handlers here so the
-  // application event coordinator can run them once the `watchEvents` switch
-  // lands; it holds no channel and registers nothing when no provider is
-  // mounted (SSR, tests).
+  // The per-session effects registry the shell provides (ticket #45). The
+  // composer registers this session's event handlers here so the application
+  // event coordinator — the sole consumer of the process-event channel — runs
+  // them for events addressed to this session; it holds no channel and
+  // registers nothing when no provider is mounted (SSR, tests).
   const effectsRegistry = useWebuiEventEffectsRegistry();
   // The interaction slices live on the one application store, read here through
   // selectors and kept nowhere else (plan §7.6; ticket #45). The commands write
@@ -930,66 +925,25 @@ export function WebuiComposer({
       });
     };
 
-    const onRuntimeEvent = createWebuiWatchEventCallback(
-      sessionId,
-      readStream,
-      () => ({ permissions, questionnaire, goal }),
-      {
-        refreshPending: () => {
-          void refreshPending().catch(() => undefined);
-        },
-        setSending: commands.setTurnSending,
-        setStream: commands.updateStream,
-        setPermissions: interactionCommands.updatePermissions,
-        setQuestionnaire: interactionCommands.updateQuestionnaire,
-        // A goal-bearing event landing here invalidates any steering re-read
-        // still in flight: that read is older than what we just applied.
-        // `applyGoal` performs the version bump the re-read guard checks, so
-        // the event path needs no writer of its own.
-        setGoal: applyGoal,
-        // Goal steering events announce that the objective moved without
-        // carrying the new goal, so the banner is re-read rather than patched.
-        // The read is eventually consistent, so a late answer must not undo a
-        // newer goal that arrived while it was in flight.
-        refreshGoal,
-        attachStream: (turnId, mode) => {
-          // `recheck` means we already hold a different turn's lease. The
-          // event alone cannot say whether that lease is stale or genuinely
-          // concurrent, so ask the server which turn is actually running.
-          if (mode === "recheck") {
-            void recheckSubscription(turnId);
-            return;
-          }
-          attachToTurn(turnId);
-        },
-      },
-    );
-    const unsubscribe = watchEvents?.(onRuntimeEvent, () => {
-      // The server accepted `watchEvents` and is pumping it. Not a
-      // subscription barrier — the runtime subscribes on the server's first
-      // pull, just after this — so this is the same probe the mount path
-      // runs, repeated once the stream is being established rather than
-      // only requested. A reconnect may also have missed permission,
-      // questionnaire, queue or `session.start` events while the browser
-      // was suspended, so re-read the authoritative state too.
-      void refreshPending().catch(() => undefined);
-      recoverMissedTurn();
-    });
-    // Neither probe is gated on the watcher, and the two are not ordered
-    // against each other. A turn that started before a probe read the server
-    // is still running, so `getActiveTurn` returns it; a turn that starts
-    // after announces itself on the event stream. When there is no watcher
-    // there is no announcement to wait for, so the mount probe is the only
-    // recovery this client has.
-    if (unsubscribe === undefined) recoverMissedTurn();
+    // The mount probe. A turn that started before this client read the server
+    // is still running, so `getActiveTurn` returns it; a turn that starts after
+    // announces itself on the single process-event channel, which the
+    // application event coordinator owns. The composer no longer opens its own
+    // `watchEvents` subscription — the coordinator is the channel's sole
+    // consumer, reduces each event, and runs this session's registered effects
+    // below (ticket #45, the atomic ingress flip).
+    recoverMissedTurn();
     // Register this session's effect handlers for the application event
-    // coordinator (ticket #45 pre-flip bridge). This is inert until the
-    // `watchEvents` switch lands — nothing consumes the registry yet — so it
-    // changes no behaviour; the coordinator will read them back through
-    // `registry.asWebuiEventEffects()`.
+    // coordinator. The coordinator runs them for events addressed to this
+    // session, so the composer holds no channel and no raw event callback.
     const unregisterEffects = effectsRegistry?.register(sessionId, {
       refreshPending: () => refreshPending(),
       refreshGoal,
+      // The coordinator's set-goal command routes here, so a goal-bearing
+      // event performs the same version bump `applyGoal` owns — a late steering
+      // re-read cannot resurrect the goal the event just replaced. Every goal
+      // write still goes through `applyGoal`.
+      setGoal: (_targetSessionId, nextGoal) => applyGoal(nextGoal),
       attachStream: (turnId, mode) => {
         if (mode === "recheck") {
           void recheckSubscription(turnId);
@@ -1004,7 +958,6 @@ export function WebuiComposer({
     });
     return () => {
       cancelled = true;
-      unsubscribe?.();
       unregisterEffects?.();
     };
   }, [
@@ -1016,7 +969,6 @@ export function WebuiComposer({
     listQueueMessages,
     resumeSession,
     sessionId,
-    watchEvents,
   ]);
 
   useEffect(() => {

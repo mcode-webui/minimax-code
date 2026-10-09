@@ -21,6 +21,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createWebuiApplication } from "../../src/client/application/create-application.js";
+import { createWebuiEventEffectsRegistry } from "../../src/client/application/event-effects-registry.js";
 import type { WebuiProcessEventChannel } from "../../src/client/application/event-channel.js";
 import { createWebuiRequestOwnership } from "../../src/client/application/request-ownership.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
@@ -333,5 +334,106 @@ describe("late results and disposal", () => {
     expect(application.store.isDisposed()).toBe(true);
     expect(application.store.readSession("s1").stream).toBe(before);
     expect(application.store.readSession("s1").sending).toBe(false);
+  });
+});
+
+describe("stage 4 — the four call sites' handling through the coordinator", () => {
+  it("claims its own locally sent turn instead of attaching a second stream", () => {
+    const attachStream = vi.fn();
+    const { application, channels } = makeApplication({ attachStream });
+    // A local send claims the lease without a turn id (the stream loop's
+    // `claimSubscription("local-send")`), then the runtime publishes
+    // `session.start` for our own turn.
+    application.leases.claim("s1", "local-send");
+    channels[0]!.emit(event("session.start", { sessionId: "s1", turnId: "t1" }));
+
+    // The lease already covers the turn, so no second stream is opened; the
+    // reducer adopts the turn id onto the existing subscription instead.
+    expect(attachStream).not.toHaveBeenCalled();
+    const stream = application.store.readSession("s1").stream;
+    expect(stream.subscription?.turnId).toBe("t1");
+    expect(stream.subscription?.owner).toBe("local-send");
+    expect(application.store.readSession("s1").sending).toBe(true);
+  });
+
+  it("attaches a server-initiated turn the client never started", () => {
+    const attachStream = vi.fn();
+    const { channels } = makeApplication({ attachStream });
+    channels[0]!.emit(event("session.start", { sessionId: "s1", turnId: "srv-1" }));
+    expect(attachStream).toHaveBeenCalledWith("s1", "srv-1", "attach");
+  });
+
+  it("asks the active-turn probe to recheck when a session.start names another turn", () => {
+    const attachStream = vi.fn();
+    const { application, channels } = makeApplication({ attachStream });
+    application.leases.claim("s1", "recovered", "other");
+    channels[0]!.emit(event("session.start", { sessionId: "s1", turnId: "srv-2" }));
+    // A different turn is already held; the event alone cannot tell stale from
+    // concurrent, so the attach decision is "recheck" and the probe decides.
+    expect(attachStream).toHaveBeenCalledWith("s1", "srv-2", "recheck");
+  });
+
+  it("re-reads interaction, questionnaire and goal through the registered effects", () => {
+    const registry = createWebuiEventEffectsRegistry();
+    const refreshPending = vi.fn();
+    const refreshGoal = vi.fn();
+    const setGoal = vi.fn();
+    registry.register("s1", { refreshPending, refreshGoal, setGoal });
+    const fake = makeChannel();
+    createWebuiApplication({
+      openEventChannel: () => fake.channel,
+      effects: registry.asWebuiEventEffects(),
+      turns: { resumeSession: (async () => {}) as unknown as WebuiClientSessionResumer },
+    });
+
+    fake.emit(event("session.queue.updated", { sessionId: "s1" }));
+    expect(refreshPending).toHaveBeenCalledWith("s1");
+
+    fake.emit(
+      event("thread_goal.objective_updated_steering", {
+        sessionId: "s1",
+        goalId: "g1",
+      }),
+    );
+    expect(refreshGoal).toHaveBeenCalledWith("s1");
+
+    // A goal-bearing event routes its write through the session's registered
+    // goal writer, so the composer's version guard still owns every write.
+    fake.emit(event("thread_goal.cleared", { sessionId: "s1" }));
+    expect(setGoal).toHaveBeenCalledWith("s1", undefined);
+  });
+
+  it("invalidates the workspace panel git and review queries through the coordinator", () => {
+    const workspaceGitChanged = vi.fn();
+    const { channels } = makeApplication({ workspaceGitChanged });
+    channels[0]!.emit(
+      event("workspace.git.changed", {
+        workspace: "/repo",
+        aliases: ["/repo-alias"],
+      }),
+    );
+    expect(workspaceGitChanged).toHaveBeenCalledWith({
+      workspace: "/repo",
+      aliases: ["/repo-alias"],
+    });
+  });
+
+  it("re-probes after reconnect by fanning the ready signal to every session", () => {
+    const registry = createWebuiEventEffectsRegistry();
+    const firstReady = vi.fn();
+    const secondReady = vi.fn();
+    registry.register("s1", { channelReady: firstReady });
+    registry.register("s2", { channelReady: secondReady });
+    const fake = makeChannel();
+    createWebuiApplication({
+      openEventChannel: () => fake.channel,
+      effects: registry.asWebuiEventEffects(),
+      turns: { resumeSession: (async () => {}) as unknown as WebuiClientSessionResumer },
+    });
+    // The server accepted the channel again; each session re-reads its
+    // authoritative state, which is how a missed `session.start` is recovered.
+    fake.ready();
+    expect(firstReady).toHaveBeenCalledTimes(1);
+    expect(secondReady).toHaveBeenCalledTimes(1);
   });
 });

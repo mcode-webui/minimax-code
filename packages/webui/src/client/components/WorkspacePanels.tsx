@@ -33,9 +33,8 @@ import type {
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
 } from "../../shared/contracts/review.js";
-import type { WorkspacePanelCommand, WorkspacePanelState, WorkspacePanelTab } from "../projection/workspace-panel-state.js";
+import type { WorkspacePanelCommand, WorkspacePanelState, WorkspacePanelTab, WebuiWorkspaceGitChangedSignal } from "../projection/workspace-panel-state.js";
 import { focusWebuiFileLine, webuiFileLineTargetId } from "../projection/file-line-navigation.js";
-import type { WebuiClientEventWatcher } from "../contracts/execution-port.js";
 import {
   projectWebuiWorkspaceHistory,
   type WebuiWorkspaceSubagent,
@@ -252,12 +251,12 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateWorkspaceGit, 
   </div>;
 }
 
-export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, getWorkspaceEnvironment, watchEvents, mutateWorkspaceGit, collapsed = false, onToggle, onOpenChanges, onOpenTerminal }: {
+export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, getWorkspaceEnvironment, gitChanged, mutateWorkspaceGit, collapsed = false, onToggle, onOpenChanges, onOpenTerminal }: {
   readonly workspaceDir?: string;
   readonly isDefaultWorkspace?: boolean;
   readonly workspaceEnvironment?: WebuiWorkspaceEnvironment;
   readonly getWorkspaceEnvironment?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceEnvironment>;
-  readonly watchEvents?: WebuiClientEventWatcher;
+  readonly gitChanged?: WebuiWorkspaceGitChangedSignal;
   readonly mutateWorkspaceGit?: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
   readonly collapsed?: boolean;
   readonly onToggle?: () => void;
@@ -283,21 +282,14 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
     return () => { cancelled = true; };
   }, [getWorkspaceEnvironment, isDefaultWorkspace, reloadToken, workspaceDir, workspaceEnvironment]);
   useEffect(() => {
-    if (!workspaceDir || isDefaultWorkspace || !getWorkspaceEnvironment || !watchEvents) return undefined;
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = watchEvents((event) => {
-      if (event.type !== "workspace.git.changed") return;
-      const changedWorkspace = event.payload.workspace;
-      const aliases = event.payload.aliases;
-      if (changedWorkspace !== workspaceDir && !(Array.isArray(aliases) && aliases.includes(workspaceDir))) return;
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => setReloadToken((current) => current + 1), 350);
-    });
-    return () => {
-      unsubscribe();
-      if (refreshTimer) clearTimeout(refreshTimer);
-    };
-  }, [getWorkspaceEnvironment, isDefaultWorkspace, watchEvents, workspaceDir]);
+    if (!workspaceDir || isDefaultWorkspace || !getWorkspaceEnvironment || !gitChanged) return undefined;
+    // React only to a signal naming this workspace; a signal for another
+    // workspace leaves this one alone. The 350ms timer coalesces a burst into
+    // one reload, exactly as the panels' old event subscription did.
+    if (gitChanged.workspace !== workspaceDir && !(gitChanged.aliases?.includes(workspaceDir))) return undefined;
+    const refreshTimer = setTimeout(() => setReloadToken((current) => current + 1), 350);
+    return () => clearTimeout(refreshTimer);
+  }, [getWorkspaceEnvironment, gitChanged, isDefaultWorkspace, workspaceDir]);
   if (!workspaceDir || isDefaultWorkspace || (!getWorkspaceEnvironment && !workspaceEnvironment) || !environment?.isGitRepo) return null;
   const hasChanges = environment.changedFiles > 0;
   const canMutate = Boolean(mutateWorkspaceGit && !environment.changesError && !environment.metadataError && (hasChanges || environment.canPush));
@@ -334,9 +326,9 @@ export function WebuiWorkspacePanelControls({ filePanelOpen, progressPanelOpen, 
   </div>;
 }
 
-export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, todos, subagents = [], showProgress = true, showEmptyProgress = true, getWorkspaceEnvironment, watchEvents, mutateWorkspaceGit, environmentCollapsed = false, progressCollapsed = false, subagentsCollapsed = false, onToggleEnvironment, onToggleProgress, onToggleSubagents, onMemberClick, onOpenChanges, onOpenTerminal }: { readonly workspaceDir?: string; readonly isDefaultWorkspace?: boolean; readonly workspaceEnvironment?: WebuiWorkspaceEnvironment; readonly todos: readonly WebuiTodo[]; readonly subagents?: readonly WebuiWorkspaceSubagent[]; readonly showProgress?: boolean; readonly showEmptyProgress?: boolean; readonly getWorkspaceEnvironment?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceEnvironment>; readonly watchEvents?: WebuiClientEventWatcher; readonly mutateWorkspaceGit?: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>; readonly environmentCollapsed?: boolean; readonly progressCollapsed?: boolean; readonly subagentsCollapsed?: boolean; readonly onToggleEnvironment?: () => void; readonly onToggleProgress?: () => void; readonly onToggleSubagents?: () => void; readonly onMemberClick?: (subagent: WebuiWorkspaceSubagent) => void; readonly onOpenChanges?: () => void; readonly onOpenTerminal?: () => void }): ReactElement {
+export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, todos, subagents = [], showProgress = true, showEmptyProgress = true, getWorkspaceEnvironment, gitChanged, mutateWorkspaceGit, environmentCollapsed = false, progressCollapsed = false, subagentsCollapsed = false, onToggleEnvironment, onToggleProgress, onToggleSubagents, onMemberClick, onOpenChanges, onOpenTerminal }: { readonly workspaceDir?: string; readonly isDefaultWorkspace?: boolean; readonly workspaceEnvironment?: WebuiWorkspaceEnvironment; readonly todos: readonly WebuiTodo[]; readonly subagents?: readonly WebuiWorkspaceSubagent[]; readonly showProgress?: boolean; readonly showEmptyProgress?: boolean; readonly getWorkspaceEnvironment?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceEnvironment>; readonly gitChanged?: WebuiWorkspaceGitChangedSignal; readonly mutateWorkspaceGit?: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>; readonly environmentCollapsed?: boolean; readonly progressCollapsed?: boolean; readonly subagentsCollapsed?: boolean; readonly onToggleEnvironment?: () => void; readonly onToggleProgress?: () => void; readonly onToggleSubagents?: () => void; readonly onMemberClick?: (subagent: WebuiWorkspaceSubagent) => void; readonly onOpenChanges?: () => void; readonly onOpenTerminal?: () => void }): ReactElement {
   return <div className="webui-progress-overview-card" data-testid="progress-overview-card">
-    <WebuiEnvironmentPanel workspaceDir={workspaceDir} isDefaultWorkspace={isDefaultWorkspace} workspaceEnvironment={workspaceEnvironment} getWorkspaceEnvironment={getWorkspaceEnvironment} watchEvents={watchEvents} mutateWorkspaceGit={mutateWorkspaceGit} collapsed={environmentCollapsed} onToggle={onToggleEnvironment} onOpenChanges={onOpenChanges} onOpenTerminal={onOpenTerminal} />
+    <WebuiEnvironmentPanel workspaceDir={workspaceDir} isDefaultWorkspace={isDefaultWorkspace} workspaceEnvironment={workspaceEnvironment} getWorkspaceEnvironment={getWorkspaceEnvironment} gitChanged={gitChanged} mutateWorkspaceGit={mutateWorkspaceGit} collapsed={environmentCollapsed} onToggle={onToggleEnvironment} onOpenChanges={onOpenChanges} onOpenTerminal={onOpenTerminal} />
     <WebuiProgressPanel todos={todos} showProgress={showProgress} showEmptyProgress={showEmptyProgress} collapsed={progressCollapsed} onToggle={onToggleProgress} />
     <WebuiSubagentsPanel subagents={subagents} collapsed={subagentsCollapsed} onToggle={onToggleSubagents} onMemberClick={onMemberClick} />
   </div>;
@@ -395,7 +387,7 @@ export function WebuiFilePreview({ tab, result, codeMode, workspaceFileUrl, read
   </div>;
 }
 
-export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, listWorkspaceFileTree, readWorkspaceFile, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, watchEvents, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs, onClose }: {
+export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, listWorkspaceFileTree, readWorkspaceFile, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, gitChanged, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs, onClose }: {
   readonly state: WorkspacePanelState;
   readonly dispatch: (command: WorkspacePanelCommand) => void;
   readonly sessionId?: string; readonly workspaceDir?: string;
@@ -414,7 +406,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   readonly writeTerminal?: (request: { terminalId: string; data: string }) => Promise<unknown>;
   readonly disposeTerminal?: (request: { terminalId: string }) => Promise<unknown>;
   readonly watchTerminal?: (request: { terminalId: string }, onFrame: (frame: { terminalId: string; data: string; exited: boolean }) => void) => () => void;
-  readonly watchEvents?: WebuiClientEventWatcher;
+  readonly gitChanged?: WebuiWorkspaceGitChangedSignal;
   readonly getWorkspaceReviewSummary?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceReviewSummary>;
   readonly listWorkspaceReviewFileDiffs?: (request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly fileIds: readonly string[] }) => Promise<WebuiWorkspaceReviewDiffs>;
   readonly searchWorkspaceReviewDiffs?: (request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly query: string; readonly includeUntrackedFiles: boolean; readonly pageIndex?: number; readonly pageSize?: number }) => Promise<WebuiWorkspaceReviewSearchResult>;
@@ -542,13 +534,9 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     return () => { cancelled = true; };
   }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, getWorkspaceReviewSummary, dispatch, reviewRefreshToken]);
   useEffect(() => {
-    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !watchEvents) return undefined;
-    return watchEvents((event) => {
-      if (event.type !== "workspace.git.changed") return;
-      const aliases = event.payload.aliases;
-      if (event.payload.workspace === activeTab.workspaceDir || (Array.isArray(aliases) && aliases.includes(activeTab.workspaceDir))) setReviewRefreshToken((value) => value + 1);
-    });
-  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, watchEvents]);
+    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !gitChanged) return undefined;
+    if (gitChanged.workspace === activeTab.workspaceDir || gitChanged.aliases?.includes(activeTab.workspaceDir)) setReviewRefreshToken((value) => value + 1);
+  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, gitChanged]);
   const workspaceReviewSelectedPath = activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.selectedPath : undefined;
   const workspaceReviewFiles = reviewSummary !== undefined && reviewSummary.tabId === activeTab?.id ? reviewSummary.summary?.files ?? [] : [];
   const turnReviewFiles = activeTab?.kind === "review" && activeTab.source === "turn" ? activeTab.files ?? [] : [];

@@ -16,9 +16,9 @@
 // not a silent one: the plan's §7.1 row names the target *behaviour*, and the
 // direction matrix, which is authoritative for edges, fixes the file's layer.
 //
-// It is deliberately **not** wired into the live ingress yet — the atomic
-// `watchEvents` switch is the next slice — so production behaviour is
-// unchanged and this factory is exercised only by its tests.
+// It is the live adapter: the composition root opens one channel through
+// `createWebuiOpenEventChannel` and the application coordinator consumes it
+// (ticket #45, the atomic ingress flip).
 
 import type {
   WebuiOpenEventChannel,

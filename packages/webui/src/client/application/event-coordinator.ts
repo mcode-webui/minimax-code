@@ -22,6 +22,7 @@ import type {
   WebuiRuntimeEvent,
   WebuiStreamFrame,
 } from "../../shared/contracts/stream.js";
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import {
   applyWebuiEffectCommands,
   reduceWebuiEffect,
@@ -52,6 +53,12 @@ export interface WebuiEventStreamFrame {
   readonly frame: WebuiStreamFrame;
 }
 
+/** The parsed payload of a `workspace.git.changed` process event. */
+export interface WebuiWorkspaceGitChangedPayload {
+  readonly workspace?: string;
+  readonly aliases?: readonly string[];
+}
+
 /**
  * The side effects the coordinator is permitted to kick off. They are injected
  * because the coordinator owns *when* an effect runs, not *how*: the transport
@@ -66,6 +73,21 @@ export interface WebuiEventEffects {
     mode: "attach" | "recheck",
   ) => void;
   readonly resumeOverflow?: (sessionId: string) => void;
+  /**
+   * The goal write path, routed to the session it names. Registered so the
+   * goal-version guard (a late steering re-read must not clobber a newer goal
+   * an event just applied) stays on the one writer that owns it. Absent, the
+   * coordinator writes the store directly.
+   */
+  readonly setGoal?: (sessionId: string, goal: WebuiGoal | undefined) => void;
+  /**
+   * A `workspace.git.changed` event arrived. It carries no session id, so it is
+   * delivered to this application-wide hook rather than a per-session effect;
+   * the owner invalidates the workspace git and review queries.
+   */
+  readonly workspaceGitChanged?: (
+    payload: WebuiWorkspaceGitChangedPayload,
+  ) => void;
   /** The channel was accepted; re-read authoritative state. Not a barrier. */
   readonly channelReady?: () => void;
 }
@@ -114,8 +136,13 @@ export function createWebuiEventCoordinator(
         ...current,
         questionnaire: patch(current.questionnaire),
       })),
-    setGoal: (goal) =>
-      store.updateSession(sessionId, (current) => ({ ...current, goal })),
+    setGoal: (goal) => {
+      if (effects.setGoal) {
+        effects.setGoal(sessionId, goal);
+        return;
+      }
+      store.updateSession(sessionId, (current) => ({ ...current, goal }));
+    },
     attachStream: (turnId, mode) =>
       effects.attachStream?.(sessionId, turnId, mode),
   });
@@ -130,6 +157,25 @@ export function createWebuiEventCoordinator(
         activeSessionId ? { activeSessionId } : {},
       ),
     );
+    // A workspace-git event carries no session id. It is routed to the
+    // application-wide invalidation hook, not a per-session effect, so the
+    // workspace panels' git and review queries are invalidated through the
+    // coordinator instead of a second subscription in the panels.
+    if (event.type === "workspace.git.changed") {
+      const rawWorkspace = event.payload.workspace;
+      const rawAliases = event.payload.aliases;
+      effects.workspaceGitChanged?.({
+        ...(typeof rawWorkspace === "string" ? { workspace: rawWorkspace } : {}),
+        ...(Array.isArray(rawAliases)
+          ? {
+              aliases: rawAliases.filter(
+                (alias): alias is string => typeof alias === "string",
+              ),
+            }
+          : {}),
+      });
+      return;
+    }
     const sessionId = readWebuiEventSessionId(event);
     if (!sessionId) return;
     const current = store.readSession(sessionId);

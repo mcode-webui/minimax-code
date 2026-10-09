@@ -7,12 +7,12 @@
 // consumer; components subscribe to the application snapshot this object
 // exposes.
 //
-// This module is deliberately not wired into the live process-event ingress.
-// Ticket #45 switches all four `watchEvents` call sites to this layer in one
-// delivery unit, because a migration period where the shell uses the new ingress
-// while the composer still opens its own connection would make the migration
-// itself a source of duplicated state. Until that switch, production behaviour
-// is unchanged and this layer is exercised only by its tests.
+// This module is the live process-event ingress. The composition root creates
+// one application through it; ticket #45 switched all four former `watchEvents`
+// call sites (the shell, the composer and both workspace panels) onto it in one
+// delivery unit, because a migration period where the shell used the new
+// ingress while the composer still opened its own connection would make the
+// migration itself a source of duplicated state.
 
 import {
   createWebuiEventCoordinator,
@@ -36,6 +36,13 @@ import type { WebuiTurnCoordinatorDeps } from "./turn-coordinator.js";
 export interface WebuiApplicationDeps {
   /** Opens the process-event channel. Called exactly once per instance. */
   readonly openEventChannel: WebuiOpenEventChannel;
+  /**
+   * The one session store the instance owns. Supply it to bind the application
+   * to a store created by the caller (the composition root creates exactly one
+   * and the shell hands it in); when omitted a fresh store is created here.
+   * Either way there is exactly one map — this is not a second store.
+   */
+  readonly store?: WebuiSessionStore;
   /** The session the UI currently has selected; default reads the store. */
   readonly readActiveSessionId?: () => string | undefined;
   readonly effects?: WebuiEventEffects;
@@ -60,7 +67,7 @@ export interface WebuiApplication {
 export function createWebuiApplication(
   deps: WebuiApplicationDeps,
 ): WebuiApplication {
-  const store = createWebuiSessionStore();
+  const store = deps.store ?? createWebuiSessionStore();
   const leases = createWebuiStreamLeaseController(store);
   const readActiveSessionId =
     deps.readActiveSessionId ?? (() => store.getSelectedSessionId());

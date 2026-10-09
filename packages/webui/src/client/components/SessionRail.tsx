@@ -40,13 +40,13 @@ import { RailRow } from "./RailRow.js";
 import {
   formatWebuiSessionAge,
   type WebuiSessionActivityMap,
-} from "../session-activity.js";
+} from "../projection/session-activity.js";
 import {
   filterWebuiRailViewSessions,
   selectWebuiRailViewTabs,
   type WebuiRailView,
 } from "../rail-buckets.js";
-import { formatWebuiUnreadBadge } from "../session-unread.js";
+import { formatWebuiUnreadBadge } from "../projection/unread-badge.js";
 import type { WebuiClientSession, WebuiClientSessionPage, WebuiClientSessionTreePage, WebuiClientProject } from "../contracts/session-view.js";
 import { teamModeCopy, type TeamModeSessionChoices } from "../team-mode.js";
 

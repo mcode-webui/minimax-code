@@ -41,6 +41,54 @@ export const initialWebuiWorkspaceProgress: WebuiWorkspaceProgressState = {
   hasSubagentSnapshot: false,
 };
 
+/**
+ * The consolidated progress view (plan §7.6 "Progress"; ticket #49 correction 3).
+ *
+ * Progress keeps **distinct source inputs, not multiple writable final
+ * values**: the history baseline, the tree's child metadata and the live
+ * overlay stay separate, and this one pure selector derives what the panel
+ * renders. It is the shell's former inline merge moved into a testable domain
+ * function, and it preserves the current precedence exactly:
+ *
+ *   * Todos are a *choice*, not a merge. A live todo snapshot overrides the
+ *     history baseline — including an empty live snapshot, which still wins
+ *     (`hasTodoSnapshot`). Without a live snapshot the history baseline shows.
+ *   * Subagents merge history, then tree, then live, later sources winning per
+ *     `sessionId`, and the result sorts by `createdAt` ascending.
+ */
+export interface WebuiWorkspaceProgressInputs {
+  readonly history: WebuiWorkspaceProgressState;
+  readonly treeSubagents: readonly WebuiWorkspaceSubagent[];
+  readonly live: WebuiWorkspaceProgressState;
+}
+
+export interface WebuiWorkspaceProgressView {
+  readonly todos: readonly WebuiWorkspaceTodo[];
+  readonly subagents: readonly WebuiWorkspaceSubagent[];
+}
+
+export function selectWebuiWorkspaceProgress(
+  inputs: WebuiWorkspaceProgressInputs,
+): WebuiWorkspaceProgressView {
+  const todos = inputs.live.hasTodoSnapshot
+    ? inputs.live.todos
+    : inputs.history.todos;
+  const merged = new Map<string, WebuiWorkspaceSubagent>();
+  for (const subagent of inputs.history.subagents)
+    merged.set(subagent.sessionId, subagent);
+  for (const subagent of inputs.treeSubagents)
+    merged.set(subagent.sessionId, subagent);
+  for (const subagent of inputs.live.subagents)
+    merged.set(subagent.sessionId, {
+      ...merged.get(subagent.sessionId),
+      ...subagent,
+    });
+  const subagents = [...merged.values()].sort(
+    (left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0),
+  );
+  return { todos, subagents };
+}
+
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)

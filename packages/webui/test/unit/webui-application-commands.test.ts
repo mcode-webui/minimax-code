@@ -22,7 +22,7 @@ import {
   sendWebuiTurn,
 } from "../../src/client/application/turn-commands.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
-import type { WebuiSessionActivityMap } from "../../src/client/session-activity.js";
+import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiActiveTurn } from "../../src/shared/contracts/session.js";
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

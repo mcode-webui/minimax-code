@@ -31,7 +31,7 @@ import type { WebuiEffectHandlers } from "../projection/effect-reducer.js";
 import {
   readWebuiEventSessionId,
   reduceWebuiSessionActivity,
-} from "../session-activity.js";
+} from "../projection/session-activity.js";
 import {
   recogniseWebuiStreamPayload,
   reduceWebuiStreamFrame,

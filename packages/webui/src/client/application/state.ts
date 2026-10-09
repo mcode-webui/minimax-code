@@ -17,8 +17,10 @@ import type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
 } from "../../shared/contracts/interactions.js";
-import type { WebuiSessionActivityMap } from "../session-activity.js";
-import { initialWebuiSessionActivity } from "../session-activity.js";
+import type { WebuiSessionActivityMap } from "../projection/session-activity.js";
+import { initialWebuiSessionActivity } from "../projection/session-activity.js";
+import type { WebuiSessionCatalogState } from "./session-catalog.js";
+import { initialWebuiSessionCatalogState } from "./session-catalog.js";
 import { initialWebuiStreamState } from "../projection/stream-state.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
 
@@ -53,12 +55,15 @@ export const initialWebuiApplicationSessionState: WebuiApplicationSessionState =
 export interface WebuiApplicationState {
   readonly sessions: ReadonlyMap<string, WebuiApplicationSessionState>;
   readonly activity: WebuiSessionActivityMap;
+  /** The one session entity catalog (plan §7.6; ticket #49). */
+  readonly catalog: WebuiSessionCatalogState;
   readonly selectedSessionId?: string;
 }
 
 export const initialWebuiApplicationState: WebuiApplicationState = {
   sessions: new Map(),
   activity: initialWebuiSessionActivity,
+  catalog: initialWebuiSessionCatalogState,
 };
 
 /** Key a turn started on the home screen uses until its session exists. */

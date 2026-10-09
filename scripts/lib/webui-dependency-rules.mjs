@@ -213,7 +213,6 @@ const CLIENT_FILE_PROVENANCE = Object.freeze({
   "global.d.ts": ["root"],
   "transport.ts": ["infrastructure"],
   "connection-health.ts": ["infrastructure", "bindings"],
-  "session-unread.ts": ["infrastructure", "application"],
   "session-import.ts": ["infrastructure"],
   "session-transfer-download.ts": ["infrastructure"],
   "session-transfer-target.ts": ["infrastructure"],
@@ -225,7 +224,6 @@ const CLIENT_FILE_PROVENANCE = Object.freeze({
   "stream-loop.ts": ["mechanisms"],
   "contracts.ts": ["contracts"],
   "value-readers.ts": ["contracts"],
-  "session-activity.ts": ["domain"],
   "rail-buckets.ts": ["view"],
   "router.ts": ["view"],
   "slash-palette.ts": ["view", "bindings"],
@@ -236,6 +234,9 @@ const CLIENT_FILE_PROVENANCE = Object.freeze({
 
 // `client/projection/*` classification, from plan §2's "Required module
 // classification" table. Files not listed here are pure view projections.
+// `session-activity` is the relocated pure activity rules (plan §7.3, ticket
+// #49): it moved from `client/session-activity.ts` (classified `domain`) to
+// `client/projection/session-activity.ts`, keeping that layer.
 const PROJECTION_DOMAIN = new Set([
   "action-requests",
   "context-usage",
@@ -245,6 +246,7 @@ const PROJECTION_DOMAIN = new Set([
   "model-reorder",
   "plan-mode",
   "questionnaire-state",
+  "session-activity",
   "thinking-control",
   "token-plan-model",
   "workspace-progress",

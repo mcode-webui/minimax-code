@@ -16,7 +16,7 @@
 
 import { useMemo } from "react";
 
-import type { WebuiSessionActivity } from "../session-activity.js";
+import type { WebuiSessionActivity } from "../projection/session-activity.js";
 import type { WebuiSessionStore } from "../application/session-store.js";
 import {
   selectWebuiSession,

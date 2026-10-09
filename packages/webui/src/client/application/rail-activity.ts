@@ -11,10 +11,10 @@
 // store's activity writer — so the shell subscribes to the slice and submits
 // commands, and never holds a writer or a `setState` for it.
 //
-// The unread persistence format is untouched: `session-unread.ts` still owns
+// The unread persistence format is untouched: `infrastructure/storage.ts` owns
 // the key, the validation and the shape, and the persist command writes exactly
-// the positive counts it always did (same module, same storage key, same
-// positive-count filter).
+// the positive counts it always did (same storage key, same positive-count
+// filter).
 //
 // The probe is the *deduplicated* one (`active-turn-probe.ts`): the shell and
 // the composer ask the same transport, so a same-session probe racing between
@@ -30,7 +30,7 @@ import {
   reduceWebuiSessionActivity,
   seedWebuiSessionActivity,
   type WebuiSessionActivityMap,
-} from "../session-activity.js";
+} from "../projection/session-activity.js";
 import type { WebuiActiveTurnProbe } from "./active-turn-probe.js";
 
 /**

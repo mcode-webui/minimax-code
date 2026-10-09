@@ -29,9 +29,9 @@
 // nothing to do with a turn. It is a starting value to be corrected by the
 // event stream, not a claim about when the user last talked to the agent.
 
-import type { WebuiRuntimeEvent } from "../shared/contracts/stream.js";
-import type { WebuiActiveTurn } from "../shared/contracts/session.js";
-import type { WebuiClientSession } from "./contracts/session-view.js";
+import type { WebuiRuntimeEvent } from "../../shared/contracts/stream.js";
+import type { WebuiActiveTurn } from "../../shared/contracts/session.js";
+import type { WebuiClientSession } from "../contracts/session-view.js";
 
 export interface WebuiSessionBusy {
   readonly turnId: string;

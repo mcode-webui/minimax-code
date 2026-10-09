@@ -84,7 +84,7 @@ import {
   WebuiIconSidebarToggle,
   WebuiIconSites,
 } from "../icons.js";
-import type { WebuiClientSession, WebuiClientSessionPage, WebuiClientSessionTreePage, WebuiClientProject } from "../contracts/session-view.js";
+import type { WebuiClientSession, WebuiClientSessionPage, WebuiClientProject } from "../contracts/session-view.js";
 import type { WebuiTransport } from "../contracts/transport.js";
 import type { WebuiTodo } from "./WorkspacePanels.js";
 import type { WebuiUsageQuotaResult } from "../../shared/contracts/usage-quota.js";
@@ -100,6 +100,12 @@ import {
   createWebuiSessionStore,
   type WebuiSessionStore,
 } from "../application/session-store.js";
+import {
+  createWebuiSessionCatalogFromPage,
+  selectWebuiCatalogFlatPage,
+  selectWebuiCatalogTreePage,
+} from "../application/session-catalog.js";
+import { createWebuiSessionWorkflows } from "../application/session-workflows.js";
 import { selectWebuiSessionStream } from "../application/selectors.js";
 import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
@@ -109,7 +115,7 @@ import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
-} from "../session-unread.js";
+} from "../infrastructure/storage.js";
 import { startWebuiSessionTransferDownload } from "../session-transfer-download.js";
 import { importWebuiSessionFile } from "../session-import.js";
 import {
@@ -122,6 +128,7 @@ import {
 import {
   initialWebuiWorkspaceProgress,
   projectWebuiWorkspaceHistory,
+  selectWebuiWorkspaceProgress,
   webuiWorkspaceSubagentStatus,
 } from "../projection/workspace-progress.js";
 import { createWebuiApplication, type WebuiApplication } from "../application/create-application.js";
@@ -237,8 +244,18 @@ export function WebuiClientFoundationApp(
   // shell creates exactly one. The shell provides this exact object through
   // `WebuiSessionStoreProvider` and reads its own slices off it — never a
   // second, module-level map.
+  // The seed page is read once (it never changes for a mount): seeding the
+  // catalog from it is how SSR/first paint and the tests start with entities
+  // already present, without a second map.
+  const seedSessionPageRef = useRef(sessionPage);
   const sessionStore = useMemo(
-    () => providedSessionStore ?? createWebuiSessionStore(),
+    () =>
+      providedSessionStore ??
+      createWebuiSessionStore(
+        seedSessionPageRef.current
+          ? { catalog: createWebuiSessionCatalogFromPage(seedSessionPageRef.current) }
+          : undefined,
+      ),
     [providedSessionStore],
   );
   // The one per-session effects registry for this mount (plan §7.1
@@ -257,28 +274,42 @@ export function WebuiClientFoundationApp(
   // a pure conduit. Everything else that used to be rebound here is now
   // read directly off `transport` at the JSX consumption point — see the
   // 67-rebind classification table in the revision report.
-  const loadSessions = transport?.loadSessions;
-  const loadSessionTree = transport?.loadSessionTree;
   const loadMessages = transport?.loadMessages;
   const getUsageQuota = transport?.getUsageQuota;
   const getVersion = transport?.version;
-  const archiveSession = transport?.archiveSession;
-  const deleteSession = transport?.deleteSession;
-  const updateSession = transport?.updateSession;
   const getSessionForkOptions = transport?.getSessionForkOptions;
   const forkSession = transport?.forkSession;
   const loadProjects = transport?.loadProjects;
 
   const [runtimeVersion, setRuntimeVersion] = useState(version);
   useEffect(() => { if (!runtimeVersion && getVersion) void getVersion().then(setRuntimeVersion); }, [getVersion, runtimeVersion]);
-  const [page, setPage] = useState<WebuiClientSessionPage>(
-    sessionPage ?? { sessions: [], hasMore: false },
+  // The one session catalog (plan §7.6 "Flat/tree queries"; ticket #49). The
+  // shell subscribes to the store's catalog slice and resolves the flat and
+  // tree pages from it; both views share one entity map, so a rename patches
+  // one structure and neither view can drift from the other.
+  const catalog = useSyncExternalStore(
+    sessionStore.subscribe,
+    () => sessionStore.getSnapshot().catalog,
+    () => sessionStore.getSnapshot().catalog,
+  );
+  const page = useMemo(() => selectWebuiCatalogFlatPage(catalog), [catalog]);
+  const treePage = useMemo(
+    () => selectWebuiCatalogTreePage(catalog),
+    [catalog],
+  );
+  const loading = catalog.flat.loading;
+  // The session workflows: the loads and mutations the shell used to call
+  // through `transport` and then patch onto two structures by hand. The shell
+  // submits a workflow and holds no transport call for session entities.
+  const sessionWorkflows = useMemo(
+    () =>
+      createWebuiSessionWorkflows({
+        store: sessionStore,
+        port: transport ?? {},
+      }),
+    [sessionStore, transport],
   );
   const [projectRecords, setProjectRecords] = useState<readonly WebuiClientProject[] | undefined>();
-  const [treePage, setTreePage] = useState<WebuiClientSessionTreePage>(
-    () => ({ sessions: [], hasMore: false }),
-  );
-  const [loading, setLoading] = useState(false);
   useEffect(() => {
     if (!loadProjects) return;
     let cancelled = false;
@@ -369,7 +400,8 @@ export function WebuiClientFoundationApp(
   const [teamModeOff, setTeamModeOff] = useState(readTeamModeOff);
   const [teamModeChoices, setTeamModeChoices] =
     useState<TeamModeSessionChoices>(readTeamModeSessionChoices);
-  const [pageError, setPageError] = useState<string | undefined>();
+  const pageError = catalog.flat.error;
+  const setPageError = sessionWorkflows.setError;
   const [usageQuota, setUsageQuota] = useState<WebuiUsageQuotaResult | undefined>(
     () => initialUsageQuota,
   );
@@ -448,50 +480,17 @@ export function WebuiClientFoundationApp(
     writeTeamModeOff(teamModeOff);
   }, [teamModeOff]);
   useEffect(() => {
-    if (!loadSessions || sessionPage) return;
-    let cancelled = false;
-    setLoading(true);
-    void loadSessions()
-      .then((nextPage) => {
-        if (!cancelled) {
-          setPage(nextPage);
-          setPageError(undefined);
-        }
-      })
-      .catch((reason: unknown) => {
-        // Without this the rail renders "No sessions yet." for a list that never
-        // loaded, which reads as "you have no sessions" rather than as a failure.
-        if (!cancelled)
-          setPageError(
-            reason instanceof Error ? reason.message : String(reason),
-          );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadSessions, sessionPage]);
+    if (!sessionWorkflows.canLoadFlat || sessionPage) return;
+    void sessionWorkflows.loadFlat();
+  }, [sessionWorkflows, sessionPage]);
   // Tree projection (root + children) for the rail. Loaded in parallel with
   // the flat session list — the flat list still drives selected-session
   // lookups so the home workspace auto-fill keeps working, but the rail
   // prefers this shape so sub-agent sessions under a root are visible.
   useEffect(() => {
-    if (!loadSessionTree || sessionPage) return;
-    let cancelled = false;
-    void loadSessionTree()
-      .then((next) => {
-        if (!cancelled) setTreePage(next);
-      })
-      .catch(() => {
-        // Tree projection is optional; ignore failures so a runtime without
-        // child-session support does not break the flat-list rail.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadSessionTree, sessionPage]);
+    if (!sessionWorkflows.canLoadTree || sessionPage) return;
+    void sessionWorkflows.loadTree();
+  }, [sessionWorkflows, sessionPage]);
   // Cloud usage quota for the conversation banner. The runtime exposes
   // getUsageQuota when a bearer lease is available; we only fetch once per
   // session switch so the banner reflects the user's current state without
@@ -527,43 +526,29 @@ export function WebuiClientFoundationApp(
       parentSessionId: selectedSessionId,
     }));
   }, [selectedSessionId, treePage.sessions]);
-  const progressTodos: readonly WebuiTodo[] =
-    selectedStream.workspaceProgress.hasTodoSnapshot
-      ? selectedStream.workspaceProgress.todos
-      : historyProgress.todos;
-  const progressSubagents = useMemo<readonly WebuiWorkspaceSubagent[]>(() => {
-    const merged = new Map<string, WebuiWorkspaceSubagent>();
-    for (const subagent of historyProgress.subagents) merged.set(subagent.sessionId, subagent);
-    for (const subagent of treeSubagents) merged.set(subagent.sessionId, subagent);
-    for (const subagent of selectedStream.workspaceProgress.subagents)
-      merged.set(subagent.sessionId, { ...merged.get(subagent.sessionId), ...subagent });
-    return [...merged.values()].sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
-  }, [historyProgress.subagents, selectedStream.workspaceProgress.subagents, treeSubagents]);
+  // One pure derivation over the three labelled progress inputs (plan §7.6
+  // "Progress"; ticket #49 correction 3). The shell no longer merges by hand —
+  // the precedence, including the snapshot-gated todo choice, lives in the
+  // domain selector.
+  const progress = useMemo(
+    () =>
+      selectWebuiWorkspaceProgress({
+        history: historyProgress,
+        treeSubagents,
+        live: selectedStream.workspaceProgress,
+      }),
+    [historyProgress, treeSubagents, selectedStream.workspaceProgress],
+  );
+  const progressTodos: readonly WebuiTodo[] = progress.todos;
+  const progressSubagents: readonly WebuiWorkspaceSubagent[] = progress.subagents;
   const loadMore =
-    loadSessions && page.hasMore
+    sessionWorkflows.canLoadFlat && page.hasMore
       ? () => {
-          setLoading(true);
-          void loadSessions(page.nextCursor)
-            .then((nextPage) => {
-              setPage((current) => ({
-                sessions: [...current.sessions, ...nextPage.sessions],
-                hasMore: nextPage.hasMore,
-                nextCursor: nextPage.nextCursor,
-              }));
-            })
-        .finally(() => setLoading(false));
+          void sessionWorkflows.loadMore(page.nextCursor);
         }
       : undefined;
   const refreshRail = async () => {
-    const [nextPage, nextTree] = await Promise.all([
-      loadSessions?.(),
-      loadSessionTree?.(),
-    ]);
-    if (nextPage) {
-      setPage(nextPage);
-      setPageError(undefined);
-    }
-    if (nextTree) setTreePage(nextTree);
+    await sessionWorkflows.refresh();
   };
   const handleRenameProject = (project: WebuiProjectGroup) => {
     if (typeof window === "undefined") return;
@@ -574,32 +559,12 @@ export function WebuiClientFoundationApp(
     setPinnedProjects(toggleProjectPin(project.key));
   };
   const handleRenameSession = (session: WebuiClientSession) => {
-    if (!updateSession || typeof window === "undefined") return;
+    if (!sessionWorkflows.canMutate || typeof window === "undefined") return;
     const next = window.prompt("重命名", sessionLabel(session))?.trim();
     if (!next || next === sessionLabel(session)) return;
-    void updateSession({ id: session.sessionId, title: next })
-      .then((result) => {
-        const title = result.session?.title;
-        if (title) {
-          setPage((current) => ({
-            ...current,
-            sessions: current.sessions.map((candidate) =>
-              candidate.sessionId === session.sessionId ? { ...candidate, title } : candidate,
-            ),
-          }));
-          setTreePage((current) => ({
-            ...current,
-            sessions: current.sessions.map((node) => ({
-              ...node,
-              session: node.session.sessionId === session.sessionId ? { ...node.session, title } : node.session,
-              childSessions: node.childSessions.map((candidate) =>
-                candidate.sessionId === session.sessionId ? { ...candidate, title } : candidate,
-              ),
-            })),
-          }));
-        }
-        return refreshRail();
-      })
+    void sessionWorkflows
+      .rename(session.sessionId, next)
+      .then(() => refreshRail())
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
   const handleToggleSessionPin = (session: WebuiClientSession) => {
@@ -609,40 +574,26 @@ export function WebuiClientFoundationApp(
     setStarredSessions(toggleSessionOverlay("stars", session.sessionId));
   };
   const handleArchiveSession = (session: WebuiClientSession) => {
-    if (!archiveSession) return;
-    void archiveSession({ id: session.sessionId })
-      .then(() => refreshRail())
+    void sessionWorkflows
+      .archive(session.sessionId)
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
   const handleArchiveProject = (project: WebuiProjectGroup) => {
-    if (!archiveSession) return;
     const ids = new Set(project.sessionIds);
     for (const node of treePage.sessions) {
       if (!project.sessionIds.includes(node.session.sessionId)) continue;
       for (const child of node.childSessions) ids.add(child.sessionId);
     }
-    void Promise.all([...ids].map((id) => archiveSession({ id })))
-      .then(() => refreshRail())
+    void sessionWorkflows
+      .archiveMany([...ids])
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
   const handleForkSession = (session: WebuiClientSession, createIsolatedWorktree: boolean) => {
-    if (!forkSession) return;
-    void (async () => {
-      const options = await getSessionForkOptions?.({ id: session.sessionId });
-      if (options && !options.canFork)
-        throw new Error(`当前会话不可复制：${options.unavailableReason ?? "没有可复制的消息边界"}`);
-      if (createIsolatedWorktree && options && !options.worktreeVisible)
-        throw new Error(`当前会话不可复制到新工作树：${options.worktreeUnavailableReason ?? "工作树不可用"}`);
-      return forkSession({
-        id: session.sessionId,
-        clientRequestId: globalThis.crypto.randomUUID(),
-        useSuggestedTitle: true,
-        createIsolatedWorktree,
-      });
-    })()
-      .then(async (result) => {
-        await refreshRail();
-        const id = result.session?.sessionId;
+    if (!sessionWorkflows.canFork) return;
+    void sessionWorkflows
+      .fork(session.sessionId, createIsolatedWorktree)
+      .then((forked) => {
+        const id = forked?.sessionId;
         if (id) {
           setSelectedSessionId(id);
           if (typeof window !== "undefined")
@@ -699,14 +650,13 @@ export function WebuiClientFoundationApp(
     })();
   };
   const handleDeleteSession = (session: WebuiClientSession) => {
-    if (!deleteSession) return;
-    void deleteSession({ id: session.sessionId })
-      .then(async () => {
+    void sessionWorkflows
+      .remove(session.sessionId)
+      .then(() => {
         if (selectedSessionId === session.sessionId) {
           setSelectedSessionId(undefined);
           if (typeof window !== "undefined") window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
         }
-        await refreshRail();
       })
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
@@ -727,7 +677,7 @@ export function WebuiClientFoundationApp(
   // while the initial session page is still being fetched so the layout
   // doesn't flash an empty hero before the rail populates.
   const homeGreetingPending =
-    homeMode && loadSessions !== undefined && page.sessions.length === 0 && loading;
+    homeMode && sessionWorkflows.canLoadFlat && page.sessions.length === 0 && loading;
   const selectedSession = flatSessionsWithChildren.find(
     (session) => session.sessionId === selectedSessionId,
   );
@@ -798,20 +748,11 @@ export function WebuiClientFoundationApp(
     setSelectedSessionId(id);
     writeTeamModeSessionChoice(id, teamModeOff);
     setTeamModeChoices((current) => ({ ...current, [id]: teamModeOff }));
-    // Refresh the project projection after the first message creates a session.
-    if (loadSessions)
-      void loadSessions()
-        .then((nextPage) => {
-          setPage(nextPage);
-          setPageError(undefined);
-        })
-        .catch((reason: unknown) =>
-          setPageError(reason instanceof Error ? reason.message : String(reason)),
-        );
-    if (loadSessionTree)
-      void loadSessionTree()
-        .then(setTreePage)
-        .catch(() => undefined);
+    // Refresh the rail projection after the first message creates a session —
+    // the flat list (its failure is reported) and the tree (best effort),
+    // matching the shell's original two independent loads.
+    if (sessionWorkflows.canLoadFlat) void sessionWorkflows.loadFlat();
+    if (sessionWorkflows.canLoadTree) void sessionWorkflows.loadTree();
     if (typeof window !== "undefined")
       window.history.replaceState(
         null,

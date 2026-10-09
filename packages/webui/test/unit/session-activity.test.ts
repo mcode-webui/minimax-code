@@ -15,18 +15,18 @@ import {
   reduceWebuiSessionActivity,
   seedWebuiSessionActivity,
   type WebuiSessionActivityMap,
-} from "../../src/client/session-activity.js";
+} from "../../src/client/projection/session-activity.js";
 import {
   WebuiProjectList,
   WebuiSessionList,
 } from "../../src/client/components/SessionRail.js";
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
+import { formatWebuiUnreadBadge } from "../../src/client/projection/unread-badge.js";
 import {
-  formatWebuiUnreadBadge,
   readWebuiUnreadCounts,
   SESSION_UNREAD_STORAGE_KEY,
   writeWebuiUnreadCounts,
-} from "../../src/client/session-unread.js";
+} from "../../src/client/infrastructure/storage.js";
 import type { WebuiClientSession } from "../../src/client/contracts/session-view.js";
 import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 

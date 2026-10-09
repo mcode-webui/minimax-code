@@ -10,7 +10,7 @@ import {
   type WebuiRailView,
 } from "../../src/client/rail-buckets.js";
 import { WebuiProjectList } from "../../src/client/components/SessionRail.js";
-import type { WebuiSessionActivityMap } from "../../src/client/session-activity.js";
+import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiClientSession } from "../../src/client/contracts/session-view.js";
 
 function session(

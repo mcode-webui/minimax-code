@@ -21,8 +21,10 @@
 // into `client/bindings/use-session-state.ts` (plan §7.2); it reads this store's
 // snapshot and creates no second map.
 
-import type { WebuiSessionActivityMap } from "../session-activity.js";
-import { initialWebuiSessionActivity } from "../session-activity.js";
+import type { WebuiSessionActivityMap } from "../projection/session-activity.js";
+import { initialWebuiSessionActivity } from "../projection/session-activity.js";
+import type { WebuiSessionCatalogState } from "./session-catalog.js";
+import { initialWebuiSessionCatalogState } from "./session-catalog.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
 import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import type {
@@ -31,7 +33,6 @@ import type {
 } from "../../shared/contracts/interactions.js";
 import {
   initialWebuiApplicationSessionState,
-  initialWebuiApplicationState,
   WEBUI_HOME_SESSION_KEY,
 } from "./state.js";
 import type {
@@ -98,6 +99,10 @@ export interface WebuiSessionStore {
   updateActivity: (
     update: (current: WebuiSessionActivityMap) => WebuiSessionActivityMap,
   ) => void;
+  /** The one catalog slice's writer (plan §7.6; ticket #49). */
+  updateCatalog: (
+    update: (current: WebuiSessionCatalogState) => WebuiSessionCatalogState,
+  ) => void;
   select: (sessionId: string | undefined) => void;
   getSelectedSessionId: () => string | undefined;
   isDisposed: () => boolean;
@@ -128,13 +133,24 @@ export interface WebuiSessionStore {
   migrateSession: (fromKey: string, toKey: string) => void;
 }
 
-export function createWebuiSessionStore(): WebuiSessionStore {
+export function createWebuiSessionStore(options?: {
+  /** Seed the catalog (SSR pass / tests); never a second map. */
+  readonly catalog?: WebuiSessionCatalogState;
+}): WebuiSessionStore {
   const sessions = new Map<string, WebuiApplicationSessionState>();
   const listeners = new Set<() => void>();
   let activity: WebuiSessionActivityMap = initialWebuiSessionActivity;
+  let catalog: WebuiSessionCatalogState =
+    options?.catalog ?? initialWebuiSessionCatalogState;
   let selectedSessionId: string | undefined;
   let disposed = false;
-  let snapshot: WebuiApplicationState = initialWebuiApplicationState;
+  // The first snapshot must reflect the seeded catalog, not the empty initial
+  // one: `getSnapshot` is read before any notify (SSR first paint).
+  let snapshot: WebuiApplicationState = {
+    sessions: new Map(),
+    activity,
+    catalog,
+  };
 
   const readSession = (sessionId: string): WebuiApplicationSessionState =>
     sessions.get(sessionId) ?? initialWebuiApplicationSessionState;
@@ -143,6 +159,7 @@ export function createWebuiSessionStore(): WebuiSessionStore {
     snapshot = {
       sessions: new Map(sessions),
       activity,
+      catalog,
       ...(selectedSessionId ? { selectedSessionId } : {}),
     };
     for (const listener of [...listeners]) {
@@ -182,6 +199,16 @@ export function createWebuiSessionStore(): WebuiSessionStore {
     const next = update(activity);
     if (next === activity) return;
     activity = next;
+    notify();
+  };
+
+  const updateCatalog = (
+    update: (current: WebuiSessionCatalogState) => WebuiSessionCatalogState,
+  ): void => {
+    if (disposed) return;
+    const next = update(catalog);
+    if (next === catalog) return;
+    catalog = next;
     notify();
   };
 
@@ -225,6 +252,7 @@ export function createWebuiSessionStore(): WebuiSessionStore {
     readSession,
     updateSession,
     updateActivity,
+    updateCatalog,
     select: (sessionId) => {
       if (disposed || sessionId === selectedSessionId) return;
       selectedSessionId = sessionId;

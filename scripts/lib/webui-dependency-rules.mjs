@@ -120,15 +120,19 @@ export const ALLOWED_EDGES = Object.freeze({
 });
 
 /**
- * The twelve files plan §7.5 marks as mixing responsibilities: their layer is
+ * The files plan §7.5 marks as mixing responsibilities: their layer is
  * provisional and cannot be judged from the path alone until they are split.
  * They are still classified (by destination) so their existing edges are
  * counted, but the CLI reports every violation that touches one of them so a
  * reviewer can see the provisional judgement instead of a silent pass.
+ *
+ * `client/contracts.ts` used to be listed here. The stage-1 contracts split
+ * replaced it with leaf `client/contracts/*.ts` capability/view modules, so
+ * the path no longer exists to be judged and the entry was removed rather than
+ * left pointing at a missing file.
  */
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "server/port.ts",
-  "client/contracts.ts",
   "client/stream.ts",
   "client/stream-instrumentation.ts",
   "client/projection/composer-state.ts",

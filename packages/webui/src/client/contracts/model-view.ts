@@ -41,6 +41,40 @@ export interface WebuiModelPickerDraft {
   readonly thinkingEffort?: string | null;
 }
 
+/**
+ * One provider's rows in the picker, or the favourites section that repeats
+ * starred rows above them.
+ *
+ * Moved here from `components/ModelPicker.tsx` so the pure picker projections
+ * (`projection/model-favorites.ts`, `projection/model-picker-search.ts`) can
+ * consume it without importing a React component (plan §3).
+ */
+export interface WebuiModelProviderGroup {
+  /**
+   * Stable identity for the group: the provider id, or `FAVORITES_SECTION_ID`
+   * for the starred section. This is what React keys on and what the search
+   * filter keeps order by — NOT `label`, because two providers are free to
+   * share a display name and keying on it would make the second one a
+   * duplicate-key render.
+   */
+  readonly id: string;
+  readonly label: string;
+  readonly models: readonly WebuiModelPickerEntry[];
+  /**
+   * The provider each row really belongs to, keyed by `modelKey` — set only on
+   * a section that is not the model's own provider, which today means the
+   * favourites section.
+   *
+   * A starred model is listed TWICE on purpose: it stays where the catalogue
+   * put it, under the provider that owns it, and it is also repeated at the top
+   * because that is what a shortlist is for. The repeat is the only part that
+   * needs explaining, so every repeated row says which provider it came from.
+   * Without it, a favourites list of eight rows from five providers is eight
+   * names with no way to tell a deprecated model from a different vendor's.
+   */
+  readonly modelOriginLabels?: Readonly<Record<string, string>>;
+}
+
 export interface WebuiModelSelectionRequest {
   readonly providerId: string;
   readonly modelId: string;

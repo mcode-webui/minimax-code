@@ -10,46 +10,6 @@
   },
   "entries": [
     {
-      "from": "client/projection/model-favorites.ts",
-      "to": "client/components/ModelPicker.tsx",
-      "layerFrom": "domain",
-      "layerTo": "bindings",
-      "rule": "domain -> bindings",
-      "category": "projection-to-components",
-      "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
-    },
-    {
-      "from": "client/projection/model-picker-cascade.ts",
-      "to": "client/components/ModelPicker.tsx",
-      "layerFrom": "view",
-      "layerTo": "bindings",
-      "rule": "view -> bindings",
-      "category": "projection-to-components",
-      "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
-    },
-    {
-      "from": "client/projection/model-picker-search.ts",
-      "to": "client/components/ModelPicker.tsx",
-      "layerFrom": "view",
-      "layerTo": "bindings",
-      "rule": "view -> bindings",
-      "category": "projection-to-components",
-      "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
-    },
-    {
-      "from": "client/projection/transcript-shape.ts",
-      "to": "client/components/MessageActions.tsx",
-      "layerFrom": "view",
-      "layerTo": "bindings",
-      "rule": "view -> bindings",
-      "category": "projection-to-components",
-      "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
-    },
-    {
       "from": "client/stream-loop.ts",
       "to": "client/projection/context-usage.ts",
       "layerFrom": "mechanisms",
@@ -172,36 +132,6 @@
       "canonical": "client/stream-instrumentation.ts -> client/stream.ts -> client/stream-instrumentation.ts",
       "stage": 4,
       "reason": "Stream frame reduction and stream instrumentation reference each other. Stage 4 separates stream lease/loop mechanisms from the projection state, removing the back edge."
-    },
-    {
-      "cycle": [
-        "client/components/ModelPicker.tsx",
-        "client/projection/model-picker-search.ts",
-        "client/components/ModelPicker.tsx"
-      ],
-      "canonical": "client/components/ModelPicker.tsx -> client/projection/model-picker-search.ts -> client/components/ModelPicker.tsx",
-      "stage": 5,
-      "reason": "Component-owned model types are imported by a pure picker projection. Stage 5 moves the types below their consumers."
-    },
-    {
-      "cycle": [
-        "client/components/ModelPicker.tsx",
-        "client/projection/model-favorites.ts",
-        "client/components/ModelPicker.tsx"
-      ],
-      "canonical": "client/components/ModelPicker.tsx -> client/projection/model-favorites.ts -> client/components/ModelPicker.tsx",
-      "stage": 5,
-      "reason": "model-favorites imports component-owned model types. Stage 5 removes the component dependency from the pure preference rules."
-    },
-    {
-      "cycle": [
-        "client/components/ModelPicker.tsx",
-        "client/projection/model-picker-cascade.ts",
-        "client/components/ModelPicker.tsx"
-      ],
-      "canonical": "client/components/ModelPicker.tsx -> client/projection/model-picker-cascade.ts -> client/components/ModelPicker.tsx",
-      "stage": 5,
-      "reason": "The picker cascade projection imports component-owned model types. Stage 5 moves the types below their consumers."
     },
     {
       "cycle": [

@@ -33,7 +33,11 @@ import {
 
 import { WebuiIconChevronDown } from "../icons.js";
 import { ToggleSwitch } from "./ToggleSwitch.js";
-import type { WebuiModelPickerDraft, WebuiModelPickerEntry } from "../contracts/model-view.js";
+import type {
+  WebuiModelPickerDraft,
+  WebuiModelPickerEntry,
+  WebuiModelProviderGroup,
+} from "../contracts/model-view.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
 import {
   filterModelGroups,
@@ -61,7 +65,11 @@ import {
 import type { FlyoutRect } from "../projection/flyout-position.js";
 
 // Re-export so existing importers keep their import path stable.
-export type { WebuiModelPickerDraft, WebuiModelPickerEntry };
+export type {
+  WebuiModelPickerDraft,
+  WebuiModelPickerEntry,
+  WebuiModelProviderGroup,
+};
 
 export interface ModelPickerProps {
   readonly models: readonly WebuiModelPickerEntry[];
@@ -86,32 +94,6 @@ export interface ModelPickerProps {
    * brain beside it says nothing about.
    */
   readonly triggerLevel?: string;
-}
-
-export interface WebuiModelProviderGroup {
-  /**
-   * Stable identity for the group: the provider id, or `FAVORITES_SECTION_ID`
-   * for the starred section. This is what React keys on and what the search
-   * filter keeps order by — NOT `label`, because two providers are free to
-   * share a display name and keying on it would make the second one a
-   * duplicate-key render.
-   */
-  readonly id: string;
-  readonly label: string;
-  readonly models: readonly WebuiModelPickerEntry[];
-  /**
-   * The provider each row really belongs to, keyed by `modelKey` — set only on
-   * a section that is not the model's own provider, which today means the
-   * favourites section.
-   *
-   * A starred model is listed TWICE on purpose: it stays where the catalogue
-   * put it, under the provider that owns it, and it is also repeated at the top
-   * because that is what a shortlist is for. The repeat is the only part that
-   * needs explaining, so every repeated row says which provider it came from.
-   * Without it, a favourites list of eight rows from five providers is eight
-   * names with no way to tell a deprecated model from a different vendor's.
-   */
-  readonly modelOriginLabels?: Readonly<Record<string, string>>;
 }
 
 /** Group label: the provider's display name, falling back to its id. */

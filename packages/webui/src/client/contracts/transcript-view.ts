@@ -9,6 +9,19 @@
 import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 import type { WebuiMessageAttachment } from "./message-view.js";
 
+/**
+ * Which per-message toolbar actions the runtime offers for one message.
+ *
+ * Moved here from `components/MessageActions.tsx` so the pure transcript
+ * projection (`projection/transcript-shape.ts`) can name it without importing
+ * a React component (plan §3).
+ */
+export type WebuiMessageActionCapabilities = {
+  readonly fork?: boolean;
+  readonly rewind?: boolean;
+  readonly edit?: boolean;
+};
+
 export interface WebuiQuestionnaireResponseAnswer {
   /** The question text from the trailing `Q:` line, when available. */
   readonly question: string;

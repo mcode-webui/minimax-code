@@ -138,10 +138,12 @@ describe("layer matrix", () => {
     expect(classifyLayers("shared/contracts/session.ts")).toEqual(["shared"]);
   });
 
-  it("records the twelve known-ambiguous files from plan section 7.5", () => {
-    expect(KNOWN_AMBIGUOUS_FILES).toHaveLength(12);
+  it("records the known-ambiguous files from plan section 7.5", () => {
     expect(KNOWN_AMBIGUOUS_FILES).toContain("server/session-transfer.ts");
     expect(KNOWN_AMBIGUOUS_FILES).toContain("client/stream.ts");
+    // `client/contracts.ts` was split into leaf contracts in stage 1; the entry
+    // is gone because the file no longer exists to be judged.
+    expect(KNOWN_AMBIGUOUS_FILES).not.toContain("client/contracts.ts");
   });
 });
 

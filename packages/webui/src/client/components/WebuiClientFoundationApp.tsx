@@ -97,6 +97,7 @@ import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import { createWebuiRailActivityCommands } from "../application/rail-activity.js";
 import { createWebuiSessionStore } from "../application/session-store.js";
+import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
@@ -921,15 +922,15 @@ export function WebuiClientFoundationApp(
   // The activity slice lives on a single application store, not in component
   // state (plan §7.6 "Unread"; ticket #45 prerequisite 3). The shell subscribes
   // to the slice and submits commands — it holds no writer for it.
-  const activityStore = useMemo(() => createWebuiSessionStore(), []);
+  const sessionStore = useMemo(() => createWebuiSessionStore(), []);
   const sessionActivity = useSyncExternalStore(
-    activityStore.subscribe,
-    () => activityStore.getSnapshot().activity,
-    () => activityStore.getSnapshot().activity,
+    sessionStore.subscribe,
+    () => sessionStore.getSnapshot().activity,
+    () => sessionStore.getSnapshot().activity,
   );
   const activityCommands = useMemo(
-    () => createWebuiRailActivityCommands(activityStore),
-    [activityStore],
+    () => createWebuiRailActivityCommands(sessionStore),
+    [sessionStore],
   );
   // Flips once the stored counts have been read back, and is the only thing that
   // stands between the first render and a write of the empty map. See the
@@ -1078,6 +1079,7 @@ export function WebuiClientFoundationApp(
   const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} getWorkspaceEnvironment={transport?.getWorkspaceEnvironment} watchEvents={transport?.watchEvents} mutateWorkspaceGit={transport?.mutateWorkspaceGit} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
 
   return (
+    <WebuiSessionStoreProvider store={sessionStore}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
       <div className="relative flex h-screen overflow-hidden bg-bg_grouped_secondary">
@@ -1494,6 +1496,7 @@ export function WebuiClientFoundationApp(
       </div>
     </div>
     </ArchonShell>
+    </WebuiSessionStoreProvider>
   );
 }
 

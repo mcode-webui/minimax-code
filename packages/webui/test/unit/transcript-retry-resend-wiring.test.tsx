@@ -83,6 +83,8 @@ import {
   submitWebuiComposerTurn,
 } from "../../src/client/projection/composer-state.js";
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 const SESSION_ID = "session-retry-resend";
@@ -119,19 +121,21 @@ function renderComposer(props: {
   const sessionId = props.sessionId ?? SESSION_ID;
   seedFailedTurn(sessionId, props.refusal);
   const html = renderToStaticMarkup(
-    createElement(WebuiComposer, {
-      sessionId,
-      agentName: "main",
-      onWorkspaceChange: () => undefined,
-      workspaceMenuOpen: false,
-      setWorkspaceMenuOpen: () => undefined,
-      draft: props.draft ?? "",
-      onDraftChange: () => undefined,
-      teamModeOff: false,
-      sendMessage: props.sendMessage ?? (async () => undefined),
-      abortSession: props.abortSession,
-      loadMessages: props.loadMessages,
-    } as React.ComponentProps<typeof WebuiComposer>),
+    <WebuiSessionStoreProvider store={createWebuiSessionStore()}>
+      {createElement(WebuiComposer, {
+        sessionId,
+        agentName: "main",
+        onWorkspaceChange: () => undefined,
+        workspaceMenuOpen: false,
+        setWorkspaceMenuOpen: () => undefined,
+        draft: props.draft ?? "",
+        onDraftChange: () => undefined,
+        teamModeOff: false,
+        sendMessage: props.sendMessage ?? (async () => undefined),
+        abortSession: props.abortSession,
+        loadMessages: props.loadMessages,
+      } as React.ComponentProps<typeof WebuiComposer>)}
+    </WebuiSessionStoreProvider>,
   );
   const form = createdElements.find((element) => element.type === "form");
   const outputError = createdElements.find((element) => element.type === OutputError);

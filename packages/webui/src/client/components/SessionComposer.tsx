@@ -56,10 +56,13 @@ import {
   type WebuiTurnWriterOwner,
 } from "../application/turn-commands.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
+import { createWebuiTurnCommands } from "../application/session-commands.js";
 import {
-  createWebuiInteractionCommands,
-  createWebuiTurnCommands,
-} from "../application/session-commands.js";
+  useWebuiInteractionCommands,
+  useWebuiSessionGoal,
+  useWebuiSessionPermissions,
+  useWebuiSessionQuestionnaire,
+} from "../bindings/use-session-state.js";
 import {
   reduceWebuiStreamFrame,
   webuiSessionStatusType,
@@ -709,28 +712,17 @@ export function WebuiComposer({
 } & WebuiSessionComposerCapabilities): ReactElement {
   const { state: runtimeState, commands } = useSessionRuntimeState(sessionId);
   const { stream, sending } = runtimeState;
-  const [permissions, setPermissions] = useState<
-    readonly WebuiPendingPermission[]
-  >([]);
-  const [questionnaire, setQuestionnaire] =
-    useState<WebuiQuestionnaireRequest>();
-  const [goal, setGoal] = useState<WebuiGoal>();
-  // The purpose-named command surface for the interaction slices (ticket #45
-  // prerequisite 3). The component submits `replacePendingPermissions`,
-  // `removePendingPermission`, `updateQuestionnaire` and `applyGoal` instead of
-  // calling the React setters directly; the setters stay behind the surface.
-  const interactionCommands = useMemo(
-    () =>
-      createWebuiInteractionCommands({
-        setPermissions,
-        setQuestionnaire,
-        setGoal,
-      }),
-    [],
-  );
+  // The interaction slices live on the one application store, read here through
+  // selectors and kept nowhere else (plan §7.6; ticket #45). The commands write
+  // through the store's interaction writer; the composer holds no store writer
+  // and no local copy of permissions, questionnaire or goal.
+  const permissions = useWebuiSessionPermissions(sessionId);
+  const questionnaire = useWebuiSessionQuestionnaire(sessionId);
+  const goal = useWebuiSessionGoal(sessionId);
+  const interactionCommands = useWebuiInteractionCommands(sessionId);
   // Bumped by every write to the goal, so a steering re-read that lands after
   // a newer update can tell it is stale and stand down. EVERY writer must go
-  // through `applyGoal` — a direct `setGoal` here would let an in-flight read
+  // through `applyGoal` — a direct store write here would let an in-flight read
   // resurrect the state it was meant to replace.
   const goalVersionRef = useRef(0);
   const sessionIdRef = useRef(sessionId);

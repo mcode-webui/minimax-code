@@ -24,6 +24,11 @@
 import type { WebuiSessionActivityMap } from "../session-activity.js";
 import { initialWebuiSessionActivity } from "../session-activity.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
+import type {
+  WebuiPendingPermission,
+  WebuiQuestionnaireRequest,
+} from "../../shared/contracts/interactions.js";
 import {
   initialWebuiApplicationSessionState,
   initialWebuiApplicationState,
@@ -57,6 +62,29 @@ export type WebuiSessionWriterOwner<SessionId extends string = string> =
   | { readonly kind: "home" }
   | { readonly kind: "session"; readonly sessionId: SessionId };
 
+/**
+ * The interaction slice's write targets. It is what the interaction commands
+ * (`session-commands.ts`) are bound to, so a component submits
+ * `replacePendingPermissions` / `applyGoal` and never holds one of these
+ * setters itself (plan §7.6; ticket #45).
+ */
+export interface WebuiInteractionWriter {
+  readonly setPermissions: (
+    update: (
+      current: readonly WebuiPendingPermission[],
+    ) => readonly WebuiPendingPermission[],
+  ) => void;
+  readonly setQuestionnaire: (
+    value:
+      | WebuiQuestionnaireRequest
+      | undefined
+      | ((
+          current: WebuiQuestionnaireRequest | undefined,
+        ) => WebuiQuestionnaireRequest | undefined),
+  ) => void;
+  readonly setGoal: (goal: WebuiGoal | undefined) => void;
+}
+
 export interface WebuiSessionStore {
   getSnapshot: () => WebuiApplicationState;
   subscribe: (listener: () => void) => () => void;
@@ -81,6 +109,13 @@ export interface WebuiSessionStore {
     }): WebuiSessionWriter;
     (owner: { readonly kind: "home" }): WebuiHomeSessionWriter;
   };
+  /**
+   * The interaction slice's writer, bound to one owner key. A component builds
+   * its interaction commands from this and never keeps the writer (plan §7.6).
+   */
+  createInteractionWriter: (
+    owner: WebuiSessionWriterOwner,
+  ) => WebuiInteractionWriter;
   migrateSession: (fromKey: string, toKey: string) => void;
 }
 
@@ -152,6 +187,24 @@ export function createWebuiSessionStore(): WebuiSessionStore {
       updateSession(sessionId, (current) => ({ ...current, sending })),
   });
 
+  const createInteractionWriterFor = (
+    sessionKey: string,
+  ): WebuiInteractionWriter => ({
+    setPermissions: (update) =>
+      updateSession(sessionKey, (current) => ({
+        ...current,
+        permissions: update(current.permissions),
+      })),
+    setQuestionnaire: (value) =>
+      updateSession(sessionKey, (current) => ({
+        ...current,
+        questionnaire:
+          typeof value === "function" ? value(current.questionnaire) : value,
+      })),
+    setGoal: (goal) =>
+      updateSession(sessionKey, (current) => ({ ...current, goal })),
+  });
+
   const store: WebuiSessionStore = {
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
@@ -211,6 +264,10 @@ export function createWebuiSessionStore(): WebuiSessionStore {
         },
       };
     }) as WebuiSessionStore["createSessionWriter"],
+    createInteractionWriter: (owner) =>
+      createInteractionWriterFor(
+        owner.kind === "home" ? WEBUI_HOME_SESSION_KEY : owner.sessionId,
+      ),
     migrateSession: (fromKey, toKey) => {
       if (disposed || fromKey === toKey) return;
       const state = sessions.get(fromKey);

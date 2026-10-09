@@ -56,6 +56,7 @@ import {
   webuiSessionStatusType,
 } from "../stream.js";
 import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "../stream-loop.js";
+import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 
 /** Capability subset the session composer consumes. Single source of truth
  *  lives in `WebuiTransport`; this alias keeps the prop block free of
@@ -866,7 +867,7 @@ export function WebuiComposer({
       if (existing.subscription) return;
       setSending(true);
       void runWebuiStreamLoop(
-        { resumeSession, loadMessages },
+        { resumeSession, loadMessages, projection: streamRecoveryProjection },
         {
           sessionId,
           attachTurnId: turnId,

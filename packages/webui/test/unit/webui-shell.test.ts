@@ -90,6 +90,7 @@ import {
   runWebuiStreamLoop,
   type WebuiStreamLoopSink,
 } from "../../src/client/stream-loop.js";
+import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
 import { createSessionOperation } from "../../src/server/operation/operations.js";
 import {
   initialWebuiStreamState,
@@ -1396,7 +1397,7 @@ describe("WebUI composer send/resume loop", () => {
     });
 
     await runWebuiStreamLoop(
-      { sendMessage, resumeSession, loadMessages },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "session-1", message: "hello" },
       {
         applyFrame: () => undefined,
@@ -1464,7 +1465,7 @@ describe("WebUI composer send/resume loop", () => {
     });
 
     await runWebuiStreamLoop(
-      { sendMessage, resumeSession, loadMessages },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "session-resync", message: "prompt" },
       {
         applyFrame: () => undefined,
@@ -1726,7 +1727,7 @@ describe("WebUI composer sink binding", () => {
         hasMore: false,
       }));
       await runWebuiStreamLoop(
-        { sendMessage, resumeSession, loadMessages },
+        { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
         { sessionId: "s", message: "hi" },
         sink,
       );
@@ -2355,7 +2356,7 @@ describe("WebUI composer sink-failure semantics", () => {
       throw new Error("history unavailable");
     });
     await runWebuiStreamLoop(
-      { sendMessage, loadMessages, resumeSession: vi.fn() },
+      { sendMessage, loadMessages, resumeSession: vi.fn(), projection: streamRecoveryProjection },
       { sessionId: "s", message: "hi" },
       sink,
     );
@@ -3039,7 +3040,7 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       hasMore: false,
     }));
     await runWebuiStreamLoop(
-      { resumeSession, loadMessages },
+      { resumeSession, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "lease-3", attachTurnId: "turn-10" },
       {
         applyFrame: () => undefined,
@@ -3104,7 +3105,7 @@ describe("WebUI stream loop · subscription lease discipline", () => {
     // Park the stream so the state can be read while the turn is still live.
     const parked = parkedResume();
     const run = runWebuiStreamLoop(
-      { resumeSession: parked.resumer, loadMessages },
+      { resumeSession: parked.resumer, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "lease-5", attachTurnId: "turn-11" },
       buildWebuiStreamLoopSink(setStream),
     );
@@ -3233,7 +3234,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     const resolveSession = vi.fn(async () => undefined);
     await expect(
       runWebuiStreamLoop(
-        { resumeSession: resolveSession, loadMessages: vi.fn(async () => ({ messages: [], hasMore: false })) },
+        { resumeSession: resolveSession, loadMessages: vi.fn(async () => ({ messages: [], hasMore: false })), projection: streamRecoveryProjection },
         { sessionId: "fence-7", attachTurnId: "turn-13" },
         {
           applyFrame: () => undefined,
@@ -3293,7 +3294,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
       onFrame({ dataJson: "[DONE]" });
     });
     await runWebuiStreamLoop(
-      { sendMessage, resumeSession, loadMessages },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "fence-3", message: "hello" },
       buildWebuiStreamLoopSink(setStream),
     );

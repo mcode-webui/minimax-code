@@ -10,26 +10,6 @@
   },
   "entries": [
     {
-      "from": "client/stream-loop.ts",
-      "to": "client/projection/context-usage.ts",
-      "layerFrom": "mechanisms",
-      "layerTo": "domain",
-      "rule": "mechanisms -> domain",
-      "category": "stream-loop-to-projection",
-      "stage": 4,
-      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan \u00a77.2) so the mechanism no longer imports projection."
-    },
-    {
-      "from": "client/stream-loop.ts",
-      "to": "client/projection/message-projection.ts",
-      "layerFrom": "mechanisms",
-      "layerTo": "view",
-      "rule": "mechanisms -> view",
-      "category": "stream-loop-to-projection",
-      "stage": 4,
-      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan \u00a77.2) so the mechanism no longer imports projection."
-    },
-    {
       "from": "server/operation/agent-memory.ts",
       "to": "runtime/profile-files.ts",
       "layerFrom": "server",

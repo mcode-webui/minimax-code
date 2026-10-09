@@ -25,6 +25,7 @@ import {
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
 } from "../stream-loop.js";
+import { streamRecoveryProjection } from "./stream-recovery.js";
 import type { WebuiStreamState } from "../stream.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";
 import { isWebuiRunnableCommand, classifyWebuiSlashCommand } from "../slash-palette.js";
@@ -443,7 +444,7 @@ export async function submitWebuiComposerTurn(
   let claimed: number | undefined;
   try {
     claimed = await runWebuiStreamLoop(
-      args.deps,
+      { ...args.deps, projection: args.deps.projection ?? streamRecoveryProjection },
       { sessionId, message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) },
       buildWebuiStreamLoopSink(handlers.setStream),
     );

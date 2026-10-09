@@ -16,6 +16,7 @@
 import type { WebuiClientSessionResumer } from "./contracts/execution-port.js";
 import type { WebuiClientMessageLoader } from "./contracts/message-view.js";
 import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "./stream-loop.js";
+import { streamRecoveryProjection } from "./projection/stream-recovery.js";
 import {
   createSessionRuntimeWriter,
   readSessionRuntimeState,
@@ -46,7 +47,7 @@ export function createSessionStreamRetry({
       transcriptIncomplete: false,
     }));
     void runWebuiStreamLoop(
-      { resumeSession, loadMessages },
+      { resumeSession, loadMessages, projection: streamRecoveryProjection },
       {
         sessionId,
         ...(current.cursor ? { afterCursor: current.cursor } : {}),

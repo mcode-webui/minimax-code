@@ -14,9 +14,10 @@
 // catch and would otherwise lose a sink-originated rejection.
 
 import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "./contracts/execution-port.js";
-import type { WebuiClientMessageLoader } from "./contracts/message-view.js";
-import { projectWebuiMessageToStreamMessage } from "./projection/message-projection.js";
-import { latestContextUsage, readContextUsageSnapshot } from "./projection/context-usage.js";
+import type {
+  WebuiClientMessage,
+  WebuiClientMessageLoader,
+} from "./contracts/message-view.js";
 
 import {
   recogniseWebuiStreamPayload,
@@ -34,6 +35,29 @@ export interface WebuiStreamLoopDeps {
   readonly sendMessage?: WebuiClientMessageSender;
   readonly resumeSession?: WebuiClientSessionResumer;
   readonly loadMessages?: WebuiClientMessageLoader;
+  /**
+   * Pure history/context transforms, injected by the caller so this mechanism
+   * imports no `projection/` module (plan §7.2). The turn coordinator supplies
+   * the existing pure functions — this is not a re-implementation. When a
+   * recovery path needs them and they are absent, the loop refuses rather than
+   * writing a wrongly shaped transcript.
+   */
+  readonly projection?: StreamRecoveryProjection;
+}
+
+/**
+ * The pure transforms the loop injects instead of importing `projection/`
+ * (plan §7.2). Declared on the mechanism side so no view module is pulled
+ * across the boundary; callers pass a structurally compatible bundle.
+ */
+export interface StreamRecoveryProjection {
+  readonly projectMessage: (message: WebuiClientMessage) => WebuiStreamMessage;
+  readonly latestContextUsage: (
+    messages: readonly WebuiStreamMessage[],
+  ) => Record<string, unknown> | undefined;
+  readonly readContextUsageSnapshot: (
+    snapshot: Record<string, unknown> | undefined,
+  ) => Record<string, unknown> | undefined;
 }
 
 export interface WebuiStreamLoopArgs {
@@ -328,7 +352,7 @@ async function driveWebuiStreamLoop(
   args: WebuiStreamLoopArgs,
   sink: WebuiStreamLoopSink,
 ): Promise<void> {
-  const { sendMessage, resumeSession, loadMessages } = deps;
+  const { sendMessage, resumeSession, loadMessages, projection } = deps;
   const { sessionId, message } = args;
   // No message means we are attaching to a turn the server started, not
   // sending one. Both modes share this loop so there is exactly one place
@@ -456,10 +480,14 @@ async function driveWebuiStreamLoop(
         // cursor so the server replays from the latest persisted point.
         safe.setPhase("reconnecting");
         if (loadMessages) {
+          if (!projection) {
+            finalizeOnExit("stream recovery projection is unavailable");
+            return;
+          }
           try {
             const page = await loadMessages({ id: sessionId });
             safe.setMessages(
-              (page.messages ?? []).map(projectWebuiMessageToStreamMessage),
+              (page.messages ?? []).map(projection.projectMessage),
             );
           } catch (error) {
             const reason =
@@ -507,6 +535,10 @@ async function driveWebuiStreamLoop(
           let anchor: { afterCursor?: string; afterMsgId?: string } = {};
           if (args.afterCursor) anchor = { afterCursor: args.afterCursor };
           else if (loadMessages) {
+            if (!projection) {
+              finalizeOnExit("stream recovery projection is unavailable");
+              return;
+            }
             let page;
             try {
               page = await loadMessages({ id: sessionId });
@@ -532,10 +564,10 @@ async function driveWebuiStreamLoop(
             const latestTurn = history.slice(
               latestUserIndex >= 0 ? latestUserIndex : Math.max(0, history.length - 1),
             );
-            const anchored = latestTurn.map(projectWebuiMessageToStreamMessage);
+            const anchored = latestTurn.map(projection.projectMessage);
             const startedAt = latestTurn.find((message) => message.role === "user")?.timestamp;
             const contextUsage =
-              readContextUsageSnapshot(page.contextSnapshot) ?? latestContextUsage(anchored);
+              projection.readContextUsageSnapshot(page.contextSnapshot) ?? projection.latestContextUsage(anchored);
             safe.setMessages(anchored);
             safe.setPhase("streaming");
             safe.setStreamExtra?.({

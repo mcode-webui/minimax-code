@@ -30,47 +30,6 @@
       "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan \u00a77.2) so the mechanism no longer imports projection."
     },
     {
-      "from": "server/host.ts",
-      "to": "client/contracts/settings-port.ts",
-      "layerFrom": "runtime",
-      "layerTo": "contracts",
-      "rule": "runtime -> contracts",
-      "category": "runtime-to-client-contracts",
-      "stage": 2,
-      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it. The host.ts reference disappears with the harness-adapter split (plan \u00a77.1).",
-      "occurrences": null
-    },
-    {
-      "from": "server/index.ts",
-      "to": "runtime/assembly.ts",
-      "layerFrom": "server",
-      "layerTo": "runtime",
-      "rule": "server -> runtime",
-      "category": "server-barrel-to-runtime",
-      "stage": 2,
-      "reason": "The server public barrel re-exports runtime implementation. The barrel must export the network entry only."
-    },
-    {
-      "from": "server/index.ts",
-      "to": "server/host.ts",
-      "layerFrom": "server",
-      "layerTo": "runtime",
-      "rule": "server -> runtime",
-      "category": "server-barrel-to-runtime",
-      "stage": 2,
-      "reason": "The server public barrel re-exports runtime implementation. The barrel must export the network entry only."
-    },
-    {
-      "from": "server/index.ts",
-      "to": "runtime/mcode-tools.ts",
-      "layerFrom": "server",
-      "layerTo": "runtime",
-      "rule": "server -> runtime",
-      "category": "server-barrel-to-runtime",
-      "stage": 2,
-      "reason": "The server public barrel re-exports runtime implementation. The barrel must export the network entry only."
-    },
-    {
       "from": "server/operation/agent-memory.ts",
       "to": "runtime/profile-files.ts",
       "layerFrom": "server",

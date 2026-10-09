@@ -78,7 +78,6 @@ const server = await build({
   entryPoints: {
     server: "src/server/index.ts",
     "mcode-tools": "src/runtime/mcode-tools-entry.ts",
-    shared: "src/shared/placeholder.ts",
   },
   bundle: true,
   format: "esm",

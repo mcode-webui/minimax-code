@@ -2962,7 +2962,7 @@ describe("WebUI operation allowlist", () => {
 describe("WebUI host factory", () => {
   it("is a thin adapter over the harness layer's host", async () => {
     const { createHarnessPortFromHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const apiHost = {
       closeCalls: 0,
       async close(): Promise<void> {
@@ -2987,7 +2987,7 @@ describe("WebUI host factory", () => {
 describe("WebUI runtime host assembly", () => {
   it("creates exactly one host per process with the assembly step 6 owner combination", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "webui-assembly-c1-"));
     let calls = 0;
     let lastOptions: Record<string, unknown> | undefined;
@@ -3030,7 +3030,7 @@ describe("WebUI runtime host assembly", () => {
     // client lives only on the harness port, the live panel fails with
     // "runtime host does not expose the usage quota client".
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-quota-"),
     );
@@ -3062,7 +3062,7 @@ describe("WebUI runtime host assembly", () => {
     // not synced" and every turn dies at the agent preflight — even with the
     // credential sitting in the data directory.
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-auth-"),
     );
@@ -3111,7 +3111,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("declares the three interaction capabilities explicitly (criterion 2)", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "webui-assembly-c2-"));
     let lastOptions: Record<string, unknown> | undefined;
     try {
@@ -3141,7 +3141,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("does not add a 'webui' value to surface (ADR 0004)", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-surface-"),
     );
@@ -3170,7 +3170,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("wires the assembled host through the harness port that WebuiService tears down last", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-port-"),
     );
@@ -3198,7 +3198,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("assembles tool capabilities explicitly and releases both owners on shutdown", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-tools-"),
     );
@@ -3262,7 +3262,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("reads a newly persisted default model through the live runtime config getter", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-model-config-") ,
     );
@@ -3305,7 +3305,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("releases capability owners when host creation fails", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-startup-failure-"),
     );
@@ -3349,7 +3349,7 @@ describe("WebUI runtime host assembly", () => {
 
   it("closes the partially created host when command-path setup fails", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-command-failure-"),
     );
@@ -4295,7 +4295,7 @@ describe("WebUI assembly unconditionally forwards the quarantined startup policy
   // gating lives in `packages/local-runtime-v2`.
   it("sets startupExecutionPolicy to 'quarantined' on every boot, including a second boot against the same dataDir", async () => {
     const { createWebuiRuntimeHost } =
-      await import("../../src/server/index.js");
+      await import("../../src/runtime/index.js");
     const dataDir = await mkdtemp(path.join(os.tmpdir(), "webui-c8-policy-"));
     const forwarded: Array<{ startupExecutionPolicy?: string }> = [];
     type FactoryOptions = {

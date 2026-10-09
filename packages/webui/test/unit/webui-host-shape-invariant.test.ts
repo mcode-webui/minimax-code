@@ -58,7 +58,7 @@ import { createOperationHandlers, type WebuiOperationPort } from "../../src/serv
 import { dispatchWebuiFrame } from "../../src/server/operation/operation-dispatch.js";
 import { WEBUI_PROTOCOL_VERSION, WebuiErrorCode } from "../../src/shared/envelope.js";
 import WebSocket from "ws";
-import { createHarnessPortFromHost } from "../../src/server/host.js";
+import { createHarnessPortFromHost } from "../../src/runtime/harness/adapter.js";
 
 /**
  * Build a fully-implemented in-memory port so we can construct the

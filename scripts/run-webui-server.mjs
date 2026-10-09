@@ -27,10 +27,10 @@ if (!process.env.WEBUI_SERVER_TSX) {
 } else {
   const os = await import("node:os");
   const path = await import("node:path");
-  const { createWebuiRuntimeHost } = await import(
+  const { createWebuiRuntimeHost, createHarnessPortFromHost } = await import(
     "../packages/webui/src/runtime/index.ts"
   );
-  const { createHarnessPortFromHost, WebuiService } = await import(
+  const { WebuiService } = await import(
     "../packages/webui/src/server/index.ts"
   );
   const dataDir =

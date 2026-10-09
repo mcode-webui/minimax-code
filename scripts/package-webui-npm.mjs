@@ -60,6 +60,7 @@ const server = await build({
   absWorkingDir: webuiDir,
   entryPoints: {
     server: "src/server/index.ts",
+    runtime: "src/runtime/index.ts",
     "mcode-tools": "src/runtime/mcode-tools-entry.ts",
   },
   bundle: true,

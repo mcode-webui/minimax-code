@@ -83,15 +83,12 @@ describe("webui package foundation", () => {
     ).toBe(true);
   });
 
-  it("declares the place-holder server, client and shared sources", () => {
+  it("declares the server and client entries", () => {
     expect(
       existsSync(path.join(packageDir, "src/server/index.ts")),
     ).toBe(true);
     expect(existsSync(path.join(packageDir, "src/client/main.tsx"))).toBe(
       true,
     );
-    expect(
-      existsSync(path.join(packageDir, "src/shared/placeholder.ts")),
-    ).toBe(true);
   });
 });

@@ -32,7 +32,8 @@ import { deflateRawSync, gzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { extractWorkspaceArchiveDirectory, readWorkspaceArchiveListing } from "../../src/runtime/workspace-archive.js";
-import { createHarnessPortFromHost, type WebuiRuntimeCliService } from "../../src/server/host.js";
+import { createHarnessPortFromHost } from "../../src/runtime/harness/adapter.js";
+import type { WebuiRuntimeCliService } from "../../src/runtime/harness/host-contract.js";
 import type { WebuiWorkspaceArchiveListing } from "../../src/shared/contracts/workspace.js";
 import {
   archiveDestinationFor,

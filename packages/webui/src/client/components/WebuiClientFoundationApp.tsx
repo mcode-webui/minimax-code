@@ -134,6 +134,12 @@ import { createSessionStreamRetry } from "../session-stream-retry.js";
 import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
 import { deriveRecentWorkspaceDirs } from "../projection/composer-state.js";
+import {
+  WEBUI_SHORTCUT_OVERRIDES_KEY,
+  matchesWebuiShortcut,
+  parseWebuiShortcutOverrides,
+  resolveWebuiShortcutBindings,
+} from "../projection/shortcut-state.js";
 
 /**
  * Hash helpers used by the shell. `main.tsx` also calls
@@ -867,6 +873,73 @@ export function WebuiClientFoundationApp(
     ? teamModeChoices[selectedSessionId] ?? teamModeOff
     : teamModeOff;
   const [railCollapsed, setRailCollapsed] = useState(false);
+
+  /* Roadmap P 区「快捷键管理」.
+   *
+   * The user menu has always labelled its settings row `Ctrl+,` and nothing
+   * ever handled that combination — the label was decoration. This is the one
+   * place that now makes it true.
+   *
+   * Every branch here corresponds to a row in `WEBUI_SHORTCUT_COMMANDS`. A
+   * command with no branch behind it would render in the settings page and do
+   * nothing, which is the defect this whole change removes, so the registry's
+   * tests assert both directions. */
+  const [settingsSignal, setSettingsSignal] = useState(0);
+  const [pendingSettingsSignal, setPendingSettingsSignal] = useState(false);
+  useEffect(() => {
+    const runShortcut = (commandId: string): void => {
+      if (commandId === "toggleSidebar") {
+        setRailCollapsed((collapsed) => !collapsed);
+        return;
+      }
+      if (commandId === "openSettings") {
+        // The settings dialog is mounted by UserMenu, which only exists while
+        // the rail is expanded. Firing into nothing is the one outcome worse
+        // than a shortcut that does not exist, so the rail opens first and the
+        // signal lands once the menu has mounted.
+        if (railCollapsed) {
+          setRailCollapsed(false);
+          setPendingSettingsSignal(true);
+          return;
+        }
+        setSettingsSignal((signal) => signal + 1);
+        return;
+      }
+      if (commandId === "focusComposer") {
+        // Queried rather than passed down: the composer owns its own ref, and
+        // threading one through FoundationApp for a focus call would be a
+        // wider change than the shortcut earns. `name="content"` is the
+        // textarea's existing identity and is unique in the shell.
+        document.querySelector<HTMLTextAreaElement>('textarea[name="content"]')?.focus();
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const platform = typeof navigator === "undefined" ? undefined : navigator.platform || undefined;
+      for (const [commandId, binding] of resolveWebuiShortcutBindings(
+        parseWebuiShortcutOverrides(localStorage.getItem(WEBUI_SHORTCUT_OVERRIDES_KEY)),
+      )) {
+        if (!matchesWebuiShortcut(event, binding, platform)) continue;
+        // A binding the user set while typing must not eat the keystroke on
+        // its way to the textarea, or the character never lands.
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) return;
+        }
+        event.preventDefault();
+        runShortcut(commandId);
+        return;
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [railCollapsed]);
+
+  useEffect(() => {
+    if (!pendingSettingsSignal || railCollapsed) return;
+    setPendingSettingsSignal(false);
+    setSettingsSignal((signal) => signal + 1);
+  }, [pendingSettingsSignal, railCollapsed]);
   // Rail session search. `railSearchOpen` mirrors whether the input is
   // showing; `railSearchQuery` is the live filter. The query filters only the
   // rail's rendered list — lookups such as the selected-session resolution and
@@ -1269,6 +1342,7 @@ export function WebuiClientFoundationApp(
                   version={runtimeVersion}
                   sessionId={selectedSessionId}
                   workspaceDir={selectedSession?.workspaceDir}
+                  openSettingsSignal={settingsSignal}
                   onOpenFileLine={(path, line) => {
                     // The open-file command needs a concrete session and
                     // workspace; the review page is only reachable from a

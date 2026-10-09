@@ -299,6 +299,21 @@
   .webui-review-error { margin: 0 0 var(--spacing_8); color: var(--text_label_danger_secondary_default); font-size: var(--size_12); }
 
   /* Worktree list (roadmap E 区 工作树隔离). */
+  /* Rebindable command list (roadmap P zone: keyboard shortcut management). */
+  .webui-settings-shortcut-group { margin: 0 0 var(--spacing_20); }
+  .webui-settings-shortcut-group-name { margin: 0 0 var(--spacing_8); color: var(--text_default_tertiary); font-size: var(--size_12); font-weight: 600; }
+  .webui-settings-shortcut-list { margin: 0; padding: 0; list-style: none; }
+  .webui-settings-shortcut-row { display: flex; align-items: center; gap: var(--spacing_8); padding: var(--spacing_8) 0; border-bottom: 0.5px solid var(--border_default); }
+  .webui-settings-shortcut-row:last-child { border-bottom: 0; }
+  .webui-settings-shortcut-label { flex: 1; color: var(--text_default_primary); font-size: var(--size_12); }
+  .webui-settings-shortcut-key { min-width: 96px; padding: var(--spacing_4) var(--spacing_8); border: 0.5px solid var(--border_default); border-radius: var(--spacing_4); background: var(--bg_interaction_secondary_default); color: var(--text_default_primary); font: inherit; font-size: var(--size_12); text-align: center; cursor: pointer; }
+  .webui-settings-shortcut-key:hover { background: var(--bg_interaction_secondary_hover); }
+  .webui-settings-shortcut-capture { min-width: 96px; color: var(--text_default_tertiary); font-size: var(--size_12); text-align: center; }
+  .webui-settings-shortcut-reset { border: 0; padding: 0; background: transparent; color: var(--text_default_tertiary); font: inherit; font-size: var(--size_12); cursor: pointer; }
+  .webui-settings-shortcut-reset:hover { color: var(--text_default_primary); }
+  .webui-settings-shortcut-cancel { margin-top: var(--spacing_8); border: 0; background: transparent; color: var(--text_default_tertiary); font: inherit; font-size: var(--size_12); cursor: pointer; }
+  .webui-settings-shortcut-conflict { margin: var(--spacing_8) 0 0; color: var(--text_label_danger_secondary_default); font-size: var(--size_12); }
+
   .webui-worktree-section-title { margin: var(--spacing_20) 0 var(--spacing_8); color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-worktree-branches { display: flex; flex-direction: column; gap: var(--spacing_8); margin: 0; padding: 0; list-style: none; }
   .webui-worktree-group { padding: 10px 12px; border: 0.5px solid var(--border_default); border-radius: 10px; }

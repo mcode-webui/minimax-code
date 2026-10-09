@@ -71,17 +71,17 @@ export interface WebuiAssembledHost {
   readonly invalidateAuth: () => void;
   readonly getUsageQuota: (request?: {
     readonly forceRefresh?: boolean;
-  }) => Promise<import("./port.js").WebuiUsageQuotaResult>;
-  readonly getSigninPanel: () => Promise<import("./port.js").WebuiSigninPanelView>;
-  readonly claimSignin: () => Promise<import("./port.js").WebuiClaimSigninView>;
+  }) => Promise<import("../shared/contracts/usage-quota.js").WebuiUsageQuotaResult>;
+  readonly getSigninPanel: () => Promise<import("../shared/contracts/account.js").WebuiSigninPanelView>;
+  readonly claimSignin: () => Promise<import("../shared/contracts/account.js").WebuiClaimSigninView>;
   /**
    * Account login (device authorization) over the same `MCodeOAuthCore` the
    * quota lease reads, plus the sign-out that removes the credential. The
    * core is assembly-owned (never produced by the runtime factory), so these
    * are enrichment slots like `getUsageQuota`, not harness capabilities.
    */
-  readonly beginAccountLogin: () => Promise<import("./port.js").WebuiAccountLoginView>;
-  readonly getAccountLoginStatus: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly beginAccountLogin: () => Promise<import("../shared/contracts/account.js").WebuiAccountLoginView>;
+  readonly getAccountLoginStatus: () => Promise<import("../shared/contracts/account.js").WebuiAccountLoginView>;
   readonly cancelAccountLogin: () => Promise<void>;
   readonly signOutAccount: () => Promise<{ readonly status: string; readonly generation: number }>;
   /**

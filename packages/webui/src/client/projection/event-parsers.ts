@@ -3,8 +3,8 @@
 import type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
-  WebuiRuntimeEvent,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
+import type { WebuiRuntimeEvent } from "../../shared/contracts/stream.js";
 
 /**
  * Extract the session id a runtime event targets, accepting both camelCase

@@ -11,7 +11,7 @@ import { WebuiMarkdown } from "../markdown.js";
 import { parseWebuiMessageFileReference, type WebuiMessageFileReference } from "../projection/message-file-reference.js";
 import { webuiActivitySummary } from "../projection/tool-projection.js";
 import { MessageAttachments, type MessageAttachment } from "./MessageAttachments.js";
-import type { WebuiTurnDiffView } from "../../server/port.js";
+import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 import type {
   WebuiTranscriptProcessSegment,
   WebuiTranscriptActivityPart,

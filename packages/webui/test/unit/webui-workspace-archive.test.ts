@@ -33,7 +33,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { extractWorkspaceArchiveDirectory, readWorkspaceArchiveListing } from "../../src/server/workspace-archive.js";
 import { createHarnessPortFromHost, type WebuiRuntimeCliService } from "../../src/server/host.js";
-import type { WebuiWorkspaceArchiveListing } from "../../src/server/port.js";
+import type { WebuiWorkspaceArchiveListing } from "../../src/shared/contracts/workspace.js";
 import {
   archiveDestinationFor,
   formatArchiveSize,

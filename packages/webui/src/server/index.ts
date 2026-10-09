@@ -48,9 +48,9 @@ export {
   type WebuiEnvelopeKind,
   type WebuiErrorCodeValue,
 } from "./envelope.js";
+export type { WebuiHarnessPort } from "./port.js";
+export type { WebuiVersionInfo } from "../shared/contracts/version.js";
 export type {
-  WebuiHarnessPort,
-  WebuiVersionInfo,
   WebuiSessionListRequest,
   WebuiSessionListItem,
   WebuiSessionPage,
@@ -77,25 +77,33 @@ export type {
   WebuiRevertTurnDiffResult,
   WebuiReapplyTurnDiffRequest,
   WebuiReapplyTurnDiffResult,
+} from "../shared/contracts/session.js";
+export type {
   WebuiMessage,
   WebuiMessagesRequest,
   WebuiMessagesResult,
+} from "../shared/contracts/messages.js";
+export type {
   WebuiSendMessageRequest,
   WebuiSendMessageResult,
-  WebuiEnqueueMessageRequest,
-  WebuiEnqueueMessageResult,
   WebuiResumeSessionRequest,
   WebuiStreamResult,
   WebuiStreamFrame,
+  WebuiRuntimeEvent,
+} from "../shared/contracts/stream.js";
+export type {
+  WebuiEnqueueMessageRequest,
+  WebuiEnqueueMessageResult,
+  WebuiQueueItem,
+} from "../shared/contracts/queue.js";
+export type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
   WebuiQuestionnaireAnswer,
-  WebuiRuntimeEvent,
   WebuiInteractionReplyResult,
   WebuiPermissionDecision,
-  WebuiQueueItem,
-  WebuiModelEntry,
-} from "./port.js";
+} from "../shared/contracts/interactions.js";
+export type { WebuiModelEntry } from "../shared/contracts/models.js";
 export {
   createHarnessPortFromHost,
   type WebuiRuntimeHostHandle,

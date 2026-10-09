@@ -21,9 +21,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readRequestBody, WebuiService } from "../../src/server/service.js";
 import type {
   WebuiCreateSessionRequest,
-  WebuiHarnessPort,
   WebuiUpdateSessionRequest,
-} from "../../src/server/port.js";
+} from "../../src/shared/contracts/session.js";
+import type { WebuiHarnessPort } from "../../src/server/port.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,

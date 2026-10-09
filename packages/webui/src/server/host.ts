@@ -28,8 +28,8 @@ import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,
 } from "./workspace-archive.js";
+import type { WebuiHarnessPort } from "./port.js";
 import type {
-  WebuiHarnessPort,
   WebuiSessionListRequest,
   WebuiSessionPage,
   WebuiSessionTreeRequest,
@@ -37,32 +37,6 @@ import type {
   WebuiProjectRecord,
   WebuiCreateSessionRequest,
   WebuiCreateSessionResult,
-  WebuiVersionInfo,
-  WebuiSendMessageRequest,
-  WebuiEnqueueMessageRequest,
-  WebuiEnqueueMessageResult,
-  WebuiSendMessageResult,
-  WebuiResumeSessionRequest,
-  WebuiStreamResult,
-  WebuiPendingPermission,
-  WebuiQuestionnaireRequest,
-  WebuiQuestionnaireAnswer,
-  WebuiRuntimeEvent,
-  WebuiInteractionReplyResult,
-  WebuiPermissionDecision,
-  WebuiQueueItem,
-  WebuiWorkspaceFile,
-  WebuiWorkspaceFileContent,
-  WebuiWorkspaceArchiveListing,
-  WebuiWorkspaceArchiveExtractResult,
-  WebuiWorkspaceEnvironment,
-  WebuiWorkspaceGitMutationRequest,
-  WebuiWorkspaceReviewDiffs,
-  WebuiWorkspaceReviewFileContent,
-  WebuiWorkspaceReviewSearchResult,
-  WebuiWorkspaceReviewSummary,
-  WebuiCanvasDocument,
-  WebuiModelEntry,
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
   WebuiGetTurnDiffRequest,
@@ -81,10 +55,48 @@ import type {
   WebuiRewindSessionResult,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
+} from "../shared/contracts/session.js";
+import type { WebuiVersionInfo } from "../shared/contracts/version.js";
+import type {
+  WebuiSendMessageRequest,
+  WebuiSendMessageResult,
+  WebuiResumeSessionRequest,
+  WebuiStreamResult,
+  WebuiRuntimeEvent,
+} from "../shared/contracts/stream.js";
+import type {
+  WebuiEnqueueMessageRequest,
+  WebuiEnqueueMessageResult,
+  WebuiQueueItem,
+} from "../shared/contracts/queue.js";
+import type {
+  WebuiPendingPermission,
+  WebuiQuestionnaireRequest,
+  WebuiQuestionnaireAnswer,
+  WebuiInteractionReplyResult,
+  WebuiPermissionDecision,
+} from "../shared/contracts/interactions.js";
+import type {
+  WebuiWorkspaceFile,
+  WebuiWorkspaceFileContent,
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
+  WebuiWorkspaceEnvironment,
+  WebuiWorkspaceGitMutationRequest,
+} from "../shared/contracts/workspace.js";
+import type {
+  WebuiWorkspaceReviewDiffs,
+  WebuiWorkspaceReviewFileContent,
+  WebuiWorkspaceReviewSearchResult,
+  WebuiWorkspaceReviewSummary,
+} from "../shared/contracts/review.js";
+import type { WebuiCanvasDocument } from "../shared/contracts/canvas.js";
+import type { WebuiModelEntry } from "../shared/contracts/models.js";
+import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
-} from "./port.js";
+} from "../shared/contracts/goal.js";
 import type {
   WebuiGlobalInstructionsView,
   WebuiMemorySettingsView,
@@ -121,9 +133,9 @@ export interface WebuiRuntimeCliService {
     context?: Record<string, never>,
   ): Promise<{ readonly success?: boolean }>;
   updateSession(
-    request: import("./port.js").WebuiUpdateSessionRequest,
+    request: import("../shared/contracts/session.js").WebuiUpdateSessionRequest,
     context?: Record<string, never>,
-  ): Promise<import("./port.js").WebuiUpdateSessionResult>;
+  ): Promise<import("../shared/contracts/session.js").WebuiUpdateSessionResult>;
   getSessionForkOptions(
     request: WebuiGetSessionForkOptionsRequest,
     context?: Record<string, never>,
@@ -137,17 +149,17 @@ export interface WebuiRuntimeCliService {
     context?: Record<string, never>,
   ): Promise<WebuiCreateSessionResult>;
   getSession(
-    request: import("./port.js").WebuiSessionLookupRequest,
+    request: import("../shared/contracts/session.js").WebuiSessionLookupRequest,
     context?: Record<string, never>,
-  ): Promise<import("./port.js").WebuiSessionLookupResult>;
+  ): Promise<import("../shared/contracts/session.js").WebuiSessionLookupResult>;
   getMessages(
-    request: import("./port.js").WebuiMessagesRequest,
+    request: import("../shared/contracts/messages.js").WebuiMessagesRequest,
     context?: Record<string, never>,
-  ): Promise<import("./port.js").WebuiMessagesResult>;
-  exportSessionTransfer(sessionId: string): Promise<import("./port.js").WebuiSessionTransferFile>;
+  ): Promise<import("../shared/contracts/messages.js").WebuiMessagesResult>;
+  exportSessionTransfer(sessionId: string): Promise<import("../shared/contracts/session.js").WebuiSessionTransferFile>;
   importSessionTransfer(
-    request: import("./port.js").WebuiImportSessionTransferRequest,
-  ): Promise<import("./port.js").WebuiImportSessionTransferResult>;
+    request: import("../shared/contracts/session.js").WebuiImportSessionTransferRequest,
+  ): Promise<import("../shared/contracts/session.js").WebuiImportSessionTransferResult>;
   getSessionDiff(
     request: WebuiGetSessionDiffRequest,
     context?: Record<string, never>,
@@ -178,7 +190,7 @@ export interface WebuiRuntimeCliService {
   ): Promise<WebuiEditSessionMessageResult>;
   getActiveTurn(
     sessionId: string,
-  ): Promise<import("./port.js").WebuiActiveTurn | undefined>;
+  ): Promise<import("../shared/contracts/session.js").WebuiActiveTurn | undefined>;
   isGoalEnabled(): boolean;
   getGoal(sessionId: string): Promise<WebuiGoal | undefined>;
   createGoal(request: WebuiGoalCreateRequest): Promise<WebuiGoal>;
@@ -365,21 +377,21 @@ export interface WebuiRuntimeHostHandle {
    */
   readonly getUsageQuota?: (request?: {
     readonly forceRefresh?: boolean;
-  }) => Promise<import("./port.js").WebuiUsageQuotaResult>;
+  }) => Promise<import("../shared/contracts/usage-quota.js").WebuiUsageQuotaResult>;
   /**
    * Daily check-in status/claim. Backed by `check-in.ts` (cloud), supplied
    * by the assembly alongside the host.
    */
-  readonly getSigninPanel?: () => Promise<import("./port.js").WebuiSigninPanelView>;
-  readonly claimSignin?: () => Promise<import("./port.js").WebuiClaimSigninView>;
+  readonly getSigninPanel?: () => Promise<import("../shared/contracts/account.js").WebuiSigninPanelView>;
+  readonly claimSignin?: () => Promise<import("../shared/contracts/account.js").WebuiClaimSigninView>;
   /**
    * Account login (device authorization) and real sign-out. Supplied by the
    * assembly from its `MCodeOAuthCore` — the same credential store the quota
    * lease reads — so a login completed in the browser is the same credential
    * the terminal client uses, and a sign-out actually removes it.
    */
-  readonly beginAccountLogin?: () => Promise<import("./port.js").WebuiAccountLoginView>;
-  readonly getAccountLoginStatus?: () => Promise<import("./port.js").WebuiAccountLoginView>;
+  readonly beginAccountLogin?: () => Promise<import("../shared/contracts/account.js").WebuiAccountLoginView>;
+  readonly getAccountLoginStatus?: () => Promise<import("../shared/contracts/account.js").WebuiAccountLoginView>;
   readonly cancelAccountLogin?: () => Promise<void>;
   readonly signOutAccount?: () => Promise<{ readonly status: string; readonly generation: number }>;
   /**

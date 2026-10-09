@@ -1,11 +1,11 @@
 import { WebuiErrorCode } from "../envelope.js";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
+import type { WebuiEnqueueMessageRequest } from "../../shared/contracts/queue.js";
 import type {
-  WebuiEnqueueMessageRequest,
   WebuiResumeSessionRequest,
   WebuiSendMessageRequest,
-  WebuiAttachmentInput,
-} from "../port.js";
+} from "../../shared/contracts/stream.js";
+import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { validateSessionIdBody } from "./common.js";
 import { SEND_MESSAGE_OPERATION_NAME, ENQUEUE_MESSAGE_OPERATION_NAME, RESUME_SESSION_OPERATION_NAME } from "./names.js";
 
@@ -166,7 +166,7 @@ function validateEnqueueMessageRequestBody(
 
 export const enqueueMessageOperation: WebuiOperation<
   WebuiEnqueueMessageRequest,
-  import("../port.js").WebuiEnqueueMessageResult
+  import("../../shared/contracts/queue.js").WebuiEnqueueMessageResult
 > = {
   name: ENQUEUE_MESSAGE_OPERATION_NAME,
   validate: validateEnqueueMessageRequestBody,

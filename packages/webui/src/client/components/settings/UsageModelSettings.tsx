@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { WebuiUsageQuotaResult } from "../../../server/port.js";
+import type { WebuiUsageQuotaResult } from "../../../shared/contracts/usage-quota.js";
 import type { WebuiSettingsModalCapabilities } from "../SettingsModal.js";
 import { ToggleSwitch } from "../ToggleSwitch.js";
 import { reorderModelIds } from "../../projection/model-reorder.js";

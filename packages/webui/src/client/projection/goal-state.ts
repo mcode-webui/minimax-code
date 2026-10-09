@@ -8,7 +8,7 @@ import type {
   WebuiGoal,
   WebuiGoalPatchRequest,
   WebuiGoalStatus,
-} from "../../server/port.js";
+} from "../../shared/contracts/goal.js";
 
 /**
  * Build a synthetic transcript message for one of the

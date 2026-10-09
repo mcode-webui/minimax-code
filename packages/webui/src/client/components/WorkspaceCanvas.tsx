@@ -31,7 +31,7 @@ import {
   type ReactElement,
   type WheelEvent as ReactWheelEvent,
 } from "react";
-import type { WebuiCanvasDocument } from "../../server/port.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
 
 const DESKTOP_COPY = {
   canvasEmptyTitle: "把文件放到画布上",

@@ -1,4 +1,4 @@
-import type { WebuiTurnDiffView } from "../../server/port.js";
+import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 
 export type WorkspacePanelTab =
   { readonly id: string; readonly kind: "files"; readonly sessionId?: string; readonly workspaceDir?: string }

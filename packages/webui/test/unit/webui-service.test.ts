@@ -58,13 +58,15 @@ import type {
   WebuiRewindSessionResult,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
-  WebuiGoal,
-  WebuiGoalCreateRequest,
-  WebuiGoalPatchRequest,
   WebuiImportSessionTransferRequest,
   WebuiImportSessionTransferResult,
   WebuiSessionTransferFile,
-} from "../../src/server/port.js";
+} from "../../src/shared/contracts/session.js";
+import type {
+  WebuiGoal,
+  WebuiGoalCreateRequest,
+  WebuiGoalPatchRequest,
+} from "../../src/shared/contracts/goal.js";
 import { createWebuiTransport } from "../../src/client/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
 import { getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation } from "../../src/server/operation/workspace.js";

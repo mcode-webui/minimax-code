@@ -45,12 +45,12 @@
 //           `payload.error` is a string; other shapes leave `refusal`
 //           alone.
 
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import type {
-  WebuiGoal,
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
-  WebuiRuntimeEvent,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
+import type { WebuiRuntimeEvent } from "../../shared/contracts/stream.js";
 import {
   eventSessionId,
   pendingPermissionFromEvent,

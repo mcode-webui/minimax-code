@@ -4,8 +4,8 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
 import { invalidBody } from "./operation-contract.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
 import type {
-  WebuiCanvasDocument,
   WebuiWorkspaceArchiveListing,
   WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceDirectoryListing,
@@ -13,11 +13,13 @@ import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
+} from "../../shared/contracts/workspace.js";
+import type {
   WebuiWorkspaceReviewDiffs,
   WebuiWorkspaceReviewFileContent,
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
-} from "../port.js";
+} from "../../shared/contracts/review.js";
 import {
   validateAbsoluteDirectory,
   validateObjectBody,

@@ -17,14 +17,20 @@ import type {
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
+} from "../shared/contracts/interactions.js";
+import type {
   WebuiQueueItem,
   WebuiEnqueueMessageRequest,
   WebuiEnqueueMessageResult,
-  WebuiModelEntry,
+} from "../shared/contracts/queue.js";
+import type { WebuiModelEntry } from "../shared/contracts/models.js";
+import type {
   WebuiRuntimeEvent,
   WebuiStreamFrame,
-  WebuiVersionInfo,
-  WebuiTerminalFrame,
+} from "../shared/contracts/stream.js";
+import type { WebuiVersionInfo } from "../shared/contracts/version.js";
+import type { WebuiTerminalFrame } from "../shared/contracts/terminal.js";
+import type {
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
   WebuiGetTurnDiffRequest,
@@ -43,11 +49,13 @@ import type {
   WebuiRewindSessionResult,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
+} from "../shared/contracts/session.js";
+import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
   WebuiGoalEnabledResult,
-} from "../server/port.js";
+} from "../shared/contracts/goal.js";
 import {
   markWebuiEventWatcherDown,
   markWebuiEventWatcherHealthy,

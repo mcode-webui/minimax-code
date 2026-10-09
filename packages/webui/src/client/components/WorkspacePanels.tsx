@@ -18,19 +18,21 @@ import toml from "highlight.js/lib/languages/ini";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
 import { WebuiMarkdown } from "../markdown.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
+import type { WebuiFileDiffInfoView } from "../../shared/contracts/session.js";
 import type {
-  WebuiCanvasDocument,
-  WebuiFileDiffInfoView,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
   WebuiWorkspaceArchiveListing,
   WebuiWorkspaceArchiveExtractResult,
+} from "../../shared/contracts/workspace.js";
+import type {
   WebuiWorkspaceReviewDiffs,
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
-} from "../../server/port.js";
+} from "../../shared/contracts/review.js";
 import type { WorkspacePanelCommand, WorkspacePanelState, WorkspacePanelTab } from "../projection/workspace-panel-state.js";
 import { focusWebuiFileLine, webuiFileLineTargetId } from "../projection/file-line-navigation.js";
 import type { WebuiClientEventWatcher } from "../contracts.js";

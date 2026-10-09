@@ -54,7 +54,9 @@ import {
   reapplyTurnDiffOperation,
   revertTurnDiffOperation,
 } from "../../src/server/operation/operations.js";
-import { type WebuiGoal, type WebuiQuestionnaireRequest, type WebuiTurnDiffView } from "../../src/server/port.js";
+import type { WebuiGoal } from "../../src/shared/contracts/goal.js";
+import type { WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
+import type { WebuiTurnDiffView } from "../../src/shared/contracts/session.js";
 import { WebuiErrorCode } from "../../src/server/envelope.js";
 import { pluginManagementOperation } from "../../src/server/operation/plugin-management.js";
 

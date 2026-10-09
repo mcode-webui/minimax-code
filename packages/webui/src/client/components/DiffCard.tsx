@@ -19,7 +19,7 @@ import type {
   WebuiRevertTurnDiffRequest,
   WebuiRevertTurnDiffResult,
   WebuiTurnDiffView,
-} from "../../server/port.js";
+} from "../../shared/contracts/session.js";
 import type { WebuiDiffState, WebuiDiffStateAction, WebuiTransport } from "../contracts.js";
 
 /** Capability subset the diff card consumes. The contract lives in

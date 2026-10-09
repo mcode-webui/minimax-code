@@ -1,5 +1,6 @@
 import { WEBUI_COMMAND_DESCRIPTORS, type WebuiCommandName } from "./descriptors.js";
-import type { WebuiHarnessPort, WebuiModelEntry } from "../port.js";
+import type { WebuiHarnessPort } from "../port.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
 
 export interface WebuiRunCommandRequest {
   readonly command: WebuiCommandName;

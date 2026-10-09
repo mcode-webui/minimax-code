@@ -379,9 +379,12 @@ describe("the gate runs and matches the frozen baseline", () => {
     expect(run.status, run.stderr).toBe(0);
     const summary = JSON.parse(run.stdout);
     expect(summary.ok).toBe(true);
-    expect(summary.intraPackageReferences).toBe(498);
-    expect(summary.violatingPairs).toBe(53);
-    expect(summary.directionViolations).toBe(69);
+    // Post stage-1 DTO extraction: the wire DTOs moved out of `server/port.ts`
+    // into `shared/contracts/*`, so the client no longer imports the Node port
+    // and the 37 `client-to-server-port` pairs are gone.
+    expect(summary.intraPackageReferences).toBe(578);
+    expect(summary.violatingPairs).toBe(16);
+    expect(summary.directionViolations).toBe(29);
     expect(summary.newViolations).toHaveLength(0);
     expect(summary.staleEntries).toHaveLength(0);
   });

@@ -18,7 +18,7 @@
 import type {
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
 
 /** The step id the runtime uses for the post-plan decision. The desktop's
  *  approve / feedback / skip payloads all answer this step. */

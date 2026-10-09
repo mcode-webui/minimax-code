@@ -2,7 +2,7 @@ import { WebuiErrorCode, type WebuiErrorCodeValue } from "../envelope.js";
 import type {
   WebuiSendMessageResult,
   WebuiWatchEventsResult,
-} from "../port.js";
+} from "../../shared/contracts/stream.js";
 
 export interface WebuiOperationContext {
   readonly requestId: string;

@@ -17,7 +17,7 @@ export const listQueueMessagesOperation: WebuiOperation<
     readonly id: string;
   },
   {
-    readonly items?: readonly import("../port.js").WebuiQueueItem[];
+    readonly items?: readonly import("../../shared/contracts/queue.js").WebuiQueueItem[];
     readonly paused?: boolean;
     readonly pendingCount?: number;
   }
@@ -32,7 +32,7 @@ export const deleteQueueItemOperation: WebuiOperation<
     readonly id: string;
     readonly itemId: string;
   },
-  { readonly item?: import("../port.js").WebuiQueueItem }
+  { readonly item?: import("../../shared/contracts/queue.js").WebuiQueueItem }
 > = {
   name: DELETE_QUEUE_ITEM_OPERATION_NAME,
   validate: (body) => {
@@ -58,7 +58,7 @@ export const deleteQueueItemOperation: WebuiOperation<
 
 export const listModelsOperation: WebuiOperation<
   { readonly sessionId?: string },
-  readonly import("../port.js").WebuiModelEntry[]
+  readonly import("../../shared/contracts/models.js").WebuiModelEntry[]
 > = {
   name: LIST_MODELS_OPERATION_NAME,
   validate: (body) => {
@@ -82,7 +82,7 @@ export const listModelsOperation: WebuiOperation<
 
 export const listSkillsOperation: WebuiOperation<
   { readonly agentName?: string },
-  { readonly skills: readonly import("../port.js").WebuiSkillEntry[] }
+  { readonly skills: readonly import("../../shared/contracts/models.js").WebuiSkillEntry[] }
 > = {
   name: LIST_SKILLS_OPERATION_NAME,
   validate: (body) => {

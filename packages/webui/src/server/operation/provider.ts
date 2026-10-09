@@ -26,7 +26,7 @@ export const archiveSessionOperation: WebuiOperation<{ readonly id: string; read
   },
 };
 export const deleteSessionOperation: WebuiOperation<{ readonly id: string }, { readonly success?: boolean }> = { name: DELETE_SESSION_OPERATION_NAME, validate: (body) => validateSessionIdBody(DELETE_SESSION_OPERATION_NAME, body) };
-export const updateSessionOperation: WebuiOperation<import("../port.js").WebuiUpdateSessionRequest, import("../port.js").WebuiUpdateSessionResult> = {
+export const updateSessionOperation: WebuiOperation<import("../../shared/contracts/session.js").WebuiUpdateSessionRequest, import("../../shared/contracts/session.js").WebuiUpdateSessionResult> = {
   name: UPDATE_SESSION_OPERATION_NAME,
   validate: (body) => {
     const value = validateSessionIdBody(UPDATE_SESSION_OPERATION_NAME, body);
@@ -38,7 +38,7 @@ export const updateSessionOperation: WebuiOperation<import("../port.js").WebuiUp
       : { ok: false, code: WebuiErrorCode.invalidBody, message: "updateSession requires a non-empty title" };
   },
 };
-export const getSessionForkOptionsOperation: WebuiOperation<import("../port.js").WebuiGetSessionForkOptionsRequest, import("../port.js").WebuiGetSessionForkOptionsResult> = {
+export const getSessionForkOptionsOperation: WebuiOperation<import("../../shared/contracts/session.js").WebuiGetSessionForkOptionsRequest, import("../../shared/contracts/session.js").WebuiGetSessionForkOptionsResult> = {
   name: GET_SESSION_FORK_OPTIONS_OPERATION_NAME,
   validate: (body) => {
     const value = validateSessionIdBody(GET_SESSION_FORK_OPTIONS_OPERATION_NAME, body);
@@ -56,7 +56,7 @@ export const getSessionForkOptionsOperation: WebuiOperation<import("../port.js")
     };
   },
 };
-export const forkSessionOperation: WebuiOperation<import("../port.js").WebuiForkSessionRequest, import("../port.js").WebuiForkSessionResult> = {
+export const forkSessionOperation: WebuiOperation<import("../../shared/contracts/session.js").WebuiForkSessionRequest, import("../../shared/contracts/session.js").WebuiForkSessionResult> = {
   name: FORK_SESSION_OPERATION_NAME,
   validate: (body) => {
     if (body === null || typeof body !== "object" || Array.isArray(body))
@@ -96,8 +96,8 @@ export const cancelCodexOAuthLoginOperation: WebuiOperation<{ readonly loginId: 
 export const refreshModelsOperation: WebuiOperation<undefined, unknown> = { name: REFRESH_MODELS_OPERATION_NAME, validate: (body) => body === undefined ? { ok: true, body: undefined } : { ok: false, code: WebuiErrorCode.invalidBody, message: `${REFRESH_MODELS_OPERATION_NAME} does not accept a body` } };
 
 export const runCommandOperation: WebuiOperation<
-  import("../port.js").WebuiRunCommandRequest,
-  import("../port.js").WebuiRunCommandResult
+  import("../../shared/contracts/terminal.js").WebuiRunCommandRequest,
+  import("../../shared/contracts/terminal.js").WebuiRunCommandResult
 > = {
   name: RUN_COMMAND_OPERATION_NAME,
   validate: (body) => {
@@ -111,7 +111,7 @@ export const runCommandOperation: WebuiOperation<
       if (candidate[field] !== undefined && typeof candidate[field] !== "string")
         return { ok: false, code: WebuiErrorCode.invalidBody, message: `${field} must be a string` };
     }
-    return { ok: true, body: candidate as unknown as import("../port.js").WebuiRunCommandRequest };
+    return { ok: true, body: candidate as unknown as import("../../shared/contracts/terminal.js").WebuiRunCommandRequest };
   },
 };
 
@@ -152,7 +152,7 @@ const emptyBody = (name: string) => (body: unknown) => {
 // is server-owned, one per service, exactly like the check-in panel.
 export const beginAccountLoginOperation: WebuiOperation<
   Record<string, never>,
-  import("../port.js").WebuiAccountLoginView
+  import("../../shared/contracts/account.js").WebuiAccountLoginView
 > = {
   name: BEGIN_ACCOUNT_LOGIN_OPERATION_NAME,
   validate: emptyBody("beginAccountLogin"),
@@ -160,7 +160,7 @@ export const beginAccountLoginOperation: WebuiOperation<
 
 export const getAccountLoginStatusOperation: WebuiOperation<
   Record<string, never>,
-  import("../port.js").WebuiAccountLoginView
+  import("../../shared/contracts/account.js").WebuiAccountLoginView
 > = {
   name: GET_ACCOUNT_LOGIN_STATUS_OPERATION_NAME,
   validate: emptyBody("getAccountLoginStatus"),

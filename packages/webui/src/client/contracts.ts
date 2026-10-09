@@ -44,24 +44,18 @@ export interface CanvasOperation {
   readonly mutations: readonly CanvasMutation[];
 }
 
+import type { WebuiCanvasDocument } from "../shared/contracts/canvas.js";
 import type {
-  WebuiCanvasDocument,
   WebuiClaimSigninView,
+  WebuiSigninPanelView,
+  WebuiAccountLoginView,
+} from "../shared/contracts/account.js";
+import type {
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
-  WebuiWorkspaceArchiveListing,
-  WebuiWorkspaceArchiveExtractResult,
-  WebuiEnqueueMessageRequest,
-  WebuiEnqueueMessageResult,
   WebuiFileDiffInfoView,
   WebuiForkSessionRequest,
   WebuiForkSessionResult,
-  WebuiGoal,
-  WebuiGoalCreateRequest,
-  WebuiGoalEnabledResult,
-  WebuiGoalPatchRequest,
-  WebuiGoalSessionRequest,
-  WebuiGoalStatus,
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
   WebuiGetSessionForkOptionsRequest,
@@ -70,42 +64,62 @@ import type {
   WebuiGetSessionRewindPreviewResult,
   WebuiGetTurnDiffRequest,
   WebuiGetTurnDiffResult,
-  WebuiInteractionReplyResult,
-  WebuiModelEntry,
-  WebuiPendingPermission,
-  WebuiQueueItem,
   WebuiProjectRecord,
-  WebuiQuestionnaireAnswer,
-  WebuiQuestionnaireOption,
-  WebuiQuestionnaireRequest,
-  WebuiQuestionnaireStep,
   WebuiReapplyTurnDiffRequest,
   WebuiReapplyTurnDiffResult,
   WebuiRevertTurnDiffRequest,
   WebuiRevertTurnDiffResult,
   WebuiRewindSessionRequest,
   WebuiRewindSessionResult,
-  WebuiRuntimeEvent,
-  WebuiSigninPanelView,
-  WebuiStreamFrame,
-  WebuiTerminalFrame,
   WebuiTurnDiffView,
-  WebuiWorkspaceReviewDiffs,
-  WebuiWorkspaceReviewFileContent,
-  WebuiWorkspaceReviewSearchResult,
-  WebuiWorkspaceReviewSummary,
   WebuiUpdateSessionRequest,
   WebuiUpdateSessionResult,
-  WebuiUsageQuotaResult,
-  WebuiVersionInfo,
-  WebuiAccountLoginView,
-  WebuiAttachmentInput,
+} from "../shared/contracts/session.js";
+import type {
+  WebuiWorkspaceArchiveListing,
+  WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceDirectoryListing,
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
-} from "../server/port.js";
+} from "../shared/contracts/workspace.js";
+import type {
+  WebuiEnqueueMessageRequest,
+  WebuiEnqueueMessageResult,
+  WebuiQueueItem,
+} from "../shared/contracts/queue.js";
+import type {
+  WebuiGoal,
+  WebuiGoalCreateRequest,
+  WebuiGoalEnabledResult,
+  WebuiGoalPatchRequest,
+  WebuiGoalSessionRequest,
+  WebuiGoalStatus,
+} from "../shared/contracts/goal.js";
+import type {
+  WebuiInteractionReplyResult,
+  WebuiPendingPermission,
+  WebuiQuestionnaireAnswer,
+  WebuiQuestionnaireOption,
+  WebuiQuestionnaireRequest,
+  WebuiQuestionnaireStep,
+} from "../shared/contracts/interactions.js";
+import type { WebuiModelEntry } from "../shared/contracts/models.js";
+import type {
+  WebuiRuntimeEvent,
+  WebuiStreamFrame,
+} from "../shared/contracts/stream.js";
+import type { WebuiTerminalFrame } from "../shared/contracts/terminal.js";
+import type {
+  WebuiWorkspaceReviewDiffs,
+  WebuiWorkspaceReviewFileContent,
+  WebuiWorkspaceReviewSearchResult,
+  WebuiWorkspaceReviewSummary,
+} from "../shared/contracts/review.js";
+import type { WebuiUsageQuotaResult } from "../shared/contracts/usage-quota.js";
+import type { WebuiVersionInfo } from "../shared/contracts/version.js";
+import type { WebuiAttachmentInput } from "../shared/contracts/messages.js";
 
 /**
  * Profile-wide `AGENTS.md`.

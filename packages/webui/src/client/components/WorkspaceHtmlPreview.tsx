@@ -30,7 +30,7 @@
 // sharper when the read result shows a relative reference.
 
 import { useEffect, useState, type ReactElement } from "react";
-import type { WebuiWorkspaceFileContent } from "../../server/port.js";
+import type { WebuiWorkspaceFileContent } from "../../shared/contracts/workspace.js";
 
 export type WorkspaceHtmlPreviewProps = {
   /** The file path the preview tab was opened with. */

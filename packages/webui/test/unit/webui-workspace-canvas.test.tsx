@@ -62,7 +62,7 @@ import {
   type CanvasNodeLayout,
   type CanvasNodeView,
 } from "../../src/client/components/WorkspaceCanvas.js";
-import type { WebuiCanvasDocument } from "../../src/server/port.js";
+import type { WebuiCanvasDocument } from "../../src/shared/contracts/canvas.js";
 
 const LAYOUT: CanvasNodeLayout = { x: 100, y: 200, width: 240, height: 180, zIndex: 3 };
 

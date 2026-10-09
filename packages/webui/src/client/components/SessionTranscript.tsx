@@ -29,7 +29,7 @@ import type {
   WebuiTransport,
   WebuiTranscriptItem,
 } from "../contracts.js";
-import type { WebuiQuestionnaireRequest } from "../../server/port.js";
+import type { WebuiQuestionnaireRequest } from "../../shared/contracts/interactions.js";
 
 /** Capability subset the transcript passes through to each message item.
  *  Single source of truth lives in `WebuiTransport`; this alias keeps the
@@ -47,7 +47,7 @@ type WebuiSessionTranscriptCapabilities = Pick<
   | "getPendingQuestionnaire"
   | "replyQuestionnaire"
 >;
-import type { WebuiTurnDiffView } from "../../server/port.js";
+import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 import type { WebuiQuestionnaireResponseSummary } from "../projection/message-parts.js";
 import type { WebuiMessageFileReference } from "../projection/message-file-reference.js";
 import type { WorkspacePanelCommand } from "../projection/workspace-panel-state.js";

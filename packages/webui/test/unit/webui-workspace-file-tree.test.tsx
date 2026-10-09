@@ -13,7 +13,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { FileTree, formatWorkspaceFileModifiedAt, formatWorkspaceFileSize } from "../../src/client/components/WorkspaceFileTree.js";
-import type { WebuiWorkspaceFile } from "../../src/server/port.js";
+import type { WebuiWorkspaceFile } from "../../src/shared/contracts/workspace.js";
 
 const MODIFIED_AT = Date.UTC(2026, 9, 4, 8, 51);
 

@@ -82,21 +82,27 @@ type WebuiSessionComposerCapabilities = Pick<
 >;
 import type {
   WebuiGoal,
-  WebuiActiveTurnRequest,
-  WebuiActiveTurnResult,
   WebuiGoalCreateRequest,
   WebuiGoalEnabledResult,
   WebuiGoalSessionRequest,
+} from "../../shared/contracts/goal.js";
+import type {
+  WebuiActiveTurnRequest,
+  WebuiActiveTurnResult,
+} from "../../shared/contracts/session.js";
+import type {
   WebuiInteractionReplyResult,
-  WebuiModelEntry,
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-  WebuiQueueItem,
+} from "../../shared/contracts/interactions.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
+import type { WebuiQueueItem } from "../../shared/contracts/queue.js";
+import type {
   WebuiWorkspaceDirectoryListing,
   WebuiWorkspaceFile,
-  WebuiUsageQuotaResult,
-} from "../../server/port.js";
+} from "../../shared/contracts/workspace.js";
+import type { WebuiUsageQuotaResult } from "../../shared/contracts/usage-quota.js";
 import { formatUsageResetLabel } from "./UserMenu.js";
 import { WebuiGoalBanner } from "./GoalBanner.js";
 import { WebuiInteractionPanel } from "./InteractionPanel.js";

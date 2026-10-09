@@ -21,7 +21,10 @@ import type {
   WebuiTranscriptItem,
 } from "../contracts.js";
 import type { WebuiStreamMessage } from "../stream.js";
-import type { WebuiFileDiffInfoView, WebuiTurnDiffView } from "../../server/port.js";
+import type {
+  WebuiFileDiffInfoView,
+  WebuiTurnDiffView,
+} from "../../shared/contracts/session.js";
 import {
   projectMessageParts,
   type WebuiMessageForParts,

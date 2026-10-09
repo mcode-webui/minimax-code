@@ -16,7 +16,7 @@ import { createPortal } from "react-dom";
 import type {
   WebuiGetSessionForkOptionsResult,
   WebuiGetSessionRewindPreviewResult,
-} from "../../server/port.js";
+} from "../../shared/contracts/session.js";
 import type { WebuiTransport } from "../contracts.js";
 import type { WebuiMessageFileReference } from "../projection/message-file-reference.js";
 import type { WorkspacePanelCommand } from "../projection/workspace-panel-state.js";

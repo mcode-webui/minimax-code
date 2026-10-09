@@ -30,8 +30,8 @@ import {
   type WebuiStreamState,
   type WebuiStreamSubscription,
 } from "./stream.js";
-import type { WebuiStreamFrame } from "../server/port.js";
-import type { WebuiAttachmentInput } from "../server/port.js";
+import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
+import type { WebuiAttachmentInput } from "../shared/contracts/messages.js";
 
 export interface WebuiStreamLoopDeps {
   readonly sendMessage?: WebuiClientMessageSender;

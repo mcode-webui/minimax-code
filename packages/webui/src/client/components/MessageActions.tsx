@@ -34,7 +34,7 @@ import {
   WebuiIconMessageLikeOn,
   WebuiIconMessageRewind,
 } from "../icons.js";
-import type { WebuiGetSessionRewindPreviewResult } from "../../server/port.js";
+import type { WebuiGetSessionRewindPreviewResult } from "../../shared/contracts/session.js";
 
 export type WebuiMessageActionCapabilities = {
   readonly fork?: boolean;

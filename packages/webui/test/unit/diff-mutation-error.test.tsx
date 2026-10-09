@@ -10,7 +10,7 @@ import {
   reduceWebuiDiffState,
   resolveWebuiDiffMutation,
 } from "../../src/client/components/DiffCard.js";
-import type { WebuiTurnDiffView } from "../../src/server/port.js";
+import type { WebuiTurnDiffView } from "../../src/shared/contracts/session.js";
 
 /* Why these tests are about the shape of a FAILED mutation, not about markup:
  *

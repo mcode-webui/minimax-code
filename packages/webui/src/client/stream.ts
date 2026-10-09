@@ -1,4 +1,4 @@
-import type { WebuiStreamFrame } from "../server/port.js";
+import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
 import {
   initialWebuiWorkspaceProgress,
   reduceWebuiWorkspaceProgressEvent,

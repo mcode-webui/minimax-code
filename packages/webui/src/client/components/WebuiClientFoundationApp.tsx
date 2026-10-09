@@ -91,7 +91,8 @@ import type {
   WebuiTransport,
 } from "../contracts.js";
 import type { WebuiTodo } from "./WorkspacePanels.js";
-import type { WebuiUsageQuotaResult, WebuiVersionInfo } from "../../server/port.js";
+import type { WebuiUsageQuotaResult } from "../../shared/contracts/usage-quota.js";
+import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
 import type {
   WebuiWorkspaceProgressState,
   WebuiWorkspaceSubagent,

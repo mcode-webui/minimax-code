@@ -11,11 +11,13 @@ import {
 import type {
   WebuiClaimSigninView,
   WebuiSigninPanelView,
+} from "../../shared/contracts/account.js";
+import type {
   WebuiUsageQuotaResult,
   WebuiUsageQuotaVideoView,
   WebuiUsageQuotaWindowView,
-  WebuiVersionInfo,
-} from "../../server/port.js";
+} from "../../shared/contracts/usage-quota.js";
+import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
 import type { WebuiTransport } from "../contracts.js";
 import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsModal.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";

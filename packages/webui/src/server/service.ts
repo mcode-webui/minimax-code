@@ -39,7 +39,8 @@ import {
   WebuiErrorCode,
   WEBUI_PROTOCOL_VERSION,
 } from "./envelope.js";
-import type { WebuiHarnessPort, WebuiSessionInfo } from "./port.js";
+import type { WebuiHarnessPort } from "./port.js";
+import type { WebuiSessionInfo } from "../shared/contracts/session.js";
 import { WebuiTerminalManager } from "./terminal.js";
 import { webuiSessionTransferFileName } from "./session-transfer.js";
 

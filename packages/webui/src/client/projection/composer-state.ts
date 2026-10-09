@@ -19,8 +19,8 @@ import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
-} from "../../server/port.js";
-import type { WebuiAttachmentInput } from "../../server/port.js";
+} from "../../shared/contracts/goal.js";
+import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { formatWebuiError } from "../value-readers.js";
 import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "../stream.js";
 import {

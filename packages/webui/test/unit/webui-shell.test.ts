@@ -79,7 +79,11 @@ import { projectWebuiMessage } from "../../src/client/projection/message-project
 import { projectLiveTurnView } from "../../src/client/projection/transcript-shape.js";
 import { buildWebuiQuestionnaireAnswers } from "../../src/client/projection/questionnaire-state.js";
 import { groupWebuiTranscriptItems } from "../../src/client/projection/transcript-projection.js";
-import type { WebuiGoal, WebuiGoalPatchRequest, WebuiQuestionnaireRequest } from "../../src/server/port.js";
+import type {
+  WebuiGoal,
+  WebuiGoalPatchRequest,
+} from "../../src/shared/contracts/goal.js";
+import type { WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
 import {
   migrateSessionRuntimeState,
   readSessionRuntimeState,
@@ -101,10 +105,8 @@ import {
 } from "../../src/client/stream.js";
 import { projectWebuiTodos, WebuiProgressOverviewPanel, WebuiProgressPanel, WebuiSubagentsPanel, WebuiWorkspacePanel, WebuiWorkspacePanelControls } from "../../src/client/components/WorkspacePanels.js";
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/projection/workspace-panel-state.js";
-import type {
-  WebuiStreamFrame,
-  WebuiWorkspaceEnvironment,
-} from "../../src/server/port.js";
+import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
+import type { WebuiWorkspaceEnvironment } from "../../src/shared/contracts/workspace.js";
 
 function renderShell(label = "webui-foundation"): string {
   return renderToStaticMarkup(

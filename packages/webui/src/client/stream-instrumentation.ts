@@ -22,7 +22,7 @@ import {
   reduceWebuiStreamFrame,
   type WebuiStreamState,
 } from "./stream.js";
-import type { WebuiStreamFrame } from "../server/port.js";
+import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
 
 /**
  * Snapshot of a state transition the reducer applies. Tests use these

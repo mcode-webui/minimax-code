@@ -3,7 +3,7 @@
 // container in `WorkspacePanels.tsx` only imports from it.
 
 import type { ReactElement } from "react";
-import type { WebuiWorkspaceFile } from "../../server/port.js";
+import type { WebuiWorkspaceFile } from "../../shared/contracts/workspace.js";
 import { WebuiIconChevronLeft, WebuiIconFile } from "../icons.js";
 
 export function filterWorkspaceFiles(files: readonly WebuiWorkspaceFile[], query: string): WebuiWorkspaceFile[] {

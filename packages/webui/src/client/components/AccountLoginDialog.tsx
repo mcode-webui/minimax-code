@@ -20,7 +20,7 @@
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import type { WebuiAccountLoginView } from "../../server/port.js";
+import type { WebuiAccountLoginView } from "../../shared/contracts/account.js";
 
 /** Everything the panel can show, derived (not fetched). */
 export type WebuiAccountLoginPhase =

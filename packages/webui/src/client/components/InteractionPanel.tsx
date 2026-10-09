@@ -19,7 +19,7 @@ import type {
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
 
 export function WebuiInteractionPanel({
   sessionId,

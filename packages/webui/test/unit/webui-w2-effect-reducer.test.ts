@@ -42,8 +42,8 @@ import {
 import type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
-  WebuiRuntimeEvent,
-} from "../../src/server/port.js";
+} from "../../src/shared/contracts/interactions.js";
+import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 
 const SESSION = "session-1";
 

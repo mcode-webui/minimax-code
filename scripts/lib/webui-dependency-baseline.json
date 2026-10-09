@@ -10,217 +10,6 @@
   },
   "entries": [
     {
-      "from": "client/components/AccountLoginDialog.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/AssistantBody.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/DiffCard.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/GoalBanner.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/InteractionPanel.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/MessageActions.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/MessageItem.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/PlanModeCards.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/QueuePanel.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/SessionComposer.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/SessionTranscript.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs.",
-      "occurrences": null
-    },
-    {
-      "from": "client/components/SettingsModal.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/UserMenu.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WebuiClientFoundationApp.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspaceArchiveView.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspaceCanvas.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspaceFileTree.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspaceHtmlPreview.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspaceMediaPreview.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/WorkspacePanels.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/components/settings/UsageModelSettings.tsx",
-      "to": "server/port.ts",
-      "layerFrom": "bindings",
-      "layerTo": "runtime-port",
-      "rule": "bindings -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
       "from": "client/contracts.ts",
       "to": "client/projection/message-parts.ts",
       "layerFrom": "contracts",
@@ -231,77 +20,6 @@
       "reason": "A leaf client contract imports projection implementation. Contract declarations are leaves; the stage-1 contracts split removes the edge."
     },
     {
-      "from": "client/contracts.ts",
-      "to": "server/port.ts",
-      "layerFrom": "contracts",
-      "layerTo": "runtime-port",
-      "rule": "contracts -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/action-requests.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/composer-state.ts",
-      "to": "server/port.ts",
-      "layerFrom": "application|view",
-      "layerTo": "runtime-port",
-      "rule": "application|view -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs.",
-      "occurrences": null
-    },
-    {
-      "from": "client/projection/effect-reducer.ts",
-      "to": "server/port.ts",
-      "layerFrom": "application|domain",
-      "layerTo": "runtime-port",
-      "rule": "application|domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/event-parsers.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/goal-state.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/message-projection.ts",
-      "to": "server/port.ts",
-      "layerFrom": "view",
-      "layerTo": "runtime-port",
-      "rule": "view -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
       "from": "client/projection/model-favorites.ts",
       "to": "client/components/ModelPicker.tsx",
       "layerFrom": "domain",
@@ -309,7 +27,7 @@
       "rule": "domain -> bindings",
       "category": "projection-to-components",
       "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan §3), removing the component dependency."
+      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
     },
     {
       "from": "client/projection/model-picker-cascade.ts",
@@ -319,7 +37,7 @@
       "rule": "view -> bindings",
       "category": "projection-to-components",
       "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan §3), removing the component dependency."
+      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
     },
     {
       "from": "client/projection/model-picker-search.ts",
@@ -329,27 +47,7 @@
       "rule": "view -> bindings",
       "category": "projection-to-components",
       "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan §3), removing the component dependency."
-    },
-    {
-      "from": "client/projection/plan-mode.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/questionnaire-state.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
+      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
     },
     {
       "from": "client/projection/transcript-shape.ts",
@@ -359,47 +57,7 @@
       "rule": "view -> bindings",
       "category": "projection-to-components",
       "stage": 1,
-      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan §3), removing the component dependency."
-    },
-    {
-      "from": "client/projection/transcript-shape.ts",
-      "to": "server/port.ts",
-      "layerFrom": "view",
-      "layerTo": "runtime-port",
-      "rule": "view -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/projection/workspace-panel-state.ts",
-      "to": "server/port.ts",
-      "layerFrom": "view",
-      "layerTo": "runtime-port",
-      "rule": "view -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/session-activity.ts",
-      "to": "server/port.ts",
-      "layerFrom": "domain",
-      "layerTo": "runtime-port",
-      "rule": "domain -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/stream-instrumentation.ts",
-      "to": "server/port.ts",
-      "layerFrom": "mechanisms",
-      "layerTo": "runtime-port",
-      "rule": "mechanisms -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
+      "reason": "A pure view/domain projection imports a React component. Presentation-owned types must move below their consumers (plan \u00a73), removing the component dependency."
     },
     {
       "from": "client/stream-loop.ts",
@@ -409,7 +67,7 @@
       "rule": "mechanisms -> domain",
       "category": "stream-loop-to-projection",
       "stage": 4,
-      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan §7.2) so the mechanism no longer imports projection."
+      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan \u00a77.2) so the mechanism no longer imports projection."
     },
     {
       "from": "client/stream-loop.ts",
@@ -419,38 +77,7 @@
       "rule": "mechanisms -> view",
       "category": "stream-loop-to-projection",
       "stage": 4,
-      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan §7.2) so the mechanism no longer imports projection."
-    },
-    {
-      "from": "client/stream-loop.ts",
-      "to": "server/port.ts",
-      "layerFrom": "mechanisms",
-      "layerTo": "runtime-port",
-      "rule": "mechanisms -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs.",
-      "occurrences": null
-    },
-    {
-      "from": "client/stream.ts",
-      "to": "server/port.ts",
-      "layerFrom": "mechanisms|view",
-      "layerTo": "runtime-port",
-      "rule": "mechanisms|view -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
-    },
-    {
-      "from": "client/transport.ts",
-      "to": "server/port.ts",
-      "layerFrom": "infrastructure",
-      "layerTo": "runtime-port",
-      "rule": "infrastructure -> runtime-port",
-      "category": "client-to-server-port",
-      "stage": 1,
-      "reason": "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs."
+      "reason": "The mechanism-mapped stream loop reaches into projection. Stage 4 injects the pure transforms (plan \u00a77.2) so the mechanism no longer imports projection."
     },
     {
       "from": "server/host.ts",
@@ -546,16 +173,6 @@
     }
   ],
   "cycles": [
-    {
-      "cycle": [
-        "server/port.ts",
-        "client/contracts.ts",
-        "server/port.ts"
-      ],
-      "canonical": "client/contracts.ts -> server/port.ts -> client/contracts.ts",
-      "stage": 1,
-      "reason": "Leaf client contract and the Node capability port reference each other. Stage 1 splits client/contracts.ts and moves the wire DTOs to shared/, breaking both directions."
-    },
     {
       "cycle": [
         "client/stream.ts",

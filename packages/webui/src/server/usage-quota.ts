@@ -32,7 +32,7 @@ import type {
   WebuiUsageQuotaVideoView,
   WebuiUsageQuotaView,
   WebuiUsageQuotaWindowView,
-} from "./port.js";
+} from "../shared/contracts/usage-quota.js";
 
 const MATRIX_ORIGINS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   cn: {

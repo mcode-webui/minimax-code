@@ -40,7 +40,7 @@ import type {
   WebuiTranscriptActivityPart,
 } from "../contracts.js";
 import type { WebuiStreamMessage } from "../stream.js";
-import type { WebuiTurnDiffView } from "../../server/port.js";
+import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 import type { WebuiMessageActionCapabilities } from "../components/MessageActions.js";
 import {
   projectMessageAttachments,

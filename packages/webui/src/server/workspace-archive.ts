@@ -30,7 +30,7 @@ import type {
   WebuiArchiveEntry,
   WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceArchiveListing,
-} from "./port.js";
+} from "../shared/contracts/workspace.js";
 
 // ---------------------------------------------------------------------------
 // Ceilings

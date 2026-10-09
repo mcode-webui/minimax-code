@@ -15,7 +15,7 @@ import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClien
 import type { WebuiClientMessage, WebuiClientMessagePage } from "../../src/client/contracts.js";
 
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
-import type { WebuiUsageQuotaResult } from "../../src/server/port.js";
+import type { WebuiUsageQuotaResult } from "../../src/shared/contracts/usage-quota.js";
 
 const SESSION_ID = "session-widgets";
 

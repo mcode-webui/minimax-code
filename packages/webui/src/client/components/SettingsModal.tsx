@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
-import type { WebuiModelEntry, WebuiSessionListItem, WebuiVersionInfo, WebuiWorkspaceReviewFileDiff } from "../../server/port.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
+import type { WebuiSessionListItem } from "../../shared/contracts/session.js";
+import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
+import type { WebuiWorkspaceReviewFileDiff } from "../../shared/contracts/review.js";
 import type { WebuiTransport } from "../contracts.js";
 import {
   initialWebuiReviewState,

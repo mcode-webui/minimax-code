@@ -28,7 +28,7 @@ import {
   writeWebuiUnreadCounts,
 } from "../../src/client/session-unread.js";
 import type { WebuiClientSession } from "../../src/client/contracts.js";
-import type { WebuiRuntimeEvent } from "../../src/server/port.js";
+import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 
 function event(
   type: string,

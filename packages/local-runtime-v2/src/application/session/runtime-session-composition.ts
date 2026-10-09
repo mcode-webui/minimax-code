@@ -44,6 +44,7 @@ import {
   type GlobalInstructions,
   type ProductionAgentPreparation,
   type ProductionAgentProductCapabilities,
+  type SystemPromptOverrides,
 } from '../../service/turn-system/index.js';
 import type { AgentSessionPorts } from '../agent/agent-application.js';
 import { createRuntimeAgentProduct } from '../agent/runtime-agent-product.js';
@@ -88,6 +89,7 @@ export interface RuntimeSessionCompositionInput {
   readonly capabilityProfile?: 'cli';
   /** Policy resolved once by the composition root. */
   readonly ownerPolicy: RuntimeOwnerPolicy;
+  readonly systemPromptOverrides?: SystemPromptOverrides;
   readonly runtimeOwnerIdentity: Parameters<
     typeof initializeSessionSystem
   >[0]['runtimeOwnerIdentity'];
@@ -126,6 +128,7 @@ export function createProductionSessionComposition(
     miniappAvailable: input.miniappAvailable,
     browserUse: input.browserUse,
     implicitCustomProviderThinking: tuiProductPolicy,
+    ...(input.systemPromptOverrides ? { systemPromptOverrides: input.systemPromptOverrides } : {}),
     agentReferenceProjection: input.agentReferenceProjection,
     ...(input.inspector ? { inspector: input.inspector } : {}),
     internalTurnPromptReads: input.internalTurnPromptReads,

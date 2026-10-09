@@ -15,6 +15,7 @@ import {
   createLocalStaticPromptReader,
   type GlobalInstructions,
   type ProductionAgentProductCapabilities,
+  type SystemPromptOverrides,
 } from '../../service/turn-system/index.js';
 
 export interface CreateRuntimeAgentProductOptions {
@@ -32,6 +33,7 @@ export interface CreateRuntimeAgentProductOptions {
   readonly ownerPolicy: RuntimeOwnerPolicy;
   readonly miniappAvailable: boolean;
   readonly implicitCustomProviderThinking: boolean;
+  readonly systemPromptOverrides?: SystemPromptOverrides;
   readonly agentReferenceProjection: NonNullable<
     ProductionAgentProductCapabilities['inputPreparation']['agentReferenceProjection']
   >;
@@ -57,6 +59,7 @@ export function createRuntimeAgentProduct(
     ownerPolicy,
     miniappAvailable,
     implicitCustomProviderThinking,
+    systemPromptOverrides,
     agentReferenceProjection,
     inspector,
     promptSnapshots,
@@ -182,6 +185,7 @@ export function createRuntimeAgentProduct(
         // The already-resolved policy is passed down rather than re-derived here: a
         // call site that reconstructs policy from kind is the documented way this
         // design degrades into a second, drifting source of truth.
+        systemPromptOverrides,
         profile: createV2AgentProfileSource(
           agentService,
           modelConfig.read,

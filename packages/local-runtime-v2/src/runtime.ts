@@ -760,12 +760,14 @@ function configureV1HostOptions(
     browserToolExposure,
     promptConfigKey,
     promptMode,
+    systemPromptOverrides,
     ...v1Options
   } = options;
   void browserAdapter;
   void browserToolExposure;
   void promptConfigKey;
   void promptMode;
+  void systemPromptOverrides;
   // V2 owns the channel startup point: the V1 shell must build stores, APIs,
   // runner and registries without restoring a single transport.
   if (compatibility) {
@@ -882,6 +884,7 @@ async function initializeOwnerRuntime(input: {
         ? { promptConfigKey: options.promptConfigKey }
         : {}),
       capabilityProfile: options.capabilityProfile,
+      systemPromptOverrides: options.systemPromptOverrides,
       getRunawayGuardConfig: options.getRunawayGuardConfig,
       ...(options.getToolResultCompactionConfig
         ? {

@@ -4,7 +4,7 @@
 // the questionnaire agent-ownership correction: the runtime keys pending
 // interactions by the agent that owns the session, so this resolves the
 // authoritative agent name through `getSession` before re-asking.
-import type { WebuiHarnessPort } from "../../server/port.js";
+import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { requireCliService } from "./requirements.js";
 import type { WebuiPermissionDecision } from "../../shared/contracts/interactions.js";

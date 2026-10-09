@@ -120,7 +120,7 @@ describe("layer matrix", () => {
   });
 
   it("classifies current paths by their target layer, not the directory", () => {
-    expect(classifyLayers("server/port.ts")).toEqual(["runtime-port"]);
+    expect(classifyLayers("runtime/port.ts")).toEqual(["runtime-port"]);
     expect(classifyLayers("server/host.ts")).toEqual(["runtime"]);
     expect(classifyLayers("client/contracts.ts")).toEqual(["contracts"]);
     expect(classifyLayers("client/stream.ts")).toEqual(["mechanisms", "view"]);

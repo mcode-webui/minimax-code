@@ -11,7 +11,7 @@ import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,
 } from "../workspace-archive.js";
-import type { WebuiHarnessPort } from "../../server/port.js";
+import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { requireCliService } from "./requirements.js";
 import type {

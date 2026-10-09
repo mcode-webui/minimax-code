@@ -43,7 +43,7 @@ import { createWebuiRuntimeLifecycle } from "./lifecycle.js";
 import { createWebuiAccountLoginSession } from "./account-login.js";
 import { createHarnessPortFromHost } from "./harness/adapter.js";
 import type { WebuiRuntimeCliService } from "./harness/host-contract.js";
-import type { WebuiHarnessPort } from "../server/port.js";
+import type { WebuiHarnessPort } from "./port.js";
 import { configureWebuiRuntimeEnvironment } from "./runtime-environment.js";
 import { DailyCheckinClient } from "./check-in.js";
 import {

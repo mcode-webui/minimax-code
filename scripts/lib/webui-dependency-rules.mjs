@@ -132,7 +132,7 @@ export const ALLOWED_EDGES = Object.freeze({
  * left pointing at a missing file.
  */
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
-  "server/port.ts",
+  "runtime/port.ts",
   "client/stream.ts",
   "client/stream-instrumentation.ts",
   "client/projection/composer-state.ts",
@@ -154,7 +154,7 @@ export const CATEGORIES = Object.freeze({
   "client-to-server-port": Object.freeze({
     stage: 1,
     description:
-      "A browser layer imports the Node capability port (current server/port.ts, destined for runtime/port.ts). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs.",
+      "A browser layer imports the Node capability port (`runtime/port.ts`). Stage 1 requires the client to import no server module; consumers move to client contracts or shared DTOs.",
   }),
   "projection-to-components": Object.freeze({
     stage: 1,
@@ -318,7 +318,6 @@ export function classifyLayers(relative) {
   }
 
   // Current layout: provenance from plan §7.1/§7.2/§7.3.
-  if (normalized.startsWith("server/port.ts")) return ["runtime-port"];
   if (normalized === "server/envelope.ts") return ["server"];
   if (normalized === "server/session-transfer.ts") return ["runtime", "server"];
   if (normalized.startsWith("server/operation/")) return ["server"];

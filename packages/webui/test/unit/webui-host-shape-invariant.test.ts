@@ -26,7 +26,7 @@
 //      missing port member breaks the test compile, not the runtime.
 
 import { describe, expect, it } from "vitest";
-import type { WebuiHarnessPort } from "../../src/server/port.js";
+import type { WebuiHarnessPort } from "../../src/runtime/port.js";
 import {
   createOperationRegistry,
   editSessionMessageOperation,

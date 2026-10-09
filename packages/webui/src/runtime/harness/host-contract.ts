@@ -96,7 +96,7 @@ export interface WebuiRuntimeCliService {
     request: WebuiSessionListRequest,
     context?: Record<string, never>,
   ): Promise<WebuiSessionPage>;
-  pluginManagement(request: import("../../server/port.js").WebuiPluginManagementRequest): Promise<unknown>;
+  pluginManagement(request: import("../port.js").WebuiPluginManagementRequest): Promise<unknown>;
   getSessionTree(
     request: WebuiSessionTreeRequest,
     context?: Record<string, never>,

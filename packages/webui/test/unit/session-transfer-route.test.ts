@@ -23,7 +23,7 @@ import type {
   WebuiCreateSessionRequest,
   WebuiUpdateSessionRequest,
 } from "../../src/shared/contracts/session.js";
-import type { WebuiHarnessPort } from "../../src/server/port.js";
+import type { WebuiHarnessPort } from "../../src/runtime/port.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,

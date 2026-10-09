@@ -4,7 +4,7 @@
 // capabilities are backed by the assembly's OAuth core, quota and check-in
 // clients rather than the harness `cliService`; they wire into the same runtime
 // capability group.
-import type { WebuiHarnessPort } from "../../server/port.js";
+import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { requireCliService } from "./requirements.js";
 

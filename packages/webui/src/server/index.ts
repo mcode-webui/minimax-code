@@ -49,7 +49,7 @@ export {
   type WebuiEnvelopeKind,
   type WebuiErrorCodeValue,
 } from "../shared/envelope.js";
-export type { WebuiHarnessPort } from "./port.js";
+export type { WebuiHarnessPort } from "../runtime/port.js";
 export type { WebuiVersionInfo } from "../shared/contracts/version.js";
 export type {
   WebuiSessionListRequest,

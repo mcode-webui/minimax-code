@@ -24,7 +24,7 @@ export {
   type WebuiRuntimeHostFactory,
 } from "./assembly.js";
 export { createHarnessPortFromHost } from "./harness/adapter.js";
-export type { WebuiHarnessPort } from "../server/port.js";
+export type { WebuiHarnessPort } from "./port.js";
 export type { WebuiRuntimeHostHandle } from "./harness/host-contract.js";
 export type { WebuiRuntimeCliService } from "./harness/host-contract.js";
 export type { WebuiRuntimeLifecycle } from "./lifecycle.js";

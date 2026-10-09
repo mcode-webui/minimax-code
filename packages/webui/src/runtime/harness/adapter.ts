@@ -12,7 +12,7 @@
 // directly at process start.
 import { WEBUI_PROTOCOL_VERSION } from "../../shared/envelope.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
-import type { WebuiHarnessPort } from "../../server/port.js";
+import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { createSessionsAdapter } from "./sessions.js";
 import { createExecutionAdapter } from "./execution.js";

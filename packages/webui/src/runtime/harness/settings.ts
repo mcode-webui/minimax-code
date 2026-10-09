@@ -11,7 +11,7 @@ import {
   writeUserProfile,
   WEBUI_DEFAULT_AGENT_NAME,
 } from "../profile-files.js";
-import type { WebuiHarnessPort } from "../../server/port.js";
+import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import {
   requireCliService,

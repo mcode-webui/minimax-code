@@ -2,7 +2,7 @@ import { WebuiErrorCode } from "../../shared/envelope.js";
 import type {
   WebuiPluginManagementAction,
   WebuiPluginManagementRequest,
-} from "../port.js";
+} from "../../runtime/port.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import { PLUGIN_MANAGEMENT_OPERATION_NAME } from "../../shared/operation-names.js";
 

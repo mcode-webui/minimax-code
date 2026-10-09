@@ -59,6 +59,9 @@ const steps = [
   // second compile of the same WebUI sources as `typecheck:webui` above. One
   // Linux job runs it; the three per-program checks stay on every platform.
   { name: "typecheck:webui-full", script: "typecheck:webui-full", fullOnly: true },
+  // Source-level direction check: it must surface before the build and the
+  // metafile check, because `import type` edges never reach build output.
+  { name: "check:webui-dependency", script: "check:webui-dependency" },
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui", script: "test:webui" },

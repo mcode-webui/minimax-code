@@ -243,6 +243,7 @@
       "packages/webui/test/unit/settings-modal.test.tsx",
       "packages/webui/test/unit/webui-package.test.ts",
       "packages/webui/test/unit/webui-boundary-check.test.ts",
+      "packages/webui/test/unit/webui-dependency-check.test.ts",
       "packages/webui/test/unit/webui-service.test.ts",
       "packages/webui/test/unit/webui-design-tokens.test.ts",
       "packages/webui/test/unit/webui-shell.test.ts",

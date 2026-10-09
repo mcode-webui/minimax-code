@@ -6,6 +6,13 @@ Terminology: [CONTEXT.md](../../CONTEXT.md), section "WebUI internal layers".
 Source baseline: branch `webui`, commit `89907fb3734c6ad998a34b4bb72137a970eb19fe`, inspected on 2026-10-09.
 This plan changes no source, tests, configuration, generated inventory, Git branch, or runtime state. Its companion records — ADR 0014, the `CONTEXT.md` terminology section and the ADR 0004 consequence note — are documentation only.
 
+> **Sections 7.1 through 7.7 are the authoritative implementation contract.** Where
+> an earlier section states a weaker or different conclusion — an "optionally", a
+> "keep as is", or a superseded stage list — the section 7 contract governs.
+> Chapters 1-6 record the reasoning that produced it and the options that were
+> rejected; they are not a second source of requirements. Where chapters 1-6 and
+> section 7 disagree, section 7 wins.
+
 ## 1. Decision and evidence discipline
 
 **Recommendation: one definite target architecture, reached by staged migration.** The execution chain is **React → browser application → browser transport → loopback server → WebUI runtime integration → public harness**, where browser→loopback is a cross-process protocol and loopback→harness stays an in-process call (`packages/webui/src/server/port.ts:9`, `docs/adr/0001-webui-is-a-peer-client-of-the-harness.md:3`). Four re-drawn boundaries follow:
@@ -210,8 +217,8 @@ Introduce the check with an explicit, fixed baseline of existing exceptions, eac
 | Composer submission, goal submission and recovery/retry/stop | Reuse pure intent rules and stream loop, move async sequencing and result commits to application [E2–E4, E11]. | Component-owned business closures and `projection/` effect execution for migrated workflows. |
 | Progress merging | Application owns guarded source inputs; one domain selector supplies panel state [E1]. | Shell merge and separate writable merged output. |
 | Unread hydration, marking, pruning and persistence | One application initialization/commit/persistence workflow using existing storage adapter semantics [E10]. | Six independently synchronized component effects and repeated restore over live counts. |
-| Server forwarding handlers | Keep the actual wire adaptation seam. Optionally simplify boilerplate later only if error/projection semantics are preserved [E7]. | No obligatory handler rewrite; no new 99-method application facade. |
-| Auth/quota/broker/browser resources | Keep current assembly lifetime; server resource decomposition is a separately justified change [E6]. | Nothing moves into browser application. |
+| Server forwarding handlers | Keep the wire adaptation seam, and replace the duplicated forwarding closures with typed bindings that constrain each operation's request, argument tuple, return value and response; thirteen operations keep dedicated handlers [E7]. | No reflection-based dispatch; no unvalidated request field selecting a runtime member; no new 99-method application facade. |
+| Auth/quota/broker/browser resources | Move harness-integration resources and their lifecycle to the WebUI runtime; assembly becomes a composition root. Network and terminal resources stay with the loopback server [E6]. | Nothing moves into the browser application; the server keeps no harness-integration resource lifecycle. |
 
 The switch for each slice replaces the old writer in the same change. A read-only compatibility selector may bridge callers temporarily; it cannot own a map, write state, or re-export a moved file through a permanent shim. Shadow comparison is permissible only with a pure offline comparison reducer; never execute both sets of attach/send/persist effects [E3, E4; `packages/webui/AGENTS.md:118`].
 
@@ -303,7 +310,7 @@ The structure decisions above are not implementable without this section. It fix
 
 Every target path below is relative to `packages/webui/src/`. **Kept** means the file survives at the same path. **Moved** includes import fixups but no behaviour change. **Split from** requires the source to be reduced and callers rewired in the same step — never copied, leaving two implementations. No target file is merely renamed; the 868-line `client/contracts.ts` and the 905-line `server/host.ts` are dissolved, not relocated [E11, E16].
 
-| Layer | Representative target files | Provenance |
+| Layer | Target files | Provenance |
 | --- | --- | --- |
 | `runtime/` | `index.ts` | New: exports the runtime factory, capability interfaces and lifecycle handle only |
 | | `assembly.ts` | Split from `server/assembly.ts:230` — creates and wires resources, embeds no OAuth state machine or network service |

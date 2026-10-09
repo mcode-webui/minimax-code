@@ -1,15 +1,24 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues on the fork
-(`Fectivnfy112357/minimax-code`). Use the `gh` CLI for all operations.
+Issues and specs for this repo live as GitHub issues on the working remote
+(`mcode-webui/minimax-code`), which is the `origin` remote of this checkout. Use
+the `gh` CLI for all operations.
+
+> **Always pass `--repo mcode-webui/minimax-code` explicitly.** Without it, `gh`
+> resolves this checkout to `MiniMax-AI/minimax-code` — the public upstream — and
+> an issue created from this working directory would land there. Nothing in this
+> repository may be published to upstream: upstream synchronization runs by
+> three-way merge, so anything pushed or filed there shows up as unreviewed
+> content in the public projection. See `docs/source-sync.md` and
+> [ADR 0007](../../docs/adr/0007-additive-changes-that-keep-upstream-synchronization-viable.md).
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Comment on an issue**: `gh issue comment <number> --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
+- **Create an issue**: `gh issue create --repo mcode-webui/minimax-code --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Read an issue**: `gh issue view <number> --repo mcode-webui/minimax-code --comments`, filtering comments by `jq` and also fetching labels.
+- **List issues**: `gh issue list --repo mcode-webui/minimax-code --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
+- **Comment on an issue**: `gh issue comment <number> --repo mcode-webui/minimax-code --body "..."`
+- **Apply / remove labels**: `gh issue edit <number> --repo mcode-webui/minimax-code --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone. `origin` is the fork, so issues are created there, not on `upstream`.

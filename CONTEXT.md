@@ -26,6 +26,49 @@ The fourth client: a browser interface served by `packages/webui`, running as a
 peer of the TUI against the same harness layer.
 _Avoid_: web CLI, web front end for the CLI, web version
 
+### WebUI internal layers
+
+Four layers inside `packages/webui`. The client/server split says where code runs;
+these say who owns a responsibility.
+
+**WebUI runtime**:
+The Node-side module group that adapts public harness capabilities and owns every
+process resource the service holds — OAuth core, leases and refresh timers,
+quota, check-in, account login, the mcode-tools broker, the browser provider,
+profile files and session transfer. It knows nothing about which session a browser
+has selected.
+_Avoid_: harness runtime, runtime host, backend — those name the harness side
+
+**WebUI application**:
+The browser-side owner of business orchestration and of the single write authority
+for session and interaction records: recovery policy, request ownership, query
+invalidation and progress derivation. Not a second execution runtime.
+_Avoid_: client runtime, controller, store — the store is only one part of it
+
+**Loopback server**:
+The network ingress: authentication, envelope validation, dispatch, wire
+projection, socket lifecycle and static assets. It holds no browser state.
+_Avoid_: API server, backend, gateway
+
+**Binding**:
+A statically declared mapping from one wire operation to one runtime capability
+method, replacing a hand-written forwarding closure. It is never discovered by
+enumerating runtime methods, and no request body selects an arbitrary runtime
+member.
+_Avoid_: reflection, dispatch table, adapter — those name the behaviour it forbids
+
+**Event channel**:
+The single long-lived `watchEvents` subscription a WebUI application instance
+owns, shared by every consumer in that instance. Distinct from a stream frame
+channel, which `send`/`resume` and terminal keep separately.
+_Avoid_: socket, connection, subscription
+
+**Stream loop**:
+The browser mechanism that reads a session's stream frames and manages resume and
+cancellation. It performs the history and context transforms it needs through
+injected functions rather than reaching into projection modules.
+_Avoid_: stream handler, reader
+
 ### Sessions
 
 **Session**:
@@ -72,6 +115,10 @@ One running harness instance, identified per process. A session's live execution
 stream subscriptions and pending interactions belong to the owner that created
 them.
 _Avoid_: daemon, server, backend instance
+
+Not to be confused with the **WebUI runtime**, which is a module group inside the
+WebUI service rather than a running instance. A process has one runtime owner and
+one WebUI runtime; the words name different things.
 
 **surface**:
 The value a client declares to identify which interface it is, from the fixed set

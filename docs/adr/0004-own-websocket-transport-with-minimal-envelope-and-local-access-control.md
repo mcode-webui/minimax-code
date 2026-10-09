@@ -26,3 +26,9 @@ The browser never receives provider credentials; the server resolves them. Remot
 access is a separate decision, not a bind-address change: it would add
 authentication, TLS or a trusted reverse proxy, CSRF and Origin policy, deployment
 and upgrade handling, and a user-isolation model.
+
+This decision is now realised as an explicit two-way contract split rather than a
+single file on one side of the wire: wire DTOs live in `src/shared/`, while the
+in-process capabilities carrying `AsyncIterable` sources and `AbortSignal`
+contexts stay server-side. See
+[0014](0014-webui-splits-its-internal-capability-and-orchestration-layers.md).

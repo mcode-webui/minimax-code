@@ -42,7 +42,7 @@ import {
 import type { WebuiHarnessPort } from "../runtime/port.js";
 import type { WebuiSessionInfo } from "../shared/contracts/session.js";
 import { WebuiTerminalManager } from "./terminal.js";
-import { webuiSessionTransferFileName } from "../runtime/session-transfer.js";
+import { webuiSessionTransferFileName, importWebuiSessionTransfer, WEBUI_DEFAULT_IMPORT_AGENT } from "../runtime/session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -468,20 +468,11 @@ export class WebuiService {
   /**
    * Recreate a session from a transfer file.
    *
-   * `WebuiCreateSessionRequest.name` is the *agent* to run under, not a title.
-   * Both the agent and the working directory therefore come from the query
-   * string -- the context the user is importing into -- and never from the
-   * payload. A downloaded file is untrusted input: if its session block could
-   * name an agent or a workspace, importing a file could aim a session at an
-   * arbitrary directory on this machine, or ask for an agent that does not
-   * exist and take the whole import down with it. The file contributes its
-   * history and its title; the caller contributes who and where.
-   *
-   * The title is applied after the history lands. The session is created
-   * first and the history written into it second, so a malformed payload
-   * leaves nothing behind: the failure path deletes the session it just made
-   * rather than leaving an empty shell in the sidebar for every bad file the
-   * user tries.
+   * The route keeps the network-facing half -- reading the body and the query
+   * string -- and delegates the workflow (create, import, title, rollback) to
+   * the runtime's `session-transfer` module, which owns it (plan section 7.1).
+   * The outcome maps back onto the same status codes and bodies this handler
+   * served before the move.
    */
   private async handleSessionImport(
     request: IncomingMessage,
@@ -503,48 +494,23 @@ export class WebuiService {
     const agentName = url.searchParams.get("agentName")?.trim() || WEBUI_DEFAULT_IMPORT_AGENT;
     const workspaceDir = url.searchParams.get("workspaceDir")?.trim() || undefined;
 
-    let sessionId: string;
-    try {
-      const created = await this.port.createSession({
-        name: agentName,
-        ...(workspaceDir ? { workspaceDir } : {}),
-      });
-      const id = created.sessionId ?? created.session?.sessionId;
-      if (!id) throw new Error("Session creation returned no id");
-      sessionId = id;
-    } catch (error) {
-      // The caller gets a status code, not a stack trace, so the reason has
-      // to land somewhere or a 500 here is undiagnosable. Only the message:
-      // the payload is untrusted and the error can quote it back.
-      console.error(`[webui] session import could not create a session: ${describeError(error)}`);
+    const outcome = await importWebuiSessionTransfer(this.port, {
+      file,
+      agentName,
+      workspaceDir,
+    });
+    if (outcome.kind === "imported") {
+      respondJson(response, 200, { ...outcome.body });
+      return;
+    }
+    if (outcome.kind === "create-failed") {
       rejectHttp(response, 500, "Internal Server Error");
       return;
     }
-
-    try {
-      const result = await this.port.importSessionTransfer({
-        targetSessionId: sessionId,
-        sourceSessionId: readImportSourceId(file),
-        file,
-      });
-      const title = readImportTitle(file);
-      if (title) await this.port.updateSession({ id: result.sessionId, title });
-      respondJson(response, 200, {
-        sessionId: result.sessionId,
-        canonicalMessages: result.canonicalMessages,
-        displayMessages: result.displayMessages,
-        revision: result.revision,
-      });
-    } catch (error) {
-      await this.port.deleteSession({ id: sessionId }).catch(() => undefined);
-      // "Not a transfer file at all" is the user's mistake and worth saying so;
-      // anything else means the file parsed but could not be replayed.
-      const foreign = (error as { readonly code?: unknown } | undefined)?.code === "not-a-transfer-file";
-      console.error(`[webui] session import failed: ${describeError(error)}`);
-      respondJson(response, foreign ? 400 : 422, {
-        error: foreign ? "Not a session transfer file" : "Session import failed",
-      });
-    }
+    const foreign = outcome.kind === "not-transfer-file";
+    respondJson(response, foreign ? 400 : 422, {
+      error: foreign ? "Not a session transfer file" : "Session import failed",
+    });
   }
 
   /**
@@ -892,9 +858,6 @@ function rejectHttp(
  */
 const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
 
-/** The agent an import lands under when the caller names none. */
-const WEBUI_DEFAULT_IMPORT_AGENT = "main";
-
 /**
  * `maxBytes` is a parameter rather than a constant so the cap can be tested
  * without allocating a quarter of a gigabyte in a unit test.
@@ -932,35 +895,6 @@ function respondJson(
     "Cache-Control": "no-store",
   });
   response.end(encoded);
-}
-
-function readImportSession(file: unknown): Record<string, unknown> | undefined {
-  const session = (file as { readonly session?: unknown } | undefined)?.session;
-  return typeof session === "object" && session !== null && !Array.isArray(session)
-    ? (session as Record<string, unknown>)
-    : undefined;
-}
-
-/** Trimmed, length-capped strings only -- the payload is untrusted. */
-function readImportString(file: unknown, key: "title" | "agentName" | "workspaceDir"): string | undefined {
-  const value = readImportSession(file)?.[key];
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed ? trimmed.slice(0, 200) : undefined;
-}
-
-function readImportTitle(file: unknown): string | undefined {
-  return readImportString(file, "title");
-}
-
-function readImportSourceId(file: unknown): string | undefined {
-  const value = readImportSession(file)?.sessionId;
-  return typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : undefined;
-}
-
-function describeError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.length > 300 ? `${message.slice(0, 300)}...` : message;
 }
 
 function parseHttpUrl(rawUrl: string | undefined): URL | undefined {

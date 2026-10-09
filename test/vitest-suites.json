@@ -306,6 +306,7 @@
       "packages/webui/test/unit/queue-panel.test.ts",
       "packages/webui/test/unit/vite-dev-proxy.test.ts",
       "packages/webui/test/unit/session-transfer-route.test.ts",
+      "packages/webui/test/unit/webui-runtime-lifecycle-invariants.test.ts",
       "packages/webui/test/unit/outside-close.test.ts",
       "packages/webui/test/unit/plugin-market-catalogue.test.tsx",
       "packages/webui/test/unit/plugin-mcp-status.test.tsx",

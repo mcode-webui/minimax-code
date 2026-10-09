@@ -1,3 +1,16 @@
+// Wire contract record (plan section 7.1 / 7.5): every exported
+// declaration below records its wire purpose, its producer and its
+// consumers, verified against the tree. Documentation only.
+//
+// | Declaration | Wire purpose | Producer | Consumers |
+// | --- | --- | --- | --- |
+// | `WebuiPendingPermission` | One pending tool-permission request. | Runtime `listPendingPermissions` (`runtime/harness/interactions.ts`; CliService). | `client/contracts/interaction-port.ts`; `client/projection/effect-reducer.ts`; `client/components/InteractionPanel.tsx`. |
+// | `WebuiQuestionnaireOption` | One selectable option in a questionnaire step. | Runtime `getPendingQuestionnaire` (`runtime/harness/interactions.ts`). | `client/projection/questionnaire-state.ts`. |
+// | `WebuiQuestionnaireStep` | One question/step of a questionnaire. | Runtime `getPendingQuestionnaire`. | `client/projection/questionnaire-state.ts`. |
+// | `WebuiQuestionnaireRequest` | The pending questionnaire (steps, presentation, plan-review payload). | Runtime `getPendingQuestionnaire`. | `client/contracts/interaction-port.ts`; `client/projection/questionnaire-state.ts`; `client/components/InteractionPanel.tsx`; `server/operation/questionnaire.ts`. |
+// | `WebuiQuestionnaireAnswer` | One submitted answer to a questionnaire step. | Browser `client/components/InteractionPanel.tsx` / `client/transport.ts` (`replyQuestionnaire`). | `client/contracts/interaction-port.ts`; runtime `replyQuestionnaire`; `server/operation/questionnaire.ts`. |
+// | `WebuiPermissionDecision` | The allowOnce/allowAlways/deny reply value. | Browser `client/components/InteractionPanel.tsx`. | Runtime `permissionReplyValue` (`runtime/harness/interactions.ts`); `server/operation/common.ts`. |
+// | `WebuiInteractionReplyResult` | Outcome of a permission/questionnaire reply or dismissal. | Runtime `replyPermission`/`replyQuestionnaire`/`dismissQuestionnaire` (`runtime/harness/interactions.ts`); `server/operation/questionnaire.ts`. | `client/contracts/interaction-port.ts`; `client/transport.ts`; `client/components/SessionComposer.tsx`. |
 export interface WebuiPendingPermission {
   readonly requestId: string;
   readonly sessionId: string;

@@ -1,3 +1,19 @@
+// Wire contract record (plan section 7.1 / 7.5): every exported
+// declaration below records its wire purpose, its producer and its
+// consumers, verified against the tree. Documentation only.
+//
+// | Declaration | Wire purpose | Producer | Consumers |
+// | --- | --- | --- | --- |
+// | `WebuiWorkspaceFile` | One node of the workspace file tree. | Runtime `listWorkspaceFileTree` (`runtime/harness/workspace.ts`; CliService). | `client/contracts/workspace-port.ts`; `client/components/WorkspaceFileTree.tsx`; `client/components/SessionComposer.tsx`. |
+// | `WebuiWorkspaceFileContent` | One file's content, type and preview data. | Runtime `readWorkspaceFile` (`runtime/harness/workspace.ts`). | `client/contracts/workspace-port.ts`; `client/components/WorkspaceHtmlPreview.tsx`; `client/components/WorkspaceMediaPreview.tsx`. |
+// | `WebuiWorkspaceDirectoryEntry` | One directory entry in a server listing. | Server `listWorkspaceDirectories` (`server/operation/workspace.ts`; the local browseWorkspaceDirs resource). | unverified — nested in `WebuiWorkspaceDirectoryListing.entries`; no direct importer. |
+// | `WebuiArchiveEntry` | One entry inside an archive listing (archive-internal path). | Runtime `readWorkspaceArchiveListing` (`runtime/workspace-archive.ts`, via `runtime/harness/workspace.ts` `readWorkspaceArchive`). | `client/components/WorkspaceArchiveView.tsx`. |
+// | `WebuiWorkspaceArchiveListing` | One level of an archive listing (entries, total, truncated). | Runtime `readWorkspaceArchive` (`runtime/harness/workspace.ts`; `runtime/workspace-archive.ts`). | `client/contracts/workspace-port.ts`; `client/components/WorkspaceArchiveView.tsx`. |
+// | `WebuiWorkspaceArchiveExtractResult` | The written-file count of an archive extraction. | Runtime `extractWorkspaceArchive` (`runtime/harness/workspace.ts`; `runtime/workspace-archive.ts`). | `client/contracts/workspace-port.ts`; `client/components/WorkspaceArchiveView.tsx`. |
+// | `WebuiWorkspaceDirectoryListing` | One level of the local directory tree for the project picker. | Server `listWorkspaceDirectories` (`server/operation/workspace.ts`; a local server resource, not a runtime call). | `client/contracts/workspace-port.ts`; `client/components/SessionComposer.tsx`. |
+// | `WebuiWorkspaceEnvironment` | The session-scoped git/workspace environment projection. | Runtime `getWorkspaceEnvironment` (`runtime/harness/workspace.ts`). | `client/contracts/workspace-port.ts`; `client/components/WorkspacePanels.tsx`; `server/operation/workspace.ts`. |
+// | `WebuiWorkspaceGitMutation` | The commit / commitAndPush / push action value. | Browser `client/components/WorkspacePanels.tsx`. | unverified — nested in `WebuiWorkspaceGitMutationRequest.action`; no direct importer. |
+// | `WebuiWorkspaceGitMutationRequest` | Request to run a workspace git mutation. | Browser `client/components/WorkspacePanels.tsx`. | `client/contracts/workspace-port.ts`; runtime `mutateWorkspaceGit`; `server/operation/workspace.ts`. |
 export interface WebuiWorkspaceFile {
   readonly path: string;
   readonly name: string;

@@ -11,6 +11,16 @@
  * an empty `mutations` array, an `add_file` carrying both or neither file
  * identity, a non-positive width or height, and a non-integer `zIndex`.
  */
+// Wire contract record (plan section 7.1 / 7.5): every exported
+// declaration below records its wire purpose, its producer and its
+// consumers, verified against the tree. Documentation only.
+//
+// | Declaration | Wire purpose | Producer | Consumers |
+// | --- | --- | --- | --- |
+// | `CanvasNodeLayout` | One node's x/y/width/height/zIndex inside a canvas mutation. | Browser `client/components/WorkspaceCanvas.tsx` (gesture handling). | `client/contracts/workspace-port.ts`; runtime `applyCanvas` (`runtime/harness/workspace.ts`). |
+// | `CanvasMutation` | A single add_file / update_layout / remove_node canvas gesture. | Browser `client/components/WorkspaceCanvas.tsx`. | `client/contracts/workspace-port.ts`; runtime `applyCanvas`. |
+// | `CanvasOperation` | A batch of mutations plus schemaVersion/operationId sent to the canvas authority. | Browser `client/components/WorkspaceCanvas.tsx`. | `client/contracts/workspace-port.ts`; `client/components/WorkspacePanels.tsx`; runtime `applyCanvas`. |
+// | `WebuiCanvasDocument` | The canvas document (nodes, changeSeq) returned by read/apply. | Runtime `readCanvas` / `applyCanvas` (`runtime/harness/workspace.ts`; runtime canvas authority). | `client/contracts/workspace-port.ts`; `client/components/WorkspaceCanvas.tsx`; `client/components/WorkspacePanels.tsx`. |
 export interface CanvasNodeLayout {
   readonly x: number;
   readonly y: number;

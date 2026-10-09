@@ -3828,6 +3828,7 @@
     "packages/webui/test/unit/webui-plan-mode.test.ts",
     "packages/webui/test/unit/webui-round3-acceptance.test.tsx",
     "packages/webui/test/unit/webui-runtime-environment.test.ts",
+    "packages/webui/test/unit/webui-runtime-lifecycle-invariants.test.ts",
     "packages/webui/test/unit/webui-service.test.ts",
     "packages/webui/test/unit/webui-shell.test.ts",
     "packages/webui/test/unit/webui-startup-fallback.test.tsx",

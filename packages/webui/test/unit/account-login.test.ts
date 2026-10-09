@@ -20,7 +20,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createWebuiAccountLoginSession } from "../../src/server/account-login.js";
+import { createWebuiAccountLoginSession } from "../../src/runtime/account-login.js";
 import { deriveWebuiAccountLoginPhase } from "../../src/client/components/AccountLoginDialog.js";
 
 /** A controllable core: the test decides when the prompt lands and when the

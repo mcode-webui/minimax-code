@@ -16,7 +16,7 @@ import {
   UsageQuotaClient,
   readQuotaWindow,
   readVideoQuota,
-} from "../../src/server/usage-quota.js";
+} from "../../src/runtime/usage-quota.js";
 import { getUsageQuotaOperation } from "../../src/server/operation/operations.js";
 import {
   UsagePanel,

@@ -27,8 +27,12 @@ if (!process.env.WEBUI_SERVER_TSX) {
 } else {
   const os = await import("node:os");
   const path = await import("node:path");
-  const { createWebuiRuntimeHost, createHarnessPortFromHost, WebuiService } =
-    await import("../packages/webui/src/server/index.ts");
+  const { createWebuiRuntimeHost } = await import(
+    "../packages/webui/src/runtime/index.ts"
+  );
+  const { createHarnessPortFromHost, WebuiService } = await import(
+    "../packages/webui/src/server/index.ts"
+  );
   const dataDir =
     process.env.MINIMAX_DATA_DIR?.trim() || path.join(os.homedir(), ".minimax");
   const tcpPort = Number(process.env.WEBUI_SERVER_PORT ?? 8787);

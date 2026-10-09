@@ -33,8 +33,8 @@ import path from "node:path";
 import {
   configureWebuiRuntimeEnvironment,
   type WebuiRuntimeScope,
-} from "../../src/server/runtime-environment.js";
-import { readWebuiAuthContext } from "../../src/server/auth-context.js";
+} from "../../src/runtime/runtime-environment.js";
+import { readWebuiAuthContext } from "../../src/runtime/auth-context.js";
 
 const RUNTIME_ENV_KEYS = [
   "MAVIS_REGION",

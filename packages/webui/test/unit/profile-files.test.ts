@@ -51,7 +51,7 @@ import {
   writeAgentMemory,
   writeGlobalInstructions,
   writeUserProfile,
-} from "../../src/server/profile-files.js";
+} from "../../src/runtime/profile-files.js";
 import {
   getAgentMemoryOperation,
   getMemorySettingsOperation,

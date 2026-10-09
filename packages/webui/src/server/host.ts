@@ -22,12 +22,12 @@ import {
   writeGlobalInstructions,
   writeUserProfile,
   WEBUI_DEFAULT_AGENT_NAME,
-} from "./profile-files.js";
+} from "../runtime/profile-files.js";
 import { WEBUI_PROTOCOL_VERSION } from "../shared/envelope.js";
 import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,
-} from "./workspace-archive.js";
+} from "../runtime/workspace-archive.js";
 import type { WebuiHarnessPort } from "./port.js";
 import type {
   WebuiSessionListRequest,

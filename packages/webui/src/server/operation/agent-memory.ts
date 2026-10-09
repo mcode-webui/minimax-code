@@ -1,5 +1,5 @@
 import { WebuiErrorCode } from "../../shared/envelope.js";
-import { WEBUI_DEFAULT_AGENT_NAME } from "../profile-files.js";
+import { WEBUI_DEFAULT_AGENT_NAME } from "../../runtime/profile-files.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import {
   GET_AGENT_MEMORY_OPERATION_NAME,

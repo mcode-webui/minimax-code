@@ -37,12 +37,12 @@
       "rule": "runtime -> contracts",
       "category": "runtime-to-client-contracts",
       "stage": 2,
-      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it.",
+      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it. The host.ts reference disappears with the harness-adapter split (plan \u00a77.1).",
       "occurrences": null
     },
     {
       "from": "server/index.ts",
-      "to": "server/assembly.ts",
+      "to": "runtime/assembly.ts",
       "layerFrom": "server",
       "layerTo": "runtime",
       "rule": "server -> runtime",
@@ -62,7 +62,7 @@
     },
     {
       "from": "server/index.ts",
-      "to": "server/mcode-tools.ts",
+      "to": "runtime/mcode-tools.ts",
       "layerFrom": "server",
       "layerTo": "runtime",
       "rule": "server -> runtime",
@@ -72,7 +72,7 @@
     },
     {
       "from": "server/operation/agent-memory.ts",
-      "to": "server/profile-files.ts",
+      "to": "runtime/profile-files.ts",
       "layerFrom": "server",
       "layerTo": "runtime",
       "rule": "server -> runtime",
@@ -82,7 +82,7 @@
     },
     {
       "from": "server/operation/operation-handlers.ts",
-      "to": "server/commands/runner.ts",
+      "to": "runtime/commands/runner.ts",
       "layerFrom": "server",
       "layerTo": "runtime",
       "rule": "server -> runtime",
@@ -98,18 +98,8 @@
       "rule": "runtime-port -> contracts",
       "category": "runtime-to-client-contracts",
       "stage": 2,
-      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it.",
+      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it. The port.ts reference disappears with the port split (plan \u00a77.1).",
       "occurrences": null
-    },
-    {
-      "from": "server/profile-files.ts",
-      "to": "client/contracts/settings-port.ts",
-      "layerFrom": "runtime",
-      "layerTo": "contracts",
-      "rule": "runtime -> contracts",
-      "category": "runtime-to-client-contracts",
-      "stage": 2,
-      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it."
     }
   ],
   "cycles": [
@@ -147,7 +137,7 @@
   "allowances": [
     {
       "kind": "non-literal-dynamic-import",
-      "file": "server/mcode-tools-entry.ts",
+      "file": "runtime/mcode-tools-entry.ts",
       "line": 6,
       "stage": 2,
       "reason": "Node subprocess entry point loads its bundled embedded CLI through a URL object, not a statically resolvable specifier. It is a Node executable entry, not part of the browser or server module graph."

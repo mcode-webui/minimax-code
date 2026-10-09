@@ -46,7 +46,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
-import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiUserProfileFields, WebuiUserProfileView } from "../client/contracts/settings-port.js";
+import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiUserProfileFields, WebuiUserProfileView } from "../shared/contracts/personalization.js";
 
 /**
  * Mirrors `MINIMAX_CODE_DEFAULT_AGENT_NAME` in

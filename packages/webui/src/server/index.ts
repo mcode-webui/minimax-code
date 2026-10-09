@@ -117,11 +117,11 @@ export {
   type WebuiBrowserAdapter,
   type WebuiBrowserToolExposure,
   type WebuiBrowserProvider,
-} from "./assembly.js";
+} from "../runtime/assembly.js";
 export {
   prepareWebuiMcodeToolsIntegration,
   createWebuiAuthLeaseSession,
   type WebuiMcodeToolsReadiness,
   type WebuiMcodeToolsIntegrationOptions,
   type WebuiMcodeToolsIntegrationDependencies,
-} from "./mcode-tools.js";
+} from "../runtime/mcode-tools.js";

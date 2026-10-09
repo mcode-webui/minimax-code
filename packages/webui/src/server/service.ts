@@ -42,7 +42,7 @@ import {
 import type { WebuiHarnessPort } from "./port.js";
 import type { WebuiSessionInfo } from "../shared/contracts/session.js";
 import { WebuiTerminalManager } from "./terminal.js";
-import { webuiSessionTransferFileName } from "./session-transfer.js";
+import { webuiSessionTransferFileName } from "../runtime/session-transfer.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;

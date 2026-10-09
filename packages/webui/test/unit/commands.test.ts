@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, expect, it, vi } from "vitest";
-import { runWebuiCommand } from "../../src/server/commands/runner.js";
+import { runWebuiCommand } from "../../src/runtime/commands/runner.js";
 import {
   createSessionOperation,
   createUserModelProviderOperation,

@@ -7,7 +7,7 @@ import { SigninDayStatus, SigninClaimResult, SigninPanelScene } from "@mavis/sha
 import {
   DailyCheckinClient,
   CheckInAuthError,
-} from "../../src/server/check-in.js";
+} from "../../src/runtime/check-in.js";
 import {
   getSigninPanelOperation,
   claimSigninOperation,

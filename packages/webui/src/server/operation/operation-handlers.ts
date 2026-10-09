@@ -1,4 +1,4 @@
-import { runWebuiCommand } from "../commands/runner.js";
+import { runWebuiCommand } from "../../runtime/commands/runner.js";
 import type { WebuiHarnessPort } from "../port.js";
 import { listWorkspaceDirectories } from "./workspace.js";
 import {

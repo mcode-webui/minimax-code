@@ -303,6 +303,11 @@ export function classifyLayers(relative) {
   if (normalized.startsWith("client/contracts/")) return ["contracts"];
   if (normalized.startsWith("shared/")) return ["shared"];
   if (normalized.startsWith("runtime/")) {
+    // `session-transfer.ts` keeps the dual `runtime`/`server` target the
+    // current path carried: it is runtime-owned but the loopback HTTP layer
+    // (plan section 7.1: it absorbs the import workflow inside the service
+    // handler) legitimately consumes it.
+    if (normalized === "runtime/session-transfer.ts") return ["runtime", "server"];
     if (
       normalized === "runtime/port.ts" ||
       normalized === "runtime/index.ts" ||

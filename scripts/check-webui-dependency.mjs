@@ -72,7 +72,9 @@ function loadCompilerOptions(configRelative) {
 const clientOptions = loadCompilerOptions("tsconfig.client.json");
 const serverOptions = loadCompilerOptions("tsconfig.server.json");
 const compilerOptionsFor = (relative) =>
-  relative.startsWith("server/") ? serverOptions : clientOptions;
+  relative.startsWith("server/") || relative.startsWith("runtime/")
+    ? serverOptions
+    : clientOptions;
 
 const baselineFile = path.resolve(values.baseline ?? defaultBaselinePath);
 const baseline = JSON.parse(readFileSync(baselineFile, "utf8"));

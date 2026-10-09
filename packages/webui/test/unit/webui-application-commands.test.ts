@@ -12,12 +12,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createWebuiActiveTurnProbe, webuiActiveTurnProbeFor } from "../../src/client/application/active-turn-probe.js";
 import {
-  markWebuiRailSessionRead,
-  persistWebuiRailUnreadCounts,
-  probeWebuiRailActiveTurns,
-  restoreWebuiRailUnreadCounts,
-  seedWebuiRailActivity,
-  type WebuiRailActivityUpdate,
+  createWebuiRailActivityCommands,
+  type WebuiRailActivityStore,
 } from "../../src/client/application/rail-activity.js";
 import { queueWebuiTurn } from "../../src/client/application/queue-command.js";
 import {
@@ -68,40 +64,54 @@ describe("the deduplicated active-turn probe", () => {
   });
 });
 
-describe("the rail-activity slice", () => {
-  it("seeds first-paint times and marks a session read", () => {
-    let activity: WebuiSessionActivityMap = { s1: { lastActivityAt: 0, unread: 3 } };
-    const update: WebuiRailActivityUpdate = (fn) => {
-      activity = fn(activity);
+describe("the rail-activity command surface", () => {
+  function makeStore(initial: WebuiSessionActivityMap): {
+    readonly store: WebuiRailActivityStore;
+    readonly read: () => WebuiSessionActivityMap;
+  } {
+    let activity = initial;
+    return {
+      store: {
+        getSnapshot: () => ({ activity }),
+        updateActivity: (fn) => {
+          activity = fn(activity);
+        },
+      },
+      read: () => activity,
     };
-    seedWebuiRailActivity(update, [{ sessionId: "s1", updatedAt: 5_000 }] as never);
-    expect(activity.s1?.lastActivityAt).toBe(5_000);
-    expect(activity.s1?.unread).toBe(3);
+  }
 
-    markWebuiRailSessionRead(update, "s1");
-    expect(activity.s1?.unread).toBeUndefined();
+  it("seeds first-paint times and marks a session read", () => {
+    const { store, read } = makeStore({ s1: { lastActivityAt: 0, unread: 3 } });
+    const commands = createWebuiRailActivityCommands(store);
+    commands.seed([{ sessionId: "s1", updatedAt: 5_000 }] as never);
+    expect(read().s1?.lastActivityAt).toBe(5_000);
+    expect(read().s1?.unread).toBe(3);
+
+    commands.markRead("s1");
+    expect(read().s1?.unread).toBeUndefined();
   });
 
   it("restores stored counts as a floor, excluding the open session", () => {
-    let activity: WebuiSessionActivityMap = {
+    const { store, read } = makeStore({
       s1: { lastActivityAt: 0 },
       s2: { lastActivityAt: 0, unread: 5 },
-    };
-    const update: WebuiRailActivityUpdate = (fn) => {
-      activity = fn(activity);
-    };
-    restoreWebuiRailUnreadCounts(update, { s1: 2, s2: 3 }, "s2");
-    expect(activity.s1?.unread).toBe(2);
+    });
+    const commands = createWebuiRailActivityCommands(store);
+    commands.restoreUnreadCounts({ s1: 2, s2: 3 }, "s2");
+    expect(read().s1?.unread).toBe(2);
     // The open session keeps its live count; the lower stored one is ignored.
-    expect(activity.s2?.unread).toBe(5);
+    expect(read().s2?.unread).toBe(5);
   });
 
   it("persists only the positive counts", () => {
     const write = vi.fn();
-    persistWebuiRailUnreadCounts(
-      { s1: { lastActivityAt: 0, unread: 2 }, s2: { lastActivityAt: 0, unread: 0 }, s3: { lastActivityAt: 0 } },
-      write,
-    );
+    const { store } = makeStore({
+      s1: { lastActivityAt: 0, unread: 2 },
+      s2: { lastActivityAt: 0, unread: 0 },
+      s3: { lastActivityAt: 0 },
+    });
+    createWebuiRailActivityCommands(store).persistUnreadCounts(write);
     expect(write).toHaveBeenCalledWith({ s1: 2 });
   });
 
@@ -111,21 +121,17 @@ describe("the rail-activity slice", () => {
       busyReason: "turn" as const,
       locallyOwned: false,
     }));
-    const applied: string[] = [];
-    const cancel = probeWebuiRailActiveTurns({
+    const { store } = makeStore({});
+    const cancel = createWebuiRailActivityCommands(store).probeActiveTurns({
       sessions: [{ sessionId: "s1" }, { sessionId: "s2" }],
       probe: { probe },
-      update: (fn) => {
-        const next = fn({});
-        applied.push(...Object.keys(next).map((id) => next[id]!.busy?.turnId ?? ""));
-      },
       now: () => 1,
     });
     cancel();
     await flush();
     expect(probe).toHaveBeenCalledTimes(2);
-    // Cancelled before any answer landed, so nothing was applied.
-    expect(applied).toEqual([]);
+    // Cancelled before any answer landed, so the store stayed empty.
+    expect(store.getSnapshot().activity).toEqual({});
   });
 });
 
@@ -172,7 +178,7 @@ describe("the send command", () => {
   it("routes to the queue when a turn is already in flight", async () => {
     const enqueueMessage = vi.fn(async () => ({}));
     const onDraftChange = vi.fn();
-    const writer = { kind: "session" as const, setStream: vi.fn(), setSending: vi.fn() };
+    const writer = { kind: "session" as const, updateStream: vi.fn(), setTurnSending: vi.fn() };
     await sendWebuiTurn({
       sessionId: "s1",
       message: "queued",
@@ -183,7 +189,7 @@ describe("the send command", () => {
       createWriter: () => writer,
     });
     expect(enqueueMessage).toHaveBeenCalledWith({ id: "s1", content: "queued" });
-    expect(writer.setSending).not.toHaveBeenCalled();
+    expect(writer.setTurnSending).not.toHaveBeenCalled();
   });
 });
 

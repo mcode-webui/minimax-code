@@ -17,6 +17,10 @@
 // here, and every consumer reads / writes through the helpers above.
 
 import { useEffect, useState } from "react";
+import {
+  createWebuiSessionCommands,
+  type WebuiSessionCommands,
+} from "./application/session-commands.js";
 import { initialWebuiStreamState } from "./projection/stream-state.js";
 import type { WebuiComposerSubmitHandlers } from "./projection/composer-state.js";
 import type { WebuiStreamState } from "./projection/stream-state.js";
@@ -167,6 +171,13 @@ export function useSessionRuntimeState(sessionId: string | undefined): {
   readonly state: WebuiSessionRuntimeState;
   readonly setStream: WebuiComposerSubmitHandlers["setStream"];
   readonly setSending: (sending: boolean) => void;
+  /**
+   * The purpose-named command surface for the stream and sending slices
+   * (plan §7.6; ticket #45 prerequisite 3). A consumer submits one of these
+   * commands instead of calling a store writer directly; the writer itself does
+   * not leave this module.
+   */
+  readonly commands: WebuiSessionCommands;
 } {
   const sessionKey = sessionId ?? HOME_SESSION_RUNTIME_KEY;
   const [snapshot, setSnapshot] = useState(() => ({
@@ -194,17 +205,20 @@ export function useSessionRuntimeState(sessionId: string | undefined): {
       if (listeners?.size === 0) sessionRuntimeListeners.delete(sessionKey);
     };
   }, [sessionKey]);
+  const setStream: WebuiComposerSubmitHandlers["setStream"] = (update) =>
+    updateSessionRuntimeState(sessionKey, (current) => ({
+      ...current,
+      stream: update(current.stream),
+    }));
+  const setSending = (sending: boolean): void =>
+    updateSessionRuntimeState(sessionKey, (current) => ({
+      ...current,
+      sending,
+    }));
   return {
     state,
-    setStream: (update) =>
-      updateSessionRuntimeState(sessionKey, (current) => ({
-        ...current,
-        stream: update(current.stream),
-      })),
-    setSending: (sending) =>
-      updateSessionRuntimeState(sessionKey, (current) => ({
-        ...current,
-        sending,
-      })),
+    setStream,
+    setSending,
+    commands: createWebuiSessionCommands({ setStream, setSending }),
   };
 }

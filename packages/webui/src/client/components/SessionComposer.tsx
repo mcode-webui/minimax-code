@@ -18,6 +18,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -55,6 +56,10 @@ import {
   type WebuiTurnWriterOwner,
 } from "../application/turn-commands.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
+import {
+  createWebuiInteractionCommands,
+  createWebuiTurnCommands,
+} from "../application/session-commands.js";
 import {
   reduceWebuiStreamFrame,
   webuiSessionStatusType,
@@ -149,7 +154,6 @@ import {
   readSessionRuntimeState,
   useSessionRuntimeState,
 } from "../session-runtime-store.js";
-import { initialWebuiStreamState } from "../projection/stream-state.js";
 import { workspaceProjectName } from "./SessionRail.js";
 import {
   findWebuiMentionRange,
@@ -703,11 +707,7 @@ export function WebuiComposer({
   readonly onSelectSession?: (sessionId: string) => void;
   readonly onOpenPluginManagement?: (area: "plugins" | "skills") => void;
 } & WebuiSessionComposerCapabilities): ReactElement {
-  const {
-    state: runtimeState,
-    setStream,
-    setSending,
-  } = useSessionRuntimeState(sessionId);
+  const { state: runtimeState, commands } = useSessionRuntimeState(sessionId);
   const { stream, sending } = runtimeState;
   const [permissions, setPermissions] = useState<
     readonly WebuiPendingPermission[]
@@ -715,6 +715,19 @@ export function WebuiComposer({
   const [questionnaire, setQuestionnaire] =
     useState<WebuiQuestionnaireRequest>();
   const [goal, setGoal] = useState<WebuiGoal>();
+  // The purpose-named command surface for the interaction slices (ticket #45
+  // prerequisite 3). The component submits `replacePendingPermissions`,
+  // `removePendingPermission`, `updateQuestionnaire` and `applyGoal` instead of
+  // calling the React setters directly; the setters stay behind the surface.
+  const interactionCommands = useMemo(
+    () =>
+      createWebuiInteractionCommands({
+        setPermissions,
+        setQuestionnaire,
+        setGoal,
+      }),
+    [],
+  );
   // Bumped by every write to the goal, so a steering re-read that lands after
   // a newer update can tell it is stale and stand down. EVERY writer must go
   // through `applyGoal` — a direct `setGoal` here would let an in-flight read
@@ -724,8 +737,8 @@ export function WebuiComposer({
   sessionIdRef.current = sessionId;
   const applyGoal = useCallback((next: WebuiGoal | undefined) => {
     goalVersionRef.current += 1;
-    setGoal(next);
-  }, []);
+    interactionCommands.applyGoal(next);
+  }, [interactionCommands]);
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [goalMode, setGoalMode] = useState(false);
   const [planMode, setPlanMode] = useState(false);
@@ -809,7 +822,7 @@ export function WebuiComposer({
       const snapshot = readContextUsageSnapshot(page.contextSnapshot);
       const fromMessages = latestContextUsage((page.messages ?? []).map(projectWebuiMessageToStreamMessage));
       const contextUsage = snapshot ?? fromMessages;
-      if (contextUsage) setStream((current) => ({ ...current, contextUsage }));
+      if (contextUsage) commands.updateStream((current) => ({ ...current, contextUsage }));
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [sessionId, sessionStatus, loadMessages]);
@@ -822,8 +835,8 @@ export function WebuiComposer({
       setAccountStatus(undefined);
       // The live turn bleeds the same way: the module-level runtime map kept
       // the previous turn's stream under the welcome hero on every 新建任务.
-      setStream(() => initialWebuiStreamState);
-      setSending(false);
+      commands.clearStream();
+      commands.setTurnSending(false);
       return undefined;
     }
     let cancelled = false;
@@ -836,10 +849,10 @@ export function WebuiComposer({
       const sessionPermissions = (permissionResult?.requests ?? []).filter(
         (permission) => permission.sessionId === sessionId,
       );
-      setPermissions(sessionPermissions);
-      setQuestionnaire(questionnaireResult?.request);
+      interactionCommands.replacePendingPermissions(sessionPermissions);
+      interactionCommands.applyQuestionnaire(questionnaireResult?.request);
       if (sessionPermissions.length > 0 || questionnaireResult?.request)
-        setStream((current) => ({ ...current, phase: "waiting" }));
+        commands.awaitInteraction();
       if (listQueueMessages) {
         const queue = await listQueueMessages({ id: sessionId });
         if (cancelled) return;
@@ -871,8 +884,8 @@ export function WebuiComposer({
         resumeSession,
         loadMessages,
         readStream,
-        setSending,
-        setStream,
+        setSending: commands.setTurnSending,
+        setStream: commands.updateStream,
       });
     };
 
@@ -882,7 +895,7 @@ export function WebuiComposer({
         sessionId,
         probe: activeTurnProbe,
         readStream,
-        setStream,
+        setStream: commands.updateStream,
         attach: attachToTurn,
       });
     };
@@ -910,10 +923,10 @@ export function WebuiComposer({
         refreshPending: () => {
           void refreshPending().catch(() => undefined);
         },
-        setSending,
-        setStream,
-        setPermissions,
-        setQuestionnaire,
+        setSending: commands.setTurnSending,
+        setStream: commands.updateStream,
+        setPermissions: interactionCommands.updatePermissions,
+        setQuestionnaire: interactionCommands.updateQuestionnaire,
         // A goal-bearing event landing here invalidates any steering re-read
         // still in flight: that read is older than what we just applied.
         // `applyGoal` performs the version bump the re-read guard checks, so
@@ -1156,10 +1169,8 @@ export function WebuiComposer({
       });
       if (result.success !== true)
         throw new Error("The permission request was no longer pending");
-      setPermissions((current) =>
-        current.filter((item) => item.requestId !== permission.requestId),
-      );
-      setStream((current) => ({ ...current, phase: "streaming" }));
+      interactionCommands.removePendingPermission(permission.requestId);
+      commands.startStreaming();
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : String(error),
@@ -1182,15 +1193,12 @@ export function WebuiComposer({
       });
       if (result.ok !== true)
         throw new Error("The questionnaire was not accepted");
-      setQuestionnaire(undefined);
+      interactionCommands.applyQuestionnaire(undefined);
       // Answering resumes the turn; a skipped answer ends it (see
       // `webuiAnswersEndTurn`). Leaving `streaming` after a skip strands the
       // transcript's thinking pulse, because a finished turn never sends the
       // `[DONE]` frame that would otherwise clear it.
-      setStream((current) => ({
-        ...current,
-        phase: webuiAnswersEndTurn(answers) ? "idle" : "streaming",
-      }));
+      commands.markStreamPhase(webuiAnswersEndTurn(answers) ? "idle" : "streaming");
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : String(error),
@@ -1208,11 +1216,11 @@ export function WebuiComposer({
       });
       if (result.ok !== true)
         throw new Error("The questionnaire could not be dismissed");
-      setQuestionnaire(undefined);
+      interactionCommands.applyQuestionnaire(undefined);
       // A dismissal never resumes the turn — the runtime only marks the
       // request dismissed — so this is the same "nothing happens now" state
       // a skip produces, and `streaming` was simply wrong here.
-      setStream((current) => ({ ...current, phase: "idle" }));
+      commands.endStreaming();
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : String(error),
@@ -1224,7 +1232,12 @@ export function WebuiComposer({
     if (!sessionId || !abortSession) return;
     setInteractionError(undefined);
     try {
-      await stopWebuiTurn({ abortSession, sessionId, setSending, setStream });
+      await stopWebuiTurn({
+        abortSession,
+        sessionId,
+        setSending: commands.setTurnSending,
+        setStream: commands.updateStream,
+      });
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : String(error),
@@ -1739,9 +1752,9 @@ export function WebuiComposer({
   // cannot be exercised, and source-text assertions are not part
   // of this project's policy.
   const handlers = buildWebuiComposerHandlers({
-    setStream,
+    setStream: commands.updateStream,
     readStream: () => readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream,
-    setSending,
+    setSending: commands.setTurnSending,
     onDraftChange,
     onNeedsSession,
     onSessionCreated,
@@ -1790,12 +1803,15 @@ export function WebuiComposer({
       createSessionWorkspaceDir,
       teamModeOff,
       // The owner union is narrowed per branch so the overloaded factory
-      // resolves; the writer the send streams into stays owned by the
-      // application command (`application/turn-commands.ts`).
+      // resolves; its writer is immediately wrapped in the purpose-named turn
+      // commands, so this component submits `updateStream` / `setTurnSending`
+      // and never holds the runtime store writer itself.
       createWriter: (owner: WebuiTurnWriterOwner) =>
-        owner.kind === "home"
-          ? createSessionRuntimeWriter(owner)
-          : createSessionRuntimeWriter(owner),
+        createWebuiTurnCommands(
+          owner.kind === "home"
+            ? createSessionRuntimeWriter(owner)
+            : createSessionRuntimeWriter(owner),
+        ),
     });
   };
   // The input of the last turn this composer submitted, kept locally so retry

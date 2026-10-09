@@ -16,6 +16,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactElement,
 } from "react";
 import { ArchonShell } from "./ArchonShell.js";
@@ -94,18 +95,8 @@ import type {
 } from "../projection/workspace-progress.js";
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
-import {
-  initialWebuiSessionActivity,
-  reduceWebuiSessionActivity,
-  type WebuiSessionActivityMap,
-} from "../session-activity.js";
-import {
-  markWebuiRailSessionRead,
-  persistWebuiRailUnreadCounts,
-  probeWebuiRailActiveTurns,
-  restoreWebuiRailUnreadCounts,
-  seedWebuiRailActivity,
-} from "../application/rail-activity.js";
+import { createWebuiRailActivityCommands } from "../application/rail-activity.js";
+import { createWebuiSessionStore } from "../application/session-store.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
@@ -927,8 +918,18 @@ export function WebuiClientFoundationApp(
   // global event stream keeps them current (it carries no session id, so one
   // subscription covers every row); and `getActiveTurn` repairs what the stream
   // never delivered.
-  const [sessionActivity, setSessionActivity] = useState<WebuiSessionActivityMap>(
-    initialWebuiSessionActivity,
+  // The activity slice lives on a single application store, not in component
+  // state (plan §7.6 "Unread"; ticket #45 prerequisite 3). The shell subscribes
+  // to the slice and submits commands — it holds no writer for it.
+  const activityStore = useMemo(() => createWebuiSessionStore(), []);
+  const sessionActivity = useSyncExternalStore(
+    activityStore.subscribe,
+    () => activityStore.getSnapshot().activity,
+    () => activityStore.getSnapshot().activity,
+  );
+  const activityCommands = useMemo(
+    () => createWebuiRailActivityCommands(activityStore),
+    [activityStore],
   );
   // Flips once the stored counts have been read back, and is the only thing that
   // stands between the first render and a write of the empty map. See the
@@ -971,11 +972,7 @@ export function WebuiClientFoundationApp(
     if (!watchEvents) return;
     return watchEvents(
       (event) =>
-        setSessionActivity((current) =>
-          reduceWebuiSessionActivity(current, event, {
-            activeSessionId: selectedSessionIdRef.current,
-          }),
-        ),
+        activityCommands.recordEvent(event, selectedSessionIdRef.current),
       () => {
         setActivityNow(Date.now());
         setActivityProbeNonce((nonce) => nonce + 1);
@@ -995,7 +992,7 @@ export function WebuiClientFoundationApp(
   // exactly zero reloads, which is the case persistence exists for.
   useEffect(() => {
     if (!unreadCountsReady) return;
-    persistWebuiRailUnreadCounts(sessionActivity, writeWebuiUnreadCounts);
+    activityCommands.persistUnreadCounts(writeWebuiUnreadCounts);
   }, [sessionActivity, unreadCountsReady]);
 
   // Opening a session is what marks it read. Keyed on the id rather than run on
@@ -1003,7 +1000,7 @@ export function WebuiClientFoundationApp(
   // user was about to see on the row they came from.
   useEffect(() => {
     if (!selectedSessionId) return;
-    markWebuiRailSessionRead(setSessionActivity, selectedSessionId);
+    activityCommands.markRead(selectedSessionId);
   }, [selectedSessionId]);
 
   // The age labels are a function of the clock, not of the data. Without a tick
@@ -1025,12 +1022,11 @@ export function WebuiClientFoundationApp(
   // stale, so the badge would shrink every time the user typed in the search
   // box. Seeding genuinely needs the page; restoring does not.
   useEffect(() => {
-    seedWebuiRailActivity(setSessionActivity, railPage.sessions);
+    activityCommands.seed(railPage.sessions);
   }, [railPage]);
 
   useEffect(() => {
-    restoreWebuiRailUnreadCounts(
-      setSessionActivity,
+    activityCommands.restoreUnreadCounts(
       readWebuiUnreadCounts(),
       selectedSessionId,
     );
@@ -1044,10 +1040,9 @@ export function WebuiClientFoundationApp(
     // Once per list change, for every visible row. Not once per event: the
     // stream already answers for turns it saw, and the reconnect nonce is the
     // only other moment a re-probe is warranted.
-    return probeWebuiRailActiveTurns({
+    return activityCommands.probeActiveTurns({
       sessions: railPage.sessions,
       probe: activeTurnProbe,
-      update: setSessionActivity,
       now: () => Date.now(),
     });
   }, [activeTurnProbe, railPage, activityProbeNonce]);

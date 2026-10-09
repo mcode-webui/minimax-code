@@ -24,6 +24,7 @@ import type {
 import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 import type { WebuiClientSessionCreator } from "../contracts/session-port.js";
 import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
+import type { WebuiTurnCommandWriter } from "./session-commands.js";
 import {
   submitWebuiComposerTurn,
   type WebuiComposerSubmitHandlers,
@@ -51,14 +52,13 @@ export type WebuiStreamSetter = (
   update: (current: WebuiStreamState) => WebuiStreamState,
 ) => void;
 
-/** The stream/sending writer a send streams into, home-keyed until it migrates. */
-export interface WebuiTurnWriter {
-  readonly kind: "session" | "home";
-  readonly setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void;
-  readonly setSending: (sending: boolean) => void;
-  /** Present on a home-keyed writer: adopt the session the first message created. */
-  readonly migrateToSession?: (sessionId: string) => WebuiTurnWriter;
-}
+/**
+ * The stream/sending writer a send streams into, home-keyed until it migrates.
+ * It is the command-shaped writer from `application/session-commands.ts`, so the
+ * caller builds it once and then only submits `updateStream` / `setTurnSending`
+ * — the store setters never leave the command surface.
+ */
+export type WebuiTurnWriter = WebuiTurnCommandWriter;
 
 export type WebuiTurnWriterOwner =
   | { readonly kind: "home" }
@@ -209,8 +209,8 @@ export async function sendWebuiTurn(args: WebuiSendTurnArgs): Promise<void> {
   );
   const turnHandlers: WebuiComposerSubmitHandlers = {
     ...args.handlers,
-    setStream: (update) => writer.setStream(update),
-    setSending: (sending) => writer.setSending(sending),
+    setStream: (update) => writer.updateStream(update),
+    setSending: (sending) => writer.setTurnSending(sending),
     onSessionCreated: (createdSessionId) => {
       args.handlers.onSessionCreated?.(createdSessionId);
       if (writer.kind === "home" && writer.migrateToSession) {

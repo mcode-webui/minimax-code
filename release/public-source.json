@@ -3466,6 +3466,7 @@
     "packages/webui/src/client/application/rail-activity.ts",
     "packages/webui/src/client/application/request-ownership.ts",
     "packages/webui/src/client/application/selectors.ts",
+    "packages/webui/src/client/application/session-commands.ts",
     "packages/webui/src/client/application/session-store.ts",
     "packages/webui/src/client/application/state.ts",
     "packages/webui/src/client/application/stream-lease-controller.ts",

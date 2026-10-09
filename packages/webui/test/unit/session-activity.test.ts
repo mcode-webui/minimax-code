@@ -820,10 +820,10 @@ describe("host wiring", () => {
     // because asserting only half of it is how the defect came back: the
     // dependency has to go *and* the callback has to read through the ref, or
     // the callback is genuinely stale.
-    const block = effect("reduceWebuiSessionActivity(current, event");
+    const block = effect("activityCommands.recordEvent(event, selectedSessionIdRef.current)");
     expect(block).toMatch(/\}\s*,\s*\[\s*watchEvents\s*,?\s*\]\s*\)\s*;?\s*$/u);
     expect(block).not.toMatch(/\[\s*watchEvents\s*,\s*selectedSessionId/u);
-    expect(block).toMatch(/activeSessionId:\s*selectedSessionIdRef\.current/u);
+    expect(block).toMatch(/recordEvent\(\s*event\s*,\s*selectedSessionIdRef\.current\s*\)/u);
 
     // And the ref is kept current, or the single subscription is no better
     // than the one that was tearing down.
@@ -833,8 +833,8 @@ describe("host wiring", () => {
   });
 
   it("clears the count when the user opens a session", () => {
-    expect(effect("markWebuiRailSessionRead(")).toMatch(
-      /markWebuiRailSessionRead\(\s*setSessionActivity\s*,\s*selectedSessionId\s*\)/u,
+    expect(effect("activityCommands.markRead(")).toMatch(
+      /activityCommands\.markRead\(\s*selectedSessionId\s*\)/u,
     );
     expect(railSource).toMatch(
       /markWebuiSessionRead\(\s*current\s*,\s*sessionId\s*\)/u,
@@ -842,8 +842,8 @@ describe("host wiring", () => {
   });
 
   it("persists the counts on every change", () => {
-    expect(effect("persistWebuiRailUnreadCounts(")).toMatch(
-      /persistWebuiRailUnreadCounts\(\s*sessionActivity\s*,\s*writeWebuiUnreadCounts\s*\)\s*;/u,
+    expect(effect("activityCommands.persistUnreadCounts(")).toMatch(
+      /activityCommands\.persistUnreadCounts\(\s*writeWebuiUnreadCounts\s*\)\s*;/u,
     );
     // The positive-count filter moved below the boundary with the writer.
     expect(railSource).toMatch(/write\(\s*counts\s*\)\s*;/u);
@@ -855,7 +855,7 @@ describe("host wiring", () => {
     // arriving at a different one must not inherit that.
     const block = effect("readWebuiUnreadCounts()");
     expect(block).toMatch(/readWebuiUnreadCounts\(\s*\)/u);
-    expect(block).toMatch(/restoreWebuiRailUnreadCounts/u);
+    expect(block).toMatch(/activityCommands\.restoreUnreadCounts/u);
     expect(railSource).toMatch(/applyWebuiUnreadCounts/u);
   });
 
@@ -873,7 +873,7 @@ describe("host wiring", () => {
     const block = effect("readWebuiUnreadCounts()");
     expect(block).toMatch(/\}\s*,\s*\[\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u);
     expect(block).not.toMatch(/railPage/u);
-    expect(effect("seedWebuiRailActivity(")).toMatch(/railPage/u);
+    expect(effect("activityCommands.seed(")).toMatch(/railPage/u);
     expect(railSource).toMatch(/seedWebuiSessionActivity/u);
   });
 
@@ -885,7 +885,7 @@ describe("host wiring", () => {
     // The badge then survives exactly zero reloads, which is the one case
     // persistence exists for. The gate is asserted on both halves: the early
     // return in the writer, and the flag being raised by the restore.
-    const writer = effect("persistWebuiRailUnreadCounts(");
+    const writer = effect("activityCommands.persistUnreadCounts(");
     expect(writer).toMatch(/if\s*\(\s*!unreadCountsReady\s*\)\s*return\s*;/u);
     expect(writer).toMatch(/\[\s*sessionActivity\s*,\s*unreadCountsReady\s*,?\s*\]/u);
     const restore = effect("readWebuiUnreadCounts()");

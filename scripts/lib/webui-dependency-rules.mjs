@@ -130,6 +130,10 @@ export const ALLOWED_EDGES = Object.freeze({
  * replaced it with leaf `client/contracts/*.ts` capability/view modules, so
  * the path no longer exists to be judged and the entry was removed rather than
  * left pointing at a missing file.
+ *
+ * `client/session-runtime-store.ts` used to be listed here too. It had no
+ * remaining importer, so the ticket-#45 slice deleted it and the entry was
+ * removed for the same reason: there is no file left to judge.
  */
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "runtime/port.ts",
@@ -137,7 +141,6 @@ export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "client/projection/stream-state.ts",
   "client/projection/composer-state.ts",
   "client/projection/effect-reducer.ts",
-  "client/session-runtime-store.ts",
   "client/connection-health.ts",
   "client/slash-palette.ts",
   "server/service.ts",

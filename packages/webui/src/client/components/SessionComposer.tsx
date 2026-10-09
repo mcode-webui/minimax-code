@@ -66,6 +66,7 @@ import {
   useWebuiSessionState,
   useWebuiTurnWriter,
 } from "../bindings/use-session-state.js";
+import { useWebuiEventEffectsRegistry } from "../bindings/event-effects-context.js";
 import {
   reduceWebuiStreamFrame,
   webuiSessionStatusType,
@@ -710,6 +711,12 @@ export function WebuiComposer({
   const { stream, sending } = useWebuiSessionState(sessionId);
   const { commands, readStream } = useWebuiSessionCommands(sessionId);
   const createTurnWriter = useWebuiTurnWriter();
+  // The per-session effects registry the shell provides (ticket #45 pre-flip
+  // bridge). The composer registers this session's event handlers here so the
+  // application event coordinator can run them once the `watchEvents` switch
+  // lands; it holds no channel and registers nothing when no provider is
+  // mounted (SSR, tests).
+  const effectsRegistry = useWebuiEventEffectsRegistry();
   // The interaction slices live on the one application store, read here through
   // selectors and kept nowhere else (plan §7.6; ticket #45). The commands write
   // through the store's interaction writer; the composer holds no store writer
@@ -905,6 +912,24 @@ export function WebuiComposer({
       });
     };
 
+    // Goal steering events announce that the objective moved without carrying
+    // the new goal, so the banner is re-read rather than patched. The read is
+    // eventually consistent, so a late answer must not undo a newer goal that
+    // arrived while it was in flight: the version guard makes that decision,
+    // and it has one implementation here, shared by the event callback and the
+    // registered effects.
+    const refreshGoal = () => {
+      if (!sessionId || !getGoal) return undefined;
+      const readFor = sessionId;
+      const versionAtRequest = goalVersionRef.current;
+      return getGoal({ sessionId: readFor }).then((nextGoal) => {
+        if (readFor !== sessionIdRef.current) return;
+        if (goalVersionRef.current !== versionAtRequest) return;
+        applyGoal(nextGoal);
+        if (nextGoal) setGoalMode(nextGoal.status !== "complete");
+      });
+    };
+
     const onRuntimeEvent = createWebuiWatchEventCallback(
       sessionId,
       readStream,
@@ -926,17 +951,7 @@ export function WebuiComposer({
         // carrying the new goal, so the banner is re-read rather than patched.
         // The read is eventually consistent, so a late answer must not undo a
         // newer goal that arrived while it was in flight.
-        refreshGoal: () => {
-          if (!sessionId || !getGoal) return undefined;
-          const readFor = sessionId;
-          const versionAtRequest = goalVersionRef.current;
-          return getGoal({ sessionId: readFor }).then((nextGoal) => {
-            if (readFor !== sessionIdRef.current) return;
-            if (goalVersionRef.current !== versionAtRequest) return;
-            applyGoal(nextGoal);
-            if (nextGoal) setGoalMode(nextGoal.status !== "complete");
-          });
-        },
+        refreshGoal,
         attachStream: (turnId, mode) => {
           // `recheck` means we already hold a different turn's lease. The
           // event alone cannot say whether that lease is stale or genuinely
@@ -967,12 +982,34 @@ export function WebuiComposer({
     // there is no announcement to wait for, so the mount probe is the only
     // recovery this client has.
     if (unsubscribe === undefined) recoverMissedTurn();
+    // Register this session's effect handlers for the application event
+    // coordinator (ticket #45 pre-flip bridge). This is inert until the
+    // `watchEvents` switch lands — nothing consumes the registry yet — so it
+    // changes no behaviour; the coordinator will read them back through
+    // `registry.asWebuiEventEffects()`.
+    const unregisterEffects = effectsRegistry?.register(sessionId, {
+      refreshPending: () => refreshPending(),
+      refreshGoal,
+      attachStream: (turnId, mode) => {
+        if (mode === "recheck") {
+          void recheckSubscription(turnId);
+          return;
+        }
+        attachToTurn(turnId);
+      },
+      channelReady: () => {
+        void refreshPending().catch(() => undefined);
+        recoverMissedTurn();
+      },
+    });
     return () => {
       cancelled = true;
       unsubscribe?.();
+      unregisterEffects?.();
     };
   }, [
     agentName,
+    effectsRegistry,
     getActiveTurn,
     getPendingQuestionnaire,
     listPendingPermissions,

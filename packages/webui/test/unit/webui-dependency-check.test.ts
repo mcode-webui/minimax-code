@@ -151,6 +151,12 @@ describe("layer matrix", () => {
     // `client/contracts.ts` was split into leaf contracts in stage 1; the entry
     // is gone because the file no longer exists to be judged.
     expect(KNOWN_AMBIGUOUS_FILES).not.toContain("client/contracts.ts");
+    // `client/session-runtime-store.ts` had no remaining importer and was
+    // deleted by the ticket-#45 slice; the entry is gone because the file no
+    // longer exists to be judged.
+    expect(KNOWN_AMBIGUOUS_FILES).not.toContain(
+      "client/session-runtime-store.ts",
+    );
   });
 });
 

@@ -102,7 +102,9 @@ import {
 } from "../application/session-store.js";
 import { selectWebuiSessionStream } from "../application/selectors.js";
 import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
+import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
 import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
+import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-context.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
@@ -235,6 +237,15 @@ export function WebuiClientFoundationApp(
   const sessionStore = useMemo(
     () => providedSessionStore ?? createWebuiSessionStore(),
     [providedSessionStore],
+  );
+  // The one per-session effects registry for this mount (plan §7.1
+  // `application/event-coordinator.ts`; ticket #45 pre-flip bridge). The shell
+  // holds it and provides it; the composer registers its session's effect
+  // handlers here, and `asWebuiEventEffects()` is what the coordinator will
+  // consume when the `watchEvents` switch lands. It is inert until then.
+  const eventEffectsRegistry = useMemo(
+    () => createWebuiEventEffectsRegistry(),
+    [],
   );
   // Each method comes from `transport`. Re-binding to the same local
   // name as before keeps the rest of the function body identical.
@@ -1113,6 +1124,7 @@ export function WebuiClientFoundationApp(
   const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} getWorkspaceEnvironment={transport?.getWorkspaceEnvironment} watchEvents={transport?.watchEvents} mutateWorkspaceGit={transport?.mutateWorkspaceGit} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
 
   return (
+    <WebuiEventEffectsRegistryProvider registry={eventEffectsRegistry}>
     <WebuiSessionStoreProvider store={sessionStore}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
@@ -1531,6 +1543,7 @@ export function WebuiClientFoundationApp(
     </div>
     </ArchonShell>
     </WebuiSessionStoreProvider>
+    </WebuiEventEffectsRegistryProvider>
   );
 }
 

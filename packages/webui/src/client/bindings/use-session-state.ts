@@ -1,8 +1,9 @@
 // React subscription to a session's snapshot (plan §7.2
 // `client/bindings/use-session-state.ts`).
 //
-// It is the split-out React half of the old `session-runtime-store` hook: the
-// store and its writer now live in `client/application/session-store.ts`, and
+// It is the split-out React half of the retired module-level session store
+// hook: the store and its writer now live in
+// `client/application/session-store.ts`, and
 // this hook only *reads* the store's snapshot and narrows it with the
 // application selectors. No second map is created here — the hook holds no
 // state of its own beyond what `useSyncExternalStore` needs to schedule a

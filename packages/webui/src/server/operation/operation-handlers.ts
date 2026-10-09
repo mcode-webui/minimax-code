@@ -111,12 +111,6 @@ export type WebuiOperationPort = Pick<
   | "refreshModels"
   | "requestCompaction"
   | "invalidateAuth"
-  | "listScheduledTasks"
-  | "createScheduledTask"
-  | "updateScheduledTask"
-  | "deleteScheduledTask"
-  | "triggerScheduledTaskNow"
-  | "getScheduledTaskCapability"
   | "getGlobalInstructions"
   | "setGlobalInstructions"
   | "getAgentMemory"
@@ -336,16 +330,6 @@ export function createOperationHandlers(
     createGoal: async (_context, body) => ({ body: await port.createGoal(body) }),
     patchGoal: async (_context, body) => ({ body: await port.patchGoal(body) }),
     clearGoal: async (_context, body) => ({ body: await port.clearGoal(body) }),
-    // Scheduled tasks are WebUI-owned, but they reach the client through the
-    // same registry as everything else, so the panel needs no transport of its
-    // own. The port methods are the seam; `WebuiService` supplies its own local
-    // runtime behind them.
-    listScheduledTasks: async (_context, body) => ({ body: await port.listScheduledTasks(body) }),
-    createScheduledTask: async (_context, body) => ({ body: await port.createScheduledTask(body) }),
-    updateScheduledTask: async (_context, body) => ({ body: await port.updateScheduledTask(body) }),
-    deleteScheduledTask: async (_context, body) => ({ body: await port.deleteScheduledTask(body) }),
-    triggerScheduledTaskNow: async (_context, body) => ({ body: await port.triggerScheduledTaskNow(body) }),
-    getScheduledTaskCapability: async () => ({ body: await port.getScheduledTaskCapability() }),
     listSessions: async (_context, body) => ({ body: await port.listSessions(body) }),
     listVisibleProjects: async (_context, body) => {
       if (!port.listVisibleProjects) throw new Error("runtime host does not expose project listing");

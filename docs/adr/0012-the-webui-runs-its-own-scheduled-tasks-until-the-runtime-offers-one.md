@@ -1,5 +1,20 @@
 # The WebUI runs its own scheduled tasks until the runtime offers one
 
+> **Superseded — the WebUI-owned scheduler has been removed.** On 2026-10-09 the
+> WebUI's scheduled-task surface was deleted in full: the panel, the six
+> operations, `WebuiScheduledTaskPort`, the in-process tick loop and the
+> `<dataDir>/webui/scheduled-tasks.sqlite` store are all gone, along with the
+> `better-sqlite3` dependency this decision introduced. The retirement condition
+> below was never met — the runtime's cron capability is still not reachable
+> from a loopback WebUI host — so this record is kept for the reasoning, not as
+> a description of current behaviour. The retirement probe it commissioned
+> (`webui-scheduled-task-upstream-probe.test.ts`) went with it, which also
+> removed the five failures it had been reporting as `gate1=unconfirmed` since
+> phase 3 moved `enableCron:` onto the owner-policy cell. Anything that rebuilds
+> this surface should start from the open question rather than from the
+> two-schedulers-over-one-queue hazard in "Never run both" below, which remains
+> the one thing this record still has to say.
+
 The WebUI ships a scheduled-task surface backed by its own store and its own
 in-process tick loop. It does not wait for the runtime's cron capability, which
 is not reachable from a loopback WebUI host, and it does not read the runtime's

@@ -30,7 +30,6 @@
     "@mavis/shared": "workspace:^",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
-    "better-sqlite3": "12.11.1",
     "highlight.js": "10.7.3",
     "katex": "0.18.7",
     "lottie-web": "^5.13.0",

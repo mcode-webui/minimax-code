@@ -86,17 +86,6 @@ import type {
   WebuiRewindSessionRequest,
   WebuiRewindSessionResult,
   WebuiRuntimeEvent,
-  WebuiCreateScheduledTaskRequest,
-  WebuiListScheduledTasksRequest,
-  WebuiScheduledTask,
-  WebuiScheduledTaskCapability,
-  WebuiScheduledTaskListResult,
-  WebuiScheduledTaskRunStatus,
-  WebuiScheduledTaskScheduleKind,
-  WebuiScheduledTaskSessionTarget,
-  WebuiScheduledTaskTriggerRequest,
-  WebuiScheduledTaskTriggerResult,
-  WebuiUpdateScheduledTaskRequest,
   WebuiSigninPanelView,
   WebuiStreamFrame,
   WebuiTerminalFrame,
@@ -829,26 +818,6 @@ export interface WebuiTransport {
   readonly startCodexOAuthLogin?: (request?: Record<string, unknown>) => Promise<unknown>;
   readonly cancelCodexOAuthLogin?: (request: { readonly loginId: string }) => Promise<unknown>;
   readonly refreshModels?: () => Promise<unknown>;
-  /* 定时任务 (ADR 0012): the WebUI's own store and its in-process tick, not the
-   * runtime's cron service. Six operations, all optional like the rest of this
-   * bag, so a host that has not wired them renders the panel's unavailable
-   * state instead of a failed call. */
-  readonly listScheduledTasks?: (
-    request?: WebuiListScheduledTasksRequest,
-  ) => Promise<WebuiScheduledTaskListResult>;
-  readonly createScheduledTask?: (
-    request: WebuiCreateScheduledTaskRequest,
-  ) => Promise<WebuiScheduledTask>;
-  readonly updateScheduledTask?: (
-    request: WebuiUpdateScheduledTaskRequest,
-  ) => Promise<WebuiScheduledTask>;
-  readonly deleteScheduledTask?: (
-    request: { readonly taskId: string },
-  ) => Promise<{ readonly success: boolean }>;
-  readonly triggerScheduledTaskNow?: (
-    request: WebuiScheduledTaskTriggerRequest,
-  ) => Promise<WebuiScheduledTaskTriggerResult>;
-  readonly getScheduledTaskCapability?: () => Promise<WebuiScheduledTaskCapability>;
   readonly runCommand?: (request: {
     readonly command: "help" | "new" | "compact" | "status" | "usage" | "model";
     readonly input?: string;
@@ -893,18 +862,7 @@ export type {
   WebuiRewindSessionRequest,
   WebuiRewindSessionResult,
   WebuiRuntimeEvent,
-  WebuiCreateScheduledTaskRequest,
-  WebuiListScheduledTasksRequest,
-  WebuiScheduledTask,
-  WebuiScheduledTaskCapability,
-  WebuiScheduledTaskListResult,
-  WebuiScheduledTaskRunStatus,
-  WebuiScheduledTaskScheduleKind,
-  WebuiScheduledTaskSessionTarget,
-  WebuiScheduledTaskTriggerRequest,
-  WebuiScheduledTaskTriggerResult,
   WebuiStreamFrame,
   WebuiTerminalFrame,
   WebuiTurnDiffView,
-  WebuiUpdateScheduledTaskRequest,
   };

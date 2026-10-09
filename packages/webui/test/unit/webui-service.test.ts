@@ -64,19 +64,10 @@ import type {
   WebuiImportSessionTransferRequest,
   WebuiImportSessionTransferResult,
   WebuiSessionTransferFile,
-  WebuiScheduledTask,
-  WebuiScheduledTaskTriggerResult,
 } from "../../src/server/port.js";
 import { createWebuiTransport } from "../../src/client/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
 import { getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation } from "../../src/server/operation/workspace.js";
-
-/**
- * The one message a host without a scheduled-task runtime reports. Kept as a
- * constant so the port methods and the capability probe cannot drift apart.
- */
-const SCHEDULED_TASKS_UNAVAILABLE =
-  "scheduled tasks are not available: this host exposes no scheduled-task runtime";
 
 type CloseEvent = [number, Buffer];
 // `once` from `node:events` is overloaded and not generic, so
@@ -277,32 +268,6 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
 
   async clearGoal() {
     return { success: true };
-  }
-
-  // WebUI scheduled tasks. This double stands in for a host, and a host with
-  // no scheduled-task runtime is exactly the fail-closed case, so the scripted
-  // port reports the capability as unavailable rather than pretending.
-  async listScheduledTasks() {
-    return { tasks: [], total: 0 };
-  }
-  async createScheduledTask(): Promise<WebuiScheduledTask> {
-    throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-  }
-  async updateScheduledTask(): Promise<WebuiScheduledTask> {
-    throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-  }
-  async deleteScheduledTask(): Promise<{ readonly success: boolean }> {
-    throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-  }
-  async triggerScheduledTaskNow(): Promise<WebuiScheduledTaskTriggerResult> {
-    throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-  }
-  async getScheduledTaskCapability() {
-    return {
-      available: false as const,
-      source: "none" as const,
-      reason: SCHEDULED_TASKS_UNAVAILABLE,
-    };
   }
 
   async invalidateAuth(): Promise<void> {
@@ -3040,8 +3005,12 @@ describe("WebUI runtime host assembly", () => {
       });
       await assembled.harnessPort.close();
       expect(calls).toBe(1);
-      expect(lastOptions?.runtimeOwnerKind).toBe("tui");
-      expect(lastOptions?.capabilityProfile).toBe("cli");
+      expect(lastOptions?.runtimeOwnerKind).toBe("webui");
+      // The `webui` policy row accounts for the capability ceiling directly,
+      // so the assembly no longer borrows the terminal client's
+      // `capabilityProfile: "cli"`. Reintroducing it would silently re-grant
+      // what the row deliberately withholds.
+      expect(lastOptions && "capabilityProfile" in lastOptions).toBe(false);
       expect(lastOptions?.runtimeMode).toBe("clean");
       expect(lastOptions?.startupExecutionPolicy).toBe("quarantined");
       expect(lastOptions?.dataDir).toBe(dataDir);
@@ -3189,7 +3158,7 @@ describe("WebUI runtime host assembly", () => {
       await assembled.harnessPort.close();
       // The assembly intentionally omits `surface`; ADR 0004 forbids
       // extending the `surface` enum, and assembly step 4 says the WebUI
-      // does not need a new value because `runtimeOwnerKind: 'tui'` plus
+      // does not need a new value because `runtimeOwnerKind: 'webui'` plus
       // the capabilities already identify the surface.
       expect("surface" in (lastOptions ?? {})).toBe(false);
     } finally {
@@ -3841,28 +3810,6 @@ describe("WebUI shutdown order (criterion 7)", () => {
       async signOutAccount() {
         return { status: "anonymous", generation: 0 };
       },
-      async listScheduledTasks() {
-        return { tasks: [], total: 0 };
-      },
-      async createScheduledTask(): Promise<WebuiScheduledTask> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async updateScheduledTask(): Promise<WebuiScheduledTask> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async deleteScheduledTask(): Promise<{ readonly success: boolean }> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async triggerScheduledTaskNow(): Promise<WebuiScheduledTaskTriggerResult> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async getScheduledTaskCapability() {
-        return {
-          available: false as const,
-          source: "none" as const,
-          reason: SCHEDULED_TASKS_UNAVAILABLE,
-        };
-      },
       async close() {
         // The service awaits wsServer.close() and httpServer.close()
         // before calling port.close(), so by the time we land here the
@@ -4253,28 +4200,6 @@ describe("WebUI shutdown order (criterion 7)", () => {
       },
       async signOutAccount() {
         return { status: "anonymous", generation: 0 };
-      },
-      async listScheduledTasks() {
-        return { tasks: [], total: 0 };
-      },
-      async createScheduledTask(): Promise<WebuiScheduledTask> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async updateScheduledTask(): Promise<WebuiScheduledTask> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async deleteScheduledTask(): Promise<{ readonly success: boolean }> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async triggerScheduledTaskNow(): Promise<WebuiScheduledTaskTriggerResult> {
-        throw new Error(SCHEDULED_TASKS_UNAVAILABLE);
-      },
-      async getScheduledTaskCapability() {
-        return {
-          available: false as const,
-          source: "none" as const,
-          reason: SCHEDULED_TASKS_UNAVAILABLE,
-        };
       },
       async close() {
         await closeGate;

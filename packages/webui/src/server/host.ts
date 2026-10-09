@@ -28,7 +28,6 @@ import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,
 } from "./workspace-archive.js";
-import type { WebuiScheduledTaskRuntime } from "./scheduled-task-scheduler.js";
 import type {
   WebuiHarnessPort,
   WebuiSessionListRequest,
@@ -293,10 +292,10 @@ export interface WebuiRuntimeCliService {
     readonly moreAbout: string;
   }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
   /**
-   * Optional on purpose, like the scheduled-task block above: a host without
-   * the configuration capability still has to type-check. The handlers below
-   * fail closed with one clear message rather than crashing on `undefined` —
-   * a missing method is not the same statement as `enabled: false`.
+   * Optional on purpose: a host without the configuration capability still has
+   * to type-check. The handlers below fail closed with one clear message rather
+   * than crashing on `undefined` — a missing method is not the same statement as
+   * `enabled: false`.
    */
   getMemorySettings?(): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
   setMemorySettings?(request: {
@@ -388,14 +387,6 @@ export interface WebuiRuntimeHostHandle {
    * the runtime host; the WebUI only needs the structural shape to forward.
    */
   readonly cliService?: WebuiRuntimeCliService;
-  /**
-   * Scheduled tasks, when the host carries a runtime for them. Optional on
-   * purpose: a host that predates this surface still type-checks, and every
-   * scheduled-task method below fails closed with one clear message instead of
-   * crashing on an undefined call. The WebUI's own service supplies its local
-   * runtime rather than routing through here — see `service.ts`.
-   */
-  readonly scheduledTasks?: WebuiScheduledTaskRuntime;
 }
 
 /**
@@ -500,38 +491,6 @@ export function createHarnessPortFromHost(
     },
     async clearGoal(request) {
       return { success: await requireCliService(host).clearGoal(request.sessionId) };
-    },
-    // Scheduled tasks. The capability probe answers instead of throwing, so a
-    // client can ask "can this host do scheduled tasks at all?" and render the
-    // reason; the other five are operations, and an operation that cannot be
-    // served reports the same reason as a `harness_error`.
-    async listScheduledTasks(request) {
-      return requireScheduledTasks(host).listScheduledTasks(request);
-    },
-    async createScheduledTask(request) {
-      return requireScheduledTasks(host).createScheduledTask(request);
-    },
-    async updateScheduledTask(request) {
-      return requireScheduledTasks(host).updateScheduledTask(request);
-    },
-    async deleteScheduledTask(request) {
-      return requireScheduledTasks(host).deleteScheduledTask(request);
-    },
-    async triggerScheduledTaskNow(request) {
-      return requireScheduledTasks(host).triggerScheduledTaskNow(request);
-    },
-    async getScheduledTaskCapability() {
-      return host.scheduledTasks
-        ? host.scheduledTasks.getScheduledTaskCapability()
-        : {
-            available: false,
-            // No implementation answered, which is a different fact from "our
-            // own implementation is unavailable". See
-            // `WebuiScheduledTaskCapabilitySource`.
-            source: "none" as const,
-            reason:
-              "scheduled tasks are not available: this host exposes no scheduled-task runtime",
-          };
     },
     async listWorkspaceFileTree(request) {
       const tree = await requireCliService(host).listWorkspaceFileTree!(request) as readonly WebuiWorkspaceFile[];
@@ -900,22 +859,6 @@ export function createHarnessPortFromHost(
  * helper so the failure message is the same as it was before the batch-C
  * seam work.
  */
-/**
- * Resolve the host's scheduled-task runtime, or fail closed. The message is
- * the one the capability probe reports, so a client that asked first and a
- * client that called blind see the same reason.
- */
-function requireScheduledTasks(
-  host: WebuiRuntimeHostHandle,
-): WebuiScheduledTaskRuntime {
-  const runtime = host.scheduledTasks;
-  if (!runtime)
-    throw new Error(
-      "scheduled tasks are not available: this host exposes no scheduled-task runtime",
-    );
-  return runtime;
-}
-
 function requireCliService(host: WebuiRuntimeHostHandle): WebuiRuntimeCliService {
   if (!host.cliService)
     throw new Error("runtime host does not expose the CLI service");

@@ -71,15 +71,6 @@ export function WebuiIconPlugins({ className }: WebuiIconProps): ReactElement {
   );
 }
 
-/** rail nav row — the desktop's `定时` glyph. */
-export function WebuiIconSchedule({ className }: WebuiIconProps): ReactElement {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true" className={className}>
-      <path fillRule="evenodd" clipRule="evenodd" d="M9.99963 1.85719C14.335 1.85719 17.849 5.37153 17.8492 9.7068C17.8492 14.0422 14.3351 17.5564 9.99963 17.5564C5.66437 17.5562 2.15002 14.0421 2.15002 9.7068C2.15022 5.37165 5.66449 1.85739 9.99963 1.85719ZM9.99963 3.05641C6.32723 3.05661 3.34944 6.0344 3.34924 9.7068C3.34924 13.3794 6.32711 16.357 9.99963 16.3572C13.6723 16.3572 16.65 13.3795 16.65 9.7068C16.6498 6.03427 13.6722 3.05641 9.99963 3.05641ZM10.0026 6.08083C10.3337 6.08112 10.6022 6.34926 10.6022 6.68044L10.6012 9.75075L12.5426 11.6521C12.7788 11.8839 12.7827 12.2631 12.5514 12.4998C12.3196 12.7361 11.9394 12.7409 11.7028 12.5095L9.58167 10.4324C9.46655 10.3197 9.40212 10.1648 9.40198 10.0037V6.68044C9.40202 6.34912 9.67126 6.08087 10.0026 6.08083Z" fill="currentColor"></path>
-    </svg>
-  );
-}
-
 /** rail nav row — the desktop's `网站` glyph. */
 export function WebuiIconSites({ className }: WebuiIconProps): ReactElement {
   return (

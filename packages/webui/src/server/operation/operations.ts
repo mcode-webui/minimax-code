@@ -7,7 +7,6 @@ import { watchEventsOperation, listPendingPermissionsOperation, getPendingQuesti
 import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
-import { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
 import { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 import { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
 import { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
@@ -22,7 +21,6 @@ export { watchEventsOperation, listPendingPermissionsOperation, getPendingQuesti
 export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
 export { pluginManagementOperation } from "./plugin-management.js";
 export { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
-export { listScheduledTasksOperation, createScheduledTaskOperation, updateScheduledTaskOperation, deleteScheduledTaskOperation, triggerScheduledTaskNowOperation, getScheduledTaskCapabilityOperation } from "./scheduled-task.js";
 export { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 export { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
 export { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
@@ -119,17 +117,6 @@ export function createOperationRegistry(
   registerOperation(registry, { operation: selectModelOperation, handle: handlers.selectModel });
   registerOperation(registry, { operation: listSkillsOperation, handle: handlers.listSkills });
   registerOperation(registry, { operation: pluginManagementOperation, handle: handlers.pluginManagement });
-  // The WebUI's own scheduled tasks. Registered unconditionally for the same
-  // reason the other eighteen are: the port type requires the methods, so the
-  // registry contents must not depend on which host fills them. A host that
-  // cannot serve them throws inside the handler and the dispatcher reports it
-  // as `harness_error` with the host's own message.
-  registerOperation(registry, { operation: listScheduledTasksOperation, handle: handlers.listScheduledTasks });
-  registerOperation(registry, { operation: createScheduledTaskOperation, handle: handlers.createScheduledTask });
-  registerOperation(registry, { operation: updateScheduledTaskOperation, handle: handlers.updateScheduledTask });
-  registerOperation(registry, { operation: deleteScheduledTaskOperation, handle: handlers.deleteScheduledTask });
-  registerOperation(registry, { operation: triggerScheduledTaskNowOperation, handle: handlers.triggerScheduledTaskNow });
-  registerOperation(registry, { operation: getScheduledTaskCapabilityOperation, handle: handlers.getScheduledTaskCapability });
   registerOperation(registry, { operation: getPermissionModeOperation, handle: handlers.getPermissionMode });
   registerOperation(registry, { operation: setPermissionModeOperation, handle: handlers.setPermissionMode });
   registerOperation(registry, { operation: getGlobalInstructionsOperation, handle: handlers.getGlobalInstructions });

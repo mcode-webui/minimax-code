@@ -2,13 +2,20 @@
 //
 // The WebUI does not import `packages/tui` (ADR 0003), and does not drive the
 // CLI binary (ADR 0001); it builds directly on the harness layer the terminal
-// client uses (`@mavis/local-runtime-v2`). The assembly mirrors the
-// documented call sites:
+// client uses (`@mavis/local-runtime-v2`).
+//
+// `runtimeOwnerKind` is `"webui"`: the WebUI is a declared client identity in
+// `local-runtime/src/runtime/runtime-owner-policy.ts`, not a borrowed `tui` row.
+// The row decides wiring and turn behaviour in one place, so the WebUI states
+// what it is instead of copying the terminal client's answers and inheriting
+// its drift. It also no longer sets `capabilityProfile: "cli"`, which the
+// `webui` row accounts for directly. The decision record is
+// `docs/webui/webui-client-identity-plan.md`.
+//
+// The remaining fields mirror the documented call sites:
 //
 //   * `packages/tui/src/runtime/embedded-host.ts` — the surface owner, mode
 //     and capability projection (lines 85–93).
-//   * `packages/local-runtime-v2/src/services.test.ts:1998` — the
-//     `runtimeOwnerKind: 'tui'` / `capabilityProfile: 'cli'` pair.
 //   * `packages/tui/src/runtime/lifecycle.ts:456-460` — the conditional
 //     `startupExecutionPolicy: 'quarantined'`. The CLI applies it per
 //     surface; ADR 0002 and assembly step 6 of `docs/webui-v1-scope.md`
@@ -128,8 +135,7 @@ export interface WebuiBrowserProvider {
 export interface WebuiForwardedRuntimeHostOptions {
   readonly dataDir: string;
   readonly appVersion?: string;
-  readonly runtimeOwnerKind: "cli" | "tui";
-  readonly capabilityProfile: "cli";
+  readonly runtimeOwnerKind: "webui";
   readonly runtimeMode: "clean";
   readonly startupExecutionPolicy: "quarantined";
   readonly capabilities: {
@@ -358,8 +364,7 @@ export async function createWebuiRuntimeHost(
     ...(options.appVersion !== undefined
       ? { appVersion: options.appVersion }
       : {}),
-    runtimeOwnerKind: "tui",
-    capabilityProfile: "cli",
+    runtimeOwnerKind: "webui",
     runtimeMode: "clean",
     startupExecutionPolicy: "quarantined",
     // Interaction capabilities mirror `packages/tui/src/runtime/lifecycle.ts:451-455`:
@@ -405,7 +410,7 @@ export async function createWebuiRuntimeHost(
   // fails to resolve — the vendored pi-mono packages ship no `dist/` and
   // there is no workspace build script that emits one (see the v7 brief's
   // item 3). The forwarded fields are correct against the source type
-  // (`runtimeOwnerKind` / `capabilityProfile` / `runtimeMode` /
+  // (`runtimeOwnerKind` / `runtimeMode` /
   // `startupExecutionPolicy` / `capabilities` all live in
   // `packages/local-runtime/src/runtime/host-factory-types.ts:32-47`); the
   // cast below is narrowly scoped to the factory boundary and exists only

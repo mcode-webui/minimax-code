@@ -1,5 +1,14 @@
 // Session import — read a transfer file and turn it back into a session.
 //
+// Responsibility (plan §7.2 `client/infrastructure/session-import.ts`; ticket
+// #51): this is **browser file IO and HTTP upload**. It reads a picked file,
+// rejects a format it cannot restore, and posts it; it decides nothing about the
+// session's identity or where it belongs — the agent and workspace come from the
+// caller's context. That business decision and the rail's import request live in
+// `application/session-workflows.ts`, which receives this importer as an injected
+// capability (type `WebuiSessionImporter`) from the composition root, so this
+// adapter is never absorbed into a business workflow module.
+//
 // The counterpart of `GET /session-transfer`. That route writes a
 // `mcode-webui-session-transfer@1` file; this posts one to
 // `POST /session-import` and gets back the id of a session that holds the

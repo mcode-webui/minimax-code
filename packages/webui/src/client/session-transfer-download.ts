@@ -1,5 +1,12 @@
 // Session export — ask the server for one session as a transfer file.
 //
+// Responsibility (plan §7.2 `client/infrastructure/session-transfer-download.ts`;
+// ticket #51): this is **browser download IO**. It resolves the transfer target
+// and hands a URL to the browser to navigate to; it decides nothing about which
+// session may be exported. That business decision and the rail's export request
+// live in `application/session-workflows.ts`, and the composition root supplies
+// this adapter — it is never absorbed into a business workflow module.
+//
 // `GET /session-transfer` writes a `mcode-webui-session-transfer@1` file: the
 // canonical layer the model reads on the next turn, the display layer the user
 // reads, and -- for a session that has ever been compacted -- the whole

@@ -105,6 +105,8 @@ import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
 import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
 import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-context.js";
+import { WebuiWorkspaceQueriesProvider } from "../bindings/use-query-state.js";
+import { createWebuiWorkspaceQueries } from "../application/workspace-queries.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
@@ -321,6 +323,14 @@ export function WebuiClientFoundationApp(
   // criterion 8): the component holds no transport call, it calls the workflow.
   const commandWorkflows = useMemo(
     () => createWebuiCommandWorkflows({ port: transport ?? {} }),
+    [transport],
+  );
+  // The one workspace query owner (ticket #51): it caches the workspace file
+  // tree, file contents, the working-tree review and the git environment, and
+  // discards a late response from a superseded request. Provided to the two
+  // workspace panels, which submit query commands and read its snapshot.
+  const workspaceQueries = useMemo(
+    () => createWebuiWorkspaceQueries({ port: transport ?? {} }),
     [transport],
   );
   // Which surface the main column renders. Plugin management replaces the
@@ -969,6 +979,15 @@ export function WebuiClientFoundationApp(
   );
   useEffect(() => () => application.dispose(), [application]);
 
+  // A `workspace.git.changed` signal invalidates exactly the views it affects:
+  // the owner matches the signal against the review and environment views it
+  // currently holds and refreshes only those (ticket #51). No panel owns a
+  // refresh token for this any more.
+  useEffect(() => {
+    if (!workspaceGitChanged) return;
+    workspaceQueries.invalidateWorkspaceGit(workspaceGitChanged);
+  }, [workspaceGitChanged, workspaceQueries]);
+
   // The manual arm of the stream loop's recovery. Undefined on the home screen
   // (no session to resume) and on hosts without a `resumeSession` transport: no
   // recovery path, no button. It runs through the turn coordinator, which owns
@@ -1058,10 +1077,11 @@ export function WebuiClientFoundationApp(
     setWorkspaceSubagentsCollapsed(false);
   }, [selectedSessionId]);
 
-  const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} getWorkspaceEnvironment={transport?.getWorkspaceEnvironment} gitChanged={workspaceGitChanged} mutateWorkspaceGit={transport?.mutateWorkspaceGit} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
+  const progressPanelContent = <WebuiProgressOverviewPanel workspaceDir={selectedSession?.workspaceDir} isDefaultWorkspace={selectedSession?.isDefaultWorkspace} todos={progressTodos} subagents={progressSubagents} showProgress={!homeMode} showEmptyProgress={true} environmentCollapsed={workspaceEnvironmentCollapsed} progressCollapsed={workspaceProgressCollapsed} subagentsCollapsed={workspaceSubagentsCollapsed} onToggleEnvironment={() => setWorkspaceEnvironmentCollapsed((value) => !value)} onToggleProgress={() => setWorkspaceProgressCollapsed((value) => !value)} onToggleSubagents={() => setWorkspaceSubagentsCollapsed((value) => !value)} onMemberClick={handleWorkspaceSubagentClick} onOpenChanges={() => selectedSession?.workspaceDir && selectedSessionId ? dispatchWorkspacePanel({ type: "open-workspace-review", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir }) : undefined} onOpenTerminal={() => dispatchWorkspacePanel({ type: "open-tab", kind: "terminal", workspaceDir: selectedSession?.workspaceDir })} />;
 
   return (
     <WebuiEventEffectsRegistryProvider registry={eventEffectsRegistry}>
+    <WebuiWorkspaceQueriesProvider queries={workspaceQueries}>
     <WebuiSessionStoreProvider store={sessionStore}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
@@ -1472,7 +1492,7 @@ export function WebuiClientFoundationApp(
                 </aside>
               </div>
             ) : null}
-            {!homeMode && workspacePanel.open ? <WebuiWorkspacePanel state={workspacePanel} dispatch={dispatchWorkspacePanel} sessionId={selectedSessionId} workspaceDir={selectedSession?.workspaceDir} listWorkspaceFileTree={transport?.listWorkspaceFileTree} readWorkspaceFile={transport?.readWorkspaceFile} workspaceFileUrl={transport?.workspaceFileUrl} readWorkspaceArchive={transport?.readWorkspaceArchive} extractWorkspaceArchive={transport?.extractWorkspaceArchive} readCanvas={transport?.readCanvas} applyCanvas={transport?.applyCanvas} createTerminal={transport?.createTerminal} listTerminals={transport?.listTerminals} writeTerminal={transport?.writeTerminal} disposeTerminal={transport?.disposeTerminal} watchTerminal={transport?.watchTerminal} gitChanged={workspaceGitChanged} getWorkspaceReviewSummary={transport?.getWorkspaceReviewSummary} listWorkspaceReviewFileDiffs={transport?.listWorkspaceReviewFileDiffs} searchWorkspaceReviewDiffs={transport?.searchWorkspaceReviewDiffs} onClose={() => dispatchWorkspacePanel({ type: "close-panel" })} /> : null}
+            {!homeMode && workspacePanel.open ? <WebuiWorkspacePanel state={workspacePanel} dispatch={dispatchWorkspacePanel} sessionId={selectedSessionId} workspaceDir={selectedSession?.workspaceDir} workspaceFileUrl={transport?.workspaceFileUrl} readWorkspaceArchive={transport?.readWorkspaceArchive} extractWorkspaceArchive={transport?.extractWorkspaceArchive} readCanvas={transport?.readCanvas} applyCanvas={transport?.applyCanvas} createTerminal={transport?.createTerminal} listTerminals={transport?.listTerminals} writeTerminal={transport?.writeTerminal} disposeTerminal={transport?.disposeTerminal} watchTerminal={transport?.watchTerminal} onClose={() => dispatchWorkspacePanel({ type: "close-panel" })} /> : null}
             </>}
           </main>
         </div>
@@ -1480,6 +1500,7 @@ export function WebuiClientFoundationApp(
     </div>
     </ArchonShell>
     </WebuiSessionStoreProvider>
+    </WebuiWorkspaceQueriesProvider>
     </WebuiEventEffectsRegistryProvider>
   );
 }

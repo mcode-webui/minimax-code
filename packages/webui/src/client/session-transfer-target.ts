@@ -1,5 +1,15 @@
 // Where the session-transfer routes live, and with what credential.
 //
+// Responsibility (plan §7.2 `client/infrastructure/session-transfer-target.ts`;
+// ticket #51): this is **browser infrastructure IO**, not a business rule. It
+// reads the injected runtime config (`globalThis.__WEBUI_CONFIG__`) and resolves
+// the transfer origin and token at call time. It is deliberately not absorbed
+// into a workflow module: the decision of *which* session to export and *where*
+// to import it into lives in `application/session-workflows.ts`, and the two
+// request adapters (`session-transfer-download.ts`, `session-import.ts`) consume
+// this resolver for the shared origin/token answer. Because it reads a global it
+// is not a pure rule module and belongs to infrastructure.
+//
 // Both halves of the round trip need the same answer -- the export GET and
 // the import POST are served by the same listener -- so it is resolved once
 // here rather than twice with two subtly different copies.

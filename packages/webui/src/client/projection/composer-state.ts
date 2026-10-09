@@ -268,7 +268,13 @@ export interface WebuiComposerSubmitArgs {
   readonly attachments?: readonly WebuiAttachmentInput[];
   readonly onAttachmentsSubmitted?: () => void;
   readonly sending: boolean;
-  readonly deps: WebuiStreamLoopDeps;
+  /**
+   * Stream-loop transports. The loop's `projection` bundle is supplied here,
+   * not by the caller: this orchestration already lives below the mechanism
+   * boundary and injects the existing pure transforms, so a caller that never
+   * traverses a resync/attach path cannot forget them.
+   */
+  readonly deps: Omit<WebuiStreamLoopDeps, "projection">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   /** Create the first session silently when New Task has no selected session. */
   readonly createSession?: WebuiClientSessionCreator;
@@ -444,7 +450,7 @@ export async function submitWebuiComposerTurn(
   let claimed: number | undefined;
   try {
     claimed = await runWebuiStreamLoop(
-      { ...args.deps, projection: args.deps.projection ?? streamRecoveryProjection },
+      { ...args.deps, projection: streamRecoveryProjection },
       { sessionId, message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) },
       buildWebuiStreamLoopSink(handlers.setStream),
     );

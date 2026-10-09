@@ -38,11 +38,14 @@ export interface WebuiStreamLoopDeps {
   /**
    * Pure history/context transforms, injected by the caller so this mechanism
    * imports no `projection/` module (plan §7.2). The turn coordinator supplies
-   * the existing pure functions — this is not a re-implementation. When a
-   * recovery path needs them and they are absent, the loop refuses rather than
-   * writing a wrongly shaped transcript.
+   * the existing pure functions — this is not a re-implementation.
+   *
+   * Required on purpose: the loop no longer carries a runtime fallback for a
+   * missing bundle, so forgetting to inject it is a compile error rather than a
+   * silently mis-shaped transcript discovered only when a resync/attach path
+   * runs. Callers that never traverse those paths still pass a stub.
    */
-  readonly projection?: StreamRecoveryProjection;
+  readonly projection: StreamRecoveryProjection;
 }
 
 /**
@@ -480,10 +483,6 @@ async function driveWebuiStreamLoop(
         // cursor so the server replays from the latest persisted point.
         safe.setPhase("reconnecting");
         if (loadMessages) {
-          if (!projection) {
-            finalizeOnExit("stream recovery projection is unavailable");
-            return;
-          }
           try {
             const page = await loadMessages({ id: sessionId });
             safe.setMessages(
@@ -535,10 +534,6 @@ async function driveWebuiStreamLoop(
           let anchor: { afterCursor?: string; afterMsgId?: string } = {};
           if (args.afterCursor) anchor = { afterCursor: args.afterCursor };
           else if (loadMessages) {
-            if (!projection) {
-              finalizeOnExit("stream recovery projection is unavailable");
-              return;
-            }
             let page;
             try {
               page = await loadMessages({ id: sessionId });

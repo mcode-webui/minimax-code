@@ -34,7 +34,7 @@ import {
   sessionHash,
   sortWebuiProjectSessionIds,
 } from "../../src/client/components/SessionRail.js";
-import { WebuiSessionTranscript } from "../../src/client/components/SessionTranscript.js";
+import { WebuiSessionTranscript as BaseWebuiSessionTranscript } from "../../src/client/components/SessionTranscript.js";
 import { WebuiWorkspaceDirectoryBrowser } from "../../src/client/components/SessionComposer.js";
 import {
   WebuiIconContextArchive,
@@ -80,11 +80,9 @@ import type {
   WebuiGoalPatchRequest,
 } from "../../src/shared/contracts/goal.js";
 import type { WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
-import {
-  migrateSessionRuntimeState,
-  readSessionRuntimeState,
-  updateSessionRuntimeState,
-} from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { WEBUI_HOME_SESSION_KEY } from "../../src/client/application/state.js";
+import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop as runStreamLoop,
@@ -2149,30 +2147,24 @@ describe("WebUI composer app-to-helper seam", () => {
     // Reported bug: after 新建任务 the welcome hero replayed the previous
     // turn's messages. The turn state must follow the session switch and the
     // home key must come back initial.
-    const homeKey = "__webui-home__";
-    updateSessionRuntimeState(homeKey, (current) => ({
-      stream: { ...initialWebuiStreamState, phase: "streaming" },
+    const store = createWebuiSessionStore();
+    store.updateSession(WEBUI_HOME_SESSION_KEY, (current) => ({
+      ...current,
+      stream: { ...current.stream, phase: "streaming" },
       sending: true,
     }));
 
-    migrateSessionRuntimeState(homeKey, "session-1");
+    store.migrateSession(WEBUI_HOME_SESSION_KEY, "session-1");
 
-    expect(readSessionRuntimeState(homeKey)).toEqual({
-      stream: initialWebuiStreamState,
-      sending: false,
+    const home = store.readSession(WEBUI_HOME_SESSION_KEY);
+    expect(home.stream).toEqual(initialWebuiStreamState);
+    expect(home.sending).toBe(false);
+    const session = store.readSession("session-1");
+    expect(session.stream).toEqual({
+      ...initialWebuiStreamState,
+      phase: "streaming",
     });
-    expect(readSessionRuntimeState("session-1")).toEqual({
-      stream: { ...initialWebuiStreamState, phase: "streaming" },
-      sending: true,
-    });
-
-    // Cleanup: never leak runtime state across tests (the store is a
-    // module-level singleton).
-    migrateSessionRuntimeState("session-1", homeKey);
-    updateSessionRuntimeState(homeKey, () => ({
-      stream: initialWebuiStreamState,
-      sending: false,
-    }));
+    expect(session.sending).toBe(true);
   });
 
   it("queues a second composer submission while the current turn is running", async () => {
@@ -3427,3 +3419,20 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     expect(setStream).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * `WebuiSessionTranscript` now reads the stream slice through the application
+ * store bindings (`useWebuiSessionStream`), so it needs the store provided.
+ * This wrapper supplies one store for the suite's transcript renders — the
+ * module-level runtime map it used to read is gone (plan §7.6; ticket #45).
+ */
+const transcriptStore = createWebuiSessionStore();
+
+function WebuiSessionTranscript(
+  props: import("react").ComponentProps<typeof BaseWebuiSessionTranscript>,
+): ReturnType<typeof createElement> {
+  return createElement(WebuiSessionStoreProvider, {
+    store: transcriptStore,
+    children: createElement(BaseWebuiSessionTranscript, props),
+  });
+}

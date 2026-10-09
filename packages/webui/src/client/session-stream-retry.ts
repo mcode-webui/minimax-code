@@ -15,28 +15,27 @@
 
 import type { WebuiClientSessionResumer } from "./contracts/execution-port.js";
 import type { WebuiClientMessageLoader } from "./contracts/message-view.js";
+import type { WebuiSessionStore } from "./application/session-store.js";
 import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "./stream-loop.js";
 import { streamRecoveryProjection } from "./projection/stream-recovery.js";
-import {
-  createSessionRuntimeWriter,
-  readSessionRuntimeState,
-} from "./session-runtime-store.js";
 
 export function createSessionStreamRetry({
+  store,
   sessionId,
   resumeSession,
   loadMessages,
 }: {
+  readonly store: WebuiSessionStore;
   readonly sessionId: string;
   readonly resumeSession: WebuiClientSessionResumer;
   readonly loadMessages?: WebuiClientMessageLoader;
 }): () => void {
   return () => {
-    const writer = createSessionRuntimeWriter({
+    const writer = store.createSessionWriter({
       kind: "session",
       sessionId,
     });
-    const current = readSessionRuntimeState(sessionId).stream;
+    const current = store.readSession(sessionId).stream;
     // Clear the refusal first, synchronously: the banner reads the phase, and
     // leaving `refused` standing while the new attempt opens would show the
     // failure for a loop that is already streaming again.

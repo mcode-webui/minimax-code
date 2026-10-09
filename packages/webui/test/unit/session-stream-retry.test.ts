@@ -18,14 +18,19 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createSessionStreamRetry } from "../../src/client/session-stream-retry.js";
-import {
-  readSessionRuntimeState,
-  updateSessionRuntimeState,
-} from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
 import type { WebuiClientSessionResumer } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 type ResumeRequest = Parameters<WebuiClientSessionResumer>[0];
+
+/**
+ * The application store the retry moves (plan §7.6; ticket #45 prerequisite 5).
+ * It replaces the module-level runtime map: the retry takes this store as a
+ * dependency, so the same Map the test seeds is the one the retry reads and
+ * writes.
+ */
+const store = createWebuiSessionStore();
 
 function seed(
   sessionId: string,
@@ -33,7 +38,7 @@ function seed(
     Pick<WebuiStreamState, "phase" | "refusal" | "cursor" | "transcriptIncomplete">
   >,
 ): string {
-  updateSessionRuntimeState(sessionId, (current) => ({
+  store.updateSession(sessionId, (current) => ({
     ...current,
     stream: { ...current.stream, ...patch },
     sending: false,
@@ -57,11 +62,15 @@ describe("createSessionStreamRetry", () => {
       cursor: "c9",
     });
     const resumeSession = pendingResume();
-    const retry = createSessionStreamRetry({ sessionId, resumeSession });
+    const retry = createSessionStreamRetry({
+      store,
+      sessionId,
+      resumeSession,
+    });
 
     retry();
 
-    const stream = readSessionRuntimeState(sessionId).stream;
+    const stream = store.readSession(sessionId).stream;
     // The attach loop's synchronous prefix: the lease is claimed and the
     // phase is `streaming` by the time the click handler returns, and the
     // old refusal is gone rather than lingering under the new attempt.
@@ -84,6 +93,7 @@ describe("createSessionStreamRetry", () => {
     });
     const resumeSession = pendingResume();
     const retry = createSessionStreamRetry({
+      store,
       sessionId,
       resumeSession,
       loadMessages: async () => ({
@@ -123,12 +133,16 @@ describe("createSessionStreamRetry", () => {
     const resumeSession = vi.fn(async () => {
       throw new Error("connection refused again");
     });
-    const retry = createSessionStreamRetry({ sessionId, resumeSession });
+    const retry = createSessionStreamRetry({
+      store,
+      sessionId,
+      resumeSession,
+    });
 
     retry();
 
     return vi.waitFor(() => {
-      const stream = readSessionRuntimeState(sessionId).stream;
+      const stream = store.readSession(sessionId).stream;
       // Back to the terminal state with the NEW reason — the banner returns,
       // it does not spin: one click ran exactly one resume.
       expect(stream.phase).toBe("refused");

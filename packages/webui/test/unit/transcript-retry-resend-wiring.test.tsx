@@ -82,8 +82,7 @@ import {
   buildWebuiComposerHandlers,
   submitWebuiComposerTurn,
 } from "../../src/client/projection/composer-state.js";
-import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
-import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { createWebuiSessionStore, type WebuiSessionStore } from "../../src/client/application/session-store.js";
 import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
 
@@ -92,12 +91,13 @@ const OTHER_SESSION_ID = "session-retry-resend-other";
 const REFUSAL = "upstream rejected: connection reset";
 const USER_INPUT = "把这两张图对比一下";
 
-/** Seed the module-level runtime store with a failed turn, as the socket would. */
+/** Seed the application store with a failed turn, as the socket would. */
 function seedFailedTurn(
+  store: WebuiSessionStore,
   session = SESSION_ID,
   refusal: string | undefined = REFUSAL,
 ): void {
-  updateSessionRuntimeState(session, (current) => ({
+  store.updateSession(session, (current) => ({
     ...current,
     sending: false,
     stream: { ...initialWebuiStreamState, phase: "refused", refusal },
@@ -119,9 +119,10 @@ function renderComposer(props: {
 } {
   createdElements.length = 0;
   const sessionId = props.sessionId ?? SESSION_ID;
-  seedFailedTurn(sessionId, props.refusal);
+  const sessionStore = createWebuiSessionStore();
+  seedFailedTurn(sessionStore, sessionId, props.refusal);
   const html = renderToStaticMarkup(
-    <WebuiSessionStoreProvider store={createWebuiSessionStore()}>
+    <WebuiSessionStoreProvider store={sessionStore}>
       {createElement(WebuiComposer, {
         sessionId,
         agentName: "main",

@@ -15,7 +15,7 @@ import { TurnNavigator, type TurnSummary } from "./TurnNavigator.js";
 import { MessageItem } from "./MessageItem.js";
 import { formatWebuiMessageTimestamp } from "./MessageActions.js";
 import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
-import { useSessionRuntimeState } from "../session-runtime-store.js";
+import { useWebuiSessionStream } from "../bindings/use-session-state.js";
 import { isTurnLive } from "../projection/composer-state.js";
 import {
   buildWebuiPlanApproveAnswers,
@@ -270,7 +270,7 @@ export function WebuiSessionTranscript({
         : current,
     );
   };
-  const { stream } = useSessionRuntimeState(sessionId).state;
+  const stream = useWebuiSessionStream(sessionId);
   const streamPhase = stream.phase;
   const autoFollowRef = useRef(true);
   const manualScrollIntentRef = useRef(false);

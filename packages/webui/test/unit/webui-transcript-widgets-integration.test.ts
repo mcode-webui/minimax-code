@@ -14,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
 import type { WebuiClientMessage, WebuiClientMessagePage } from "../../src/client/contracts/message-view.js";
 
-import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
 import type { WebuiUsageQuotaResult } from "../../src/shared/contracts/usage-quota.js";
 
 const SESSION_ID = "session-widgets";
@@ -29,9 +29,11 @@ function sessionShell(opts: {
   readonly streamRefusal?: string;
   readonly transcriptIncomplete?: boolean;
 }): string {
-  // The runtime map is module-scoped; clear any prior turn on the same key so
-  // each test sees a clean slate.
-  updateSessionRuntimeState(SESSION_ID, (current) => ({
+  // The shell is handed the one application store, so the transcript reads
+  // exactly this instance (ticket #45). A fresh store starts clean, so each
+  // test sees no prior turn on the key.
+  const sessionStore = createWebuiSessionStore();
+  sessionStore.updateSession(SESSION_ID, (current) => ({
     ...current,
     sending: opts.streamingPhase
       ? opts.streamingPhase !== "refused" && opts.streamingPhase !== "error"
@@ -78,6 +80,7 @@ function sessionShell(opts: {
   return renderToStaticMarkup(
     createElement(WebuiClientFoundationApp, {
       label: "webui-foundation",
+      sessionStore,
       locationHash: `#session=${SESSION_ID}`,
       sessionPage: {
         sessions: [

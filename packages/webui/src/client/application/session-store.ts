@@ -116,6 +116,15 @@ export interface WebuiSessionStore {
   createInteractionWriter: (
     owner: WebuiSessionWriterOwner,
   ) => WebuiInteractionWriter;
+  /**
+   * Carry a session's live record (stream + sending + interaction slices) from
+   * one key to another and clear the source. It deliberately does **not**
+   * notify: the only subscriber is the view that is about to switch keys (its
+   * effect re-reads the target key) and the target key has no subscriber yet.
+   * This is the application-store form of the old
+   * `migrateSessionRuntimeState` (plan §7.7 stage 4), and the no-notify
+   * semantics are load-bearing for the home → first-session flow.
+   */
   migrateSession: (fromKey: string, toKey: string) => void;
 }
 
@@ -254,7 +263,13 @@ export function createWebuiSessionStore(): WebuiSessionStore {
           if (migrated)
             throw new Error("Home turn session writer already migrated");
           migrated = true;
-          store.migrateSession(sessionKey, sessionId);
+          // Re-point only. The writer belongs to one turn and its key changes
+          // only when the first home turn creates the session that owns its
+          // stream. Carrying the already-written record across the keys is a
+          // separate, silent step the caller runs
+          // (`store.migrateSession`), exactly as the module-level store's
+          // `migrateSessionRuntimeState` did; doing it here would notify a
+          // subscriber that must not see the intermediate state.
           sessionKey = sessionId;
           return {
             kind: "session",
@@ -273,7 +288,10 @@ export function createWebuiSessionStore(): WebuiSessionStore {
       const state = sessions.get(fromKey);
       sessions.delete(fromKey);
       if (state) sessions.set(toKey, state);
-      notify();
+      // No `notify()` on purpose (plan §7.7 stage 4; the module-level store's
+      // `migrateSessionRuntimeState` had the same semantics). The only
+      // subscriber is the view switching keys, which re-reads the target key in
+      // its own effect; the target key has no subscriber yet.
     },
   };
 

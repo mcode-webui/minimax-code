@@ -32,11 +32,18 @@ import type {
   WebuiQuestionnaireRequest,
 } from "../../shared/contracts/interactions.js";
 import type { WebuiApplicationSessionState } from "../application/state.js";
-import { initialWebuiApplicationSessionState } from "../application/state.js";
+import {
+  initialWebuiApplicationSessionState,
+  WEBUI_HOME_SESSION_KEY,
+} from "../application/state.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
 import {
   createWebuiInteractionCommands,
+  createWebuiSessionCommands,
+  createWebuiTurnCommands,
   type WebuiInteractionCommands,
+  type WebuiSessionCommands,
+  type WebuiTurnCommandWriter,
 } from "../application/session-commands.js";
 import {
   useWebuiSessionStoreContext,
@@ -121,5 +128,57 @@ export function useWebuiInteractionCommands(
         ),
       ),
     [store, sessionId],
+  );
+}
+
+/**
+ * The stream/sending command surface for one session (or the home slot), plus
+ * an imperative `readStream` for the async turn paths that cannot subscribe
+ * (plan §7.6; ticket #45 prerequisite 5). The store writer stays inside this
+ * hook: the component submits `clearStream` / `updateStream` / `setTurnSending`
+ * / `awaitInteraction` and never holds a setter, and `readStream` reads the
+ * current slice off the same store rather than a module-level map.
+ */
+export function useWebuiSessionCommands(
+  sessionId: string | undefined,
+): {
+  readonly commands: WebuiSessionCommands;
+  readonly readStream: () => WebuiStreamState;
+} {
+  const store = useWebuiSessionStoreContext();
+  return useMemo(() => {
+    const writer = sessionId
+      ? store.createSessionWriter({ kind: "session", sessionId })
+      : store.createSessionWriter({ kind: "home" });
+    return {
+      commands: createWebuiSessionCommands(writer),
+      readStream: () =>
+        store.readSession(sessionId ?? WEBUI_HOME_SESSION_KEY).stream,
+    };
+  }, [store, sessionId]);
+}
+
+/**
+ * The turn-writer binding: build the command-shaped writer a send streams into
+ * (plan §7.1 `turn-coordinator.ts`; ticket #45 prerequisite 5). The composer's
+ * send path calls this factory once per turn — home-keyed until the created
+ * session owns the stream — and from then on submits `updateStream` /
+ * `setTurnSending` / `migrateToSession`. The store writer never leaves this
+ * binding, and it is the *application* store, not the old module-level map.
+ */
+export function useWebuiTurnWriter(): (
+  owner:
+    | { readonly kind: "home" }
+    | { readonly kind: "session"; readonly sessionId: string },
+) => WebuiTurnCommandWriter {
+  const store = useWebuiSessionStoreContext();
+  return useMemo(
+    () => (owner) =>
+      createWebuiTurnCommands(
+        owner.kind === "home"
+          ? store.createSessionWriter(owner)
+          : store.createSessionWriter(owner),
+      ),
+    [store],
   );
 }

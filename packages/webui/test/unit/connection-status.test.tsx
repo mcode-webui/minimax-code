@@ -1,4 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
+import type { ReactElement } from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -8,21 +9,39 @@ import {
   unregisterWebuiEventWatcher,
 } from "../../src/client/connection-health.js";
 import {
-  ConnectionStatus,
+  ConnectionStatus as BaseConnectionStatus,
   projectWebuiConnectionState,
+  type ConnectionStatusProps,
 } from "../../src/client/ConnectionStatus.js";
-import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import type { WebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 /**
- * The store is module-level, so each case claims its own session key rather
- * than sharing one and inheriting the previous case's phase.
+ * One application store for this suite. It replaces the module-level runtime
+ * map the component used to read: a case seeds the session key it claims, then
+ * the local `ConnectionStatus` renders the real component inside the provider
+ * so the binding reads that store (plan §7.6; ticket #45 prerequisite 5).
+ */
+const store = createWebuiSessionStore();
+
+function ConnectionStatus(props: ConnectionStatusProps): ReactElement {
+  return (
+    <WebuiSessionStoreProvider store={store}>
+      <BaseConnectionStatus {...props} />
+    </WebuiSessionStoreProvider>
+  );
+}
+
+/**
+ * Each case claims its own session key rather than sharing one and inheriting
+ * the previous case's phase.
  */
 function seed(
   sessionId: string,
   patch: Partial<Pick<WebuiStreamState, "phase" | "refusal" | "status">>,
 ): string {
-  updateSessionRuntimeState(sessionId, (current) => ({
+  store.updateSession(sessionId, (current) => ({
     ...current,
     stream: { ...current.stream, ...patch },
   }));
@@ -100,7 +119,7 @@ describe("ConnectionStatus", () => {
     const sessionId = "cs-live";
     expect(renderToStaticMarkup(<ConnectionStatus sessionId={sessionId} />))
       .toContain('data-connection-state="connected"');
-    updateSessionRuntimeState(sessionId, (current) => ({
+    store.updateSession(sessionId, (current) => ({
       ...current,
       stream: { ...current.stream, phase: "reconnecting" },
     }));

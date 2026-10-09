@@ -8,9 +8,10 @@
 // (Tier 5) uses it — the call site stays in `app.tsx` and reaches the new
 // module via a local `import { WebuiComposer } from "./components/SessionComposer.js";`.
 //
-// The component reads the runtime store (`useSessionRuntimeState`), so the
-// W2.75 invariant about `sessionKeyRef.current` is preserved by importing
-// the hook from `./session-runtime-store.js` rather than re-implementing it.
+// The component reads the stream/sending slices through the application
+// bindings (`useWebuiSessionState` / `useWebuiSessionCommands` /
+// `useWebuiTurnWriter`), which subscribe to the one application store and
+// submit purpose-named commands; the component holds no store writer.
 
 import {
   Fragment,
@@ -56,12 +57,14 @@ import {
   type WebuiTurnWriterOwner,
 } from "../application/turn-commands.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
-import { createWebuiTurnCommands } from "../application/session-commands.js";
 import {
   useWebuiInteractionCommands,
+  useWebuiSessionCommands,
   useWebuiSessionGoal,
   useWebuiSessionPermissions,
   useWebuiSessionQuestionnaire,
+  useWebuiSessionState,
+  useWebuiTurnWriter,
 } from "../bindings/use-session-state.js";
 import {
   reduceWebuiStreamFrame,
@@ -151,12 +154,6 @@ import { evaluateComposerDismiss, evaluateOutsideClose } from "../projection/out
 import {
   buildWebuiModelSelectionRequest,
 } from "../projection/action-requests.js";
-import {
-  createSessionRuntimeWriter,
-  HOME_SESSION_RUNTIME_KEY,
-  readSessionRuntimeState,
-  useSessionRuntimeState,
-} from "../session-runtime-store.js";
 import { workspaceProjectName } from "./SessionRail.js";
 import {
   findWebuiMentionRange,
@@ -710,8 +707,9 @@ export function WebuiComposer({
   readonly onSelectSession?: (sessionId: string) => void;
   readonly onOpenPluginManagement?: (area: "plugins" | "skills") => void;
 } & WebuiSessionComposerCapabilities): ReactElement {
-  const { state: runtimeState, commands } = useSessionRuntimeState(sessionId);
-  const { stream, sending } = runtimeState;
+  const { stream, sending } = useWebuiSessionState(sessionId);
+  const { commands, readStream } = useWebuiSessionCommands(sessionId);
+  const createTurnWriter = useWebuiTurnWriter();
   // The interaction slices live on the one application store, read here through
   // selectors and kept nowhere else (plan §7.6; ticket #45). The commands write
   // through the store's interaction writer; the composer holds no store writer
@@ -858,8 +856,8 @@ export function WebuiComposer({
           error instanceof Error ? error.message : String(error),
         );
     });
-    const readStream = () =>
-      readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream;
+    // The current stream slice is read through the application-store binding
+    // (`useWebuiSessionCommands`), never a module-level map.
     // One shared, deduplicated probe per transport (plan §7.1 slice): the shell
     // and this composer ask the same `getActiveTurn`, so a same-session probe
     // racing between them collapses to a single round trip.
@@ -909,7 +907,7 @@ export function WebuiComposer({
 
     const onRuntimeEvent = createWebuiWatchEventCallback(
       sessionId,
-      () => readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream,
+      readStream,
       () => ({ permissions, questionnaire, goal }),
       {
         refreshPending: () => {
@@ -1695,9 +1693,10 @@ export function WebuiComposer({
   // Turn phase remains part of session runtime state; the transcript owns all
   // visible messages for both the live and settled phases.
   // `isTurnLive` is the single source of truth for the three-value phase
-  // predicate; `session-runtime-store.ts` carries `sending` as a separate
-  // submit-lifecycle boolean the reducer deliberately does NOT merge with
-  // `phase` — `submitWebuiComposerTurn` relies on the two staying distinct.
+  // predicate; the application session record (`application/state.ts`) carries
+  // `sending` as a separate submit-lifecycle boolean the reducer deliberately
+  // does NOT merge with `phase` — `submitWebuiComposerTurn` relies on the two
+  // staying distinct.
   useLayoutEffect(() => {
     if (!sessionLayout) return undefined;
     const region = composerRegionRef.current;
@@ -1745,7 +1744,7 @@ export function WebuiComposer({
   // of this project's policy.
   const handlers = buildWebuiComposerHandlers({
     setStream: commands.updateStream,
-    readStream: () => readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream,
+    readStream,
     setSending: commands.setTurnSending,
     onDraftChange,
     onNeedsSession,
@@ -1795,15 +1794,10 @@ export function WebuiComposer({
       createSessionWorkspaceDir,
       teamModeOff,
       // The owner union is narrowed per branch so the overloaded factory
-      // resolves; its writer is immediately wrapped in the purpose-named turn
-      // commands, so this component submits `updateStream` / `setTurnSending`
-      // and never holds the runtime store writer itself.
-      createWriter: (owner: WebuiTurnWriterOwner) =>
-        createWebuiTurnCommands(
-          owner.kind === "home"
-            ? createSessionRuntimeWriter(owner)
-            : createSessionRuntimeWriter(owner),
-        ),
+      // resolves; the binding builds the command-shaped writer from the
+      // application store, so this component submits `updateStream` /
+      // `setTurnSending` and never holds the store writer itself.
+      createWriter: (owner: WebuiTurnWriterOwner) => createTurnWriter(owner),
     });
   };
   // The input of the last turn this composer submitted, kept locally so retry

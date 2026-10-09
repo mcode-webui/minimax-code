@@ -96,7 +96,12 @@ import type {
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import { createWebuiRailActivityCommands } from "../application/rail-activity.js";
-import { createWebuiSessionStore } from "../application/session-store.js";
+import {
+  createWebuiSessionStore,
+  type WebuiSessionStore,
+} from "../application/session-store.js";
+import { selectWebuiSessionStream } from "../application/selectors.js";
+import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
@@ -117,11 +122,6 @@ import {
   projectWebuiWorkspaceHistory,
   webuiWorkspaceSubagentStatus,
 } from "../projection/workspace-progress.js";
-import {
-  HOME_SESSION_RUNTIME_KEY,
-  migrateSessionRuntimeState,
-  useSessionRuntimeState,
-} from "../session-runtime-store.js";
 import { createSessionStreamRetry } from "../session-stream-retry.js";
 import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
@@ -176,6 +176,14 @@ export interface WebuiClientFoundationAppProps {
    * is `undefined` iff the operation is not wired.
    */
   readonly transport?: WebuiTransport;
+  /**
+   * The one application session store. Optional so tests and SSR can inject a
+   * pre-seeded instance; production (`main.tsx`) omits it and the shell creates
+   * and provides exactly one per mount. It is never a second map — the shell
+   * provides this exact object through `WebuiSessionStoreProvider`, and every
+   * consumer reads it through the bindings (plan §7.6; ticket #45).
+   */
+  readonly sessionStore?: WebuiSessionStore;
 }
 
 function useSelectedSessionId(
@@ -217,7 +225,17 @@ export function WebuiClientFoundationApp(
     dataDir,
     hostLabel,
     transport,
+    sessionStore: providedSessionStore,
   } = props;
+  // The one application session store for this mount (plan §7.6; ticket #45).
+  // A caller (tests, SSR) may inject one; production omits the prop and the
+  // shell creates exactly one. The shell provides this exact object through
+  // `WebuiSessionStoreProvider` and reads its own slices off it — never a
+  // second, module-level map.
+  const sessionStore = useMemo(
+    () => providedSessionStore ?? createWebuiSessionStore(),
+    [providedSessionStore],
+  );
   // Each method comes from `transport`. Re-binding to the same local
   // name as before keeps the rest of the function body identical.
   // Local rebinds: each name below is consumed by a shell-side effect or
@@ -356,7 +374,23 @@ export function WebuiClientFoundationApp(
   const [projectNames, setProjectNames] = useState<Record<string, string>>(
     readProjectNames,
   );
-  const selectedRuntimeState = useSessionRuntimeState(selectedSessionId).state;
+  // The selected session's live stream slice, read off the application store
+  // through the selector (plan §7.6; ticket #45 prerequisite 5). Subscribing to
+  // the store's snapshot keeps the shell reactive exactly as the old module
+  // hook did, with no second map.
+  const selectedStream = useSyncExternalStore(
+    sessionStore.subscribe,
+    () =>
+      selectWebuiSessionStream(
+        sessionStore.getSnapshot(),
+        selectedSessionId ?? WEBUI_HOME_SESSION_KEY,
+      ),
+    () =>
+      selectWebuiSessionStream(
+        sessionStore.getSnapshot(),
+        selectedSessionId ?? WEBUI_HOME_SESSION_KEY,
+      ),
+  );
   const [historyProgress, setHistoryProgress] =
     useState<WebuiWorkspaceProgressState>(initialWebuiWorkspaceProgress);
   // Sessions visible to lookups: roots from the flat page plus any child
@@ -480,17 +514,17 @@ export function WebuiClientFoundationApp(
     }));
   }, [selectedSessionId, treePage.sessions]);
   const progressTodos: readonly WebuiTodo[] =
-    selectedRuntimeState.stream.workspaceProgress.hasTodoSnapshot
-      ? selectedRuntimeState.stream.workspaceProgress.todos
+    selectedStream.workspaceProgress.hasTodoSnapshot
+      ? selectedStream.workspaceProgress.todos
       : historyProgress.todos;
   const progressSubagents = useMemo<readonly WebuiWorkspaceSubagent[]>(() => {
     const merged = new Map<string, WebuiWorkspaceSubagent>();
     for (const subagent of historyProgress.subagents) merged.set(subagent.sessionId, subagent);
     for (const subagent of treeSubagents) merged.set(subagent.sessionId, subagent);
-    for (const subagent of selectedRuntimeState.stream.workspaceProgress.subagents)
+    for (const subagent of selectedStream.workspaceProgress.subagents)
       merged.set(subagent.sessionId, { ...merged.get(subagent.sessionId), ...subagent });
     return [...merged.values()].sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
-  }, [historyProgress.subagents, selectedRuntimeState.stream.workspaceProgress.subagents, treeSubagents]);
+  }, [historyProgress.subagents, selectedStream.workspaceProgress.subagents, treeSubagents]);
   const loadMore =
     loadSessions && page.hasMore
       ? () => {
@@ -669,6 +703,7 @@ export function WebuiClientFoundationApp(
   const retrySessionStream =
     selectedSessionId && transport?.resumeSession
       ? createSessionStreamRetry({
+          store: sessionStore,
           sessionId: selectedSessionId,
           resumeSession: transport.resumeSession,
           loadMessages: transport.loadMessages,
@@ -749,7 +784,7 @@ export function WebuiClientFoundationApp(
     // The first turn streams into the home key before the session exists;
     // carry it (and the sending flag) across the view switch so the reply
     // stays on screen, and leave home clean.
-    migrateSessionRuntimeState(HOME_SESSION_RUNTIME_KEY, id);
+    sessionStore.migrateSession(WEBUI_HOME_SESSION_KEY, id);
     // The composer store follows the same home → session migration: the
     // input just submitted was recorded under the home slot, and the new
     // session's history (and any unsent draft) should own it from here on.
@@ -922,7 +957,6 @@ export function WebuiClientFoundationApp(
   // The activity slice lives on a single application store, not in component
   // state (plan §7.6 "Unread"; ticket #45 prerequisite 3). The shell subscribes
   // to the slice and submits commands — it holds no writer for it.
-  const sessionStore = useMemo(() => createWebuiSessionStore(), []);
   const sessionActivity = useSyncExternalStore(
     sessionStore.subscribe,
     () => sessionStore.getSnapshot().activity,

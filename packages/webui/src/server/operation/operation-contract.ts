@@ -38,6 +38,18 @@ export interface WebuiOperation<Body = unknown, ResultBody = Body> {
    * observe.
    */
   readonly acknowledgesStream?: boolean;
+  /**
+   * Compile-time marker tying the descriptor to its declared wire response
+   * body. `ResultBody` used to be inert on this interface: it appeared in a
+   * registration type but nowhere in the descriptor, so a descriptor could
+   * name any response (or none) and nothing linked it to the handler that
+   * produced it. Declaring it as a member makes the parameter visible to the
+   * descriptor type. The new typed bindings in `bind-handlers.ts` carry the
+   * real, exhaustive constraint through `OperationSpec`; this marker keeps the
+   * descriptor honest for the operations that still declare their result
+   * explicitly. It is never set at runtime.
+   */
+  readonly resultBody?: ResultBody;
 }
 
 export type WebuiOperationValidation<Body> =

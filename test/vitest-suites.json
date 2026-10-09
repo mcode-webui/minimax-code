@@ -332,7 +332,9 @@
       "packages/webui/test/unit/global-instructions-operation.test.ts",
       "packages/webui/test/unit/personalization-settings.test.tsx",
       "packages/webui/test/unit/profile-files.test.ts",
-      "packages/webui/test/unit/webui-personalization-wiring.test.ts"
+      "packages/webui/test/unit/webui-personalization-wiring.test.ts",
+      "packages/webui/test/unit/webui-operation-binding.test.ts",
+      "packages/webui/test/unit/webui-operation-wire-compatibility.test.ts"
     ]
   }
 }

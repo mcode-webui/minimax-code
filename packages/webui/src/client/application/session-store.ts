@@ -1,0 +1,224 @@
+// The single session store and write authority (plan §7.1 `application/`,
+// §7.6 "Final state ownership and write authority").
+//
+// One store per application instance owns one map of session records; every
+// writer is created from it, so there is exactly one place a session's state is
+// written and exactly one map. Components never receive a writer — the bindings
+// layer (plan §7.2) subscribes to snapshots and submits commands; the writer
+// stays inside the application.
+//
+// Two guards are load-bearing:
+//
+//   * **Disposal.** After `dispose`, a late completion — a stream frame that
+//     arrived after the application unmounted, a retry that settled late —
+//     writes nothing. The store is the last line of defence because a writer
+//     captured before disposal would otherwise resurrect a dead application.
+//   * **Listener isolation.** A throwing snapshot listener must not stop the
+//     other subscribers from being notified: one broken component cannot freeze
+//     every other component's view of the application.
+//
+// The React hook that used to live beside the module-level store is split out
+// into `client/bindings/use-session-state.ts` (plan §7.2); it reads this store's
+// snapshot and creates no second map.
+
+import type { WebuiSessionActivityMap } from "../session-activity.js";
+import { initialWebuiSessionActivity } from "../session-activity.js";
+import type { WebuiStreamState } from "../stream.js";
+import {
+  initialWebuiApplicationSessionState,
+  initialWebuiApplicationState,
+  WEBUI_HOME_SESSION_KEY,
+} from "./state.js";
+import type {
+  WebuiApplicationSessionState,
+  WebuiApplicationState,
+} from "./state.js";
+
+export interface WebuiSessionWriter {
+  readonly kind: "session";
+  readonly setStream: (
+    update: (current: WebuiStreamState) => WebuiStreamState,
+  ) => void;
+  readonly setSending: (sending: boolean) => void;
+}
+
+export interface WebuiHomeSessionWriter {
+  readonly kind: "home";
+  readonly setStream: (
+    update: (current: WebuiStreamState) => WebuiStreamState,
+  ) => void;
+  readonly setSending: (sending: boolean) => void;
+  readonly migrateToSession: <SessionId extends string>(
+    sessionId: SessionId,
+  ) => WebuiSessionWriter;
+}
+
+export type WebuiSessionWriterOwner<SessionId extends string = string> =
+  | { readonly kind: "home" }
+  | { readonly kind: "session"; readonly sessionId: SessionId };
+
+export interface WebuiSessionStore {
+  getSnapshot: () => WebuiApplicationState;
+  subscribe: (listener: () => void) => () => void;
+  readSession: (sessionId: string) => WebuiApplicationSessionState;
+  updateSession: (
+    sessionId: string,
+    update: (
+      current: WebuiApplicationSessionState,
+    ) => WebuiApplicationSessionState,
+  ) => void;
+  updateActivity: (
+    update: (current: WebuiSessionActivityMap) => WebuiSessionActivityMap,
+  ) => void;
+  select: (sessionId: string | undefined) => void;
+  getSelectedSessionId: () => string | undefined;
+  isDisposed: () => boolean;
+  dispose: () => void;
+  createSessionWriter: {
+    <SessionId extends string>(owner: {
+      readonly kind: "session";
+      readonly sessionId: SessionId;
+    }): WebuiSessionWriter;
+    (owner: { readonly kind: "home" }): WebuiHomeSessionWriter;
+  };
+  migrateSession: (fromKey: string, toKey: string) => void;
+}
+
+export function createWebuiSessionStore(): WebuiSessionStore {
+  const sessions = new Map<string, WebuiApplicationSessionState>();
+  const listeners = new Set<() => void>();
+  let activity: WebuiSessionActivityMap = initialWebuiSessionActivity;
+  let selectedSessionId: string | undefined;
+  let disposed = false;
+  let snapshot: WebuiApplicationState = initialWebuiApplicationState;
+
+  const readSession = (sessionId: string): WebuiApplicationSessionState =>
+    sessions.get(sessionId) ?? initialWebuiApplicationSessionState;
+
+  const notify = (): void => {
+    snapshot = {
+      sessions: new Map(sessions),
+      activity,
+      ...(selectedSessionId ? { selectedSessionId } : {}),
+    };
+    for (const listener of [...listeners]) {
+      try {
+        listener();
+      } catch (error) {
+        // A throwing listener is contained: the remaining subscribers are the
+        // ones a broken component must not be able to black out.
+        try {
+          // eslint-disable-next-line no-console
+          console.error("[webui] application listener threw:", error);
+        } catch {
+          // console.error can throw in extreme environments; give up.
+        }
+      }
+    }
+  };
+
+  const updateSession = (
+    sessionId: string,
+    update: (
+      current: WebuiApplicationSessionState,
+    ) => WebuiApplicationSessionState,
+  ): void => {
+    if (disposed) return;
+    const current = readSession(sessionId);
+    const next = update(current);
+    if (next === current) return;
+    sessions.set(sessionId, next);
+    notify();
+  };
+
+  const updateActivity = (
+    update: (current: WebuiSessionActivityMap) => WebuiSessionActivityMap,
+  ): void => {
+    if (disposed) return;
+    const next = update(activity);
+    if (next === activity) return;
+    activity = next;
+    notify();
+  };
+
+  const createSessionWriter = <Id extends string>(sessionId: Id): WebuiSessionWriter => ({
+    kind: "session",
+    setStream: (update) =>
+      updateSession(sessionId, (current) => ({
+        ...current,
+        stream: update(current.stream),
+      })),
+    setSending: (sending) =>
+      updateSession(sessionId, (current) => ({ ...current, sending })),
+  });
+
+  const store: WebuiSessionStore = {
+    getSnapshot: () => snapshot,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    readSession,
+    updateSession,
+    updateActivity,
+    select: (sessionId) => {
+      if (disposed || sessionId === selectedSessionId) return;
+      selectedSessionId = sessionId;
+      notify();
+    },
+    getSelectedSessionId: () => selectedSessionId,
+    isDisposed: () => disposed,
+    dispose: () => {
+      disposed = true;
+      listeners.clear();
+    },
+    createSessionWriter: (<Id extends string>(
+      owner: WebuiSessionWriterOwner<Id>,
+    ): WebuiSessionWriter | WebuiHomeSessionWriter => {
+      if (owner.kind === "session")
+        return createSessionWriter(owner.sessionId);
+      // Home turn: the first message streams before the session exists, so the
+      // writer starts on the home key and migrates onto the created session in
+      // one committed transition (plan §7.1, `turn-coordinator.ts`).
+      let sessionKey = WEBUI_HOME_SESSION_KEY;
+      let migrated = false;
+      const writeStream = (
+        update: (current: WebuiStreamState) => WebuiStreamState,
+      ): void =>
+        updateSession(sessionKey, (current) => ({
+          ...current,
+          stream: update(current.stream),
+        }));
+      const writeSending = (sending: boolean): void =>
+        updateSession(sessionKey, (current) => ({ ...current, sending }));
+      return {
+        kind: "home",
+        setStream: writeStream,
+        setSending: writeSending,
+        migrateToSession: (sessionId) => {
+          if (migrated)
+            throw new Error("Home turn session writer already migrated");
+          migrated = true;
+          store.migrateSession(sessionKey, sessionId);
+          sessionKey = sessionId;
+          return {
+            kind: "session",
+            setStream: writeStream,
+            setSending: writeSending,
+          };
+        },
+      };
+    }) as WebuiSessionStore["createSessionWriter"],
+    migrateSession: (fromKey, toKey) => {
+      if (disposed || fromKey === toKey) return;
+      const state = sessions.get(fromKey);
+      sessions.delete(fromKey);
+      if (state) sessions.set(toKey, state);
+      notify();
+    },
+  };
+
+  return store;
+}

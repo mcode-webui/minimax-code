@@ -18,7 +18,8 @@
 import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readRequestBody, WebuiService } from "../../src/server/service.js";
+import { WebuiService } from "../../src/server/service.js";
+import { readRequestBody } from "../../src/server/http/session-transfer.js";
 import type {
   WebuiCreateSessionRequest,
   WebuiUpdateSessionRequest,

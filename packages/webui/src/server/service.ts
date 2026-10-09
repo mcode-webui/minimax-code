@@ -8,18 +8,17 @@
 //   * the operation registry built from the port,
 //   * the access control rules described in ADR 0004.
 //
+// The network lifecycle now lives in dedicated modules (plan section 7.1):
+// `http-server.ts` (listener lifecycle), `websocket-server.ts` (upgrade, socket
+// set, heartbeat, connection close), `frame-handler.ts` (inbound frame parsing
+// and dispatch), `access-policy.ts` (host/origin/upgrade admission) and the
+// `http/` route modules. This file keeps the HTTP/WS assembly plus start/close;
+// it holds no OAuth, broker or browser provider.
+//
 // Shutdown order matches step 13 of the assembly checklist: stop accepting
 // new operations, then close every connection, then close the harness.
 
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { createReadStream } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import type { AddressInfo } from "node:net";
-import path from "node:path";
-import type { Duplex } from "node:stream";
-import { fileURLToPath } from "node:url";
-import { WebSocketServer, type WebSocket } from "ws";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 
 import {
   createOperationRegistry,
@@ -27,22 +26,19 @@ import {
 } from "./operation/operations.js";
 import {
   createWebuiCredential,
-  credentialMatches,
   type WebuiCredential,
 } from "./credentials.js";
-import {
-  dispatchWebuiFrame,
-  errorFrame,
-  sendFrame,
-} from "./operation/operation-dispatch.js";
-import {
-  WebuiErrorCode,
-  WEBUI_PROTOCOL_VERSION,
-} from "../shared/envelope.js";
+import { WEBUI_PROTOCOL_VERSION } from "../shared/envelope.js";
 import type { WebuiHarnessPort } from "../runtime/port.js";
-import type { WebuiSessionInfo } from "../shared/contracts/session.js";
 import { WebuiTerminalManager } from "./terminal.js";
-import { webuiSessionTransferFileName, importWebuiSessionTransfer, WEBUI_DEFAULT_IMPORT_AGENT } from "../runtime/session-transfer.js";
+import { isLoopbackBindAddress } from "./access-policy.js";
+import {
+  createHttpListener,
+  listenHttpServer,
+  closeHttpListener,
+} from "./http-server.js";
+import { WebuiWebSocketServer } from "./websocket-server.js";
+import { serveHttpRequest, type WebuiHttpRouterContext } from "./http/router.js";
 
 export const WEBUI_MAX_MESSAGE_BYTES = 256 * 1024;
 export const WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -131,12 +127,9 @@ export class WebuiService {
   private readonly clientDirOverride: string | undefined;
   private readonly operations: ReadonlyMap<string, WebuiOperationRegistryEntry>;
   private readonly httpServer: Server;
-  private readonly wsServer: WebSocketServer;
+  private readonly wsServer: WebuiWebSocketServer;
   private readonly terminalManager = new WebuiTerminalManager();
-  private readonly connections = new Set<WebSocket>();
-  private readonly connectionSignals = new Map<WebSocket, AbortController>();
-  private readonly connectionAlive = new WeakMap<WebSocket, boolean>();
-  private heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  private readonly httpContext: WebuiHttpRouterContext;
   private accepting = true;
   private startedPromise: Promise<WebuiServiceInfo> | undefined;
   private bound: { info: WebuiServiceInfo } | undefined;
@@ -301,316 +294,36 @@ export class WebuiService {
       requestCompaction: (request) => this.port.requestCompaction(request),
       invalidateAuth: () => this.port.invalidateAuth(),
     }, this.terminalManager);
-    const factory = options.httpServerFactory ?? (() => createServer());
-    this.httpServer = factory();
-    this.wsServer = new WebSocketServer({
-      noServer: true,
-      maxPayload: this.maxMessageBytes,
+    this.httpServer = createHttpListener(options.httpServerFactory);
+    this.wsServer = new WebuiWebSocketServer({
+      maxMessageBytes: this.maxMessageBytes,
+      heartbeatIntervalMs: this.webSocketHeartbeatIntervalMs,
+      host: this.host,
+      boundTcpPort: () => this.bound?.info.tcpPort,
+      credential: this.credential,
+      dev: this.dev,
+      operations: this.operations,
+      isAccepting: () => this.accepting,
     });
-    this.httpServer.on("upgrade", this.#onUpgrade);
+    this.httpContext = {
+      host: this.host,
+      boundTcpPort: () => this.bound?.info.tcpPort,
+      configuredTcpPort: this.tcpPort,
+      credential: this.credential,
+      dev: this.dev,
+      clientDir: this.clientDirOverride,
+      port: this.port,
+    };
+    this.httpServer.on("upgrade", this.wsServer.handleUpgrade);
     this.httpServer.on("request", this.#onRequest);
-    this.wsServer.on("connection", this.#onConnection);
   }
 
   #onRequest = (
     request: IncomingMessage,
-    response: import("node:http").ServerResponse,
-  ): void => {
-    void this.#serveClient(request, response);
-  };
-
-  async #serveClient(
-    request: IncomingMessage,
-    response: import("node:http").ServerResponse,
-  ): Promise<void> {
-    const requestHost = (request.headers.host ?? "").toLowerCase();
-    const requestOrigin = (request.headers.origin ?? "").toLowerCase();
-    if (!requestHost || !isLoopbackHost(requestHost.split(":")[0] ?? "")) {
-      rejectHttp(response, 403, "Forbidden Host");
-      return;
-    }
-    if (
-      requestOrigin &&
-      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort)
-    ) {
-      rejectHttp(response, 403, "Forbidden Origin");
-      return;
-    }
-    const url = parseHttpUrl(request.url);
-    const presented = url?.searchParams.get("token");
-    if (!this.dev && !credentialMatches(this.credential, presented)) {
-      rejectHttp(response, 401, "Unauthorized");
-      return;
-    }
-    if (!url) {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    if (request.method === "GET" && url.pathname === "/session-transfer") {
-      await this.handleSessionTransfer(url, response);
-      return;
-    }
-    if (request.method === "POST" && url.pathname === "/session-import") {
-      await this.handleSessionImport(request, url, response);
-      return;
-    }
-    // Ahead of the GET-only gate below because this route also answers HEAD:
-    // `#serveWorkspaceFile` reports the byte range and content length with no
-    // body. It sits after the loopback, origin and credential checks, so it
-    // inherits them rather than re-implementing them.
-    if (url.pathname === "/workspace-file") {
-      await this.#serveWorkspaceFile(request, response, url);
-      return;
-    }
-    if (request.method !== "GET") {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    const name =
-      url.pathname === "/" ||
-      url.pathname === "/index.html" ||
-      url.pathname === "/archon"
-        ? "index.html"
-        : url.pathname === "/client.js"
-          ? "client.js"
-          : url.pathname === "/styles.css"
-          ? "styles.css"
-          : url.pathname.startsWith("/assets/") || url.pathname.startsWith("/fonts/")
-            ? url.pathname.slice(1)
-          : undefined;
-    if (!name) {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    try {
-      const clientDir = findClientDirectory(this.clientDirOverride);
-      const fileName = resolveClientAsset(clientDir, url.pathname, name);
-      if (!fileName) {
-        rejectHttp(response, 404, "Not Found");
-        return;
-      }
-      let body = await readFile(fileName);
-      if (name === "index.html") {
-        const config = JSON.stringify({
-          websocketUrl: `ws://${this.host}:${this.bound?.info.tcpPort ?? this.tcpPort}`,
-          token: this.credential.token,
-          dataDir: this.port.version().dataDir,
-        }).replace(/</gu, "\\u003c");
-        body = Buffer.from(body.toString("utf8").replace(
-          "</head>",
-          `<script>window.__WEBUI_CONFIG__=${config};</script></head>`,
-        ));
-      }
-      response.writeHead(200, {
-        "Content-Type": contentType(fileName),
-        "Cache-Control": "no-store",
-      });
-      response.end(body);
-    } catch {
-      rejectHttp(response, 404, "Not Found");
-    }
-  }
-
-  /**
-   * Serve a session as a file that `/session-import` can read back.
-   *
-   * An HTTP route rather than a WebSocket operation because the file is
-   * unbounded: one real session on this machine serialises to 50 MB, and the
-   * envelope carries a `payload_too_large` code. Producing the body here also
-   * keeps it out of the browser's heap, which is the other half of why the
-   * client-side export cannot be reused for this.
-   *
-   * The payload comes from the runtime rather than from here. An earlier
-   * version read `messages.jsonl` off disk and walked `getMessages` for the
-   * display side, which needed no port change -- and silently lost the
-   * canonical receipts on roughly 1% of rows, because `getMessages` returns a
-   * view prepared for rendering, not the stored record.
-   */
-  private async handleSessionTransfer(url: URL, response: ServerResponse): Promise<void> {
-    const sessionId = url.searchParams.get("sessionId")?.trim();
-    if (!sessionId) {
-      rejectHttp(response, 400, "Bad Request");
-      return;
-    }
-    // `getSession` rejects for an unknown id rather than returning an empty
-    // result, so both the rejection and an empty `session` mean "no such
-    // session". Letting the rejection reach the outer catch answered 500 for a
-    // request that was simply asking about something that is not there.
-    let session: WebuiSessionInfo;
-    try {
-      const found = await this.port.getSession({ id: sessionId });
-      if (!found.session) {
-        rejectHttp(response, 404, "Not Found");
-        return;
-      }
-      session = found.session;
-    } catch {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    try {
-      const file = await this.port.exportSessionTransfer({ id: sessionId });
-      const body = Buffer.from(`${JSON.stringify(file)}\n`, "utf8");
-      const exportedAt = file.exportedAt || new Date().toISOString();
-      response.writeHead(200, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Length": body.byteLength,
-        "Content-Disposition":
-          `attachment; filename*=UTF-8''${encodeURIComponent(webuiSessionTransferFileName(sessionId, session, exportedAt))}`,
-        "Cache-Control": "no-store",
-      });
-      response.end(body);
-    } catch {
-      rejectHttp(response, 500, "Internal Server Error");
-    }
-  }
-
-  /**
-   * Recreate a session from a transfer file.
-   *
-   * The route keeps the network-facing half -- reading the body and the query
-   * string -- and delegates the workflow (create, import, title, rollback) to
-   * the runtime's `session-transfer` module, which owns it (plan section 7.1).
-   * The outcome maps back onto the same status codes and bodies this handler
-   * served before the move.
-   */
-  private async handleSessionImport(
-    request: IncomingMessage,
-    url: URL,
     response: ServerResponse,
-  ): Promise<void> {
-    let file: unknown;
-    try {
-      const raw = await readRequestBody(request);
-      const parsed = raw.length === 0 ? undefined : JSON.parse(raw.toString("utf8"));
-      // Accept either the bare transfer file or `{ file: <transfer file> }`,
-      // so the client does not have to know which one this route prefers.
-      file = (parsed as { readonly file?: unknown } | undefined)?.file ?? parsed;
-    } catch {
-      rejectHttp(response, 400, "Bad Request");
-      return;
-    }
-
-    const agentName = url.searchParams.get("agentName")?.trim() || WEBUI_DEFAULT_IMPORT_AGENT;
-    const workspaceDir = url.searchParams.get("workspaceDir")?.trim() || undefined;
-
-    const outcome = await importWebuiSessionTransfer(this.port, {
-      file,
-      agentName,
-      workspaceDir,
-    });
-    if (outcome.kind === "imported") {
-      respondJson(response, 200, { ...outcome.body });
-      return;
-    }
-    if (outcome.kind === "create-failed") {
-      rejectHttp(response, 500, "Internal Server Error");
-      return;
-    }
-    const foreign = outcome.kind === "not-transfer-file";
-    respondJson(response, foreign ? 400 : 422, {
-      error: foreign ? "Not a session transfer file" : "Session import failed",
-    });
-  }
-
-  /**
-   * Serve one workspace file as a byte-range-capable HTTP resource.
-   *
-   * Media preview and HTML preview both need a URL the browser streams rather
-   * than a base64 payload inside a JSON reply: `<video>` and `<audio>` cannot
-   * scrub a progress bar without `Range`, and inlining a large file inflates
-   * every response that merely mentions it.
-   *
-   * Dispatch happens after the loopback, origin and credential checks above,
-   * so this inherits them instead of re-implementing them: a workspace file is
-   * served to whoever holds the per-start token and to nobody else.
-   */
-  async #serveWorkspaceFile(
-    request: IncomingMessage,
-    response: import("node:http").ServerResponse,
-    url: URL,
-  ): Promise<void> {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      rejectHttp(response, 405, "Method Not Allowed");
-      return;
-    }
-    const dir = url.searchParams.get("dir");
-    const relative = url.searchParams.get("path");
-    if (!dir || !relative) {
-      rejectHttp(response, 400, "Missing dir or path");
-      return;
-    }
-    const root = path.resolve(dir);
-    const target = path.resolve(root, relative);
-    // `path.resolve` has already collapsed every `..`, so what is left to
-    // reject is the cases that survive it: an absolute `path`, or a sibling
-    // that merely shares a prefix (`/repo-evil` against root `/repo`).
-    if (target !== root && !target.startsWith(root + path.sep)) {
-      rejectHttp(response, 403, "Forbidden Path");
-      return;
-    }
-    let stats;
-    try {
-      stats = await stat(target);
-    } catch {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    if (!stats.isFile()) {
-      rejectHttp(response, 404, "Not Found");
-      return;
-    }
-    const total = stats.size;
-    const range = parseByteRange(request.headers.range, total);
-    if (range === "invalid") {
-      response.writeHead(416, { "Content-Range": `bytes */${total}` });
-      response.end();
-      return;
-    }
-    const start = range ? range.start : 0;
-    const end = range ? range.end : total - 1;
-    const headers: Record<string, string> = {
-      "Content-Type": workspaceContentType(target),
-      "Content-Length": String(end - start + 1),
-      // A partial body is only correct for the bytes it was cut from, so a
-      // later edit must not let a cached range be replayed against.
-      "Cache-Control": "no-store",
-      "Accept-Ranges": "bytes",
-      "X-Content-Type-Options": "nosniff",
-      // Without allow-same-origin the document runs in an opaque origin, so
-      // script inside a previewed artifact cannot read the page that framed
-      // it — including `window.__WEBUI_CONFIG__.token`, which would hand it
-      // the whole WebUI session.
-      "Content-Security-Policy": workspaceContentType(target).startsWith("text/html")
-        ? "sandbox allow-scripts"
-        : "sandbox",
-    };
-    if (range) headers["Content-Range"] = `bytes ${start}-${end}/${total}`;
-    response.writeHead(range ? 206 : 200, headers);
-    if (request.method === "HEAD") {
-      response.end();
-      return;
-    }
-    // A zero-byte file has no last byte, so `end` above is -1 and there is no
-    // legal `end` to hand a read stream: `createReadStream` rejects it with
-    // ERR_OUT_OF_RANGE, which rejects this promise and — since the caller only
-    // `void`s the dispatch — surfaces as an unhandled rejection and takes the
-    // process down. The `Content-Length: 0` already sent above is the whole
-    // body, so just end the response.
-    if (total === 0) {
-      response.end();
-      return;
-    }
-    await new Promise<void>((resolve) => {
-      const stream = createReadStream(target, { start, end });
-      stream.on("error", () => {
-        response.destroy();
-        resolve();
-      });
-      stream.on("close", resolve);
-      stream.pipe(response);
-    });
-  }
+  ): void => {
+    void serveHttpRequest(request, response, this.httpContext);
+  };
 
   /**
    * Bind the server and resolve once it is listening. Resolves with the
@@ -619,17 +332,8 @@ export class WebuiService {
   start(): Promise<WebuiServiceInfo> {
     if (this.startedPromise) return this.startedPromise;
     this.startedPromise = new Promise<WebuiServiceInfo>((resolve, reject) => {
-      const onError = (error: Error) => {
-        this.httpServer.off("listening", onListening);
-        reject(error);
-      };
-      const onListening = () => {
-        this.httpServer.off("error", onError);
-        try {
-          const address = this.httpServer.address();
-          if (!address || typeof address === "string")
-            throw new Error("WebUI service bound to a non-TCP socket");
-          const tcpPort = (address as AddressInfo).port;
+      listenHttpServer(this.httpServer, this.tcpPort, this.host).then(
+        (tcpPort) => {
           const info: WebuiServiceInfo = {
             host: this.host,
             tcpPort,
@@ -639,13 +343,9 @@ export class WebuiService {
           };
           this.bound = { info };
           resolve(info);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      this.httpServer.once("error", onError);
-      this.httpServer.once("listening", onListening);
-      this.httpServer.listen(this.tcpPort, this.host);
+        },
+        reject,
+      );
     });
     return this.startedPromise;
   }
@@ -665,411 +365,12 @@ export class WebuiService {
     this.terminalManager.disposeBySession();
     if (!this.accepting && !this.bound) return;
     this.accepting = false;
-    if (this.heartbeatTimer !== undefined) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = undefined;
-    }
     // Force-terminate every connection before the server closes; otherwise
     // `wsServer.close()` waits for the client to ack the close handshake
     // and can hang for the duration of the platform TCP timeout.
-    for (const connection of this.connections) {
-      this.connectionSignals.get(connection)?.abort();
-      try {
-        connection.terminate();
-      } catch {
-        // ignore: the connection is already torn down.
-      }
-    }
-    this.connections.clear();
-    this.connectionSignals.clear();
-    await new Promise<void>((resolve) => {
-      this.wsServer.close(() => resolve());
-    });
-    await new Promise<void>((resolve) => {
-      this.httpServer.close(() => resolve());
-    });
+    this.wsServer.closeConnections();
+    await this.wsServer.close();
+    await closeHttpListener(this.httpServer);
     await this.port.close();
   }
-
-  #onUpgrade = (
-    request: IncomingMessage,
-    socket: Duplex,
-    head: Buffer,
-  ): void => {
-    if (!this.accepting) {
-      socket.write(
-        "HTTP/1.1 503 Service Unavailable\r\n" +
-          "Connection: close\r\n" +
-          "\r\n",
-      );
-      socket.destroy();
-      return;
-    }
-    const url = parseWebSocketUrl(request.url);
-    if (!url) {
-      rejectUpgrade(socket, 400, "Bad Request");
-      return;
-    }
-    const urlHost = url.hostname.toLowerCase();
-    const requestHost = (request.headers.host ?? "").toLowerCase();
-    const requestOrigin = (request.headers.origin ?? "").toLowerCase();
-    if (!requestHost || !isLoopbackHost(requestHost.split(":")[0] ?? "")) {
-      rejectUpgrade(socket, 403, "Forbidden Host");
-      return;
-    }
-    if (urlHost !== "127.0.0.1" && urlHost !== "localhost") {
-      rejectUpgrade(socket, 403, "Forbidden Host");
-      return;
-    }
-    if (
-      requestOrigin &&
-      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort)
-    ) {
-      rejectUpgrade(socket, 403, "Forbidden Origin");
-      return;
-    }
-    const presented = url.searchParams.get("token");
-    if (!this.dev && !credentialMatches(this.credential, presented)) {
-      rejectUpgrade(socket, 401, "Unauthorized");
-      return;
-    }
-    this.wsServer.handleUpgrade(request, socket, head, (ws) => {
-      this.wsServer.emit("connection", ws, request);
-    });
-  };
-
-  #onConnection = (ws: WebSocket): void => {
-    if (!this.accepting) {
-      ws.close(1001, "service shutting down");
-      return;
-    }
-    this.connections.add(ws);
-    this.connectionAlive.set(ws, true);
-    if (this.heartbeatTimer === undefined) {
-      this.heartbeatTimer = setInterval(() => {
-        for (const connection of this.connections) {
-          if (this.connectionAlive.get(connection) === false) {
-            connection.terminate();
-            continue;
-          }
-          this.connectionAlive.set(connection, false);
-          try {
-            connection.ping();
-          } catch {
-            connection.terminate();
-          }
-        }
-      }, this.webSocketHeartbeatIntervalMs);
-      this.heartbeatTimer.unref?.();
-    }
-    const connectionController = new AbortController();
-    this.connectionSignals.set(ws, connectionController);
-    ws.on("pong", () => this.connectionAlive.set(ws, true));
-    ws.on("close", () => {
-      this.connections.delete(ws);
-      connectionController.abort();
-      this.connectionSignals.delete(ws);
-    });
-    ws.on("error", () => {
-      this.connections.delete(ws);
-      connectionController.abort();
-      this.connectionSignals.delete(ws);
-    });
-    ws.on("message", (raw, isBinary) => {
-      void this.#handleMessage(ws, raw, isBinary);
-    });
-  };
-
-  async #handleMessage(
-    ws: WebSocket,
-    raw: import("ws").RawData,
-    isBinary: boolean,
-  ): Promise<void> {
-    if (isBinary) {
-      sendFrame(
-        ws,
-        errorFrame(
-          "anonymous",
-          WebuiErrorCode.invalidEnvelope,
-          "binary frames are not accepted",
-        ),
-      );
-      return;
-    }
-    const text = raw.toString("utf8");
-    if (Buffer.byteLength(text, "utf8") > this.maxMessageBytes) {
-      sendFrame(
-        ws,
-        errorFrame(
-          "anonymous",
-          WebuiErrorCode.payloadTooLarge,
-          "frame exceeds the message size limit",
-        ),
-      );
-      return;
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      sendFrame(
-        ws,
-        errorFrame(
-          "anonymous",
-          WebuiErrorCode.invalidEnvelope,
-          "frame is not valid JSON",
-        ),
-      );
-      return;
-    }
-    await dispatchWebuiFrame(
-      ws,
-      parsed,
-      this.operations,
-      this.accepting,
-      () => this.connectionSignals.get(ws)?.signal,
-    );
-  }
-}
-
-
-function rejectUpgrade(socket: Duplex, status: number, reason: string): void {
-  const reasonLine = reason.replace(/[\r\n]/gu, " ");
-  socket.write(`HTTP/1.1 ${status} ${reasonLine}\r\nConnection: close\r\n\r\n`);
-  socket.destroy();
-}
-
-function rejectHttp(
-  response: import("node:http").ServerResponse,
-  status: number,
-  reason: string,
-): void {
-  response.writeHead(status, {
-    "Content-Type": "text/plain; charset=utf-8",
-    Connection: "close",
-  });
-  response.end(reason);
-}
-
-/**
- * The import body is a whole session and real ones run to tens of megabytes,
- * so the cap has to clear the largest export the export route can produce
- * while still refusing a body that is not a session file.
- */
-const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
-
-/**
- * `maxBytes` is a parameter rather than a constant so the cap can be tested
- * without allocating a quarter of a gigabyte in a unit test.
- */
-export function readRequestBody(
-  request: IncomingMessage,
-  maxBytes: number = WEBUI_MAX_IMPORT_BYTES,
-): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    request.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > maxBytes) {
-        reject(new Error("Request body too large"));
-        request.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on("end", () => resolve(Buffer.concat(chunks)));
-    request.on("error", reject);
-  });
-}
-
-function respondJson(
-  response: ServerResponse,
-  status: number,
-  body: Record<string, unknown>,
-): void {
-  const encoded = Buffer.from(`${JSON.stringify(body)}\n`, "utf8");
-  response.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": encoded.byteLength,
-    "Cache-Control": "no-store",
-  });
-  response.end(encoded);
-}
-
-function parseHttpUrl(rawUrl: string | undefined): URL | undefined {
-  if (!rawUrl) return undefined;
-  try {
-    return new URL(rawUrl, "http://127.0.0.1");
-  } catch {
-    return undefined;
-  }
-}
-
-function contentType(name: string): string {
-  if (name.endsWith(".svg")) return "image/svg+xml";
-  if (name.endsWith(".png")) return "image/png";
-  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
-  if (name.endsWith(".woff2")) return "font/woff2";
-  if (name.endsWith(".woff")) return "font/woff";
-  if (name.endsWith(".ttf")) return "font/ttf";
-  return name.endsWith(".css")
-    ? "text/css; charset=utf-8"
-    : name.endsWith(".js")
-      ? "text/javascript; charset=utf-8"
-      : "text/html; charset=utf-8";
-}
-
-function resolveClientAsset(
-  clientDir: string,
-  pathname: string,
-  fallbackName: string,
-): string | undefined {
-  if (fallbackName === "index.html" || fallbackName === "client.js" || fallbackName === "styles.css")
-    return path.join(clientDir, fallbackName);
-  const prefix = pathname.startsWith("/assets/")
-    ? "/assets/"
-    : pathname.startsWith("/fonts/")
-      ? "/fonts/"
-      : undefined;
-  if (!prefix) return undefined;
-  const relativeName = pathname.slice(prefix.length);
-  if (!relativeName || relativeName.includes("\\") || relativeName.split("/").includes(".."))
-    return undefined;
-  const candidate = path.resolve(clientDir, prefix.slice(1), relativeName);
-  const root = path.resolve(clientDir) + path.sep;
-  return candidate.startsWith(root) ? candidate : undefined;
-}
-
-function findClientDirectory(override: string | undefined): string {
-  // Caller-supplied override wins so tests pin the served directory and the
-  // dev preview launcher can point at the built artifacts; if it does not
-  // exist we fall back to the discovery below rather than 404 the page.
-  if (override && existsSync(override)) return override;
-  const candidates = [
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../client"),
-    path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "../../../dist-webui/client",
-    ),
-  ];
-  // The built server uses the first path; source tests and development use the second.
-  return (
-    candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!
-  );
-}
-
-function parseWebSocketUrl(rawUrl: string | undefined): URL | undefined {
-  if (!rawUrl) return undefined;
-  try {
-    const base = "ws://127.0.0.1";
-    return new URL(rawUrl, base);
-  } catch {
-    return undefined;
-  }
-}
-
-const WORKSPACE_MEDIA_TYPES: Readonly<Record<string, string>> = {
-  ".avif": "image/avif",
-  ".bmp": "image/bmp",
-  ".gif": "image/gif",
-  ".ico": "image/x-icon",
-  ".jpeg": "image/jpeg",
-  ".jpg": "image/jpeg",
-  ".png": "image/png",
-  ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".mp4": "video/mp4",
-  ".mov": "video/quicktime",
-  ".ogv": "video/ogg",
-  ".webm": "video/webm",
-  ".aac": "audio/aac",
-  ".flac": "audio/flac",
-  ".m4a": "audio/mp4",
-  ".mp3": "audio/mpeg",
-  ".ogg": "audio/ogg",
-  ".wav": "audio/wav",
-  ".csv": "text/csv; charset=utf-8",
-  ".htm": "text/html; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".json": "application/json",
-  ".pdf": "application/pdf",
-  ".wasm": "application/wasm",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".txt": "text/plain; charset=utf-8",
-};
-
-function workspaceContentType(name: string): string {
-  return WORKSPACE_MEDIA_TYPES[path.extname(name).toLowerCase()] ?? "application/octet-stream";
-}
-
-function parseByteRange(
-  header: string | undefined,
-  size: number,
-): { readonly start: number; readonly end: number } | "invalid" | undefined {
-  if (!header) return undefined;
-  const match = /^bytes=(\d*)-(\d*)$/u.exec(header.trim());
-  if (!match) return undefined;
-  // No byte of a zero-length representation can be selected, so any range
-  // against one is unsatisfiable. Handled here rather than in the two
-  // branches below because the suffix branch would otherwise answer with
-  // `{start: 0, end: -1}` — a range whose header cannot even be spelled.
-  if (size === 0) return "invalid";
-  const [, rawStart, rawEnd] = match;
-  if (!rawStart && !rawEnd) return "invalid";
-  if (!rawStart) {
-    // Suffix form `bytes=-500`: the final N bytes.
-    const suffix = Number(rawEnd);
-    if (!Number.isSafeInteger(suffix) || suffix <= 0) return "invalid";
-    return { start: Math.max(0, size - suffix), end: size - 1 };
-  }
-  const start = Number(rawStart);
-  if (!Number.isSafeInteger(start)) return "invalid";
-  if (start >= size) return "invalid";
-  const end = rawEnd ? Number(rawEnd) : size - 1;
-  if (!Number.isSafeInteger(end) || end < start) return "invalid";
-  return { start, end: Math.min(end, size - 1) };
-}
-
-function isLoopbackHost(host: string): boolean {
-  return (
-    host === "127.0.0.1" ||
-    host === "localhost" ||
-    host === "::1" ||
-    host === "[::1]"
-  );
-}
-
-function isLoopbackBindAddress(host: string): boolean {
-  // The service binds loopback only. `0.0.0.0` and any LAN address are
-  // rejected before the HTTP server is constructed so the misconfiguration
-  // surfaces at boot, not at the first upgrade.
-  if (isLoopbackHost(host)) return true;
-  // IPv6 zone IDs (`fe80::1%lo0`, `::1%1`) are loopback-shaped for the
-  // purpose of the bind; strip the zone before re-checking.
-  const stripped = host.split("%")[0] ?? host;
-  return isLoopbackHost(stripped);
-}
-
-function isAllowedOrigin(origin: string, host: string, port?: number): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(origin);
-  } catch {
-    return false;
-  }
-  const protocol = parsed.protocol.toLowerCase();
-  if (protocol !== "http:" && protocol !== "https:") return false;
-  const hostname = parsed.hostname.toLowerCase();
-  if (hostname !== "127.0.0.1" && hostname !== "localhost") return false;
-  if (port === undefined) return true;
-  const portNumber = parsed.port
-    ? Number(parsed.port)
-    : defaultPortForProtocol(protocol);
-  return portNumber === port && parsed.hostname === host;
-}
-
-function defaultPortForProtocol(protocol: string): number {
-  return protocol === "https:" ? 443 : 80;
 }

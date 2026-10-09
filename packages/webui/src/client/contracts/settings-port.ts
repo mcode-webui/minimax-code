@@ -15,18 +15,6 @@ import type {
   WebuiUserProfileView,
 } from "../../shared/contracts/personalization.js";
 
-// The personalization view DTOs now live in `shared/contracts/personalization.ts`
-// (the Node runtime owns the files that carry them). Re-exported here so the
-// harness host and the capability port, whose references move with their own
-// split, keep resolving them through this module.
-export type {
-  WebuiAgentMemoryView,
-  WebuiGlobalInstructionsView,
-  WebuiMemorySettingsView,
-  WebuiUserProfileFields,
-  WebuiUserProfileView,
-} from "../../shared/contracts/personalization.js";
-
 export interface SettingsPort {
   readonly version?: () => Promise<WebuiVersionInfo>;
   readonly getPermissionMode?: () => Promise<unknown>;

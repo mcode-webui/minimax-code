@@ -87,6 +87,12 @@ import type {
   WebuiClaimSigninView,
   WebuiSigninPanelView,
 } from "../shared/contracts/account.js";
+import type {
+  WebuiAgentMemoryView,
+  WebuiGlobalInstructionsView,
+  WebuiMemorySettingsView,
+  WebuiUserProfileView,
+} from "../shared/contracts/personalization.js";
 
 export type {
   WebuiPluginManagementAction,
@@ -320,13 +326,11 @@ export interface WebuiHarnessPort {
    * and writes the file itself over the same `dataDir` the turn path uses — one
    * file, one writer, no second source of truth.
    */
-  getGlobalInstructions?(): Promise<
-    import("../client/contracts/settings-port.js").WebuiGlobalInstructionsView
-  >;
+  getGlobalInstructions?(): Promise<WebuiGlobalInstructionsView>;
   /** Writing empty content deletes the file, matching `GlobalInstructions.write`. */
   setGlobalInstructions?(request: {
     readonly content: string;
-  }): Promise<import("../client/contracts/settings-port.js").WebuiGlobalInstructionsView>;
+  }): Promise<WebuiGlobalInstructionsView>;
   /**
    * Per-agent main memory (`agents/<name>/memory/MEMORY.md`). Summary-only by
    * default; `includeContent` pulls the body, which runs past the 64KB
@@ -335,10 +339,10 @@ export interface WebuiHarnessPort {
    */
   getAgentMemory?(request?: {
     readonly includeContent?: boolean;
-  }): Promise<import("../client/contracts/settings-port.js").WebuiAgentMemoryView>;
+  }): Promise<WebuiAgentMemoryView>;
   setAgentMemory?(request: {
     readonly content: string;
-  }): Promise<import("../client/contracts/settings-port.js").WebuiAgentMemoryView>;
+  }): Promise<WebuiAgentMemoryView>;
   /**
    * The `关于你` region of `memory/user.md` — the three fields between the
    * personalization markers. The rest of that file belongs to the memory
@@ -346,22 +350,22 @@ export interface WebuiHarnessPort {
    * A file whose markers are only half-present refuses the write rather than
    * guessing where the region ends.
    */
-  getUserProfile?(): Promise<import("../client/contracts/settings-port.js").WebuiUserProfileView>;
+  getUserProfile?(): Promise<WebuiUserProfileView>;
   setUserProfile?(request: {
     readonly nickname: string;
     readonly occupation: string;
     readonly moreAbout: string;
-  }): Promise<import("../client/contracts/settings-port.js").WebuiUserProfileView>;
+  }): Promise<WebuiUserProfileView>;
   /**
    * The two memory switches. Optional because a host that predates the
    * configuration capability still has to satisfy this port; a missing method
    * is a capability gap, not a boolean value, and the handler reports it as
    * such instead of rendering the panel as "memory is off".
    */
-  getMemorySettings?(): Promise<import("../client/contracts/settings-port.js").WebuiMemorySettingsView>;
+  getMemorySettings?(): Promise<WebuiMemorySettingsView>;
   setMemorySettings?(request: {
     readonly enabled?: boolean;
     readonly proactive?: boolean;
-  }): Promise<import("../client/contracts/settings-port.js").WebuiMemorySettingsView>;
+  }): Promise<WebuiMemorySettingsView>;
   close(): Promise<void>;
 }

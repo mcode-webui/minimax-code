@@ -36,8 +36,8 @@
       "layerTo": "runtime",
       "rule": "server -> runtime",
       "category": "server-operation-to-runtime",
-      "stage": 2,
-      "reason": "A server operation module imports runtime implementation. After extraction the operations are protocol validators; the server consumes only runtime capabilities."
+      "stage": 3,
+      "reason": "A server operation module imports runtime implementation. Stage 3 rewires the operation layer to register typed bindings instead of calling the runner/profile implementation, so the edge disappears then."
     },
     {
       "from": "server/operation/operation-handlers.ts",
@@ -46,19 +46,8 @@
       "layerTo": "runtime",
       "rule": "server -> runtime",
       "category": "server-operation-to-runtime",
-      "stage": 2,
-      "reason": "A server operation module imports runtime implementation. After extraction the operations are protocol validators; the server consumes only runtime capabilities."
-    },
-    {
-      "from": "server/port.ts",
-      "to": "client/contracts/settings-port.ts",
-      "layerFrom": "runtime-port",
-      "layerTo": "contracts",
-      "rule": "runtime-port -> contracts",
-      "category": "runtime-to-client-contracts",
-      "stage": 2,
-      "reason": "A runtime-mapped file pulls browser contract declarations into the Node graph. Runtime extraction plus shared DTO placement removes it. The port.ts reference disappears with the port split (plan \u00a77.1).",
-      "occurrences": null
+      "stage": 3,
+      "reason": "A server operation module imports runtime implementation. Stage 3 rewires the operation layer to register typed bindings instead of calling the runner/profile implementation, so the edge disappears then."
     }
   ],
   "cycles": [

@@ -336,7 +336,8 @@
       "packages/webui/test/unit/webui-operation-binding.test.ts",
       "packages/webui/test/unit/webui-operation-wire-compatibility.test.ts",
       "packages/webui/test/unit/webui-application.test.ts",
-      "packages/webui/test/unit/webui-application-bindings.test.tsx"
+      "packages/webui/test/unit/webui-application-bindings.test.tsx",
+      "packages/webui/test/unit/webui-application-commands.test.ts"
     ]
   }
 }

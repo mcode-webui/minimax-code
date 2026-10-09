@@ -95,14 +95,18 @@ import type {
 import type { WebuiProjectGroup } from "./SessionRail.js";
 import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import {
-  applyWebuiActiveTurn,
-  applyWebuiUnreadCounts,
   initialWebuiSessionActivity,
-  markWebuiSessionRead,
   reduceWebuiSessionActivity,
-  seedWebuiSessionActivity,
   type WebuiSessionActivityMap,
 } from "../session-activity.js";
+import {
+  markWebuiRailSessionRead,
+  persistWebuiRailUnreadCounts,
+  probeWebuiRailActiveTurns,
+  restoreWebuiRailUnreadCounts,
+  seedWebuiRailActivity,
+} from "../application/rail-activity.js";
+import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
@@ -937,6 +941,13 @@ export function WebuiClientFoundationApp(
   const [activityProbeNonce, setActivityProbeNonce] = useState(0);
   const watchEvents = transport?.watchEvents;
   const getActiveTurn = transport?.getActiveTurn;
+  // One shared, deduplicated probe for the transport (plan §7.1 slice): the
+  // rail and the composer ask the same `getActiveTurn`, so a same-session probe
+  // racing between them collapses to one round trip.
+  const activeTurnProbe = useMemo(
+    () => webuiActiveTurnProbeFor(getActiveTurn),
+    [getActiveTurn],
+  );
 
   // The subscription reads the open session through a ref rather than closing
   // over it, and this is the reason the effect below depends on `watchEvents`
@@ -984,11 +995,7 @@ export function WebuiClientFoundationApp(
   // exactly zero reloads, which is the case persistence exists for.
   useEffect(() => {
     if (!unreadCountsReady) return;
-    const counts: Record<string, number> = {};
-    for (const [sessionId, entry] of Object.entries(sessionActivity)) {
-      if (entry.unread && entry.unread > 0) counts[sessionId] = entry.unread;
-    }
-    writeWebuiUnreadCounts(counts);
+    persistWebuiRailUnreadCounts(sessionActivity, writeWebuiUnreadCounts);
   }, [sessionActivity, unreadCountsReady]);
 
   // Opening a session is what marks it read. Keyed on the id rather than run on
@@ -996,10 +1003,7 @@ export function WebuiClientFoundationApp(
   // user was about to see on the row they came from.
   useEffect(() => {
     if (!selectedSessionId) return;
-    setSessionActivity((current) => {
-      const next = markWebuiSessionRead(current, selectedSessionId);
-      return next;
-    });
+    markWebuiRailSessionRead(setSessionActivity, selectedSessionId);
   }, [selectedSessionId]);
 
   // The age labels are a function of the clock, not of the data. Without a tick
@@ -1021,14 +1025,14 @@ export function WebuiClientFoundationApp(
   // stale, so the badge would shrink every time the user typed in the search
   // box. Seeding genuinely needs the page; restoring does not.
   useEffect(() => {
-    setSessionActivity((current) =>
-      seedWebuiSessionActivity(current, railPage.sessions),
-    );
+    seedWebuiRailActivity(setSessionActivity, railPage.sessions);
   }, [railPage]);
 
   useEffect(() => {
-    setSessionActivity((current) =>
-      applyWebuiUnreadCounts(current, readWebuiUnreadCounts(), selectedSessionId),
+    restoreWebuiRailUnreadCounts(
+      setSessionActivity,
+      readWebuiUnreadCounts(),
+      selectedSessionId,
     );
     // Flipped after the restore is queued, so the writer's very next run sees a
     // map that has the counts in it rather than the empty one it started from.
@@ -1036,25 +1040,17 @@ export function WebuiClientFoundationApp(
   }, [selectedSessionId]);
 
   useEffect(() => {
-    if (!getActiveTurn) return;
-    let cancelled = false;
+    if (!activeTurnProbe) return;
     // Once per list change, for every visible row. Not once per event: the
     // stream already answers for turns it saw, and the reconnect nonce is the
     // only other moment a re-probe is warranted.
-    for (const session of railPage.sessions) {
-      void getActiveTurn({ id: session.sessionId })
-        .then((active) => {
-          if (cancelled) return;
-          setSessionActivity((current) =>
-            applyWebuiActiveTurn(current, session.sessionId, active, Date.now()),
-          );
-        })
-        .catch(() => undefined);
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [getActiveTurn, railPage, activityProbeNonce]);
+    return probeWebuiRailActiveTurns({
+      sessions: railPage.sessions,
+      probe: activeTurnProbe,
+      update: setSessionActivity,
+      now: () => Date.now(),
+    });
+  }, [activeTurnProbe, railPage, activityProbeNonce]);
 
   const sessionPanelState = selectedSessionId
     ? getWorkspacePanelSessionState(workspacePanelStates, selectedSessionId)

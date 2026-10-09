@@ -19,6 +19,7 @@ import type {
 } from "../../shared/contracts/goal.js";
 import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { formatWebuiError } from "../value-readers.js";
+import { queueWebuiTurn } from "../application/queue-command.js";
 import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "./stream-state.js";
 import {
   buildWebuiStreamLoopSink,
@@ -425,17 +426,21 @@ export async function submitWebuiComposerTurn(
   }
   if (args.sending) {
     if (!args.enqueueMessage) return;
-    try {
-      await args.enqueueMessage({ id: sessionId, content: message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) });
-      handlers.onDraftChange("");
-      args.onAttachmentsSubmitted?.();
-      handlers.onQueued?.();
-    } catch (error) {
-      handlers.setStream((current) => ({
-        ...current,
-        refusal: formatWebuiError(error),
-      }));
-    }
+    // The queue orchestration lives in the application layer
+    // (`application/queue-command.ts`); this is the single implementation both
+    // this path and any explicit queue command share.
+    await queueWebuiTurn({
+      sessionId,
+      message,
+      ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}),
+      ...(attachments.length ? { attachments } : {}),
+      enqueueMessage: args.enqueueMessage,
+      onDraftChange: handlers.onDraftChange,
+      onAttachmentsSubmitted: args.onAttachmentsSubmitted,
+      onQueued: handlers.onQueued,
+      setRefusal: (refusal) =>
+        handlers.setStream((current) => ({ ...current, refusal })),
+    });
     return;
   }
   if (!args.deps.sendMessage) return;

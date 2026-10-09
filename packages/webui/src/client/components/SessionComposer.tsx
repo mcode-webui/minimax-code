@@ -48,15 +48,17 @@ import {
 import { isTokenPlanModel } from "../projection/token-plan-model.js";
 import { stopWebuiTurn } from "../application/turn-coordinator.js";
 import {
-  isWebuiSubscriptionProbeCurrent,
-  ownsWebuiStreamGeneration,
+  attachWebuiTurn,
+  recheckWebuiSubscription,
+  recoverMissedWebuiTurn,
+  sendWebuiTurn,
+  type WebuiTurnWriterOwner,
+} from "../application/turn-commands.js";
+import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
+import {
   reduceWebuiStreamFrame,
-  releaseWebuiSubscription,
-  resolveWebuiSubscriptionRecheck,
   webuiSessionStatusType,
 } from "../projection/stream-state.js";
-import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "../stream-loop.js";
-import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 
 /** Capability subset the session composer consumes. Single source of truth
  *  lives in `WebuiTransport`; this alias keeps the prop block free of
@@ -132,7 +134,6 @@ import {
 import {
   buildWebuiComposerHandlers,
   submitWebuiGoal,
-  submitWebuiComposerTurn,
   resolveWebuiSubmissionIntent,
   resolveWebuiComposerEnterAction,
   isTurnLive,
@@ -854,63 +855,36 @@ export function WebuiComposer({
     });
     const readStream = () =>
       readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream;
+    // One shared, deduplicated probe per transport (plan §7.1 slice): the shell
+    // and this composer ask the same `getActiveTurn`, so a same-session probe
+    // racing between them collapses to a single round trip.
+    const activeTurnProbe = webuiActiveTurnProbeFor(getActiveTurn);
 
-    /**
-     * The single entry point for following a turn this client did not start.
-     * It runs the same stream loop a local send uses, so history anchoring,
-     * cursor resume, `resume_overflow` resync, the lease and every terminal
-     * exit are handled in exactly one place.
-     */
+    // The attach/recheck/gap-recovery commands now live in the application
+    // layer (`application/turn-commands.ts`). These are the component's
+    // bindings onto them, closing over the current session and its setters —
+    // the same shape `stopWebuiTurn` already uses.
     const attachToTurn = (turnId: string | undefined) => {
-      if (!sessionId || !resumeSession) return;
-      const existing = readStream();
-      if (existing.subscription) return;
-      setSending(true);
-      void runWebuiStreamLoop(
-        { resumeSession, loadMessages, projection: streamRecoveryProjection },
-        {
-          sessionId,
-          attachTurnId: turnId,
-          ...(existing.cursor ? { afterCursor: existing.cursor } : {}),
-        },
-        buildWebuiStreamLoopSink(setStream),
-      ).then((generation) => {
-        // Only clear the indicator if this loop still owns the stream. A
-        // loop that finished after a newer turn started would otherwise
-        // make the new turn look idle while it is still streaming.
-        if (ownsWebuiStreamGeneration(readStream(), generation))
-          setSending(false);
+      attachWebuiTurn({
+        sessionId,
+        turnId,
+        resumeSession,
+        loadMessages,
+        readStream,
+        setSending,
+        setStream,
       });
     };
 
     /** `session.start` named a turn we do not hold while holding another. */
     const recheckSubscription = (turnId: string | undefined) => {
-      if (!sessionId || !getActiveTurn) return;
-      // Read the lease *before* the probe leaves, not when it returns. A
-      // local send that claims during the round trip gets a lease with no
-      // turn id yet; reading only at resolution time would let this stale
-      // snapshot retarget the user's own turn away from them.
-      const probed = readStream().subscription;
-      if (!probed) return;
-      void getActiveTurn({ id: sessionId }).then((active) => {
-        const owned = readStream().subscription;
-        // The lease this probe was about is gone or has been replaced. The
-        // answer describes a turn that is no longer ours to act on.
-        if (!isWebuiSubscriptionProbeCurrent(probed, owned) || !owned) return;
-        const decision = resolveWebuiSubscriptionRecheck(owned, active);
-        if (decision === "hold") return;
-        // Scoped to the generation we decided is stale: a newer loop may
-        // have claimed while the probe was in flight, and that lease is
-        // the live one. The old stream is not cancelled server-side, so its
-        // late frames stay fenced out by the generation guard in the sink.
-        setStream((current) =>
-          releaseWebuiSubscription(current, { generation: owned.generation }),
-        );
-        // `release` means the turn the event announced is already over (or is
-        // a compaction, which produces no transcript); its own terminal event
-        // settles the phase.
-        if (decision === "retarget" && active) attachToTurn(active.turnId);
-      }).catch(() => undefined);
+      recheckWebuiSubscription({
+        sessionId,
+        probe: activeTurnProbe,
+        readStream,
+        setStream,
+        attach: attachToTurn,
+      });
     };
 
     /**
@@ -920,14 +894,12 @@ export function WebuiComposer({
      * turn id and never refreshes on those events. Ask the server instead.
      */
     const recoverMissedTurn = () => {
-      if (!sessionId || !getActiveTurn) return;
-      void getActiveTurn({ id: sessionId }).then((active) => {
-        if (!active || active.busyReason !== "turn") return;
-        // Read the lease at resolution time, not at call time: a local send
-        // that started while the probe was in flight has already claimed it.
-        if (readStream().subscription) return;
-        attachToTurn(active.turnId);
-      }).catch(() => undefined);
+      recoverMissedWebuiTurn({
+        sessionId,
+        probe: activeTurnProbe,
+        readStream,
+        attach: attachToTurn,
+      });
     };
 
     const onRuntimeEvent = createWebuiWatchEventCallback(
@@ -1800,50 +1772,31 @@ export function WebuiComposer({
     readonly message: string;
     readonly clientIntent?: string;
   }) => {
-    // A newly submitted turn is a Desktop-style request to follow the latest
-    // frontier. The scroll listener can still release this lock immediately
-    // if the user wheels back into history while the turn is running.
-    let turnRuntimeWriter = sessionId
-      ? createSessionRuntimeWriter({ kind: "session", sessionId })
-      : createSessionRuntimeWriter({ kind: "home" });
-    const turnHandlers = {
-      ...handlers,
-      setStream: (update: Parameters<typeof turnRuntimeWriter.setStream>[0]) =>
-        turnRuntimeWriter.setStream(update),
-      setSending: (sending: boolean) => turnRuntimeWriter.setSending(sending),
-      onSessionCreated: (createdSessionId: string) => {
-        handlers.onSessionCreated?.(createdSessionId);
-        if (turnRuntimeWriter.kind === "home") {
-          turnRuntimeWriter = turnRuntimeWriter.migrateToSession(createdSessionId);
-        }
+    await sendWebuiTurn({
+      sessionId,
+      message: turn.message,
+      ...(turn.clientIntent ? { clientIntent: turn.clientIntent } : {}),
+      planMode,
+      attachments: attachmentWire,
+      onAttachmentsSubmitted: () => {
+        setAttachments([]);
+        setUrlReferences([]);
       },
-    };
-    await submitWebuiComposerTurn(
-      {
-        sessionId,
-        // `submitWebuiComposerTurn` reads `args.message ?? args.draft` and
-        // trims it, so passing the effective text as `message` re-sends it
-        // through exactly the path an ordinary send takes. `draft` carries the
-        // same value so the "no session yet" hand-off reports the input that
-        // is actually going to be sent.
-        draft: turn.message,
-        message: turn.message,
-        ...(turn.clientIntent
-          ? { clientIntent: turn.clientIntent }
-          : planMode
-            ? { clientIntent: "plan-entry" }
-            : {}),
-        attachments: attachmentWire,
-        onAttachmentsSubmitted: () => { setAttachments([]); setUrlReferences([]); },
-        sending,
-        deps: { sendMessage, resumeSession, loadMessages },
-        enqueueMessage,
-        createSession,
-        createSessionWorkspaceDir,
-        teamModeOff,
-      },
-      turnHandlers,
-    );
+      sending,
+      handlers,
+      deps: { sendMessage, resumeSession, loadMessages },
+      enqueueMessage,
+      createSession,
+      createSessionWorkspaceDir,
+      teamModeOff,
+      // The owner union is narrowed per branch so the overloaded factory
+      // resolves; the writer the send streams into stays owned by the
+      // application command (`application/turn-commands.ts`).
+      createWriter: (owner: WebuiTurnWriterOwner) =>
+        owner.kind === "home"
+          ? createSessionRuntimeWriter(owner)
+          : createSessionRuntimeWriter(owner),
+    });
   };
   // The input of the last turn this composer submitted, kept locally so retry
   // can re-send it without asking the server what was asked. Two holders, one

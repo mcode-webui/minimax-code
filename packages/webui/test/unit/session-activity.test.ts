@@ -749,20 +749,40 @@ describe("host wiring", () => {
   // is not an assertion. Line comments are stripped too, for the `$` anchors
   // below to see the end of an effect; there is no `//` inside any string
   // literal here, which is what makes that safe.
-  const appSource = readFileSync(
-    path.join(
-      import.meta.dirname,
-      "..",
-      "..",
-      "src",
-      "client",
-      "components",
-      "WebuiClientFoundationApp.tsx",
+  const strip = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//gu, "").replace(/\/\/[^\n]*/gu, "");
+  const appSource = strip(
+    readFileSync(
+      path.join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "src",
+        "client",
+        "components",
+        "WebuiClientFoundationApp.tsx",
+      ),
+      "utf8",
     ),
-    "utf8",
-  )
-    .replace(/\/\*[\s\S]*?\*\//gu, "")
-    .replace(/\/\/[^\n]*/gu, "");
+  );
+  // The activity slice now lives in the application layer. Its half of each
+  // guarantee is asserted alongside the shell's delegation, so neither side can
+  // be emptied — the shell stops calling in, or the module stops doing the
+  // work — without a red test.
+  const railSource = strip(
+    readFileSync(
+      path.join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "src",
+        "client",
+        "application",
+        "rail-activity.ts",
+      ),
+      "utf8",
+    ),
+  );
 
   /**
    * The `useEffect` block that mentions `marker`, from its `useEffect(` up to
@@ -813,15 +833,20 @@ describe("host wiring", () => {
   });
 
   it("clears the count when the user opens a session", () => {
-    expect(effect("markWebuiSessionRead(current")).toMatch(
-      /markWebuiSessionRead\(\s*current\s*,\s*selectedSessionId\s*\)/u,
+    expect(effect("markWebuiRailSessionRead(")).toMatch(
+      /markWebuiRailSessionRead\(\s*setSessionActivity\s*,\s*selectedSessionId\s*\)/u,
+    );
+    expect(railSource).toMatch(
+      /markWebuiSessionRead\(\s*current\s*,\s*sessionId\s*\)/u,
     );
   });
 
   it("persists the counts on every change", () => {
-    expect(effect("writeWebuiUnreadCounts(counts)")).toMatch(
-      /writeWebuiUnreadCounts\(\s*counts\s*\)\s*;/u,
+    expect(effect("persistWebuiRailUnreadCounts(")).toMatch(
+      /persistWebuiRailUnreadCounts\(\s*sessionActivity\s*,\s*writeWebuiUnreadCounts\s*\)\s*;/u,
     );
+    // The positive-count filter moved below the boundary with the writer.
+    expect(railSource).toMatch(/write\(\s*counts\s*\)\s*;/u);
   });
 
   it("re-applies stored counts when the open session changes", () => {
@@ -830,7 +855,8 @@ describe("host wiring", () => {
     // arriving at a different one must not inherit that.
     const block = effect("readWebuiUnreadCounts()");
     expect(block).toMatch(/readWebuiUnreadCounts\(\s*\)/u);
-    expect(block).toMatch(/applyWebuiUnreadCounts/u);
+    expect(block).toMatch(/restoreWebuiRailUnreadCounts/u);
+    expect(railSource).toMatch(/applyWebuiUnreadCounts/u);
   });
 
   it("does not re-run the restore every time the rail re-renders", () => {
@@ -847,7 +873,8 @@ describe("host wiring", () => {
     const block = effect("readWebuiUnreadCounts()");
     expect(block).toMatch(/\}\s*,\s*\[\s*selectedSessionId\s*,?\s*\]\s*\)\s*;?\s*$/u);
     expect(block).not.toMatch(/railPage/u);
-    expect(effect("seedWebuiSessionActivity(current")).toMatch(/railPage/u);
+    expect(effect("seedWebuiRailActivity(")).toMatch(/railPage/u);
+    expect(railSource).toMatch(/seedWebuiSessionActivity/u);
   });
 
   it("never writes the empty map before the stored counts are read back", () => {
@@ -858,7 +885,7 @@ describe("host wiring", () => {
     // The badge then survives exactly zero reloads, which is the one case
     // persistence exists for. The gate is asserted on both halves: the early
     // return in the writer, and the flag being raised by the restore.
-    const writer = effect("writeWebuiUnreadCounts(counts)");
+    const writer = effect("persistWebuiRailUnreadCounts(");
     expect(writer).toMatch(/if\s*\(\s*!unreadCountsReady\s*\)\s*return\s*;/u);
     expect(writer).toMatch(/\[\s*sessionActivity\s*,\s*unreadCountsReady\s*,?\s*\]/u);
     const restore = effect("readWebuiUnreadCounts()");

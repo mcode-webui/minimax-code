@@ -83,6 +83,32 @@ export function installFixtureTransport() {
   // block (`{}` — the default — has no signedIn field and reads as signed
   // in but quota-less, not as signed out).
   let usageQuotaResult = {};
+  // The composer's permission-mode write is verified by reading it back
+  // (`setPermissionMode` then `getPermissionMode`, compared in
+  // `SessionComposer.changePermissionMode`). With the old pair — a
+  // no-op write and a `getPermissionMode` that always answered "default" —
+  // every mode other than `default` raised 「授权模式未能保存，请重试」, so the
+  // read-back could never pass. Store it, so the verification can pass.
+  let permissionMode = "default";
+  // A seven-day sign-in panel, shaped exactly like the server's
+  // `validateSigninPanel` output. The empty default has no `days`, and
+  // `SigninProgress` does `[...days]` with no guard, so a fixture that answered
+  // `{}` crashed the whole app the first time a human opened the sign-in row.
+  // Day 3 is today and claimable; days 1-2 are behind us and claimed; 4-7 are
+  // still ahead. `SigninDayStatus`: 1 Upcoming, 2 Claimable, 3 Claimed.
+  const signinPanel = {
+    scene: 2,
+    days: Array.from({ length: 7 }, (_, index) => {
+      const dayNo = index + 1;
+      return {
+        day_no: dayNo,
+        points: 10,
+        bonus_points: dayNo === 3 ? 400 : 0,
+        is_today: dayNo === 3,
+        status: dayNo < 3 ? 3 : dayNo === 3 ? 2 : 1,
+      };
+    }),
+  };
   let activeTurn;
   const requests = [];
   const sockets = new Set();
@@ -129,7 +155,22 @@ export function installFixtureTransport() {
     if (operation === "listModels" || operation === "loadProjects") return [];
     if (operation === "getUsageQuota") return clone(usageQuotaResult);
     if (operation === "isGoalEnabled") return false;
-    if (operation === "getPermissionMode") return { mode: "default" };
+    if (operation === "getPermissionMode") return { mode: permissionMode };
+    if (operation === "setPermissionMode") {
+      if (typeof body?.mode === "string") permissionMode = body.mode;
+      return { mode: permissionMode };
+    }
+    // A directory listing with an EMPTY `entries` array, not the `{}` default:
+    // `WebuiWorkspaceDirectoryBrowser` reads `listing?.entries.length` and the
+    // missing array threw `Cannot read properties of undefined (reading
+    // 'length')` on every open of the workspace picker.
+    if (operation === "browseWorkspaceDirs")
+      return {
+        dir: typeof body?.dir === "string" ? body.dir : "",
+        entries: [],
+        truncated: false,
+      };
+    if (operation === "getSigninPanel") return clone(signinPanel);
     if (operation === "getSessionUsage") return {};
     return {};
   };

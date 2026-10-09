@@ -197,4 +197,38 @@ describe("the transport's watcher reporting", () => {
     // though its socket never came back before the unsubscribe.
     expect(isWebuiEventChannelDegraded()).toBe(false);
   });
+  it("marks the channel down on a FORCED reconnect, not only on a guarded close", () => {
+    // The defect: `reconnectWhenAvailable` (tab back into view, network back)
+    // cleared `socket` and then called `previous.close()`. The close handler
+    // guards on `socket !== ws`, which is therefore always true on that path,
+    // so `markWebuiEventWatcherDown` was skipped and the banner read 已连接
+    // for the whole reconnect window — the exact lie this watcher exists to
+    // remove. Zero tests reached it: this file had no `dispatchEvent` at all.
+    const online = new Map<string, () => void>();
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const saved = { document: globals.document, window: globals.window };
+    globals.document = {
+      visibilityState: "visible",
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    globals.window = {
+      addEventListener: (type: string, fn: () => void) => online.set(type, fn),
+      removeEventListener: (type: string) => online.delete(type),
+    };
+    try {
+      const { transport, sockets } = watchEventsHarness();
+      const unsubscribe = transport.watchEvents(() => undefined);
+      accept(sockets[0]!);
+      expect(isWebuiEventChannelDegraded()).toBe(false);
+
+      online.get("online")?.();
+
+      expect(isWebuiEventChannelDegraded()).toBe(true);
+      unsubscribe();
+    } finally {
+      globals.document = saved.document;
+      globals.window = saved.window;
+    }
+  });
 });

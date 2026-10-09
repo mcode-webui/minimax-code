@@ -342,8 +342,23 @@ export function WebuiWorkspaceDirectoryBrowser({
       setError(undefined);
       void browseWorkspaceDirs(dir ? { dir } : {})
         .then((next) => {
-          setListing(next);
-          setManualPath(next.dir);
+          // The transport resolves the server body verbatim
+          // (`resolve(frame.body as T)`), so a body that is missing `entries`
+          // — or is not a listing at all — used to reach the render, where
+          // `listing?.entries.length` threw
+          // `Cannot read properties of undefined (reading 'length')` and the
+          // whole app tree fell into the error boundary. The `?.` stopped one
+          // level too early: it guarded `listing` and left `entries` bare.
+          // Normalise at the door instead of at the use site.
+          const raw = next as Partial<WebuiWorkspaceDirectoryListing> | null;
+          const normalized: WebuiWorkspaceDirectoryListing = {
+            dir: typeof raw?.dir === "string" ? raw.dir : "",
+            parent: typeof raw?.parent === "string" ? raw.parent : undefined,
+            entries: Array.isArray(raw?.entries) ? raw.entries : [],
+            truncated: raw?.truncated === true,
+          };
+          setListing(normalized);
+          setManualPath(normalized.dir);
         })
         .catch((reason: unknown) => {
           setError(

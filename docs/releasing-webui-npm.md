@@ -1,9 +1,21 @@
 # WebUI package on the npm registry
 
 The WebUI is packaged as `@fectivnfy112358/minimax-code-web` and published to
-`https://registry.npmjs.org` under the `preview` dist-tag. Publishing is fully
-automatic: every push to the `webui` branch builds the standalone package and
-publishes a new preview version. No tag, no version edit, no manual step.
+`https://registry.npmjs.org` under the `preview` dist-tag.
+
+> **Preview publishing is currently OFF, and this section used to say
+> otherwise.** As of 2026-10-05 the repository has **no Actions secret named
+> `NPM_TOKEN`**, so `HAS_NPM_TOKEN` in `webui-npm-preview.yml` evaluates to
+> `false` and **the publish step never runs**. The job still goes green — the
+> steps emit `::warning::` instead of failing, so "no credential" and
+> "published" are the same colour. Verified with `gh secret list` (empty) and
+> `gh api .../branches/webui/protection` (404, so this job was never a merge
+> gate either).
+>
+> To turn it back on: add the `NPM_TOKEN` secret, and nothing in the workflow
+> needs to change. Be aware the first run with a real credential is a **cold
+> start** — version resolution and `npm publish` have not been exercised since
+> the gate was relaxed.
 
 ## How a release happens
 

@@ -265,6 +265,35 @@ function SigninSkeleton(): ReactElement {
   );
 }
 
+/**
+ * Coerce a sign-in panel off the wire before it reaches state.
+ *
+ * The transport resolves the server body verbatim (`resolve(frame.body as T)`
+ * in `transport.ts`), and `SigninProgress` below does `[...days].sort(...)`
+ * with no guard. A body that is not a panel — `{}`, a server error envelope,
+ * anything without `days` — therefore threw `days is not iterable` and took
+ * the entire app tree into the error boundary.
+ *
+ * The server does validate (`validateSigninPanel` throws
+ * `Invalid sign-in panel`), so this is defence at the boundary rather than a
+ * known live shape. It is here because the blast radius is the whole UI, not
+ * one row: a malformed panel must degrade to an empty seven-day strip, never
+ * to a blank page.
+ */
+function normalizeSigninPanel(value: unknown): WebuiSigninPanelView {
+  const raw = value as Partial<WebuiSigninPanelView> | null;
+  const days = Array.isArray(raw?.days)
+    ? raw.days.filter((day): day is WebuiSigninPanelView["days"][number] =>
+        Boolean(day) && typeof day === "object",
+      )
+    : [];
+  return {
+    scene:
+      typeof raw?.scene === "number" ? (raw.scene as WebuiSigninPanelView["scene"]) : 0,
+    days,
+  };
+}
+
 /** Seven-day progress row (desktop `eY`). */
 function SigninProgress({
   days,
@@ -843,7 +872,12 @@ export function UserMenu({
     void getSigninPanel()
       .then((panel) => {
         // Keep an in-flight claim flag: a silent refresh must not clear it.
-        setSignin((state) => ({ loading: false, claiming: state.claiming, panel, error: undefined }));
+        setSignin((state) => ({
+          loading: false,
+          claiming: state.claiming,
+          panel: normalizeSigninPanel(panel),
+          error: undefined,
+        }));
       })
       .catch((error: unknown) => {
         setSignin((state) => ({ ...state, loading: false, error: formatSigninError(error) }));
@@ -858,7 +892,7 @@ export function UserMenu({
         setAnimatedDay(
           result.claim_result === SigninClaimResult.Claimed ? result.day_no : null,
         );
-        setSignin({ loading: false, claiming: false, panel: result.panel });
+        setSignin({ loading: false, claiming: false, panel: normalizeSigninPanel(result.panel) });
       })
       .catch((error: unknown) => {
         setSignin((state) => ({ ...state, claiming: false, error: formatSigninError(error) }));

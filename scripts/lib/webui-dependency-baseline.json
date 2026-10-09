@@ -33,13 +33,13 @@
   "cycles": [
     {
       "cycle": [
-        "client/stream.ts",
+        "client/projection/stream-state.ts",
         "client/stream-instrumentation.ts",
-        "client/stream.ts"
+        "client/projection/stream-state.ts"
       ],
-      "canonical": "client/stream-instrumentation.ts -> client/stream.ts -> client/stream-instrumentation.ts",
+      "canonical": "client/projection/stream-state.ts -> client/stream-instrumentation.ts -> client/projection/stream-state.ts",
       "stage": 4,
-      "reason": "Stream frame reduction and stream instrumentation reference each other. Stage 4 separates stream lease/loop mechanisms from the projection state, removing the back edge."
+      "reason": "Stream frame reduction and stream instrumentation reference each other. The reducer moved out of client/stream.ts to client/projection/stream-state.ts (plan §7.3) but the back edge remains until stage 4 separates the stream lease/loop mechanisms from the projection state."
     },
     {
       "cycle": [

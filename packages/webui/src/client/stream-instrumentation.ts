@@ -21,7 +21,7 @@ import {
   applyFrameData,
   reduceWebuiStreamFrame,
   type WebuiStreamState,
-} from "./stream.js";
+} from "./projection/stream-state.js";
 import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
 
 /**

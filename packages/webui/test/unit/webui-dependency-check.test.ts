@@ -123,7 +123,10 @@ describe("layer matrix", () => {
     expect(classifyLayers("runtime/port.ts")).toEqual(["runtime-port"]);
     expect(classifyLayers("server/host.ts")).toEqual(["runtime"]);
     expect(classifyLayers("client/contracts.ts")).toEqual(["contracts"]);
-    expect(classifyLayers("client/stream.ts")).toEqual(["mechanisms", "view"]);
+    expect(classifyLayers("client/projection/stream-state.ts")).toEqual([
+      "mechanisms",
+      "view",
+    ]);
     expect(classifyLayers("client/session-runtime-store.ts")).toEqual([
       "application",
       "bindings",
@@ -140,7 +143,11 @@ describe("layer matrix", () => {
 
   it("records the known-ambiguous files from plan section 7.5", () => {
     expect(KNOWN_AMBIGUOUS_FILES).toContain("server/session-transfer.ts");
-    expect(KNOWN_AMBIGUOUS_FILES).toContain("client/stream.ts");
+    expect(KNOWN_AMBIGUOUS_FILES).toContain("client/projection/stream-state.ts");
+    // `client/stream.ts` was split into the pure frame reducer in
+    // `client/projection/stream-state.ts` and the turn-coordinator commands;
+    // the original path no longer exists to be judged, so its entry is gone.
+    expect(KNOWN_AMBIGUOUS_FILES).not.toContain("client/stream.ts");
     // `client/contracts.ts` was split into leaf contracts in stage 1; the entry
     // is gone because the file no longer exists to be judged.
     expect(KNOWN_AMBIGUOUS_FILES).not.toContain("client/contracts.ts");

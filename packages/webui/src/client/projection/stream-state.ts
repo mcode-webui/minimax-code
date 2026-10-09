@@ -1,10 +1,10 @@
-import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
+import type { WebuiStreamFrame } from "../../shared/contracts/stream.js";
 import {
   initialWebuiWorkspaceProgress,
   reduceWebuiWorkspaceProgressEvent,
   reduceWebuiWorkspaceProgressMessage,
   type WebuiWorkspaceProgressState,
-} from "./projection/workspace-progress.js";
+} from "./workspace-progress.js";
 
 export interface WebuiStreamMessage {
   readonly id: string;
@@ -251,33 +251,6 @@ export function ownsWebuiStreamGeneration(
   // never-strand case wins over the never-clobber case here.
   if (generation === undefined) return true;
   return state.lastClaimedGeneration === generation;
-}
-
-export interface WebuiStopTurnDeps {
-  readonly abortSession: (request: {
-    readonly id: string;
-  }) => Promise<{ readonly success?: boolean }>;
-  readonly sessionId: string;
-  readonly setSending: (sending: boolean) => void;
-  readonly setStream: (
-    update: (current: WebuiStreamState) => WebuiStreamState,
-  ) => void;
-}
-
-/**
- * Stops the running turn and settles the local stream.
- *
- * `abortSession` reports success even when the runtime says the session is
- * not running, so no `session.abort` event is guaranteed to arrive. The stop
- * button is therefore the last chance to drop the lease, and it has to do so
- * itself.
- */
-export async function stopWebuiTurn(deps: WebuiStopTurnDeps): Promise<void> {
-  const result = await deps.abortSession({ id: deps.sessionId });
-  if (result.success === false)
-    throw new Error("The running turn could not be stopped");
-  deps.setSending(false);
-  deps.setStream(settleAbortedStream);
 }
 
 /**
@@ -699,7 +672,7 @@ export function applyFrameCursor(
 export function reduceWebuiStreamFrame(
   state: WebuiStreamState,
   frame: WebuiStreamFrame,
-  options?: import("./stream-instrumentation.js").ReduceOptions,
+  options?: import("../stream-instrumentation.js").ReduceOptions,
 ): WebuiStreamState {
   const next = applyFrameData(state, frame);
   options?.probe?.(next, "after-data");

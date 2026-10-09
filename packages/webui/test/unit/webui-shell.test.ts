@@ -113,14 +113,14 @@ const loopWithProjection = (
     sink,
   );
 import { createSessionOperation } from "../../src/server/operation/operations.js";
+import { stopWebuiTurn } from "../../src/client/application/turn-coordinator.js";
 import {
   initialWebuiStreamState,
   ownsWebuiStreamGeneration,
   reduceWebuiStreamFrame,
   settleAbortedStream,
-  stopWebuiTurn,
   type WebuiStreamState,
-} from "../../src/client/stream.js";
+} from "../../src/client/projection/stream-state.js";
 import { projectWebuiTodos, WebuiProgressOverviewPanel, WebuiProgressPanel, WebuiSubagentsPanel, WebuiWorkspacePanel, WebuiWorkspacePanelControls } from "../../src/client/components/WorkspacePanels.js";
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/projection/workspace-panel-state.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";

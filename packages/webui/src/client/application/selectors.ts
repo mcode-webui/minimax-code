@@ -7,7 +7,7 @@
 // shape of the whole application state.
 
 import type { WebuiSessionActivity } from "../session-activity.js";
-import type { WebuiStreamState } from "../stream.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 import { initialWebuiApplicationSessionState } from "./state.js";
 import type {
   WebuiApplicationSessionState,

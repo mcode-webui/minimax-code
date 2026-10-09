@@ -133,8 +133,8 @@ export const ALLOWED_EDGES = Object.freeze({
  */
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "runtime/port.ts",
-  "client/stream.ts",
   "client/stream-instrumentation.ts",
+  "client/projection/stream-state.ts",
   "client/projection/composer-state.ts",
   "client/projection/effect-reducer.ts",
   "client/session-runtime-store.ts",
@@ -218,7 +218,6 @@ const CLIENT_FILE_PROVENANCE = Object.freeze({
   "no-project.ts": ["infrastructure"],
   "session-runtime-store.ts": ["application", "bindings"],
   "session-stream-retry.ts": ["application"],
-  "stream.ts": ["mechanisms", "view"],
   "stream-instrumentation.ts": ["mechanisms"],
   "stream-loop.ts": ["mechanisms"],
   "contracts.ts": ["contracts"],
@@ -254,6 +253,13 @@ const PROJECTION_SPLIT = Object.freeze({
   "effect-reducer": ["application", "domain"],
   "transcript-request-ownership": ["application"],
   "file-line-navigation": ["bindings"],
+  // `stream-state.ts` is the pure frame reducer split out of `client/stream.ts`
+  // (plan §7.3). The mechanism-mapped stream loop and the test-only stream
+  // instrumentation still consume the reducer directly, so the relocated module
+  // keeps the `mechanisms` classification its predecessor carried alongside
+  // `view`; the mechanism→projection edge is retired in stage 4 (plan §7.2),
+  // not here.
+  "stream-state": ["mechanisms", "view"],
 });
 
 // Current `server/*` files whose destination is `runtime/`. Everything else

@@ -3,7 +3,7 @@ import { projectSessionStream } from "../../src/server/projections/index.js";
 import {
   initialWebuiStreamState,
   reduceWebuiStreamFrame,
-} from "../../src/client/stream.js";
+} from "../../src/client/projection/stream-state.js";
 
 describe("WebUI projected transport frames", () => {
   it("writes a projection on session frames and consumes it in the reducer", async () => {

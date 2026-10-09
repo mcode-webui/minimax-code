@@ -22,8 +22,8 @@
 import type { WebuiClientSessionResumer } from "../contracts/execution-port.js";
 import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
-import type { WebuiStreamState } from "../stream.js";
-import { reduceWebuiStreamFrame } from "../stream.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
+import { reduceWebuiStreamFrame, settleAbortedStream } from "../projection/stream-state.js";
 import { fenceWebuiLeaseStream } from "./stream-lease.js";
 import {
   runWebuiStreamLoop,
@@ -124,4 +124,31 @@ export function createWebuiTurnCoordinator(
       );
     },
   };
+}
+
+export interface WebuiStopTurnDeps {
+  readonly abortSession: (request: {
+    readonly id: string;
+  }) => Promise<{ readonly success?: boolean }>;
+  readonly sessionId: string;
+  readonly setSending: (sending: boolean) => void;
+  readonly setStream: (
+    update: (current: WebuiStreamState) => WebuiStreamState,
+  ) => void;
+}
+
+/**
+ * Stops the running turn and settles the local stream.
+ *
+ * `abortSession` reports success even when the runtime says the session is
+ * not running, so no `session.abort` event is guaranteed to arrive. The stop
+ * button is therefore the last chance to drop the lease, and it has to do so
+ * itself.
+ */
+export async function stopWebuiTurn(deps: WebuiStopTurnDeps): Promise<void> {
+  const result = await deps.abortSession({ id: deps.sessionId });
+  if (result.success === false)
+    throw new Error("The running turn could not be stopped");
+  deps.setSending(false);
+  deps.setStream(settleAbortedStream);
 }

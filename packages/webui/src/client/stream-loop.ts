@@ -27,7 +27,7 @@ import {
   type WebuiStreamMessage,
   type WebuiStreamState,
   type WebuiStreamSubscription,
-} from "./stream.js";
+} from "./projection/stream-state.js";
 import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
 import type { WebuiAttachmentInput } from "../shared/contracts/messages.js";
 

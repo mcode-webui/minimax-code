@@ -19,14 +19,14 @@ import type {
 } from "../../shared/contracts/goal.js";
 import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { formatWebuiError } from "../value-readers.js";
-import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "../stream.js";
+import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "./stream-state.js";
 import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
 } from "../stream-loop.js";
 import { streamRecoveryProjection } from "./stream-recovery.js";
-import type { WebuiStreamState } from "../stream.js";
+import type { WebuiStreamState } from "./stream-state.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";
 import { isWebuiRunnableCommand, classifyWebuiSlashCommand } from "../slash-palette.js";
 

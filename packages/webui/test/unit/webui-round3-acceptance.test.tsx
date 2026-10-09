@@ -47,7 +47,7 @@ import {
   bucketPhrases,
   type ThinkingPhraseSet,
 } from "../../src/client/components/ActivityIndicator.js";
-import { initialWebuiStreamState, reduceWebuiStreamFrame } from "../../src/client/stream.js";
+import { initialWebuiStreamState, reduceWebuiStreamFrame } from "../../src/client/projection/stream-state.js";
 import {
   getSessionDiffOperation,
   getTurnDiffOperation,

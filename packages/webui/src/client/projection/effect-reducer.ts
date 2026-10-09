@@ -68,7 +68,7 @@ import {
   matchesWebuiTerminalTurn,
   releaseWebuiSubscription,
   type WebuiStreamState,
-} from "../stream.js";
+} from "./stream-state.js";
 import { projectWebuiThreadGoalMessage } from "./goal-state.js";
 
 /** The slice of component state the reducer mutates. Workspace progress

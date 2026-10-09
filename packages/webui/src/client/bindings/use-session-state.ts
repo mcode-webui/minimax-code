@@ -18,7 +18,7 @@ import {
 } from "../application/selectors.js";
 import type { WebuiApplicationSessionState } from "../application/state.js";
 import { initialWebuiApplicationSessionState } from "../application/state.js";
-import type { WebuiStreamState } from "../stream.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 import {
   useWebuiApplication,
   useWebuiApplicationSnapshot,

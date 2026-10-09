@@ -46,15 +46,15 @@ import {
   drawableBreakdownRows,
 } from "../projection/context-breakdown.js";
 import { isTokenPlanModel } from "../projection/token-plan-model.js";
+import { stopWebuiTurn } from "../application/turn-coordinator.js";
 import {
   isWebuiSubscriptionProbeCurrent,
   ownsWebuiStreamGeneration,
   reduceWebuiStreamFrame,
   releaseWebuiSubscription,
   resolveWebuiSubscriptionRecheck,
-  stopWebuiTurn,
   webuiSessionStatusType,
-} from "../stream.js";
+} from "../projection/stream-state.js";
 import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "../stream-loop.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 
@@ -148,7 +148,7 @@ import {
   readSessionRuntimeState,
   useSessionRuntimeState,
 } from "../session-runtime-store.js";
-import { initialWebuiStreamState } from "../stream.js";
+import { initialWebuiStreamState } from "../projection/stream-state.js";
 import { workspaceProjectName } from "./SessionRail.js";
 import {
   findWebuiMentionRange,

@@ -19,8 +19,8 @@ import type {
 } from "../../shared/contracts/interactions.js";
 import type { WebuiSessionActivityMap } from "../session-activity.js";
 import { initialWebuiSessionActivity } from "../session-activity.js";
-import { initialWebuiStreamState } from "../stream.js";
-import type { WebuiStreamState } from "../stream.js";
+import { initialWebuiStreamState } from "../projection/stream-state.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 
 /**
  * The application's per-session record: the slices the effect reducer already

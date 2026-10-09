@@ -27,7 +27,7 @@ import {
   readSessionRuntimeState,
   updateSessionRuntimeState,
 } from "../../src/client/session-runtime-store.js";
-import { initialWebuiStreamState } from "../../src/client/stream.js";
+import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 const SESSION_KEY = "w0-session";
 

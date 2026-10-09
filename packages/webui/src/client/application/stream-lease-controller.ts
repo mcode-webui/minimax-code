@@ -6,7 +6,7 @@
 // through one entry": every claim, release and fence in the application goes
 // through here, and every one of them reads and writes the same store.
 
-import type { WebuiStreamState } from "../stream.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 import type { WebuiSessionStore } from "./session-store.js";
 import {
   claimWebuiLease,

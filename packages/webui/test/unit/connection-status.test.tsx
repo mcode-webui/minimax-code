@@ -12,7 +12,7 @@ import {
   projectWebuiConnectionState,
 } from "../../src/client/ConnectionStatus.js";
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
-import type { WebuiStreamState } from "../../src/client/stream.js";
+import type { WebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 /**
  * The store is module-level, so each case claims its own session key rather

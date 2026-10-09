@@ -17,9 +17,9 @@
 // here, and every consumer reads / writes through the helpers above.
 
 import { useEffect, useState } from "react";
-import { initialWebuiStreamState } from "./stream.js";
+import { initialWebuiStreamState } from "./projection/stream-state.js";
 import type { WebuiComposerSubmitHandlers } from "./projection/composer-state.js";
-import type { WebuiStreamState } from "./stream.js";
+import type { WebuiStreamState } from "./projection/stream-state.js";
 
 interface WebuiSessionRuntimeState {
   readonly stream: WebuiStreamState;

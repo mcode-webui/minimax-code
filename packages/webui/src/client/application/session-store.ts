@@ -23,7 +23,7 @@
 
 import type { WebuiSessionActivityMap } from "../session-activity.js";
 import { initialWebuiSessionActivity } from "../session-activity.js";
-import type { WebuiStreamState } from "../stream.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 import {
   initialWebuiApplicationSessionState,
   initialWebuiApplicationState,

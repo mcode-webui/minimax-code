@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useSessionRuntimeState } from "./session-runtime-store.js";
 import { useWebuiEventChannelDegraded } from "./connection-health.js";
-import type { WebuiStreamState } from "./stream.js";
+import type { WebuiStreamState } from "./projection/stream-state.js";
 
 /**
  * The three states a user can act on.

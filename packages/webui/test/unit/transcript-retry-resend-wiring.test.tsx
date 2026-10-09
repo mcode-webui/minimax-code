@@ -83,7 +83,7 @@ import {
   submitWebuiComposerTurn,
 } from "../../src/client/projection/composer-state.js";
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
-import { initialWebuiStreamState } from "../../src/client/stream.js";
+import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 const SESSION_ID = "session-retry-resend";
 const OTHER_SESSION_ID = "session-retry-resend-other";

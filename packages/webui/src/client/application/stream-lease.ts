@@ -21,7 +21,7 @@ import {
   releaseWebuiSubscription,
   type WebuiStreamState,
   type WebuiStreamSubscription,
-} from "../stream.js";
+} from "../projection/stream-state.js";
 
 export type WebuiLeaseOwner = WebuiStreamSubscription["owner"];
 

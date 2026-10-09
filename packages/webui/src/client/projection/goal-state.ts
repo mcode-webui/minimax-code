@@ -3,7 +3,7 @@
 // that state into the wire requests and the small view-model pieces
 // (status copy, wait-reason copy, duration formatting, message upsert).
 
-import type { WebuiStreamMessage } from "../stream.js";
+import type { WebuiStreamMessage } from "./stream-state.js";
 import type {
   WebuiGoal,
   WebuiGoalPatchRequest,

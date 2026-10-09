@@ -24,12 +24,12 @@
 
 import { describe, expect, it } from "vitest";
 
+import { stopWebuiTurn } from "../../src/client/application/turn-coordinator.js";
 import {
   initialWebuiStreamState,
   ownsWebuiStreamGeneration,
-  stopWebuiTurn,
   type WebuiStreamState,
-} from "../../src/client/stream.js";
+} from "../../src/client/projection/stream-state.js";
 import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop as runStreamLoop,

@@ -23,18 +23,12 @@ import {
   type FormEvent,
   type ReactElement,
 } from "react";
-import {
-  type WebuiClientEventWatcher,
-  type WebuiClientMessageEnqueuer,
-  type WebuiClientMessageLoader,
-  type WebuiClientMessageSender,
-  type WebuiClientSessionCreator,
-  type WebuiClientSessionResumer,
-  type WebuiClientSessionPage,
-  type WebuiModelSelectionRequest,
-  type WebuiTransport,
-  type WebuiClientSession,
-} from "../contracts.js";
+import type { WebuiClientEventWatcher, WebuiClientMessageEnqueuer, WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
+import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
+import type { WebuiModelSelectionRequest } from "../contracts/model-view.js";
+import type { WebuiClientSessionCreator } from "../contracts/session-port.js";
+import type { WebuiClientSessionPage, WebuiClientSession } from "../contracts/session-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projection/message-projection.js";
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";

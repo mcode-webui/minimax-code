@@ -10,16 +10,6 @@
   },
   "entries": [
     {
-      "from": "client/contracts.ts",
-      "to": "client/projection/message-parts.ts",
-      "layerFrom": "contracts",
-      "layerTo": "view",
-      "rule": "contracts -> view",
-      "category": "contract-to-projection",
-      "stage": 1,
-      "reason": "A leaf client contract imports projection implementation. Contract declarations are leaves; the stage-1 contracts split removes the edge."
-    },
-    {
       "from": "client/projection/model-favorites.ts",
       "to": "client/components/ModelPicker.tsx",
       "layerFrom": "domain",
@@ -81,7 +71,7 @@
     },
     {
       "from": "server/host.ts",
-      "to": "client/contracts.ts",
+      "to": "client/contracts/settings-port.ts",
       "layerFrom": "runtime",
       "layerTo": "contracts",
       "rule": "runtime -> contracts",
@@ -152,7 +142,7 @@
     },
     {
       "from": "server/port.ts",
-      "to": "client/contracts.ts",
+      "to": "client/contracts/settings-port.ts",
       "layerFrom": "runtime-port",
       "layerTo": "contracts",
       "rule": "runtime-port -> contracts",
@@ -163,7 +153,7 @@
     },
     {
       "from": "server/profile-files.ts",
-      "to": "client/contracts.ts",
+      "to": "client/contracts/settings-port.ts",
       "layerFrom": "runtime",
       "layerTo": "contracts",
       "rule": "runtime -> contracts",

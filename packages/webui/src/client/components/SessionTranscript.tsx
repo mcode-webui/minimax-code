@@ -23,12 +23,9 @@ import {
   webuiPlanPath,
 } from "../projection/plan-mode.js";
 import { WebuiPlanDeliveryCard } from "./PlanModeCards.js";
-import type {
-  WebuiClientMessageLoader,
-  WebuiClientMessagePage,
-  WebuiTransport,
-  WebuiTranscriptItem,
-} from "../contracts.js";
+import type { WebuiClientMessageLoader, WebuiClientMessagePage } from "../contracts/message-view.js";
+import type { WebuiTranscriptItem } from "../contracts/transcript-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import type { WebuiQuestionnaireRequest } from "../../shared/contracts/interactions.js";
 
 /** Capability subset the transcript passes through to each message item.
@@ -48,7 +45,7 @@ type WebuiSessionTranscriptCapabilities = Pick<
   | "replyQuestionnaire"
 >;
 import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
-import type { WebuiQuestionnaireResponseSummary } from "../projection/message-parts.js";
+import type { WebuiQuestionnaireResponseSummary } from "../contracts/transcript-view.js";
 import type { WebuiMessageFileReference } from "../projection/message-file-reference.js";
 import type { WorkspacePanelCommand } from "../projection/workspace-panel-state.js";
 import {

@@ -13,11 +13,8 @@
 // the React shell's `try/finally` shape at `app.tsx`, which does not
 // catch and would otherwise lose a sink-originated rejection.
 
-import type {
-  WebuiClientMessageLoader,
-  WebuiClientMessageSender,
-  WebuiClientSessionResumer,
-} from "./contracts.js";
+import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "./contracts/execution-port.js";
+import type { WebuiClientMessageLoader } from "./contracts/message-view.js";
 import { projectWebuiMessageToStreamMessage } from "./projection/message-projection.js";
 import { latestContextUsage, readContextUsageSnapshot } from "./projection/context-usage.js";
 

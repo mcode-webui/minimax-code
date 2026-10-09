@@ -17,7 +17,7 @@ import type {
   WebuiGetSessionForkOptionsResult,
   WebuiGetSessionRewindPreviewResult,
 } from "../../shared/contracts/session.js";
-import type { WebuiTransport } from "../contracts.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import type { WebuiMessageFileReference } from "../projection/message-file-reference.js";
 import type { WorkspacePanelCommand } from "../projection/workspace-panel-state.js";
 import type {

@@ -24,12 +24,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/server/envelope.js";
 import { WebuiService } from "../../src/server/service.js";
 import type { WebuiHarnessPort } from "../../src/server/port.js";
-import type {
-  WebuiAgentMemoryView,
-  WebuiGlobalInstructionsView,
-  WebuiMemorySettingsView,
-  WebuiUserProfileView,
-} from "../../src/client/contracts.js";
+import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiMemorySettingsView, WebuiUserProfileView } from "../../src/client/contracts/settings-port.js";
 
 const INSTRUCTIONS: WebuiGlobalInstructionsView = {
   content: "# Agents 全局设定\n",

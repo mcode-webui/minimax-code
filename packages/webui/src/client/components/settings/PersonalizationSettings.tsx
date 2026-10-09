@@ -9,13 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ToggleSwitch } from "../ToggleSwitch.js";
-import type {
-  WebuiAgentMemoryView,
-  WebuiGlobalInstructionsView,
-  WebuiMemorySettingsView,
-  WebuiUserProfileFields,
-  WebuiUserProfileView,
-} from "../../contracts.js";
+import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiMemorySettingsView, WebuiUserProfileFields, WebuiUserProfileView } from "../../contracts/settings-port.js";
 
 /**
  * Personalization panel — the three blocks the desktop surface ships:

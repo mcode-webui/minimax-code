@@ -57,13 +57,9 @@ import {
   readSessionIdFromHash,
   subscribeToSessionHash,
 } from "../../src/client/components/WebuiClientFoundationApp.js";
-import type {
-  WebuiClientMessageEnqueuer,
-  WebuiClientMessageLoader,
-  WebuiClientMessageSender,
-  WebuiClientSessionResumer,
-  WebuiTranscriptItem,
-} from "../../src/client/contracts.js";
+import type { WebuiClientMessageEnqueuer, WebuiClientMessageSender, WebuiClientSessionResumer } from "../../src/client/contracts/execution-port.js";
+import type { WebuiClientMessageLoader } from "../../src/client/contracts/message-view.js";
+import type { WebuiTranscriptItem } from "../../src/client/contracts/transcript-view.js";
 import {
   buildWebuiModelSelectionRequest,
   webuiModelOptionValue,

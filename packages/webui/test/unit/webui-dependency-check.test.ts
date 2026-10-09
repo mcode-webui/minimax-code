@@ -12,7 +12,7 @@
 // `scripts/source-inventory.mjs` never sees them.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -374,19 +374,23 @@ describe("baseline comparison", () => {
 });
 
 describe("the gate runs and matches the frozen baseline", () => {
-  it("passes on the current tree and reports the measured numbers", () => {
+  it("passes on the current tree and agrees with the baseline file", () => {
+    // Structural agreement, not frozen literals: the reported baseline pair
+    // count and cycle count must track `scripts/lib/webui-dependency-baseline.json`
+    // itself, so a later slice that deletes or renames an exception never has
+    // to bump a hardcoded number here. Any drift between the CLI and the file
+    // still fails, and the pass/fail behaviour of the check is asserted below.
+    const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));
     const run = runCli(["--json"]);
     expect(run.status, run.stderr).toBe(0);
     const summary = JSON.parse(run.stdout);
     expect(summary.ok).toBe(true);
-    // Post stage-1 DTO extraction: the wire DTOs moved out of `server/port.ts`
-    // into `shared/contracts/*`, so the client no longer imports the Node port
-    // and the 37 `client-to-server-port` pairs are gone.
-    expect(summary.intraPackageReferences).toBe(578);
-    expect(summary.violatingPairs).toBe(16);
-    expect(summary.directionViolations).toBe(29);
+    expect(summary.baselinePairs).toBe((baseline.entries ?? []).length);
+    expect(summary.cycles).toHaveLength((baseline.cycles ?? []).length);
     expect(summary.newViolations).toHaveLength(0);
     expect(summary.staleEntries).toHaveLength(0);
+    expect(summary.newCycles).toHaveLength(0);
+    expect(summary.staleCycles).toHaveLength(0);
   });
 
   it("fails on a stale baseline entry", () => {

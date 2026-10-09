@@ -35,7 +35,7 @@ import type {
 } from "../../shared/contracts/review.js";
 import type { WorkspacePanelCommand, WorkspacePanelState, WorkspacePanelTab } from "../projection/workspace-panel-state.js";
 import { focusWebuiFileLine, webuiFileLineTargetId } from "../projection/file-line-navigation.js";
-import type { WebuiClientEventWatcher } from "../contracts.js";
+import type { WebuiClientEventWatcher } from "../contracts/execution-port.js";
 import {
   projectWebuiWorkspaceHistory,
   type WebuiWorkspaceSubagent,

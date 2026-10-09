@@ -31,7 +31,7 @@
 
 import type { WebuiRuntimeEvent } from "../shared/contracts/stream.js";
 import type { WebuiActiveTurn } from "../shared/contracts/session.js";
-import type { WebuiClientSession } from "./contracts.js";
+import type { WebuiClientSession } from "./contracts/session-view.js";
 
 export interface WebuiSessionBusy {
   readonly turnId: string;

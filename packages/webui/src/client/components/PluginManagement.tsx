@@ -4,7 +4,7 @@ import {
   MarketplaceCategory,
 } from "@mavis/protocol/local";
 import type { WebuiPluginManagementAction } from "../../shared/plugin-management.js";
-import type { WebuiTransport } from "../contracts.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import { WebuiIconAgent } from "../icons.js";
 import { ToggleSwitch } from "./ToggleSwitch.js";
 

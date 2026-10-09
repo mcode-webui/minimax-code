@@ -97,10 +97,7 @@ import type {
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
 } from "../shared/contracts/goal.js";
-import type {
-  WebuiGlobalInstructionsView,
-  WebuiMemorySettingsView,
-} from "../client/contracts.js";
+import type { WebuiGlobalInstructionsView, WebuiMemorySettingsView } from "../client/contracts/settings-port.js";
 
 /**
  * The exact surface of the runtime `cliService` the WebUI talks to. The
@@ -293,27 +290,27 @@ export interface WebuiRuntimeCliService {
   setGlobalInstructions(request: {
     readonly content: string;
   }): Promise<WebuiGlobalInstructionsView>;
-  getAgentMemory(request?: { readonly includeContent?: boolean }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
+  getAgentMemory(request?: { readonly includeContent?: boolean }): Promise<import("../client/contracts/settings-port.js").WebuiAgentMemoryView>;
   setAgentMemory(request: {
     readonly content: string;
-  }): Promise<import("../client/contracts.js").WebuiAgentMemoryView>;
-  getUserProfile(): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  }): Promise<import("../client/contracts/settings-port.js").WebuiAgentMemoryView>;
+  getUserProfile(): Promise<import("../client/contracts/settings-port.js").WebuiUserProfileView>;
   setUserProfile(request: {
     readonly nickname: string;
     readonly occupation: string;
     readonly moreAbout: string;
-  }): Promise<import("../client/contracts.js").WebuiUserProfileView>;
+  }): Promise<import("../client/contracts/settings-port.js").WebuiUserProfileView>;
   /**
    * Optional on purpose: a host without the configuration capability still has
    * to type-check. The handlers below fail closed with one clear message rather
    * than crashing on `undefined` — a missing method is not the same statement as
    * `enabled: false`.
    */
-  getMemorySettings?(): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
+  getMemorySettings?(): Promise<import("../client/contracts/settings-port.js").WebuiMemorySettingsView>;
   setMemorySettings?(request: {
     readonly enabled?: boolean;
     readonly proactive?: boolean;
-  }): Promise<import("../client/contracts.js").WebuiMemorySettingsView>;
+  }): Promise<import("../client/contracts/settings-port.js").WebuiMemorySettingsView>;
   selectModel(request: {
     readonly providerId: string;
     readonly modelId: string;

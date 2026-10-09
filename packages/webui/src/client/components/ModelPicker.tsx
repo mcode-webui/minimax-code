@@ -33,10 +33,7 @@ import {
 
 import { WebuiIconChevronDown } from "../icons.js";
 import { ToggleSwitch } from "./ToggleSwitch.js";
-import type {
-  WebuiModelPickerDraft,
-  WebuiModelPickerEntry,
-} from "../contracts.js";
+import type { WebuiModelPickerDraft, WebuiModelPickerEntry } from "../contracts/model-view.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
 import {
   filterModelGroups,

@@ -18,7 +18,7 @@ import type {
   WebuiUsageQuotaWindowView,
 } from "../../shared/contracts/usage-quota.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
-import type { WebuiTransport } from "../contracts.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsModal.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import type { MemoryHandoff } from "./settings/PersonalizationSettings.js";

@@ -35,7 +35,7 @@ import {
   runWebuiStreamLoop,
   type WebuiStreamLoopSink,
 } from "../../src/client/stream-loop.js";
-import type { WebuiClientMessageSender } from "../../src/client/contracts.js";
+import type { WebuiClientMessageSender } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 
 const SESSION_ID = "session-under-test";

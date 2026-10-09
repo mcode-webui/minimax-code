@@ -22,7 +22,7 @@ import {
   readSessionRuntimeState,
   updateSessionRuntimeState,
 } from "../../src/client/session-runtime-store.js";
-import type { WebuiClientSessionResumer } from "../../src/client/contracts.js";
+import type { WebuiClientSessionResumer } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamState } from "../../src/client/stream.js";
 
 type ResumeRequest = Parameters<WebuiClientSessionResumer>[0];

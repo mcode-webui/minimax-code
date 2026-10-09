@@ -1,4 +1,4 @@
-import type { WebuiClientMessagePage } from "../contracts.js";
+import type { WebuiClientMessagePage } from "../contracts/message-view.js";
 
 function mergeQueryCollapseViews(
   current: NonNullable<WebuiClientMessagePage["queryCollapseViews"]>,

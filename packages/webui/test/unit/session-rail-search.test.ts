@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
-import type { WebuiClientProject, WebuiClientSession } from "../../src/client/contracts.js";
+import type { WebuiClientProject, WebuiClientSession } from "../../src/client/contracts/session-view.js";
 import {
   WebuiProjectList,
   filterWebuiProjectsByQuery,

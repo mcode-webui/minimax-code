@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveEffortOptions } from "../../src/client/components/ModelPicker.js";
-import type { WebuiModelPickerEntry } from "../../src/client/contracts.js";
+import type { WebuiModelPickerEntry } from "../../src/client/contracts/model-view.js";
 
 function entry(over: Partial<WebuiModelPickerEntry> = {}): WebuiModelPickerEntry {
   return { providerId: "minimax_api", modelId: "MiniMax-M3", ...over };

@@ -10,11 +10,8 @@
 // enqueues the message, and routes failures into the `refusal` field so the
 // panel surfaces them inline.
 
-import type {
-  WebuiClientCreateSessionResult,
-  WebuiClientMessageEnqueuer,
-  WebuiClientSessionCreator,
-} from "../contracts.js";
+import type { WebuiClientMessageEnqueuer } from "../contracts/execution-port.js";
+import type { WebuiClientCreateSessionResult, WebuiClientSessionCreator } from "../contracts/session-port.js";
 import type {
   WebuiGoal,
   WebuiGoalCreateRequest,

@@ -13,10 +13,8 @@
 // a still-dead server refuses again through the identical path and the
 // banner returns with the new reason, so the loop cannot spin on its own.
 
-import type {
-  WebuiClientMessageLoader,
-  WebuiClientSessionResumer,
-} from "./contracts.js";
+import type { WebuiClientSessionResumer } from "./contracts/execution-port.js";
+import type { WebuiClientMessageLoader } from "./contracts/message-view.js";
 import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "./stream-loop.js";
 import {
   createSessionRuntimeWriter,

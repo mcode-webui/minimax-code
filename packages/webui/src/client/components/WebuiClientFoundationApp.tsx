@@ -83,13 +83,8 @@ import {
   WebuiIconSidebarToggle,
   WebuiIconSites,
 } from "../icons.js";
-import type {
-  WebuiClientSession,
-  WebuiClientSessionPage,
-  WebuiClientSessionTreePage,
-  WebuiClientProject,
-  WebuiTransport,
-} from "../contracts.js";
+import type { WebuiClientSession, WebuiClientSessionPage, WebuiClientSessionTreePage, WebuiClientProject } from "../contracts/session-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import type { WebuiTodo } from "./WorkspacePanels.js";
 import type { WebuiUsageQuotaResult } from "../../shared/contracts/usage-quota.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
@@ -161,7 +156,7 @@ export interface WebuiClientFoundationAppProps {
   /** Seed for the transcript so SSR / first paint can render messages before
    * `loadMessages` resolves; production always re-fetches in the background
    * so the prop only changes the initial paint, not the source of truth. */
-  readonly initialMessages?: import("../contracts.js").WebuiClientMessagePage;
+  readonly initialMessages?: import("../contracts/message-view.js").WebuiClientMessagePage;
   /** Seed for the conversation usage banner so SSR / first paint can render
    * it before `getUsageQuota` resolves; production always re-fetches in the
    * background so the prop only changes the initial paint, not the source
@@ -398,7 +393,7 @@ export function WebuiClientFoundationApp(
       if (!cancelled)
         setHistoryProgress(
           projectWebuiWorkspaceHistory(
-            (result.messages ?? []) as unknown as readonly import("../contracts.js").WebuiClientMessage[],
+            (result.messages ?? []) as unknown as readonly import("../contracts/message-view.js").WebuiClientMessage[],
             selectedSessionId,
           ),
         );

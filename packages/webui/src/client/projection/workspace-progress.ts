@@ -1,4 +1,4 @@
-import type { WebuiClientMessage } from "../contracts.js";
+import type { WebuiClientMessage } from "../contracts/message-view.js";
 
 export type WebuiWorkspaceTodoStatus =
   | "pending"

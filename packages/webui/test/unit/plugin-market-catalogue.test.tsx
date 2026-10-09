@@ -27,7 +27,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { PluginManagement } from "../../src/client/components/PluginManagement.js";
-import type { WebuiTransport } from "../../src/client/contracts.js";
+import type { WebuiTransport } from "../../src/client/contracts/transport.js";
 
 const transport = {
   pluginManagement: async () => ({ plugins: [] }),

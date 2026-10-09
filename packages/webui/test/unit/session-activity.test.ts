@@ -27,7 +27,7 @@ import {
   SESSION_UNREAD_STORAGE_KEY,
   writeWebuiUnreadCounts,
 } from "../../src/client/session-unread.js";
-import type { WebuiClientSession } from "../../src/client/contracts.js";
+import type { WebuiClientSession } from "../../src/client/contracts/session-view.js";
 import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 
 function event(

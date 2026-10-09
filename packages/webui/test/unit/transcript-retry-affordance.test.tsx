@@ -23,7 +23,7 @@ import { WebuiAssistantBody } from "../../src/client/components/AssistantBody.js
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
 import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
 import { projectMessageParts } from "../../src/client/projection/message-parts.js";
-import type { WebuiClientMessage } from "../../src/client/contracts.js";
+import type { WebuiClientMessage } from "../../src/client/contracts/message-view.js";
 
 /** Captures the retry control's click handler out of a static render. */
 function renderWithRetryCapture(props: {

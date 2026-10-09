@@ -133,6 +133,111 @@ import {
 
 type Callable = (...args: never[]) => unknown;
 
+/**
+ * The runtime port the operation registry binds against: the harness seam's
+ * capability methods plus the assembly-supplied ones (usage, check-in, auth
+ * invalidation, compaction). This is the same `Pick` view the old forwarding
+ * handler map derived from `WebuiHarnessPort`; it lives here now because the
+ * registry, the typed bindings and the dedicated handlers all materialise
+ * against it.
+ */
+export type WebuiOperationPort = Pick<
+  WebuiHarnessPort,
+  | "version"
+  | "listSessions"
+  | "listVisibleProjects"
+  | "getSessionTree"
+  | "archiveSession"
+  | "deleteSession"
+  | "updateSession"
+  | "getSessionForkOptions"
+  | "forkSession"
+  | "createSession"
+  | "getSession"
+  | "getMessages"
+  | "getSessionDiff"
+  | "getTurnDiff"
+  | "revertTurnDiff"
+  | "reapplyTurnDiff"
+  | "getSessionRewindPreview"
+  | "rewindSession"
+  | "editSessionMessage"
+  | "isGoalEnabled"
+  | "getGoal"
+  | "getActiveTurn"
+  | "createGoal"
+  | "patchGoal"
+  | "clearGoal"
+  | "listWorkspaceFileTree"
+  | "readWorkspaceFile"
+  | "getWorkspaceEnvironment"
+  | "mutateWorkspaceGit"
+  | "getWorkspaceReviewSummary"
+  | "listWorkspaceReviewFileDiffs"
+  | "getWorkspaceReviewFileContent"
+  | "searchWorkspaceReviewDiffs"
+  | "readCanvas"
+  | "applyCanvas"
+  | "readWorkspaceArchive"
+  | "extractWorkspaceArchive"
+  | "sendMessage"
+  | "enqueueMessage"
+  | "resumeSession"
+  | "watchEvents"
+  | "listPendingPermissions"
+  | "getPendingQuestionnaire"
+  | "replyPermission"
+  | "replyQuestionnaire"
+  | "dismissQuestionnaire"
+  | "abortSession"
+  | "listQueueMessages"
+  | "deleteQueueItem"
+  | "listModels"
+  | "selectModel"
+  | "listSkills"
+  | "pluginManagement"
+  | "getPermissionMode"
+  | "setPermissionMode"
+  | "getSessionUsage"
+  | "getUsageQuota"
+  | "getSigninPanel"
+  | "claimSignin"
+  | "beginAccountLogin"
+  | "getAccountLoginStatus"
+  | "cancelAccountLogin"
+  | "signOutAccount"
+  | "getAccountStatus"
+  | "listUserModelProviders"
+  | "createUserModelProvider"
+  | "updateUserModelProvider"
+  | "deleteUserModelProvider"
+  | "testUserModelProvider"
+  | "testUserModel"
+  | "discoverUserModelsCandidate"
+  | "saveUserModelProviderCandidate"
+  | "listProviderPresets"
+  | "getMiniMaxApiKeyStatus"
+  | "upsertMiniMaxApiKey"
+  | "getCodexOAuthStatus"
+  | "getMiniMaxModelSource"
+  | "setMiniMaxModelSource"
+  | "testUserModelCandidate"
+  | "revealModelProviderApiKey"
+  | "startCodexOAuthLogin"
+  | "cancelCodexOAuthLogin"
+  | "refreshModels"
+  | "requestCompaction"
+  | "invalidateAuth"
+  | "getGlobalInstructions"
+  | "setGlobalInstructions"
+  | "getAgentMemory"
+  | "setAgentMemory"
+  | "getUserProfile"
+  | "setUserProfile"
+  | "getMemorySettings"
+  | "setMemorySettings"
+>;
+
 type MethodKeys<T> = {
   [K in keyof T]-?: NonNullable<T[K]> extends Callable ? K : never;
 }[keyof T];
@@ -356,7 +461,7 @@ export function executeBinding<
   K extends MethodKeys<RuntimeGroups[G]>,
 >(
   binding: WebuiOperationBinding<N, G, K>,
-  port: WebuiHarnessPort,
+  port: WebuiOperationPort,
 ): WebuiOperationRegistryEntry {
   const capabilities = port as unknown as Readonly<Record<string, unknown>>;
   const method = binding.method as string;
@@ -978,7 +1083,7 @@ type AnyBinding = WebuiOperationBinding<
  * test; kept separate from the executor so the erasure stays in one place.
  */
 export function createBindingEntries(
-  port: WebuiHarnessPort,
+  port: WebuiOperationPort,
 ): ReadonlyMap<string, WebuiOperationRegistryEntry> {
   const entries = new Map<string, WebuiOperationRegistryEntry>();
   for (const [name, binding] of Object.entries(WEBUI_OPERATION_BINDINGS)) {

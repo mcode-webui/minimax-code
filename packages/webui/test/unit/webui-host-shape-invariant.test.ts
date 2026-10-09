@@ -54,7 +54,7 @@ import {
   disposeTerminalOperation,
   watchTerminalOperation,
 } from "../../src/server/operation/operations.js";
-import { createOperationHandlers, type WebuiOperationPort } from "../../src/server/operation/operation-handlers.js";
+import { createBindingEntries, type WebuiOperationPort } from "../../src/server/operation/bind-handlers.js";
 import { dispatchWebuiFrame } from "../../src/server/operation/operation-dispatch.js";
 import { WEBUI_PROTOCOL_VERSION, WebuiErrorCode } from "../../src/shared/envelope.js";
 import WebSocket from "ws";
@@ -509,12 +509,12 @@ describe("WebUI host-shape invariant (batch C seam)", () => {
 
   it("narrows WebuiOperationPort to require every harness port method (port.ts)", () => {
     // Compile-time check — `FullPort` MUST satisfy `WebuiOperationPort`,
-    // which `operation-handlers.ts` builds as `Pick<WebuiHarnessPort, ...>`.
+    // which `bind-handlers.ts` builds as `Pick<WebuiHarnessPort, ...>`.
     const port: WebuiOperationPort = new FullPort();
-    // The handlers map derives its method shape from the operation
-    // descriptors; we only need to verify it accepts the port.
-    const handlers = createOperationHandlers(port);
-    expect(Object.keys(handlers).length).toBeGreaterThan(0);
+    // The bindings materialise from the operation descriptors; we only need
+    // to verify the port is accepted and every binding is registered.
+    const entries = createBindingEntries(port);
+    expect(entries.size).toBe(86);
   });
 
   // --------------------------------------------------------------------

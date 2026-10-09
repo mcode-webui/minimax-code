@@ -6,7 +6,7 @@
 // | --- | --- | --- | --- |
 // | `WebuiTerminalFrame` | One terminal output frame (terminalId, data, exited). | Server `WebuiTerminalManager.watch` (`server/terminal.ts`, via the `watchTerminal` handler). | `client/contracts/terminal-port.ts`; `client/transport.ts`. |
 // | `WebuiRunCommandRequest` | A slash-command run request (command, input, session/agent/workspace). | Browser `client/transport.ts` (`runCommand`). | `server/operation/provider.ts` (`runCommandOperation`). |
-// | `WebuiRunCommandResult` | The command outcome (handled output/data). | Runtime `runWebuiCommand` (`runtime/commands/runner.ts`). | `server/operation/operation-handlers.ts` `runCommand`; `server/operation/provider.ts`. |
+// | `WebuiRunCommandResult` | The command outcome (handled output/data). | Runtime `runWebuiCommand` (`runtime/commands/runner.ts`). | `server/operation/handlers/commands.ts` `runCommand`; `server/operation/provider.ts`. |
 export interface WebuiTerminalFrame {
   readonly terminalId: string;
   readonly data: string;

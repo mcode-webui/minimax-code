@@ -1,18 +1,29 @@
-import { runWebuiCommand } from "../../runtime/commands/runner.js";
-import type { WebuiHarnessPort } from "../../runtime/port.js";
-import { listWorkspaceDirectories } from "./workspace.js";
+// Frozen reference: the pre-stage-3 forwarding handler map.
+//
+// `server/operation/operation-handlers.ts` is deleted (plan §7.3); its handler
+// map survives only here, as the "old" side of the protocol-compatibility
+// comparison. Plan §7.7 sanctions exactly this parallelism: "old handlers
+// compared against new bindings on separate fixture instances". The new side
+// is the production registry built by `operations.ts`; this file is never
+// imported by anything under `src/`.
+//
+// It is a verbatim move of the deleted file's `createOperationHandlers`,
+// renamed only so it cannot be mistaken for production code.
+import { runWebuiCommand } from "../../src/runtime/commands/runner.js";
+import type { WebuiOperationPort } from "../../src/server/operation/bind-handlers.js";
+import { listWorkspaceDirectories } from "../../src/server/operation/workspace.js";
 import {
   projectContextSnapshot,
   projectSessionStream,
   projectUsage,
-} from "../projections/index.js";
+} from "../../src/server/projections/index.js";
 import type {
   WebuiOperationHandler,
   WebuiOperationValidation,
-} from "./operation-contract.js";
-import type { WebuiTerminalManager } from "../terminal.js";
+} from "../../src/server/operation/operation-contract.js";
+import type { WebuiTerminalManager } from "../../src/server/terminal.js";
 
-type OperationModule = typeof import("./operations.js");
+type OperationModule = typeof import("../../src/server/operation/operations.js");
 type OperationDescriptorName = Exclude<
   Extract<keyof OperationModule, `${string}Operation`>,
   "registerOperation"
@@ -24,114 +35,17 @@ type OperationBody<DescriptorName extends OperationDescriptorName> =
     ? Body
     : never;
 
-export type WebuiOperationPort = Pick<
-  WebuiHarnessPort,
-  | "version"
-  | "listSessions"
-  | "listVisibleProjects"
-  | "getSessionTree"
-  | "archiveSession"
-  | "deleteSession"
-  | "updateSession"
-  | "getSessionForkOptions"
-  | "forkSession"
-  | "createSession"
-  | "getSession"
-  | "getMessages"
-  | "getSessionDiff"
-  | "getTurnDiff"
-  | "revertTurnDiff"
-  | "reapplyTurnDiff"
-  | "getSessionRewindPreview"
-  | "rewindSession"
-  | "editSessionMessage"
-  | "isGoalEnabled"
-  | "getGoal"
-  | "getActiveTurn"
-  | "createGoal"
-  | "patchGoal"
-  | "clearGoal"
-  | "listWorkspaceFileTree"
-  | "readWorkspaceFile"
-  | "getWorkspaceEnvironment"
-  | "mutateWorkspaceGit"
-  | "getWorkspaceReviewSummary"
-  | "listWorkspaceReviewFileDiffs"
-  | "getWorkspaceReviewFileContent"
-  | "searchWorkspaceReviewDiffs"
-  | "readCanvas"
-  | "applyCanvas"
-  | "readWorkspaceArchive"
-  | "extractWorkspaceArchive"
-  | "sendMessage"
-  | "enqueueMessage"
-  | "resumeSession"
-  | "watchEvents"
-  | "listPendingPermissions"
-  | "getPendingQuestionnaire"
-  | "replyPermission"
-  | "replyQuestionnaire"
-  | "dismissQuestionnaire"
-  | "abortSession"
-  | "listQueueMessages"
-  | "deleteQueueItem"
-  | "listModels"
-  | "selectModel"
-  | "listSkills"
-  | "pluginManagement"
-  | "getPermissionMode"
-  | "setPermissionMode"
-  | "getSessionUsage"
-  | "getUsageQuota"
-  | "getSigninPanel"
-  | "claimSignin"
-  | "beginAccountLogin"
-  | "getAccountLoginStatus"
-  | "cancelAccountLogin"
-  | "signOutAccount"
-  | "getAccountStatus"
-  | "listUserModelProviders"
-  | "createUserModelProvider"
-  | "updateUserModelProvider"
-  | "deleteUserModelProvider"
-  | "testUserModelProvider"
-  | "testUserModel"
-  | "discoverUserModelsCandidate"
-  | "saveUserModelProviderCandidate"
-  | "listProviderPresets"
-  | "getMiniMaxApiKeyStatus"
-  | "upsertMiniMaxApiKey"
-  | "getCodexOAuthStatus"
-  | "getMiniMaxModelSource"
-  | "setMiniMaxModelSource"
-  | "testUserModelCandidate"
-  | "revealModelProviderApiKey"
-  | "startCodexOAuthLogin"
-  | "cancelCodexOAuthLogin"
-  | "refreshModels"
-  | "requestCompaction"
-  | "invalidateAuth"
-  | "getGlobalInstructions"
-  | "setGlobalInstructions"
-  | "getAgentMemory"
-  | "setAgentMemory"
-  | "getUserProfile"
-  | "setUserProfile"
-  | "getMemorySettings"
-  | "setMemorySettings"
->;
-
-export type WebuiOperationHandlers = {
+export type WebuiLegacyOperationHandlers = {
   [DescriptorName in OperationDescriptorName as DescriptorName extends `${infer Name}Operation`
     ? Name
     : never]: WebuiOperationHandler<OperationBody<DescriptorName>, unknown>;
 };
 
-export function createOperationHandlers(
+export function createLegacyOperationHandlers(
   port: WebuiOperationPort,
   terminal?: WebuiTerminalManager,
-): WebuiOperationHandlers {
-  const handlers: WebuiOperationHandlers = {
+): WebuiLegacyOperationHandlers {
+  const handlers: WebuiLegacyOperationHandlers = {
     createSession: async (_context, body) => ({
       body: await port.createSession(body),
     }),

@@ -26,7 +26,16 @@ export { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory
 export { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
 export { getMemorySettingsOperation, setMemorySettingsOperation } from "./memory-settings.js";
 export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
-import { createOperationHandlers, type WebuiOperationPort } from "./operation-handlers.js";
+import {
+  createBindingEntries,
+  type WebuiOperationPort,
+} from "./bind-handlers.js";
+import { createWorkspaceHandlerEntries } from "./handlers/workspace.js";
+import { createTerminalHandlerEntries } from "./handlers/terminal.js";
+import { createCommandHandlerEntries } from "./handlers/commands.js";
+import { createAccountHandlerEntries } from "./handlers/account.js";
+import { createStreamHandlerEntries } from "./handlers/stream.js";
+import { createMessageHandlerEntries } from "./handlers/messages.js";
 import type {
   WebuiOperationHandler,
   WebuiOperationRegistryEntry,
@@ -41,29 +50,48 @@ export type {
   WebuiOperationResult,
 } from "./operation-contract.js";
 
+/**
+ * Builds the operation registry: 86 statically declared bindings plus the 13
+ * operations that keep dedicated handlers.
+ *
+ * The registration order below is observable on the wire and must not change;
+ * each call site is kept in the position the old handler map used. The map is
+ * built once so a lookup miss (a name with neither a binding nor a dedicated
+ * handler) fails loudly at assembly instead of silently dropping an operation.
+ */
 export function createOperationRegistry(
   port: WebuiOperationPort,
   terminal?: WebuiTerminalManager,
 ): ReadonlyMap<string, WebuiOperationRegistryEntry> {
   const registry = new Map<string, WebuiOperationRegistryEntry>();
-  const handlers = createOperationHandlers(port, terminal);
-  registerOperation(registry, {
-    operation: createSessionOperation,
-    handle: handlers.createSession,
-  });
-  registerOperation(registry, { operation: listWorkspaceFileTreeOperation, handle: handlers.listWorkspaceFileTree });
-  registerOperation(registry, { operation: browseWorkspaceDirsOperation, handle: handlers.browseWorkspaceDirs });
-  registerOperation(registry, { operation: readWorkspaceFileOperation, handle: handlers.readWorkspaceFile });
-  registerOperation(registry, { operation: readCanvasOperation, handle: handlers.readCanvas });
-  registerOperation(registry, { operation: applyCanvasOperation, handle: handlers.applyCanvas });
-  registerOperation(registry, { operation: readWorkspaceArchiveOperation, handle: handlers.readWorkspaceArchive });
-  registerOperation(registry, { operation: extractWorkspaceArchiveOperation, handle: handlers.extractWorkspaceArchive });
-  registerOperation(registry, { operation: getWorkspaceEnvironmentOperation, handle: handlers.getWorkspaceEnvironment });
-  registerOperation(registry, { operation: mutateWorkspaceGitOperation, handle: handlers.mutateWorkspaceGit });
-  registerOperation(registry, { operation: getWorkspaceReviewSummaryOperation, handle: handlers.getWorkspaceReviewSummary });
-  registerOperation(registry, { operation: listWorkspaceReviewFileDiffsOperation, handle: handlers.listWorkspaceReviewFileDiffs });
-  registerOperation(registry, { operation: getWorkspaceReviewFileContentOperation, handle: handlers.getWorkspaceReviewFileContent });
-  registerOperation(registry, { operation: searchWorkspaceReviewDiffsOperation, handle: handlers.searchWorkspaceReviewDiffs });
+  const entries = new Map<string, WebuiOperationRegistryEntry>([
+    ...createBindingEntries(port),
+    ...createWorkspaceHandlerEntries(),
+    ...createCommandHandlerEntries(port),
+    ...createAccountHandlerEntries(port),
+    ...createStreamHandlerEntries(port),
+    ...createMessageHandlerEntries(port),
+    ...(terminal ? createTerminalHandlerEntries(terminal) : []),
+  ]);
+  const entry = (name: string): WebuiOperationRegistryEntry => {
+    const found = entries.get(name);
+    if (!found) throw new Error(`operation ${name} has no handler`);
+    return found;
+  };
+  registerOperation(registry, entry("createSession"));
+  registerOperation(registry, entry("listWorkspaceFileTree"));
+  registerOperation(registry, entry("browseWorkspaceDirs"));
+  registerOperation(registry, entry("readWorkspaceFile"));
+  registerOperation(registry, entry("readCanvas"));
+  registerOperation(registry, entry("applyCanvas"));
+  registerOperation(registry, entry("readWorkspaceArchive"));
+  registerOperation(registry, entry("extractWorkspaceArchive"));
+  registerOperation(registry, entry("getWorkspaceEnvironment"));
+  registerOperation(registry, entry("mutateWorkspaceGit"));
+  registerOperation(registry, entry("getWorkspaceReviewSummary"));
+  registerOperation(registry, entry("listWorkspaceReviewFileDiffs"));
+  registerOperation(registry, entry("getWorkspaceReviewFileContent"));
+  registerOperation(registry, entry("searchWorkspaceReviewDiffs"));
   // The terminal adapter is a real second surface (the PTY bridge the WebUI
   // shares with the desktop); it's a separate runtime from the harness port
   // and only the WebuiService wires one in. When none is supplied, the six
@@ -98,92 +126,92 @@ export function createOperationRegistry(
   // wrong code path (`registry.get(x) ?? <forwarder>`), which the new
   // type-checked seam makes impossible.
   if (terminal) {
-    registerOperation(registry, { operation: createTerminalOperation, handle: handlers.createTerminal });
-    registerOperation(registry, { operation: listTerminalsOperation, handle: handlers.listTerminals });
-    registerOperation(registry, { operation: writeTerminalOperation, handle: handlers.writeTerminal });
-    registerOperation(registry, { operation: resizeTerminalOperation, handle: handlers.resizeTerminal });
-    registerOperation(registry, { operation: disposeTerminalOperation, handle: handlers.disposeTerminal });
-    registerOperation(registry, { operation: watchTerminalOperation, handle: handlers.watchTerminal });
+    registerOperation(registry, entry("createTerminal"));
+    registerOperation(registry, entry("listTerminals"));
+    registerOperation(registry, entry("writeTerminal"));
+    registerOperation(registry, entry("resizeTerminal"));
+    registerOperation(registry, entry("disposeTerminal"));
+    registerOperation(registry, entry("watchTerminal"));
   }
-  registerOperation(registry, { operation: archiveSessionOperation, handle: handlers.archiveSession });
-  registerOperation(registry, { operation: deleteSessionOperation, handle: handlers.deleteSession });
-  registerOperation(registry, { operation: updateSessionOperation, handle: handlers.updateSession });
-  registerOperation(registry, { operation: getSessionForkOptionsOperation, handle: handlers.getSessionForkOptions });
-  registerOperation(registry, { operation: forkSessionOperation, handle: handlers.forkSession });
-  registerOperation(registry, { operation: abortSessionOperation, handle: handlers.abortSession });
-  registerOperation(registry, { operation: listQueueMessagesOperation, handle: handlers.listQueueMessages });
-  registerOperation(registry, { operation: deleteQueueItemOperation, handle: handlers.deleteQueueItem });
-  registerOperation(registry, { operation: listModelsOperation, handle: handlers.listModels });
-  registerOperation(registry, { operation: selectModelOperation, handle: handlers.selectModel });
-  registerOperation(registry, { operation: listSkillsOperation, handle: handlers.listSkills });
-  registerOperation(registry, { operation: pluginManagementOperation, handle: handlers.pluginManagement });
-  registerOperation(registry, { operation: getPermissionModeOperation, handle: handlers.getPermissionMode });
-  registerOperation(registry, { operation: setPermissionModeOperation, handle: handlers.setPermissionMode });
-  registerOperation(registry, { operation: getGlobalInstructionsOperation, handle: handlers.getGlobalInstructions });
-  registerOperation(registry, { operation: setGlobalInstructionsOperation, handle: handlers.setGlobalInstructions });
-  registerOperation(registry, { operation: getAgentMemoryOperation, handle: handlers.getAgentMemory });
-  registerOperation(registry, { operation: setAgentMemoryOperation, handle: handlers.setAgentMemory });
-  registerOperation(registry, { operation: getUserProfileOperation, handle: handlers.getUserProfile });
-  registerOperation(registry, { operation: setUserProfileOperation, handle: handlers.setUserProfile });
-  registerOperation(registry, { operation: getMemorySettingsOperation, handle: handlers.getMemorySettings });
-  registerOperation(registry, { operation: setMemorySettingsOperation, handle: handlers.setMemorySettings });
-  registerOperation(registry, { operation: getSessionUsageOperation, handle: handlers.getSessionUsage });
-  registerOperation(registry, { operation: getUsageQuotaOperation, handle: handlers.getUsageQuota });
-  registerOperation(registry, { operation: getSigninPanelOperation, handle: handlers.getSigninPanel });
-  registerOperation(registry, { operation: claimSigninOperation, handle: handlers.claimSignin });
-  registerOperation(registry, { operation: beginAccountLoginOperation, handle: handlers.beginAccountLogin });
-  registerOperation(registry, { operation: getAccountLoginStatusOperation, handle: handlers.getAccountLoginStatus });
-  registerOperation(registry, { operation: cancelAccountLoginOperation, handle: handlers.cancelAccountLogin });
-  registerOperation(registry, { operation: getAccountStatusOperation, handle: handlers.getAccountStatus });
-  registerOperation(registry, { operation: listUserModelProvidersOperation, handle: handlers.listUserModelProviders });
-  registerOperation(registry, { operation: createUserModelProviderOperation, handle: handlers.createUserModelProvider });
-  registerOperation(registry, { operation: updateUserModelProviderOperation, handle: handlers.updateUserModelProvider });
-  registerOperation(registry, { operation: deleteUserModelProviderOperation, handle: handlers.deleteUserModelProvider });
-  registerOperation(registry, { operation: testUserModelProviderOperation, handle: handlers.testUserModelProvider });
-  registerOperation(registry, { operation: testUserModelOperation, handle: handlers.testUserModel });
-  registerOperation(registry, { operation: discoverUserModelsCandidateOperation, handle: handlers.discoverUserModelsCandidate });
-  registerOperation(registry, { operation: saveUserModelProviderCandidateOperation, handle: handlers.saveUserModelProviderCandidate });
-  registerOperation(registry, { operation: listProviderPresetsOperation, handle: handlers.listProviderPresets });
-  registerOperation(registry, { operation: getMiniMaxApiKeyStatusOperation, handle: handlers.getMiniMaxApiKeyStatus });
-  registerOperation(registry, { operation: upsertMiniMaxApiKeyOperation, handle: handlers.upsertMiniMaxApiKey });
-  registerOperation(registry, { operation: getCodexOAuthStatusOperation, handle: handlers.getCodexOAuthStatus });
-  registerOperation(registry, { operation: getMiniMaxModelSourceOperation, handle: handlers.getMiniMaxModelSource });
-  registerOperation(registry, { operation: setMiniMaxModelSourceOperation, handle: handlers.setMiniMaxModelSource });
-  registerOperation(registry, { operation: testUserModelCandidateOperation, handle: handlers.testUserModelCandidate });
-  registerOperation(registry, { operation: revealModelProviderApiKeyOperation, handle: handlers.revealModelProviderApiKey });
-  registerOperation(registry, { operation: startCodexOAuthLoginOperation, handle: handlers.startCodexOAuthLogin });
-  registerOperation(registry, { operation: cancelCodexOAuthLoginOperation, handle: handlers.cancelCodexOAuthLogin });
-  registerOperation(registry, { operation: refreshModelsOperation, handle: handlers.refreshModels });
-  registerOperation(registry, { operation: runCommandOperation, handle: handlers.runCommand });
-  registerOperation(registry, { operation: signOutOperation, handle: handlers.signOut });
-  registerOperation(registry, { operation: watchEventsOperation, handle: handlers.watchEvents });
-  registerOperation(registry, { operation: listPendingPermissionsOperation, handle: handlers.listPendingPermissions });
-  registerOperation(registry, { operation: getPendingQuestionnaireOperation, handle: handlers.getPendingQuestionnaire });
-  registerOperation(registry, { operation: replyPermissionOperation, handle: handlers.replyPermission });
-  registerOperation(registry, { operation: replyQuestionnaireOperation, handle: handlers.replyQuestionnaire });
-  registerOperation(registry, { operation: dismissQuestionnaireOperation, handle: handlers.dismissQuestionnaire });
-  registerOperation(registry, { operation: versionOperation, handle: handlers.version });
-  registerOperation(registry, { operation: getSessionOperation, handle: handlers.getSession });
-  registerOperation(registry, { operation: getActiveTurnOperation, handle: handlers.getActiveTurn });
-  registerOperation(registry, { operation: getMessagesOperation, handle: handlers.getMessages });
-  registerOperation(registry, { operation: getSessionDiffOperation, handle: handlers.getSessionDiff });
-  registerOperation(registry, { operation: getTurnDiffOperation, handle: handlers.getTurnDiff });
-  registerOperation(registry, { operation: revertTurnDiffOperation, handle: handlers.revertTurnDiff });
-  registerOperation(registry, { operation: reapplyTurnDiffOperation, handle: handlers.reapplyTurnDiff });
-  registerOperation(registry, { operation: getSessionRewindPreviewOperation, handle: handlers.getSessionRewindPreview });
-  registerOperation(registry, { operation: rewindSessionOperation, handle: handlers.rewindSession });
-  registerOperation(registry, { operation: editSessionMessageOperation, handle: handlers.editSessionMessage });
-  registerOperation(registry, { operation: isGoalEnabledOperation, handle: handlers.isGoalEnabled });
-  registerOperation(registry, { operation: getGoalOperation, handle: handlers.getGoal });
-  registerOperation(registry, { operation: createGoalOperation, handle: handlers.createGoal });
-  registerOperation(registry, { operation: patchGoalOperation, handle: handlers.patchGoal });
-  registerOperation(registry, { operation: clearGoalOperation, handle: handlers.clearGoal });
-  registerOperation(registry, { operation: listSessionsOperation, handle: handlers.listSessions });
-  registerOperation(registry, { operation: listVisibleProjectsOperation, handle: handlers.listVisibleProjects });
-  registerOperation(registry, { operation: getSessionTreeOperation, handle: handlers.getSessionTree });
-  registerOperation(registry, { operation: sendMessageOperation, handle: handlers.sendMessage });
-  registerOperation(registry, { operation: enqueueMessageOperation, handle: handlers.enqueueMessage });
-  registerOperation(registry, { operation: resumeSessionOperation, handle: handlers.resumeSession });
+  registerOperation(registry, entry("archiveSession"));
+  registerOperation(registry, entry("deleteSession"));
+  registerOperation(registry, entry("updateSession"));
+  registerOperation(registry, entry("getSessionForkOptions"));
+  registerOperation(registry, entry("forkSession"));
+  registerOperation(registry, entry("abortSession"));
+  registerOperation(registry, entry("listQueueMessages"));
+  registerOperation(registry, entry("deleteQueueItem"));
+  registerOperation(registry, entry("listModels"));
+  registerOperation(registry, entry("selectModel"));
+  registerOperation(registry, entry("listSkills"));
+  registerOperation(registry, entry("pluginManagement"));
+  registerOperation(registry, entry("getPermissionMode"));
+  registerOperation(registry, entry("setPermissionMode"));
+  registerOperation(registry, entry("getGlobalInstructions"));
+  registerOperation(registry, entry("setGlobalInstructions"));
+  registerOperation(registry, entry("getAgentMemory"));
+  registerOperation(registry, entry("setAgentMemory"));
+  registerOperation(registry, entry("getUserProfile"));
+  registerOperation(registry, entry("setUserProfile"));
+  registerOperation(registry, entry("getMemorySettings"));
+  registerOperation(registry, entry("setMemorySettings"));
+  registerOperation(registry, entry("getSessionUsage"));
+  registerOperation(registry, entry("getUsageQuota"));
+  registerOperation(registry, entry("getSigninPanel"));
+  registerOperation(registry, entry("claimSignin"));
+  registerOperation(registry, entry("beginAccountLogin"));
+  registerOperation(registry, entry("getAccountLoginStatus"));
+  registerOperation(registry, entry("cancelAccountLogin"));
+  registerOperation(registry, entry("getAccountStatus"));
+  registerOperation(registry, entry("listUserModelProviders"));
+  registerOperation(registry, entry("createUserModelProvider"));
+  registerOperation(registry, entry("updateUserModelProvider"));
+  registerOperation(registry, entry("deleteUserModelProvider"));
+  registerOperation(registry, entry("testUserModelProvider"));
+  registerOperation(registry, entry("testUserModel"));
+  registerOperation(registry, entry("discoverUserModelsCandidate"));
+  registerOperation(registry, entry("saveUserModelProviderCandidate"));
+  registerOperation(registry, entry("listProviderPresets"));
+  registerOperation(registry, entry("getMiniMaxApiKeyStatus"));
+  registerOperation(registry, entry("upsertMiniMaxApiKey"));
+  registerOperation(registry, entry("getCodexOAuthStatus"));
+  registerOperation(registry, entry("getMiniMaxModelSource"));
+  registerOperation(registry, entry("setMiniMaxModelSource"));
+  registerOperation(registry, entry("testUserModelCandidate"));
+  registerOperation(registry, entry("revealModelProviderApiKey"));
+  registerOperation(registry, entry("startCodexOAuthLogin"));
+  registerOperation(registry, entry("cancelCodexOAuthLogin"));
+  registerOperation(registry, entry("refreshModels"));
+  registerOperation(registry, entry("runCommand"));
+  registerOperation(registry, entry("signOut"));
+  registerOperation(registry, entry("watchEvents"));
+  registerOperation(registry, entry("listPendingPermissions"));
+  registerOperation(registry, entry("getPendingQuestionnaire"));
+  registerOperation(registry, entry("replyPermission"));
+  registerOperation(registry, entry("replyQuestionnaire"));
+  registerOperation(registry, entry("dismissQuestionnaire"));
+  registerOperation(registry, entry("version"));
+  registerOperation(registry, entry("getSession"));
+  registerOperation(registry, entry("getActiveTurn"));
+  registerOperation(registry, entry("getMessages"));
+  registerOperation(registry, entry("getSessionDiff"));
+  registerOperation(registry, entry("getTurnDiff"));
+  registerOperation(registry, entry("revertTurnDiff"));
+  registerOperation(registry, entry("reapplyTurnDiff"));
+  registerOperation(registry, entry("getSessionRewindPreview"));
+  registerOperation(registry, entry("rewindSession"));
+  registerOperation(registry, entry("editSessionMessage"));
+  registerOperation(registry, entry("isGoalEnabled"));
+  registerOperation(registry, entry("getGoal"));
+  registerOperation(registry, entry("createGoal"));
+  registerOperation(registry, entry("patchGoal"));
+  registerOperation(registry, entry("clearGoal"));
+  registerOperation(registry, entry("listSessions"));
+  registerOperation(registry, entry("listVisibleProjects"));
+  registerOperation(registry, entry("getSessionTree"));
+  registerOperation(registry, entry("sendMessage"));
+  registerOperation(registry, entry("enqueueMessage"));
+  registerOperation(registry, entry("resumeSession"));
   return registry;
 }
 

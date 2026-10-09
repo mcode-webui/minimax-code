@@ -62,6 +62,8 @@ const PRIMARY_FAMILY_ROOT_SCAN_LIMIT = 200;
 export function wireHostChannelSubsystem(
   host: HostChannelCompositionHandle,
   options: LocalRuntimeApiHostOptions,
+  /** Resolved by the host so this gate reads the same cell as host.ts's. */
+  channelService?: boolean,
 ): ReturnType<typeof wireChannelSubsystem> {
   const requireConversation = (): RuntimeConversation => {
     if (!host.runtimeConversation) {
@@ -311,7 +313,10 @@ export function wireHostChannelSubsystem(
       : {}),
     ...(options.wechatOnboardFetcher ? { wechatOnboardFetcher: options.wechatOnboardFetcher } : {}),
     ...(options.feishuWsEnabled === false ? { feishuWsEnabled: false } : {}),
-    ...(options.capabilityProfile === 'cli'
+    // Reads the resolved policy, not the raw profile, so that dropping
+    // capabilityProfile can no longer silently re-enable this policy. Falls back to
+    // the profile for direct callers that do not assemble a host policy.
+    ...(channelService === false
       ? { channelCapabilityPolicy: 'disabled' as const }
       : {}),
     ...(options.deferChannelStartup === true ? { deferChannelStartup: true } : {}),

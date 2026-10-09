@@ -9,6 +9,23 @@ export { type LocalRuntimeAuthContext } from "./runtime/model-resolver.js";
 
 export { isLocalRuntimeStartupExecutionEnabled } from "./runtime/startup-execution-policy.js";
 
+export {
+  assertNeverRuntimeOwnerRow,
+  isCliRestrictedRuntime,
+  isCommandLineRuntimeOwner,
+  isDeclaredRuntimeOwnerKind,
+  isV2RuntimeOwner,
+  ownsElectronRuntimeCapabilities,
+  RUNTIME_OWNER_KINDS,
+  resolveRuntimeOwnerPolicy,
+  type AgentExecutionPolicy,
+  type ResolveRuntimeOwnerPolicyInput,
+  type RuntimeOwnerKind,
+  type RuntimeOwnerPolicy,
+  type RuntimeOwnerRow,
+  type RuntimeWiring,
+} from "./runtime/runtime-owner-policy.js";
+
 export { LocalTurnDiffCapability } from "./turns/diff-capability.js";
 export { LocalTurnDiffRewindCapability } from "./turns/diff-rewind.js";
 export {

@@ -138,8 +138,10 @@ export class LocalRuntimeTurnExecutor<
         writer: eventWriter,
         sessionId: input.lease.sessionId,
         turnId: input.lease.turnId,
-        ...(this.options.tuiProductPolicy === true
-          ? { terminalSequenceSurface: 'tui' as const }
+        // Not derived from the owner kind here: this cell says whether the surface
+        // executes terminal control sequences, which is what the branch below needs.
+        ...(this.options.executesTerminalControl === true
+          ? { executesTerminalControl: true }
           : {}),
       });
       const pluginHookProjection = input.pluginHooks?.length

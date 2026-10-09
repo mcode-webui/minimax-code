@@ -4,6 +4,11 @@ import type {
   LocalAgentService,
 } from '../../service/agent/index.js';
 import { describeAgentPromptSnapshot } from '../../service/agent/index.js';
+import {
+  isCommandLineRuntimeOwner,
+  resolveRuntimeOwnerPolicy,
+  type RuntimeOwnerPolicy,
+} from '@mavis/local-runtime';
 import { isLocalSourceProvenanceEnabled } from '@mavis/config';
 import {
   omitManagedSourceCitationInstructions,
@@ -27,7 +32,19 @@ export function createV2AgentProfileSource(
   configGetter: () => LocalConversationRuntimeConfig,
   runtimeOwnerKind: string | undefined,
   capabilityProfile: 'cli' | undefined,
+  /** Resolved once at the composition root. Derived here only if omitted. */
+  resolvedPolicy?: RuntimeOwnerPolicy,
 ): LocalAgentProfileSource {
+  const policy =
+    resolvedPolicy ??
+    resolveRuntimeOwnerPolicy({
+      kind: runtimeOwnerKind,
+      // Cells consumed here do not depend on these two, so this fallback is exact —
+      // but it exists only for direct test callers.
+      cliEmbedded: false,
+      electronHost: false,
+      capabilityProfile,
+    });
   return {
     render: async ({ session, agent, agentBinding, promptRead }) => {
       const definition = requireCurrentDefinition(session, agentBinding);
@@ -35,7 +52,10 @@ export function createV2AgentProfileSource(
       // Freeze one config snapshot for the complete profile render so a live
       // preference update cannot mix capability, memory, and dataDir versions.
       const config = configGetter();
-      const capabilities = resolveConfiguredCapabilities(config, capabilityProfile);
+      const capabilities = resolveConfiguredCapabilities(
+      config,
+      policy.execution.mavisFeatureBundle,
+    );
       const frozenOwner = definition?.exactOwnerName;
       const requestRef = frozenOwner
         ? `agent:${frozenOwner}`
@@ -45,12 +65,26 @@ export function createV2AgentProfileSource(
         // persisted Session may retain a legacy primary-family storage owner.
         exactOwnerName: frozenOwner ?? agent.executionOwnerName ?? agent.agentName,
         ...(requestRef === undefined ? {} : { requestRef }),
-        surface: resolveAgentPromptSurface(session, runtimeOwnerKind),
-        promptProfile: runtimeOwnerKind === 'tui' ? 'tui' : 'desktop',
+        surface: resolveAgentPromptSurface(
+          session,
+          runtimeOwnerKind,
+          policy.execution.promptSurfaceDefault,
+        ),
+        promptProfile: policy.execution.promptProfile,
         appMode: session.appMode ?? 'coding',
         capabilities,
-        memoryEnabled: isCommandLineRuntimeOwner(runtimeOwnerKind) ? false : config.memory?.enabled,
-        cronEnabled: !isCommandLineRuntimeOwner(runtimeOwnerKind),
+        // Not `restricted`: that cell requires an embedded CLI, and folding it in here
+        // would re-open cron and memory for a non-embedded cli/tui owner. The
+        // `isCommandLineRuntimeOwner` half keeps the original owner-kind reading, and
+        // the policy half is what makes an UNRECOGNISED owner fail closed at the
+        // prompt level too — without it this gate granted memory and cron to a typo.
+        memoryEnabled:
+          policy.execution.memoryFeature &&
+          !isCommandLineRuntimeOwner(runtimeOwnerKind) &&
+          config.memory?.enabled,
+        cronEnabled:
+          policy.wiring.cronService &&
+          !isCommandLineRuntimeOwner(runtimeOwnerKind),
         dataDirToken: config.dataDir,
         ...(promptRead ? { promptReadContext: promptRead } : {}),
       } as const;
@@ -72,10 +106,10 @@ function renderProfile(
 
 function resolveConfiguredCapabilities(
   config: LocalConversationRuntimeConfig,
-  capabilityProfile: 'cli' | undefined,
+  mavisFeatureBundle: boolean,
 ) {
   const configured = config.agents?.default;
-  if (capabilityProfile !== 'cli') return configured;
+  if (mavisFeatureBundle) return configured;
   return {
     ...configured,
     features: { ...configured?.features, mavis: false },
@@ -101,9 +135,10 @@ function readMetadataRequestRef(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-export function isCommandLineRuntimeOwner(runtimeOwnerKind: string | undefined): boolean {
-  return runtimeOwnerKind === 'cli' || runtimeOwnerKind === 'tui';
-}
+// Re-exported from the policy module rather than re-implemented. It was duplicated
+// verbatim in task-agent-binding-capture.ts, and the two copies are the same class of
+// defect as isCliRestrictedRuntime vs isCommandLineRuntimeOwner.
+export { isCommandLineRuntimeOwner };
 
 function applySourcePromptPolicy(
   profile: AgentExecutionProfile,

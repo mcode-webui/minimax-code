@@ -1,4 +1,5 @@
 import { resolveProviderAuthMode } from "@mavis/config";
+import type { RuntimeOwnerPolicy } from "@mavis/local-runtime";
 
 import {
   SAFETY_SCENE,
@@ -18,19 +19,20 @@ import type {
 /** Local CLI metadata follows the selected provider, without requiring inference credentials. */
 export function createSessionTitlePolicy(input: {
   readonly runtimeOwnerKind?: string;
+  readonly ownerPolicy?: RuntimeOwnerPolicy;
   readonly config: () => LocalRuntimeConfig;
   readonly safety: ContentSafetyService;
   readonly readDefinition: (
     sessionId: string,
   ) => Promise<SessionAgentDefinition | undefined>;
 }): SessionRecordServiceDeps["titlePolicy"] {
+  const titleSafetyBypass =
+    input.ownerPolicy?.execution.titleSafetyBypass ??
+    (input.runtimeOwnerKind === 'tui' || input.runtimeOwnerKind === 'cli');
   return {
     blocks: async (title, session) => {
       if (!title.trim()) return false;
-      if (
-        input.runtimeOwnerKind === "tui" ||
-        input.runtimeOwnerKind === "cli"
-      ) {
+      if (titleSafetyBypass) {
         const config = input.config();
         const model = await selectedModel(
           session,

@@ -206,8 +206,13 @@
       "packages/local-runtime-v2/src/service/turn-system/execution/steering/steering-requeue.test.ts",
       "packages/local-runtime-v2/src/service/turn-system/execution/turn-execution.service.test.ts",
       "packages/local-runtime-v2/test/integration/session-stop-cascade.integration.test.ts",
+      "packages/local-runtime-v2/test/integration/webui-owner-host.integration.test.ts",
       "packages/local-runtime/test/unit/local-background-task-user-stop-cascade.test.ts",
-      "packages/local-runtime/test/unit/local-task-append.test.ts"
+      "packages/local-runtime/test/unit/local-task-append.test.ts",
+      "packages/local-runtime/test/unit/agent-prompt-profile-validation.test.ts",
+      "packages/local-runtime/test/unit/runtime-owner-policy.test.ts",
+      "packages/local-runtime/test/unit/runtime-owner-policy-identity.test.ts",
+      "packages/local-runtime/test/unit/runtime-owner-surface-capabilities.test.ts"
     ],
     "status-contract": [
       "packages/tui/test/unit/tui-build-mode-contract.test.ts"

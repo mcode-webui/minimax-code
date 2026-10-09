@@ -135,6 +135,10 @@ import {
   type LocalRuntimeMode,
   type LocalRuntimeSurfaceCapabilities,
 } from "../runtime/mode.js";
+import {
+  resolveRuntimeOwnerPolicy,
+  type RuntimeOwnerPolicy,
+} from "../runtime/runtime-owner-policy.js";
 import type {
   LocalModelResolverLike,
   LocalRuntimeAuthContext,
@@ -269,10 +273,7 @@ import {
   type HostedTurnLifecycleInput,
   type HostedTurnSettlementInput,
 } from "./hosted-agent-capabilities.js";
-import {
-  createHostedCapabilities,
-  isCliRestrictedRuntime,
-} from "./hosted-agent-capability-factory.js";
+import { createHostedCapabilities } from "./hosted-agent-capability-factory.js";
 import {
   createHostedChannelCapabilities,
   type HostedChannelCapabilities,
@@ -422,6 +423,7 @@ export class LocalRuntimeApiHost {
   private readonly legacyMigrator: LegacyOpencodeMigrator | undefined;
   public readonly agentRoutes: LocalApiAgentRoutes;
   private readonly lockOwner: LocalSessionLockOwner;
+  private readonly ownerPolicy: RuntimeOwnerPolicy;
   private readonly runtimeStartupToken: string | undefined;
   private promptSnapshots: PromptSnapshotSource | undefined;
   private internalTurnPromptReads: InternalTurnPromptReadRegistry | undefined;
@@ -452,7 +454,6 @@ export class LocalRuntimeApiHost {
       options.startupExecutionPolicy,
     );
     this.capabilityProfile = options.capabilityProfile;
-    this.channelCapabilityEnabled = this.capabilityProfile !== "cli";
     const questionnaireRecoveryDeferred =
       options.deferQuestionnaireRecovery === true;
     this.mavisCronAdapterProvider = options.mavisCronAdapterProvider;
@@ -462,9 +463,8 @@ export class LocalRuntimeApiHost {
       this.runtimeMode,
       options.capabilities,
     );
-    this.surfaces = buildLocalRuntimeSurfaceCapabilities(this.runtimeMode);
-    this.configGetter = options.configGetter ?? (() => getConfig());
     this.shellFamily = options.shellFamily;
+    this.configGetter = options.configGetter ?? (() => getConfig());
     this.authContextGetter = options.authContextGetter;
     this.authContextInvalidator = options.authContextInvalidator;
     this.routingContextGetter = options.routingContextGetter;
@@ -707,6 +707,29 @@ export class LocalRuntimeApiHost {
         makeRuntimeOwnerId(options.runtimeOwnerKind ?? "runtime"),
       ownerKind: options.runtimeOwnerKind ?? "runtime",
     };
+    // Resolved once, from the RAW option. `lockOwner.ownerKind` is the coerced
+    // "runtime" string and is not interchangeable with an absent owner: the service
+    // gates read undefined and answer differently from it. See the `'absent'` row in
+    // runtime-owner-policy.ts.
+    this.ownerPolicy = resolveRuntimeOwnerPolicy({
+      kind: options.runtimeOwnerKind,
+      cliEmbedded: this.capabilities.cliEmbedded === true,
+      electronHost: this.capabilities.electronHost === true,
+      capabilityProfile: this.capabilityProfile,
+    });
+    // Built after the policy so `cron` and `channelBridge` stop reporting `native` on
+    // a host that does not assemble those services. This table is a reporting
+    // vocabulary, not an authority for wiring — recording availability here does not
+    // make it true, which is why it used to lie.
+    this.surfaces = buildLocalRuntimeSurfaceCapabilities(
+      this.runtimeMode,
+      this.ownerPolicy,
+    );
+    // Channels were governed by two independent switches: owner kind (services.ts)
+    // and capabilityProfile (here and host-channel-composition.ts). One cell now
+    // drives both sites, so dropping capabilityProfile can no longer silently enable
+    // channels.
+    this.channelCapabilityEnabled = this.ownerPolicy.wiring.channelService;
     this.threadGoalKickoffQueue = new LocalThreadGoalKickoffQueue({
       ...(this.runtimeConversation
         ? { conversation: this.runtimeConversation }
@@ -961,6 +984,10 @@ export class LocalRuntimeApiHost {
     const subsys = wireHostChannelSubsystem(
       this as unknown as HostChannelCompositionHandle,
       options,
+      // The same cell as `channelCapabilityEnabled`, so the two channel gates cannot
+      // disagree. Not re-derived here: re-implementing the cell at a call site is the
+      // failure mode that made the policy a second, drifting source of truth.
+      this.ownerPolicy.wiring.channelService,
     );
     this.channelOwnerStore = subsys.channelOwnerStore;
     this.channelBridgeInfra = subsys.channelBridgeInfra;
@@ -1167,8 +1194,7 @@ export class LocalRuntimeApiHost {
   createHostedAgentCapabilities(): HostedAgentCapabilities {
     return createHostedCapabilities(
       this,
-      this.lockOwner.ownerKind,
-      this.capabilities.cliEmbedded,
+      this.ownerPolicy.execution,
       this.capabilityProfile,
     );
   }
@@ -1382,18 +1408,13 @@ export class LocalRuntimeApiHost {
    * `CRON_UNSUPPORTED_HOST`.
    */
   private isCronCapabilityAvailable(): boolean {
-    if (
-      isCliRestrictedRuntime(
-        this.lockOwner.ownerKind,
-        this.capabilities.cliEmbedded,
-      )
-    ) {
+    if (this.ownerPolicy.execution.restricted) {
       return false;
     }
     return this.buildOwnerMavisCronAdapter() !== undefined;
   }
   private isUserMemoryCapabilityAvailable(): boolean {
-    return this.lockOwner.ownerKind !== "tui";
+    return this.ownerPolicy.execution.memoryFeature;
   }
   private buildOwnerMavisSessionAdapter() {
     const conversation = this.requireRuntimeConversation(

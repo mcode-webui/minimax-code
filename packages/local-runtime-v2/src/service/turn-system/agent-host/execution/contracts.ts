@@ -315,6 +315,12 @@ export interface LocalRuntimeTurnExecutorOptions<
   readonly tuiProductPolicy?: boolean;
   /** TUI-only region policy: only CN TUI hosts review MiniMax-managed turns. */
   readonly contentReviewEnabled?: boolean;
+  /**
+   * Whether this runtime surface executes terminal control sequences requested by a
+   * Plugin Hook. Separate from `tuiProductPolicy`: a client can inherit the TUI review
+   * policy while being unable to execute terminal control.
+   */
+  readonly executesTerminalControl?: boolean;
   readonly disableTools?: boolean;
   /** Creates isolated safety state once for each admitted product Turn. */
   readonly createTurnToolSafetyGuard?: () => LocalTurnToolSafetyGuard;

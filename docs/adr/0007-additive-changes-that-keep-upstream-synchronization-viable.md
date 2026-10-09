@@ -1,5 +1,11 @@
 # Changes stay additive so upstream synchronization stays viable
 
+> **Partly superseded by [ADR 0013](0013-harness-code-is-editable-for-local-client-identity-work).**
+> The harness-read-only clause below does not apply to client-identity work in
+> `local-runtime` / `local-runtime-v2`, because that work does not go upstream. The
+> additive-only rule still governs anything destined for upstream, and the
+> never-trim rule still stands everywhere.
+
 Upstream is a reviewed public projection whose history arrives through a three-way
 merge, and its own guide warns that moving or renaming files costs a conflict at the
 next synchronization. The WebUI work therefore adds a package and incremental wiring

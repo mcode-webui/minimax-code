@@ -6,6 +6,7 @@ import {
   ensureCurrentLocalRuntimeDataMigratedToV2OrThrow,
   isLocalRuntimeStartupExecutionEnabled,
   resolveAgentBashEnvPolicy,
+  resolveRuntimeOwnerPolicy,
   type DeferredLocalAgentRuntimePort,
   type CreatedLocalRuntimeHost as V1CreatedLocalRuntimeHost,
 } from "@mavis/local-runtime";
@@ -533,13 +534,12 @@ function runtimeOwnerErrorCode(error: unknown): string {
 }
 
 function isV2RuntimeOwner(options: CreateLocalRuntimeHostOptions): boolean {
-  return (
-    (options.runtimeOwnerKind === "electron" &&
-      options.capabilities?.electronHost === true) ||
-    ((options.runtimeOwnerKind === "cli" ||
-      options.runtimeOwnerKind === "tui") &&
-      options.capabilities?.cliEmbedded === true)
-  );
+  return resolveRuntimeOwnerPolicy({
+    kind: options.runtimeOwnerKind,
+    cliEmbedded: options.capabilities?.cliEmbedded === true,
+    electronHost: options.capabilities?.electronHost === true,
+    capabilityProfile: options.capabilityProfile,
+  }).wiring.ownsV2Runtime;
 }
 
 export { createLocalRuntimeHostV2 as createLocalRuntimeHost };
@@ -840,7 +840,12 @@ async function initializeOwnerRuntime(input: {
     const startupExecutionEnabled = isLocalRuntimeStartupExecutionEnabled(
       options.startupExecutionPolicy,
     );
-    const electronOwner = options.runtimeOwnerKind === "electron";
+    const ownerPolicy = resolveRuntimeOwnerPolicy({
+      kind: options.runtimeOwnerKind,
+      cliEmbedded: options.capabilities?.cliEmbedded === true,
+      electronHost: options.capabilities?.electronHost === true,
+      capabilityProfile: options.capabilityProfile,
+    });
     background = await createBackgroundRuntime({
       db: database.db,
       dataDir: v1.dataDir,
@@ -848,7 +853,7 @@ async function initializeOwnerRuntime(input: {
       metrics: v1.metricsClient,
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
       restorePersistedJobExecution: startupExecutionEnabled,
-      enableScheduler: electronOwner,
+      enableScheduler: ownerPolicy.wiring.schedulerHost,
     });
     services = await createRuntimeServices({
       db: database.db,
@@ -869,8 +874,9 @@ async function initializeOwnerRuntime(input: {
       ...(options.configSource ? { configSource: options.configSource } : {}),
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
       recoverPersistedState: startupExecutionEnabled,
-      greetingEnabled: electronOwner && startupExecutionEnabled,
+      greetingEnabled: options.runtimeOwnerKind === "electron" && startupExecutionEnabled,
       runtimeOwnerKind: options.runtimeOwnerKind,
+      ownerPolicy,
       browserUse: createBrowserUseServiceOptions(options),
       ...(options.promptConfigKey
         ? { promptConfigKey: options.promptConfigKey }

@@ -20,6 +20,7 @@ export function resolveAgentPromptSurface(
     readonly purpose?: string;
   },
   runtimeOwnerKind: string | undefined,
+  promptSurfaceDefault?: 'interactive' | 'cli',
 ): 'interactive' | 'task-child' | 'cli' {
   const taskChild =
     session.sessionKind === 'task' ||
@@ -28,7 +29,8 @@ export function resolveAgentPromptSurface(
       session.visibility === 'hidden' &&
       TASK_CHILD_PURPOSE_PREFIXES.some((prefix) => session.purpose?.startsWith(prefix)));
   if (taskChild) return 'task-child';
-  return runtimeOwnerKind === 'cli' || runtimeOwnerKind === 'tui' ? 'cli' : 'interactive';
+  return promptSurfaceDefault ??
+    (runtimeOwnerKind === 'cli' || runtimeOwnerKind === 'tui' ? 'cli' : 'interactive');
 }
 
 export interface LocalAgentReferenceProjection {

@@ -1,4 +1,5 @@
 import type { InternalTurnPromptReadRegistry } from '@mavis/agent-runtime';
+import type { RuntimeOwnerPolicy } from '@mavis/local-runtime';
 
 import { createV2AgentExecutionSource } from './execution-source.js';
 import { createV2AgentProfileSource } from './profile-source.js';
@@ -27,6 +28,8 @@ export interface CreateRuntimeAgentProductOptions {
   readonly nowMs: () => number;
   readonly runtimeOwnerKind: string | undefined;
   readonly capabilityProfile: 'cli' | undefined;
+  /** Policy resolved once by the composition root. */
+  readonly ownerPolicy: RuntimeOwnerPolicy;
   readonly miniappAvailable: boolean;
   readonly implicitCustomProviderThinking: boolean;
   readonly agentReferenceProjection: NonNullable<
@@ -51,6 +54,7 @@ export function createRuntimeAgentProduct(
     nowMs,
     runtimeOwnerKind,
     capabilityProfile,
+    ownerPolicy,
     miniappAvailable,
     implicitCustomProviderThinking,
     agentReferenceProjection,
@@ -73,7 +77,11 @@ export function createRuntimeAgentProduct(
         const capability = browserUse.resolveTurnCapability({
           sessionId: turnInput.session.sessionId,
           turnId: turnInput.turnId,
-          surface: resolveAgentPromptSurface(turnInput.session, runtimeOwnerKind),
+          surface: resolveAgentPromptSurface(
+            turnInput.session,
+            runtimeOwnerKind,
+            ownerPolicy.execution.promptSurfaceDefault,
+          ),
           workspaceRoot: turnInput.session.workspaceDir,
           baseTools: base.nativeTools,
           ...(turnInput.allowedExtensionSkillNames === undefined
@@ -96,7 +104,11 @@ export function createRuntimeAgentProduct(
           const browser = browserUse.reminders.buildTurnReminder({
             sessionId: input.session.sessionId,
             turnId: input.turnId,
-            surface: resolveAgentPromptSurface(input.session, runtimeOwnerKind),
+            surface: resolveAgentPromptSurface(
+              input.session,
+              runtimeOwnerKind,
+              ownerPolicy.execution.promptSurfaceDefault,
+            ),
             userPrompt: input.promptText,
             ...allowedExtensionSkillNames(input.agentConfig),
             ...(input.desktopCapabilities
@@ -164,14 +176,18 @@ export function createRuntimeAgentProduct(
         miniappAvailable,
         modelRepairLogger: logger,
         staticPrompts: createLocalStaticPromptReader({ logger, globalInstructions }),
-        tuiProductPolicy: runtimeOwnerKind === 'tui',
+        tuiProductPolicy: ownerPolicy.execution.reviewPolicy === 'tui',
         ...(promptSnapshots ? { promptSnapshots } : {}),
         ...(implicitCustomProviderThinking ? { implicitCustomProviderThinking: true } : {}),
+        // The already-resolved policy is passed down rather than re-derived here: a
+        // call site that reconstructs policy from kind is the documented way this
+        // design degrades into a second, drifting source of truth.
         profile: createV2AgentProfileSource(
           agentService,
           modelConfig.read,
           runtimeOwnerKind,
           capabilityProfile,
+          ownerPolicy,
         ),
       },
       modelResolver: {

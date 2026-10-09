@@ -1,3 +1,5 @@
+import type { RuntimeOwnerPolicy } from './runtime-owner-policy.js';
+
 export type LocalRuntimeMode = 'clean' | 'rollback';
 
 export interface LocalRuntimeCapabilities {
@@ -126,6 +128,7 @@ export function buildLocalRuntimeCapabilities(
 
 export function buildLocalRuntimeSurfaceCapabilities(
   mode: LocalRuntimeMode,
+  policy?: RuntimeOwnerPolicy,
 ): LocalRuntimeSurfaceCapabilities {
   void mode;
   const retiredLegacyRuntime = {
@@ -159,11 +162,23 @@ export function buildLocalRuntimeSurfaceCapabilities(
       reason: 'Browser management routes are backed by the native local-runtime browser broker.',
     },
     'browser.status': { status: 'native' },
-    channelBridge: {
-      status: 'native',
-      reason:
-        'Channel bridge infrastructure routes, bindings, lane queues, and native inbound slash commands are available.',
-    },
+    channelBridge: policy
+      ? policy.wiring.channelService
+        ? {
+            status: 'native',
+            reason:
+              'Channel bridge infrastructure routes, bindings, lane queues, and native inbound slash commands are available.',
+          }
+        : {
+            status: 'unsupported',
+            reason:
+              'This host does not assemble the channel service, so channel routes, bindings and inbound slash commands are unavailable.',
+          }
+      : {
+          status: 'native',
+          reason:
+            'Channel bridge infrastructure routes, bindings, lane queues, and native inbound slash commands are available.',
+        },
     channelRoute: { status: 'native' },
     'communication.messages': {
       status: 'native',
@@ -177,10 +192,21 @@ export function buildLocalRuntimeSurfaceCapabilities(
     },
     'config.core': { status: 'native' },
     content: { status: 'native' },
-    cron: {
-      status: 'native',
-      reason: 'Cron routes are backed by local-runtime cron host ports.',
-    },
+    cron: policy
+      ? policy.wiring.cronService
+        ? {
+            status: 'native',
+            reason: 'Cron routes are backed by local-runtime cron host ports.',
+          }
+        : {
+            status: 'unsupported',
+            reason:
+              'This host does not assemble a Cron service, so cron routes are unavailable even though the host ports exist.',
+          }
+      : {
+          status: 'native',
+          reason: 'Cron routes are backed by local-runtime cron host ports.',
+        },
     diagnostics: {
       status: 'native',
       reason:

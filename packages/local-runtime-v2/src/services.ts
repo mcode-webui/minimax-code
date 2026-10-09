@@ -9,6 +9,10 @@ import {
   isLocalSourceProvenanceEnabled,
 } from "@mavis/config";
 import type { RuntimeConversation } from "@mavis/conversation-contract";
+import {
+  resolveRuntimeOwnerPolicy,
+  type RuntimeOwnerPolicy,
+} from "@mavis/local-runtime";
 import type {
   GlobalEvent,
   GlobalEventInput,
@@ -42,9 +46,7 @@ import {
   createRuntimeServicesLifecycle,
   createRuntimeSkillApplication,
   initializeApplications,
-  isCommandLineRuntimeOwner,
   ModelProviderApplication,
-  ownsElectronRuntimeCapabilities,
   type ForkWorktreePort,
   type GoalSubagentVerifierRuntime,
   type RuntimeApplications,
@@ -307,6 +309,11 @@ export interface CreateRuntimeServicesOptions
   readonly recoverPersistedState?: boolean;
   /** Composition owner mode; CLI omits Electron-only capabilities. */
   readonly runtimeOwnerKind?: string;
+  /**
+   * Policy resolved once by the composition root. Omitted by test-only callers that
+   * never assemble owner-derived services; those resolve the absent row.
+   */
+  readonly ownerPolicy?: RuntimeOwnerPolicy;
   /** Electron-owned fixed key for encrypted Desktop Prompt bundles. */
   readonly promptConfigKey?: Uint8Array;
   /** Client capability ceiling; omitted owners retain the shared legacy surface. */
@@ -331,6 +338,8 @@ type ResolvedCreateRuntimeServicesOptions = Omit<
   "compatibility"
 > & {
   readonly compatibility: V1ServiceCompatibility;
+  /** Always present after normalisation; see `createRuntimeServices`. */
+  readonly ownerPolicy: RuntimeOwnerPolicy;
 };
 
 export interface PreparedRuntimeServices {
@@ -400,8 +409,22 @@ export async function createRuntimeServices(
   const options: ResolvedCreateRuntimeServicesOptions = {
     ...creation,
     compatibility,
+    // Resolved once. Cron and channels were previously two independent reads of the
+    // raw kind string, and capabilityProfile gated channels at a different site in
+    // the v1 host; one cell now drives all three.
+    ownerPolicy:
+      creation.ownerPolicy ??
+      resolveRuntimeOwnerPolicy({
+        kind: creation.runtimeOwnerKind,
+        cliEmbedded: false,
+        electronHost: false,
+        capabilityProfile: creation.capabilityProfile,
+      }),
   };
-  const browserUseComposition = createRuntimeBrowserUseComposition(options);
+  const browserUseComposition = createRuntimeBrowserUseComposition({
+    ...options,
+    ownerPolicy: options.ownerPolicy,
+  });
   const prepared = options.prepared ?? prepareRuntimeServices(options);
   const nowMs = options.nowMs ?? Date.now;
   const processStartedAtMs = nowMs();
@@ -490,13 +513,13 @@ export async function createRuntimeServices(
     internalTurnPromptReads,
     writeGlobalEvent,
     nowMs,
-    enableCron: ownsElectronRuntimeCapabilities(options.runtimeOwnerKind),
+    enableCron: options.ownerPolicy.wiring.cronService,
     runtimeOwnerIdentity: options.runtimeOwnerIdentity,
     planEntryEnabled,
     agentPlanEntryEnabled,
     inspector,
     promptSupport,
-    enableChannel: ownsElectronRuntimeCapabilities(options.runtimeOwnerKind),
+    enableChannel: options.ownerPolicy.wiring.channelService,
     readyOwners: ownerLifecycle.ready,
     closeOwners: ownerLifecycle.close,
   });
@@ -764,7 +787,7 @@ async function initializeRuntimeServiceOwners(
         sessionId,
       );
     const evaluatorVerifier = createGoalEvaluatorVerifier({
-      tuiProductPolicy: input.options.runtimeOwnerKind === "tui",
+      tuiProductPolicy: input.options.ownerPolicy.execution.reviewPolicy === "tui",
       sessions: input.sessionSystem.sessions.execution,
       agents: input.product.agents,
       preparation: input.preparation,
@@ -998,13 +1021,21 @@ async function initializeRuntimeTurnSystem(
           input.turnLifecycleEvents,
         ),
         nowMs: input.nowMs,
-        ...(isCommandLineRuntimeOwner(input.options.runtimeOwnerKind)
+        ...((input.options.ownerPolicy.execution.reviewPolicy === "cli" ||
+          input.options.ownerPolicy.execution.reviewPolicy === "tui")
           ? { cliProductPolicy: true }
           : {}),
-        ...(input.options.runtimeOwnerKind === "tui"
+        ...(input.options.ownerPolicy.execution.reviewPolicy === "tui"
           ? {
               tuiProductPolicy: true,
+              // Not a policy cell: region is environment-driven with an "en"
+              // fallback, and WebUI sets MAVIS_REGION itself. A per-client constant
+              // would force China-region content review onto en-region hosts.
               contentReviewEnabled: getRuntimeRegion() === "cn",
+              // WebUI inherits the TUI review policy today but cannot execute
+              // terminal control sequences in a browser, so this is separate.
+              executesTerminalControl:
+                input.options.ownerPolicy.execution.executesTerminalControl,
             }
           : {}),
         ...(input.options.getRunawayGuardConfig

@@ -361,6 +361,49 @@ describe("R7 · the archived-list delete fence", () => {
     return workflows.getArchivedSnapshot().sessions.map((session) => session.sessionId);
   }
 
+  it("drops the deleted row while the reload is still in flight", async () => {
+    // The reload keeps the current sessions while it is `loading`, so without a
+    // commit-time filter the row the user just deleted stays on screen — and
+    // stays clickable — until the reply lands.
+    const store = createWebuiSessionStore();
+    let calls = 0;
+    let releaseReload: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;
+    let reloadStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      reloadStarted = resolve;
+    });
+    const listArchivedSessions = () => {
+      calls += 1;
+      if (calls === 1)
+        return Promise.resolve({ sessions: [archivedItem("keep"), archivedItem("deleted")] });
+      reloadStarted?.();
+      return new Promise<{ sessions: WebuiSessionListItem[] }>((resolve) => {
+        releaseReload = resolve;
+      });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+    await workflows.loadArchived();
+    expect(archivedIds(workflows)).toEqual(["keep", "deleted"]);
+
+    const reload = workflows.removeArchived("deleted");
+    await started;
+
+    expect(workflows.getArchivedSnapshot().status).toBe("loading");
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+
+    // A reply that still names the deleted session cannot bring the row back.
+    releaseReload?.({ sessions: [archivedItem("keep"), archivedItem("deleted")] });
+    await reload;
+
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+  });
+
   it("keeps a deleted session out of an archived page that lands after the delete", async () => {
     const store = createWebuiSessionStore();
     let release: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;

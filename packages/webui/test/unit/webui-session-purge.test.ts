@@ -151,6 +151,46 @@ describe("R7 · the session store's purge", () => {
     store.purgeSession(WEBUI_HOME_SESSION_KEY);
     expect(store.getSnapshot().sessions.has(WEBUI_HOME_SESSION_KEY)).toBe(true);
   });
+
+  it("refuses to migrate a record onto a purged session id", () => {
+    // The home→session adoption runs on its own schedule, so the session it
+    // names can already be deleted when the migration lands. Carrying the
+    // record onto that key would resurrect a session the store has purged.
+    const store = createWebuiSessionStore();
+    store.updateSession(WEBUI_HOME_SESSION_KEY, (current) => ({
+      ...current,
+      sending: true,
+    }));
+    store.purgeSession("deleted");
+    const before = store.readSession(WEBUI_HOME_SESSION_KEY);
+
+    store.migrateSession(WEBUI_HOME_SESSION_KEY, "deleted");
+
+    // The purged key stays empty: it reads exactly like a key that was never
+    // written. (`migrateSession` does not notify, so the record is read off the
+    // live map rather than the last published snapshot.)
+    expect(store.readSession("deleted")).toEqual(store.readSession("never-written"));
+    // A refused migration leaves the source record where it was: the caller
+    // that is about to switch keys still owns it, and losing it would strand
+    // the in-flight home turn.
+    expect(store.readSession(WEBUI_HOME_SESSION_KEY)).toBe(before);
+  });
+
+  it("still migrates onto a live session id", () => {
+    const store = createWebuiSessionStore();
+    store.updateSession(WEBUI_HOME_SESSION_KEY, (current) => ({
+      ...current,
+      sending: true,
+    }));
+    const before = store.readSession(WEBUI_HOME_SESSION_KEY);
+
+    store.migrateSession(WEBUI_HOME_SESSION_KEY, "live");
+
+    expect(store.readSession("live")).toBe(before);
+    expect(store.readSession(WEBUI_HOME_SESSION_KEY)).toEqual(
+      store.readSession("never-written"),
+    );
+  });
 });
 
 describe("R7 · the composer store's purgeSlot", () => {

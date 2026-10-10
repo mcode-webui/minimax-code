@@ -198,6 +198,10 @@ export function createWebuiSessionWorkflows(deps: {
     archived = next;
     for (const listener of archivedListeners) listener();
   };
+  // The newest archived read. A reply whose version is no longer current is
+  // dropped, so the ordered pairs of "delete then reload" and "reload then
+  // reload" cannot be undone by a slower earlier request (see `loadArchived`).
+  let archivedRequestVersion = 0;
   const loadArchived = async (): Promise<void> => {
     if (!port.listArchivedSessions) {
       setArchived({
@@ -207,11 +211,24 @@ export function createWebuiSessionWorkflows(deps: {
       });
       return;
     }
+    // The archived list is a second server-derived read, so it needs its own
+    // pair of guards — the catalog fence above cannot reach it:
+    //
+    //   1. the delete filter, because a page the server composed *before* a
+    //      delete committed still names the deleted session;
+    //   2. a request version, because a page that was already in flight when a
+    //      newer read started must not overwrite that newer answer. Without it
+    //      a late reply restores the row the delete had just removed, and an
+    //      old failure replaces a fresh result.
+    const version = archivedRequestVersion + 1;
+    archivedRequestVersion = version;
     setArchived({ ...archived, status: "loading" });
     try {
       const page = await port.listArchivedSessions();
-      setArchived({ status: "ready", sessions: page.sessions });
+      if (version !== archivedRequestVersion) return;
+      setArchived({ status: "ready", sessions: dropRemovedArchived(page.sessions) });
     } catch (reason) {
+      if (version !== archivedRequestVersion) return;
       setArchived({ status: "error", sessions: [], error: message(reason) });
     }
   };
@@ -232,6 +249,19 @@ export function createWebuiSessionWorkflows(deps: {
     removedSessionIds.size === 0
       ? state
       : removeWebuiCatalogSessions(state, [...removedSessionIds]);
+
+  /**
+   * The archived list's half of the same fence. `commitCatalog` cannot reach
+   * it: the archived page is its own server-derived read, so a reply composed
+   * before the delete still names the deleted session and would render it as a
+   * row the server no longer has.
+   */
+  const dropRemovedArchived = (
+    sessions: readonly WebuiSessionListItem[],
+  ): readonly WebuiSessionListItem[] =>
+    removedSessionIds.size === 0
+      ? sessions
+      : sessions.filter((session) => !removedSessionIds.has(session.sessionId));
 
   /**
    * The one write path into the catalog. Composing the fence here rather than

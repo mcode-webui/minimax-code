@@ -299,6 +299,107 @@ describe("R7 · the delete workflow teardown", () => {
   });
 });
 
+describe("R7 · the archived-list delete fence", () => {
+  function archivedItem(sessionId: string): WebuiSessionListItem {
+    return { sessionId, agentName: "main", createdAt: 1, updatedAt: 100, archived: true };
+  }
+
+  function archivedIds(workflows: ReturnType<typeof createWebuiSessionWorkflows>): string[] {
+    return workflows.getArchivedSnapshot().sessions.map((session) => session.sessionId);
+  }
+
+  it("keeps a deleted session out of an archived page that lands after the delete", async () => {
+    const store = createWebuiSessionStore();
+    let release: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;
+    let calls = 0;
+    const listArchivedSessions = () => {
+      calls += 1;
+      // The first read is the one already in flight when the delete commits.
+      return calls === 1
+        ? new Promise<{ sessions: WebuiSessionListItem[] }>((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve({ sessions: [] as WebuiSessionListItem[] });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    const inFlight = workflows.loadArchived();
+    await workflows.removeArchived("deleted");
+    expect(archivedIds(workflows)).toEqual([]);
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+
+    // The stale page still names the deleted session. Committing it must not
+    // restore the row — it lost to the newer read, and it also names a session
+    // this workflow has deleted.
+    release?.({ sessions: [archivedItem("deleted")] });
+    await inFlight;
+
+    expect(archivedIds(workflows)).toEqual([]);
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+  });
+
+  it("keeps a deleted session out of a page the server composed before the delete", async () => {
+    // This is the half the request version cannot cover: the newest read
+    // answers from a list that was already stale when it was produced, so only
+    // the delete filter keeps the row out.
+    const store = createWebuiSessionStore();
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions: async () => ({
+          sessions: [archivedItem("keep"), archivedItem("deleted")],
+        }),
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    await workflows.loadArchived();
+    // Before the delete, both rows are legitimately listed.
+    expect(archivedIds(workflows)).toEqual(["keep", "deleted"]);
+
+    await workflows.removeArchived("deleted");
+
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+  });
+
+  it("drops a stale archived failure instead of clearing a newer ready list", async () => {
+    const store = createWebuiSessionStore();
+    let reject: ((error: Error) => void) | undefined;
+    let calls = 0;
+    const listArchivedSessions = () => {
+      calls += 1;
+      return calls === 1
+        ? new Promise<{ sessions: WebuiSessionListItem[] }>((_resolve, rejectFirst) => {
+            reject = rejectFirst;
+          })
+        : Promise.resolve({ sessions: [archivedItem("keep")] });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    const inFlight = workflows.loadArchived();
+    await workflows.loadArchived();
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+
+    reject?.(new Error("stale failure"));
+    await inFlight;
+
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+    expect(workflows.getArchivedSnapshot().error).toBeUndefined();
+  });
+});
+
 describe("R7 · the catalog delete fence", () => {
   it("drops the entity, the flat identifier and the tree node together", () => {
     let catalog = reduceWebuiCatalogFlatLoaded(

@@ -70,7 +70,7 @@ import {
   updateOwnedTranscriptState,
   type WebuiOwnedTranscriptState,
   type WebuiTranscriptRequestToken,
-} from "../projection/transcript-request-ownership.js";
+} from "../application/transcript-request-ownership.js";
 import {
   webuiScrollBottomTop,
   webuiScrollFollowsBottom,

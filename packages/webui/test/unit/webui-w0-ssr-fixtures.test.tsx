@@ -28,7 +28,7 @@ import {
   runWebuiTranscriptPageRequest,
   updateOwnedTranscriptState,
   type WebuiOwnedTranscriptState,
-} from "../../src/client/projection/transcript-request-ownership.js";
+} from "../../src/client/application/transcript-request-ownership.js";
 import {
   WebuiActivityGroup,
   WebuiTurnProcess,

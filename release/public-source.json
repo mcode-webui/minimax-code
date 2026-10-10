@@ -3712,6 +3712,7 @@
     "packages/webui/src/runtime/assembly.ts",
     "packages/webui/src/runtime/auth-context.ts",
     "packages/webui/src/runtime/auth-session.ts",
+    "packages/webui/src/runtime/browser-provider.ts",
     "packages/webui/src/runtime/check-in.ts",
     "packages/webui/src/runtime/commands/descriptors.ts",
     "packages/webui/src/runtime/commands/runner.ts",

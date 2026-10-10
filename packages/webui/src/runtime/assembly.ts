@@ -97,23 +97,22 @@ export interface WebuiAssembledHost {
   readonly cliService?: WebuiRuntimeCliService;
 }
 
-export type WebuiBrowserToolExposure = "compact" | "full" | "both";
-
-export interface WebuiBrowserAdapter {
-  readonly getCapabilities?: () => unknown;
-  readonly disposeSession?: (sessionId: string) => Promise<void>;
-  execute(
-    context: unknown,
-    action: string,
-    input: Record<string, unknown>,
-    signal?: AbortSignal,
-  ): Promise<unknown>;
-}
-
-export interface WebuiBrowserProvider {
-  readonly adapter: WebuiBrowserAdapter;
-  close(): void | Promise<void>;
-}
+// The browser provider types and the adoption rule live in
+// `runtime/browser-provider.ts` (plan §7.1); they are re-exported here so the
+// runtime's public surface is unchanged.
+export {
+  adoptWebuiBrowserProvider,
+  type WebuiBrowserAdapter,
+  type WebuiBrowserProvider,
+  type WebuiBrowserProviderBinding,
+  type WebuiBrowserToolExposure,
+} from "./browser-provider.js";
+import { adoptWebuiBrowserProvider } from "./browser-provider.js";
+import type {
+  WebuiBrowserAdapter,
+  WebuiBrowserProvider,
+  WebuiBrowserToolExposure,
+} from "./browser-provider.js";
 
 /**
  * Structural shape of the options the WebUI assembly forwards to the
@@ -271,10 +270,14 @@ export async function createWebuiRuntimeHost(
   });
   // The one close owner. It wraps the harness host exactly once and tears it
   // down ahead of the mcode-tools broker and the browser provider.
+  const browser = adoptWebuiBrowserProvider(
+    options.browserProvider,
+    options.browserToolExposure,
+  );
   const lifecycle = createWebuiRuntimeLifecycle({
     disposeAuth: authSession.dispose,
     disposeMcodeTools: () => mcodeTools.dispose(),
-    closeBrowserProvider: () => options.browserProvider?.close(),
+    closeBrowserProvider: browser.closeBrowserProvider,
   });
   const forwardedOptions: WebuiForwardedRuntimeHostOptions = {
     dataDir: options.dataDir,
@@ -307,17 +310,15 @@ export async function createWebuiRuntimeHost(
         beta: {
           ...currentConfig.beta,
           mcodeTools: mcodeTools.ready,
-          browserUseTooling: options.browserProvider !== undefined,
+          browserUseTooling: browser.browserUseTooling,
         },
       };
     },
     authContextGetter: authSession.authContext.getter,
     authContextInvalidator: authSession.invalidateAuth,
-    ...(options.browserProvider
-      ? { browserAdapter: options.browserProvider.adapter }
-      : {}),
-    ...(options.browserToolExposure
-      ? { browserToolExposure: options.browserToolExposure }
+    ...(browser.browserAdapter ? { browserAdapter: browser.browserAdapter } : {}),
+    ...(browser.browserToolExposure
+      ? { browserToolExposure: browser.browserToolExposure }
       : {}),
   };
   // The factory parameter is `CreateLocalRuntimeHostOptions`, but in this

@@ -35,11 +35,6 @@ type WebuiUserMenuCapabilities = WebuiSettingsModalCapabilities;
 
 interface UserMenuProps {
   readonly collapsed: boolean;
-  /* Bumped by the shell's global shortcut handler. The settings dialog is
-   * mounted from here, so a `Ctrl+,` press has to reach this component
-   * somehow; a counter survives the component not re-rendering and is cheaper
-   * to wire than a new callback. */
-  readonly openSettingsSignal?: number;
   readonly hostLabel?: string;
   readonly dataDir?: string;
   readonly version?: WebuiVersionInfo;
@@ -733,7 +728,6 @@ export function UserMenu({
   getSigninPanel,
   claimSignin,
   onCreateMemorySession,
-  openSettingsSignal,
 }: UserMenuProps): ReactElement {
   // Bound once per transport, not per render: the login dialog's effects
   // key on these callbacks, and a fresh binding every render would restart
@@ -757,17 +751,6 @@ export function UserMenu({
   }, [onCreateMemorySession]);
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  /* The global `openSettings` shortcut arrives as a counter rather than a
-   * callback so that pressing the combination twice while the dialog is
-   * already open re-focuses it instead of being swallowed as a duplicate. */
-  const lastSettingsSignal = useRef(0);
-  useEffect(() => {
-    if (openSettingsSignal === undefined || openSettingsSignal === lastSettingsSignal.current) return;
-    lastSettingsSignal.current = openSettingsSignal;
-    setOpen(false);
-    setSettingsOpen(true);
-  }, [openSettingsSignal]);
   const [loginOpen, setLoginOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [usage, setUsage] = useState<UsageState>({ status: "idle" });

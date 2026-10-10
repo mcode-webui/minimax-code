@@ -280,8 +280,6 @@
       "packages/webui/test/unit/worktree-panel.test.tsx",
       "packages/webui/test/unit/worktree-state.test.ts",
       "packages/webui/test/unit/review-panel.test.tsx",
-      "packages/webui/test/unit/shortcut-state.test.ts",
-      "packages/webui/test/unit/voice-state.test.ts",
       "packages/webui/test/unit/review-state.test.ts",
       "packages/webui/test/unit/webui-round3-acceptance.test.tsx",
       "packages/webui/test/unit/webui-w0-store-sequence.test.ts",

@@ -330,7 +330,7 @@ export class WebuiService {
     }
     if (
       requestOrigin &&
-      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort, this.dev)
+      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort)
     ) {
       rejectHttp(response, 403, "Forbidden Origin");
       return;
@@ -756,7 +756,7 @@ export class WebuiService {
     }
     if (
       requestOrigin &&
-      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort, this.dev)
+      !isAllowedOrigin(requestOrigin, this.host, this.bound?.info.tcpPort)
     ) {
       rejectUpgrade(socket, 403, "Forbidden Origin");
       return;
@@ -1117,12 +1117,7 @@ function isLoopbackBindAddress(host: string): boolean {
   return isLoopbackHost(stripped);
 }
 
-function isAllowedOrigin(
-  origin: string,
-  host: string,
-  port?: number,
-  dev = false,
-): boolean {
+function isAllowedOrigin(origin: string, host: string, port?: number): boolean {
   let parsed: URL;
   try {
     parsed = new URL(origin);
@@ -1134,14 +1129,6 @@ function isAllowedOrigin(
   const hostname = parsed.hostname.toLowerCase();
   if (hostname !== "127.0.0.1" && hostname !== "localhost") return false;
   if (port === undefined) return true;
-  // ADR 0004 pins the packaged server to same-origin requests: it serves the
-  // built client from this same listener, so the origin port has to be the
-  // bound port. The Vite dev server necessarily listens on a different port,
-  // which left every dev-mode upgrade and API call rejected with 403 and the
-  // shell stuck on "WebUI connection failed". In dev, any loopback origin is
-  // accepted - the loopback-host and http/https checks above still hold, so a
-  // page on another machine still cannot reach the service.
-  if (dev) return true;
   const portNumber = parsed.port
     ? Number(parsed.port)
     : defaultPortForProtocol(protocol);

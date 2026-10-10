@@ -124,7 +124,6 @@ import {
   WebuiIconSkillGeneric,
   type WebuiIconProps,
 } from "../icons.js";
-import { useWebuiVoice } from "../use-webui-voice.js";
 import { OutputError } from "./OutputError.js";
 import {
   createWebuiWatchEventCallback,
@@ -1676,19 +1675,6 @@ export function WebuiComposer({
     }
     onDraftChange(next);
   };
-
-  /* Roadmap P 区「语音输入」.
-   *
-   * The button only exists when the feature is switched on AND this browser
-   * can actually listen. Firefox has never shipped `SpeechRecognition`, and a
-   * control that appears and then never reacts costs the user a click and
-   * explains nothing — so the unsupported case renders no button at all, and
-   * the settings page says why.
-   *
-   * Recognised text goes through `handleDraftChange` rather than straight to
-   * the setter so it lands in the draft the same way typing does, including
-   * the `/goal` command interception. */
-  const voice = useWebuiVoice({ draft, setDraft: handleDraftChange });
   const chooseCommand = (command: string) => {
     if (command === "goal") {
       activateGoalMode();
@@ -2448,23 +2434,6 @@ export function WebuiComposer({
           </div>
         ) : null}
                 </div>
-                {voice.available ? (
-                  <button
-                    type="button"
-                    className={`webui-composer-voice${voice.state.phase === "listening" ? " webui-composer-voice--listening" : ""}`}
-                    aria-label={voice.state.phase === "listening" ? "停止语音输入" : "开始语音输入"}
-                    aria-pressed={voice.state.phase === "listening"}
-                    title={voice.state.error ?? undefined}
-                    data-testid="composer-voice"
-                    onClick={voice.toggle}
-                  >
-                    <svg aria-hidden="true" className="webui-composer-voice-icon" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="6.6" y="2.2" width="4.8" height="8.4" rx="2.4" />
-                      <path d="M3.9 8.6a5.1 5.1 0 0 0 10.2 0" />
-                      <path d="M9 13.7v2.1" />
-                    </svg>
-                  </button>
-                ) : null}
                 <div className="webui-composer-permission-wrap" ref={permissionWrapRef}>
                   <button
                     type="button"

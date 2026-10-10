@@ -1,26 +1,26 @@
-import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "./contracts/execution-port.js";
-import type { WebuiClientMessageLoader, WebuiClientMessagePage } from "./contracts/message-view.js";
-import type { WebuiClientCreateSessionRequest, WebuiClientCreateSessionResult, WebuiClientSessionLoader, WebuiClientSessionTreeLoader } from "./contracts/session-port.js";
-import type { WebuiClientSessionPage, WebuiClientSessionTreePage, WebuiClientProject } from "./contracts/session-view.js";
-import type { WebuiTransport } from "./contracts/transport.js";
+import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
+import type { WebuiClientMessageLoader, WebuiClientMessagePage } from "../contracts/message-view.js";
+import type { WebuiClientCreateSessionRequest, WebuiClientCreateSessionResult, WebuiClientSessionLoader, WebuiClientSessionTreeLoader } from "../contracts/session-port.js";
+import type { WebuiClientSessionPage, WebuiClientSessionTreePage, WebuiClientProject } from "../contracts/session-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import type {
   WebuiInteractionReplyResult,
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-} from "../shared/contracts/interactions.js";
+} from "../../shared/contracts/interactions.js";
 import type {
   WebuiQueueItem,
   WebuiEnqueueMessageRequest,
   WebuiEnqueueMessageResult,
-} from "../shared/contracts/queue.js";
-import type { WebuiModelEntry } from "../shared/contracts/models.js";
+} from "../../shared/contracts/queue.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
 import type {
   WebuiRuntimeEvent,
   WebuiStreamFrame,
-} from "../shared/contracts/stream.js";
-import type { WebuiVersionInfo } from "../shared/contracts/version.js";
-import type { WebuiTerminalFrame } from "../shared/contracts/terminal.js";
+} from "../../shared/contracts/stream.js";
+import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
+import type { WebuiTerminalFrame } from "../../shared/contracts/terminal.js";
 import type {
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
@@ -40,19 +40,19 @@ import type {
   WebuiRewindSessionResult,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
-} from "../shared/contracts/session.js";
+} from "../../shared/contracts/session.js";
 import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
   WebuiGoalEnabledResult,
-} from "../shared/contracts/goal.js";
+} from "../../shared/contracts/goal.js";
 import {
   markWebuiEventWatcherDown,
   markWebuiEventWatcherHealthy,
   registerWebuiEventWatcher,
   unregisterWebuiEventWatcher,
-} from "./infrastructure/connection-health.js";
+} from "./connection-health.js";
 
 declare const document: {
   readonly visibilityState: string;

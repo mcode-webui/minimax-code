@@ -67,7 +67,7 @@ import type {
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
 } from "../../src/shared/contracts/goal.js";
-import { createWebuiTransport } from "../../src/client/transport.js";
+import { createWebuiTransport } from "../../src/client/infrastructure/transport.js";
 import { WebuiTerminalManager } from "../../src/server/terminal.js";
 import { getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation } from "../../src/server/operation/workspace.js";
 

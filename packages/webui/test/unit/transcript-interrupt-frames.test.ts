@@ -36,7 +36,7 @@ import {
   type WebuiStreamLoopArgs,
   type WebuiStreamLoopDeps,
   type WebuiStreamLoopSink,
-} from "../../src/client/stream-loop.js";
+} from "../../src/client/mechanisms/stream-loop.js";
 import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
 import type { WebuiClientMessageSender } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";

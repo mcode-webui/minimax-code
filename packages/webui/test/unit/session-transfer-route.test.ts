@@ -28,7 +28,7 @@ import type { WebuiHarnessPort } from "../../src/runtime/port.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
-} from "../../src/client/session-import.js";
+} from "../../src/client/infrastructure/session-import.js";
 
 const token = "test-token";
 

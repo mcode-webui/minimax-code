@@ -7,7 +7,7 @@ export {
   WebuiClientFoundationApp,
   subscribeToSessionHash,
 } from "./components/WebuiClientFoundationApp.js";
-import { createWebuiTransport } from "./transport.js";
+import { createWebuiTransport } from "./infrastructure/transport.js";
 import { route } from "./router.js";
 import { NotFound } from "./components/NotFound.js";
 import { ArchonPage } from "./components/ArchonPage.js";

@@ -121,14 +121,15 @@ describe("layer matrix", () => {
 
   it("classifies current paths by their target layer, not the directory", () => {
     expect(classifyLayers("runtime/port.ts")).toEqual(["runtime-port"]);
-    expect(classifyLayers("server/host.ts")).toEqual(["runtime"]);
-    expect(classifyLayers("client/contracts.ts")).toEqual(["contracts"]);
+    expect(classifyLayers("client/contracts/transport.ts")).toEqual(["contracts"]);
     // The reducer is a pure `view` projection now that the stream loop and the
     // test-only instrumentation take it by injection instead of importing it.
     expect(classifyLayers("client/projection/stream-state.ts")).toEqual(["view"]);
-    expect(classifyLayers("client/session-runtime-store.ts")).toEqual([
-      "application",
-      "bindings",
+    // The migrated modules are decided by their directory now, so no
+    // provenance entry is needed for them.
+    expect(classifyLayers("client/mechanisms/stream-loop.ts")).toEqual(["mechanisms"]);
+    expect(classifyLayers("client/infrastructure/transport.ts")).toEqual([
+      "infrastructure",
     ]);
   });
 
@@ -141,7 +142,6 @@ describe("layer matrix", () => {
   });
 
   it("records the known-ambiguous files from plan section 7.5", () => {
-    expect(KNOWN_AMBIGUOUS_FILES).toContain("server/session-transfer.ts");
     expect(KNOWN_AMBIGUOUS_FILES).toContain("client/projection/stream-state.ts");
     // `client/stream.ts` was split into the pure frame reducer in
     // `client/projection/stream-state.ts` and the turn-coordinator commands;

@@ -25,7 +25,7 @@ import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
-} from "../stream-loop.js";
+} from "../mechanisms/stream-loop.js";
 import { streamRecoveryProjection } from "./stream-recovery.js";
 import type { WebuiStreamState } from "./stream-state.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";

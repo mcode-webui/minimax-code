@@ -13,7 +13,7 @@ import {
   recogniseWebuiStreamPayload,
   webuiSessionStatusType,
 } from "../../src/client/projection/stream-state.js";
-import { __webuiProbeReduce } from "../../src/client/stream-instrumentation.js";
+import { __webuiProbeReduce } from "../../src/client/mechanisms/stream-instrumentation.js";
 
 const frame = (dataJson: string) => ({ dataJson });
 

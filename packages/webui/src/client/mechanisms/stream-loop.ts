@@ -13,11 +13,11 @@
 // the React shell's `try/finally` shape at `app.tsx`, which does not
 // catch and would otherwise lose a sink-originated rejection.
 
-import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "./contracts/execution-port.js";
+import type { WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
 import type {
   WebuiClientMessage,
   WebuiClientMessageLoader,
-} from "./contracts/message-view.js";
+} from "../contracts/message-view.js";
 
 import type {
   WebuiStreamMessage,
@@ -25,9 +25,9 @@ import type {
   WebuiStreamState,
   WebuiStreamSubscription,
   WebuiSubscriptionReleaseScope,
-} from "./contracts/stream-state.js";
-import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
-import type { WebuiAttachmentInput } from "../shared/contracts/messages.js";
+} from "../contracts/stream-state.js";
+import type { WebuiStreamFrame } from "../../shared/contracts/stream.js";
+import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 
 export interface WebuiStreamLoopDeps {
   readonly sendMessage?: WebuiClientMessageSender;

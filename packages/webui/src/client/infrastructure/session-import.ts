@@ -29,7 +29,7 @@
 //     rejected here by name rather than as a generic parse failure, so the
 //     user is told which file they picked and why it cannot come back.
 
-import { WEBUI_SESSION_TRANSFER_FORMAT } from "../shared/session-transfer-format.js";
+import { WEBUI_SESSION_TRANSFER_FORMAT } from "../../shared/session-transfer-format.js";
 import { readWebuiSessionTransferTarget } from "./session-transfer-target.js";
 
 export interface WebuiSessionImportResult {

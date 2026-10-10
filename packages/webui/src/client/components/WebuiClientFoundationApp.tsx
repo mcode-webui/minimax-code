@@ -121,8 +121,8 @@ import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
 } from "../infrastructure/storage.js";
-import { startWebuiSessionTransferDownload } from "../session-transfer-download.js";
-import { importWebuiSessionFile } from "../session-import.js";
+import { startWebuiSessionTransferDownload } from "../infrastructure/session-transfer-download.js";
+import { importWebuiSessionFile } from "../infrastructure/session-import.js";
 import {
   readTeamModeOff,
   readTeamModeSessionChoices,

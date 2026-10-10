@@ -134,17 +134,27 @@ export const ALLOWED_EDGES = Object.freeze({
  * `client/session-runtime-store.ts` used to be listed here too. It had no
  * remaining importer, so the ticket-#45 slice deleted it and the entry was
  * removed for the same reason: there is no file left to judge.
+ *
+ * `client/connection-health.ts` and `server/session-transfer.ts` were the two
+ * entries that outlived their files: `connection-health.ts` moved to
+ * `client/infrastructure/` and `server/session-transfer.ts` became
+ * `runtime/session-transfer.ts`. `client/stream-instrumentation.ts` moved to
+ * `client/mechanisms/`, where the directory decides its layer, so its entry is
+ * obsolete too. All three are removed here rather than left pointing at paths
+ * that no longer exist.
+ *
+ * The same rule applies to `CLIENT_FILE_PROVENANCE` below: an entry for a file
+ * that no longer sits at that path is deleted, so a re-created file at the old
+ * path classifies as `unknown` and is reported instead of silently inheriting a
+ * stale layer.
  */
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "runtime/port.ts",
-  "client/stream-instrumentation.ts",
   "client/projection/stream-state.ts",
   "client/projection/composer-state.ts",
   "client/projection/effect-reducer.ts",
-  "client/connection-health.ts",
   "client/slash-palette.ts",
   "server/service.ts",
-  "server/session-transfer.ts",
   "server/envelope.ts",
 ]);
 
@@ -211,18 +221,8 @@ export const CATEGORIES = Object.freeze({
 const CLIENT_FILE_PROVENANCE = Object.freeze({
   "main.tsx": ["root"],
   "global.d.ts": ["root"],
-  "transport.ts": ["infrastructure"],
-  "connection-health.ts": ["infrastructure", "bindings"],
-  "session-import.ts": ["infrastructure"],
-  "session-transfer-download.ts": ["infrastructure"],
-  "session-transfer-target.ts": ["infrastructure"],
   "team-mode.ts": ["infrastructure"],
   "no-project.ts": ["infrastructure"],
-  "session-runtime-store.ts": ["application", "bindings"],
-  "session-stream-retry.ts": ["application"],
-  "stream-instrumentation.ts": ["mechanisms"],
-  "stream-loop.ts": ["mechanisms"],
-  "contracts.ts": ["contracts"],
   "value-readers.ts": ["contracts"],
   "rail-buckets.ts": ["view"],
   "router.ts": ["view"],

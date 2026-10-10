@@ -28,7 +28,7 @@ import { fenceWebuiLeaseStream } from "./stream-lease.js";
 import {
   runWebuiStreamLoop,
   type WebuiStreamLoopSink,
-} from "../stream-loop.js";
+} from "../mechanisms/stream-loop.js";
 import type { WebuiSessionStore, WebuiSessionWriter } from "./session-store.js";
 import type { WebuiStreamLeaseController } from "./stream-lease-controller.js";
 import { streamStateBundle } from "../projection/stream-state-bundle.js";

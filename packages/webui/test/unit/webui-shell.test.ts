@@ -89,7 +89,7 @@ import {
   type WebuiStreamLoopArgs,
   type WebuiStreamLoopDeps,
   type WebuiStreamLoopSink,
-} from "../../src/client/stream-loop.js";
+} from "../../src/client/mechanisms/stream-loop.js";
 import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
 
 /**

@@ -41,7 +41,7 @@ import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
-} from "../stream-loop.js";
+} from "../mechanisms/stream-loop.js";
 import {
   webuiActiveTurnProbeFor,
   type WebuiActiveTurnProbe,

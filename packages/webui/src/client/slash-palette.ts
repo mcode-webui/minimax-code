@@ -10,6 +10,16 @@
 // data structure), `chunks/60554-*` (i18n strings).
 
 import type { ReactElement } from "react";
+export {
+  WEBUI_RUN_COMMAND_NAMES,
+  classifyWebuiSlashCommand,
+  isWebuiRunnableCommand,
+} from "./contracts/slash-command.js";
+export type {
+  WebuiCommandClassification,
+  WebuiRunCommandName,
+  WebuiSlashCommandFields,
+} from "./contracts/slash-command.js";
 import {
   WebuiIconCommandCompact,
   WebuiIconCommandGoal,
@@ -54,11 +64,6 @@ export type SlashPaletteSection = "special" | "skills";
  * same as the original capability check, just spelled out as three states
  * for the submit pipeline to dispatch on without renaming `supported`.
  */
-export type WebuiCommandClassification =
-  | "runnable"
-  | "inert-wired"
-  | "inert-unsupported";
-
 /**
  * One row in the slash palette. Mirrors the desktop record shape so a future
  * `listSkills` RPC can be slotted into `resolveWebuiSkills` without renaming.
@@ -517,28 +522,6 @@ export async function buildWebuiSlashPaletteAsync(options: {
  * the submit handler can pass `command.name` to `runCommand` without an
  * unsafe cast.
  */
-export const WEBUI_RUN_COMMAND_NAMES = [
-  "help",
-  "new",
-  "compact",
-  "status",
-  "usage",
-  "model",
-] as const;
-export type WebuiRunCommandName = (typeof WEBUI_RUN_COMMAND_NAMES)[number];
-
-export function isWebuiRunnableCommand(
-  entry: SlashCommandEntry,
-): entry is SlashCommandEntry & {
-  readonly name: WebuiRunCommandName;
-  readonly supported: true;
-} {
-  return (
-    entry.supported &&
-    (WEBUI_RUN_COMMAND_NAMES as readonly string[]).includes(entry.name)
-  );
-}
-
 /**
  * Pure three-state classification of a slash command. Pairs with
  * `isWebuiRunnableCommand` (a boolean narrowing predicate); the
@@ -562,12 +545,3 @@ export function isWebuiRunnableCommand(
  * this table; this function exists to give the tests a typed handle on the
  * classification without going through the React component.
  */
-export function classifyWebuiSlashCommand(
-  entry: SlashCommandEntry,
-): WebuiCommandClassification {
-  if (!entry.supported) return "inert-unsupported";
-  if ((WEBUI_RUN_COMMAND_NAMES as readonly string[]).includes(entry.name)) {
-    return "runnable";
-  }
-  return "inert-wired";
-}

@@ -24,10 +24,14 @@ import type {
 } from "../../shared/contracts/stream.js";
 import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import {
-  applyWebuiEffectCommands,
   reduceWebuiEffect,
 } from "../projection/effect-reducer.js";
-import type { WebuiEffectHandlers } from "../projection/effect-reducer.js";
+import type {
+  WebuiEffectCommand,
+  WebuiEffectState,
+} from "../projection/effect-reducer.js";
+import type { WebuiPendingPermission, WebuiQuestionnaireRequest } from "../../shared/contracts/interactions.js";
+import type { WebuiStreamState } from "../projection/stream-state.js";
 // The same resolver the effect reducer's own session guard uses. It carries
 // the nested-goal fallback for `thread_goal.*` events, whose payload declares
 // the id inside `goal` rather than at the top level. Reading the top level
@@ -41,6 +45,70 @@ import type { WebuiProcessEventChannel } from "./event-channel.js";
 import { releaseWebuiLease } from "../mechanisms/stream-lease.js";
 import type { WebuiSessionStore } from "./session-store.js";
 import type { WebuiStreamLeaseController } from "./stream-lease-controller.js";
+
+export interface WebuiEffectHandlers {
+  readonly refreshPending: () => void | Promise<unknown>;
+  readonly setSending: (sending: boolean) => void;
+  readonly setStream: (patch: (current: WebuiStreamState) => WebuiStreamState) => void;
+  readonly setPermissions: (patch: (current: readonly WebuiPendingPermission[]) => readonly WebuiPendingPermission[]) => void;
+  readonly setQuestionnaire: (patch: (current: WebuiQuestionnaireRequest | undefined) => WebuiQuestionnaireRequest | undefined) => void;
+  readonly setGoal: (goal: WebuiGoal | undefined) => void;
+  readonly refreshGoal: () => void | Promise<unknown>;
+  readonly attachStream?: (turnId: string | undefined, mode: "attach" | "recheck") => void;
+}
+
+/** Runs reducer commands against the application-owned writers and effects. */
+export function applyWebuiEffectCommands(
+  commands: readonly WebuiEffectCommand[],
+  handlers: WebuiEffectHandlers,
+  readStream?: () => WebuiStreamState,
+): void {
+  for (const cmd of commands) {
+    switch (cmd.type) {
+      case "refresh-pending":
+        Promise.resolve(handlers.refreshPending()).catch(() => undefined);
+        break;
+      case "refresh-goal":
+        Promise.resolve(handlers.refreshGoal()).catch(() => undefined);
+        break;
+      case "set-sending":
+        if (cmd.when && readStream && !cmd.when(readStream())) break;
+        handlers.setSending(cmd.sending);
+        break;
+      case "set-stream":
+        handlers.setStream(cmd.patch);
+        break;
+      case "set-permissions":
+        handlers.setPermissions(cmd.patch);
+        break;
+      case "set-questionnaire":
+        handlers.setQuestionnaire(cmd.patch);
+        break;
+      case "set-goal":
+        handlers.setGoal(cmd.goal);
+        break;
+      case "attach-stream":
+        handlers.attachStream?.(cmd.turnId, cmd.mode);
+        break;
+    }
+  }
+}
+
+export function createWebuiWatchEventCallback(
+  sessionId: string,
+  readStream: () => WebuiStreamState,
+  readState: () => Omit<WebuiEffectState, "stream">,
+  handlers: WebuiEffectHandlers,
+): (event: WebuiRuntimeEvent) => void {
+  return (event) => {
+    const commands = reduceWebuiEffect(
+      { ...readState(), stream: readStream() },
+      event,
+      sessionId,
+    ).commands;
+    applyWebuiEffectCommands(commands, handlers, readStream);
+  };
+}
 
 /** A live stream frame addressed to one session and one attempt generation. */
 export interface WebuiEventStreamFrame {

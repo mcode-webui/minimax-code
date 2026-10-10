@@ -81,7 +81,7 @@ import { OutputError } from "../../src/client/components/OutputError.js";
 import {
   buildWebuiComposerHandlers,
   submitWebuiComposerTurn,
-} from "../../src/client/projection/composer-state.js";
+} from "../../src/client/application/composer-workflows.js";
 import { createWebuiSessionStore, type WebuiSessionStore } from "../../src/client/application/session-store.js";
 import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";

@@ -151,8 +151,6 @@ export const ALLOWED_EDGES = Object.freeze({
 export const KNOWN_AMBIGUOUS_FILES = Object.freeze([
   "runtime/port.ts",
   "client/projection/stream-state.ts",
-  "client/projection/composer-state.ts",
-  "client/projection/effect-reducer.ts",
   "client/slash-palette.ts",
   "server/service.ts",
   "server/envelope.ts",
@@ -254,8 +252,7 @@ const PROJECTION_DOMAIN = new Set([
 ]);
 const PROJECTION_SPLIT = Object.freeze({
   "composer-history": ["application"],
-  "composer-state": ["application", "view"],
-  "effect-reducer": ["application", "domain"],
+  "effect-reducer": ["application"],
   "transcript-request-ownership": ["application"],
   "file-line-navigation": ["bindings"],
   // `stream-state.ts` is the pure frame reducer split out of `client/stream.ts`

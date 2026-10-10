@@ -20,14 +20,16 @@
 import { describe, it, expect, vi } from "vitest";
 
 import {
-  applyWebuiEffectCommands,
-  createWebuiWatchEventCallback,
   initialWebuiEffectState,
   reduceWebuiEffect,
   type WebuiEffectCommand,
-  type WebuiEffectHandlers,
   type WebuiEffectState,
 } from "../../src/client/projection/effect-reducer.js";
+import {
+  applyWebuiEffectCommands,
+  createWebuiWatchEventCallback,
+  type WebuiEffectHandlers,
+} from "../../src/client/application/event-coordinator.js";
 import {
   initialWebuiStreamState,
   isWebuiSubscriptionProbeCurrent,

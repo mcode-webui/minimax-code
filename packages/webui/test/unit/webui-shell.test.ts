@@ -64,13 +64,13 @@ import {
   buildWebuiModelSelectionRequest,
   webuiModelOptionValue,
 } from "../../src/client/projection/action-requests.js";
+import { looksLikeAbsoluteWorkspacePath } from "../../src/client/projection/composer-state.js";
 import {
   buildWebuiComposerHandlers,
   createdSessionId,
-  looksLikeAbsoluteWorkspacePath,
   submitWebuiGoal,
   submitWebuiComposerTurn,
-} from "../../src/client/projection/composer-state.js";
+} from "../../src/client/application/composer-workflows.js";
 import { projectWebuiMessage } from "../../src/client/projection/message-projection.js";
 import { projectLiveTurnView } from "../../src/client/projection/transcript-shape.js";
 import { buildWebuiQuestionnaireAnswers } from "../../src/client/projection/questionnaire-state.js";

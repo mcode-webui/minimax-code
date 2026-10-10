@@ -28,7 +28,7 @@ import type { WebuiTurnCommandWriter } from "./session-commands.js";
 import {
   submitWebuiComposerTurn,
   type WebuiComposerSubmitHandlers,
-} from "../projection/composer-state.js";
+} from "./composer-workflows.js";
 import { isWebuiSubscriptionProbeCurrent, ownsWebuiStreamGeneration, resolveWebuiSubscriptionRecheck, type WebuiStreamState } from "../projection/stream-state.js";
 import {
   releaseWebuiSubscription,

@@ -64,14 +64,11 @@ const commandEntry = (
   supported,
 });
 
-/** The narrower type the `run-command` intent carries for its command. */
-type WebuiRunCommandEntry = Extract<WebuiSubmissionIntent, { readonly kind: "run-command" }>["command"];
-
 const goalCommand = commandEntry("goal", "open the goal workflow", true);
 
-// Typed as the runnable narrowing of `SlashCommandEntry` so the fixtures below
-// can stand in for the `command` the `run-command` intent carries.
-const helpCommand: WebuiRunCommandEntry = {
+// The fixture uses the UI entry shape accepted at the projection boundary.
+type WebuiRunCommandEntry = Extract<WebuiSubmissionIntent, { readonly kind: "run-command" }>["command"];
+const helpCommand: SlashCommandEntry & WebuiRunCommandEntry = {
   name: "help",
   displayName: "help",
   label: "help",

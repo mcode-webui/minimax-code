@@ -142,13 +142,15 @@ import {
 } from "../icons.js";
 import { OutputError } from "./OutputError.js";
 import {
-  buildWebuiComposerHandlers,
-  submitWebuiGoal,
   resolveWebuiSubmissionIntent,
   resolveWebuiComposerEnterAction,
   isTurnLive,
   looksLikeAbsoluteWorkspacePath,
 } from "../projection/composer-state.js";
+import {
+  buildWebuiComposerHandlers,
+  submitWebuiGoal,
+} from "../application/composer-workflows.js";
 import { evaluateComposerDismiss, evaluateOutsideClose } from "../projection/outside-close.js";
 import {
   buildWebuiModelSelectionRequest,
@@ -171,7 +173,6 @@ import {
   type WebuiHistoryBrowse,
 } from "../projection/composer-history.js";
 import {
-  isWebuiRunnableCommand,
   rankWebuiSlashPalette,
   sectionWebuiSlashPalette,
   slashSkillSummaryToEntry,
@@ -180,6 +181,7 @@ import {
   type WebuiSlashSkillSummary,
   type WebuiRunCommandName,
 } from "../slash-palette.js";
+import { isWebuiRunnableCommand } from "../contracts/slash-command.js";
 
 const WEBUI_SLASH_FALLBACK_SECTIONED: SlashCommandEntry[] = await (async () => {
   const { resolveWebuiSlashSkills, sectionWebuiSlashPalette } = await import(

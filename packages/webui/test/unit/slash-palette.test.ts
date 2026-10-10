@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyWebuiSlashLiteMode,
   buildWebuiSlashPalette,
-  isWebuiRunnableCommand,
-  rankWebuiSlashPalette,
   resolveWebuiSlashSkills,
-  sectionWebuiSlashPalette,
   slashSkillSummaryToEntry,
   WEBUI_BUILTIN_COMMANDS,
   WEBUI_PLUGIN_REGISTRY,
-  WEBUI_RUN_COMMAND_NAMES,
   WEBUI_SKILL_FIXTURES,
 } from "../../src/client/slash-palette.js";
+import {
+  applyWebuiSlashLiteMode,
+  isWebuiRunnableCommand,
+  rankWebuiSlashPalette,
+  sectionWebuiSlashPalette,
+  WEBUI_RUN_COMMAND_NAMES,
+} from "../../src/client/contracts/slash-command.js";
 
 // These tests cover sectioning, four-rank filtering, lite-mode filtering,
 // and the `isWebuiRunnableCommand` narrowing.

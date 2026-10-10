@@ -10,12 +10,29 @@
 // data structure), `chunks/60554-*` (i18n strings).
 
 import type { ReactElement } from "react";
+import {
+  applyWebuiSlashLiteMode,
+  rankWebuiSlashPalette,
+  sectionWebuiSlashPalette,
+  type SlashComposerMode,
+  type SlashDirectAction,
+  type SlashPaletteSection,
+  type SlashSendIntent,
+  type WebuiSlashPaletteFields,
+} from "./contracts/slash-command.js";
 export {
+  applyWebuiSlashLiteMode,
+  rankWebuiSlashPalette,
+  sectionWebuiSlashPalette,
   WEBUI_RUN_COMMAND_NAMES,
   classifyWebuiSlashCommand,
   isWebuiRunnableCommand,
 } from "./contracts/slash-command.js";
 export type {
+  SlashComposerMode,
+  SlashDirectAction,
+  SlashPaletteSection,
+  SlashSendIntent,
   WebuiCommandClassification,
   WebuiRunCommandName,
   WebuiSlashCommandFields,
@@ -31,14 +48,6 @@ import {
   WebuiIconSkillDiagnosingBugs,
   WebuiIconSkillGeneric,
 } from "./icons.js";
-
-/** Behaviour an entry can declare. Mirrors the desktop's three special fields. */
-export type SlashComposerMode = "goal" | "plan" | "review";
-export type SlashSendIntent = "cloud-handoff" | "review";
-export type SlashDirectAction = "memory" | "fork";
-
-/** Where an entry lives in the popover. The desktop uses "special" only. */
-export type SlashPaletteSection = "special" | "skills";
 
 /**
  * Three states a slash command can be in at runtime. Distinct from the
@@ -74,22 +83,12 @@ export type SlashPaletteSection = "special" | "skills";
  * classification (see `WebuiCommandClassification`) extends this with the
  * `inert-wired` state for supported-but-not-runnable entries (skills).
  */
-export interface SlashCommandEntry {
-  readonly name: string;
-  readonly displayName: string;
-  readonly label: string;
-  readonly description: string;
-  readonly source_type: -1 | 0 | 1;
+export interface SlashCommandEntry extends WebuiSlashPaletteFields {
   readonly icon: (props: { className?: string }) => ReactElement;
-  readonly composerMode?: SlashComposerMode;
   readonly sendIntent?: SlashSendIntent;
   readonly directAction?: SlashDirectAction;
   readonly slashPrompt?: string;
-  readonly paletteSection?: SlashPaletteSection;
   readonly paletteDescriptionClassName?: string;
-  readonly searchTerms?: readonly string[];
-  readonly display_name?: string;
-  readonly display_description?: string;
   readonly source_kind?: string;
   /**
    * WebUI-specific capability flag — three states described above:
@@ -97,7 +96,6 @@ export interface SlashCommandEntry {
    *               WEBUI_RUN_COMMAND_NAMES, otherwise inert-wired.
    *   - `false` → host port not wired; render inert-unsupported.
    */
-  readonly supported: boolean;
 }
 
 /**
@@ -392,99 +390,6 @@ function iconForSkillName(name: string): WebuiIconComponent {
  * `"special"` (currently `deploy-website`); the skills section holds
  * everything else. The order is preserved within each section.
  */
-export function sectionWebuiSlashPalette(
-  builtins: readonly SlashCommandEntry[],
-  skills: readonly SlashCommandEntry[],
-): SlashCommandEntry[] {
-  const isInDefault = (entry: SlashCommandEntry): boolean =>
-    entry.source_type === -1 || entry.paletteSection === "special";
-
-  const inDefault: SlashCommandEntry[] = [];
-  const inSkills: SlashCommandEntry[] = [];
-  for (const skill of skills) {
-    if (isInDefault(skill)) inDefault.push(skill);
-    else inSkills.push(skill);
-  }
-
-  // Tag every skills-section entry so the popover can render the `技能`
-  // header before them. Mirrors the desktop's static `技能` divider that
-  // appears between the default section and the skill rows.
-  const taggedSkills = inSkills.map((entry) => ({
-    ...entry,
-    paletteSection: entry.paletteSection ?? "skills",
-  }));
-
-  return [...builtins, ...inDefault, ...taggedSkills];
-}
-
-/**
- * Optional lite-mode filter. Mirrors the desktop's `tL` branch: drop every
- * built-in except `goal` and `plan`, keep all skills. The WebUI does not
- * surface a lite mode today, but the predicate is here so a future flag
- * can be wired without rebuilding the sectioning.
- */
-export function applyWebuiSlashLiteMode(
-  palette: readonly SlashCommandEntry[],
-  lite: boolean,
-): SlashCommandEntry[] {
-  if (!lite) return [...palette];
-  return palette.filter(
-    (entry) =>
-      entry.source_type !== -1 ||
-      entry.composerMode === "goal" ||
-      entry.composerMode === "plan",
-  );
-}
-
-/**
- * Rank-based filter. Mirrors the desktop's four-rank scoring:
- *
- *   0 — exact match on name or displayName
- *   1 — startsWith on name or displayName
- *   2 — includes on name or displayName
- *   3 — substring across every searchable field, including searchTerms
- *
- * Within the same rank, items keep their original palette order. Empty
- * query returns the palette untouched.
- */
-export function rankWebuiSlashPalette(
-  palette: readonly SlashCommandEntry[],
-  query: string,
-): SlashCommandEntry[] {
-  const trimmed = query.trim();
-  if (!trimmed) return [...palette];
-  const needle = trimmed.toLowerCase();
-
-  const scored: { cmd: SlashCommandEntry; rank: number; idx: number }[] = [];
-  palette.forEach((entry, idx) => {
-    const name = entry.name.toLowerCase();
-    const display = entry.displayName.toLowerCase();
-    let rank: number;
-    if (name === needle || display === needle) rank = 0;
-    else if (name.startsWith(needle) || display.startsWith(needle)) rank = 1;
-    else if (name.includes(needle) || display.includes(needle)) rank = 2;
-    else {
-      const haystack = [
-        entry.name,
-        entry.displayName,
-        entry.label,
-        entry.description,
-        entry.display_name,
-        entry.display_description,
-        ...(entry.searchTerms ?? []),
-      ]
-        .filter((value): value is string => Boolean(value))
-        .join(" ")
-        .toLowerCase();
-      if (!haystack.includes(needle)) return;
-      rank = 3;
-    }
-    scored.push({ cmd: entry, rank, idx });
-  });
-  scored.sort((left, right) => left.rank - right.rank || left.idx - right.idx);
-  return scored.map((entry) => entry.cmd);
-}
-
 /**
  * Composed API: section + lite-mode filter. Returns the static slice; skills
  * are awaited in `buildWebuiSlashPaletteAsync` below because the desktop's

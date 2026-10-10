@@ -174,20 +174,20 @@ import {
   type WebuiHistoryBrowse,
 } from "../projection/composer-history.js";
 import {
-  rankWebuiSlashPalette,
-  sectionWebuiSlashPalette,
   slashSkillSummaryToEntry,
   WEBUI_BUILTIN_COMMANDS,
   type SlashCommandEntry,
   type WebuiSlashSkillSummary,
   type WebuiRunCommandName,
 } from "../slash-palette.js";
-import { isWebuiRunnableCommand } from "../contracts/slash-command.js";
+import {
+  isWebuiRunnableCommand,
+  rankWebuiSlashPalette,
+  sectionWebuiSlashPalette,
+} from "../contracts/slash-command.js";
 
 const WEBUI_SLASH_FALLBACK_SECTIONED: SlashCommandEntry[] = await (async () => {
-  const { resolveWebuiSlashSkills, sectionWebuiSlashPalette } = await import(
-    "../slash-palette.js"
-  );
+  const { resolveWebuiSlashSkills } = await import("../slash-palette.js");
   const resolved = await resolveWebuiSlashSkills();
   return sectionWebuiSlashPalette(WEBUI_BUILTIN_COMMANDS, resolved.skills);
 })();

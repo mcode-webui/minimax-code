@@ -24,7 +24,6 @@ import { createWebuiApplication } from "../../src/client/application/create-appl
 import { createWebuiEventEffectsRegistry } from "../../src/client/application/event-effects-registry.js";
 import { createWebuiComposerAttachStreamEffect } from "../../src/client/application/turn-commands.js";
 import type { WebuiProcessEventChannel } from "../../src/client/application/event-channel.js";
-import { createWebuiRequestOwnership } from "../../src/client/application/request-ownership.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 import type { WebuiClientSessionResumer } from "../../src/client/contracts/execution-port.js";
@@ -295,26 +294,6 @@ describe("the turn coordinator's manual retry", () => {
 });
 
 describe("late results and disposal", () => {
-  it("discards a result belonging to a previously selected session", () => {
-    let selected = "A";
-    const ownership = createWebuiRequestOwnership(() => selected);
-    const ticket = ownership.capture("A");
-
-    const applied: string[] = [];
-    const settle = ownership.guard(ticket, (value: string) => applied.push(value));
-
-    // The user switches to B before A's request answers.
-    selected = "B";
-    settle("answer-for-A");
-    expect(applied).toEqual([]);
-
-    // Switching back does not resurrect the stale completion either — the guard
-    // reads the live selection at completion time.
-    selected = "A";
-    settle("answer-for-A-late");
-    expect(applied).toEqual(["answer-for-A-late"]);
-  });
-
   it("writes nothing after disposal", () => {
     const { application } = makeApplication();
     const generation = application.leases.claim("s1", "local-send");

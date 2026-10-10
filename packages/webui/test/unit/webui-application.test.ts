@@ -379,10 +379,16 @@ describe("stage 4 — the four call sites' handling through the coordinator", ()
 
   it("re-reads interaction, questionnaire and goal through the registered effects", () => {
     const registry = createWebuiEventEffectsRegistry();
+    const invalidatePending = vi.fn();
     const refreshPending = vi.fn();
     const refreshGoal = vi.fn();
     const setGoal = vi.fn();
-    registry.register("s1", { refreshPending, refreshGoal, setGoal });
+    registry.register("s1", {
+      invalidatePending,
+      refreshPending,
+      refreshGoal,
+      setGoal,
+    });
     const fake = makeChannel();
     createWebuiApplication({
       openEventChannel: () => fake.channel,
@@ -391,6 +397,7 @@ describe("stage 4 — the four call sites' handling through the coordinator", ()
     });
 
     fake.emit(event("session.queue.updated", { sessionId: "s1" }));
+    expect(invalidatePending).toHaveBeenCalledWith("s1");
     expect(refreshPending).toHaveBeenCalledWith("s1");
 
     fake.emit(

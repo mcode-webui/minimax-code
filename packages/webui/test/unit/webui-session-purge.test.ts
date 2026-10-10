@@ -6,8 +6,10 @@
 //      command surface used to hand components `updateStream((current) => next)`
 //      plus `updatePermissions` / `updateQuestionnaire`, so a component could
 //      rewrite any field of the slice and walk around the generation fence the
-//      owner applies. The stream's open-ended writes now come back only as an
-//      already-fenced sink, and the un-narrowed updaters are gone.
+//      owner applies. The un-narrowed updaters are gone, and so is the sink
+//      factory: the lease is minted inside the binding that owns the store
+//      writer, which composes it into the attach/send intents a component
+//      submits.
 //
 //   2. **A delete left state behind.** Removing a session dropped its catalog
 //      entity and nothing else: the session record, its activity entry (unread
@@ -44,6 +46,8 @@ import {
   type WebuiStreamState,
 } from "../../src/client/projection/stream-state.js";
 import type { WebuiStreamLoopExtra } from "../../src/client/mechanisms/stream-loop.js";
+import { buildWebuiStreamLoopSink } from "../../src/client/mechanisms/stream-loop.js";
+import { streamStateBundle } from "../../src/client/application/stream-state-bundle.js";
 import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiClientSession } from "../../src/client/contracts/session-view.js";
 import type { WebuiSessionListItem } from "../../src/shared/contracts/session.js";
@@ -66,6 +70,15 @@ function streamCell() {
     state = update(state);
   };
   return { setStream, get: () => state };
+}
+
+/**
+ * The attempt's sink, built the way its owner builds it. The command surface no
+ * longer hands one out — minting a lease is the binding's job, not a component's
+ * — so the lease tests drive the mechanism over the same `setStream`.
+ */
+function openSink(cell: ReturnType<typeof streamCell>) {
+  return buildWebuiStreamLoopSink(cell.setStream, streamStateBundle);
 }
 
 const frame: WebuiStreamFrame = {
@@ -348,6 +361,49 @@ describe("R7 · the archived-list delete fence", () => {
     return workflows.getArchivedSnapshot().sessions.map((session) => session.sessionId);
   }
 
+  it("drops the deleted row while the reload is still in flight", async () => {
+    // The reload keeps the current sessions while it is `loading`, so without a
+    // commit-time filter the row the user just deleted stays on screen — and
+    // stays clickable — until the reply lands.
+    const store = createWebuiSessionStore();
+    let calls = 0;
+    let releaseReload: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;
+    let reloadStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      reloadStarted = resolve;
+    });
+    const listArchivedSessions = () => {
+      calls += 1;
+      if (calls === 1)
+        return Promise.resolve({ sessions: [archivedItem("keep"), archivedItem("deleted")] });
+      reloadStarted?.();
+      return new Promise<{ sessions: WebuiSessionListItem[] }>((resolve) => {
+        releaseReload = resolve;
+      });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+    await workflows.loadArchived();
+    expect(archivedIds(workflows)).toEqual(["keep", "deleted"]);
+
+    const reload = workflows.removeArchived("deleted");
+    await started;
+
+    expect(workflows.getArchivedSnapshot().status).toBe("loading");
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+
+    // A reply that still names the deleted session cannot bring the row back.
+    releaseReload?.({ sessions: [archivedItem("keep"), archivedItem("deleted")] });
+    await reload;
+
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+  });
+
   it("keeps a deleted session out of an archived page that lands after the delete", async () => {
     const store = createWebuiSessionStore();
     let release: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;
@@ -495,8 +551,15 @@ describe("R7 · the command surface carries no raw writer", () => {
     expect(Object.keys(interaction)).not.toContain("updatePermissions");
     expect(Object.keys(interaction)).not.toContain("updateQuestionnaire");
 
-    // What replaces it is a factory for the owner's fenced sink, not a setter.
-    expect(typeof commands.createStreamSink).toBe("function");
+    // ...and the lease itself is not on the surface either. A sink factory here
+    // let a component mint a fresh generation at will and take the lease from a
+    // newer turn; opening a turn's stream now belongs to the binding that owns
+    // the store writer (plan §7.2 `:555`, §7.6 `:583`).
+    expect(Object.keys(commands)).not.toContain("createStreamSink");
+    expect(Object.keys(commands)).not.toContain("createSink");
+    expect(
+      Object.values(commands).filter((value) => typeof value === "function"),
+    ).toHaveLength(Object.keys(commands).length);
   });
 
   it("hands out a sink whose writes the owner fences by generation", () => {
@@ -505,8 +568,8 @@ describe("R7 · the command surface carries no raw writer", () => {
       setStream: cell.setStream,
       setSending: () => undefined,
     });
-    const superseded = commands.createStreamSink();
-    const current = commands.createStreamSink();
+    const superseded = openSink(cell);
+    const current = openSink(cell);
     // A loop sink always owns the claim; the assertion documents that the
     // fence is part of the sink rather than something the caller adds.
     expect(superseded.claimSubscription).toBeDefined();
@@ -527,7 +590,7 @@ describe("R7 · the command surface carries no raw writer", () => {
       setStream: cell.setStream,
       setSending: () => undefined,
     });
-    const sink = commands.createStreamSink();
+    const sink = openSink(cell);
     const generation = sink.claimSubscription?.("local-send");
     expect(cell.get().subscription).toBeDefined();
 
@@ -547,9 +610,9 @@ describe("R7 · the command surface carries no raw writer", () => {
     // Two turns: `stale` opens first, `current` replaces it. That is the normal
     // way a superseded sink ends up alive — the loop for the old turn has not
     // finished when the newer one claims.
-    const stale = commands.createStreamSink();
+    const stale = openSink(cell);
     const staleGeneration = stale.claimSubscription?.("local-send");
-    const current = commands.createStreamSink();
+    const current = openSink(cell);
     const currentGeneration = current.claimSubscription?.("recovered");
     expect(cell.get().lastClaimedGeneration).toBe(currentGeneration);
 
@@ -576,7 +639,7 @@ describe("R7 · the command surface carries no raw writer", () => {
       setStream: cell.setStream,
       setSending: () => undefined,
     });
-    const sink = commands.createStreamSink();
+    const sink = openSink(cell);
     const generation = sink.claimSubscription?.("local-send");
 
     // The seed fields the attach path needs still land.

@@ -264,6 +264,20 @@ export function createWebuiSessionWorkflows(deps: {
       : sessions.filter((session) => !removedSessionIds.has(session.sessionId));
 
   /**
+   * The archived list's visible half of the delete. `loadArchived` keeps the
+   * current sessions while it is `loading` (only the status changes), so a row
+   * deleted from the archived page would stay on screen — and stay clickable —
+   * until the reply lands. Dropping it at delete-commit time keeps the rendered
+   * list from naming a session the server no longer has.
+   */
+  const dropRemovedArchivedRows = (): void => {
+    if (archived.status === "idle") return;
+    const sessions = dropRemovedArchived(archived.sessions);
+    if (sessions.length === archived.sessions.length) return;
+    setArchived({ ...archived, sessions });
+  };
+
+  /**
    * The one write path into the catalog. Composing the fence here rather than
    * at each call site is what makes "a removed session stays removed" a
    * property of the workflow instead of a rule each new load has to remember.
@@ -373,6 +387,7 @@ export function createWebuiSessionWorkflows(deps: {
       store.purgeSession(sessionId);
       composer?.purgeSlot(sessionId);
       commitCatalog((current) => removeWebuiCatalogSessions(current, [sessionId]));
+      dropRemovedArchivedRows();
       await refresh();
       if (archived.status !== "idle") await loadArchived();
     },
@@ -394,6 +409,7 @@ export function createWebuiSessionWorkflows(deps: {
       store.purgeSession(sessionId);
       composer?.purgeSlot(sessionId);
       commitCatalog((current) => removeWebuiCatalogSessions(current, [sessionId]));
+      dropRemovedArchivedRows();
       await loadArchived();
     },
     unarchive: async (sessionId) => {

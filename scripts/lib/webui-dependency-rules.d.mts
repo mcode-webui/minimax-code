@@ -149,6 +149,7 @@ export interface GraphCallSite {
   readonly method: string;
   readonly receiver: string;
   readonly methodSource: string;
+  readonly declaringInterface: string;
 }
 
 export interface DependencyGraph {

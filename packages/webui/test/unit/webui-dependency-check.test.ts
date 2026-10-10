@@ -542,6 +542,32 @@ describe("baseline comparison", () => {
     expect(compareBaseline([violation, invented], [entry as NonNullable<typeof entry>]).newViolations)
       .toHaveLength(1);
   });
+
+  it("counts a pair's occurrences from a definite base, so the entry survives a JSON round trip", () => {
+    // The count used to accumulate onto an absent field: `undefined + 1` is
+    // NaN, every later occurrence kept it NaN, and `JSON.stringify(NaN)` writes
+    // `null` — so a persisted entry never round-tripped, and any equality-based
+    // reader saw a field that kept changing.
+    const violation = (line: number) => ({
+      kind: "direction" as const,
+      from: "client/application/app.ts",
+      to: "client/components/Widget.tsx",
+      line,
+      referenceKind: "import",
+      layerFrom: ["application"],
+      layerTo: ["bindings"],
+      rule: "application -> bindings",
+      category: "projection-to-components",
+      detail: "",
+    });
+
+    expect(toBaselineShape([violation(1)])[0]?.occurrences).toBe(1);
+    expect(toBaselineShape([violation(1), violation(2)])[0]?.occurrences).toBe(2);
+
+    const [entry] = toBaselineShape([violation(1), violation(2), violation(3)]);
+    expect(entry?.occurrences).toBe(3);
+    expect(JSON.parse(JSON.stringify(entry))).toEqual(entry);
+  });
 });
 
 // The declaration file is the contract every consumer of these rules compiles

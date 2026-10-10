@@ -255,6 +255,13 @@ export interface BaselineEntry {
   readonly category: string;
   readonly stage: number;
   readonly reason: string;
+  /**
+   * How many reference occurrences the pair had, set by {@link toBaselineShape}
+   * when it collapses measured violations to one entry per pair. Optional
+   * because the repository's frozen baseline entries do not carry it: they were
+   * authored as the comparison input, which never reads this field.
+   */
+  readonly occurrences?: number;
 }
 
 export interface BaselineComparison {

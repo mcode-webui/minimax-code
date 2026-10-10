@@ -1301,6 +1301,17 @@ export function compareBaseline(violations, entries) {
  * Collapses measured direction violations to one representative per file pair
  * (occurrence counts are kept), which is the granularity of the baseline.
  *
+ * `occurrences` starts at 1 on the entry that represents the pair and is
+ * incremented for every further violation of it. The base is set here, at the
+ * single insertion point, rather than derived from whatever the entry already
+ * held: `undefined + 1` is `NaN`, `NaN + 1` stays `NaN`, and `NaN` has no JSON
+ * form (`JSON.stringify` writes `null`), so an entry built that way could never
+ * survive a round trip and any equality-based reader saw a field that kept
+ * changing. No coalescing fallback (`Number(x) || 0`, `?? 0`) is needed for the
+ * same reason it would be harmful: it would turn "an entry was inserted without
+ * the count" — a programming error this single insertion point rules out — into
+ * a silently wrong number rather than a visible one.
+ *
  * @param {Array<object>} violations
  * @returns {Array<object>}
  */
@@ -1323,6 +1334,7 @@ export function toBaselineShape(violations) {
       category: violation.category,
       stage: category.stage,
       reason: category.description,
+      occurrences: 1,
     });
   }
   return [...byPair.values()].sort((a, b) =>

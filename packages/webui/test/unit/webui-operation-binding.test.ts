@@ -19,7 +19,7 @@ import {
   createBindingEntries,
   executeBinding,
 } from "../../src/server/operation/bind-handlers.js";
-import { archiveSessionOperation } from "../../src/server/operation/provider.js";
+import { archiveSessionOperation } from "../../src/server/operation/session.js";
 import { getSigninPanelOperation } from "../../src/server/operation/account.js";
 import { getUsageQuotaOperation } from "../../src/server/operation/account.js";
 import { getPermissionModeOperation } from "../../src/server/operation/permission-mode.js";

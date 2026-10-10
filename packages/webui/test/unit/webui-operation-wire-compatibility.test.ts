@@ -9,11 +9,8 @@
 // the contract. Capability calls (port and terminal) and their arguments are
 // compared too.
 //
-// The old handlers live in `./webui-legacy-operation-handlers.ts`: the deleted
-// `server/operation/operation-handlers.ts` survives only as the "old" side of
-// this comparison (plan §7.7 sanctions exactly that test-only parallelism).
-// The new side is the production registry built by `operations.ts`, so all 99
-// operations — the 86 bindings and the 13 dedicated handlers — are compared.
+// The old handlers and accepted-request corpus are independent fixtures from
+// the pre-refactor path; this old side does not borrow production descriptors.
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
@@ -21,10 +18,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { WebSocket } from "ws";
 
-import { WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
+import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
 import type { WebuiHarnessPort } from "../../src/runtime/port.js";
 import type { WebuiTerminalManager } from "../../src/server/terminal.js";
 import type {
+  WebuiOperation,
   WebuiOperationHandler,
   WebuiOperationRegistryEntry,
 } from "../../src/server/operation/operation-contract.js";
@@ -139,22 +137,35 @@ function recordingTerminal(): RecordingTerminal {
 }
 
 /**
- * The "old" registry: the legacy handler map paired with the (unchanged)
- * operation descriptors. Pairing with the production descriptors isolates the
- * comparison to the handler implementations, which is exactly what changed.
+ * Independent legacy oracle assembled from the copied pre-refactor handlers
+ * and the frozen protocol request fixtures below.
  */
 function legacyRegistry(
   port: WebuiHarnessPort,
   terminal: WebuiTerminalManager,
 ): ReadonlyMap<string, WebuiOperationRegistryEntry> {
-  const descriptors = createOperationRegistry(port, terminal);
   const handlers = createLegacyOperationHandlers(port, terminal);
   const registry = new Map<string, WebuiOperationRegistryEntry>();
   for (const [name, handle] of Object.entries(handlers)) {
-    const source = descriptors.get(name);
-    if (!source) throw new Error(`legacy oracle is missing a descriptor for ${name}`);
+    const operation: WebuiOperation<unknown, unknown> = {
+      name,
+      ...(name === "watchEvents" ? { acknowledgesStream: true } : {}),
+      validate(body) {
+        if (name === "archiveSession") {
+          if (body === null || typeof body !== "object" || Array.isArray(body))
+            return { ok: false, code: WebuiErrorCode.invalidBody, message: "archiveSession body must be an object" };
+          const record = body as Record<string, unknown>;
+          if (typeof record.id !== "string" || !record.id.trim())
+            return { ok: false, code: WebuiErrorCode.invalidBody, message: "archiveSession body requires a non-empty id" };
+          return { ok: true, body: { id: record.id.trim(), ...(typeof record.archived === "boolean" ? { archived: record.archived } : {}) } };
+        }
+        if (name === "getAgentMemory" || name === "setAgentMemory")
+          return { ok: true, body: { ...(body as Record<string, unknown>), agentName: "mavis" } };
+        return { ok: true, body };
+      },
+    };
     registry.set(name, {
-      operation: source.operation,
+      operation,
       handle: handle as WebuiOperationHandler<unknown>,
     });
   }
@@ -406,6 +417,30 @@ describe("WebUI operation wire compatibility (old handlers vs typed bindings)", 
     assert.ok((oldSocket.sent[0] ?? "").includes("session diff is unavailable"));
   });
 
+  it("preserves ordinary capability errors and missing-capability failures", async () => {
+    const makePort = (missing: boolean): WebuiHarnessPort =>
+      new Proxy({}, {
+        get(_target, key) {
+          if (key === "getSessionDiff") return missing
+            ? undefined
+            : () => Promise.reject(new Error("ordinary lookup failure"));
+          if (key === "watchEvents") return () => emptyStream();
+          if (key === "sendMessage" || key === "resumeSession")
+            return () => Promise.resolve({ ok: true, source: emptyStream() });
+          return () => Promise.resolve({});
+        },
+      }) as unknown as WebuiHarnessPort;
+    for (const missing of [false, true]) {
+      const frame = requestFrame("getSessionDiff", { id: "s1" });
+      const oldSocket = recordingSocket();
+      const newSocket = recordingSocket();
+      await run(legacyRegistry(makePort(missing), recordingTerminal().terminal), frame, oldSocket);
+      await run(createOperationRegistry(makePort(missing), recordingTerminal().terminal), frame, newSocket);
+      assert.ok(Buffer.from(oldSocket.sent[0] ?? "", "utf8").equals(Buffer.from(newSocket.sent[0] ?? "", "utf8")));
+      assert.ok((oldSocket.sent[0] ?? "").includes(missing ? "harness_error" : "ordinary lookup failure"));
+    }
+  });
+
   it("matches multiple stream frames, failures, and generator finalization counts byte-for-byte", async () => {
     const oldFinalized = { count: 0 };
     const newFinalized = { count: 0 };
@@ -478,5 +513,51 @@ describe("WebUI operation wire compatibility (old handlers vs typed bindings)", 
     await Promise.all([oldRun, newRun]);
     expect(oldFinalized.count).toBe(1);
     expect(newFinalized.count).toBe(1);
+  });
+
+  it("finalizes once when a socket-close abort arrives after the first stream frame", async () => {
+    const runClose = async (kind: "old" | "new") => {
+      const controller = new AbortController();
+      const finalized = { count: 0 };
+      const port = new Proxy({}, {
+        get(_target, key) {
+          if (key === "sendMessage") return () => Promise.resolve({
+            ok: true,
+            source: {
+              [Symbol.asyncIterator]() {
+                let emitted = false;
+                return {
+                  next: () => emitted
+                    ? new Promise<IteratorResult<unknown>>(() => {})
+                    : (emitted = true, Promise.resolve({ done: false as const, value: { chunk: "first" } })),
+                  return: async () => {
+                    finalized.count += 1;
+                    return { done: true, value: undefined };
+                  },
+                };
+              },
+            },
+          });
+          if (key === "watchEvents") return () => emptyStream();
+          if (key === "resumeSession") return () => Promise.resolve({ ok: true, source: emptyStream() });
+          return () => Promise.resolve({});
+        },
+      }) as unknown as WebuiHarnessPort;
+      const terminal = recordingTerminal().terminal;
+      const operations = kind === "old" ? legacyRegistry(port, terminal) : createOperationRegistry(port, terminal);
+      const socket = recordingSocket();
+      const send = socket.send;
+      socket.send = (payload) => {
+        send(payload);
+        if (payload.includes('"kind":"event"')) controller.abort();
+      };
+      await run(operations, requestFrame("sendMessage", VALID_BODIES.sendMessage), socket, () => controller.signal);
+      return { sent: socket.sent, finalized: finalized.count };
+    };
+    const old = await runClose("old");
+    const current = await runClose("new");
+    assert.ok(Buffer.from(JSON.stringify(old.sent), "utf8").equals(Buffer.from(JSON.stringify(current.sent), "utf8")));
+    expect(old.finalized).toBe(1);
+    expect(current.finalized).toBe(1);
   });
 });

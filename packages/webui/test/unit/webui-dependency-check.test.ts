@@ -545,6 +545,24 @@ describe("the ambient-member rule", () => {
       body: "export const s = globalThis.window.localStorage;\n",
       names: ["globalThis", "localStorage"],
     },
+    {
+      label: "a nested pattern reading window.localStorage off globalThis",
+      file: "client/components/Widget.tsx",
+      body: "const { window: { localStorage } } = globalThis;\nexport const s = localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "an assignment pattern reading window.localStorage",
+      file: "client/components/Widget.tsx",
+      body: "let s: Storage;\n({ localStorage: s } = window);\nexport const read = (): Storage => s;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "a template element access of window.localStorage",
+      file: "client/components/Widget.tsx",
+      body: "export const s = window[`localStorage`];\n",
+      names: ["localStorage"],
+    },
   ];
 
   for (const row of rows) {
@@ -556,6 +574,20 @@ describe("the ambient-member rule", () => {
       expect(result.pass).toBe(false);
     });
   }
+
+  it("keeps a local name that merely matches a restricted member", () => {
+    // `window.name` is a string: the pattern reads the `name` property and only
+    // *binds* it to a local called `localStorage`, so neither the pattern nor the
+    // local reads the storage capability.
+    const { result } = evaluateFixture({
+      "client/components/Widget.tsx":
+        "const { name: localStorage } = window;\nexport const read = (): string => localStorage;\n",
+      "client/components/Other.tsx":
+        "let sessionStorage: string | undefined;\n({ name: sessionStorage } = globalThis);\nexport const read = (): string | undefined => sessionStorage;\n",
+    });
+    expect(result.browserGlobals).toHaveLength(0);
+    expect(result.pass).toBe(true);
+  });
 
   it("keeps every legitimate base-object access, including the IO owner's", () => {
     // The anchors: the storage adapter's own ambient read, the composition
@@ -866,6 +898,80 @@ describe("the capability-call rule", () => {
       file: "client/mechanisms/stream-loop.ts",
       target: "WebuiSessionStore.createSessionWriter",
     });
+  });
+
+  // A capability method can be invoked without ever writing a property access.
+  // The rule resolves the *invoked method's declaration*, so the form the call
+  // was written in does not matter, and neither does the name of whatever the
+  // caller held the method through.
+  const portContract =
+    "export interface SessionPort { deleteSession(id: string): Promise<void> }\n";
+  const portCaller = (body: string, header = "") =>
+    'import type { SessionPort } from "../contracts/session-port.js";\n' +
+    `${header}export function use(port: SessionPort): Promise<void> {\n  ${body}\n}\n`;
+  const invocationForms: ReadonlyArray<{ readonly label: string; readonly body: string }> = [
+    { label: "an element access", body: 'return port["deleteSession"]("x");' },
+    {
+      label: "a destructured binding",
+      body: 'const { deleteSession } = port;\n  return deleteSession("x");',
+    },
+    {
+      label: "a renamed destructured binding",
+      body: 'const { deleteSession: drop } = port;\n  return drop("x");',
+    },
+    {
+      label: "a variable assigned the method",
+      body: 'const drop = port.deleteSession;\n  return drop("x");',
+    },
+  ];
+
+  for (const form of invocationForms) {
+    it(`rejects a capability call through ${form.label}`, () => {
+      const { result } = evaluateFixture({
+        "client/contracts/session-port.ts": portContract,
+        "client/projection/probe.ts": portCaller(form.body),
+      });
+      expect(result.forbiddenCalls).toHaveLength(1);
+      expect(result.forbiddenCalls[0]).toMatchObject({
+        file: "client/projection/probe.ts",
+        target: "SessionPort.deleteSession",
+      });
+      expect(result.pass).toBe(false);
+    });
+  }
+
+  it("rejects a capability call through a Pick alias of the port", () => {
+    const { result } = evaluateFixture({
+      "client/contracts/session-port.ts": portContract,
+      "client/projection/probe.ts":
+        'import type { SessionPort } from "../contracts/session-port.js";\n' +
+        'type Commands = Pick<SessionPort, "deleteSession">;\n' +
+        'export function use(commands: Commands): Promise<void> {\n' +
+        '  return commands.deleteSession("x");\n}\n',
+    });
+    // The holder is called `Commands`, so only the declaration the property
+    // resolves to can name the capability the call belongs to.
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      file: "client/projection/probe.ts",
+      target: "SessionPort.deleteSession",
+    });
+  });
+
+  it("keeps a same-named local function and an indexed lookup out of the rule", () => {
+    // Resolving identifier calls must not turn every call named like a
+    // capability method into a violation: a local function has no capability
+    // declaration behind it, and an index signature has no member to resolve.
+    const { result } = evaluateFixture({
+      "client/components/Widget.tsx":
+        'function deleteSession(id: string): void {\n  void id;\n}\n' +
+        'export function use(): void {\n  deleteSession("x");\n}\n',
+      "client/components/Table.tsx":
+        'const handlers: Record<string, () => void> = { deleteSession: () => {} };\n' +
+        'export function use(): void {\n  handlers["deleteSession"]();\n}\n',
+    });
+    expect(result.forbiddenCalls).toHaveLength(0);
+    expect(result.pass).toBe(true);
   });
 });
 

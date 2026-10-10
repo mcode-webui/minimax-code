@@ -564,7 +564,11 @@ export function collectModuleReferences(fileName, sourceText) {
       });
     }
     collectAmbientCandidate(node, browserGlobalCandidates, lineOf);
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+    if (ts.isCallExpression(node) && (ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression) || ts.isIdentifier(node.expression))) {
+      // Three callee shapes are recorded, because a capability method can be
+      // invoked through any of them: `port.m(...)`, `port["m"](...)` and a
+      // binding or variable the caller took the method into (`const { m } = port`).
+      // The program pass decides which ones actually name a capability method.
       callCandidates.push({
         line: lineOf(node),
         position: node.getStart(sourceFile),
@@ -602,7 +606,7 @@ function collectAmbientCandidate(node, out, lineOf) {
   if (
     ts.isElementAccessExpression(node) &&
     node.argumentExpression &&
-    ts.isStringLiteral(node.argumentExpression) &&
+    isMemberKeyLiteral(node.argumentExpression) &&
     RESTRICTED_AMBIENT_MEMBERS.has(node.argumentExpression.text)
   ) {
     out.push({
@@ -614,7 +618,7 @@ function collectAmbientCandidate(node, out, lineOf) {
     return;
   }
   if (!ts.isIdentifier(node)) return;
-  if (restrictedMemberPosition(node)) {
+  if (restrictedMemberKeyPosition(node)) {
     out.push({ name: node.text, line: lineOf(node), position: node.getStart(), access: "member" });
     return;
   }
@@ -624,20 +628,121 @@ function collectAmbientCandidate(node, out, lineOf) {
 }
 
 /**
- * True when the identifier names a restricted member rather than reading a
- * value: the property of a property access, or a binding of an object pattern
- * (shorthand `{ localStorage }` or renamed `{ localStorage: ls }`). The
- * identifier's own symbol is a property name or a local binding in both cases,
- * which is why the member resolution cannot start from it.
+ * True when the identifier names a restricted member as the **source key** of an
+ * access, rather than reading a value:
+ *
+ *   * the property of a property access (`window.localStorage`);
+ *   * the source key of an object pattern element (`{ localStorage }`,
+ *     `{ localStorage: ls }`, and the same shapes nested inside another pattern);
+ *   * the source key of an assignment pattern's element
+ *     (`({ localStorage: s } = window)`).
+ *
+ * Source key, not local name: `const { name: localStorage } = window` reads
+ * `window.name` and only *binds* it to a local called `localStorage`, so the
+ * local name alone never makes an access restricted. The identifier's own symbol
+ * is a property name or a local binding in every one of these shapes, which is
+ * why the member resolution cannot start from it.
  */
-function restrictedMemberPosition(node) {
-  if (!RESTRICTED_AMBIENT_MEMBERS.has(node.text)) return false;
+function restrictedMemberKeyPosition(node) {
   const parent = node.parent;
   if (!parent) return false;
-  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return true;
-  if (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node))
-    return true;
-  return false;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node)
+    return RESTRICTED_AMBIENT_MEMBERS.has(node.text);
+  if (!isPatternElement(parent)) return false;
+  const key = sourceKeyOf(parent);
+  if (!key || key.node !== node || !RESTRICTED_AMBIENT_MEMBERS.has(node.text)) return false;
+  // An object *literal* names its own properties; only a pattern that reads from
+  // an object is an access. `({ localStorage: s } = window)` is a pattern,
+  // `{ localStorage: s }` on its own is not.
+  if (ts.isPropertyAssignment(parent) || ts.isShorthandPropertyAssignment(parent))
+    return isAssignmentPatternKey(node);
+  return true;
+}
+
+/** A node that names a property inside an object pattern or assignment pattern. */
+function isPatternElement(node) {
+  return (
+    ts.isBindingElement(node) ||
+    ts.isPropertyAssignment(node) ||
+    ts.isShorthandPropertyAssignment(node)
+  );
+}
+
+/** A string-like key: `x`, `"x"` or `` `x` ``. */
+function keyOf(name) {
+  if (!name) return undefined;
+  if (ts.isIdentifier(name)) return { text: name.text, node: name };
+  if (isMemberKeyLiteral(name)) return { text: name.text, node: name };
+  return undefined;
+}
+
+/**
+ * The **source** key of a pattern element — what the pattern reads off the
+ * object, which is the property name when the element renames its binding
+ * (`{ name: localStorage }` reads `name`) and the shorthand name otherwise.
+ */
+function sourceKeyOf(element) {
+  if (ts.isBindingElement(element))
+    return element.propertyName ? keyOf(element.propertyName) : keyOf(element.name);
+  return keyOf(element.name);
+}
+
+/**
+ * True when the enclosing object literal is the target of an assignment
+ * (`({ localStorage: s } = window)`), so its elements read properties instead of
+ * building an object.
+ */
+function isAssignmentPatternKey(node) {
+  let current = node;
+  while (current.parent && (isPatternElement(current.parent) || ts.isObjectLiteralExpression(current.parent)))
+    current = current.parent;
+  let outer = current.parent;
+  if (outer && ts.isParenthesizedExpression(outer)) outer = outer.parent;
+  return Boolean(
+    outer &&
+      ts.isBinaryExpression(outer) &&
+      outer.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      outer.left === current,
+  );
+}
+
+/**
+ * The property path a pattern element reads and the expression it reads from:
+ * `{ window: { localStorage } } = globalThis` is `["window", "localStorage"]`
+ * read from `globalThis`. Returns `undefined` for a shape that is not a
+ * destructuring of some expression, so an element can never be judged against a
+ * path the checker cannot follow.
+ */
+function destructuredMemberPath(keyNode) {
+  const keys = [];
+  let element = keyNode.parent;
+  while (element && isPatternElement(element)) {
+    const key = sourceKeyOf(element);
+    if (!key) return undefined;
+    keys.unshift(key.text);
+    const pattern = element.parent;
+    if (!pattern) return undefined;
+    const outer = pattern.parent;
+    if (!outer) return undefined;
+    if (ts.isVariableDeclaration(outer))
+      return outer.initializer ? { keys, source: outer.initializer } : undefined;
+    if (ts.isBinaryExpression(outer) && outer.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+      return { keys, source: outer.right };
+    if (ts.isParenthesizedExpression(outer)) {
+      const assignment = outer.parent;
+      if (assignment && ts.isBinaryExpression(assignment) && assignment.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+        return { keys, source: assignment.right };
+      return undefined;
+    }
+    if (!isPatternElement(outer)) return undefined;
+    element = outer;
+  }
+  return undefined;
+}
+
+/** A key literal: `"localStorage"` or the no-substitution template `` `localStorage` ``. */
+function isMemberKeyLiteral(node) {
+  return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
 }
 
 function isDeclarationOrPropertyName(node) {
@@ -883,12 +988,37 @@ function ambientMemberSymbol(node, checker) {
     return propertyOf(parent.expression, node.text, checker);
   if (ts.isElementAccessExpression(parent) && parent.argumentExpression === node)
     return propertyOf(parent.expression, node.text, checker);
-  if (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node)) {
-    const declaration = bindingDeclaration(parent);
-    if (!declaration || !declaration.initializer) return undefined;
-    return propertyOf(declaration.initializer, node.text, checker);
+  if (isPatternElement(parent) && sourceKeyOf(parent)?.node === node) {
+    const path = destructuredMemberPath(node);
+    if (!path) return undefined;
+    return propertyAlongPath(path, checker);
   }
   return undefined;
+}
+
+/**
+ * The property `path.keys` names, starting from the type of `path.source`. Each
+ * step is a `getPropertyOfType` on the previous step's type, so a nested pattern
+ * (`{ window: { localStorage } } = globalThis`) resolves through `window` to the
+ * `localStorage` declared in `lib.dom.d.ts` rather than stopping at the outer
+ * key. The returned symbol is the member itself, which is what the caller's lib
+ * check needs.
+ */
+function propertyAlongPath(path, checker) {
+  let symbol = checker.getPropertyOfType(
+    checker.getTypeAtLocation(path.source),
+    path.keys[0],
+  );
+  for (const key of path.keys.slice(1)) {
+    if (!symbol) return undefined;
+    const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+    if (!declaration) return undefined;
+    symbol = checker.getPropertyOfType(
+      checker.getTypeOfSymbolAtLocation(symbol, declaration),
+      key,
+    );
+  }
+  return symbol ?? undefined;
 }
 
 /** The property `name` of `expression`'s declared type, if it has one. */
@@ -896,12 +1026,95 @@ function propertyOf(expression, name, checker) {
   return checker.getPropertyOfType(checker.getTypeAtLocation(expression), name) ?? undefined;
 }
 
-/** The variable declaration an object binding's element destructures. */
-function bindingDeclaration(bindingElement) {
-  const pattern = bindingElement.parent;
-  if (!pattern || !ts.isObjectBindingPattern(pattern)) return undefined;
-  const declaration = pattern.parent;
-  return declaration && ts.isVariableDeclaration(declaration) ? declaration : undefined;
+/**
+ * The capability method a call invokes, resolved to the *declaration* rather
+ * than to whatever the caller happens to hold:
+ *
+ *   * `port.m(...)` — the property-access name;
+ *   * `port["m"](...)` — the element-access key;
+ *   * `const { m } = port; m(...)` and `const f = port.m; f(...)` — the binding's
+ *     source key or the variable's initializer, resolved through the pattern's
+ *     source expression.
+ *
+ * Resolving the method symbol is what makes an alias work: a
+ * `Pick<SessionPort, "deleteSession">` holder has the same property symbol as
+ * `SessionPort`, so the declaration still names the interface the method belongs
+ * to however the caller reached it. Identifier callees that name no capability
+ * member (local functions, imports) resolve to no member and are skipped.
+ */
+function invokedMemberOf(callee, checker) {
+  if (ts.isPropertyAccessExpression(callee)) {
+    return {
+      name: callee.name.text,
+      symbol: checker.getSymbolAtLocation(callee.name),
+      receiver: callee.expression,
+    };
+  }
+  if (
+    ts.isElementAccessExpression(callee) &&
+    callee.argumentExpression &&
+    isMemberKeyLiteral(callee.argumentExpression)
+  ) {
+    const name = callee.argumentExpression.text;
+    return {
+      name,
+      symbol: propertyOf(callee.expression, name, checker),
+      receiver: callee.expression,
+    };
+  }
+  if (ts.isIdentifier(callee)) return boundMemberOf(callee, checker);
+  return undefined;
+}
+
+/**
+ * Resolves the capability member a bare identifier call invokes. It has to be a
+ * member the caller took out of a capability object — by destructuring
+ * (`const { deleteSession } = port`) or by assignment into a variable
+ * (`const drop = port.deleteSession`). Anything else (a local function, an
+ * import) has no capability member behind it, and no receiver to name.
+ */
+function boundMemberOf(identifier, checker) {
+  const symbol = checker.getSymbolAtLocation(identifier);
+  const declaration = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+  if (!declaration) return undefined;
+  if (isPatternElement(declaration)) {
+    const key = sourceKeyOf(declaration);
+    const path = key ? destructuredMemberPath(key.node) : undefined;
+    if (!path) return undefined;
+    const member = propertyAlongPath(path, checker);
+    if (!member) return undefined;
+    return { name: path.keys[path.keys.length - 1], symbol: member, receiver: path.source };
+  }
+  if (!ts.isVariableDeclaration(declaration) || !declaration.initializer) return undefined;
+  const initializer = declaration.initializer;
+  if (ts.isPropertyAccessExpression(initializer)) {
+    return {
+      name: initializer.name.text,
+      symbol: checker.getSymbolAtLocation(initializer.name),
+      receiver: initializer.expression,
+    };
+  }
+  if (
+    ts.isElementAccessExpression(initializer) &&
+    initializer.argumentExpression &&
+    isMemberKeyLiteral(initializer.argumentExpression)
+  ) {
+    const name = initializer.argumentExpression.text;
+    return { name, symbol: propertyOf(initializer.expression, name, checker), receiver: initializer.expression };
+  }
+  return undefined;
+}
+
+/**
+ * The name of the interface or class a member was declared in. Type aliases such
+ * as `Pick<T, K>` resolve their properties to the original declaration, so this
+ * names the capability interface even when the caller holds an alias.
+ */
+function declaringInterfaceName(declaration) {
+  const parent = declaration?.parent;
+  if (!parent) return "";
+  if (ts.isInterfaceDeclaration(parent) || ts.isClassDeclaration(parent)) return parent.name?.text ?? "";
+  return "";
 }
 
 /**
@@ -976,9 +1189,13 @@ function resolveAmbientFacts(sourceFiles, repositoryRoot, optionsFor, globalCand
         const visit = (node) => {
           if (match) return;
           // A restricted member can be named by a string literal
-          // (`window["localStorage"]`), so the anchor is not always an
+          // (`window["localStorage"]`) or a no-substitution template
+          // (`` window[`localStorage`] ``), so the anchor is not always an
           // identifier.
-          if (node.getStart(sourceFile) === position && (ts.isIdentifier(node) || ts.isStringLiteral(node))) {
+          if (
+            node.getStart(sourceFile) === position &&
+            (ts.isIdentifier(node) || isMemberKeyLiteral(node))
+          ) {
             match = node;
             return;
           }
@@ -1036,21 +1253,23 @@ function resolveAmbientFacts(sourceFiles, repositoryRoot, optionsFor, globalCand
           return match;
         };
         const call = findCallExpression();
-        if (!call || !ts.isPropertyAccessExpression(call.expression)) continue;
-        const propertyAccess = call.expression;
-        const methodSymbol = checker.getSymbolAtLocation(propertyAccess.name);
-        const methodName = propertyAccess.name.text;
-        const methodDeclaration = methodSymbol?.valueDeclaration ?? methodSymbol?.declarations?.[0];
+        if (!call) continue;
+        const invoked = invokedMemberOf(call.expression, checker);
+        if (!invoked) continue;
+        const methodDeclaration = invoked.symbol?.valueDeclaration ?? invoked.symbol?.declarations?.[0];
         const methodSource = methodDeclaration?.getSourceFile().fileName.replaceAll("\\", "/") ?? "";
-        const receiverType = checker.getTypeAtLocation(propertyAccess.expression);
-        const receiverSymbol = receiverType.aliasSymbol ?? receiverType.getSymbol();
+        const receiverType = invoked.receiver
+          ? checker.getTypeAtLocation(invoked.receiver)
+          : undefined;
+        const receiverSymbol = receiverType ? receiverType.aliasSymbol ?? receiverType.getSymbol() : undefined;
         const receiverName = receiverSymbol?.name ?? "";
         callSites.push({
           file: relative,
           line: sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile)).line + 1,
-          method: methodName,
+          method: invoked.name,
           receiver: receiverName,
           methodSource,
+          declaringInterface: declaringInterfaceName(methodDeclaration),
         });
       }
     }
@@ -1283,10 +1502,28 @@ const CALL_FORBIDDEN_LAYERS = new Set([
  */
 const CALL_PRESENTATION_PREFIX = "client/components/";
 
+/**
+ * The policy governing a call site. The invoked method's own declaration names
+ * the interface it belongs to, and that name is authoritative: a type alias such
+ * as `Pick<SessionPort, "deleteSession">` (or any other holder whose property
+ * resolves to the same declaration) is caught however the caller reached the
+ * method. The *receiver's* type name stays as a fallback for members the checker
+ * cannot attribute to a named interface declaration. `undefined` from the
+ * declaration path means "no opinion", never "allowed" — a `null` entry is the
+ * wildcard policy, so the two must not be collapsed.
+ */
+function forbiddenPolicyFor(site) {
+  const byDeclaration = site.declaringInterface
+    ? FORBIDDEN_RECEIVER_INTERFACES.get(site.declaringInterface)
+    : undefined;
+  if (byDeclaration !== undefined) return byDeclaration;
+  return FORBIDDEN_RECEIVER_INTERFACES.get(site.receiver);
+}
+
 function forbiddenActualCallRule(graph) {
   const violations = [];
   for (const site of graph.callSites ?? []) {
-    const allowed = FORBIDDEN_RECEIVER_INTERFACES.get(site.receiver);
+    const allowed = forbiddenPolicyFor(site);
     if (allowed === undefined) continue;
     if (allowed !== null && !allowed.has(site.method)) continue;
     const layers = classifyLayers(site.file);
@@ -1299,12 +1536,16 @@ function forbiddenActualCallRule(graph) {
     const forbiddenLayer = layers.some((layer) => CALL_FORBIDDEN_LAYERS.has(layer));
     const presentation = site.file.startsWith(CALL_PRESENTATION_PREFIX);
     if (!forbiddenLayer && !presentation) continue;
+    // Name the interface the method was declared in when that is known, so the
+    // message points at the capability contract rather than at whatever local
+    // alias the caller held it through.
+    const holder = site.declaringInterface || site.receiver || "unknown";
     violations.push({
       kind: "forbidden-call",
       file: site.file,
       line: site.line,
-      target: `${site.receiver}.${site.method}`,
-      detail: `${site.file}:${site.line}: ${layers.join("|")}${presentation ? " (presentation)" : ""} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
+      target: `${holder}.${site.method}`,
+      detail: `${site.file}:${site.line}: ${layers.join("|")}${presentation ? " (presentation)" : ""} may not invoke writer or business-RPC method "${holder}.${site.method}"`,
     });
   }
   return { pass: violations.length === 0, violations };

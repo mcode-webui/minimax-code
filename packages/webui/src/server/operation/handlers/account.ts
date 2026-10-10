@@ -6,7 +6,7 @@
 // fail on those hosts; this handler degrades to the historical
 // invalidation-only behaviour instead.
 import type { WebuiOperationPort } from "../bind-handlers.js";
-import { signOutOperation } from "../provider.js";
+import { signOutOperation } from "../account.js";
 import type {
   WebuiOperationHandler,
   WebuiOperationRegistryEntry,

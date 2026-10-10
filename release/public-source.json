@@ -3747,6 +3747,7 @@
     "packages/webui/src/server/index.ts",
     "packages/webui/src/server/mcode-tools-host.d.ts",
     "packages/webui/src/server/oauth-core.d.ts",
+    "packages/webui/src/server/operation/account.ts",
     "packages/webui/src/server/operation/agent-memory.ts",
     "packages/webui/src/server/operation/bind-handlers.ts",
     "packages/webui/src/server/operation/common.ts",

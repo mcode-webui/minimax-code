@@ -1,7 +1,7 @@
 import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import { validateSessionIdBody, validateOptionalObjectBody } from "./common.js";
-import { ABORT_SESSION_OPERATION_NAME, LIST_QUEUE_MESSAGES_OPERATION_NAME, DELETE_QUEUE_ITEM_OPERATION_NAME, LIST_MODELS_OPERATION_NAME, SELECT_MODEL_OPERATION_NAME, LIST_SKILLS_OPERATION_NAME, GET_SESSION_USAGE_OPERATION_NAME, GET_USAGE_QUOTA_OPERATION_NAME, GET_ACCOUNT_STATUS_OPERATION_NAME } from "../../shared/operation-names.js";
+import { ABORT_SESSION_OPERATION_NAME, LIST_QUEUE_MESSAGES_OPERATION_NAME, DELETE_QUEUE_ITEM_OPERATION_NAME, LIST_MODELS_OPERATION_NAME, SELECT_MODEL_OPERATION_NAME, LIST_SKILLS_OPERATION_NAME, GET_SESSION_USAGE_OPERATION_NAME } from "../../shared/operation-names.js";
 export const abortSessionOperation: WebuiOperation<
   {
     readonly id: string;
@@ -211,53 +211,4 @@ export const getSessionUsageOperation: WebuiOperation<
     validateSessionIdBody(GET_SESSION_USAGE_OPERATION_NAME, body),
 };
 
-export const getUsageQuotaOperation: WebuiOperation<
-  { readonly forceRefresh?: boolean },
-  unknown
-> = {
-  name: GET_USAGE_QUOTA_OPERATION_NAME,
-  validate: (body) => {
-    const value = validateOptionalObjectBody(GET_USAGE_QUOTA_OPERATION_NAME, body);
-    if (!value.ok) return value;
-    if (
-      value.body.forceRefresh !== undefined &&
-      typeof value.body.forceRefresh !== "boolean"
-    )
-      return {
-        ok: false,
-        code: WebuiErrorCode.invalidBody,
-        message: "forceRefresh must be a boolean",
-      };
-    return {
-      ok: true,
-      body: value.body.forceRefresh === true ? { forceRefresh: true } : {},
-    };
-  },
-};
 
-export const getAccountStatusOperation: WebuiOperation<
-  { readonly sessionId?: string },
-  Record<string, unknown>
-> = {
-  name: GET_ACCOUNT_STATUS_OPERATION_NAME,
-  validate: (body) => {
-    const value = validateOptionalObjectBody(
-      GET_ACCOUNT_STATUS_OPERATION_NAME,
-      body,
-    );
-    if (!value.ok) return value;
-    if (
-      value.body.sessionId !== undefined &&
-      typeof value.body.sessionId !== "string"
-    )
-      return {
-        ok: false,
-        code: WebuiErrorCode.invalidBody,
-        message: "sessionId must be a string",
-      };
-    return {
-      ok: true,
-      body: value.body.sessionId ? { sessionId: value.body.sessionId } : {},
-    };
-  },
-};

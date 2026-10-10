@@ -4,28 +4,28 @@ import { getMessagesOperation, getSessionDiffOperation, getTurnDiffOperation, re
 import { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoalOperation, clearGoalOperation } from "./goal.js";
 import { sendMessageOperation, enqueueMessageOperation, resumeSessionOperation } from "./interaction.js";
 import { watchEventsOperation, listPendingPermissionsOperation, getPendingQuestionnaireOperation, replyPermissionOperation, replyQuestionnaireOperation, dismissQuestionnaireOperation } from "./questionnaire.js";
-import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
+import { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation } from "./queue.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 import { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 import { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
 import { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
 import { getMemorySettingsOperation, setMemorySettingsOperation } from "./memory-settings.js";
-import { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
+import { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation } from "./provider.js";
 export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, getSessionTreeOperation, createSessionOperation, getSessionOperation, getActiveTurnOperation } from "./session.js";
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
 export { getMessagesOperation, getSessionDiffOperation, getTurnDiffOperation, revertTurnDiffOperation, reapplyTurnDiffOperation, getSessionRewindPreviewOperation, rewindSessionOperation, editSessionMessageOperation } from "./messages.js";
 export { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoalOperation, clearGoalOperation } from "./goal.js";
 export { sendMessageOperation, enqueueMessageOperation, resumeSessionOperation } from "./interaction.js";
 export { watchEventsOperation, listPendingPermissionsOperation, getPendingQuestionnaireOperation, replyPermissionOperation, replyQuestionnaireOperation, dismissQuestionnaireOperation } from "./questionnaire.js";
-export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation, getUsageQuotaOperation, getAccountStatusOperation } from "./queue.js";
+export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation } from "./queue.js";
 export { pluginManagementOperation } from "./plugin-management.js";
 export { getPermissionModeOperation, setPermissionModeOperation } from "./permission-mode.js";
 export { getGlobalInstructionsOperation, setGlobalInstructionsOperation } from "./personalization.js";
 export { getAgentMemoryOperation, setAgentMemoryOperation } from "./agent-memory.js";
 export { getUserProfileOperation, setUserProfileOperation } from "./user-profile.js";
 export { getMemorySettingsOperation, setMemorySettingsOperation } from "./memory-settings.js";
-export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation, getSigninPanelOperation, claimSigninOperation, signOutOperation, beginAccountLoginOperation, getAccountLoginStatusOperation, cancelAccountLoginOperation } from "./provider.js";
+export { archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation, listUserModelProvidersOperation, createUserModelProviderOperation, updateUserModelProviderOperation, deleteUserModelProviderOperation, testUserModelProviderOperation, testUserModelOperation, discoverUserModelsCandidateOperation, saveUserModelProviderCandidateOperation, listProviderPresetsOperation, getMiniMaxApiKeyStatusOperation, upsertMiniMaxApiKeyOperation, getCodexOAuthStatusOperation, getMiniMaxModelSourceOperation, setMiniMaxModelSourceOperation, testUserModelCandidateOperation, revealModelProviderApiKeyOperation, startCodexOAuthLoginOperation, cancelCodexOAuthLoginOperation, refreshModelsOperation, runCommandOperation } from "./provider.js";
 import {
   createBindingEntries,
   type WebuiOperationPort,
@@ -42,6 +42,26 @@ import type {
   WebuiOperationRegistration,
 } from "./operation-contract.js";
 import type { WebuiTerminalManager } from "../terminal.js";
+import {
+  getSigninPanelOperation,
+  claimSigninOperation,
+  signOutOperation,
+  beginAccountLoginOperation,
+  getAccountLoginStatusOperation,
+  cancelAccountLoginOperation,
+  getUsageQuotaOperation,
+  getAccountStatusOperation,
+} from "./account.js";
+export {
+  getSigninPanelOperation,
+  claimSigninOperation,
+  signOutOperation,
+  beginAccountLoginOperation,
+  getAccountLoginStatusOperation,
+  cancelAccountLoginOperation,
+  getUsageQuotaOperation,
+  getAccountStatusOperation,
+} from "./account.js";
 export type {
   WebuiOperation,
   WebuiOperationHandler,

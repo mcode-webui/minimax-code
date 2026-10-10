@@ -85,6 +85,19 @@ import {
 import { createWebuiSessionStore, type WebuiSessionStore } from "../../src/client/application/session-store.js";
 import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
+import type { WebuiStreamLoopSink } from "../../src/client/mechanisms/stream-loop.js";
+
+/**
+ * A sink that accepts every write. The retry path under test never opens a
+ * loop — it re-enters `submitWebuiComposerTurn` and drains before any frame —
+ * so the sink exists only to satisfy the handler bundle's shape.
+ */
+const noopSink: WebuiStreamLoopSink = {
+  applyFrame: () => undefined,
+  setPhase: () => undefined,
+  setMessages: () => undefined,
+  refuse: () => undefined,
+};
 
 const SESSION_ID = "session-retry-resend";
 const OTHER_SESSION_ID = "session-retry-resend-other";
@@ -240,7 +253,9 @@ describe("retry re-sends the recorded input and never aborts", () => {
           teamModeOff: false,
         },
         buildWebuiComposerHandlers({
-          setStream: () => undefined,
+          createSink: () => noopSink,
+          resetStreamForTurn: () => undefined,
+          setRefusal: () => undefined,
           setSending: () => undefined,
           onDraftChange: () => undefined,
         }),

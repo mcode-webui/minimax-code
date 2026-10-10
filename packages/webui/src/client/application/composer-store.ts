@@ -50,6 +50,12 @@ export interface WebuiComposerStore {
    * The composer half of home→session adoption.
    */
   readonly adoptHome: (targetKey: string) => void;
+  /**
+   * Drop both the draft and the input history for one slot. Called by the
+   * session workflow after a successful delete, so a removed session does not
+   * re-emerge with a stale draft or replay history.
+   */
+  readonly purgeSlot: (key: string) => void;
 }
 
 export function createWebuiComposerStore(options?: {
@@ -78,12 +84,12 @@ export function createWebuiComposerStore(options?: {
 
   const apply = (
     update: (current: WebuiComposerPersisted) => WebuiComposerPersisted,
-    keepKey: string,
+    keepKeys?: readonly string[],
   ): void => {
     const next = update(state);
     if (next === state) return;
     state = next;
-    options?.storage?.saveComposer(state, serializeWebuiComposerPersisted, [keepKey]);
+    options?.storage?.saveComposer(state, serializeWebuiComposerPersisted, keepKeys);
     notify();
   };
 
@@ -103,7 +109,7 @@ export function createWebuiComposerStore(options?: {
         if (draft) drafts[key] = draft;
         else delete drafts[key];
         return { ...current, drafts };
-      }, key);
+      }, [key]);
     },
     recordInput: (key, text) => {
       apply((current) => {
@@ -112,10 +118,26 @@ export function createWebuiComposerStore(options?: {
           [key]: recordWebuiInputHistory(current.history[key] ?? [], text),
         };
         return { ...current, history };
-      }, key);
+      }, [key]);
     },
     adoptHome: (targetKey) => {
-      apply((current) => migrateWebuiHomeComposerState(current, targetKey), targetKey);
+      apply((current) => migrateWebuiHomeComposerState(current, targetKey), [targetKey]);
+    },
+    purgeSlot: (key) => {
+      apply((current) => {
+        // Read the slots *before* deleting: an absent slot must leave the
+        // snapshot — and therefore every subscriber — untouched.
+        const hasDraft = Object.prototype.hasOwnProperty.call(current.drafts, key);
+        const hasHistory = Object.prototype.hasOwnProperty.call(current.history, key);
+        if (!hasDraft && !hasHistory) return current;
+        const drafts = { ...current.drafts };
+        delete drafts[key];
+        const history = { ...current.history };
+        delete history[key];
+        // No keep key: the slot is gone, so there is nothing to protect from
+        // the prune.
+        return { ...current, drafts, history };
+      });
     },
   };
 }

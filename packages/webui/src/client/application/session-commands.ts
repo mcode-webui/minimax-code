@@ -10,22 +10,34 @@
 // a component *submits a command* (`startStreaming()`, `removePendingPermission
 // (id)`) instead of holding and calling a store writer.
 //
-// The commands are named for the domain change they represent, not for the
-// setter they replace: `startStreaming`, `endStreaming`, `awaitInteraction`,
-// `clearStream` and `updateStream` are the stream slice's verbs, and
-// `replacePendingPermissions`, `removePendingPermission`, `applyQuestionnaire`
-// and `applyGoal` are the interaction slice's. Nothing here opens a channel or
-// reads a transport: the process-event ingress is untouched, and the write
-// targets are injected exactly as `turn-commands.ts` already injects the setters
-// it moved out of the composer.
+// Naming alone does not narrow authority, so the surface carries no
+// reducer-taking writer: a command that accepted `(current) => next` would let a
+// component rewrite any field of the slice and walk straight around the
+// generation fence the owner applies. The stream's open-ended writes stay behind
+// two intent commands that hand back an already-fenced object instead —
+// `createStreamSink()` (the loop sink, whose every write is fenced by the
+// generation it claimed) and the single-field commands
+// (`markStreamPhase`, `setContextUsage`, `setStreamRefusal`, …). Nothing here
+// opens a channel or reads a transport: the process-event ingress is untouched,
+// and the write targets are injected exactly as `turn-commands.ts` already
+// injects the setters it moved out of the composer.
 
 import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
 } from "../../shared/contracts/interactions.js";
-import { initialWebuiStreamState } from "../projection/stream-state.js";
+import {
+  initialWebuiStreamState,
+  settleAbortedStream,
+} from "../projection/stream-state.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
+import { releaseWebuiSubscription } from "../mechanisms/stream-lease.js";
+import {
+  buildWebuiStreamLoopSink,
+  type WebuiStreamLoopSink,
+} from "../mechanisms/stream-loop.js";
+import { streamStateBundle } from "./stream-state-bundle.js";
 
 /** The phases the stream slice can be moved to by name. */
 export type WebuiStreamPhase = WebuiStreamState["phase"];
@@ -46,10 +58,15 @@ export interface WebuiSessionCommands {
   readonly clearStream: () => void;
   /** Apply the history-derived context snapshot without exposing the stream writer. */
   readonly setContextUsage: (contextUsage: Record<string, unknown>) => void;
-  /** Turn orchestration callbacks; callers outside application workflows use named commands above. */
-  readonly updateStream: (
-    update: (current: WebuiStreamState) => WebuiStreamState,
-  ) => void;
+  /**
+   * The stream a turn is about to open: the slice resets to the initial state
+   * with a live phase and a fresh elapsed anchor. Intent-named because the
+   * reset is what "a turn starts here" means; the component has no way to reach
+   * the slice otherwise.
+   */
+  readonly resetStreamForTurn: () => void;
+  /** Record or clear the refusal banner's message. */
+  readonly setStreamRefusal: (refusal: string | undefined) => void;
   /** Move the stream's phase without touching any other field. */
   readonly markStreamPhase: (phase: WebuiStreamPhase) => void;
   /** A turn is live: it is streaming. */
@@ -58,6 +75,24 @@ export interface WebuiSessionCommands {
   readonly endStreaming: () => void;
   /** A pending interaction gates the turn. */
   readonly awaitInteraction: () => void;
+  /**
+   * The user stopped the turn: settle the slice to `done`/`aborted` and drop
+   * the claim marker so the loop it silenced cannot write again.
+   */
+  readonly settleStoppedStream: () => void;
+  /**
+   * Release the subscription this client holds **only** if the live lease still
+   * carries that generation, so a probe that started before a newer turn cannot
+   * clear the newer lease.
+   */
+  readonly releaseStreamSubscription: (generation: number) => void;
+  /**
+   * A fresh sink for one turn's stream loop. Each turn owns its own instance,
+   * which is what makes the generation fence meaningful; every write the sink
+   * performs is fenced against the generation it claimed, so a superseded loop
+   * cannot reach the store even though the caller holds the sink.
+   */
+  readonly createStreamSink: () => WebuiStreamLoopSink;
   /** The `sending` indicator the composer renders from. */
   readonly setTurnSending: (sending: boolean) => void;
 }
@@ -70,13 +105,23 @@ export function createWebuiSessionCommands(
     clearStream: () => setStream(() => initialWebuiStreamState),
     setContextUsage: (contextUsage) =>
       setStream((current) => ({ ...current, contextUsage })),
-    updateStream: (update) => setStream(update),
+    resetStreamForTurn: () =>
+      setStream(() => ({
+        ...initialWebuiStreamState,
+        phase: "streaming",
+        processingStartedAtMs: Date.now(),
+      })),
+    setStreamRefusal: (refusal) => setStream((current) => ({ ...current, refusal })),
     markStreamPhase: (phase) => setStream((current) => ({ ...current, phase })),
     startStreaming: () =>
       setStream((current) => ({ ...current, phase: "streaming" })),
     endStreaming: () => setStream((current) => ({ ...current, phase: "idle" })),
     awaitInteraction: () =>
       setStream((current) => ({ ...current, phase: "waiting" })),
+    settleStoppedStream: () => setStream(settleAbortedStream),
+    releaseStreamSubscription: (generation) =>
+      setStream((current) => releaseWebuiSubscription(current, { generation })),
+    createStreamSink: () => buildWebuiStreamLoopSink(setStream, streamStateBundle),
     setTurnSending: (sending) => setSending(sending),
   };
 }
@@ -104,23 +149,11 @@ export interface WebuiInteractionCommands {
   readonly replacePendingPermissions: (
     permissions: readonly WebuiPendingPermission[],
   ) => void;
-  /** Apply a permission-list update — the reducer's `set-permissions` arm. */
-  readonly updatePermissions: (
-    update: (
-      current: readonly WebuiPendingPermission[],
-    ) => readonly WebuiPendingPermission[],
-  ) => void;
   /** Answering one permission drops exactly that request. */
   readonly removePendingPermission: (requestId: string) => void;
   /** Apply or clear the pending questionnaire. */
   readonly applyQuestionnaire: (
     request: WebuiQuestionnaireRequest | undefined,
-  ) => void;
-  /** Apply a questionnaire update — the reducer's `set-questionnaire` arm. */
-  readonly updateQuestionnaire: (
-    update: (
-      current: WebuiQuestionnaireRequest | undefined,
-    ) => WebuiQuestionnaireRequest | undefined,
   ) => void;
   /** Apply or clear the session goal. */
   readonly applyGoal: (goal: WebuiGoal | undefined) => void;
@@ -133,29 +166,31 @@ export function createWebuiInteractionCommands(
   return {
     replacePendingPermissions: (permissions) =>
       setPermissions(() => permissions),
-    updatePermissions: (update) => setPermissions(update),
     removePendingPermission: (requestId) =>
       setPermissions((current) =>
         current.filter((item) => item.requestId !== requestId),
       ),
     applyQuestionnaire: (request) => setQuestionnaire(request),
-    updateQuestionnaire: (update) => setQuestionnaire(update),
     applyGoal: (goal) => setGoal(goal),
   };
 }
 
 /**
- * A turn's stream/sending writer, expressed as the named commands a component
- * submits. It is a structural adapter — it imports no store — so a component
- * can build the writer for a send and immediately stop holding it: from then on
- * it only calls `updateStream` / `setTurnSending`, and the home→session
- * migration stays behind `migrateToSession` exactly as before.
+ * A turn's stream writer, expressed as the named commands a component submits.
+ * It is a structural adapter — it imports no store — so a component can build
+ * it for a send and immediately stop holding it: from then on it only submits
+ * the intents below, and the home→session migration stays behind
+ * `migrateToSession` exactly as before.
+ *
+ * There is deliberately no `updateStream(update)`: the sink is built **inside**
+ * the adapter, so the generation fence travels with the writer instead of being
+ * a convention the caller has to honour.
  */
 export interface WebuiTurnCommandWriter {
   readonly kind: "session" | "home";
-  readonly updateStream: (
-    update: (current: WebuiStreamState) => WebuiStreamState,
-  ) => void;
+  readonly createSink: () => WebuiStreamLoopSink;
+  readonly resetStreamForTurn: () => void;
+  readonly setStreamRefusal: (refusal: string | undefined) => void;
   readonly setTurnSending: (sending: boolean) => void;
   readonly migrateToSession?: (sessionId: string) => WebuiTurnCommandWriter;
 }
@@ -174,10 +209,16 @@ export function createWebuiTurnCommands(writer: {
     readonly setSending: (sending: boolean) => void;
   };
 }): WebuiTurnCommandWriter {
+  const commands = createWebuiSessionCommands({
+    setStream: writer.setStream,
+    setSending: writer.setSending,
+  });
   return {
     kind: writer.kind,
-    updateStream: (update) => writer.setStream(update),
-    setTurnSending: (sending) => writer.setSending(sending),
+    createSink: commands.createStreamSink,
+    resetStreamForTurn: commands.resetStreamForTurn,
+    setStreamRefusal: commands.setStreamRefusal,
+    setTurnSending: commands.setTurnSending,
     ...(writer.migrateToSession
       ? {
           migrateToSession: (sessionId: string) =>

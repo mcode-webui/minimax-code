@@ -3936,6 +3936,7 @@
     "packages/webui/test/unit/webui-runtime-lifecycle-invariants.test.ts",
     "packages/webui/test/unit/webui-service.test.ts",
     "packages/webui/test/unit/webui-session-catalog.test.ts",
+    "packages/webui/test/unit/webui-session-purge.test.ts",
     "packages/webui/test/unit/webui-shell.test.ts",
     "packages/webui/test/unit/webui-startup-fallback.test.tsx",
     "packages/webui/test/unit/webui-stream.test.ts",

@@ -298,6 +298,7 @@
       "packages/webui/test/unit/session-import.test.ts",
       "packages/webui/test/unit/session-activity.test.ts",
       "packages/webui/test/unit/webui-session-catalog.test.ts",
+      "packages/webui/test/unit/webui-session-purge.test.ts",
       "packages/webui/test/unit/rail-buckets.test.ts",
       "packages/webui/test/unit/rail-pin-affordance.test.ts",
       "packages/webui/test/unit/rail-star-favorites.test.ts",

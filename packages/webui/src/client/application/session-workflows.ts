@@ -24,7 +24,7 @@ import {
   reduceWebuiCatalogFlatAppended,
   reduceWebuiCatalogFlatLoaded,
   reduceWebuiCatalogTreeLoaded,
-  removeWebuiCatalogEntities,
+  removeWebuiCatalogSessions,
   setWebuiCatalogFlatError,
   setWebuiCatalogFlatLoading,
 } from "./session-catalog.js";
@@ -36,6 +36,22 @@ export interface WebuiSessionCatalogStore {
   readonly updateCatalog: (
     update: (current: WebuiSessionCatalogState) => WebuiSessionCatalogState,
   ) => void;
+  /**
+   * Drop every server-derived slice (session record + activity entry) for
+   * one session id. The catalog slice is updated separately, so this is
+   * *not* a full delete — `remove` / `removeArchived` call this after the
+   * server delete commits and the catalog entity has been removed.
+   */
+  readonly purgeSession: (sessionId: string) => void;
+}
+
+/**
+ * The composer store's reader/writer — drafts and input history per slot.
+ * The session workflow takes only the purge method because a delete is the
+ * single trigger for clearing a session's draft.
+ */
+export interface WebuiComposerPurger {
+  readonly purgeSlot: (key: string) => void;
 }
 
 /**
@@ -164,11 +180,13 @@ export interface WebuiSessionWorkflows {
 
 export function createWebuiSessionWorkflows(deps: {
   readonly store: WebuiSessionCatalogStore;
+  /** The composer purger; absent means drafts outlive the delete (a soft-loss). */
+  readonly composer?: WebuiComposerPurger;
   readonly port: QueryPort & MutationPort;
   /** Injected browser IO; absent means the import operation is not wired. */
   readonly importSession?: WebuiSessionImporter;
 }): WebuiSessionWorkflows {
-  const { store, port, importSession } = deps;
+  const { store, composer, port, importSession } = deps;
   const message = (reason: unknown): string =>
     reason instanceof Error ? reason.message : String(reason);
 
@@ -198,36 +216,60 @@ export function createWebuiSessionWorkflows(deps: {
     }
   };
 
+  // Sessions this workflow has deleted. A catalog load that was already in
+  // flight when the delete committed must not put the entity back — the rail
+  // would show a session the server no longer has, and the application store
+  // has already dropped its record, so the row would render as an empty
+  // husk. Every catalog merge runs through `commitCatalog`, so the fence holds
+  // for the delete's own `refresh()` as well as for a stale `loadMore` or
+  // `loadTree`. Session ids are never reused, so the set only grows with the
+  // number of deletions.
+  const removedSessionIds = new Set<string>();
+
+  const dropRemovedEntities = (
+    state: WebuiSessionCatalogState,
+  ): WebuiSessionCatalogState =>
+    removedSessionIds.size === 0
+      ? state
+      : removeWebuiCatalogSessions(state, [...removedSessionIds]);
+
+  /**
+   * The one write path into the catalog. Composing the fence here rather than
+   * at each call site is what makes "a removed session stays removed" a
+   * property of the workflow instead of a rule each new load has to remember.
+   */
+  const commitCatalog = (
+    update: (current: WebuiSessionCatalogState) => WebuiSessionCatalogState,
+  ): void => {
+    store.updateCatalog((current) => dropRemovedEntities(update(current)));
+  };
+
   const applyFlatLoaded = (page: WebuiClientSessionPage): void => {
-    store.updateCatalog((current) => reduceWebuiCatalogFlatLoaded(current, page));
+    commitCatalog((current) => reduceWebuiCatalogFlatLoaded(current, page));
   };
 
   const loadFlat = async (): Promise<void> => {
     if (!port.loadSessions) return;
-    store.updateCatalog((current) => setWebuiCatalogFlatLoading(current, true));
+    commitCatalog((current) => setWebuiCatalogFlatLoading(current, true));
     try {
       const page = await port.loadSessions();
-      store.updateCatalog((current) => {
+      commitCatalog((current) => {
         const loaded = reduceWebuiCatalogFlatLoaded(current, page);
         return setWebuiCatalogFlatError(loaded, undefined);
       });
     } catch (reason) {
-      store.updateCatalog((current) =>
-        setWebuiCatalogFlatError(current, message(reason)),
-      );
-      store.updateCatalog((current) => setWebuiCatalogFlatLoading(current, false));
+      commitCatalog((current) => setWebuiCatalogFlatError(current, message(reason)));
+      commitCatalog((current) => setWebuiCatalogFlatLoading(current, false));
       return;
     }
-    store.updateCatalog((current) => setWebuiCatalogFlatLoading(current, false));
+    commitCatalog((current) => setWebuiCatalogFlatLoading(current, false));
   };
 
   const loadTree = async (): Promise<void> => {
     if (!port.loadSessionTree) return;
     try {
       const page = await port.loadSessionTree();
-      store.updateCatalog((current) =>
-        reduceWebuiCatalogTreeLoaded(current, page),
-      );
+      commitCatalog((current) => reduceWebuiCatalogTreeLoaded(current, page));
     } catch {
       // Tree projection is optional; a runtime without child-session support
       // must not break the flat-list rail.
@@ -240,17 +282,17 @@ export function createWebuiSessionWorkflows(deps: {
       port.loadSessionTree?.(),
     ]);
     if (page) applyFlatLoaded(page);
-    if (tree) store.updateCatalog((current) => reduceWebuiCatalogTreeLoaded(current, tree));
+    if (tree) commitCatalog((current) => reduceWebuiCatalogTreeLoaded(current, tree));
   };
 
   const loadMore = async (cursor: string | undefined): Promise<void> => {
     if (!port.loadSessions) return;
-    store.updateCatalog((current) => setWebuiCatalogFlatLoading(current, true));
+    commitCatalog((current) => setWebuiCatalogFlatLoading(current, true));
     try {
       const page = await port.loadSessions(cursor);
-      store.updateCatalog((current) => reduceWebuiCatalogFlatAppended(current, page));
+      commitCatalog((current) => reduceWebuiCatalogFlatAppended(current, page));
     } finally {
-      store.updateCatalog((current) => setWebuiCatalogFlatLoading(current, false));
+      commitCatalog((current) => setWebuiCatalogFlatLoading(current, false));
     }
   };
 
@@ -263,16 +305,14 @@ export function createWebuiSessionWorkflows(deps: {
     refresh,
     loadMore,
     setError: (message) => {
-      store.updateCatalog((current) =>
-        setWebuiCatalogFlatError(current, message),
-      );
+      commitCatalog((current) => setWebuiCatalogFlatError(current, message));
     },
     rename: async (sessionId, title) => {
       if (!port.updateSession) return undefined;
       const result = await port.updateSession({ id: sessionId, title });
       const nextTitle = result.session?.title;
       if (nextTitle) {
-        store.updateCatalog((current) =>
+        commitCatalog((current) =>
           patchWebuiCatalogEntity(current, sessionId, { title: nextTitle }),
         );
       }
@@ -293,9 +333,16 @@ export function createWebuiSessionWorkflows(deps: {
     remove: async (sessionId) => {
       if (!port.deleteSession) return;
       await port.deleteSession({ id: sessionId });
-      store.updateCatalog((current) =>
-        removeWebuiCatalogEntities(current, [sessionId]),
-      );
+      // The delete has committed, so every slice that could still describe a
+      // live session goes: the session fence first (so a stream frame or event
+      // that arrives from here on writes nothing), then the application-store
+      // record and activity, then the composer slot's draft and history, then
+      // the catalog entity. `removedSessionIds` keeps the entity out of every
+      // later merge, including the `refresh()` below.
+      removedSessionIds.add(sessionId);
+      store.purgeSession(sessionId);
+      composer?.purgeSlot(sessionId);
+      commitCatalog((current) => removeWebuiCatalogSessions(current, [sessionId]));
       await refresh();
       if (archived.status !== "idle") await loadArchived();
     },
@@ -311,6 +358,12 @@ export function createWebuiSessionWorkflows(deps: {
     removeArchived: async (sessionId) => {
       if (!port.deleteSession) return;
       await port.deleteSession({ id: sessionId });
+      // Deleting from the archived page removes the same session the rail
+      // could still be showing, so it takes the same teardown as `remove`.
+      removedSessionIds.add(sessionId);
+      store.purgeSession(sessionId);
+      composer?.purgeSlot(sessionId);
+      commitCatalog((current) => removeWebuiCatalogSessions(current, [sessionId]));
       await loadArchived();
     },
     unarchive: async (sessionId) => {

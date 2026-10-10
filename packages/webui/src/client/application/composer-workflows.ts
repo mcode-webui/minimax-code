@@ -4,8 +4,8 @@ import type { WebuiGoal, WebuiGoalCreateRequest, WebuiGoalPatchRequest } from ".
 import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { formatWebuiError } from "../value-readers.js";
 import { queueWebuiTurn } from "./queue-command.js";
-import { initialWebuiStreamState, ownsWebuiStreamGeneration, type WebuiStreamState } from "../projection/stream-state.js";
-import { buildWebuiStreamLoopSink, runWebuiStreamLoop, type WebuiStreamLoopDeps } from "../mechanisms/stream-loop.js";
+import { ownsWebuiStreamGeneration, type WebuiStreamState } from "../projection/stream-state.js";
+import { runWebuiStreamLoop, type WebuiStreamLoopDeps, type WebuiStreamLoopSink } from "../mechanisms/stream-loop.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 import { streamStateBundle } from "./stream-state-bundle.js";
 
@@ -25,7 +25,16 @@ export interface WebuiComposerSubmitArgs {
 }
 
 export interface WebuiComposerSubmitHandlers {
-  readonly setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void;
+  /**
+   * A fresh, generation-fenced sink for this turn's stream loop. The caller
+   * never receives the stream writer itself, so no caller can write a slice
+   * field directly or skip the fence.
+   */
+  readonly createSink: () => WebuiStreamLoopSink;
+  /** Reset the stream slice for a turn that is about to open. */
+  readonly resetStreamForTurn: () => void;
+  /** Record (or clear) the refusal the transcript banner renders. */
+  readonly setRefusal: (refusal: string | undefined) => void;
   readonly readStream?: () => WebuiStreamState;
   readonly setSending: (sending: boolean) => void;
   readonly onDraftChange: (next: string) => void;
@@ -36,7 +45,9 @@ export interface WebuiComposerSubmitHandlers {
 
 export function buildWebuiComposerHandlers(args: WebuiComposerSubmitHandlers): WebuiComposerSubmitHandlers {
   return {
-    setStream: args.setStream,
+    createSink: args.createSink,
+    resetStreamForTurn: args.resetStreamForTurn,
+    setRefusal: args.setRefusal,
     ...(args.readStream ? { readStream: args.readStream } : {}),
     setSending: args.setSending,
     onDraftChange: args.onDraftChange,
@@ -117,10 +128,10 @@ export async function submitWebuiComposerTurn(
       });
       sessionId = createdSessionId(result);
       if (!sessionId) throw new Error("createSession response did not include a session id");
-      handlers.setStream(() => ({ ...initialWebuiStreamState, phase: "streaming", processingStartedAtMs: Date.now() }));
+      handlers.resetStreamForTurn();
       handlers.onSessionCreated?.(sessionId);
     } catch (error) {
-      handlers.setStream((current) => ({ ...current, refusal: formatWebuiError(error) }));
+      handlers.setRefusal(formatWebuiError(error));
       return;
     }
   }
@@ -135,7 +146,7 @@ export async function submitWebuiComposerTurn(
       onDraftChange: handlers.onDraftChange,
       onAttachmentsSubmitted: args.onAttachmentsSubmitted,
       onQueued: handlers.onQueued,
-      setRefusal: (refusal) => handlers.setStream((current) => ({ ...current, refusal })),
+      setRefusal: (refusal) => handlers.setRefusal(refusal),
     });
     return;
   }
@@ -143,13 +154,13 @@ export async function submitWebuiComposerTurn(
   handlers.setSending(true);
   handlers.onDraftChange("");
   args.onAttachmentsSubmitted?.();
-  handlers.setStream((current) => ({ ...initialWebuiStreamState, phase: "streaming", processingStartedAtMs: Date.now() }));
+  handlers.resetStreamForTurn();
   let claimed: number | undefined;
   try {
     claimed = await runWebuiStreamLoop(
       { ...args.deps, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId, message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) },
-      buildWebuiStreamLoopSink(handlers.setStream, streamStateBundle),
+      handlers.createSink(),
     );
   } finally {
     const current = handlers.readStream?.();

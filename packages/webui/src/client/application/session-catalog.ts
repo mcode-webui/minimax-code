@@ -228,6 +228,48 @@ export function removeWebuiCatalogEntities(
   return next ? { ...catalog, entities: next } : catalog;
 }
 
+/**
+ * Drop sessions a delete confirmed gone — the entity **and** every identifier
+ * that still points at it.
+ *
+ * Entity removal alone leaves a phantom id in `flat.ids` and a stale node in
+ * `tree.nodes`: the selectors skip an id whose entity is missing, so the rail
+ * would render correctly, but the catalog would keep claiming a session the
+ * server no longer has. That phantom is exactly what a stale load produces, so
+ * the delete fence needs the identifier removed too. Returns the same object
+ * when there is nothing to drop.
+ */
+export function removeWebuiCatalogSessions(
+  catalog: WebuiSessionCatalogState,
+  sessionIds: readonly string[],
+): WebuiSessionCatalogState {
+  const removed = new Set(sessionIds);
+  const entities = removeWebuiCatalogEntities(catalog, sessionIds);
+  const ids = catalog.flat.ids.filter((id) => !removed.has(id));
+  const nodes: WebuiCatalogTreeQueryNode[] = [];
+  let treeChanged = false;
+  for (const node of catalog.tree.nodes) {
+    if (removed.has(node.sessionId)) {
+      treeChanged = true;
+      continue;
+    }
+    const childIds = node.childIds.filter((childId) => !removed.has(childId));
+    if (childIds.length === node.childIds.length) {
+      nodes.push(node);
+      continue;
+    }
+    treeChanged = true;
+    nodes.push({ ...node, childIds });
+  }
+  const flatChanged = ids.length !== catalog.flat.ids.length;
+  if (entities === catalog && !treeChanged && !flatChanged) return catalog;
+  return {
+    entities: entities.entities,
+    flat: flatChanged ? { ...catalog.flat, ids } : catalog.flat,
+    tree: treeChanged ? { ...catalog.tree, nodes } : catalog.tree,
+  };
+}
+
 /** The flat page the rail renders, resolved from the entity map. */
 export function selectWebuiCatalogFlatPage(
   catalog: WebuiSessionCatalogState,

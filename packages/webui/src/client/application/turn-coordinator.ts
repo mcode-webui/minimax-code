@@ -23,7 +23,7 @@ import type { WebuiClientSessionResumer } from "../contracts/execution-port.js";
 import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
-import { reduceWebuiStreamFrame, settleAbortedStream } from "../projection/stream-state.js";
+import { reduceWebuiStreamFrame } from "../projection/stream-state.js";
 import { fenceWebuiLeaseStream } from "../mechanisms/stream-lease.js";
 import {
   runWebuiStreamLoop,
@@ -133,9 +133,11 @@ export interface WebuiStopTurnDeps {
   }) => Promise<{ readonly success?: boolean }>;
   readonly sessionId: string;
   readonly setSending: (sending: boolean) => void;
-  readonly setStream: (
-    update: (current: WebuiStreamState) => WebuiStreamState,
-  ) => void;
+  /**
+   * Settle the local stream to `done`/`aborted`. A named command rather than a
+   * reducer: the caller has no business composing a write over the slice.
+   */
+  readonly settleStream: () => void;
 }
 
 /**
@@ -151,5 +153,5 @@ export async function stopWebuiTurn(deps: WebuiStopTurnDeps): Promise<void> {
   if (result.success === false)
     throw new Error("The running turn could not be stopped");
   deps.setSending(false);
-  deps.setStream(settleAbortedStream);
+  deps.settleStream();
 }

@@ -70,7 +70,9 @@ import {
   createdSessionId,
   submitWebuiGoal,
   submitWebuiComposerTurn,
+  type WebuiComposerSubmitHandlers,
 } from "../../src/client/application/composer-workflows.js";
+import { createWebuiSessionCommands } from "../../src/client/application/session-commands.js";
 import { projectWebuiMessage } from "../../src/client/projection/message-projection.js";
 import { projectLiveTurnView } from "../../src/client/projection/transcript-shape.js";
 import { buildWebuiQuestionnaireAnswers } from "../../src/client/projection/questionnaire-state.js";
@@ -92,6 +94,23 @@ import {
   type WebuiStreamLoopSink,
 } from "../../src/client/mechanisms/stream-loop.js";
 import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
+
+/**
+ * The three writes `buildWebuiComposerHandlers` needs, taken from the **real**
+ * command surface. A fixture that re-implemented `resetStreamForTurn` would go
+ * on passing after production changed what the reset writes, so the seam tests
+ * drive `createWebuiSessionCommands` instead.
+ */
+const composerHandlerWrites = (
+  setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void,
+): Pick<WebuiComposerSubmitHandlers, "createSink" | "resetStreamForTurn" | "setRefusal"> => {
+  const commands = createWebuiSessionCommands({ setStream, setSending: () => undefined });
+  return {
+    createSink: commands.createStreamSink,
+    resetStreamForTurn: commands.resetStreamForTurn,
+    setRefusal: commands.setStreamRefusal,
+  };
+};
 
 /**
  * `runWebuiStreamLoop` now requires the injected history/context bundle so a
@@ -1787,14 +1806,20 @@ describe("WebUI composer sink binding", () => {
 describe("WebUI composer app-to-helper seam", () => {
   type Reducer = (current: WebuiStreamState) => WebuiStreamState;
   function makeRecording(): {
-    setStream: (update: Reducer) => void;
     getState: () => WebuiStreamState;
+    handlerWrites: Pick<
+      WebuiComposerSubmitHandlers,
+      "createSink" | "resetStreamForTurn" | "setRefusal"
+    >;
   } {
     let state = initialWebuiStreamState;
     const setStream = (update: Reducer): void => {
       state = update(state);
     };
-    return { setStream, getState: () => state };
+    return {
+      getState: () => state,
+      handlerWrites: composerHandlerWrites(setStream),
+    };
   }
 
   it("creates a home-session goal and patches an existing goal through the goal RPCs", async () => {
@@ -1860,24 +1885,30 @@ describe("WebUI composer app-to-helper seam", () => {
 
   it("buildWebuiComposerHandlers passes every field through unchanged", () => {
     // R13: the handler assembly is a named unit. A regression that
-    // drops `setStream`, swaps it for `setSending`, or ignores any
+    // drops `createSink`, swaps it for `setSending`, or ignores any
     // other field is caught here. The component's single call into
     // the helper is verified by inspection only — no DOM exists —
     // but the helper itself is fully covered.
-    const setStream = vi.fn();
+    const createSink = vi.fn();
+    const resetStreamForTurn = vi.fn();
+    const setRefusal = vi.fn();
     const setSending = vi.fn();
     const onDraftChange = vi.fn();
     const onNeedsSession = vi.fn();
     const handlers = buildWebuiComposerHandlers({
-      setStream,
+      createSink,
+      resetStreamForTurn,
+      setRefusal,
       setSending,
       onDraftChange,
       onNeedsSession,
     });
     // Every field is the same function reference. A regression that
-    // returned a no-op sink, swapped `setStream` with `setSending`,
+    // returned a no-op sink, swapped `createSink` with `setSending`,
     // or omitted any field dies here.
-    expect(handlers.setStream).toBe(setStream);
+    expect(handlers.createSink).toBe(createSink);
+    expect(handlers.resetStreamForTurn).toBe(resetStreamForTurn);
+    expect(handlers.setRefusal).toBe(setRefusal);
     expect(handlers.setSending).toBe(setSending);
     expect(handlers.onDraftChange).toBe(onDraftChange);
     expect(handlers.onNeedsSession).toBe(onNeedsSession);
@@ -1885,13 +1916,12 @@ describe("WebUI composer app-to-helper seam", () => {
 
   it("drives the production helper seam end-to-end", async () => {
     // R11: the production path. `submitWebuiComposerTurn` calls
-    // `buildWebuiStreamLoopSink(handlers.setStream, streamStateBundle)` unconditionally
-    // and passes it to the loop. If a regression replaces the helper
+    // `handlers.createSink()` unconditionally and passes the result to the loop. If a regression replaces the helper
     // with an empty object, passes a no-op state setter, or ignores
     // the returned sink, the live reducer never sees the frames and
     // `messages` stays empty. This is the observable that fails when
     // the seam is bypassed end-to-end.
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const sendMessage: WebuiClientMessageSender = vi.fn(
       async (_req, onFrame) => {
         onFrame({
@@ -1904,7 +1934,7 @@ describe("WebUI composer app-to-helper seam", () => {
     await submitWebuiComposerTurn(
       { sessionId: "s", draft: "hi", sending: false, deps: { sendMessage } },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
       }),
@@ -1919,7 +1949,7 @@ describe("WebUI composer app-to-helper seam", () => {
   });
 
   it("creates the first task silently and sends the original draft", async () => {
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const createSession = vi.fn(async (request) => ({
       sessionId: request.workspaceDir === "/work/minimax-code" ? "created" : undefined,
     }));
@@ -1941,7 +1971,7 @@ describe("WebUI composer app-to-helper seam", () => {
         teamModeOff: true,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
         onSessionCreated,
@@ -1961,7 +1991,7 @@ describe("WebUI composer app-to-helper seam", () => {
     // Reported bug: the first message rendered under the welcome hero on the
     // new-task page and only switched into the session after the reply
     // finished. The switch must happen between createSession and sendMessage.
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const events: string[] = [];
     const createSession = vi.fn(async () => {
       events.push("create");
@@ -1985,7 +2015,7 @@ describe("WebUI composer app-to-helper seam", () => {
         teamModeOff: false,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
         onSessionCreated,
@@ -2001,7 +2031,7 @@ describe("WebUI composer app-to-helper seam", () => {
     // Reported bug: with the folder pill unset ("选择文件夹") the send was
     // swallowed silently — no session, no feedback. The harness resolves a
     // default workspace, so an absent workspaceDir must flow through.
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const requests: unknown[] = [];
     const createSession = vi.fn(async (request) => {
       requests.push(request);
@@ -2022,7 +2052,7 @@ describe("WebUI composer app-to-helper seam", () => {
         teamModeOff: false,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
         onSessionCreated,
@@ -2070,7 +2100,7 @@ describe("WebUI composer app-to-helper seam", () => {
     // returns, and the turn died on the server's
     // `workspaceDir must be an absolute path`. The submit path now fails with
     // a message that names the cause, without calling createSession.
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const createSession = vi.fn(async () => ({ sessionId: "created" }));
     const sendMessage: WebuiClientMessageSender = vi.fn(async () => undefined);
 
@@ -2084,7 +2114,7 @@ describe("WebUI composer app-to-helper seam", () => {
         teamModeOff: false,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
       }),
@@ -2096,7 +2126,7 @@ describe("WebUI composer app-to-helper seam", () => {
   });
 
   it("passes an absolute workspace folder straight through to createSession", async () => {
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const requests: unknown[] = [];
     const createSession = vi.fn(async (request) => {
       requests.push(request);
@@ -2116,7 +2146,7 @@ describe("WebUI composer app-to-helper seam", () => {
         teamModeOff: false,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
       }),
@@ -2168,7 +2198,7 @@ describe("WebUI composer app-to-helper seam", () => {
   });
 
   it("queues a second composer submission while the current turn is running", async () => {
-    const { setStream, getState } = makeRecording();
+    const { handlerWrites, getState } = makeRecording();
     const enqueueMessage: WebuiClientMessageEnqueuer = vi.fn(async () => ({
       itemId: "queue-1",
       status: "queued",
@@ -2185,7 +2215,7 @@ describe("WebUI composer app-to-helper seam", () => {
         enqueueMessage,
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange,
         onQueued,
@@ -2637,6 +2667,7 @@ describe("WebUI composer transcriptIncomplete", () => {
       state = typeof value === "function" ? value(state) : value;
     };
     const getState = () => state;
+    const handlerWrites = composerHandlerWrites(setStream);
     const sendMessage: WebuiClientMessageSender = vi.fn(
       async (_req, onFrame) => {
         onFrame({ dataJson: "[DONE]" });
@@ -2650,7 +2681,7 @@ describe("WebUI composer transcriptIncomplete", () => {
         deps: { sendMessage },
       },
       buildWebuiComposerHandlers({
-        setStream,
+        ...handlerWrites,
         setSending: () => undefined,
         onDraftChange: () => undefined,
       }),
@@ -3378,7 +3409,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     // `session.abort`, so the stop button is the only thing that can
     // release the lease.
     const abortSession = vi.fn(async () => ({ success: true }));
-    await stopWebuiTurn({ abortSession, sessionId: "fence-4", setSending, setStream });
+    await stopWebuiTurn({ abortSession, sessionId: "fence-4", setSending, settleStream: () => setStream(settleAbortedStream) });
     expect(abortSession).toHaveBeenCalledWith({ id: "fence-4" });
     expect(setSending).toHaveBeenCalledWith(false);
     expect(state.subscription).toBeUndefined();
@@ -3394,7 +3425,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
         abortSession: vi.fn(async () => ({ success: false })),
         sessionId: "fence-5",
         setSending,
-        setStream,
+        settleStream: setStream,
       }),
     ).rejects.toThrow("The running turn could not be stopped");
     expect(setStream).not.toHaveBeenCalled();

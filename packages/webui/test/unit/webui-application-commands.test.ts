@@ -28,8 +28,32 @@ import type { WebuiClientMessagePage } from "../../src/client/contracts/message-
 import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiActiveTurn } from "../../src/shared/contracts/session.js";
 import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
+import type { WebuiStreamLoopSink } from "../../src/client/mechanisms/stream-loop.js";
+import type { WebuiComposerSubmitHandlers } from "../../src/client/application/composer-workflows.js";
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** A sink that accepts every write; the sends under test never open a loop. */
+const noopSink: WebuiStreamLoopSink = {
+  applyFrame: () => undefined,
+  setPhase: () => undefined,
+  setMessages: () => undefined,
+  refuse: () => undefined,
+};
+
+/** The composer's stream writes, all inert except the ones a test asserts on. */
+function commandHandlers(
+  overrides: Partial<WebuiComposerSubmitHandlers> = {},
+): WebuiComposerSubmitHandlers {
+  return {
+    createSink: () => noopSink,
+    resetStreamForTurn: () => undefined,
+    setRefusal: () => undefined,
+    setSending: () => undefined,
+    onDraftChange: () => undefined,
+    ...overrides,
+  };
+}
 
 describe("application-owned transcript history", () => {
   it("commits into the session entity and fences a late result after switching sessions", async () => {
@@ -247,18 +271,29 @@ describe("the send command", () => {
   it("routes to the queue when a turn is already in flight", async () => {
     const enqueueMessage = vi.fn(async () => ({}));
     const onDraftChange = vi.fn();
-    const writer = { kind: "session" as const, updateStream: vi.fn(), setTurnSending: vi.fn() };
+    const writer = {
+      kind: "session" as const,
+      createSink: vi.fn(() => noopSink),
+      resetStreamForTurn: vi.fn(),
+      setStreamRefusal: vi.fn(),
+      setTurnSending: vi.fn(),
+    };
     await sendWebuiTurn({
       sessionId: "s1",
       message: "queued",
       sending: true,
-      handlers: { setStream: vi.fn(), setSending: vi.fn(), onDraftChange },
+      handlers: commandHandlers({ onDraftChange }),
       deps: { sendMessage: vi.fn() },
       enqueueMessage,
       createWriter: () => writer,
     });
     expect(enqueueMessage).toHaveBeenCalledWith({ id: "s1", content: "queued" });
     expect(writer.setTurnSending).not.toHaveBeenCalled();
+    // The queue branch writes nothing to the stream slice: it is the running
+    // turn's loop that owns it.
+    expect(writer.resetStreamForTurn).not.toHaveBeenCalled();
+    expect(writer.setStreamRefusal).not.toHaveBeenCalled();
+    expect(writer.createSink).not.toHaveBeenCalled();
   });
 });
 
@@ -294,17 +329,20 @@ describe("attach, recheck and gap recovery", () => {
       ...initialWebuiStreamState,
       subscription: { owner: "recovered" as const, generation: 7, turnId: "t-old" },
     };
-    const setStream = vi.fn();
+    const releaseSubscription = vi.fn();
     const attach = vi.fn();
     recheckWebuiSubscription({
       sessionId: "s1",
       getActiveTurn: async () => busy,
       readStream: () => stream,
-      setStream,
+      releaseSubscription,
       attach,
     });
     await flush();
-    expect(setStream).toHaveBeenCalledTimes(1);
+    // Scoped to the generation the probe decided was stale, so a lease claimed
+    // while the probe was in flight is not the one that gets dropped.
+    expect(releaseSubscription).toHaveBeenCalledTimes(1);
+    expect(releaseSubscription).toHaveBeenCalledWith(7);
     expect(attach).toHaveBeenCalledWith("t-new");
   });
 
@@ -313,17 +351,17 @@ describe("attach, recheck and gap recovery", () => {
       ...initialWebuiStreamState,
       subscription: { owner: "recovered" as const, generation: 7, turnId: "t-new" },
     };
-    const setStream = vi.fn();
+    const releaseSubscription = vi.fn();
     const attach = vi.fn();
     recheckWebuiSubscription({
       sessionId: "s1",
       getActiveTurn: async () => busy,
       readStream: () => stream,
-      setStream,
+      releaseSubscription,
       attach,
     });
     await flush();
-    expect(setStream).not.toHaveBeenCalled();
+    expect(releaseSubscription).not.toHaveBeenCalled();
     expect(attach).not.toHaveBeenCalled();
   });
 });

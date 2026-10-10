@@ -280,6 +280,12 @@ export function WebuiClientFoundationApp(
     [catalog],
   );
   const loading = catalog.flat.loading;
+  // Composer store declared before sessionWorkflows so the delete-success purge
+  // (R7) can hand the workflows the same instance.
+  const composerStore = useMemo(
+    () => createWebuiComposerStore({ storage: browserStorage }),
+    [browserStorage],
+  );
   // The session workflows: the loads and mutations the shell used to call
   // through `transport` and then patch onto two structures by hand. The shell
   // submits a workflow and holds no transport call for session entities.
@@ -287,10 +293,13 @@ export function WebuiClientFoundationApp(
     () =>
       createWebuiSessionWorkflows({
         store: sessionStore,
+        // The composer store clears a slot's draft and history on delete so
+        // a fresh session does not inherit the deleted session's text.
+        composer: composerStore,
         port: transport ?? {},
         importSession: importWebuiSessionFile,
       }),
-    [sessionStore, transport],
+    [sessionStore, composerStore, transport],
   );
   const [projectRecords, setProjectRecords] = useState<readonly WebuiClientProject[] | undefined>();
   useEffect(() => {
@@ -374,13 +383,6 @@ export function WebuiClientFoundationApp(
   // Composer input history + per-session drafts (roadmap Module B:
   // 输入历史/草稿). The one owner is the application composer store, created
   // once here and handed to the application; the shell subscribes and submits
-  // named changes (ticket #49 criterion 5). One persisted store keyed by
-  // session (home has its own slot), so a draft survives both a session switch
-  // and a reload, and ↑ recalls that session's submitted inputs.
-  const composerStore = useMemo(
-    () => createWebuiComposerStore({ storage: browserStorage }),
-    [browserStorage],
-  );
   const composerState = useSyncExternalStore(
     composerStore.subscribe,
     composerStore.getSnapshot,

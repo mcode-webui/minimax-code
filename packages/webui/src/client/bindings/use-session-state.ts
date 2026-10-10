@@ -110,9 +110,10 @@ export function useWebuiSessionGoal(
 
 /**
  * The interaction command surface for one session (or the home slot). The
- * component calls `replacePendingPermissions` / `updateQuestionnaire` /
- * `applyGoal` through this, never a store setter; the interaction writer stays
- * inside the binding and is rebuilt only when the owner key changes.
+ * component calls `replacePendingPermissions` / `removePendingPermission` /
+ * `applyQuestionnaire` / `applyGoal` through this, never a store setter; the
+ * interaction writer stays inside the binding and is rebuilt only when the
+ * owner key changes.
  */
 export function useWebuiInteractionCommands(
   sessionId: string | undefined,
@@ -135,9 +136,11 @@ export function useWebuiInteractionCommands(
  * The stream/sending command surface for one session (or the home slot), plus
  * an imperative `readStream` for the async turn paths that cannot subscribe
  * (plan §7.6; ticket #45 prerequisite 5). The store writer stays inside this
- * hook: the component submits `clearStream` / `updateStream` / `setTurnSending`
- * / `awaitInteraction` and never holds a setter, and `readStream` reads the
- * current slice off the same store rather than a module-level map.
+ * hook: the component submits `createStreamSink` / `clearStream` /
+ * `resetStreamForTurn` / `setTurnSending` / `awaitInteraction` and never holds a
+ * setter — the sink it does receive is the one the owner fences, so it cannot
+ * write a slice field directly — and `readStream` reads the current slice off
+ * the same store rather than a module-level map.
  */
 export function useWebuiSessionCommands(
   sessionId: string | undefined,
@@ -162,23 +165,27 @@ export function useWebuiSessionCommands(
  * The turn-writer binding: build the command-shaped writer a send streams into
  * (plan §7.1 `turn-coordinator.ts`; ticket #45 prerequisite 5). The composer's
  * send path calls this factory once per turn — home-keyed until the created
- * session owns the stream — and from then on submits `updateStream` /
- * `setTurnSending` / `migrateToSession`. The store writer never leaves this
- * binding, and it is the *application* store, not the old module-level map.
+ * session owns the stream — and from then on submits `createSink` /
+ * `resetStreamForTurn` / `setStreamRefusal` / `setTurnSending` /
+ * `migrateToSession`. The store writer never leaves this binding, and it is the
+ * *application* store, not the old module-level map.
+ *
+ * The factory takes no owner argument on purpose: the session key is the one
+ * this binding was constructed for, so a caller cannot name another session's
+ * slice. The home key is the only alternative, and it is chosen here from the
+ * same value the component is rendering.
  */
-export function useWebuiTurnWriter(): (
-  owner:
-    | { readonly kind: "home" }
-    | { readonly kind: "session"; readonly sessionId: string },
-) => WebuiTurnCommandWriter {
+export function useWebuiTurnWriter(
+  sessionId: string | undefined,
+): () => WebuiTurnCommandWriter {
   const store = useWebuiSessionStoreContext();
   return useMemo(
-    () => (owner) =>
+    () => () =>
       createWebuiTurnCommands(
-        owner.kind === "home"
-          ? store.createSessionWriter(owner)
-          : store.createSessionWriter(owner),
+        sessionId
+          ? store.createSessionWriter({ kind: "session", sessionId })
+          : store.createSessionWriter({ kind: "home" }),
       ),
-    [store],
+    [store, sessionId],
   );
 }

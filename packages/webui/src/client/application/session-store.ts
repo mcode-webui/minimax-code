@@ -21,7 +21,10 @@
 // into `client/bindings/use-session-state.ts` (plan §7.2); it reads this store's
 // snapshot and creates no second map.
 
-import type { WebuiSessionActivityMap } from "../projection/session-activity.js";
+import type {
+  WebuiSessionActivity,
+  WebuiSessionActivityMap,
+} from "../projection/session-activity.js";
 import { initialWebuiSessionActivity } from "../projection/session-activity.js";
 import type { WebuiSessionCatalogState } from "./session-catalog.js";
 import { initialWebuiSessionCatalogState } from "./session-catalog.js";
@@ -131,6 +134,16 @@ export interface WebuiSessionStore {
    * semantics are load-bearing for the home → first-session flow.
    */
   migrateSession: (fromKey: string, toKey: string) => void;
+  /**
+   * Drop every server-derived slice for one session id: the session record
+   * (stream + sending + permissions + questionnaire + goal + transcript) and
+   * the activity entry (unread badge + busy hint). The catalog slice is
+   * updated separately, by the delete workflow that owns it. Idempotent, and a
+   * no-op after `dispose` — a successful delete, a delete followed by a late
+   * completion and a recovery retry that lands on a removed session all share
+   * this one purge entry point.
+   */
+  purgeSession: (sessionId: string) => void;
 }
 
 export function createWebuiSessionStore(options?: {
@@ -139,6 +152,12 @@ export function createWebuiSessionStore(options?: {
 }): WebuiSessionStore {
   const sessions = new Map<string, WebuiApplicationSessionState>();
   const listeners = new Set<() => void>();
+  // The session ids the application has explicitly purged. Both write paths
+  // consult it, so a late completion (a stream frame or event that arrived
+  // after `remove`) cannot resurrect a deleted session's record or its activity
+  // entry. Session ids are server-generated and never reused within one
+  // application instance, so the set only grows with the number of deletions.
+  const purged = new Set<string>();
   let activity: WebuiSessionActivityMap = initialWebuiSessionActivity;
   let catalog: WebuiSessionCatalogState =
     options?.catalog ?? initialWebuiSessionCatalogState;
@@ -185,6 +204,10 @@ export function createWebuiSessionStore(options?: {
     ) => WebuiApplicationSessionState,
   ): void => {
     if (disposed) return;
+    // A purged session id is dead in the application store: a stream frame
+    // that arrives late, a retry that lands after delete, and a hung turn
+    // all share this one guard.
+    if (purged.has(sessionId)) return;
     const current = readSession(sessionId);
     const next = update(current);
     if (next === current) return;
@@ -192,12 +215,49 @@ export function createWebuiSessionStore(options?: {
     notify();
   };
 
+  /**
+   * Strip a purged session id back out of an activity map. An event callback
+   * that read the map before the delete, or a hydration that lands after it,
+   * must not put the removed session's badge or busy hint back.
+   */
+  const withoutPurgedActivity = (
+    map: WebuiSessionActivityMap,
+  ): WebuiSessionActivityMap => {
+    if (purged.size === 0) return map;
+    let next: Record<string, WebuiSessionActivity> | undefined;
+    for (const sessionId of Object.keys(map)) {
+      if (!purged.has(sessionId)) continue;
+      next ??= { ...map };
+      delete next[sessionId];
+    }
+    return next ?? map;
+  };
+
+  /**
+   * Shallow comparison by key and value identity. Activity entries are
+   * immutable, so an entry that did not change is the same object.
+   */
+  const sameActivity = (
+    a: WebuiSessionActivityMap,
+    b: WebuiSessionActivityMap,
+  ): boolean => {
+    const keys = Object.keys(a);
+    if (keys.length !== Object.keys(b).length) return false;
+    return keys.every((key) => a[key] === b[key]);
+  };
+
   const updateActivity = (
     update: (current: WebuiSessionActivityMap) => WebuiSessionActivityMap,
   ): void => {
     if (disposed) return;
-    const next = update(activity);
-    if (next === activity) return;
+    const proposed = update(activity);
+    if (proposed === activity) return;
+    const next = withoutPurgedActivity(proposed);
+    // The purge filter can collapse a real write back onto the current map —
+    // a late event for a session that has already been deleted. Notifying
+    // anyway would re-render every subscriber for a session that no longer
+    // exists.
+    if (sameActivity(next, activity)) return;
     activity = next;
     notify();
   };
@@ -320,6 +380,20 @@ export function createWebuiSessionStore(options?: {
       // `migrateSessionRuntimeState` had the same semantics). The only
       // subscriber is the view switching keys, which re-reads the target key in
       // its own effect; the target key has no subscriber yet.
+    },
+    purgeSession: (sessionId) => {
+      if (disposed || sessionId === WEBUI_HOME_SESSION_KEY) return;
+      purged.add(sessionId);
+      const hadSession = sessions.delete(sessionId);
+      const hadActivity = Object.prototype.hasOwnProperty.call(
+        activity,
+        sessionId,
+      );
+      if (hadActivity) activity = withoutPurgedActivity(activity);
+      // One notification for one purge. A second call for the same id is a
+      // no-op: nothing is left to drop, so nothing changes and nothing is
+      // emitted.
+      if (hadSession || hadActivity) notify();
     },
   };
 

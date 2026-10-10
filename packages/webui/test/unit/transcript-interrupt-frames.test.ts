@@ -41,6 +41,7 @@ import { streamRecoveryProjection } from "../../src/client/projection/stream-rec
 import type { WebuiClientMessageSender } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 import { streamStateBundle } from "../../src/client/application/stream-state-bundle.js";
+import { createWebuiSessionCommands } from "../../src/client/application/session-commands.js";
 
 const SESSION_ID = "session-under-test";
 
@@ -81,6 +82,12 @@ function createShell() {
     },
     setStream,
     newSink: (): WebuiStreamLoopSink => buildWebuiStreamLoopSink(setStream, streamStateBundle),
+    // The stop command's settle write, taken from the real command surface so
+    // this suite covers the command the button actually submits.
+    settleStoppedStream: createWebuiSessionCommands({
+      setStream,
+      setSending: () => undefined,
+    }).settleStoppedStream,
   };
 }
 
@@ -142,7 +149,7 @@ const interrupt = (
     abortSession: async () => ({ success: true }),
     sessionId: SESSION_ID,
     setSending: (next) => sending.push(next),
-    setStream: shell.setStream,
+    settleStream: shell.settleStoppedStream,
   });
 
 /** Let the loop's synchronous prologue and pending microtasks run. */

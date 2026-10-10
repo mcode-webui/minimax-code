@@ -58,7 +58,6 @@ import {
   recheckWebuiSubscription,
   recoverMissedWebuiTurn,
   sendWebuiTurn,
-  type WebuiTurnWriterOwner,
 } from "../application/turn-commands.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
@@ -715,7 +714,7 @@ export function WebuiComposer({
   const { dom } = useWebuiBrowserCapabilities();
   const { stream, sending } = useWebuiSessionState(sessionId);
   const { commands, readStream } = useWebuiSessionCommands(sessionId);
-  const createTurnWriter = useWebuiTurnWriter();
+  const createTurnWriter = useWebuiTurnWriter(sessionId);
   // The per-session effects registry the shell provides (ticket #45). The
   // composer registers this session's event handlers here so the application
   // event coordinator — the sole consumer of the process-event channel — runs
@@ -913,7 +912,9 @@ export function WebuiComposer({
         loadMessages,
         readStream,
         setSending: commands.setTurnSending,
-        setStream: commands.updateStream,
+        // One sink per attachment: it claims the lease, fences every write
+        // against the generation it claimed, and releases it on terminal.
+        sink: commands.createStreamSink(),
       });
     };
 
@@ -923,7 +924,7 @@ export function WebuiComposer({
         sessionId,
         probe: activeTurnProbe,
         readStream,
-        setStream: commands.updateStream,
+        releaseSubscription: commands.releaseStreamSubscription,
         attach: attachToTurn,
       });
     };
@@ -1197,7 +1198,7 @@ export function WebuiComposer({
         abortSession,
         sessionId,
         setSending: commands.setTurnSending,
-        setStream: commands.updateStream,
+        settleStream: commands.settleStoppedStream,
       });
     } catch (error) {
       setInteractionError(
@@ -1709,7 +1710,9 @@ export function WebuiComposer({
   // cannot be exercised, and source-text assertions are not part
   // of this project's policy.
   const handlers = buildWebuiComposerHandlers({
-    setStream: commands.updateStream,
+    createSink: commands.createStreamSink,
+    resetStreamForTurn: commands.resetStreamForTurn,
+    setRefusal: commands.setStreamRefusal,
     readStream,
     setSending: commands.setTurnSending,
     onDraftChange,
@@ -1759,11 +1762,10 @@ export function WebuiComposer({
       createSession,
       createSessionWorkspaceDir,
       teamModeOff,
-      // The owner union is narrowed per branch so the overloaded factory
-      // resolves; the binding builds the command-shaped writer from the
-      // application store, so this component submits `updateStream` /
-      // `setTurnSending` and never holds the store writer itself.
-      createWriter: (owner: WebuiTurnWriterOwner) => createTurnWriter(owner),
+      // The binding already knows which session this writer belongs to, so
+      // this component names no key and holds no store writer: it submits
+      // `createSink` / `setTurnSending` through the writer it was handed.
+      createWriter: () => createTurnWriter(),
     });
   };
   // The input of the last turn this composer submitted, kept locally so retry

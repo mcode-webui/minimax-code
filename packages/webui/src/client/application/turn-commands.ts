@@ -30,14 +30,11 @@ import {
   type WebuiComposerSubmitHandlers,
 } from "./composer-workflows.js";
 import { isWebuiSubscriptionProbeCurrent, ownsWebuiStreamGeneration, resolveWebuiSubscriptionRecheck, type WebuiStreamState } from "../projection/stream-state.js";
-import {
-  releaseWebuiSubscription,
-} from "../mechanisms/stream-lease.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 import {
-  buildWebuiStreamLoopSink,
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
+  type WebuiStreamLoopSink,
 } from "../mechanisms/stream-loop.js";
 import {
   webuiActiveTurnProbeFor,
@@ -61,22 +58,6 @@ export function createWebuiComposerAttachStreamEffect(
   };
 }
 
-export type WebuiStreamSetter = (
-  update: (current: WebuiStreamState) => WebuiStreamState,
-) => void;
-
-/**
- * The stream/sending writer a send streams into, home-keyed until it migrates.
- * It is the command-shaped writer from `application/session-commands.ts`, so the
- * caller builds it once and then only submits `updateStream` / `setTurnSending`
- * — the store setters never leave the command surface.
- */
-export type WebuiTurnWriter = WebuiTurnCommandWriter;
-
-export type WebuiTurnWriterOwner =
-  | { readonly kind: "home" }
-  | { readonly kind: "session"; readonly sessionId: string };
-
 export interface WebuiAttachTurnDeps {
   readonly sessionId: string | undefined;
   /** The turn named by the event, or `undefined` when it carried none. */
@@ -85,7 +66,12 @@ export interface WebuiAttachTurnDeps {
   readonly loadMessages?: WebuiClientMessageLoader;
   readonly readStream: () => WebuiStreamState;
   readonly setSending: (sending: boolean) => void;
-  readonly setStream: WebuiStreamSetter;
+  /**
+   * This attachment's stream sink. Built by the application command surface, so
+   * its writes are already fenced against the generation it claims; the caller
+   * that supplies it cannot write a slice field of its own.
+   */
+  readonly sink: WebuiStreamLoopSink;
 }
 
 /**
@@ -94,7 +80,7 @@ export interface WebuiAttachTurnDeps {
  * lease and every terminal exit stay handled in exactly one place.
  */
 export function attachWebuiTurn(deps: WebuiAttachTurnDeps): void {
-  const { sessionId, turnId, resumeSession, loadMessages, readStream, setSending, setStream } = deps;
+  const { sessionId, turnId, resumeSession, loadMessages, readStream, setSending, sink } = deps;
   if (!sessionId || !resumeSession) return;
   const existing = readStream();
   if (existing.subscription) return;
@@ -106,7 +92,7 @@ export function attachWebuiTurn(deps: WebuiAttachTurnDeps): void {
       attachTurnId: turnId,
       ...(existing.cursor ? { afterCursor: existing.cursor } : {}),
     },
-    buildWebuiStreamLoopSink(setStream, streamStateBundle),
+    sink,
   ).then((generation) => {
     // Only clear the indicator if this loop still owns the stream. A loop that
     // finished after a newer turn started would otherwise make the new turn
@@ -121,7 +107,12 @@ export interface WebuiRecheckSubscriptionDeps {
   /** A shared, deduplicated probe; falls back to one built for `getActiveTurn`. */
   readonly probe?: WebuiActiveTurnProbe;
   readonly readStream: () => WebuiStreamState;
-  readonly setStream: WebuiStreamSetter;
+  /**
+   * Drop the subscription only if the live lease still carries this generation.
+   * Named and scoped, so a probe that started before a newer turn cannot clear
+   * the lease that turn now owns.
+   */
+  readonly releaseSubscription: (generation: number) => void;
   /** Attach to the turn the recheck resolved to (`retarget`). */
   readonly attach: (turnId: string | undefined) => void;
 }
@@ -132,7 +123,7 @@ export interface WebuiRecheckSubscriptionDeps {
  * the authoritative active turn decides.
  */
 export function recheckWebuiSubscription(deps: WebuiRecheckSubscriptionDeps): void {
-  const { sessionId, readStream, setStream, attach } = deps;
+  const { sessionId, readStream, releaseSubscription, attach } = deps;
   if (!sessionId) return;
   const probe = deps.probe ?? webuiActiveTurnProbeFor(deps.getActiveTurn);
   if (!probe) return;
@@ -153,9 +144,7 @@ export function recheckWebuiSubscription(deps: WebuiRecheckSubscriptionDeps): vo
       if (decision === "hold") return;
       // Scoped to the generation we decided is stale: a newer loop may have
       // claimed while the probe was in flight, and that lease is the live one.
-      setStream((current) =>
-        releaseWebuiSubscription(current, { generation: owned.generation }),
-      );
+      releaseSubscription(owned.generation);
       if (decision === "retarget" && active) attach(active.turnId);
     })
     .catch(() => undefined);
@@ -206,8 +195,12 @@ export interface WebuiSendTurnArgs {
   readonly createSession?: WebuiClientSessionCreator;
   readonly createSessionWorkspaceDir?: string;
   readonly teamModeOff?: boolean;
-  /** Builds the turn's writer; the home writer migrates when the session exists. */
-  readonly createWriter: (owner: WebuiTurnWriterOwner) => WebuiTurnWriter;
+  /**
+   * Builds the turn's writer. The owner is not an argument: the writer belongs
+   * to the session this send is for (or to the home slot before that session
+   * exists), and the binding that builds it already knows which.
+   */
+  readonly createWriter: () => WebuiTurnCommandWriter;
 }
 
 /**
@@ -217,12 +210,12 @@ export interface WebuiSendTurnArgs {
  * `submitWebuiComposerTurn`.
  */
 export async function sendWebuiTurn(args: WebuiSendTurnArgs): Promise<void> {
-  let writer = args.createWriter(
-    args.sessionId ? { kind: "session", sessionId: args.sessionId } : { kind: "home" },
-  );
+  let writer = args.createWriter();
   const turnHandlers: WebuiComposerSubmitHandlers = {
     ...args.handlers,
-    setStream: (update) => writer.updateStream(update),
+    createSink: () => writer.createSink(),
+    resetStreamForTurn: () => writer.resetStreamForTurn(),
+    setRefusal: (refusal) => writer.setStreamRefusal(refusal),
     setSending: (sending) => writer.setTurnSending(sending),
     onSessionCreated: (createdSessionId) => {
       args.handlers.onSessionCreated?.(createdSessionId);

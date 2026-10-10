@@ -314,9 +314,22 @@ describe("direction fixtures", () => {
         file: "client/application/window.ts",
         global: "window",
       }),
+      // The restricted member of the same chain is reported on its own entry:
+      // `window.document` is a `document` access, judged by `document`'s policy
+      // rather than `window`'s. Both are violations in application, and both
+      // entries are required — collapsing the chain to one name would let a
+      // member through wherever its base object happens to be allowed.
+      expect.objectContaining({
+        file: "client/application/window.ts",
+        global: "document",
+      }),
       expect.objectContaining({
         file: "client/application/global-storage.ts",
         global: "globalThis",
+      }),
+      expect.objectContaining({
+        file: "client/application/global-storage.ts",
+        global: "localStorage",
       }),
       expect.objectContaining({
         file: "client/projection/title.ts",
@@ -474,6 +487,121 @@ describe("what the metafile cannot see", () => {
   });
 });
 
+// The ambient-member rule: a restricted member is judged by its own policy
+// wherever it is read from, so a base object that the layer may touch does not
+// carry its restricted members with it.
+describe("the ambient-member rule", () => {
+  const rows: ReadonlyArray<{
+    readonly label: string;
+    readonly file: string;
+    readonly body: string;
+    readonly names: readonly string[];
+  }> = [
+    {
+      label: "a component reading window.localStorage",
+      file: "client/components/Widget.tsx",
+      body: "export const s = window.localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "a binding reading window.localStorage",
+      file: "client/bindings/hash.ts",
+      body: "export const s = window.localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "a binding reading self.localStorage",
+      file: "client/bindings/hash.ts",
+      body: "export const s = self.localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "application reading self.localStorage",
+      file: "client/application/app.ts",
+      body: "export const s = self.localStorage;\n",
+      names: ["self", "localStorage"],
+    },
+    {
+      label: "window[\"localStorage\"] as an element access",
+      file: "client/components/Widget.tsx",
+      body: 'export const s = window["localStorage"];\n',
+      names: ["localStorage"],
+    },
+    {
+      label: "destructuring localStorage off window",
+      file: "client/components/Widget.tsx",
+      body: "const { localStorage } = window;\nexport const s = localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "reading localStorage off an alias of window",
+      file: "client/bindings/hash.ts",
+      body: "const g = window;\nexport const s = g.localStorage;\n",
+      names: ["localStorage"],
+    },
+    {
+      label: "a chained base object globalThis.window.localStorage",
+      file: "client/application/app.ts",
+      body: "export const s = globalThis.window.localStorage;\n",
+      names: ["globalThis", "localStorage"],
+    },
+  ];
+
+  for (const row of rows) {
+    it(`rejects ${row.label}`, () => {
+      const { result } = evaluateFixture({ [row.file]: row.body });
+      expect(result.browserGlobals.map((entry) => entry.global).sort()).toEqual(
+        [...row.names].sort(),
+      );
+      expect(result.pass).toBe(false);
+    });
+  }
+
+  it("keeps every legitimate base-object access, including the IO owner's", () => {
+    // The anchors: the storage adapter's own ambient read, the composition
+    // root's, a binding listening to window events, the shell's URL sync, and a
+    // locally typed object that happens to own a `document` property.
+    const { result } = evaluateFixture({
+      "client/infrastructure/storage.ts": "export const s = globalThis.localStorage;\n",
+      "client/main.tsx": "export const d = globalThis.document;\n",
+      "client/bindings/navigation.ts": "export const h = window.location.hash;\n",
+      "client/components/WebuiClientFoundationApp.tsx":
+        'export function sync(): void {\n  const p = window.location.pathname;\n  window.history.replaceState(null, "", p);\n}\n',
+      "client/components/Widget.tsx":
+        'export function boot(): void {\n  window.addEventListener("hashchange", () => {});\n}\n',
+      "client/components/Local.tsx":
+        "const local: { document: number } = { document: 1 };\nexport const d = local.document;\n",
+    });
+    expect(result.browserGlobals).toHaveLength(0);
+    expect(result.pass).toBe(true);
+  });
+});
+
+// The resolved-host rule: an import that *resolves* to a browser-only module is
+// one, even when the specifier it was authored with says nothing of the sort.
+describe("the resolved-host rule", () => {
+  it("rejects a React dependency that arrives through a path alias", () => {
+    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts");
+    const { graph, result } = evaluateFixture(
+      {
+        "client/application/app.ts":
+          'import { useState } from "@webui/react";\nexport const use = useState;\n',
+      },
+      { ...compilerOptions, paths: { "@webui/react": [reactTypes] } },
+    );
+    expect(graph.hostImports).toContainEqual(
+      expect.objectContaining({ specifier: "@webui/react", target: reactTypes }),
+    );
+    expect(result.browserOnly).toContainEqual(
+      expect.objectContaining({
+        file: "client/application/app.ts",
+        specifier: "@webui/react",
+      }),
+    );
+    expect(result.pass).toBe(false);
+  });
+});
+
 describe("structural failures", () => {
   it("rejects an unresolved intra-package import", () => {
     const { result } = evaluateFixture({
@@ -541,6 +669,32 @@ describe("baseline comparison", () => {
     };
     expect(compareBaseline([violation, invented], [entry as NonNullable<typeof entry>]).newViolations)
       .toHaveLength(1);
+  });
+
+  it("counts a pair's occurrences from a definite base, so the entry survives a JSON round trip", () => {
+    // The count used to accumulate onto an absent field: `undefined + 1` is
+    // NaN, every later occurrence kept it NaN, and `JSON.stringify(NaN)` writes
+    // `null` — so a persisted entry never round-tripped, and any equality-based
+    // reader saw a field that kept changing.
+    const violation = (line: number) => ({
+      kind: "direction" as const,
+      from: "client/application/app.ts",
+      to: "client/components/Widget.tsx",
+      line,
+      referenceKind: "import",
+      layerFrom: ["application"],
+      layerTo: ["bindings"],
+      rule: "application -> bindings",
+      category: "projection-to-components",
+      detail: "",
+    });
+
+    expect(toBaselineShape([violation(1)])[0]?.occurrences).toBe(1);
+    expect(toBaselineShape([violation(1), violation(2)])[0]?.occurrences).toBe(2);
+
+    const [entry] = toBaselineShape([violation(1), violation(2), violation(3)]);
+    expect(entry?.occurrences).toBe(3);
+    expect(JSON.parse(JSON.stringify(entry))).toEqual(entry);
   });
 });
 
@@ -630,6 +784,88 @@ describe("declared shapes match the runtime shapes", () => {
       graph.callSites.some((site) => site.method === "setItem"),
       `no call site for setItem in ${JSON.stringify(graph.callSites)}`,
     ).toBe(true);
+  });
+});
+
+// The capability-call rule. `classifyLayers` maps `client/components/` and
+// `client/bindings/` to the same `bindings` layer, so these fixtures exist to
+// pin the half of the judgement the layer set cannot express: the bridge may
+// hold a writer factory, a component may not.
+describe("the capability-call rule", () => {
+  const storeContract =
+    "export interface WebuiSessionStore { createSessionWriter(kind: string): void }\n";
+  const transportContract =
+    "export interface WebuiTransport { sendMessage(body: unknown): Promise<void> }\n";
+  const caller = (contractPath: string, typeName: string, body: string) =>
+    `import type { ${typeName} } from "${contractPath}";\n` +
+    `export function use(port: ${typeName}): void {\n  ${body}\n}\n`;
+
+  it("rejects a capability call from a component, whose layer is bindings", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/components/Widget.tsx": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      kind: "forbidden-call",
+      file: "client/components/Widget.tsx",
+      target: "WebuiSessionStore.createSessionWriter",
+    });
+    expect(result.pass).toBe(false);
+  });
+
+  it("rejects any method on a capability port from a component", () => {
+    const { result } = evaluateFixture({
+      "client/contracts/transport.ts": transportContract,
+      "client/components/Widget.tsx": caller(
+        "../contracts/transport.js",
+        "WebuiTransport",
+        "void port.sendMessage({});",
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      file: "client/components/Widget.tsx",
+      target: "WebuiTransport.sendMessage",
+    });
+  });
+
+  it("keeps the same call allowed in the bindings bridge and in the application", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/bindings/use-session-state.ts": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+      "client/application/turn-coordinator.ts": caller(
+        "./session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(0);
+    expect(result.pass).toBe(true);
+  });
+
+  it("still rejects a capability call from a lower layer", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/mechanisms/stream-loop.ts": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      file: "client/mechanisms/stream-loop.ts",
+      target: "WebuiSessionStore.createSessionWriter",
+    });
   });
 });
 

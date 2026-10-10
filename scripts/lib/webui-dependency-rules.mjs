@@ -33,12 +33,38 @@ const ts = require("typescript");
 // signal of an ambient access. Local parameters or destructured fields with
 // the same identifier are filtered out below; this set is the candidate set,
 // not the verdict.
+//
+// `self` is the browser's other name for the global object (and the worker
+// global). It is collected as a *base object* like `window`: a binding that
+// registers `self.addEventListener(...)` stays legal, while the restricted
+// members read off it are judged by their own policy below.
 const BROWSER_GLOBAL_CANDIDATES = new Set([
   "document",
   "localStorage",
   "sessionStorage",
   "window",
   "globalThis",
+  "self",
+]);
+
+/**
+ * Ambient members whose **own** policy decides an access, wherever they are
+ * read from. `window.localStorage` is a `localStorage` access: judging it by
+ * `window`'s policy (allowed for bindings) let code reach the page's storage
+ * through the base object — `window.localStorage`, `globalThis.localStorage`,
+ * `self.localStorage`, `globalThis.window.localStorage`, `window["localStorage"]`
+ * and `const { localStorage } = window` all passed. The base object's own
+ * access is still recorded and still judged by the base policy, so a chain can
+ * legitimately report both.
+ *
+ * Every name here needs its own entry in `BROWSER_GLOBAL_POLICY`; the two sets
+ * are related but not interchangeable — `window`, `globalThis` and `self` are
+ * base objects with broad layer sets, these three are the restricted members.
+ */
+const RESTRICTED_AMBIENT_MEMBERS = new Set([
+  "document",
+  "localStorage",
+  "sessionStorage",
 ]);
 
 /** Directory (repository-relative) whose source files this check covers. */
@@ -537,7 +563,7 @@ export function collectModuleReferences(fileName, sourceText) {
         kind: "type-query",
       });
     }
-    collectBrowserGlobalCandidate(node, browserGlobalCandidates, lineOf);
+    collectAmbientCandidate(node, browserGlobalCandidates, lineOf);
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
       callCandidates.push({
         line: lineOf(node),
@@ -551,19 +577,67 @@ export function collectModuleReferences(fileName, sourceText) {
 }
 
 /**
- * Records the position of every identifier whose name matches a browser-global
- * candidate, including the *base* identifier of a member expression
- * (`window.document.title` records both `window` and `document`). Local
- * declarations and member-access property names are excluded; the ambient vs.
- * local judgement is left to a later pass that consults the TypeScript
- * symbol's source file, so a parameter named `document` is correctly
- * identified as local.
+ * Records every ambient-browser occurrence the later program pass has to judge.
+ * Three shapes produce a candidate:
+ *
+ *   * a **base object** identifier (`window`, `globalThis`, `self`,
+ *     `document`, `localStorage`, `sessionStorage`) wherever it is read as a
+ *     value, including the base of a member expression (`window.document.title`
+ *     records `window`); local declarations and property names are excluded
+ *     here and the ambient-vs-local judgement is left to the pass that consults
+ *     the TypeScript symbol's source file;
+ *   * a **restricted member** named as the property of an access
+ *     (`window.localStorage`, `g.localStorage`, `globalThis.window.localStorage`),
+ *     as the literal key of an element access (`window["localStorage"]`) or as
+ *     the binding of an object pattern (`const { localStorage } = window`).
+ *     These are anchored on the *naming* node, which for an element access is a
+ *     string literal, so this collector is not identifier-only.
+ *
+ * `access` says which of the two the pass must resolve: a member's symbol is
+ * reached through the object it is read off (its own identifier is a property
+ * name or a fresh local binding), a base object's through the identifier
+ * itself.
  */
-function collectBrowserGlobalCandidate(node, out, lineOf) {
+function collectAmbientCandidate(node, out, lineOf) {
+  if (
+    ts.isElementAccessExpression(node) &&
+    node.argumentExpression &&
+    ts.isStringLiteral(node.argumentExpression) &&
+    RESTRICTED_AMBIENT_MEMBERS.has(node.argumentExpression.text)
+  ) {
+    out.push({
+      name: node.argumentExpression.text,
+      line: lineOf(node),
+      position: node.argumentExpression.getStart(),
+      access: "member",
+    });
+    return;
+  }
   if (!ts.isIdentifier(node)) return;
+  if (restrictedMemberPosition(node)) {
+    out.push({ name: node.text, line: lineOf(node), position: node.getStart(), access: "member" });
+    return;
+  }
   if (!BROWSER_GLOBAL_CANDIDATES.has(node.text)) return;
   if (isDeclarationOrPropertyName(node)) return;
-  out.push({ name: node.text, line: lineOf(node), position: node.getStart() });
+  out.push({ name: node.text, line: lineOf(node), position: node.getStart(), access: "base" });
+}
+
+/**
+ * True when the identifier names a restricted member rather than reading a
+ * value: the property of a property access, or a binding of an object pattern
+ * (shorthand `{ localStorage }` or renamed `{ localStorage: ls }`). The
+ * identifier's own symbol is a property name or a local binding in both cases,
+ * which is why the member resolution cannot start from it.
+ */
+function restrictedMemberPosition(node) {
+  if (!RESTRICTED_AMBIENT_MEMBERS.has(node.text)) return false;
+  const parent = node.parent;
+  if (!parent) return false;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return true;
+  if (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node))
+    return true;
+  return false;
 }
 
 function isDeclarationOrPropertyName(node) {
@@ -588,6 +662,31 @@ function isDeclarationOrPropertyName(node) {
  * the lib split cannot see.
  */
 export const BROWSER_ONLY_MODULES_RE = /^(?:react|react-dom)(?:\/|$)/u;
+
+/**
+ * The same modules as they appear in a **resolved** path. `target` is an
+ * absolute file (`…/node_modules/react/index.d.ts`), so the package has to be
+ * matched inside a `node_modules` segment: the hoisted layout and pnpm's
+ * `…/.pnpm/react@18/node_modules/react/…` both end with one. A path alias that
+ * resolves to React is a browser-only dependency even though the authored
+ * specifier names nothing of the sort, and this is the only place that can see
+ * it.
+ *
+ * The declaration package counts here for the same reason the runtime one does:
+ * an alias that resolves into `@types/react` reached a browser-only module from
+ * a layer that may not have one, and a type-only edge is still source coupling
+ * (E16). The specifier pattern below stays narrower because nobody authors
+ * `import … from "@types/react"`.
+ */
+const BROWSER_ONLY_TARGET_RE = /\/node_modules\/(?:@types\/)?(?:react|react-dom)\//u;
+
+/** Whether a host import names a browser-only module, by specifier or by target. */
+function isBrowserOnlyHostImport(entry) {
+  if (BROWSER_ONLY_MODULES_RE.test(entry.specifier)) return true;
+  if (typeof entry.target !== "string") return false;
+  return BROWSER_ONLY_TARGET_RE.test(entry.target.replaceAll("\\", "/"));
+}
+
 const BROWSER_HOST_LAYERS = new Set(["root", "bindings"]);
 
 function isConfiguredPathAlias(specifier, options) {
@@ -763,6 +862,49 @@ export function buildDependencyGraph(options) {
 }
 
 /**
+ * The symbol of the ambient member a restricted-member candidate names,
+ * resolved through the object it is read off rather than through the identifier
+ * itself.
+ *
+ * The identifier in `window.localStorage` is a property name; in
+ * `const { localStorage } = window` it is a fresh local binding. Neither
+ * resolves to the `lib.dom.d.ts` declaration of the member on its own, which is
+ * why the previous identifier-only pass could not see these accesses at all.
+ * Asking about the *receiver's* type property also covers the two shapes a
+ * special case would otherwise need: an alias (`const g = window; g.localStorage`)
+ * and a chain (`globalThis.window.localStorage`) both flow the `Window` type
+ * through, and a member read off a locally typed object resolves to a local
+ * declaration, so it is dropped by the caller's lib check.
+ */
+function ambientMemberSymbol(node, checker) {
+  const parent = node.parent;
+  if (!parent) return undefined;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node)
+    return propertyOf(parent.expression, node.text, checker);
+  if (ts.isElementAccessExpression(parent) && parent.argumentExpression === node)
+    return propertyOf(parent.expression, node.text, checker);
+  if (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node)) {
+    const declaration = bindingDeclaration(parent);
+    if (!declaration || !declaration.initializer) return undefined;
+    return propertyOf(declaration.initializer, node.text, checker);
+  }
+  return undefined;
+}
+
+/** The property `name` of `expression`'s declared type, if it has one. */
+function propertyOf(expression, name, checker) {
+  return checker.getPropertyOfType(checker.getTypeAtLocation(expression), name) ?? undefined;
+}
+
+/** The variable declaration an object binding's element destructures. */
+function bindingDeclaration(bindingElement) {
+  const pattern = bindingElement.parent;
+  if (!pattern || !ts.isObjectBindingPattern(pattern)) return undefined;
+  const declaration = pattern.parent;
+  return declaration && ts.isVariableDeclaration(declaration) ? declaration : undefined;
+}
+
+/**
  * Resolves text-only candidates against the TypeScript program. Two distinct
  * results come out of one program build:
  *
@@ -833,7 +975,10 @@ function resolveAmbientFacts(sourceFiles, repositoryRoot, optionsFor, globalCand
         let match;
         const visit = (node) => {
           if (match) return;
-          if (node.getStart(sourceFile) === position && ts.isIdentifier(node)) {
+          // A restricted member can be named by a string literal
+          // (`window["localStorage"]`), so the anchor is not always an
+          // identifier.
+          if (node.getStart(sourceFile) === position && (ts.isIdentifier(node) || ts.isStringLiteral(node))) {
             match = node;
             return;
           }
@@ -860,7 +1005,14 @@ function resolveAmbientFacts(sourceFiles, repositoryRoot, optionsFor, globalCand
       for (const candidate of globalByFile.get(absoluteFile) ?? []) {
         const node = findNodeAt(candidate.position);
         if (!node) continue;
-        const symbol = checker.getSymbolAtLocation(node);
+        // A base object is resolved through the identifier's own symbol; a
+        // restricted member through the object it is read off, because its own
+        // identifier is a property name or a fresh local binding whose
+        // declaration is never the `lib.dom.d.ts` one.
+        const symbol =
+          candidate.access === "member"
+            ? ambientMemberSymbol(node, checker)
+            : checker.getSymbolAtLocation(node);
         if (isLibDeclaration(symbol)) {
           browserGlobalUses.push({ file: relative, name: candidate.name, line: candidate.line });
         }
@@ -936,7 +1088,11 @@ function directionRule(graph) {
 function browserOnlyRule(graph) {
   const violations = [];
   for (const entry of graph.hostImports) {
-    if (!BROWSER_ONLY_MODULES_RE.test(entry.specifier)) continue;
+    // Both the authored specifier and the resolved target decide: a path alias
+    // (`@webui/react`) resolves to React without ever naming it, and before this
+    // test consulted `target` such an import produced no host-import match at
+    // all. See `isBrowserOnlyHostImport` for why the two patterns differ.
+    if (!isBrowserOnlyHostImport(entry)) continue;
     const layers = classifyLayers(entry.from);
     // Allowed when *any* target layer of the importing file may use the host
     // module (e.g. a file that is both application logic and a React binding).
@@ -980,14 +1136,26 @@ function nonLiteralDynamicRule(graph) {
 // permit bindings that legitimately listen to `window` events without
 // letting arbitrary `localStorage` access slip into a component.
 //
-// `window`/`globalThis` are legitimate in bindings (hashchange, online event
-// reconnection), root (composition) and infrastructure (browser IO). Local
+// `window`/`self`/`globalThis` are legitimate in bindings (hashchange, online
+// event reconnection), root (composition) and infrastructure (browser IO). Local
 // parameters with the same name are still filtered by the AST ambient check.
 // `document`/`localStorage`/`sessionStorage` are restricted to a narrow IO
 // owner list — they are what the lead flagged as application/projection
 // violations and what the storage injection refactor removed from bindings.
+//
+// These entries are consulted per *name*, and a restricted member is judged by
+// its own entry wherever it is read from: allowing `window` for bindings does
+// not allow `window.localStorage`, which resolves to the `localStorage` entry
+// below (`RESTRICTED_AMBIENT_MEMBERS`).
 const BROWSER_GLOBAL_POLICY = {
   window: { layers: new Set(["root", "bindings", "infrastructure"]) },
+  // `self` is the browser's other name for the global object (and the worker
+  // global), so it carries `window`'s layers: a binding may register an event
+  // listener on it, and a member read off it is judged by that member's own
+  // policy. It is deliberately *not* allowed for the Node layers — unlike
+  // `globalThis`, which is the Node global too and stays allowed for
+  // `runtime`/`runtime-port` below, `self` has no Node meaning.
+  self: { layers: new Set(["root", "bindings", "infrastructure"]) },
   // `globalThis` is also the Node-side ambient object — the runtime and
   // runtime-port layers may legitimately read platform properties from it
   // (fetch, crypto, performance). The browser-specific globals below stay
@@ -1085,10 +1253,15 @@ const FORBIDDEN_RECEIVER_INTERFACES = new Map([
 // Layers that must *not* invoke a writer-factory or a business-RPC method.
 // The `bindings` layer is intentionally absent: it is the legitimate bridge
 // that turns a writer into a command surface (plan §7.2
-// `client/bindings/use-session-state.ts`). Components and lower-level layers
+// `client/bindings/use-session-state.ts`). Lower-level layers
 // (view/domain/contracts/shared/mechanisms) do not own capability
 // interactions, so a writer or RPC call there is treated as a sign the
 // application contract has slipped.
+//
+// Presentation is the one case the layer set cannot express. `classifyLayers`
+// maps `client/components/` to `bindings` — the same layer as the bridge — so a
+// layer-only test would exempt every component along with it.
+// `CALL_PRESENTATION_PREFIX` below carries that half of the judgement by path.
 const CALL_FORBIDDEN_LAYERS = new Set([
   "view",
   "domain",
@@ -1097,6 +1270,19 @@ const CALL_FORBIDDEN_LAYERS = new Set([
   "mechanisms",
 ]);
 
+/**
+ * Paths whose files are presentation and therefore may not hold a capability
+ * call, even though their classified layer is `bindings`. This is not a
+ * directory denylist for imports (see the `ALLOWED_EDGES` note: nothing is
+ * forbidden merely because a directory is named); it is the call-site rule's
+ * missing half. The rule asks whether the *caller* owns capability
+ * interactions, and the plan answers that per directory: `client/bindings/` is
+ * the bridge that converts a writer into a command surface, `client/components/`
+ * is the shell and its panels, which submit commands and receive none of the
+ * capability objects these methods are reached through.
+ */
+const CALL_PRESENTATION_PREFIX = "client/components/";
+
 function forbiddenActualCallRule(graph) {
   const violations = [];
   for (const site of graph.callSites ?? []) {
@@ -1104,16 +1290,21 @@ function forbiddenActualCallRule(graph) {
     if (allowed === undefined) continue;
     if (allowed !== null && !allowed.has(site.method)) continue;
     const layers = classifyLayers(site.file);
-    // Allow when the file lives in `application` (the workflow owner) or
-    // `infrastructure` (the IO owner). A split layer whose *every* target
-    // layer is forbidden fails the check.
-    if (layers.every((layer) => !CALL_FORBIDDEN_LAYERS.has(layer))) continue;
+    // A call site fails when the file carries *any* forbidden target layer, or
+    // when it is presentation. "Any" is the judgement the previous
+    // `layers.every(!has)` test made — `!every(!has)` is `some(has)` — so the
+    // split-file behaviour is unchanged; no file currently classifies to more
+    // than one target layer, and `classifyLayers` is the only place that could
+    // grow a second one.
+    const forbiddenLayer = layers.some((layer) => CALL_FORBIDDEN_LAYERS.has(layer));
+    const presentation = site.file.startsWith(CALL_PRESENTATION_PREFIX);
+    if (!forbiddenLayer && !presentation) continue;
     violations.push({
       kind: "forbidden-call",
       file: site.file,
       line: site.line,
       target: `${site.receiver}.${site.method}`,
-      detail: `${site.file}:${site.line}: ${layers.join("|")} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
+      detail: `${site.file}:${site.line}: ${layers.join("|")}${presentation ? " (presentation)" : ""} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
     });
   }
   return { pass: violations.length === 0, violations };
@@ -1278,6 +1469,17 @@ export function compareBaseline(violations, entries) {
  * Collapses measured direction violations to one representative per file pair
  * (occurrence counts are kept), which is the granularity of the baseline.
  *
+ * `occurrences` starts at 1 on the entry that represents the pair and is
+ * incremented for every further violation of it. The base is set here, at the
+ * single insertion point, rather than derived from whatever the entry already
+ * held: `undefined + 1` is `NaN`, `NaN + 1` stays `NaN`, and `NaN` has no JSON
+ * form (`JSON.stringify` writes `null`), so an entry built that way could never
+ * survive a round trip and any equality-based reader saw a field that kept
+ * changing. No coalescing fallback (`Number(x) || 0`, `?? 0`) is needed for the
+ * same reason it would be harmful: it would turn "an entry was inserted without
+ * the count" — a programming error this single insertion point rules out — into
+ * a silently wrong number rather than a visible one.
+ *
  * @param {Array<object>} violations
  * @returns {Array<object>}
  */
@@ -1300,6 +1502,7 @@ export function toBaselineShape(violations) {
       category: violation.category,
       stage: category.stage,
       reason: category.description,
+      occurrences: 1,
     });
   }
   return [...byPair.values()].sort((a, b) =>

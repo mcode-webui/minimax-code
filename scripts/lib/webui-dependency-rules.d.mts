@@ -57,15 +57,23 @@ export interface ModuleReference {
 }
 
 /**
- * A text-anchored identifier whose name matches an ambient browser global. The
- * `position` is the character offset the ambient/local judgement resolves
- * against the TypeScript program; it is carried out of the collector rather
- * than recomputed.
+ * A text-anchored ambient-browser occurrence. The `position` is the character
+ * offset the ambient/local judgement resolves against the TypeScript program; it
+ * is carried out of the collector rather than recomputed.
+ *
+ * `access` says how the pass must resolve it: `"base"` is a base object read as
+ * a value (`window`, `self`, `globalThis`, `document`, `localStorage`,
+ * `sessionStorage`), resolved through the identifier's own symbol; `"member"` is
+ * a restricted member *named* rather than read (`window.localStorage`,
+ * `window["localStorage"]`, `const { localStorage } = window`), whose own
+ * identifier is a property name or a local binding and is therefore resolved
+ * through the object it is read off.
  */
 export interface CollectedBrowserGlobalCandidate {
   readonly name: string;
   readonly line: number;
   readonly position: number;
+  readonly access: "base" | "member";
 }
 
 /** A call whose callee is a property access, anchored by its start offset. */
@@ -255,6 +263,13 @@ export interface BaselineEntry {
   readonly category: string;
   readonly stage: number;
   readonly reason: string;
+  /**
+   * How many reference occurrences the pair had, set by {@link toBaselineShape}
+   * when it collapses measured violations to one entry per pair. Optional
+   * because the repository's frozen baseline entries do not carry it: they were
+   * authored as the comparison input, which never reads this field.
+   */
+  readonly occurrences?: number;
 }
 
 export interface BaselineComparison {

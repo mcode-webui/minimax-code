@@ -372,7 +372,13 @@ export function createWebuiSessionStore(options?: {
         owner.kind === "home" ? WEBUI_HOME_SESSION_KEY : owner.sessionId,
       ),
     migrateSession: (fromKey, toKey) => {
-      if (disposed || fromKey === toKey) return;
+      // A key this instance has purged is dead in the store, exactly as it is
+      // for `updateSession`: carrying a record onto it would resurrect the
+      // deleted session (the home→session adoption runs on its own schedule,
+      // so the session it names can be deleted before the migration lands).
+      // The source is deliberately left alone — a refused migration must not
+      // also clear the record the caller still owns.
+      if (disposed || fromKey === toKey || purged.has(toKey)) return;
       const state = sessions.get(fromKey);
       sessions.delete(fromKey);
       if (state) sessions.set(toKey, state);

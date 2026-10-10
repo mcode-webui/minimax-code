@@ -30,6 +30,9 @@ function browserStorage(): Storage | undefined {
 }
 
 export interface WebuiBrowserStorage {
+  readonly getItem: (key: string) => string | null;
+  readonly setItem: (key: string, value: string) => void;
+  readonly removeItem: (key: string) => void;
   readonly readFavoriteModels: (normalize: (value: unknown) => string[]) => string[];
   readonly writeFavoriteModels: (ids: readonly string[], normalize: (value: unknown) => string[]) => void;
   readonly readNoProjectFlag: () => boolean;
@@ -60,6 +63,15 @@ export function createWebuiBrowserStorage(
     return parseTeamModeSessionChoices(storage.getItem(TEAM_MODE_SESSION_STORAGE_KEY));
   };
   return {
+    getItem: (key) => {
+      try { return storage?.getItem(key) ?? null; } catch { return null; }
+    },
+    setItem: (key, value) => {
+      try { storage?.setItem(key, value); } catch { /* Preferences are best-effort. */ }
+    },
+    removeItem: (key) => {
+      try { storage?.removeItem(key); } catch { /* Preferences are best-effort. */ }
+    },
     readFavoriteModels,
     writeFavoriteModels: (ids, normalize) => {
       if (!storage) return;

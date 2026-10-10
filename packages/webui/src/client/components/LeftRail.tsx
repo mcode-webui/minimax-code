@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { WebuiClientSession } from "../contracts/session-view.js";
+import type { WebuiBrowserStorage } from "../infrastructure/storage.js";
 
 export const WEBUI_SESSION_OVERLAY_KEYS = {
   stars: "mavis-webui-session-stars:v1",
@@ -14,41 +15,41 @@ export const WEBUI_PROJECT_OVERLAY_KEYS = {
 
 export type WebuiSessionOverlay = "stars" | "pins" | "archives";
 
-export function readSessionOverlay(kind: WebuiSessionOverlay): Record<string, boolean> {
+export function readSessionOverlay(kind: WebuiSessionOverlay, storage: WebuiBrowserStorage): Record<string, boolean> {
   try {
-    const value = JSON.parse(localStorage.getItem(WEBUI_SESSION_OVERLAY_KEYS[kind]) ?? "{}");
+    const value = JSON.parse(storage.getItem(WEBUI_SESSION_OVERLAY_KEYS[kind]) ?? "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
   }
 }
 
-export function toggleSessionOverlay(kind: WebuiSessionOverlay, sessionId: string): Record<string, boolean> {
-  const next = readSessionOverlay(kind);
+export function toggleSessionOverlay(kind: WebuiSessionOverlay, sessionId: string, storage: WebuiBrowserStorage): Record<string, boolean> {
+  const next = readSessionOverlay(kind, storage);
   if (next[sessionId]) delete next[sessionId]; else next[sessionId] = true;
-  localStorage.setItem(WEBUI_SESSION_OVERLAY_KEYS[kind], JSON.stringify(next));
+  storage.setItem(WEBUI_SESSION_OVERLAY_KEYS[kind], JSON.stringify(next));
   return next;
 }
 
-export function readProjectPins(): Record<string, boolean> {
+export function readProjectPins(storage: WebuiBrowserStorage): Record<string, boolean> {
   try {
-    const value = JSON.parse(localStorage.getItem(WEBUI_PROJECT_OVERLAY_KEYS.pins) ?? "{}");
+    const value = JSON.parse(storage.getItem(WEBUI_PROJECT_OVERLAY_KEYS.pins) ?? "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
   }
 }
 
-export function toggleProjectPin(projectKey: string): Record<string, boolean> {
-  const next = readProjectPins();
+export function toggleProjectPin(projectKey: string, storage: WebuiBrowserStorage): Record<string, boolean> {
+  const next = readProjectPins(storage);
   if (next[projectKey]) delete next[projectKey]; else next[projectKey] = true;
-  localStorage.setItem(WEBUI_PROJECT_OVERLAY_KEYS.pins, JSON.stringify(next));
+  storage.setItem(WEBUI_PROJECT_OVERLAY_KEYS.pins, JSON.stringify(next));
   return next;
 }
 
-export function readProjectNames(): Record<string, string> {
+export function readProjectNames(storage: WebuiBrowserStorage): Record<string, string> {
   try {
-    const value = JSON.parse(localStorage.getItem(WEBUI_PROJECT_OVERLAY_KEYS.names) ?? "{}");
+    const value = JSON.parse(storage.getItem(WEBUI_PROJECT_OVERLAY_KEYS.names) ?? "{}");
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
@@ -58,10 +59,10 @@ export function readProjectNames(): Record<string, string> {
   }
 }
 
-export function writeProjectName(projectKey: string, name: string): Record<string, string> {
-  const next = readProjectNames();
+export function writeProjectName(projectKey: string, name: string, storage: WebuiBrowserStorage): Record<string, string> {
+  const next = readProjectNames(storage);
   next[projectKey] = name;
-  localStorage.setItem(WEBUI_PROJECT_OVERLAY_KEYS.names, JSON.stringify(next));
+  storage.setItem(WEBUI_PROJECT_OVERLAY_KEYS.names, JSON.stringify(next));
   return next;
 }
 

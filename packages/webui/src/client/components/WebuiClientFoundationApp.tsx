@@ -103,6 +103,7 @@ import { selectWebuiSessionStream } from "../application/selectors.js";
 import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
 import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-context.js";
 import {
   WebuiAccountWorkflowsProvider,
@@ -119,7 +120,6 @@ import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
-  createWebuiBrowserStorage,
 } from "../infrastructure/storage.js";
 import { startWebuiSessionTransferDownload } from "../infrastructure/session-transfer-download.js";
 import { importWebuiSessionFile } from "../infrastructure/session-import.js";
@@ -213,6 +213,7 @@ function useSelectedSessionId(
 export function WebuiClientFoundationApp(
   props: WebuiClientFoundationAppProps,
 ): ReactElement {
+  const { storage: browserStorage } = useWebuiBrowserCapabilities();
   const {
     label,
     sessionPage,
@@ -346,7 +347,6 @@ export function WebuiClientFoundationApp(
   const dispatchShellSurface = useCallback((command: WebuiShellSurfaceCommand) => {
     setShellSurface((current) => reduceWebuiShellSurface(current, command));
   }, []);
-  const browserStorage = useMemo(() => createWebuiBrowserStorage(), []);
   const favoriteStorage = useMemo(
     () => ({
       read: () => browserStorage.readFavoriteModels(normalizeFavoriteModelIds),
@@ -423,16 +423,16 @@ export function WebuiClientFoundationApp(
     string | undefined
   >();
   const [pinnedSessions, setPinnedSessions] = useState<Record<string, boolean>>(
-    readSessionOverlay("pins"),
+    () => readSessionOverlay("pins", browserStorage),
   );
   const [starredSessions, setStarredSessions] = useState<Record<string, boolean>>(
-    readSessionOverlay("stars"),
+    () => readSessionOverlay("stars", browserStorage),
   );
   const [pinnedProjects, setPinnedProjects] = useState<Record<string, boolean>>(
-    readProjectPins,
+    () => readProjectPins(browserStorage),
   );
   const [projectNames, setProjectNames] = useState<Record<string, string>>(
-    readProjectNames,
+    () => readProjectNames(browserStorage),
   );
   // The selected session's live stream slice, read off the application store
   // through the selector (plan §7.6; ticket #45 prerequisite 5). Subscribing to
@@ -567,10 +567,10 @@ export function WebuiClientFoundationApp(
   const handleRenameProject = (project: WebuiProjectGroup) => {
     if (typeof window === "undefined") return;
     const next = window.prompt("重命名项目", projectNames[project.key] ?? project.name)?.trim();
-    if (next) setProjectNames(writeProjectName(project.key, next));
+    if (next) setProjectNames(writeProjectName(project.key, next, browserStorage));
   };
   const handleToggleProjectPin = (project: WebuiProjectGroup) => {
-    setPinnedProjects(toggleProjectPin(project.key));
+    setPinnedProjects(toggleProjectPin(project.key, browserStorage));
   };
   const handleRenameSession = (session: WebuiClientSession) => {
     if (!sessionWorkflows.canMutate || typeof window === "undefined") return;
@@ -582,10 +582,10 @@ export function WebuiClientFoundationApp(
       .catch((reason: unknown) => setPageError(reason instanceof Error ? reason.message : String(reason)));
   };
   const handleToggleSessionPin = (session: WebuiClientSession) => {
-    setPinnedSessions(toggleSessionOverlay("pins", session.sessionId));
+    setPinnedSessions(toggleSessionOverlay("pins", session.sessionId, browserStorage));
   };
   const handleToggleSessionStar = (session: WebuiClientSession) => {
-    setStarredSessions(toggleSessionOverlay("stars", session.sessionId));
+    setStarredSessions(toggleSessionOverlay("stars", session.sessionId, browserStorage));
   };
   const handleArchiveSession = (session: WebuiClientSession) => {
     void sessionWorkflows

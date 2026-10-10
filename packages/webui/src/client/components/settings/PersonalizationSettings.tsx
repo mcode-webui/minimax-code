@@ -14,6 +14,7 @@ import {
   useWebuiSettingsWorkflows,
   useWebuiSettingsWorkflowsState,
 } from "../../bindings/use-query-state.js";
+import { useWebuiBrowserCapabilities } from "../../bindings/browser-capabilities.js";
 
 /**
  * Personalization panel — the three blocks the desktop surface ships:
@@ -213,15 +214,13 @@ function MemoryRow({
 const LEGACY_STORAGE_KEY = "webui-custom-instructions";
 const MIGRATION_FLAG_KEY = "webui-custom-instructions-migrated";
 
-function readLegacyDraft(): string {
-  if (typeof localStorage === "undefined") return "";
-  return localStorage.getItem(LEGACY_STORAGE_KEY) ?? "";
+function readLegacyDraft(storage: ReturnType<typeof useWebuiBrowserCapabilities>["storage"]): string {
+  return storage.getItem(LEGACY_STORAGE_KEY) ?? "";
 }
 
-function markMigrationDone(): void {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(MIGRATION_FLAG_KEY, "1");
-  localStorage.removeItem(LEGACY_STORAGE_KEY);
+function markMigrationDone(storage: ReturnType<typeof useWebuiBrowserCapabilities>["storage"]): void {
+  storage.setItem(MIGRATION_FLAG_KEY, "1");
+  storage.removeItem(LEGACY_STORAGE_KEY);
 }
 
 /**
@@ -355,6 +354,7 @@ function GlobalInstructionsSection({
   getGlobalInstructions,
   setGlobalInstructions,
 }: GlobalInstructionsSectionProps): ReactElement {
+  const { storage } = useWebuiBrowserCapabilities();
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState<string>();
   const [maxBytes, setMaxBytes] = useState(32 * 1024);
@@ -376,14 +376,14 @@ function GlobalInstructionsSection({
           resolveEditorSeed({
             exists: value.exists,
             content: value.content,
-            legacyDraft: readLegacyDraft(),
-            migrationDone: localStorage?.getItem(MIGRATION_FLAG_KEY) === "1",
+            legacyDraft: readLegacyDraft(storage),
+            migrationDone: storage.getItem(MIGRATION_FLAG_KEY) === "1",
           }),
         );
         // A live profile file retires the legacy draft immediately: the user
         // already has content there, so keeping a browser-local copy around
         // only creates a second source that can drift.
-        if (value.exists) markMigrationDone();
+        if (value.exists) markMigrationDone(storage);
       })
       .catch((cause: unknown) => {
         if (cancelled) return;
@@ -409,14 +409,14 @@ function GlobalInstructionsSection({
         setMaxBytes(next.maxBytes);
         setFilePath(next.path);
       }
-      markMigrationDone();
+      markMigrationDone(storage);
       setSaved(true);
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [draft, overLimit, saving, setGlobalInstructions]);
+  }, [draft, overLimit, saving, setGlobalInstructions, storage]);
 
   return (
     <section
@@ -943,6 +943,7 @@ export function MemoryManagerDialog({
   onClose,
   onCreateInSession,
 }: MemoryManagerDialogProps): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const [draft, setDraft] = useState<string>();
   // The text the server last returned, as opposed to what is in the box now.
   // Without it there is no way to tell an edit from a re-render, and the save
@@ -1094,7 +1095,7 @@ export function MemoryManagerDialog({
    */
   const surfaceRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const restoreTo = document.activeElement;
+    const restoreTo = dom.getActiveElement();
     surfaceRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
@@ -1113,12 +1114,12 @@ export function MemoryManagerDialog({
       }
       onClose();
     };
-    document.addEventListener("keydown", onKeyDown);
+    const stopKeyDown = dom.listenForKeyDown(onKeyDown);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      if (restoreTo instanceof HTMLElement) restoreTo.focus();
+      stopKeyDown();
+      restoreTo?.focus();
     };
-  }, [onClose]);
+  }, [dom, onClose]);
 
   const dialog = (
     <div
@@ -1289,12 +1290,12 @@ export function MemoryManagerDialog({
   const confirmRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!confirmingDelete) return;
-    const restoreTo = document.activeElement;
+    const restoreTo = dom.getActiveElement();
     confirmRef.current?.focus();
     return () => {
-      if (restoreTo instanceof HTMLElement && restoreTo.isConnected) restoreTo.focus();
+      if (restoreTo?.isConnected) restoreTo.focus();
     };
-  }, [confirmingDelete]);
+  }, [confirmingDelete, dom]);
 
   const confirm = confirmingDelete ? (
     <div
@@ -1359,12 +1360,6 @@ export function MemoryManagerDialog({
    * shell no matter how large its own z-index is. The same reason
    * `UserMenu` portals the settings modal itself out of the rail.
    */
-  if (typeof document === "undefined") return dialog;
-  return createPortal(
-    <>
-      {dialog}
-      {confirm}
-    </>,
-    document.body,
-  );
+  const portalTarget = dom.portalTarget();
+  return portalTarget ? createPortal(<>{dialog}{confirm}</>, portalTarget) : dialog;
 }

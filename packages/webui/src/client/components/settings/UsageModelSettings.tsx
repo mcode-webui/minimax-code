@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useWebuiBrowserCapabilities } from "../../bindings/browser-capabilities.js";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -52,6 +53,7 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
 }
 
 export function UsageModelSettings({ sessionId }: Props): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   // The models/providers/api-key/model-source/codex answers come from the
   // settings owner and the usage quota from the account owner (ticket #52).
   // This panel submits commands and reads snapshots; every uncommitted form
@@ -237,6 +239,7 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
   const sourceLabel = sourceTab === "token-plan" ? "Token Plan" : "MiniMax API";
   const sourceBadge = getActiveSourceBadge(sourceLoaded, activeSource, quotaView?.hasTokenPlan === true);
 
+  const portalTarget = dom.portalTarget();
   return <div className="mx-auto flex min-h-0 w-full max-w-[704px] flex-1 flex-col gap-4" data-testid="settings-usage-model">
     <div className="flex h-8 items-center gap-3">
       <div className="relative">
@@ -300,7 +303,7 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
           </div>;
         })}
         <button type="button" disabled={!settings?.canManageProviders} className="h-9 w-fit rounded-[8px] px-3" onClick={() => void openProviderForm()}>添加模型</button>
-        {showProviderForm && typeof document !== "undefined" ? createPortal(<div role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void saveProvider(); }}>
+        {showProviderForm && portalTarget ? createPortal(<div role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void saveProvider(); }}>
           <header className="webui-provider-form-header"><h3>{editingProvider ? "编辑提供商" : "添加模型"}</h3><button type="button" aria-label="关闭" onClick={() => setShowProviderForm(false)}><CloseIcon /></button></header>
           <div className="webui-provider-form-body">
             {!editingProvider ? <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">提供商<ProviderPresetPicker presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); setDraftName(""); setDraftBaseUrl(""); setDraftApiFormat("openai-completions"); setDraftModelId(""); return; } setSelectedPresetId(text(preset.providerId)); setDraftName(text(preset.name)); setDraftBaseUrl(text(preset.baseUrl)); setDraftApiFormat(text(preset.apiFormat)); setDraftModelId(""); }} /></label>{selectedPresetId === "__other__" ? <label className="webui-provider-form-field">提供商名称<input aria-label="提供商名称" value={draftName} onChange={(event) => setDraftName(event.target.value)} required /></label> : null}</div> : null}
@@ -312,7 +315,7 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
             {formError ? <p role="alert" className="webui-provider-form-error">{formError}</p> : null}
           </div>
           <footer className="webui-provider-form-actions"><label><input type="checkbox" checked={skipTest} onChange={(event) => setSkipTest(event.target.checked)} />跳过连通检测</label><span /><button type="button" disabled={formBusy || !draftModelId.trim()} onClick={() => void runCandidateTest()}>连通检测</button><button type="button" disabled={formBusy} onClick={() => setShowProviderForm(false)}>取消</button><button type="submit" disabled={formBusy || (!draftTested && !skipTest)}>{formBusy ? "加载中…" : "保存"}</button></footer>
-        </form></div>, document.body) : null}
+        </form></div>, portalTarget) : null}
         {providerPendingDelete ? <div role="dialog" aria-modal="true" aria-label={`删除供应商${text(providerPendingDelete.name)}`} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.25)]"><div className="w-[480px] overflow-clip rounded-[20px] bg-bg_grouped_secondary p-6" style={{ boxShadow: "0 4px 10px 0 rgba(0,0,0,0.04)" }}><div className="flex flex-col gap-6"><div className="flex flex-col gap-4"><div className="flex items-center justify-between"><h3 className="text-[18px] font-medium leading-[26px] text-text_default_primary">删除供应商"{text(providerPendingDelete.name)}"吗？</h3><button type="button" aria-label="关闭" className="flex size-[22px] items-center justify-center text-icon_default_tertiary hover:text-icon_default_secondary" onClick={() => setProviderPendingDelete(undefined)}><CloseIcon /></button></div><p className="text-[14px] leading-5 text-text_default_secondary">删除后将移除该供应商下的所有模型选项。</p></div>{formError ? <p role="alert">{formError}</p> : null}<div className="flex justify-end gap-4"><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] px-4" onClick={() => setProviderPendingDelete(undefined)}>取消</button><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] bg-bg_status_error px-4" onClick={() => void confirmDeleteProvider()}>{formBusy ? "删除中…" : "删除"}</button></div></div></div></div> : null}
         {oauthError ? <p role="alert">{oauthError}</p> : oauth?.state === "connected" ? <div className="flex items-center gap-3"><span>Codex OAuth 已连接</span><button type="button" disabled={!settings?.canManageProviders} onClick={() => void settings?.refreshModels?.()}>获取模型列表</button></div> : <div className="flex items-center gap-2"><button type="button" disabled={!settings?.canStartCodexOAuth || Boolean(oauthLoginId)} onClick={() => void beginCodexLogin()}>{oauthLoginId ? "正在连接 Codex OAuth" : "连接 Codex OAuth"}</button>{oauthLoginId ? <button type="button" disabled={!settings?.canStartCodexOAuth} onClick={() => void cancelCodexLogin()}>取消</button> : null}</div>}
       </>}

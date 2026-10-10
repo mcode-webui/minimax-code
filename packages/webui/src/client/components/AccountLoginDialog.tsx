@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import type { WebuiAccountLoginView } from "../../shared/contracts/account.js";
 import {
   useWebuiAccountWorkflows,
@@ -199,6 +200,7 @@ export function AccountLoginDialog({
    *  refresh whatever account surfaces it shows. */
   readonly onAuthenticated?: () => void;
 }): ReactElement | null {
+  const { dom } = useWebuiBrowserCapabilities();
   // The device flow — begin, poll and cancel — belongs to the application
   // account owner (ticket #52). This dialog is a view over its snapshot: it
   // submits commands and renders `login.view`; it owns no interval.
@@ -252,7 +254,8 @@ export function AccountLoginDialog({
       />
     </div>
   );
-  return typeof document !== "undefined"
-    ? createPortal(dialog, document.body)
+  const portalTarget = dom.portalTarget();
+  return portalTarget
+    ? createPortal(dialog, portalTarget)
     : dialog;
 }

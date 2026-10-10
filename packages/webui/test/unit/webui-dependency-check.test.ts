@@ -477,13 +477,13 @@ describe("baseline comparison", () => {
 });
 
 describe("the gate runs and matches the frozen baseline", () => {
-  it("reports existing forbidden browser globals instead of hiding them", () => {
+  it("passes with all component browser globals routed through injected adapters", () => {
     const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));
     const run = runCli(["--json"]);
     const summary = JSON.parse(run.stdout);
-    expect(run.status).toBe(1);
-    expect(summary.ok).toBe(false);
-    expect(summary.browserGlobals.length).toBeGreaterThan(0);
+    expect(run.status).toBe(0);
+    expect(summary.ok).toBe(true);
+    expect(summary.browserGlobals).toHaveLength(0);
     expect(summary.baselinePairs).toBe((baseline.entries ?? []).length);
     expect(summary.cycles).toHaveLength((baseline.cycles ?? []).length);
     expect(summary.newViolations).toHaveLength(0);

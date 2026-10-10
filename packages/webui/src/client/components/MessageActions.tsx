@@ -23,6 +23,7 @@
 
 import { useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import {
   WebuiIconMessageCopy,
   WebuiIconMessageCopied,
@@ -164,6 +165,7 @@ export function WebuiMessageActions({
   /** Epoch ms; the desktop prints it inside the action row. */
   readonly timestamp?: number;
 }): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"like" | "dislike">();
   const copy = async () => {
@@ -172,19 +174,8 @@ export function WebuiMessageActions({
         ...(typeof navigator !== "undefined" && navigator.clipboard
           ? { clipboard: navigator.clipboard }
           : {}),
-        ...(typeof document !== "undefined"
-          ? {
-              fallback: () => {
-                const area = document.createElement("textarea");
-                area.value = copyText;
-                area.style.position = "fixed";
-                area.style.opacity = "0";
-                document.body.appendChild(area);
-                area.select();
-                document.execCommand("copy");
-                area.remove();
-              },
-            }
+        ...(dom.portalTarget()
+          ? { fallback: () => dom.copyTextFallback(copyText) }
           : {}),
       });
       if (copied) {
@@ -257,6 +248,7 @@ export function WebuiRewindDialog({
   readonly onClose: () => void;
   readonly onConfirm: (rewindTurnDiff: boolean) => void;
 }): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const files = preview?.turns.flatMap((turn) => turn.files) ?? [];
   const turns = preview?.turns.length ?? 1;
   const dialog = (
@@ -279,5 +271,6 @@ export function WebuiRewindDialog({
       </div>
     </div>
   );
-  return typeof document !== "undefined" ? createPortal(dialog, document.body) : dialog;
+  const portalTarget = dom.portalTarget();
+  return portalTarget ? createPortal(dialog, portalTarget) : dialog;
 }

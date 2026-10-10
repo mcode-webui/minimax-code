@@ -156,7 +156,7 @@ describe("context panel — hover names it, click opens it", () => {
     expect(indicator).toContain('if (event.key === "Escape") setOpen(false)');
     // `pointerdown` in the CAPTURE phase: the press that lands outside has to
     // dismiss the panel rather than being handed to whatever is underneath.
-    expect(indicator).toContain('document.addEventListener("pointerdown", onPointerDown, true)');
+    expect(indicator).toContain("dom.listenForPointerDown(onPointerDown, true)");
   });
 });
 

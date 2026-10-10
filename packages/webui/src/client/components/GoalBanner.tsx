@@ -6,6 +6,7 @@
 
 import { useEffect, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import {
   formatWebuiGoalDuration,
   WEBUI_GOAL_STATUS_COPY,
@@ -93,6 +94,7 @@ export function WebuiGoalBanner({
   readonly onCleared?: () => void;
   readonly interactionBlocked?: boolean;
 } & WebuiGoalBannerCapabilities): ReactElement | null {
+  const { dom } = useWebuiBrowserCapabilities();
   const [objectiveExpanded, setObjectiveExpanded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [updated, setUpdated] = useState(false);
@@ -163,6 +165,7 @@ export function WebuiGoalBanner({
       onConfirm={clear}
     />
     : null;
+  const portalTarget = dom.portalTarget();
   return (
     <section className="webui-goal-banner" data-testid="thread-goal-banner" data-goal-status={status} role="status" aria-live="polite">
       <div className="webui-goal-banner-row">
@@ -195,7 +198,7 @@ export function WebuiGoalBanner({
       {objectiveExpanded ? <div className="webui-goal-objective-expanded" data-testid="thread-goal-objective-expanded">{goal.objective}</div> : null}
       {error && !confirmClear ? <p role="alert" data-testid="thread-goal-error">{error}</p> : null}
       {clearDialog
-        ? typeof document !== "undefined" ? createPortal(clearDialog, document.body) : clearDialog
+        ? portalTarget ? createPortal(clearDialog, portalTarget) : clearDialog
         : null}
     </section>
   );

@@ -70,6 +70,7 @@ import {
   useWebuiSessionState,
   useWebuiTurnWriter,
 } from "../bindings/use-session-state.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { useWebuiEventEffectsRegistry } from "../bindings/event-effects-context.js";
 import { webuiSessionStatusType } from "../projection/stream-state.js";
 
@@ -711,6 +712,7 @@ export function WebuiComposer({
   readonly onSelectSession?: (sessionId: string) => void;
   readonly onOpenPluginManagement?: (area: "plugins" | "skills") => void;
 } & WebuiSessionComposerCapabilities): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const { stream, sending } = useWebuiSessionState(sessionId);
   const { commands, readStream } = useWebuiSessionCommands(sessionId);
   const createTurnWriter = useWebuiTurnWriter();
@@ -1366,9 +1368,8 @@ export function WebuiComposer({
       if (dismiss.closePermissionMenu) setPermissionMenuOpen(false);
       if (dismiss.closeMentionRange) setMentionRange(undefined);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [composerMenu, permissionMenuOpen, mentionRange]);
+    return dom.listenForPointerDown(onPointerDown);
+  }, [composerMenu, dom, permissionMenuOpen, mentionRange]);
   // The workspace picker had NO outside-close listener at all: the only ways to
   // close it were re-clicking its trigger, picking a row, or navigating away,
   // so a stray click anywhere on the page left the panel hanging open. It gets
@@ -1391,9 +1392,8 @@ export function WebuiComposer({
       setWorkspaceMenuOpen(false);
       setWorkspaceBrowserOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [workspaceMenuOpen, workspaceBrowserOpen, setWorkspaceMenuOpen]);
+    return dom.listenForPointerDown(onPointerDown);
+  }, [dom, workspaceMenuOpen, workspaceBrowserOpen, setWorkspaceMenuOpen]);
   // Flip the popover below the composer when there isn't enough room above
   // for the full 320px cap. The measurement runs in `useLayoutEffect` so the
   // first paint already shows the correct placement — a normal `useEffect`
@@ -1448,11 +1448,8 @@ export function WebuiComposer({
       // palette no longer has a token under the caret and disappears.
       onDraftChange(removeWebuiSlashToken(slashDraftRef.current, range));
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [slashPanelOpen, onDraftChange]);
+    return dom.listenForPointerDown(onPointerDown);
+  }, [dom, slashPanelOpen, onDraftChange]);
   const addFiles = async (filesLike: FileList | readonly File[] | null) => {
     const files = filesLike ? Array.from(filesLike) : [];
     if (files.length === 0) return;
@@ -2673,7 +2670,8 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
   /** The selected model, for deciding whether the plan figures describe it. */
   readonly planModel?: WebuiModelEntry;
 }): ReactElement | null {
-  const [enabled, setEnabled] = useState(() => typeof window === "undefined" || window.localStorage?.getItem("webui-context-window-usage") !== "false");
+  const { dom, storage } = useWebuiBrowserCapabilities();
+  const [enabled, setEnabled] = useState(() => storage.getItem("webui-context-window-usage") !== "false");
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   // Folded every time the panel opens, including on a re-open. The split is a
@@ -2736,14 +2734,14 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
     };
   }, [open, measurePanel]);
   useEffect(() => {
-    const refresh = () => setEnabled(window.localStorage?.getItem("webui-context-window-usage") !== "false");
-    window.addEventListener("storage", refresh);
-    window.addEventListener("webui-context-window-usage-change", refresh);
+    const refresh = () => setEnabled(storage.getItem("webui-context-window-usage") !== "false");
+    const stopStorage = dom.listenForStorageChange(refresh);
+    const stopPreferenceChange = dom.listenForContextWindowUsageChange(refresh);
     return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("webui-context-window-usage-change", refresh);
+      stopStorage();
+      stopPreferenceChange();
     };
-  }, []);
+  }, [dom, storage]);
   // The panel is a CLICK surface, not a hover one. It holds six breakdown rows
   // and a set of plan meters, and opening all of that under a pointer means
   // every pass across the composer — including the one en route to the send
@@ -2758,9 +2756,8 @@ function ContextUsageIndicator({ usage, usageQuota, planModel }: {
     };
     // `pointerdown` rather than `click` so the press that lands outside also
     // dismisses the panel instead of being swallowed by whatever is underneath.
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
-  }, [open]);
+    return dom.listenForPointerDown(onPointerDown, true);
+  }, [dom, open]);
   if (!enabled || !usage) return null;
   // The runtime protocol's names, not invented ones — see
   // `server/projections/context-snapshot.ts`, which is the other half of this

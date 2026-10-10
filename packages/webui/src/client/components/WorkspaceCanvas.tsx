@@ -382,9 +382,9 @@ function readCanvasLayout(value: unknown): CanvasNodeLayout | undefined {
  * allowed to break the render.
  */
 export function parseCanvasNodes(
-  document: WebuiCanvasDocument | undefined,
+  canvasDocument: WebuiCanvasDocument | undefined,
 ): readonly CanvasNodeView[] {
-  const nodes = Array.isArray(document?.nodes) ? document?.nodes : [];
+  const nodes = Array.isArray(canvasDocument?.nodes) ? canvasDocument?.nodes : [];
   const parsed: CanvasNodeView[] = [];
   for (const raw of nodes ?? []) {
     const record = readCanvasRecord(raw);

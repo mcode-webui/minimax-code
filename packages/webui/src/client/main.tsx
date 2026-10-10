@@ -13,6 +13,9 @@ import { NotFound } from "./components/NotFound.js";
 import { ArchonPage } from "./components/ArchonPage.js";
 import { WebuiErrorBoundary } from "./components/WebuiErrorBoundary.js";
 import { WebuiStartupFallback } from "./components/StartupFallback.js";
+import { WebuiBrowserCapabilitiesProvider } from "./bindings/browser-capabilities.js";
+import { createWebuiBrowserDom } from "./infrastructure/browser-dom.js";
+import { createWebuiBrowserStorage } from "./infrastructure/storage.js";
 
 declare const document: {
   getElementById(elementId: string): HTMLElement | null;
@@ -60,6 +63,10 @@ const runtimeConfig = config;
 const transport = createWebuiTransport(runtimeConfig);
 const sessionId = new URLSearchParams(location.hash.replace(/^#/u, "")).get("session") ?? undefined;
 const root: Root = createRoot(rootElement);
+const browserCapabilities = {
+  dom: createWebuiBrowserDom(globalThis.document, globalThis.window),
+  storage: createWebuiBrowserStorage(),
+};
 // W2.5: pass the transport ONCE here so the React effect dependency
 // identity is stable across renders. Each method is still optional
 // on `WebuiTransport`, so the panel branches continue to gate on
@@ -74,6 +81,6 @@ const currentRoute = route(location.pathname);
 root.render(
   // The boundary wraps the app, not the 404: a 404 is a legitimate render and
   // must not offer a "retry" that reloads the same missing path.
-  currentRoute === "404" ? <NotFound /> : <WebuiErrorBoundary><ArchonPage>{app}</ArchonPage></WebuiErrorBoundary>,
+  currentRoute === "404" ? <NotFound /> : <WebuiBrowserCapabilitiesProvider value={browserCapabilities}><WebuiErrorBoundary><ArchonPage>{app}</ArchonPage></WebuiErrorBoundary></WebuiBrowserCapabilitiesProvider>,
 );
 }

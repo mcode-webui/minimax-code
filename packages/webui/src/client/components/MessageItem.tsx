@@ -13,6 +13,7 @@
 
 import { useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import type {
   WebuiGetSessionForkOptionsResult,
   WebuiGetSessionRewindPreviewResult,
@@ -86,6 +87,7 @@ export function MessageItem({
   readonly onOpenFile?: (input: { readonly sessionId: string; readonly workspaceDir: string; readonly reference: WebuiMessageFileReference }) => void;
   readonly onOpenTurnReview?: (command: Extract<WorkspacePanelCommand, { type: "open-turn-review" }>) => void;
 } & WebuiMessageItemCapabilities): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   // Narrowing: historical view can read historical-only fields; live view
   // can read live-only fields. The union member types live in
   // `transcript-shape.ts`.
@@ -206,8 +208,9 @@ export function MessageItem({
       </div>
     </div>
   ) : null;
-  const renderedForkDialog = forkDialog && typeof document !== "undefined"
-    ? createPortal(forkDialog, document.body)
+  const portalTarget = dom.portalTarget();
+  const renderedForkDialog = forkDialog && portalTarget
+    ? createPortal(forkDialog, portalTarget)
     : forkDialog;
   if (role === "user") {
     return (

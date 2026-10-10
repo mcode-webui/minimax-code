@@ -66,10 +66,23 @@ describe("team mode lock contract", () => {
 
   it("uses isolated v1 localStorage overlays for session row state", () => {
     localStorage.clear();
-    expect(toggleSessionOverlay("stars", "s1")).toEqual({ s1: true });
-    expect(toggleSessionOverlay("pins", "s1")).toEqual({ s1: true });
-    expect(toggleSessionOverlay("archives", "s1")).toEqual({ s1: true });
-    expect(readSessionOverlay("stars")).toEqual({ s1: true });
-    expect(toggleSessionOverlay("stars", "s1")).toEqual({});
+    const storage = createWebuiBrowserStorage(localStorage);
+    expect(toggleSessionOverlay("stars", "s1", storage)).toEqual({ s1: true });
+    expect(toggleSessionOverlay("pins", "s1", storage)).toEqual({ s1: true });
+    expect(toggleSessionOverlay("archives", "s1", storage)).toEqual({ s1: true });
+    expect(readSessionOverlay("stars", storage)).toEqual({ s1: true });
+    expect(toggleSessionOverlay("stars", "s1", storage)).toEqual({});
+  });
+
+  it("routes generic preferences through the injected storage adapter", () => {
+    const backing = createMemoryLocalStorage();
+    const storage = createWebuiBrowserStorage(backing);
+    storage.setItem("webui-theme", "dark");
+    expect(storage.getItem("webui-theme")).toBe("dark");
+    storage.removeItem("webui-theme");
+    expect(storage.getItem("webui-theme")).toBeNull();
+    const unavailable = createWebuiBrowserStorage(undefined);
+    expect(unavailable.getItem("webui-theme")).toBeNull();
+    expect(() => unavailable.setItem("webui-theme", "dark")).not.toThrow();
   });
 });

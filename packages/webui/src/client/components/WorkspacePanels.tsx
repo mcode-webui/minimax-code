@@ -55,6 +55,7 @@ import {
   useWebuiWorkspaceQueries,
   useWebuiWorkspaceQueriesState,
 } from "../bindings/use-query-state.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 
 export type WebuiTodo = WebuiWorkspaceTodo;
 // `mergeWorkspaceFileChildren`, `chunkWebuiWorkspaceReviewFileIds` and
@@ -398,6 +399,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   readonly watchTerminal?: (request: { terminalId: string }, onFrame: (frame: { terminalId: string; data: string; exited: boolean }) => void) => () => void;
   readonly onClose?: () => void;
 }): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   // Query truth lives in the owner; this component reads its snapshot and
   // submits query commands. Display state — active tab, expansion, search box,
   // code mode — stays here (ticket #51).
@@ -464,9 +466,9 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   }, [activeTab?.id, queries]);
   useEffect(() => {
     if (activeTab?.kind !== "file-preview" || activeTab.lineStart === undefined || fileResults.get(activeTab.id)?.loading || !fileResults.get(activeTab.id)?.content || fileResults.get(activeTab.id)?.error) return;
-    const target = document.getElementById(webuiFileLineTargetId(activeTab.id, activeTab.lineStart));
+    const target = dom.getElementById(webuiFileLineTargetId(activeTab.id, activeTab.lineStart));
     if (target) focusWebuiFileLine(target);
-  }, [activeTab?.id, activeTab?.kind === "file-preview" ? activeTab.lineStart : undefined, fileResults]);
+  }, [activeTab?.id, activeTab?.kind === "file-preview" ? activeTab.lineStart : undefined, dom, fileResults]);
   useEffect(() => {
     if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !queries) return undefined;
     void queries.loadReviewSummary(activeTab.id, activeTab.workspaceDir).then((summary) => {

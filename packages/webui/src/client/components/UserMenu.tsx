@@ -22,6 +22,7 @@ import { SettingsModal } from "./SettingsModal.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import type { MemoryHandoff } from "./settings/PersonalizationSettings.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import {
   useWebuiAccountWorkflows,
   useWebuiAccountWorkflowsState,
@@ -716,6 +717,7 @@ export function UserMenu({
   onOpenFileLine,
   onCreateMemorySession,
 }: UserMenuProps): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   // The account, usage, check-in and login answers all come from the one
   // application owner (ticket #52). This component submits commands and reads
   // the snapshot; it holds no transport method for them.
@@ -800,13 +802,13 @@ export function UserMenu({
         closePanels();
       }
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
+    const stopPointerDown = dom.listenForPointerDown(onPointerDown);
+    const stopKeyDown = dom.listenForKeyDown(onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
+      stopPointerDown();
+      stopKeyDown();
     };
-  }, [open]);
+  }, [dom, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -841,6 +843,7 @@ export function UserMenu({
     accountString(identity, "realUserID") ??
     accountString(auth, "realUserID");
 
+  const portalTarget = dom.portalTarget();
   return <>
     <div ref={anchorRef} className={`webui-user-menu-anchor ${collapsed ? "webui-user-menu-anchor-collapsed" : ""}`} data-webui-rail-identity="true">
       {collapsed ? <button type="button" className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单" aria-expanded={open} onClick={() => { setOpen((value) => !value); closePanels(); }}><WebuiIconBrand /></button> : <button type="button" className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger" aria-label="打开用户菜单" aria-expanded={open} onClick={() => { setOpen((value) => !value); closePanels(); }}>
@@ -888,6 +891,6 @@ export function UserMenu({
         loadUsage(true);
       }}
     />
-    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
+    {portalTarget ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, portalTarget) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
   </>;
 }

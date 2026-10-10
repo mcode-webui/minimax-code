@@ -4,6 +4,7 @@ import { DESKTOP_SETTINGS_TABS, filterSettingsTabs, GENERIC_FILE_ROW_ORDER, GENE
 import { DisabledBillingActions, UsageModelSettings } from "../../src/client/components/settings/UsageModelSettings.js";
 import { reorderModelIds } from "../../src/client/projection/model-reorder.js";
 import { formatResetLabel, getActiveSourceBadge, projectProviderHeaders } from "../../src/client/projection/usage-settings.js";
+import { createWebuiBrowserDom } from "../../src/client/infrastructure/browser-dom.js";
 
 describe("desktop settings registry", () => {
   it("keeps the electron tab order, labels, and groups", () => {
@@ -86,6 +87,35 @@ describe("desktop settings registry", () => {
     expect(projectProviderHeaders([
       { id: "1", name: "X-Renamed", value: "new", persistedName: "X-First" },
     ], original)).toEqual({ headers: { "X-Renamed": "new" }, removeHeaders: ["X-First", "X-Second"] });
+  });
+});
+
+describe("injected browser DOM adapter", () => {
+  it("owns portal lookup, document listeners, and appearance updates", () => {
+    const listeners = new Map<string, EventListener>();
+    const toggles: Array<[string, boolean]> = [];
+    const body = {} as HTMLElement;
+    const documentElement = {
+      classList: { toggle: (name: string, enabled: boolean) => toggles.push([name, enabled]) },
+      lang: "",
+    } as unknown as HTMLElement;
+    const documentObject = {
+      body,
+      documentElement,
+      addEventListener: (name: string, listener: EventListener) => listeners.set(name, listener),
+      removeEventListener: (name: string) => listeners.delete(name),
+      getElementById: () => null,
+    } as unknown as Document;
+    const dom = createWebuiBrowserDom(documentObject, undefined);
+    const listener = () => undefined;
+    const stop = dom.listenForKeyDown(listener);
+    expect(dom.portalTarget()).toBe(body);
+    expect(listeners.has("keydown")).toBe(true);
+    stop();
+    expect(listeners.has("keydown")).toBe(false);
+    dom.updateDocumentAppearance("dark", "zh-CN");
+    expect(toggles).toEqual([["dark", true], ["light", false]]);
+    expect(documentElement.lang).toBe("zh-CN");
   });
 });
 

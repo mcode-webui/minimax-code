@@ -39,6 +39,7 @@ import type {
   WebuiModelProviderGroup,
 } from "../contracts/model-view.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import {
   filterModelGroups,
   isSearchEmpty,
@@ -459,6 +460,7 @@ export function WebuiModelPicker({
   triggerLevel,
   favorites,
 }: ModelPickerProps): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const [open, setOpen] = useState(false);
   /**
    * The row the pointer or the keyboard pointed at, and the model that row
@@ -640,9 +642,8 @@ export function WebuiModelPicker({
         setOpen(false);
       }
     };
-    document.addEventListener("pointerdown", handler);
-    return () => document.removeEventListener("pointerdown", handler);
-  }, [open]);
+    return dom.listenForPointerDown(handler);
+  }, [dom, open]);
 
   const focusedModel = useMemo<WebuiModelPickerEntry | undefined>(() => {
     const key = focused?.key ?? (selected ? modelKey(selected) : undefined);

@@ -12,6 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 
 import { createPortal } from "react-dom";
 import { WebuiIconContextChevron } from "../icons.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
+import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 
 export function placeWebuiContextMenu({
   x,
@@ -61,6 +62,7 @@ export function WebuiContextMenu({
   readonly items: readonly WebuiContextMenuItem[];
   readonly onClose: () => void;
 }): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [openSubmenu, setOpenSubmenu] = useState<string>();
   const [position, setPosition] = useState({ left: x, top: y });
@@ -112,13 +114,13 @@ export function WebuiContextMenu({
         onClose();
       }
     };
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    const stopMouseDown = dom.listenForMouseDown(handlePointerDown);
+    const stopKeyDown = dom.listenForKeyDown(handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      stopMouseDown();
+      stopKeyDown();
     };
-  }, [onClose]);
+  }, [dom, onClose]);
   const renderItems = (menuItems: readonly WebuiContextMenuItem[]) =>
     menuItems.map((item) => {
       if (item.kind === "divider") {
@@ -169,5 +171,6 @@ export function WebuiContextMenu({
       {renderItems(items)}
     </div>
   );
-  return typeof document !== "undefined" ? createPortal(menu, document.body) : menu;
+  const portalTarget = dom.portalTarget();
+  return portalTarget ? createPortal(menu, portalTarget) : menu;
 }

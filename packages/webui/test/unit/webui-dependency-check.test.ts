@@ -633,6 +633,88 @@ describe("declared shapes match the runtime shapes", () => {
   });
 });
 
+// The capability-call rule. `classifyLayers` maps `client/components/` and
+// `client/bindings/` to the same `bindings` layer, so these fixtures exist to
+// pin the half of the judgement the layer set cannot express: the bridge may
+// hold a writer factory, a component may not.
+describe("the capability-call rule", () => {
+  const storeContract =
+    "export interface WebuiSessionStore { createSessionWriter(kind: string): void }\n";
+  const transportContract =
+    "export interface WebuiTransport { sendMessage(body: unknown): Promise<void> }\n";
+  const caller = (contractPath: string, typeName: string, body: string) =>
+    `import type { ${typeName} } from "${contractPath}";\n` +
+    `export function use(port: ${typeName}): void {\n  ${body}\n}\n`;
+
+  it("rejects a capability call from a component, whose layer is bindings", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/components/Widget.tsx": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      kind: "forbidden-call",
+      file: "client/components/Widget.tsx",
+      target: "WebuiSessionStore.createSessionWriter",
+    });
+    expect(result.pass).toBe(false);
+  });
+
+  it("rejects any method on a capability port from a component", () => {
+    const { result } = evaluateFixture({
+      "client/contracts/transport.ts": transportContract,
+      "client/components/Widget.tsx": caller(
+        "../contracts/transport.js",
+        "WebuiTransport",
+        "void port.sendMessage({});",
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      file: "client/components/Widget.tsx",
+      target: "WebuiTransport.sendMessage",
+    });
+  });
+
+  it("keeps the same call allowed in the bindings bridge and in the application", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/bindings/use-session-state.ts": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+      "client/application/turn-coordinator.ts": caller(
+        "./session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(0);
+    expect(result.pass).toBe(true);
+  });
+
+  it("still rejects a capability call from a lower layer", () => {
+    const { result } = evaluateFixture({
+      "client/application/session-store.ts": storeContract,
+      "client/mechanisms/stream-loop.ts": caller(
+        "../application/session-store.js",
+        "WebuiSessionStore",
+        'port.createSessionWriter("session");',
+      ),
+    });
+    expect(result.forbiddenCalls).toHaveLength(1);
+    expect(result.forbiddenCalls[0]).toMatchObject({
+      file: "client/mechanisms/stream-loop.ts",
+      target: "WebuiSessionStore.createSessionWriter",
+    });
+  });
+});
+
 describe("the gate runs and matches the frozen baseline", () => {
   it("passes with all component browser globals routed through injected adapters", { timeout: 60_000 }, () => {
     const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));

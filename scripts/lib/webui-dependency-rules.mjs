@@ -1085,10 +1085,15 @@ const FORBIDDEN_RECEIVER_INTERFACES = new Map([
 // Layers that must *not* invoke a writer-factory or a business-RPC method.
 // The `bindings` layer is intentionally absent: it is the legitimate bridge
 // that turns a writer into a command surface (plan §7.2
-// `client/bindings/use-session-state.ts`). Components and lower-level layers
+// `client/bindings/use-session-state.ts`). Lower-level layers
 // (view/domain/contracts/shared/mechanisms) do not own capability
 // interactions, so a writer or RPC call there is treated as a sign the
 // application contract has slipped.
+//
+// Presentation is the one case the layer set cannot express. `classifyLayers`
+// maps `client/components/` to `bindings` — the same layer as the bridge — so a
+// layer-only test would exempt every component along with it.
+// `CALL_PRESENTATION_PREFIX` below carries that half of the judgement by path.
 const CALL_FORBIDDEN_LAYERS = new Set([
   "view",
   "domain",
@@ -1097,6 +1102,19 @@ const CALL_FORBIDDEN_LAYERS = new Set([
   "mechanisms",
 ]);
 
+/**
+ * Paths whose files are presentation and therefore may not hold a capability
+ * call, even though their classified layer is `bindings`. This is not a
+ * directory denylist for imports (see the `ALLOWED_EDGES` note: nothing is
+ * forbidden merely because a directory is named); it is the call-site rule's
+ * missing half. The rule asks whether the *caller* owns capability
+ * interactions, and the plan answers that per directory: `client/bindings/` is
+ * the bridge that converts a writer into a command surface, `client/components/`
+ * is the shell and its panels, which submit commands and receive none of the
+ * capability objects these methods are reached through.
+ */
+const CALL_PRESENTATION_PREFIX = "client/components/";
+
 function forbiddenActualCallRule(graph) {
   const violations = [];
   for (const site of graph.callSites ?? []) {
@@ -1104,16 +1122,21 @@ function forbiddenActualCallRule(graph) {
     if (allowed === undefined) continue;
     if (allowed !== null && !allowed.has(site.method)) continue;
     const layers = classifyLayers(site.file);
-    // Allow when the file lives in `application` (the workflow owner) or
-    // `infrastructure` (the IO owner). A split layer whose *every* target
-    // layer is forbidden fails the check.
-    if (layers.every((layer) => !CALL_FORBIDDEN_LAYERS.has(layer))) continue;
+    // A call site fails when the file carries *any* forbidden target layer, or
+    // when it is presentation. "Any" is the judgement the previous
+    // `layers.every(!has)` test made — `!every(!has)` is `some(has)` — so the
+    // split-file behaviour is unchanged; no file currently classifies to more
+    // than one target layer, and `classifyLayers` is the only place that could
+    // grow a second one.
+    const forbiddenLayer = layers.some((layer) => CALL_FORBIDDEN_LAYERS.has(layer));
+    const presentation = site.file.startsWith(CALL_PRESENTATION_PREFIX);
+    if (!forbiddenLayer && !presentation) continue;
     violations.push({
       kind: "forbidden-call",
       file: site.file,
       line: site.line,
       target: `${site.receiver}.${site.method}`,
-      detail: `${site.file}:${site.line}: ${layers.join("|")} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
+      detail: `${site.file}:${site.line}: ${layers.join("|")}${presentation ? " (presentation)" : ""} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
     });
   }
   return { pass: violations.length === 0, violations };

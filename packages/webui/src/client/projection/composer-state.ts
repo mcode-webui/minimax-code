@@ -30,6 +30,7 @@ import { streamRecoveryProjection } from "./stream-recovery.js";
 import type { WebuiStreamState } from "./stream-state.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";
 import { isWebuiRunnableCommand, classifyWebuiSlashCommand } from "../slash-palette.js";
+import { streamStateBundle } from "./stream-state-bundle.js";
 
 /**
  * Absolute-path check shared by the project picker and the submit guard.
@@ -275,7 +276,7 @@ export interface WebuiComposerSubmitArgs {
    * boundary and injects the existing pure transforms, so a caller that never
    * traverses a resync/attach path cannot forget them.
    */
-  readonly deps: Omit<WebuiStreamLoopDeps, "projection">;
+  readonly deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   /** Create the first session silently when New Task has no selected session. */
   readonly createSession?: WebuiClientSessionCreator;
@@ -455,9 +456,9 @@ export async function submitWebuiComposerTurn(
   let claimed: number | undefined;
   try {
     claimed = await runWebuiStreamLoop(
-      { ...args.deps, projection: streamRecoveryProjection },
+      { ...args.deps, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId, message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) },
-      buildWebuiStreamLoopSink(handlers.setStream),
+      buildWebuiStreamLoopSink(handlers.setStream, streamStateBundle),
     );
   } finally {
     // Only clear the indicator if this turn still owns the stream. A submit

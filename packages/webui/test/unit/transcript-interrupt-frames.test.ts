@@ -3,7 +3,7 @@
 // C-3 was marked "not verified" by the roadmap. These tests drive the real
 // product path with no DOM, exactly as `packages/webui/AGENTS.md` prescribes
 // for `client/stream.ts` / `client/stream-loop.ts`: a shared `setStream`,
-// one `buildWebuiStreamLoopSink(setStream)` per submit (what the composer
+// one `buildWebuiStreamLoopSink(setStream, streamStateBundle)` per submit (what the composer
 // does), `runWebuiStreamLoop` for the turn, and `stopWebuiTurn` for the
 // interrupt.
 //
@@ -40,6 +40,7 @@ import {
 import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
 import type { WebuiClientMessageSender } from "../../src/client/contracts/execution-port.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
+import { streamStateBundle } from "../../src/client/projection/stream-state-bundle.js";
 
 const SESSION_ID = "session-under-test";
 
@@ -50,14 +51,15 @@ const SESSION_ID = "session-under-test";
  * transforms stand in and change nothing about what is asserted.
  */
 const loopWithProjection = (
-  deps: Omit<WebuiStreamLoopDeps, "projection"> & {
+  deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState"> & {
     readonly projection?: WebuiStreamLoopDeps["projection"];
+    readonly streamState?: WebuiStreamLoopDeps["streamState"];
   },
   args: WebuiStreamLoopArgs,
   sink: WebuiStreamLoopSink,
 ) =>
   runStreamLoop(
-    { ...deps, projection: deps.projection ?? streamRecoveryProjection },
+    { ...deps, projection: deps.projection ?? streamRecoveryProjection, streamState: deps.streamState ?? streamStateBundle },
     args,
     sink,
   );
@@ -65,7 +67,7 @@ const loopWithProjection = (
 /**
  * The React shell's binding, minus React: one shared state cell, one updater,
  * and a fresh sink per submit. `newSink()` mirrors the composer calling
- * `buildWebuiStreamLoopSink(setStream)` once per submit — each turn owns its
+ * `buildWebuiStreamLoopSink(setStream, streamStateBundle)` once per submit — each turn owns its
  * own sink instance, which is what makes the generation fence meaningful.
  */
 function createShell() {
@@ -78,7 +80,7 @@ function createShell() {
       return current;
     },
     setStream,
-    newSink: (): WebuiStreamLoopSink => buildWebuiStreamLoopSink(setStream),
+    newSink: (): WebuiStreamLoopSink => buildWebuiStreamLoopSink(setStream, streamStateBundle),
   };
 }
 

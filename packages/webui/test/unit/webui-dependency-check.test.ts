@@ -123,10 +123,9 @@ describe("layer matrix", () => {
     expect(classifyLayers("runtime/port.ts")).toEqual(["runtime-port"]);
     expect(classifyLayers("server/host.ts")).toEqual(["runtime"]);
     expect(classifyLayers("client/contracts.ts")).toEqual(["contracts"]);
-    expect(classifyLayers("client/projection/stream-state.ts")).toEqual([
-      "mechanisms",
-      "view",
-    ]);
+    // The reducer is a pure `view` projection now that the stream loop and the
+    // test-only instrumentation take it by injection instead of importing it.
+    expect(classifyLayers("client/projection/stream-state.ts")).toEqual(["view"]);
     expect(classifyLayers("client/session-runtime-store.ts")).toEqual([
       "application",
       "bindings",

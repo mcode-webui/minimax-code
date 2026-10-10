@@ -19,15 +19,13 @@ import type {
   WebuiClientMessageLoader,
 } from "./contracts/message-view.js";
 
-import {
-  recogniseWebuiStreamPayload,
-  nextWebuiSubscriptionGeneration,
-  reduceWebuiStreamFrame,
-  releaseWebuiSubscription,
-  type WebuiStreamMessage,
-  type WebuiStreamState,
-  type WebuiStreamSubscription,
-} from "./projection/stream-state.js";
+import type {
+  WebuiStreamMessage,
+  WebuiStreamPayloadRecognised,
+  WebuiStreamState,
+  WebuiStreamSubscription,
+  WebuiSubscriptionReleaseScope,
+} from "./contracts/stream-state.js";
 import type { WebuiStreamFrame } from "../shared/contracts/stream.js";
 import type { WebuiAttachmentInput } from "../shared/contracts/messages.js";
 
@@ -46,6 +44,40 @@ export interface WebuiStreamLoopDeps {
    * runs. Callers that never traverse those paths still pass a stub.
    */
   readonly projection: StreamRecoveryProjection;
+  /**
+   * The stream-state transforms the loop applies to frames, injected by the
+   * caller for the same reason as `projection` (plan §7.2): these are the
+   * existing pure functions from `projection/stream-state.ts`, re-used, not
+   * re-implemented.
+   *
+   * Required on purpose, like `projection`: forgetting it is a compile error
+   * rather than a stream that silently never reduces a frame.
+   */
+  readonly streamState: WebuiStreamStateBundle;
+}
+
+/**
+ * The stream-state transforms the loop injects instead of importing
+ * `projection/` (plan §7.2). Declared on the mechanism side so no view module is
+ * pulled across the boundary; callers pass a structurally compatible bundle.
+ *
+ * `reduceFrame` takes two arguments: the loop never attaches the reducer's
+ * test-only probe, and naming that option type here would put a view type in the
+ * mechanism's interface.
+ */
+export interface WebuiStreamStateBundle {
+  readonly nextSubscriptionGeneration: () => number;
+  readonly recognisePayload: (
+    dataJson: string | undefined,
+  ) => WebuiStreamPayloadRecognised;
+  readonly reduceFrame: (
+    state: WebuiStreamState,
+    frame: WebuiStreamFrame,
+  ) => WebuiStreamState;
+  readonly releaseSubscription: (
+    state: WebuiStreamState,
+    scope?: WebuiSubscriptionReleaseScope,
+  ) => WebuiStreamState;
 }
 
 /**
@@ -249,6 +281,7 @@ export function buildWebuiStreamLoopSink(
   setStream: (
     update: (current: WebuiStreamState) => WebuiStreamState,
   ) => void,
+  streamState: WebuiStreamStateBundle,
 ): WebuiStreamLoopSink {
   // Set when this sink claims a lease. Everything a superseded loop writes —
   // late chunks, a late `[DONE]`, a stray `phase: "streaming"` that would
@@ -267,7 +300,7 @@ export function buildWebuiStreamLoopSink(
   };
   return {
     claimSubscription: (owner, turnId) => {
-      const next = nextWebuiSubscriptionGeneration();
+      const next = streamState.nextSubscriptionGeneration();
       generation = next;
       setStream((current) => ({
         ...current,
@@ -282,7 +315,7 @@ export function buildWebuiStreamLoopSink(
     },
     applyFrame: (frame) =>
       setStream((current) =>
-        mine(current) ? reduceWebuiStreamFrame(current, frame) : current,
+        mine(current) ? streamState.reduceFrame(current, frame) : current,
       ),
     setPhase: (phase) =>
       setStream((current) => (mine(current) ? { ...current, phase } : current)),
@@ -294,7 +327,7 @@ export function buildWebuiStreamLoopSink(
     // nothing.
     releaseSubscription: () => {
       if (generation === undefined) return;
-      setStream((current) => releaseWebuiSubscription(current, { generation }));
+      setStream((current) => streamState.releaseSubscription(current, { generation }));
     },
     // Refusal is a write to the same shared state as everything else, so it
     // carries the same fence. A loop that was superseded must not stamp
@@ -409,7 +442,7 @@ async function driveWebuiStreamLoop(
     // pick the right recovery path. The shared `recognise…` helper is
     // what the reducer and this loop both use to interpret the JSON
     // body, so a future envelope change touches one site.
-    if (recogniseWebuiStreamPayload(frame.dataJson).kind === "resume_overflow") {
+    if (deps.streamState.recognisePayload(frame.dataJson).kind === "resume_overflow") {
       nextAction = "resync";
     }
     // The wrapper catches any throw and records the first failure;

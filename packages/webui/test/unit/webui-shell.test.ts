@@ -99,14 +99,15 @@ import { streamRecoveryProjection } from "../../src/client/projection/stream-rec
  * transforms in, changing nothing about what is asserted.
  */
 const loopWithProjection = (
-  deps: Omit<WebuiStreamLoopDeps, "projection"> & {
+  deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState"> & {
     readonly projection?: WebuiStreamLoopDeps["projection"];
+    readonly streamState?: WebuiStreamLoopDeps["streamState"];
   },
   args: WebuiStreamLoopArgs,
   sink: WebuiStreamLoopSink,
 ) =>
   runStreamLoop(
-    { ...deps, projection: deps.projection ?? streamRecoveryProjection },
+    { ...deps, projection: deps.projection ?? streamRecoveryProjection, streamState: deps.streamState ?? streamStateBundle },
     args,
     sink,
   );
@@ -123,6 +124,7 @@ import { projectWebuiTodos, WebuiProgressOverviewPanel, WebuiProgressPanel, Webu
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/projection/workspace-panel-state.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 import type { WebuiWorkspaceEnvironment } from "../../src/shared/contracts/workspace.js";
+import { streamStateBundle } from "../../src/client/projection/stream-state-bundle.js";
 
 function renderShell(label = "webui-foundation"): string {
   return renderToStaticMarkup(
@@ -1416,7 +1418,7 @@ describe("WebUI composer send/resume loop", () => {
     });
 
     await loopWithProjection(
-      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId: "session-1", message: "hello" },
       {
         applyFrame: () => undefined,
@@ -1484,7 +1486,7 @@ describe("WebUI composer send/resume loop", () => {
     });
 
     await loopWithProjection(
-      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId: "session-resync", message: "prompt" },
       {
         applyFrame: () => undefined,
@@ -1595,7 +1597,7 @@ describe("WebUI composer sink binding", () => {
   it("binds the composer sink to the React state reducer correctly", () => {
     const log: Reducer[] = [];
     const setStream = recordingReducer(log);
-    const sink = buildWebuiStreamLoopSink(setStream);
+    const sink = buildWebuiStreamLoopSink(setStream, streamStateBundle);
 
     // `applyFrame` must reduce the current state with the frame.
     sink.applyFrame({
@@ -1669,7 +1671,7 @@ describe("WebUI composer sink binding", () => {
     // Outcome 1 — resumed after a mid-stream drop.
     {
       const { setStream, getState } = buildState();
-      const sink = buildWebuiStreamLoopSink(setStream);
+      const sink = buildWebuiStreamLoopSink(setStream, streamStateBundle);
       const sendMessage: WebuiClientMessageSender = vi.fn(
         async (_req, onFrame) => {
           onFrame({
@@ -1703,7 +1705,7 @@ describe("WebUI composer sink binding", () => {
     // Outcome 2 — refused without a cursor (no resume possible).
     {
       const { setStream, getState } = buildState();
-      const sink = buildWebuiStreamLoopSink(setStream);
+      const sink = buildWebuiStreamLoopSink(setStream, streamStateBundle);
       const sendMessage: WebuiClientMessageSender = vi.fn(
         async (_req, _onFrame) => {
           throw new Error("WS dropped before any frame");
@@ -1722,7 +1724,7 @@ describe("WebUI composer sink binding", () => {
     // Outcome 3 — resynced after a resume_overflow mid-flight.
     {
       const { setStream, getState } = buildState();
-      const sink = buildWebuiStreamLoopSink(setStream);
+      const sink = buildWebuiStreamLoopSink(setStream, streamStateBundle);
       const sendMessage: WebuiClientMessageSender = vi.fn(
         async (_req, onFrame) => {
           onFrame({
@@ -1746,7 +1748,7 @@ describe("WebUI composer sink binding", () => {
         hasMore: false,
       }));
       await loopWithProjection(
-        { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
+        { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
         { sessionId: "s", message: "hi" },
         sink,
       );
@@ -1885,7 +1887,7 @@ describe("WebUI composer app-to-helper seam", () => {
 
   it("drives the production helper seam end-to-end", async () => {
     // R11: the production path. `submitWebuiComposerTurn` calls
-    // `buildWebuiStreamLoopSink(handlers.setStream)` unconditionally
+    // `buildWebuiStreamLoopSink(handlers.setStream, streamStateBundle)` unconditionally
     // and passes it to the loop. If a regression replaces the helper
     // with an empty object, passes a no-op state setter, or ignores
     // the returned sink, the live reducer never sees the frames and
@@ -3053,7 +3055,7 @@ describe("WebUI stream loop · subscription lease discipline", () => {
       hasMore: false,
     }));
     await loopWithProjection(
-      { resumeSession, loadMessages, projection: streamRecoveryProjection },
+      { resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId: "lease-3", attachTurnId: "turn-10" },
       {
         applyFrame: () => undefined,
@@ -3120,7 +3122,7 @@ describe("WebUI stream loop · subscription lease discipline", () => {
     const run = loopWithProjection(
       { resumeSession: parked.resumer, loadMessages, projection: streamRecoveryProjection },
       { sessionId: "lease-5", attachTurnId: "turn-11" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && state.processingStartedAtMs === undefined; tick += 1)
       await Promise.resolve();
@@ -3166,7 +3168,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
         loadMessages: vi.fn(async () => ({ messages: [], hasMore: false })),
       },
       { sessionId: "fence-1", attachTurnId: "turn-old" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && old.handle.deliver === undefined; tick += 1)
       await Promise.resolve();
@@ -3176,7 +3178,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     const newRun = loopWithProjection(
       { resumeSession: fresh.resumer },
       { sessionId: "fence-1", attachTurnId: "turn-new" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && fresh.handle.deliver === undefined; tick += 1)
       await Promise.resolve();
@@ -3210,7 +3212,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
         loadMessages: vi.fn(async () => ({ messages: [], hasMore: false })),
       },
       { sessionId: "fence-6", attachTurnId: "turn-old" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && old.handle.deliver === undefined; tick += 1)
       await Promise.resolve();
@@ -3219,7 +3221,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     const newRun = loopWithProjection(
       { resumeSession: fresh.resumer },
       { sessionId: "fence-6", attachTurnId: "turn-new" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && fresh.handle.deliver === undefined; tick += 1)
       await Promise.resolve();
@@ -3307,9 +3309,9 @@ describe("WebUI stream loop · superseded loop fencing", () => {
       onFrame({ dataJson: "[DONE]" });
     });
     await loopWithProjection(
-      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection },
+      { sendMessage, resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId: "fence-3", message: "hello" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     expect(loadMessages).toHaveBeenCalled();
     expect(getState().messages).toEqual([]);
@@ -3336,7 +3338,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
         loadMessages: vi.fn(async () => ({ messages: [], hasMore: false })),
       },
       { sessionId: "fence-8", attachTurnId: "turn-old" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && failOldLoop === undefined; tick += 1)
       await Promise.resolve();
@@ -3345,7 +3347,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     const newRun = loopWithProjection(
       { resumeSession: fresh.resumer },
       { sessionId: "fence-8", attachTurnId: "turn-new" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     for (let tick = 0; tick < 8 && fresh.handle.deliver === undefined; tick += 1)
       await Promise.resolve();
@@ -3369,7 +3371,7 @@ describe("WebUI stream loop · superseded loop fencing", () => {
     const generation = await loopWithProjection(
       { sendMessage: vi.fn(async () => undefined) },
       { sessionId: "fence-9", message: "hello" },
-      buildWebuiStreamLoopSink(setStream),
+      buildWebuiStreamLoopSink(setStream, streamStateBundle),
     );
     expect(generation).toBeTypeOf("number");
     expect(ownsWebuiStreamGeneration(getState(), generation)).toBe(true);

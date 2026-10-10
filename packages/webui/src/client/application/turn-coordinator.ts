@@ -31,6 +31,7 @@ import {
 } from "../stream-loop.js";
 import type { WebuiSessionStore, WebuiSessionWriter } from "./session-store.js";
 import type { WebuiStreamLeaseController } from "./stream-lease-controller.js";
+import { streamStateBundle } from "../projection/stream-state-bundle.js";
 
 export interface WebuiTurnCoordinatorDeps {
   readonly store: WebuiSessionStore;
@@ -115,7 +116,7 @@ export function createWebuiTurnCoordinator(
         transcriptIncomplete: false,
       }));
       return runStreamLoop(
-        { resumeSession, loadMessages, projection: streamRecoveryProjection },
+        { resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
         {
           sessionId,
           ...(current.cursor ? { afterCursor: current.cursor } : {}),

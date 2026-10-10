@@ -47,6 +47,7 @@ import {
   type WebuiActiveTurnProbe,
   type WebuiActiveTurnProbeFn,
 } from "./active-turn-probe.js";
+import { streamStateBundle } from "../projection/stream-state-bundle.js";
 
 export type WebuiStreamSetter = (
   update: (current: WebuiStreamState) => WebuiStreamState,
@@ -87,13 +88,13 @@ export function attachWebuiTurn(deps: WebuiAttachTurnDeps): void {
   if (existing.subscription) return;
   setSending(true);
   void runWebuiStreamLoop(
-    { resumeSession, loadMessages, projection: streamRecoveryProjection },
+    { resumeSession, loadMessages, projection: streamRecoveryProjection, streamState: streamStateBundle },
     {
       sessionId,
       attachTurnId: turnId,
       ...(existing.cursor ? { afterCursor: existing.cursor } : {}),
     },
-    buildWebuiStreamLoopSink(setStream),
+    buildWebuiStreamLoopSink(setStream, streamStateBundle),
   ).then((generation) => {
     // Only clear the indicator if this loop still owns the stream. A loop that
     // finished after a newer turn started would otherwise make the new turn
@@ -188,7 +189,7 @@ export interface WebuiSendTurnArgs {
   readonly onAttachmentsSubmitted?: () => void;
   readonly sending: boolean;
   readonly handlers: WebuiComposerSubmitHandlers;
-  readonly deps: Omit<WebuiStreamLoopDeps, "projection">;
+  readonly deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   readonly createSession?: WebuiClientSessionCreator;
   readonly createSessionWorkspaceDir?: string;

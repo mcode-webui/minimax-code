@@ -226,10 +226,9 @@ type MethodKeys<T> = {
  * Runtime capability groups: a `Pick` view of the harness port by capability
  * domain. These are type-only views; the runtime value is the single
  * `WebuiHarnessPort` object the registry is built against.
- * `testUserModelCandidate` is deliberately widened to accept the validated
- * record — the operation's validator only checks that the frame is a record,
- * so the binding forwards the record honestly and the harness conversion stays
- * inside the runtime adapter.
+ * `testUserModelCandidate` remains a record at this seam because its validator
+ * only establishes that the wire body is a record. The runtime adapter owns
+ * conversion to the narrower harness method input.
  */
 export interface RuntimeGroups {
   readonly version: Pick<WebuiHarnessPort, "version">;
@@ -314,8 +313,7 @@ export interface RuntimeGroups {
     | "getAccountLoginStatus"
     | "cancelAccountLogin"
   >;
-  readonly providers: Omit<
-    Pick<
+  readonly providers: Pick<
       WebuiHarnessPort,
       | "listUserModelProviders"
       | "createUserModelProvider"
@@ -336,14 +334,7 @@ export interface RuntimeGroups {
       | "startCodexOAuthLogin"
       | "cancelCodexOAuthLogin"
       | "refreshModels"
-    >,
-    "testUserModelCandidate"
-  > & {
-    /** Accepts the validated record; the adapter performs the conversion. */
-    readonly testUserModelCandidate: (
-      request: Record<string, unknown>,
-    ) => Promise<unknown>;
-  };
+    >;
 }
 
 type RuntimeMethod<
@@ -369,7 +360,7 @@ export interface MissingPolicy {
 export interface WebuiOperationBinding<
   N extends keyof OperationSpec,
   G extends keyof RuntimeGroups,
-  K extends MethodKeys<RuntimeGroups[G]>,
+  K extends MethodKeys<RuntimeGroups[G]> & keyof WebuiOperationPort,
 > {
   readonly operation: OperationDescriptor<N>;
   readonly group: G;
@@ -403,7 +394,7 @@ function optionalPolicy(method: string, message: string): MissingPolicy {
 
 /** Declares a binding. Fixes group, then method, then operation name. */
 export function bind<G extends keyof RuntimeGroups>(group: G) {
-  return <K extends MethodKeys<RuntimeGroups[G]>>(method: K) =>
+  return <K extends MethodKeys<RuntimeGroups[G]> & keyof WebuiOperationPort>(method: K) =>
     <N extends keyof OperationSpec>(operation: N) =>
       (spec: {
         readonly operation: OperationDescriptor<N>;
@@ -438,18 +429,17 @@ export function bind<G extends keyof RuntimeGroups>(group: G) {
 export function executeBinding<
   N extends keyof OperationSpec,
   G extends keyof RuntimeGroups,
-  K extends MethodKeys<RuntimeGroups[G]>,
+  K extends MethodKeys<RuntimeGroups[G]> & keyof WebuiOperationPort,
 >(
   binding: WebuiOperationBinding<N, G, K>,
   port: WebuiOperationPort,
 ): WebuiOperationRegistryEntry {
-  const capabilities = port as unknown as Readonly<Record<string, unknown>>;
-  const method = binding.method as string;
+  const method = binding.method;
   return {
     operation: binding.operation,
     handle: async (context, body) => {
       const args = binding.args(body as never, context);
-      const capability = capabilities[method];
+      const capability = port[method];
       if (typeof capability !== "function") {
         const policy =
           capability === undefined ? binding.missing.absent : binding.missing.nonCallable;
@@ -457,8 +447,10 @@ export function executeBinding<
           ? new Error(policy.message)
           : new TypeError(policy.message);
       }
-      const invoke = capability as (...callArgs: readonly unknown[]) => unknown;
-      const value = await invoke.apply(port, args);
+      // The binding carries the method key and its parameter tuple together;
+      // restore that exact indexed signature after the runtime presence check.
+      const callable = capability as RuntimeMethod<G, K>;
+      const value = await callable.apply(port, args);
       return { body: binding.result(value as never) };
     },
   };
@@ -1054,7 +1046,7 @@ export const DEDICATED_OPERATION_NAMES = [
 type AnyBinding = WebuiOperationBinding<
   keyof OperationSpec,
   keyof RuntimeGroups,
-  MethodKeys<RuntimeGroups[keyof RuntimeGroups]>
+  MethodKeys<RuntimeGroups[keyof RuntimeGroups]> & keyof WebuiOperationPort
 >;
 
 /**

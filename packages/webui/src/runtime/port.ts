@@ -270,7 +270,8 @@ export interface WebuiHarnessPort {
   getCodexOAuthStatus(): Promise<Record<string, unknown>>;
   getMiniMaxModelSource(): Promise<"token_plan" | "minimax_api_key">;
   setMiniMaxModelSource(request: { readonly source: "token_plan" | "minimax_api_key" }): Promise<"token_plan" | "minimax_api_key">;
-  testUserModelCandidate(request: { readonly candidate: Record<string, unknown>; readonly modelId: string }): Promise<unknown>;
+  /** Wire records are validated only as objects; the harness adapter owns field conversion. */
+  testUserModelCandidate(request: Record<string, unknown>): Promise<unknown>;
   revealModelProviderApiKey(request: { readonly providerId: string }): Promise<string>;
   startCodexOAuthLogin(request?: Record<string, unknown>): Promise<unknown>;
   cancelCodexOAuthLogin(request: { readonly loginId: string }): Promise<unknown>;

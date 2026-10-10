@@ -59,6 +59,7 @@ import { dispatchWebuiFrame } from "../../src/server/operation/operation-dispatc
 import { WEBUI_PROTOCOL_VERSION, WebuiErrorCode } from "../../src/shared/envelope.js";
 import WebSocket from "ws";
 import { createHarnessPortFromHost } from "../../src/runtime/harness/adapter.js";
+import { testUserModelCandidateOperation } from "../../src/server/operation/provider.js";
 
 /**
  * Build a fully-implemented in-memory port so we can construct the
@@ -409,6 +410,42 @@ class FullPort implements WebuiHarnessPort {
 }
 
 describe("WebUI host-shape invariant (batch C seam)", () => {
+  it("keeps candidate-test record validation and converts fields only in the runtime adapter", async () => {
+    const calls: unknown[] = [];
+    const port = createHarnessPortFromHost({
+      cliService: {
+        testUserModelCandidate: async (request: { candidate: Record<string, unknown>; modelId: string }) => {
+          calls.push(request);
+          return { success: true };
+        },
+      },
+    } as never);
+
+    for (const raw of [{ candidate: { id: "candidate" } }, { modelId: "model-1" }, { candidate: null, modelId: "model-2" }]) {
+      const validation = testUserModelCandidateOperation.validate(raw);
+      expect(validation).toEqual({ ok: true, body: raw });
+      if (validation.ok) await port.testUserModelCandidate(validation.body);
+    }
+    expect(calls).toEqual([
+      { candidate: { id: "candidate" }, modelId: undefined },
+      { candidate: undefined, modelId: "model-1" },
+      { candidate: null, modelId: "model-2" },
+    ]);
+
+    const legacyRecordValidation = (body: unknown) =>
+      body !== null && typeof body === "object" && !Array.isArray(body)
+        ? { ok: true, body: body as Record<string, unknown> }
+        : { ok: false, code: "invalid_body", message: "testUserModelCandidate body must be an object" };
+    for (const invalid of [null, undefined, [], "candidate"]) {
+      expect(testUserModelCandidateOperation.validate(invalid)).toEqual(legacyRecordValidation(invalid));
+    }
+    expect(testUserModelCandidateOperation.validate(null)).toEqual({
+      ok: false,
+      code: "invalid_body",
+      message: "testUserModelCandidate body must be an object",
+    });
+  });
+
   it("forwards workspace review requests and snapshot ids through the runtime host", async () => {
     const calls: Array<{ readonly method: string; readonly request: unknown }> = [];
     const summary = { repositoryId: "repo-1", reviewSnapshotId: "snapshot-7", files: [], totals: { files: 0, additions: 0, deletions: 0 } };

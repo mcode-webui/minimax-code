@@ -90,7 +90,15 @@ export function createModelsPluginsAdapter(
 
     async setMiniMaxModelSource(request) { return requireCliService(host).setMiniMaxModelSource(request); },
 
-    async testUserModelCandidate(request) { return requireCliService(host).testUserModelCandidate(request); },
+    async testUserModelCandidate(request) {
+      // The wire validator's contract is `Record<string, unknown>` only. Keep
+      // the historical field reads here: missing keys become `undefined` and
+      // malformed values reach the same harness validation path as before.
+      return requireCliService(host).testUserModelCandidate({
+        candidate: request.candidate as Record<string, unknown>,
+        modelId: request.modelId as string,
+      });
+    },
 
     async revealModelProviderApiKey(request) { return requireCliService(host).revealModelProviderApiKey(request); },
 

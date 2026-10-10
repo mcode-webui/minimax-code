@@ -66,6 +66,8 @@ export interface WebuiWorkspaceGitChangedPayload {
  * calls behind them live in the turn coordinator or the infrastructure layer.
  */
 export interface WebuiEventEffects {
+  /** A session event may invalidate an in-flight pending-interaction snapshot. */
+  readonly invalidatePending?: (sessionId: string) => void;
   readonly refreshPending?: (sessionId: string) => void | Promise<unknown>;
   readonly refreshGoal?: (sessionId: string) => void | Promise<unknown>;
   readonly attachStream?: (
@@ -194,6 +196,7 @@ export function createWebuiEventCoordinator(
     }
     const sessionId = eventSessionId(event);
     if (!sessionId) return;
+    effects.invalidatePending?.(sessionId);
     const current = store.readSession(sessionId);
     const { commands } = reduceWebuiEffect(
       {

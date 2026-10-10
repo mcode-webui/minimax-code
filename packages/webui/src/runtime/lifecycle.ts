@@ -10,10 +10,8 @@
 // post-host startup failure, so a broker socket or a Browser profile never
 // survives a WebUI start that failed after the host was built.
 //
-// The pre-host failure path is deliberately narrower: when the factory throws
-// before it returns an apiHost, only the resources already acquired are
-// released. That is the exact behavior the assembly had, kept here so both
-// paths are one implementation instead of two.
+// The pre-host failure path releases every owner acquired before the factory
+// returns an apiHost, including auth.
 
 export interface WebuiRuntimeResourceOwners {
   /** Stops the auth watch and clears the refresh timer. Runs first on close. */
@@ -38,7 +36,7 @@ export interface WebuiRuntimeLifecycle {
   readonly close: () => Promise<void>;
   /**
    * Startup-failure path used before a host exists: releases the acquired
-   * capability owners (mcode-tools broker, browser provider) and throws the
+   * capability owners (auth, mcode-tools broker, browser provider) and throws the
    * single error, or an `AggregateError`, labelled as a startup failure.
    */
   readonly closeAcquiredResources: () => Promise<void>;
@@ -53,7 +51,11 @@ export function createWebuiRuntimeLifecycle(
     if (closed) return;
     closed = true;
     const failures: unknown[] = [];
-    owners.disposeAuth();
+    try {
+      owners.disposeAuth();
+    } catch (error) {
+      failures.push(error);
+    }
     try {
       await hostClose?.();
     } catch (error) {
@@ -75,6 +77,11 @@ export function createWebuiRuntimeLifecycle(
   };
   const closeAcquiredResources = async (): Promise<void> => {
     const failures: unknown[] = [];
+    try {
+      owners.disposeAuth();
+    } catch (error) {
+      failures.push(error);
+    }
     try {
       await owners.disposeMcodeTools();
     } catch (error) {

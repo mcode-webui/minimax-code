@@ -20,6 +20,7 @@ import { describe, expect, it, vi } from "vitest";
 import { resetDefaultLocalRuntimeConfig } from "@mavis/local-runtime-v2";
 
 import { createWebuiRuntimeHost } from "../../src/runtime/index.js";
+import { createWebuiAuthSession } from "../../src/runtime/auth-session.js";
 
 // `vi.mock` factories are hoisted above the imports, so the counters they
 // close over must be hoisted too.
@@ -131,6 +132,80 @@ describe("WebUI runtime single-owner invariants", () => {
     } finally {
       resetDefaultLocalRuntimeConfig();
       vi.unstubAllEnvs();
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it("releases auth, broker and browser owners when host creation fails", async () => {
+    const dataDir = await mkdtemp(
+      path.join(os.tmpdir(), "webui-runtime-startup-failure-"),
+    );
+    const beforeDisposeCalls = counters.authDisposeCalls;
+    const brokerDispose = vi.fn(async () => undefined);
+    const browserClose = vi.fn(async () => undefined);
+    try {
+      vi.stubEnv("MINIMAX_DATA_DIR", dataDir);
+      vi.stubEnv("DISABLE_GIT_AUTO_CONFIG", "1");
+      resetDefaultLocalRuntimeConfig();
+      await expect(
+        createWebuiRuntimeHost({
+          dataDir,
+          browserProvider: {
+            adapter: { async execute() { return undefined; } },
+            close: browserClose,
+          },
+          mcodeTools: {
+            prepare: async () => ({
+              requested: false,
+              ready: false,
+              category: "disabled" as const,
+              ensureCommandPath: () => undefined,
+              dispose: brokerDispose,
+            }),
+          },
+          factory: async () => { throw new Error("factory failed"); },
+        }),
+      ).rejects.toThrow("factory failed");
+      expect(counters.authDisposeCalls).toBe(beforeDisposeCalls + 1);
+      expect(brokerDispose).toHaveBeenCalledTimes(1);
+      expect(browserClose).toHaveBeenCalledTimes(1);
+    } finally {
+      resetDefaultLocalRuntimeConfig();
+      vi.unstubAllEnvs();
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not restore auth or arm a timer when a refresh finishes after dispose", async () => {
+    const dataDir = await mkdtemp(
+      path.join(os.tmpdir(), "webui-auth-dispose-race-"),
+    );
+    vi.useFakeTimers();
+    try {
+      const session = createWebuiAuthSession({
+        dataDir,
+        region: "en",
+        buildEnv: "dev",
+      });
+      let release!: (value: unknown) => void;
+      vi.spyOn(session.oauthCore, "getAccessToken").mockReturnValue(
+        new Promise((resolve) => { release = resolve; }) as never,
+      );
+      vi.spyOn(session.usageQuota, "resolveAccountIdentity").mockResolvedValue(
+        undefined,
+      );
+      const refresh = session.start();
+      session.dispose();
+      release({
+        accessToken: "late-token",
+        expiresAtMs: Date.now() + 60_000,
+        generation: 1,
+      });
+      await refresh;
+      expect(session.authContext.getter()).toBeUndefined();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
       await rm(dataDir, { recursive: true, force: true });
     }
   });

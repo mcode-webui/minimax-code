@@ -108,6 +108,8 @@ export function createWebuiAuthSession(
   let activeLease: Awaited<ReturnType<typeof quotaOauthCore.getAccessToken>> | undefined;
   let authRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   let stopAuthWatch: (() => void) | undefined;
+  let disposed = false;
+  let refreshVersion = 0;
   const scheduleAuthRefresh = (lease: NonNullable<typeof activeLease>) => {
     if (authRefreshTimer) clearTimeout(authRefreshTimer);
     const delay = Math.max(1_000, lease.expiresAtMs - Date.now() - 60_000);
@@ -120,6 +122,8 @@ export function createWebuiAuthSession(
     rejectedAccessToken?: string,
     loginEpoch?: string,
   ): Promise<void> => {
+    if (disposed) return;
+    const requestVersion = ++refreshVersion;
     if (rejectedAccessToken && activeLease?.accessToken === rejectedAccessToken) {
       try {
         await quotaOauthCore.handleUnauthorized({
@@ -132,15 +136,22 @@ export function createWebuiAuthSession(
         // A concurrent TUI login may have already replaced the lease.
       }
     }
+    if (disposed || refreshVersion !== requestVersion) return;
     const lease = await quotaOauthCore.getAccessToken({
       requiredScopes: MCODE_OAUTH_SCOPES,
       minValidityMs: 60_000,
     });
+    if (disposed || refreshVersion !== requestVersion) return;
     activeLease = lease;
     const identity = await usageQuota
       .resolveAccountIdentity(lease.accessToken)
       .catch(() => undefined);
-    if (activeLease?.accessToken !== lease.accessToken) return;
+    if (
+      disposed ||
+      refreshVersion !== requestVersion ||
+      activeLease?.accessToken !== lease.accessToken
+    )
+      return;
     authContext.setOAuthAuthContext({
       accessToken: lease.accessToken,
       ...(lease.loginEpoch ? { loginEpoch: lease.loginEpoch } : {}),
@@ -152,15 +163,18 @@ export function createWebuiAuthSession(
     rejectedAccessToken?: string,
     loginEpoch?: string,
   ): void => {
+    if (disposed) return;
     authContext.invalidator(rejectedAccessToken, loginEpoch);
     void refreshOAuthAuthContext(rejectedAccessToken, loginEpoch).catch(() => undefined);
   };
   const start = async (): Promise<void> => {
+    if (disposed) return;
     // OAuth is the canonical login store shared with `mcode login`; the
     // cli-auth projection is only an optional source of additional identity data.
     await refreshOAuthAuthContext().catch(() => undefined);
   };
   const watch = (): void => {
+    if (disposed) return;
     stopAuthWatch = quotaOauthCore.watch((status) => {
       if (
         status.status === "anonymous" ||
@@ -178,8 +192,15 @@ export function createWebuiAuthSession(
     void refreshOAuthAuthContext().catch(() => undefined);
   };
   const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    refreshVersion += 1;
     stopAuthWatch?.();
+    stopAuthWatch = undefined;
     if (authRefreshTimer) clearTimeout(authRefreshTimer);
+    authRefreshTimer = undefined;
+    activeLease = undefined;
+    authContext.setOAuthAuthContext(undefined);
   };
   return {
     authContext,

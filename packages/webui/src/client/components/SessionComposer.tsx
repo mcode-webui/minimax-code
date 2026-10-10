@@ -54,6 +54,7 @@ import { isTokenPlanModel } from "../projection/token-plan-model.js";
 import { stopWebuiTurn } from "../application/turn-coordinator.js";
 import {
   attachWebuiTurn,
+  createWebuiComposerAttachStreamEffect,
   recheckWebuiSubscription,
   recoverMissedWebuiTurn,
   sendWebuiTurn,
@@ -732,6 +733,7 @@ export function WebuiComposer({
   // policy is the coordinator's: it is constructed per render, so a counter
   // living inside it would reset and silently disable both guards.
   const goalVersionRef = useRef(0);
+  const pendingVersionRef = useRef(0);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const interactionCoordinator = createWebuiInteractionCoordinator({
@@ -762,6 +764,7 @@ export function WebuiComposer({
     sessionId,
     agentName,
     goalVersionRef,
+    pendingVersionRef,
   });
   const applyGoal = interactionCoordinator.applyGoal;
   const [goalEnabled, setGoalEnabled] = useState(true);
@@ -951,6 +954,7 @@ export function WebuiComposer({
     // coordinator. The coordinator runs them for events addressed to this
     // session, so the composer holds no channel and no raw event callback.
     const unregisterEffects = effectsRegistry?.register(sessionId, {
+      invalidatePending: () => interactionCoordinator.invalidatePendingReads(),
       refreshPending: () => refreshPending(),
       refreshGoal,
       // The coordinator's set-goal command routes here, so a goal-bearing
@@ -958,13 +962,10 @@ export function WebuiComposer({
       // re-read cannot resurrect the goal the event just replaced. Every goal
       // write still goes through `applyGoal`.
       setGoal: (_targetSessionId, nextGoal) => applyGoal(nextGoal),
-      attachStream: (turnId, mode) => {
-        if (mode === "recheck") {
-          void recheckSubscription(turnId);
-          return;
-        }
-        attachToTurn(turnId);
-      },
+      attachStream: createWebuiComposerAttachStreamEffect(
+        attachToTurn,
+        recheckSubscription,
+      ),
       channelReady: () => {
         void refreshPending().catch(() => undefined);
         recoverMissedTurn();

@@ -252,33 +252,43 @@ export async function createWebuiRuntimeHost(
     region: quotaRegion,
     buildEnv: quotaBuildEnv,
   });
-  await authSession.start();
-  const requestedMcodeTools =
-    options.mcodeToolsRequested ?? baseConfig.beta?.mcodeTools === true;
-  const mcodeTools = await (
-    options.mcodeTools?.prepare ?? prepareWebuiMcodeToolsIntegration
-  )({
-    requested: requestedMcodeTools,
-    dataDir: options.dataDir,
-    buildEnv: quotaBuildEnv,
-    region: quotaRegion,
-    session: createWebuiAuthLeaseSession(
-      authSession.authContext.getter,
-      authSession.invalidateAuth,
-    ),
-    entryUrl: import.meta.url,
-  });
-  // The one close owner. It wraps the harness host exactly once and tears it
-  // down ahead of the mcode-tools broker and the browser provider.
   const browser = adoptWebuiBrowserProvider(
     options.browserProvider,
     options.browserToolExposure,
   );
+  let mcodeTools!: WebuiMcodeToolsReadiness;
   const lifecycle = createWebuiRuntimeLifecycle({
     disposeAuth: authSession.dispose,
-    disposeMcodeTools: () => mcodeTools.dispose(),
+    disposeMcodeTools: () => mcodeTools?.dispose(),
     closeBrowserProvider: browser.closeBrowserProvider,
   });
+  const requestedMcodeTools =
+    options.mcodeToolsRequested ?? baseConfig.beta?.mcodeTools === true;
+  try {
+    await authSession.start();
+    mcodeTools = await (
+      options.mcodeTools?.prepare ?? prepareWebuiMcodeToolsIntegration
+    )({
+      requested: requestedMcodeTools,
+      dataDir: options.dataDir,
+      buildEnv: quotaBuildEnv,
+      region: quotaRegion,
+      session: createWebuiAuthLeaseSession(
+        authSession.authContext.getter,
+        authSession.invalidateAuth,
+      ),
+      entryUrl: import.meta.url,
+    });
+  } catch (error) {
+    try {
+      await lifecycle.closeAcquiredResources();
+    } catch (cleanupError) {
+      if (cleanupError instanceof AggregateError)
+        throw new AggregateError([error, ...cleanupError.errors], "WebUI runtime startup failed");
+      throw new AggregateError([error, cleanupError], "WebUI runtime startup failed");
+    }
+    throw error;
+  }
   const forwardedOptions: WebuiForwardedRuntimeHostOptions = {
     dataDir: options.dataDir,
     ...(options.appVersion !== undefined

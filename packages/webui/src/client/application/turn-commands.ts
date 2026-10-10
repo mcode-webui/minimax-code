@@ -45,6 +45,21 @@ import {
   type WebuiActiveTurnProbeFn,
 } from "./active-turn-probe.js";
 import { streamStateBundle } from "./stream-state-bundle.js";
+import type { WebuiEventEffects } from "./event-coordinator.js";
+
+/** Adapts the application's session-aware event call to the composer commands. */
+export function createWebuiComposerAttachStreamEffect(
+  attachToTurn: (turnId: string | undefined) => void,
+  recheckSubscription: (turnId: string | undefined) => void,
+): NonNullable<WebuiEventEffects["attachStream"]> {
+  return (_sessionId, turnId, mode) => {
+    if (mode === "recheck") {
+      recheckSubscription(turnId);
+      return;
+    }
+    attachToTurn(turnId);
+  };
+}
 
 export type WebuiStreamSetter = (
   update: (current: WebuiStreamState) => WebuiStreamState,

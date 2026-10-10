@@ -57,6 +57,8 @@ export function createWebuiEventEffectsRegistry(): WebuiEventEffectsRegistry {
     read: (sessionId) => perSession.get(sessionId),
     clear: () => perSession.clear(),
     asWebuiEventEffects: () => ({
+      invalidatePending: (sessionId) =>
+        perSession.get(sessionId)?.invalidatePending?.(sessionId),
       refreshPending: (sessionId) =>
         perSession.get(sessionId)?.refreshPending?.(sessionId),
       refreshGoal: (sessionId) =>

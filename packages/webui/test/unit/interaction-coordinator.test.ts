@@ -44,6 +44,7 @@ function sink(): WebuiInteractionSink & Record<string, unknown> {
 
 function coordinator(port: Record<string, unknown>, s = sink()) {
   const goalVersionRef = { current: 0 };
+  const pendingVersionRef = { current: 0 };
   return {
     s,
     goalVersionRef,
@@ -53,6 +54,7 @@ function coordinator(port: Record<string, unknown>, s = sink()) {
       sessionId: "s1",
       agentName: "fallback-agent",
       goalVersionRef,
+      pendingVersionRef,
     }),
   };
 }
@@ -204,6 +206,21 @@ describe("interaction coordinator — the goal write path and its guards", () =>
     expect(s.afterGoalReRead).not.toHaveBeenCalled();
   });
 
+  it("commits only the newest of overlapping goal reads", async () => {
+    const releases: ((goal: unknown) => void)[] = [];
+    const { c, s } = coordinator({
+      getGoal: vi.fn(() => new Promise((resolve) => releases.push(resolve))),
+    });
+    const older = c.refreshGoal();
+    const newer = c.refreshGoal();
+    releases[1]!({ status: "new" });
+    await newer;
+    releases[0]!({ status: "old" });
+    await older;
+    expect(s.applyGoal).toHaveBeenCalledTimes(1);
+    expect(s.applyGoal).toHaveBeenCalledWith({ status: "new" });
+  });
+
   it("carries a failed re-read back as a message", async () => {
     const { c, s } = coordinator({
       getGoal: vi.fn().mockRejectedValue(new Error("offline")),
@@ -254,6 +271,22 @@ describe("interaction coordinator — the authoritative re-read", () => {
       getPendingQuestionnaire: vi.fn().mockResolvedValue({ request: undefined }),
     });
     await expect(c.refresh()).resolves.toEqual({ ok: false, error: "offline" });
+    expect(s.replacePendingPermissions).not.toHaveBeenCalled();
+  });
+
+  it("does not restore a permission snapshot after an accepted reply", async () => {
+    let release!: (value: unknown) => void;
+    const staleRead = new Promise((resolve) => { release = resolve; });
+    const { c, s } = coordinator({
+      listPendingPermissions: vi.fn().mockReturnValue(staleRead),
+      getPendingQuestionnaire: vi.fn().mockResolvedValue({ request: undefined }),
+      replyPermission: vi.fn().mockResolvedValue({ success: true }),
+    });
+    const refresh = c.refresh();
+    await c.replyPermission(permission(), "allowOnce");
+    release({ requests: [permission()] });
+    await refresh;
+    expect(s.removePendingPermission).toHaveBeenCalledWith("req-1");
     expect(s.replacePendingPermissions).not.toHaveBeenCalled();
   });
 

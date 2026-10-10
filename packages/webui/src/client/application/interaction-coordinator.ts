@@ -91,6 +91,8 @@ export interface WebuiInteractionCoordinator {
    * owner's: the composer reads it separately.
    */
   readonly refresh: () => Promise<WebuiInteractionOutcome>;
+  /** Fence pending reads when an event or another owner changes this projection. */
+  readonly invalidatePendingReads: () => void;
   readonly replyPermission: (
     permission: WebuiPendingPermission,
     decision: "allowOnce" | "allowAlways" | "deny",
@@ -136,6 +138,8 @@ export interface WebuiInteractionCoordinatorOptions {
   readonly port: WebuiInteractionPortSlice;
   readonly sink: WebuiInteractionSink;
   readonly goalVersionRef: WebuiGoalVersionCell;
+  /** Persists request/mutation order across render-scoped coordinator objects. */
+  readonly pendingVersionRef: WebuiGoalVersionCell;
   /** The session these flows belong to. Absent means nothing to refresh. */
   readonly sessionId?: string;
   /** Fallback requester name when the request carries none. */
@@ -152,6 +156,7 @@ export function createWebuiInteractionCoordinator({
   sessionId,
   agentName,
   goalVersionRef,
+  pendingVersionRef,
 }: WebuiInteractionCoordinatorOptions): WebuiInteractionCoordinator {
   const {
     listPendingPermissions,
@@ -161,13 +166,22 @@ export function createWebuiInteractionCoordinator({
     replyQuestionnaire,
     dismissQuestionnaire,
   } = port;
+  const applyGoal = (goal: WebuiGoal | undefined): void => {
+    goalVersionRef.current += 1;
+    sink.applyGoal(goal);
+  };
+  const invalidatePendingReads = (): void => {
+    pendingVersionRef.current += 1;
+  };
 
   return {
+    invalidatePendingReads,
     refresh: async () => {
       // No session, nothing to read: the composer mounts without one on the home
       // screen, and a re-read there would ask for a session it does not have.
       if (!sessionId) return { ok: true };
       if (!listPendingPermissions && !getPendingQuestionnaire) return { ok: true };
+      const versionAtRequest = ++pendingVersionRef.current;
       try {
         const [permissionResult, questionnaireResult] = await Promise.all([
           listPendingPermissions?.(),
@@ -176,6 +190,10 @@ export function createWebuiInteractionCoordinator({
         const sessionPermissions = (permissionResult?.requests ?? []).filter(
           (permission) => permission.sessionId === sessionId,
         );
+        if (pendingVersionRef.current !== versionAtRequest) return { ok: true };
+        // A committed snapshot advances the same version as events and
+        // successful replies, fencing any older concurrent read.
+        pendingVersionRef.current += 1;
         sink.replacePendingPermissions(sessionPermissions);
         sink.applyQuestionnaire(questionnaireResult?.request);
         if (sessionPermissions.length > 0 || questionnaireResult?.request)
@@ -188,6 +206,7 @@ export function createWebuiInteractionCoordinator({
 
     replyPermission: async (permission, decision) => {
       if (!replyPermission) return { ok: true };
+      invalidatePendingReads();
       try {
         const result = await replyPermission({
           name: permission.agentName,
@@ -198,6 +217,7 @@ export function createWebuiInteractionCoordinator({
         // the request is gone, so staying silent would leave the prompt up.
         if (result.success !== true)
           throw new Error("The permission request was no longer pending");
+        invalidatePendingReads();
         sink.removePendingPermission(permission.requestId);
         sink.resumeAfterPermission();
         return { ok: true };
@@ -208,6 +228,7 @@ export function createWebuiInteractionCoordinator({
 
     answerQuestionnaire: async (request, answers) => {
       if (!replyQuestionnaire) return { ok: true };
+      invalidatePendingReads();
       try {
         const result = await replyQuestionnaire({
           name: request.requester?.agentName ?? agentName,
@@ -216,6 +237,7 @@ export function createWebuiInteractionCoordinator({
           answers,
         });
         if (result.ok !== true) throw new Error("The questionnaire was not accepted");
+        invalidatePendingReads();
         sink.applyQuestionnaire(undefined);
         sink.afterQuestionnaireAnswer(answers);
         return { ok: true };
@@ -226,20 +248,22 @@ export function createWebuiInteractionCoordinator({
 
     goalVersion: () => goalVersionRef.current,
 
-    applyGoal: (goal) => {
-      goalVersionRef.current += 1;
-      sink.applyGoal(goal);
-    },
+    applyGoal,
 
     refreshGoal: async () => {
       if (!sessionId || !getGoal) return { ok: true };
-      const versionAtRequest = goalVersionRef.current;
+      // The same monotonically increasing cell orders reads and writes. A
+      // later read supersedes an earlier one even when no event or user write
+      // lands between them.
+      const versionAtRequest = ++goalVersionRef.current;
       try {
         const nextGoal = await getGoal({ sessionId });
         // A newer write landed while this read was in flight: its answer is
         // stale and is dropped rather than applied over the newer goal.
         if (goalVersionRef.current !== versionAtRequest) return { ok: true };
-        sink.applyGoal(nextGoal);
+        // Query completion is a goal commit too; keep every commit on the
+        // versioned entry point so the next in-flight read observes it.
+        applyGoal(nextGoal);
         sink.afterGoalReRead(nextGoal);
         return { ok: true };
       } catch (error) {
@@ -249,6 +273,7 @@ export function createWebuiInteractionCoordinator({
 
     dismissQuestionnaire: async (request) => {
       if (!dismissQuestionnaire) return { ok: true };
+      invalidatePendingReads();
       try {
         const result = await dismissQuestionnaire({
           name: request.requester?.agentName ?? agentName,
@@ -256,6 +281,7 @@ export function createWebuiInteractionCoordinator({
         });
         if (result.ok !== true)
           throw new Error("The questionnaire could not be dismissed");
+        invalidatePendingReads();
         sink.applyQuestionnaire(undefined);
         sink.afterQuestionnaireDismiss();
         return { ok: true };

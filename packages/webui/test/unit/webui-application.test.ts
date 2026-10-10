@@ -22,6 +22,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createWebuiApplication } from "../../src/client/application/create-application.js";
 import { createWebuiEventEffectsRegistry } from "../../src/client/application/event-effects-registry.js";
+import { createWebuiComposerAttachStreamEffect } from "../../src/client/application/turn-commands.js";
 import type { WebuiProcessEventChannel } from "../../src/client/application/event-channel.js";
 import { createWebuiRequestOwnership } from "../../src/client/application/request-ownership.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
@@ -371,6 +372,30 @@ describe("stage 4 — the four call sites' handling through the coordinator", ()
     // A different turn is already held; the event alone cannot tell stale from
     // concurrent, so the attach decision is "recheck" and the probe decides.
     expect(attachStream).toHaveBeenCalledWith("s1", "srv-2", "recheck");
+  });
+
+  it("routes coordinator to registry to the composer's attach/recheck commands", () => {
+    const registry = createWebuiEventEffectsRegistry();
+    const attachToTurn = vi.fn();
+    const recheckSubscription = vi.fn();
+    registry.register("s1", {
+      attachStream: createWebuiComposerAttachStreamEffect(
+        attachToTurn,
+        recheckSubscription,
+      ),
+    });
+    const { application, channels } = makeApplication(
+      registry.asWebuiEventEffects(),
+    );
+    application.leases.claim("s1", "recovered", "old-turn");
+
+    channels[0]!.emit(
+      event("session.start", { sessionId: "s1", turnId: "turn-B" }),
+    );
+
+    expect(recheckSubscription).toHaveBeenCalledTimes(1);
+    expect(recheckSubscription).toHaveBeenCalledWith("turn-B");
+    expect(attachToTurn).not.toHaveBeenCalled();
   });
 
   it("re-reads interaction, questionnaire and goal through the registered effects", () => {

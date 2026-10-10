@@ -152,6 +152,16 @@ export interface GraphViolation {
   readonly detail: string;
 }
 
+/**
+ * A Node-builtin violation. `forbiddenNodeBuiltinRule` always reports the file
+ * it was found in and the specifier that named the builtin, so the two fields
+ * are required here rather than inherited as optional.
+ */
+export interface NodeBuiltinViolation extends GraphViolation {
+  readonly file: string;
+  readonly specifier: string;
+}
+
 export interface RuleResult {
   readonly pass: boolean;
   readonly violations: readonly unknown[];
@@ -176,7 +186,9 @@ export interface GraphEvaluation {
   readonly direction: readonly DirectionViolation[];
   readonly browserOnly: readonly GraphViolation[];
   readonly browserGlobals: readonly GraphViolation[];
-  readonly sharedNodeBuiltins: readonly GraphViolation[];
+  readonly nodeBuiltins: readonly NodeBuiltinViolation[];
+  readonly forbiddenCalls: readonly GraphViolation[];
+  readonly sharedNodeBuiltins: readonly NodeBuiltinViolation[];
   readonly unresolved: readonly GraphViolation[];
   readonly nonLiteralDynamic: readonly GraphViolation[];
   readonly cycles: readonly GraphViolation[];

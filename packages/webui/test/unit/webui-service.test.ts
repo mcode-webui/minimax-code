@@ -3100,7 +3100,6 @@ describe("WebUI runtime host assembly", () => {
           return { apiHost: { close: async () => undefined }, dataDir };
         },
       });
-      await assembled.harnessPort.close();
 
       const getter = lastOptions?.authContextGetter as
         (() => { accessToken?: string } | undefined) | undefined;
@@ -3112,6 +3111,7 @@ describe("WebUI runtime host assembly", () => {
       // A token the runtime rejected is not handed back a second time.
       invalidator?.("assembled-token");
       expect(getter?.()).toBeUndefined();
+      await assembled.harnessPort.close();
     } finally {
       await rm(dataDir, { recursive: true, force: true });
     }

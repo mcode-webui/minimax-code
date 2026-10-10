@@ -192,7 +192,7 @@ describe("WebUI runtime single-owner invariants", () => {
         new Promise((resolve) => { release = resolve; }) as never,
       );
       vi.spyOn(session.usageQuota, "resolveAccountIdentity").mockResolvedValue(
-        undefined,
+        { realUserID: "test-user" },
       );
       const refresh = session.start();
       session.dispose();

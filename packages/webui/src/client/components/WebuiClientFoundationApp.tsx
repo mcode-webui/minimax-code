@@ -117,10 +117,6 @@ import { createWebuiAccountWorkflows } from "../application/account-workflows.js
 import { createWebuiSettingsWorkflows } from "../application/settings-workflows.js";
 import { createWebuiPluginWorkflows } from "../application/plugin-workflows.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
-import {
-  readWebuiUnreadCounts,
-  writeWebuiUnreadCounts,
-} from "../infrastructure/storage.js";
 import { startWebuiSessionTransferDownload } from "../infrastructure/session-transfer-download.js";
 import { importWebuiSessionFile } from "../infrastructure/session-import.js";
 import type { TeamModeSessionChoices } from "../team-mode.js";
@@ -983,8 +979,8 @@ export function WebuiClientFoundationApp(
         // shell used (same key, same validation, same format) — injected
         // because the application layer may not import infrastructure.
         unreadStorage: {
-          read: readWebuiUnreadCounts,
-          write: writeWebuiUnreadCounts,
+          read: browserStorage.readUnreadCounts,
+          write: browserStorage.writeUnreadCounts,
         },
         composer: composerStore,
         turns: {
@@ -999,6 +995,7 @@ export function WebuiClientFoundationApp(
       applicationEffects,
       sessionStore,
       composerStore,
+      browserStorage,
       transport?.loadMessages,
       transport?.resumeSession,
       watchEvents,

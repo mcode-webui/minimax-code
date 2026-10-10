@@ -47,9 +47,13 @@ export function createWebuiBrowserDom(
       return () => windowObject.removeEventListener("webui-context-window-usage-change", listener);
     },
     getElementById: (id) => documentObject?.getElementById(id) ?? null,
-    getActiveElement: () => documentObject?.activeElement instanceof HTMLElement
-      ? documentObject.activeElement
-      : null,
+    getActiveElement: () => {
+      if (!documentObject) return null;
+      const activeElement = documentObject.activeElement;
+      return activeElement && typeof (activeElement as HTMLElement).focus === "function"
+        ? activeElement as HTMLElement
+        : null;
+    },
     updateDocumentAppearance: (theme, language) => {
       if (!documentObject) return;
       documentObject.documentElement.classList.toggle("dark", theme === "dark");

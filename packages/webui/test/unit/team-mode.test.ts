@@ -3,7 +3,10 @@ import { readSessionOverlay, toggleSessionOverlay } from "../../src/client/compo
 import {
   isTeamModeLocked,
 } from "../../src/client/team-mode.js";
-import { createWebuiBrowserStorage } from "../../src/client/infrastructure/storage.js";
+import {
+  createWebuiBrowserStorage,
+  getWebuiBrowserStorage,
+} from "../../src/client/infrastructure/storage.js";
 
 function createMemoryLocalStorage(): Storage {
   const values = new Map<string, string>();
@@ -84,5 +87,35 @@ describe("team mode lock contract", () => {
     const unavailable = createWebuiBrowserStorage(undefined);
     expect(unavailable.getItem("webui-theme")).toBeNull();
     expect(() => unavailable.setItem("webui-theme", "dark")).not.toThrow();
+  });
+
+  it("keeps an explicit empty adapter isolated from ambient localStorage", () => {
+    localStorage.setItem("ambient-sentinel", "present");
+    const empty = createWebuiBrowserStorage(undefined);
+    expect(empty.getItem("ambient-sentinel")).toBeNull();
+    empty.setItem("ambient-sentinel", "changed");
+    expect(localStorage.getItem("ambient-sentinel")).toBe("present");
+  });
+
+  it("persists unread counts through the injected storage adapter", () => {
+    const backing = createMemoryLocalStorage();
+    const storage = createWebuiBrowserStorage(backing);
+    storage.writeUnreadCounts({ sessionA: 2, sessionB: 0 });
+    expect(storage.readUnreadCounts()).toEqual({ sessionA: 2 });
+    expect(localStorage.getItem("mavis-session-unread")).toBeNull();
+  });
+
+  it("treats a denied localStorage getter as unavailable", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() { throw new DOMException("denied", "SecurityError"); },
+    });
+    try {
+      expect(getWebuiBrowserStorage()).toBeUndefined();
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, "localStorage", descriptor);
+      else Reflect.deleteProperty(globalThis, "localStorage");
+    }
   });
 });

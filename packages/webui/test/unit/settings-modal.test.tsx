@@ -107,6 +107,7 @@ describe("injected browser DOM adapter", () => {
       getElementById: () => null,
     } as unknown as Document;
     const dom = createWebuiBrowserDom(documentObject, undefined);
+    expect(dom.getActiveElement()).toBeNull();
     const listener = () => undefined;
     const stop = dom.listenForKeyDown(listener);
     expect(dom.portalTarget()).toBe(body);
@@ -116,6 +117,10 @@ describe("injected browser DOM adapter", () => {
     dom.updateDocumentAppearance("dark", "zh-CN");
     expect(toggles).toEqual([["dark", true], ["light", false]]);
     expect(documentElement.lang).toBe("zh-CN");
+  });
+
+  it("returns no active element when there is no document", () => {
+    expect(createWebuiBrowserDom(undefined, undefined).getActiveElement()).toBeNull();
   });
 });
 

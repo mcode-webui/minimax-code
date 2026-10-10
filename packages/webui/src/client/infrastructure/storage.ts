@@ -25,8 +25,12 @@ export const TEAM_MODE_STORAGE_KEY = "mavis-team-mode";
 export const TEAM_MODE_SESSION_STORAGE_KEY = "mavis-team-mode:sessions:v1";
 export const WEBUI_COMPOSER_STATE_KEY = "webui.composer.state.v1";
 
-function browserStorage(): Storage | undefined {
-  return typeof localStorage === "undefined" ? undefined : localStorage;
+export function getWebuiBrowserStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface WebuiBrowserStorage {
@@ -42,12 +46,18 @@ export interface WebuiBrowserStorage {
   readonly readTeamModeSessionChoices: () => TeamModeSessionChoices;
   readonly writeTeamModeSessionChoice: (sessionId: string, value: boolean) => void;
   readonly loadComposer: <T>(parse: (raw: string | null | undefined) => T) => T;
-  readonly saveComposer: <T>(state: T, serialize: (state: T, keepKeys?: readonly string[]) => string, keepKeys?: readonly string[]) => void;
+  readonly saveComposer: <T>(
+    state: T,
+    serialize: (state: T, keepKeys?: readonly string[]) => string,
+    keepKeys?: readonly string[],
+  ) => void;
+  readonly readUnreadCounts: () => Record<string, number>;
+  readonly writeUnreadCounts: (counts: Readonly<Record<string, number>>) => void;
 }
 
 /** Browser persistence boundary. Pure parsing and pruning remain in projection/value modules. */
 export function createWebuiBrowserStorage(
-  storage: Storage | undefined = browserStorage(),
+  storage: Storage | undefined,
 ): WebuiBrowserStorage {
   const readFavoriteModels = (normalize: (value: unknown) => string[]): string[] => {
     if (!storage) return [];
@@ -121,11 +131,13 @@ export function createWebuiBrowserStorage(
         // Draft/history persistence is best-effort; the live composer keeps working.
       }
     },
+    readUnreadCounts: () => readWebuiUnreadCounts(storage),
+    writeUnreadCounts: (counts) => writeWebuiUnreadCounts(counts, storage),
   };
 }
 
 export function readWebuiUnreadCounts(
-  storage: Storage | undefined = browserStorage(),
+  storage: Storage | undefined = getWebuiBrowserStorage(),
 ): Record<string, number> {
   if (!storage) return {};
   try {
@@ -151,7 +163,7 @@ export function readWebuiUnreadCounts(
 
 export function writeWebuiUnreadCounts(
   counts: Readonly<Record<string, number>>,
-  storage: Storage | undefined = browserStorage(),
+  storage: Storage | undefined = getWebuiBrowserStorage(),
 ): void {
   if (!storage) return;
   try {

@@ -15,7 +15,10 @@ import { WebuiErrorBoundary } from "./components/WebuiErrorBoundary.js";
 import { WebuiStartupFallback } from "./components/StartupFallback.js";
 import { WebuiBrowserCapabilitiesProvider } from "./bindings/browser-capabilities.js";
 import { createWebuiBrowserDom } from "./infrastructure/browser-dom.js";
-import { createWebuiBrowserStorage } from "./infrastructure/storage.js";
+import {
+  createWebuiBrowserStorage,
+  getWebuiBrowserStorage,
+} from "./infrastructure/storage.js";
 
 declare const document: {
   getElementById(elementId: string): HTMLElement | null;
@@ -65,7 +68,7 @@ const sessionId = new URLSearchParams(location.hash.replace(/^#/u, "")).get("ses
 const root: Root = createRoot(rootElement);
 const browserCapabilities = {
   dom: createWebuiBrowserDom(globalThis.document, globalThis.window),
-  storage: createWebuiBrowserStorage(),
+  storage: createWebuiBrowserStorage(getWebuiBrowserStorage()),
 };
 // W2.5: pass the transport ONCE here so the React effect dependency
 // identity is stable across renders. Each method is still optional

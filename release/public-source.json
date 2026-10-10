@@ -3645,6 +3645,7 @@
     "packages/webui/src/client/icons.tsx",
     "packages/webui/src/client/index.html",
     "packages/webui/src/client/infrastructure/connection-health.ts",
+    "packages/webui/src/client/infrastructure/event-channel.ts",
     "packages/webui/src/client/infrastructure/session-import.ts",
     "packages/webui/src/client/infrastructure/session-transfer-download.ts",
     "packages/webui/src/client/infrastructure/session-transfer-target.ts",

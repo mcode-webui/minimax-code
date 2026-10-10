@@ -41,9 +41,13 @@ test("late A loadOlder completion leaves B messages, loading, and errors untouch
 
   await switchSession(page, "B");
   await expect(page.getByText("History B synthetic")).toBeVisible();
+  const bViewport = page.locator('[data-webui-session-scroll="true"]');
+  await bViewport.evaluate((element) => { element.scrollTop = 700; });
+  const bScrollTop = await bViewport.evaluate((element) => element.scrollTop);
   await page.evaluate(() => window.__fixture.resolve("getMessages", { id: "A", before: "cursor-A" }, { messages: [{ msgId: "late-A-page", role: "user", msgContent: "Late A page synthetic", timestamp: 1_699_999_999_999 }], hasMore: false }));
 
   await expect(page.getByText("History B synthetic")).toBeVisible();
+  await expect.poll(() => bViewport.evaluate((element) => element.scrollTop)).toBe(bScrollTop);
   await expect(page.getByText("Late A page synthetic")).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "正在加载更早消息" })).toHaveCount(0);

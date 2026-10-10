@@ -211,8 +211,15 @@ export function WebuiSessionTranscript({
 } & WebuiSessionTranscriptCapabilities): ReactElement {
   const historyOwner = useWebuiTranscriptHistoryOwner();
   const transcriptState = useWebuiSessionState(sessionId).transcript;
-  const visiblePage = initialMessages ?? transcriptState.page ?? EMPTY_TRANSCRIPT_PAGE;
-  const loading = initialMessages ? false : transcriptState.loading;
+  const hasCanonicalPage = transcriptState.page.messages !== undefined;
+  const visiblePage = hasCanonicalPage
+    ? transcriptState.page
+    : initialMessages ?? transcriptState.page ?? EMPTY_TRANSCRIPT_PAGE;
+  const loading = hasCanonicalPage
+    ? transcriptState.loading
+    : initialMessages
+      ? false
+      : transcriptState.loading;
   const error = transcriptState.error;
   const transcriptRef = useRef<HTMLElement | null>(null);
   const stream = useWebuiSessionStream(sessionId);
@@ -501,9 +508,15 @@ export function WebuiSessionTranscript({
           '[data-webui-session-scroll="true"]',
         );
         const previousScrollTop = viewport?.scrollTop;
-        void historyOwner?.loadOlder(sessionId, requestedCursor).then(() => {
+        void historyOwner?.loadOlder(sessionId, requestedCursor).then((outcome) => {
           requestAnimationFrame(() => {
-            if (viewport?.isConnected && previousScrollTop !== undefined) {
+            if (
+              outcome.status === "applied" &&
+              historyOwner.isCurrentRequest(sessionId, outcome.requestId) &&
+              transcriptRef.current?.dataset.webuiTranscript === sessionId &&
+              viewport?.isConnected &&
+              previousScrollTop !== undefined
+            ) {
               viewport.scrollTop = previousScrollTop;
             }
           });

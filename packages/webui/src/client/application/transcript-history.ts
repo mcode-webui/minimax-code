@@ -8,9 +8,18 @@ import { mergeOlderTranscriptPage } from "./transcript-request-ownership.js";
 export interface WebuiTranscriptHistoryOwner {
   readonly selectSession: (sessionId: string | undefined) => void;
   readonly seed: (sessionId: string, page: WebuiClientMessagePage) => void;
-  readonly loadPage: (sessionId: string) => Promise<void>;
-  readonly loadOlder: (sessionId: string, cursor: string) => Promise<void>;
+  readonly loadPage: (sessionId: string) => Promise<WebuiTranscriptLoadOutcome>;
+  readonly loadOlder: (
+    sessionId: string,
+    cursor: string,
+  ) => Promise<WebuiTranscriptLoadOutcome>;
+  readonly isCurrentRequest: (sessionId: string, requestId: number) => boolean;
 }
+
+export type WebuiTranscriptLoadOutcome =
+  | { readonly status: "applied"; readonly requestId: number }
+  | { readonly status: "stale" }
+  | { readonly status: "failed" };
 
 /** Owns transcript history RPCs and commits their results into the one session map. */
 export function createWebuiTranscriptHistoryOwner(deps: {
@@ -45,8 +54,11 @@ export function createWebuiTranscriptHistoryOwner(deps: {
           },
     );
   };
-  const load = async (sessionId: string, before?: string): Promise<void> => {
-    if (!deps.loadMessages) return;
+  const load = async (
+    sessionId: string,
+    before?: string,
+  ): Promise<WebuiTranscriptLoadOutcome> => {
+    if (!deps.loadMessages) return { status: "failed" };
     if (selectedSessionId !== sessionId) selectSession(sessionId);
     const ownGeneration = generation;
     const ownRequest = ++requestId;
@@ -63,7 +75,7 @@ export function createWebuiTranscriptHistoryOwner(deps: {
         id: sessionId,
         ...(before ? { before } : {}),
       });
-      if (!isCurrent()) return;
+      if (!isCurrent()) return { status: "stale" };
       deps.store.updateSession(sessionId, (state) => {
         const current = state.transcript;
         const olderResult = before
@@ -88,8 +100,9 @@ export function createWebuiTranscriptHistoryOwner(deps: {
           },
         };
       });
+      return { status: "applied", requestId: ownRequest };
     } catch (reason) {
-      if (!isCurrent()) return;
+      if (!isCurrent()) return { status: "stale" };
       deps.store.updateSession(sessionId, (state) => ({
         ...state,
         transcript: {
@@ -98,6 +111,7 @@ export function createWebuiTranscriptHistoryOwner(deps: {
           loading: false,
         },
       }));
+      return { status: "failed" };
     }
   };
   return {
@@ -105,5 +119,7 @@ export function createWebuiTranscriptHistoryOwner(deps: {
     seed,
     loadPage: (sessionId) => load(sessionId),
     loadOlder: (sessionId, cursor) => load(sessionId, cursor),
+    isCurrentRequest: (sessionId, id) =>
+      selectedSessionId === sessionId && requestId === id,
   };
 }

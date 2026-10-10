@@ -46,9 +46,9 @@ describe("application-owned transcript history", () => {
     });
     const loadA = owner.loadPage("A");
     const loadB = owner.loadPage("B");
-    await loadB;
+    await expect(loadB).resolves.toMatchObject({ status: "applied" });
     resolveA({ messages: [{ msgId: "A-late" }] });
-    await loadA;
+    await expect(loadA).resolves.toEqual({ status: "stale" });
 
     expect(store.readSession("B").transcript.page.messages?.map((message) => message.msgId))
       .toEqual(["B-message"]);

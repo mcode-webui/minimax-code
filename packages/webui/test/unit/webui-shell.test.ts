@@ -81,6 +81,7 @@ import type {
 } from "../../src/shared/contracts/goal.js";
 import type { WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
 import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { createWebuiTranscriptHistoryOwner } from "../../src/client/application/transcript-history.js";
 import { WEBUI_HOME_SESSION_KEY } from "../../src/client/application/state.js";
 import { WebuiSessionStoreProvider } from "../../src/client/bindings/application-context.js";
 import {
@@ -3416,3 +3417,42 @@ function WebuiSessionTranscript(
     children: createElement(BaseWebuiSessionTranscript, props),
   });
 }
+
+describe("canonical transcript page wins over the initial render seed", () => {
+  it("renders the owner's refreshed and paginated pages instead of the stale seed", async () => {
+    const refreshedStore = createWebuiSessionStore();
+    let load = 0;
+    const owner = createWebuiTranscriptHistoryOwner({
+      store: refreshedStore,
+      loadMessages: async ({ before }) => {
+        if (before) return {
+          messages: [{ msgId: "older", role: "user", msgContent: "OLDER-CANONICAL" }],
+          hasMore: false,
+        };
+        load += 1;
+        return { messages: [{ msgId: "fresh", role: "user", msgContent: "REFRESHED-CANONICAL" }], hasMore: true, nextCursor: "older-cursor" };
+      },
+    });
+    const seed = { messages: [{ msgId: "seed", role: "user", msgContent: "SEED-OLD" }], hasMore: true, nextCursor: "seed-cursor" };
+    owner.selectSession("transcript-seed-refresh");
+    owner.seed("transcript-seed-refresh", seed);
+    await owner.loadPage("transcript-seed-refresh");
+    const renderWithStore = () => renderToStaticMarkup(createElement(WebuiSessionStoreProvider, {
+      store: refreshedStore,
+      children: createElement(BaseWebuiSessionTranscript, {
+        sessionId: "transcript-seed-refresh",
+        initialMessages: seed,
+      }),
+    }));
+    let html = renderWithStore();
+    expect(html).toContain("REFRESHED-CANONICAL");
+    expect(html).not.toContain("SEED-OLD");
+
+    await owner.loadOlder("transcript-seed-refresh", "older-cursor");
+    html = renderWithStore();
+    expect(html).toContain("OLDER-CANONICAL");
+    expect(html).toContain("REFRESHED-CANONICAL");
+    expect(html).not.toContain("SEED-OLD");
+    expect(load).toBe(1);
+  });
+});

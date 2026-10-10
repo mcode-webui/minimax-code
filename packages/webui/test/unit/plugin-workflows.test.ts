@@ -131,5 +131,29 @@ describe("a plugin mutation invalidates exactly what it affects", () => {
 
     await workflows.loadListing(initialWebuiPluginSelection);
     await expect(workflows.deleteAgent({ name: "a" })).rejects.toThrow("in use");
+    // One owner records the failure, so no call site keeps its own copy.
+    expect(workflows.getSnapshot().mutationError).toBe("in use");
+    expect(workflows.getSnapshot().mutating).toBe(false);
+  });
+
+  it("clears the recorded failure when the next mutation starts", async () => {
+    let fail = true;
+    const workflows = createWebuiPluginWorkflows({
+      port: {
+        pluginManagement: (request) => {
+          if (request.action === "deleteAgent") {
+            return fail ? Promise.reject(new Error("in use")) : Promise.resolve({});
+          }
+          return Promise.resolve({ plugins: [] });
+        },
+      },
+    });
+
+    await workflows.loadListing({ ...initialWebuiPluginSelection, view: "personal" });
+    await expect(workflows.deleteAgent({ name: "a" })).rejects.toThrow("in use");
+    expect(workflows.getSnapshot().mutationError).toBe("in use");
+    fail = false;
+    await workflows.deleteAgent({ name: "a" });
+    expect(workflows.getSnapshot().mutationError).toBeUndefined();
   });
 });

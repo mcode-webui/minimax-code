@@ -57,6 +57,11 @@ export interface WebuiPluginWorkflowsState {
   /** Bumps after any successful mutation, so a reader can refresh. */
   readonly revision: number;
   readonly listing: WebuiPluginListingState;
+  /** The last mutation failure, so one owner reports it rather than each call
+   *  site keeping its own copy. Cleared when the next mutation starts. */
+  readonly mutationError?: string;
+  /** True while a mutation is in flight. */
+  readonly mutating: boolean;
 }
 
 export const initialWebuiPluginSelection: WebuiPluginSelection = {
@@ -75,6 +80,7 @@ export const initialWebuiPluginListingState: WebuiPluginListingState = {
 export const initialWebuiPluginWorkflowsState: WebuiPluginWorkflowsState = {
   revision: 0,
   listing: initialWebuiPluginListingState,
+  mutating: false,
 };
 
 /** The listing key a response's rows live under, per area. */
@@ -374,10 +380,21 @@ export function createWebuiPluginWorkflows(deps: {
    * interface.
    */
   const mutate = async (action: string, input: Record<string, unknown>): Promise<unknown> => {
-    const result = await call(action, input);
-    set((current) => ({ ...current, revision: current.revision + 1 }));
-    await reload();
-    return result;
+    set((current) => {
+      const next: WebuiPluginWorkflowsState = { ...current, mutating: true };
+      if (next.mutationError !== undefined) delete (next as { mutationError?: string }).mutationError;
+      return next;
+    });
+    try {
+      const result = await call(action, input);
+      set((current) => ({ ...current, revision: current.revision + 1 }));
+      await reload();
+      set((current) => (current.mutating ? { ...current, mutating: false } : current));
+      return result;
+    } catch (reason) {
+      set((current) => ({ ...current, mutationError: message(reason), mutating: false }));
+      throw reason;
+    }
   };
 
   return {

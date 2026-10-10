@@ -45,6 +45,13 @@ const component = readFileSync(
   new URL("../../src/client/components/PluginManagement.tsx", import.meta.url),
   "utf8",
 );
+// The listing composition — the skill-hub paging and its unknowable total —
+// moved into the application plugin owner (ticket #52). The two assertions
+// below pin that behaviour where it now lives, with the same intent.
+const owner = readFileSync(
+  new URL("../../src/client/application/plugin-workflows.ts", import.meta.url),
+  "utf8",
+);
 
 describe("plugin marketplace catalogue", () => {
   it("offers 插件 and 技能 instead of 市场 and 个人", () => {
@@ -133,7 +140,7 @@ describe("marketplace page layout parity", () => {
     // `pluginTotal` equivalent. When the page came back truncated the total is
     // unknowable, so the label drops the number rather than claiming "查看全部
     // 100 个" for an arbitrarily capped fetch.
-    expect(component).toContain("(result as Row).hasMore === true");
+    expect(owner).toContain("(result as Record<string, unknown>).hasMore === true");
     expect(component).toMatch(
       /marketTotal === null\s*\?\s*`查看全部\$\{marketNoun\}`/,
     );
@@ -163,7 +170,7 @@ describe("plugin marketplace data paths", () => {
     // has its own operation, so the plugin request no longer carries it.
     expect(component).not.toContain("skillLimit");
     expect(component).not.toContain("marketSkills");
-    expect(component).toContain('request("listSkillHub"');
+    expect(owner).toContain('call("listSkillHub"');
   });
 
   it("clears the plugin category filter when the catalogue changes", () => {

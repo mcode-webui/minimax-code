@@ -26,12 +26,6 @@ export type {
  * Monotonic client-side stream identity. Only the client can tell two
  * concurrent loops apart, so the counter lives here rather than on the wire.
  */
-let subscriptionGeneration = 0;
-
-export function nextWebuiSubscriptionGeneration(): number {
-  subscriptionGeneration += 1;
-  return subscriptionGeneration;
-}
 
 export const initialWebuiStreamState: WebuiStreamState = {
   phase: "idle",
@@ -82,17 +76,6 @@ export function claimWebuiSubscriptionTurn(
 
 /** Drops the subscription. Terminal frames and terminal lifecycle events both
  * release it, so a later `session.start` attaches instead of colliding. */
-export function releaseWebuiSubscription(
-  state: WebuiStreamState,
-  scope?: WebuiSubscriptionReleaseScope,
-): WebuiStreamState {
-  const owned = state.subscription;
-  if (owned === undefined) return state;
-  if (scope?.generation !== undefined && owned.generation !== scope.generation)
-    return state;
-  if (scope?.turnId !== undefined && owned.turnId !== scope.turnId) return state;
-  return { ...state, subscription: undefined };
-}
 
 /** Minimal shape the recheck resolution needs from the active-turn probe. */
 export interface WebuiActiveTurnLike {
@@ -108,11 +91,10 @@ export interface WebuiActiveTurnLike {
  */
 export function settleAbortedStream(state: WebuiStreamState): WebuiStreamState {
   return {
-    ...releaseWebuiSubscription({
-      ...state,
-      phase: "done",
-      status: "aborted",
-    }),
+    // The subscription is cleared in place. `releaseWebuiSubscription` moved to
+    // `client/mechanisms/stream-lease.ts`, and a `view` projection may not import
+    // a mechanism; this call never passed a scope, so the transition is identical.
+    ...{ ...state, phase: "done", status: "aborted", subscription: undefined },
     // The turn is over, so no loop owns the stream any more. Clearing the
     // latest-claim marker is what actually silences the loop the user just
     // stopped: releasing the lease alone left its generation standing, so
@@ -400,7 +382,8 @@ export function applyFrameData(
     // A superseded loop never reaches this branch: its frames are dropped by
     // the generation guard in `buildWebuiStreamLoopSink` before the reducer
     // sees them, so an old `[DONE]` cannot clear the current loop's lease.
-    return releaseWebuiSubscription({ ...next, phase: "done" });
+    // Cleared in place for the same reason as `settleAbortedStream` above.
+    return { ...next, phase: "done", subscription: undefined };
   if (recognised.kind === "resume_overflow") {
     // The harness signals that this client has fallen too far behind
     // the server's authoritative history. The shell observes

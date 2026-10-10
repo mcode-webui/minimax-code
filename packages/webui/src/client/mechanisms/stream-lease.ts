@@ -17,11 +17,11 @@
 // assigned client-side. There is exactly one counter, one claim, one release and
 // one fence predicate.
 
-import {
-  releaseWebuiSubscription,
-  type WebuiStreamState,
-  type WebuiStreamSubscription,
-} from "../projection/stream-state.js";
+import type {
+  WebuiStreamState,
+  WebuiStreamSubscription,
+  WebuiSubscriptionReleaseScope,
+} from "../contracts/stream-state.js";
 
 export type WebuiLeaseOwner = WebuiStreamSubscription["owner"];
 
@@ -124,4 +124,22 @@ export function isWebuiLeaseHeldBy(
 ): boolean {
   if (generation === undefined) return state.subscription === undefined;
   return state.subscription?.generation === generation;
+}
+
+let subscriptionGeneration = 0;
+
+export function nextWebuiSubscriptionGeneration(): number {
+  subscriptionGeneration += 1;
+  return subscriptionGeneration;
+}
+export function releaseWebuiSubscription(
+  state: WebuiStreamState,
+  scope?: WebuiSubscriptionReleaseScope,
+): WebuiStreamState {
+  const owned = state.subscription;
+  if (owned === undefined) return state;
+  if (scope?.generation !== undefined && owned.generation !== scope.generation)
+    return state;
+  if (scope?.turnId !== undefined && owned.turnId !== scope.turnId) return state;
+  return { ...state, subscription: undefined };
 }

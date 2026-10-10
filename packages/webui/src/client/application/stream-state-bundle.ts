@@ -1,6 +1,8 @@
 // The stream-state transforms the loop needs, bundled so a caller can inject
 // them instead of the mechanism importing `projection/` directly (plan §7.2).
-// `client/stream-loop.ts` is a mechanism and may import only `contracts` and
+// The generation counter and the scoped release live in
+// `client/mechanisms/stream-lease.ts`, so this bundle is an `application` module.
+// `client/mechanisms/stream-loop.ts` may import only `contracts` and
 // `shared`, so the callers that already sit above that boundary supply this
 // bundle, exactly as they supply `streamRecoveryProjection`.
 //
@@ -10,12 +12,11 @@
 // loop; TypeScript's structural compatibility is what the caller's expected type
 // checks against.
 
+import { recogniseWebuiStreamPayload, reduceWebuiStreamFrame } from "../projection/stream-state.js";
 import {
   nextWebuiSubscriptionGeneration,
-  recogniseWebuiStreamPayload,
-  reduceWebuiStreamFrame,
   releaseWebuiSubscription,
-} from "./stream-state.js";
+} from "../mechanisms/stream-lease.js";
 
 /** The default bundle: the existing pure stream-state functions, injected. */
 export const streamStateBundle = {

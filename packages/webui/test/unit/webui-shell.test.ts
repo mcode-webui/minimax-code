@@ -124,7 +124,7 @@ import { projectWebuiTodos, WebuiProgressOverviewPanel, WebuiProgressPanel, Webu
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/projection/workspace-panel-state.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 import type { WebuiWorkspaceEnvironment } from "../../src/shared/contracts/workspace.js";
-import { streamStateBundle } from "../../src/client/projection/stream-state-bundle.js";
+import { streamStateBundle } from "../../src/client/application/stream-state-bundle.js";
 
 function renderShell(label = "webui-foundation"): string {
   return renderToStaticMarkup(

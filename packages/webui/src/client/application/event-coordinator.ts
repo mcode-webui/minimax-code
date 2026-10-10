@@ -38,7 +38,7 @@ import {
   reduceWebuiStreamFrame,
 } from "../projection/stream-state.js";
 import type { WebuiProcessEventChannel } from "./event-channel.js";
-import { releaseWebuiLease } from "./stream-lease.js";
+import { releaseWebuiLease } from "../mechanisms/stream-lease.js";
 import type { WebuiSessionStore } from "./session-store.js";
 import type { WebuiStreamLeaseController } from "./stream-lease-controller.js";
 

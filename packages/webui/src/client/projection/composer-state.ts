@@ -30,7 +30,7 @@ import { streamRecoveryProjection } from "./stream-recovery.js";
 import type { WebuiStreamState } from "./stream-state.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";
 import { isWebuiRunnableCommand, classifyWebuiSlashCommand } from "../slash-palette.js";
-import { streamStateBundle } from "./stream-state-bundle.js";
+import { streamStateBundle } from "../application/stream-state-bundle.js";
 
 /**
  * Absolute-path check shared by the project picker and the submit guard.

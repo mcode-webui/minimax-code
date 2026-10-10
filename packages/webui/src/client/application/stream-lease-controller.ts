@@ -14,11 +14,11 @@ import {
   isWebuiLeaseGenerationCurrent,
   isWebuiLeaseHeldBy,
   releaseWebuiLease,
-} from "./stream-lease.js";
+} from "../mechanisms/stream-lease.js";
 import type {
   WebuiLeaseOwner,
   WebuiLeaseReleaseScope,
-} from "./stream-lease.js";
+} from "../mechanisms/stream-lease.js";
 
 export interface WebuiStreamLeaseController {
   /** Claim the session's stream; returns the generation the claimant owns. */

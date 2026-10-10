@@ -29,13 +29,10 @@ import {
   submitWebuiComposerTurn,
   type WebuiComposerSubmitHandlers,
 } from "../projection/composer-state.js";
+import { isWebuiSubscriptionProbeCurrent, ownsWebuiStreamGeneration, resolveWebuiSubscriptionRecheck, type WebuiStreamState } from "../projection/stream-state.js";
 import {
-  isWebuiSubscriptionProbeCurrent,
-  ownsWebuiStreamGeneration,
   releaseWebuiSubscription,
-  resolveWebuiSubscriptionRecheck,
-  type WebuiStreamState,
-} from "../projection/stream-state.js";
+} from "../mechanisms/stream-lease.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 import {
   buildWebuiStreamLoopSink,
@@ -47,7 +44,7 @@ import {
   type WebuiActiveTurnProbe,
   type WebuiActiveTurnProbeFn,
 } from "./active-turn-probe.js";
-import { streamStateBundle } from "../projection/stream-state-bundle.js";
+import { streamStateBundle } from "./stream-state-bundle.js";
 
 export type WebuiStreamSetter = (
   update: (current: WebuiStreamState) => WebuiStreamState,

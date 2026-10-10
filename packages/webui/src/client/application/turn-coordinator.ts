@@ -24,14 +24,14 @@ import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
 import { reduceWebuiStreamFrame, settleAbortedStream } from "../projection/stream-state.js";
-import { fenceWebuiLeaseStream } from "./stream-lease.js";
+import { fenceWebuiLeaseStream } from "../mechanisms/stream-lease.js";
 import {
   runWebuiStreamLoop,
   type WebuiStreamLoopSink,
 } from "../mechanisms/stream-loop.js";
 import type { WebuiSessionStore, WebuiSessionWriter } from "./session-store.js";
 import type { WebuiStreamLeaseController } from "./stream-lease-controller.js";
-import { streamStateBundle } from "../projection/stream-state-bundle.js";
+import { streamStateBundle } from "./stream-state-bundle.js";
 
 export interface WebuiTurnCoordinatorDeps {
   readonly store: WebuiSessionStore;

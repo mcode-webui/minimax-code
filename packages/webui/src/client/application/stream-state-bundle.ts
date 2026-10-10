@@ -14,13 +14,13 @@
 
 import { recogniseWebuiStreamPayload, reduceWebuiStreamFrame } from "../projection/stream-state.js";
 import {
-  nextWebuiSubscriptionGeneration,
+  nextWebuiLeaseGeneration,
   releaseWebuiSubscription,
 } from "../mechanisms/stream-lease.js";
 
 /** The default bundle: the existing pure stream-state functions, injected. */
 export const streamStateBundle = {
-  nextSubscriptionGeneration: nextWebuiSubscriptionGeneration,
+  nextSubscriptionGeneration: nextWebuiLeaseGeneration,
   recognisePayload: recogniseWebuiStreamPayload,
   reduceFrame: reduceWebuiStreamFrame,
   releaseSubscription: releaseWebuiSubscription,

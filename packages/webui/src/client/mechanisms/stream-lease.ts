@@ -26,9 +26,16 @@ import type {
 export type WebuiLeaseOwner = WebuiStreamSubscription["owner"];
 
 /**
- * Monotonic client-side attempt identity. One counter for the whole client:
- * two counters would let two attempts claim the same generation and defeat the
- * fence.
+ * Monotonic client-side attempt identity. One counter for the whole client.
+ *
+ * **Every** claim path draws from it — the lease's own `claimWebuiLease` and the
+ * loop sink's `claimSubscription`, which receives it through the injected
+ * `streamState` bundle. Two counters would let two attempts claim the same
+ * generation: both start at 0 and increment independently, so the numbers
+ * overlap, and since both paths stamp the same `lastClaimedGeneration` field and
+ * `isWebuiLeaseGenerationCurrent` compares only the number, a superseded claim
+ * would answer "I am current". One counter is what makes that comparison mean
+ * "newest", not "newest of one sequence".
  */
 let leaseGeneration = 0;
 
@@ -126,12 +133,6 @@ export function isWebuiLeaseHeldBy(
   return state.subscription?.generation === generation;
 }
 
-let subscriptionGeneration = 0;
-
-export function nextWebuiSubscriptionGeneration(): number {
-  subscriptionGeneration += 1;
-  return subscriptionGeneration;
-}
 export function releaseWebuiSubscription(
   state: WebuiStreamState,
   scope?: WebuiSubscriptionReleaseScope,

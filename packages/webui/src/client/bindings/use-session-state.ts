@@ -43,8 +43,15 @@ import {
   createWebuiTurnCommands,
   type WebuiInteractionCommands,
   type WebuiSessionCommands,
-  type WebuiTurnCommandWriter,
 } from "../application/session-commands.js";
+import {
+  attachWebuiTurn,
+  sendWebuiTurn,
+  type WebuiAttachTurnDeps,
+  type WebuiSendTurnArgs,
+} from "../application/turn-commands.js";
+import { buildWebuiStreamLoopSink } from "../mechanisms/stream-loop.js";
+import { streamStateBundle } from "../application/stream-state-bundle.js";
 import {
   useWebuiApplicationOptional,
   useWebuiSessionStoreContext,
@@ -134,58 +141,81 @@ export function useWebuiInteractionCommands(
 
 /**
  * The stream/sending command surface for one session (or the home slot), plus
- * an imperative `readStream` for the async turn paths that cannot subscribe
- * (plan §7.6; ticket #45 prerequisite 5). The store writer stays inside this
- * hook: the component submits `createStreamSink` / `clearStream` /
- * `resetStreamForTurn` / `setTurnSending` / `awaitInteraction` and never holds a
- * setter — the sink it does receive is the one the owner fences, so it cannot
- * write a slice field directly — and `readStream` reads the current slice off
- * the same store rather than a module-level map.
+ * the two turn intents and an imperative `readStream` for the async turn paths
+ * that cannot subscribe (plan §7.6; ticket #45 prerequisite 5).
+ *
+ * The store writer stays inside this hook, and so does the attempt's sink: a
+ * component *submits* `attachTurn` / `sendTurn` and never receives a factory
+ * that could mint a lease of its own and take one from a newer turn. The
+ * callbacks each intent needs are plain data; the capabilities it needs
+ * (`resumeSession`, `sendMessage`, …) are the ones the component already holds
+ * for its transport. `readStream` reads the current slice off the same store
+ * rather than a module-level map.
  */
-export function useWebuiSessionCommands(
-  sessionId: string | undefined,
-): {
+export type WebuiTurnAttachIntent = Omit<
+  WebuiAttachTurnDeps,
+  "sessionId" | "readStream" | "setSending" | "sink"
+>;
+
+/** What a component submits to send (or retry) a turn. */
+export interface WebuiTurnSendIntent
+  extends Omit<WebuiSendTurnArgs, "sessionId" | "callbacks" | "createWriter" | "readStream"> {
+  readonly onDraftChange: (next: string) => void;
+  readonly onNeedsSession?: (draft: string) => void;
+  readonly onSessionCreated?: (sessionId: string) => void;
+  readonly onQueued?: () => void;
+}
+
+export function useWebuiSessionCommands(sessionId: string | undefined): {
   readonly commands: WebuiSessionCommands;
   readonly readStream: () => WebuiStreamState;
+  readonly attachTurn: (input: WebuiTurnAttachIntent) => void;
+  readonly sendTurn: (input: WebuiTurnSendIntent) => Promise<void>;
 } {
   const store = useWebuiSessionStoreContext();
   return useMemo(() => {
-    const writer = sessionId
-      ? store.createSessionWriter({ kind: "session", sessionId })
-      : store.createSessionWriter({ kind: "home" });
+    const writerFor = () =>
+      sessionId
+        ? store.createSessionWriter({ kind: "session", sessionId })
+        : store.createSessionWriter({ kind: "home" });
+    const writer = writerFor();
+    const readStream = () =>
+      store.readSession(sessionId ?? WEBUI_HOME_SESSION_KEY).stream;
     return {
-      commands: createWebuiSessionCommands(writer),
-      readStream: () =>
-        store.readSession(sessionId ?? WEBUI_HOME_SESSION_KEY).stream,
+      commands: createWebuiSessionCommands({
+        setStream: writer.setStream,
+        setSending: writer.setSending,
+      }),
+      readStream,
+      // One sink per attachment, minted here: it claims the lease, fences every
+      // write against the generation it claimed, and releases it on terminal.
+      attachTurn: ({ turnId, resumeSession, loadMessages }) =>
+        attachWebuiTurn({
+          sessionId,
+          turnId,
+          resumeSession,
+          loadMessages,
+          readStream,
+          setSending: writer.setSending,
+          sink: buildWebuiStreamLoopSink(writer.setStream, streamStateBundle),
+        }),
+      sendTurn: ({
+        onDraftChange,
+        onNeedsSession,
+        onSessionCreated,
+        onQueued,
+        ...args
+      }) =>
+        sendWebuiTurn({
+          sessionId,
+          ...args,
+          readStream,
+          callbacks: { onDraftChange, onNeedsSession, onSessionCreated, onQueued },
+          // Builds the turn's writer — and, through it, the sink — inside the
+          // command, so the home→session migration keeps working without the
+          // component ever naming a key or holding a factory.
+          createWriter: () => createWebuiTurnCommands(writerFor()),
+        }),
     };
   }, [store, sessionId]);
-}
-
-/**
- * The turn-writer binding: build the command-shaped writer a send streams into
- * (plan §7.1 `turn-coordinator.ts`; ticket #45 prerequisite 5). The composer's
- * send path calls this factory once per turn — home-keyed until the created
- * session owns the stream — and from then on submits `createSink` /
- * `resetStreamForTurn` / `setStreamRefusal` / `setTurnSending` /
- * `migrateToSession`. The store writer never leaves this binding, and it is the
- * *application* store, not the old module-level map.
- *
- * The factory takes no owner argument on purpose: the session key is the one
- * this binding was constructed for, so a caller cannot name another session's
- * slice. The home key is the only alternative, and it is chosen here from the
- * same value the component is rendering.
- */
-export function useWebuiTurnWriter(
-  sessionId: string | undefined,
-): () => WebuiTurnCommandWriter {
-  const store = useWebuiSessionStoreContext();
-  return useMemo(
-    () => () =>
-      createWebuiTurnCommands(
-        sessionId
-          ? store.createSessionWriter({ kind: "session", sessionId })
-          : store.createSessionWriter({ kind: "home" }),
-      ),
-    [store, sessionId],
-  );
 }

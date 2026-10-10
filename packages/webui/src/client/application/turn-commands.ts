@@ -26,8 +26,10 @@ import type { WebuiClientSessionCreator } from "../contracts/session-port.js";
 import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import type { WebuiTurnCommandWriter } from "./session-commands.js";
 import {
+  buildWebuiComposerHandlers,
   submitWebuiComposerTurn,
   type WebuiComposerSubmitHandlers,
+  type WebuiComposerTurnCallbacks,
 } from "./composer-workflows.js";
 import { isWebuiSubscriptionProbeCurrent, ownsWebuiStreamGeneration, resolveWebuiSubscriptionRecheck, type WebuiStreamState } from "../projection/stream-state.js";
 import { streamRecoveryProjection } from "../projection/stream-recovery.js";
@@ -189,7 +191,14 @@ export interface WebuiSendTurnArgs {
   readonly attachments?: readonly WebuiAttachmentInput[];
   readonly onAttachmentsSubmitted?: () => void;
   readonly sending: boolean;
-  readonly handlers: WebuiComposerSubmitHandlers;
+  /**
+   * The component-owned callbacks. The lease-bearing half of the handler bundle
+   * is assembled here, from the writer this command builds, so a caller supplies
+   * intent and never a sink.
+   */
+  readonly callbacks: WebuiComposerTurnCallbacks;
+  /** Read the live slice. The home→session migration below changes the key. */
+  readonly readStream?: () => WebuiStreamState;
   readonly deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   readonly createSession?: WebuiClientSessionCreator;
@@ -211,19 +220,25 @@ export interface WebuiSendTurnArgs {
  */
 export async function sendWebuiTurn(args: WebuiSendTurnArgs): Promise<void> {
   let writer = args.createWriter();
-  const turnHandlers: WebuiComposerSubmitHandlers = {
-    ...args.handlers,
+  // The bundle is woven here, from the writer this command owns: `createSink`
+  // reads the *current* writer, so a turn whose first message created the
+  // session mints its lease against the migrated key rather than the home slot.
+  const turnHandlers: WebuiComposerSubmitHandlers = buildWebuiComposerHandlers({
     createSink: () => writer.createSink(),
     resetStreamForTurn: () => writer.resetStreamForTurn(),
     setRefusal: (refusal) => writer.setStreamRefusal(refusal),
     setSending: (sending) => writer.setTurnSending(sending),
+    ...(args.readStream ? { readStream: args.readStream } : {}),
+    onDraftChange: args.callbacks.onDraftChange,
+    ...(args.callbacks.onNeedsSession ? { onNeedsSession: args.callbacks.onNeedsSession } : {}),
+    ...(args.callbacks.onQueued ? { onQueued: args.callbacks.onQueued } : {}),
     onSessionCreated: (createdSessionId) => {
-      args.handlers.onSessionCreated?.(createdSessionId);
+      args.callbacks.onSessionCreated?.(createdSessionId);
       if (writer.kind === "home" && writer.migrateToSession) {
         writer = writer.migrateToSession(createdSessionId);
       }
     },
-  };
+  });
   await submitWebuiComposerTurn(
     {
       sessionId: args.sessionId,

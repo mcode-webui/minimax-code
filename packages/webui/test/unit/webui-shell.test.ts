@@ -99,14 +99,17 @@ import { streamRecoveryProjection } from "../../src/client/projection/stream-rec
  * The three writes `buildWebuiComposerHandlers` needs, taken from the **real**
  * command surface. A fixture that re-implemented `resetStreamForTurn` would go
  * on passing after production changed what the reset writes, so the seam tests
- * drive `createWebuiSessionCommands` instead.
+ * drive `createWebuiSessionCommands` instead. The sink is built the way the
+ * writer builds it (`buildWebuiStreamLoopSink` over the same `setStream`): the
+ * command surface no longer hands out a factory — minting a lease is the
+ * binding's, not a component's, to do.
  */
 const composerHandlerWrites = (
   setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void,
 ): Pick<WebuiComposerSubmitHandlers, "createSink" | "resetStreamForTurn" | "setRefusal"> => {
   const commands = createWebuiSessionCommands({ setStream, setSending: () => undefined });
   return {
-    createSink: commands.createStreamSink,
+    createSink: () => buildWebuiStreamLoopSink(setStream, streamStateBundle),
     resetStreamForTurn: commands.resetStreamForTurn,
     setRefusal: commands.setStreamRefusal,
   };

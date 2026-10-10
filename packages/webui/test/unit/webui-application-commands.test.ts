@@ -282,7 +282,7 @@ describe("the send command", () => {
       sessionId: "s1",
       message: "queued",
       sending: true,
-      handlers: commandHandlers({ onDraftChange }),
+      callbacks: { onDraftChange },
       deps: { sendMessage: vi.fn() },
       enqueueMessage,
       createWriter: () => writer,

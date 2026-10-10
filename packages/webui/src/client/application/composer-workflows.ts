@@ -43,6 +43,18 @@ export interface WebuiComposerSubmitHandlers {
   readonly onQueued?: () => void;
 }
 
+/**
+ * The callbacks a component owns for one turn. They are what a component
+ * supplies to a send; the lease-bearing fields above are assembled from the
+ * writer the send builds, so a component can neither pass in nor hold a sink.
+ */
+export interface WebuiComposerTurnCallbacks {
+  readonly onDraftChange: (next: string) => void;
+  readonly onNeedsSession?: (draft: string) => void;
+  readonly onSessionCreated?: (sessionId: string) => void;
+  readonly onQueued?: () => void;
+}
+
 export function buildWebuiComposerHandlers(args: WebuiComposerSubmitHandlers): WebuiComposerSubmitHandlers {
   return {
     createSink: args.createSink,

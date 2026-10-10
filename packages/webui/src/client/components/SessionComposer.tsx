@@ -9,9 +9,9 @@
 // module via a local `import { WebuiComposer } from "./components/SessionComposer.js";`.
 //
 // The component reads the stream/sending slices through the application
-// bindings (`useWebuiSessionState` / `useWebuiSessionCommands` /
-// `useWebuiTurnWriter`), which subscribe to the one application store and
-// submit purpose-named commands; the component holds no store writer.
+// bindings (`useWebuiSessionState` / `useWebuiSessionCommands`), which subscribe
+// to the one application store and submit purpose-named commands and turn
+// intents; the component holds no store writer and no sink factory.
 
 import {
   Fragment,
@@ -53,11 +53,9 @@ import {
 import { isTokenPlanModel } from "../projection/token-plan-model.js";
 import { stopWebuiTurn } from "../application/turn-coordinator.js";
 import {
-  attachWebuiTurn,
   createWebuiComposerAttachStreamEffect,
   recheckWebuiSubscription,
   recoverMissedWebuiTurn,
-  sendWebuiTurn,
 } from "../application/turn-commands.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
@@ -67,7 +65,6 @@ import {
   useWebuiSessionPermissions,
   useWebuiSessionQuestionnaire,
   useWebuiSessionState,
-  useWebuiTurnWriter,
 } from "../bindings/use-session-state.js";
 import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { useWebuiEventEffectsRegistry } from "../bindings/event-effects-context.js";
@@ -148,7 +145,6 @@ import {
   looksLikeAbsoluteWorkspacePath,
 } from "../projection/composer-state.js";
 import {
-  buildWebuiComposerHandlers,
   submitWebuiGoal,
 } from "../application/composer-workflows.js";
 import { evaluateComposerDismiss, evaluateOutsideClose } from "../projection/outside-close.js";
@@ -713,8 +709,7 @@ export function WebuiComposer({
 } & WebuiSessionComposerCapabilities): ReactElement {
   const { dom } = useWebuiBrowserCapabilities();
   const { stream, sending } = useWebuiSessionState(sessionId);
-  const { commands, readStream } = useWebuiSessionCommands(sessionId);
-  const createTurnWriter = useWebuiTurnWriter(sessionId);
+  const { commands, readStream, attachTurn, sendTurn: submitTurn } = useWebuiSessionCommands(sessionId);
   // The per-session effects registry the shell provides (ticket #45). The
   // composer registers this session's event handlers here so the application
   // event coordinator — the sole consumer of the process-event channel — runs
@@ -903,19 +898,11 @@ export function WebuiComposer({
     // The attach/recheck/gap-recovery commands now live in the application
     // layer (`application/turn-commands.ts`). These are the component's
     // bindings onto them, closing over the current session and its setters —
-    // the same shape `stopWebuiTurn` already uses.
+    // the same shape `stopWebuiTurn` already uses. The attempt's sink is minted
+    // inside `attachTurn` (the binding owns the store writer), so this component
+    // submits the intent and holds no factory of its own.
     const attachToTurn = (turnId: string | undefined) => {
-      attachWebuiTurn({
-        sessionId,
-        turnId,
-        resumeSession,
-        loadMessages,
-        readStream,
-        setSending: commands.setTurnSending,
-        // One sink per attachment: it claims the lease, fences every write
-        // against the generation it claimed, and releases it on terminal.
-        sink: commands.createStreamSink(),
-      });
+      attachTurn({ turnId, resumeSession, loadMessages });
     };
 
     /** `session.start` named a turn we do not hold while holding another. */
@@ -1700,38 +1687,6 @@ export function WebuiComposer({
   // `disabled` and the Enter shortcut both read this value, so the keyboard
   // can never open a submit path the button itself would have refused.
   const submitBlocked = !sendable || commandRunning || goalSubmitting;
-  // The submit handler is a single call into
-  // `submitWebuiComposerTurn` with the assembled handler bundle. The
-  // assembly itself is `buildWebuiComposerHandlers` — a named unit
-  // the shell test drives — so a regression that drops, swaps, or
-  // ignores a field inside the assembly is caught by a failing
-  // assertion. The component's call site here is verified by
-  // inspection: with no DOM environment, the React render path
-  // cannot be exercised, and source-text assertions are not part
-  // of this project's policy.
-  const handlers = buildWebuiComposerHandlers({
-    createSink: commands.createStreamSink,
-    resetStreamForTurn: commands.resetStreamForTurn,
-    setRefusal: commands.setStreamRefusal,
-    readStream,
-    setSending: commands.setTurnSending,
-    onDraftChange,
-    onNeedsSession,
-    onSessionCreated,
-    onQueued: () => {
-      if (!sessionId || !listQueueMessages) return;
-      void listQueueMessages({ id: sessionId })
-        .then((queue) => {
-          setQueueItems(queue.items ?? []);
-          setQueuePaused(queue.paused === true);
-        })
-        .catch((error: unknown) => {
-          setInteractionError(
-            error instanceof Error ? error.message : String(error),
-          );
-        });
-    },
-  });
   /**
    * The one way a turn reaches the wire. `submit` calls it after resolving an
    * intent; the retry affordance calls it with the input recorded at submit
@@ -1740,13 +1695,18 @@ export function WebuiComposer({
    * "a turn is already in flight ⇒ enqueue" branch inside
    * `submitWebuiComposerTurn`, which is what keeps a retry from racing a
    * running turn.
+   *
+   * The turn's sink is minted inside `submitTurn` (the binding owns the store
+   * writer and the writer it builds), so this component holds no factory and
+   * names no session key: it submits the intent and the callbacks it owns. The
+   * assembly of the handler bundle now happens inside `sendWebuiTurn`, where the
+   * writer — and with it the sink — is in scope.
    */
   const sendTurn = async (turn: {
     readonly message: string;
     readonly clientIntent?: string;
   }) => {
-    await sendWebuiTurn({
-      sessionId,
+    await submitTurn({
       message: turn.message,
       ...(turn.clientIntent ? { clientIntent: turn.clientIntent } : {}),
       planMode,
@@ -1756,16 +1716,27 @@ export function WebuiComposer({
         setUrlReferences([]);
       },
       sending,
-      handlers,
       deps: { sendMessage, resumeSession, loadMessages },
       enqueueMessage,
       createSession,
       createSessionWorkspaceDir,
       teamModeOff,
-      // The binding already knows which session this writer belongs to, so
-      // this component names no key and holds no store writer: it submits
-      // `createSink` / `setTurnSending` through the writer it was handed.
-      createWriter: () => createTurnWriter(),
+      onDraftChange,
+      onNeedsSession,
+      onSessionCreated,
+      onQueued: () => {
+        if (!sessionId || !listQueueMessages) return;
+        void listQueueMessages({ id: sessionId })
+          .then((queue) => {
+            setQueueItems(queue.items ?? []);
+            setQueuePaused(queue.paused === true);
+          })
+          .catch((error: unknown) => {
+            setInteractionError(
+              error instanceof Error ? error.message : String(error),
+            );
+          });
+      },
     });
   };
   // The input of the last turn this composer submitted, kept locally so retry

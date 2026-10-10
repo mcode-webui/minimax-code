@@ -14,10 +14,12 @@
 // reducer-taking writer: a command that accepted `(current) => next` would let a
 // component rewrite any field of the slice and walk straight around the
 // generation fence the owner applies. The stream's open-ended writes stay behind
-// two intent commands that hand back an already-fenced object instead —
-// `createStreamSink()` (the loop sink, whose every write is fenced by the
-// generation it claimed) and the single-field commands
-// (`markStreamPhase`, `setContextUsage`, `setStreamRefusal`, …). Nothing here
+// single-field intent commands (`markStreamPhase`, `setContextUsage`,
+// `setStreamRefusal`, …), and the *lease* is not on this surface at all: a sink
+// factory here would let a component mint a new lease at will and take one from
+// a newer turn. Opening a turn's stream belongs to the binding that owns the
+// store writer, which composes it into the attach/send intents a component
+// submits (plan §7.2 `:555`, §7.6 `:583`). Nothing here
 // opens a channel or reads a transport: the process-event ingress is untouched,
 // and the write targets are injected exactly as `turn-commands.ts` already
 // injects the setters it moved out of the composer.
@@ -86,13 +88,6 @@ export interface WebuiSessionCommands {
    * clear the newer lease.
    */
   readonly releaseStreamSubscription: (generation: number) => void;
-  /**
-   * A fresh sink for one turn's stream loop. Each turn owns its own instance,
-   * which is what makes the generation fence meaningful; every write the sink
-   * performs is fenced against the generation it claimed, so a superseded loop
-   * cannot reach the store even though the caller holds the sink.
-   */
-  readonly createStreamSink: () => WebuiStreamLoopSink;
   /** The `sending` indicator the composer renders from. */
   readonly setTurnSending: (sending: boolean) => void;
 }
@@ -121,7 +116,6 @@ export function createWebuiSessionCommands(
     settleStoppedStream: () => setStream(settleAbortedStream),
     releaseStreamSubscription: (generation) =>
       setStream((current) => releaseWebuiSubscription(current, { generation })),
-    createStreamSink: () => buildWebuiStreamLoopSink(setStream, streamStateBundle),
     setTurnSending: (sending) => setSending(sending),
   };
 }
@@ -215,7 +209,9 @@ export function createWebuiTurnCommands(writer: {
   });
   return {
     kind: writer.kind,
-    createSink: commands.createStreamSink,
+    // The attempt's sink, built from this writer's own `setStream`: the fence
+    // travels with the writer instead of being a convention the caller honours.
+    createSink: () => buildWebuiStreamLoopSink(writer.setStream, streamStateBundle),
     resetStreamForTurn: commands.resetStreamForTurn,
     setStreamRefusal: commands.setStreamRefusal,
     setTurnSending: commands.setTurnSending,

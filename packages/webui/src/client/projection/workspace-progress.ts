@@ -1,38 +1,18 @@
 import type { WebuiClientMessage } from "../contracts/message-view.js";
-
-export type WebuiWorkspaceTodoStatus =
-  | "pending"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
-
-export interface WebuiWorkspaceTodo {
-  readonly content: string;
-  readonly status: WebuiWorkspaceTodoStatus;
-  readonly priority?: "high" | "medium" | "low";
-}
-
-export type WebuiWorkspaceSubagentStatus =
-  | "running"
-  | "completed"
-  | "error";
-
-export interface WebuiWorkspaceSubagent {
-  readonly sessionId: string;
-  readonly agentName: string;
-  readonly title?: string;
-  readonly status: WebuiWorkspaceSubagentStatus;
-  readonly createdAt?: number;
-  readonly updatedAt?: number;
-  readonly parentSessionId?: string;
-}
-
-export interface WebuiWorkspaceProgressState {
-  readonly todos: readonly WebuiWorkspaceTodo[];
-  readonly subagents: readonly WebuiWorkspaceSubagent[];
-  readonly hasTodoSnapshot: boolean;
-  readonly hasSubagentSnapshot: boolean;
-}
+import type {
+  WebuiWorkspaceTodoStatus,
+  WebuiWorkspaceTodo,
+  WebuiWorkspaceSubagentStatus,
+  WebuiWorkspaceSubagent,
+  WebuiWorkspaceProgressState,
+} from "../contracts/stream-state.js";
+export type {
+  WebuiWorkspaceTodoStatus,
+  WebuiWorkspaceTodo,
+  WebuiWorkspaceSubagentStatus,
+  WebuiWorkspaceSubagent,
+  WebuiWorkspaceProgressState,
+} from "../contracts/stream-state.js";
 
 export const initialWebuiWorkspaceProgress: WebuiWorkspaceProgressState = {
   todos: [],

@@ -634,6 +634,51 @@ describe("WebUI operation wire compatibility (baseline implementation vs typed b
     assert.ok((baseline.sent[0] ?? "").includes(`"${WebuiErrorCode.harnessError}"`));
   });
 
+  it("preserves ordinary capability errors and an absent or non-callable required capability", async () => {
+    // `preserves ordinary capability errors and missing-capability failures`
+    // from the pre-rewrite file, i.e. the coverage the 08c5e0f0 rewrite dropped
+    // when it replaced the hand-written oracle. Three failure shapes for a
+    // **required** capability:
+    //
+    //   * an unrecognised Error, which must keep its own message and arrive as
+    //     `harness_error`;
+    //   * an absent member;
+    //   * a non-callable member.
+    //
+    // The optional-capability matrix above is not a substitute for this: it
+    // covers only the twelve operations with a declared missing policy, and a
+    // required capability takes the other path — the dispatcher catches the
+    // direct-call failure instead of answering a policy error.
+    const cases: ReadonlyArray<readonly [string, unknown]> = [
+      ["ordinary error", () => Promise.reject(new Error("ordinary lookup failure"))],
+      ["absent", undefined],
+      ["non-callable", 42],
+    ];
+    for (const [label, member] of cases) {
+      const options: SideOptions = { plan: { override: { getSessionDiff: member } } };
+      const baseline = await runSide(
+        "baseline",
+        requestFrame("getSessionDiff", VALID_BODIES.getSessionDiff),
+        options,
+      );
+      const production = await runSide(
+        "production",
+        requestFrame("getSessionDiff", VALID_BODIES.getSessionDiff),
+        options,
+      );
+      assertFrameBytesEqual(baseline.sent, production.sent, `getSessionDiff (${label})`);
+      const frame = baseline.sent[0] ?? "";
+      const expected =
+        label === "ordinary error"
+          ? "ordinary lookup failure"
+          : `"${WebuiErrorCode.harnessError}"`;
+      assert.ok(
+        frame.includes(expected),
+        `getSessionDiff (${label}): baseline oracle answered ${frame}`,
+      );
+    }
+  });
+
   it("matches multiple stream frames, failures, and generator finalization counts byte-for-byte", async () => {
     const oldFinalized = { count: 0 };
     const newFinalized = { count: 0 };
@@ -663,10 +708,10 @@ describe("WebUI operation wire compatibility (baseline implementation vs typed b
     expect(newFinalized.count).toBe(2);
   });
 
-  it("finalizes once when the request signal closes during a pending stream", async () => {
+  it("finalizes once and sends the same frames when the request signal closes during a pending stream", async () => {
     const runPending = async (side: Side, controller: AbortController, finalized: { count: number }) => {
       const port = pendingStreamPort(controller, finalized);
-      await runSide(side, requestFrame("sendMessage", VALID_BODIES.sendMessage), {
+      return runSide(side, requestFrame("sendMessage", VALID_BODIES.sendMessage), {
         signal: controller.signal,
         plan: { override: { sendMessage: port } },
       });
@@ -680,7 +725,13 @@ describe("WebUI operation wire compatibility (baseline implementation vs typed b
     await new Promise((resolve) => setTimeout(resolve, 0));
     oldController.abort();
     newController.abort();
-    await Promise.all([oldRun, newRun]);
+    const [baseline, production] = await Promise.all([oldRun, newRun]);
+    // The frames the cancellation did produce, in order and byte-for-byte —
+    // the finalization count alone would not notice a side that emitted a
+    // different number of frames (or the same frames in a different order)
+    // before it closed the iterator.
+    assertFrameBytesEqual(baseline.sent, production.sent, "pending cancellation");
+    expect(baseline.sent).toHaveLength(1);
     expect(oldFinalized.count).toBe(1);
     expect(newFinalized.count).toBe(1);
   });
@@ -711,22 +762,32 @@ function rejectWith(message: string, code: string): Error {
   return Object.assign(new Error(message), { code });
 }
 
-/** A `sendMessage` capability whose stream parks until the signal aborts. */
+/**
+ * A `sendMessage` capability that emits one frame and then parks until the
+ * signal aborts. Emitting first is what gives the cancellation test frames to
+ * compare: a source that produces nothing makes the frame assertion vacuous,
+ * and the ordering property under test is "the same frames, in the same order,
+ * before the iterator is closed".
+ */
 function pendingStreamPort(controller: AbortController, finalizations: { count: number }) {
   return () =>
     Promise.resolve({
       ok: true,
       source: {
         [Symbol.asyncIterator]() {
+          let emitted = false;
           return {
             next: () =>
-              new Promise<IteratorResult<unknown>>((resolve) => {
-                controller.signal.addEventListener(
-                  "abort",
-                  () => resolve({ done: true, value: undefined }),
-                  { once: true },
-                );
-              }),
+              emitted
+                ? new Promise<IteratorResult<unknown>>((resolve) => {
+                    controller.signal.addEventListener(
+                      "abort",
+                      () => resolve({ done: true, value: undefined }),
+                      { once: true },
+                    );
+                  })
+                : ((emitted = true),
+                  Promise.resolve({ done: false as const, value: { chunk: "pending" } })),
             return: async () => {
               finalizations.count += 1;
               return { done: true, value: undefined };

@@ -43,8 +43,10 @@ import {
   initialWebuiStreamState,
   type WebuiStreamState,
 } from "../../src/client/projection/stream-state.js";
+import type { WebuiStreamLoopExtra } from "../../src/client/mechanisms/stream-loop.js";
 import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiClientSession } from "../../src/client/contracts/session-view.js";
+import type { WebuiSessionListItem } from "../../src/shared/contracts/session.js";
 import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 
 function session(over: Partial<WebuiClientSession> & { sessionId: string }): WebuiClientSession {
@@ -297,6 +299,107 @@ describe("R7 · the delete workflow teardown", () => {
   });
 });
 
+describe("R7 · the archived-list delete fence", () => {
+  function archivedItem(sessionId: string): WebuiSessionListItem {
+    return { sessionId, agentName: "main", createdAt: 1, updatedAt: 100, archived: true };
+  }
+
+  function archivedIds(workflows: ReturnType<typeof createWebuiSessionWorkflows>): string[] {
+    return workflows.getArchivedSnapshot().sessions.map((session) => session.sessionId);
+  }
+
+  it("keeps a deleted session out of an archived page that lands after the delete", async () => {
+    const store = createWebuiSessionStore();
+    let release: ((page: { sessions: WebuiSessionListItem[] }) => void) | undefined;
+    let calls = 0;
+    const listArchivedSessions = () => {
+      calls += 1;
+      // The first read is the one already in flight when the delete commits.
+      return calls === 1
+        ? new Promise<{ sessions: WebuiSessionListItem[] }>((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve({ sessions: [] as WebuiSessionListItem[] });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    const inFlight = workflows.loadArchived();
+    await workflows.removeArchived("deleted");
+    expect(archivedIds(workflows)).toEqual([]);
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+
+    // The stale page still names the deleted session. Committing it must not
+    // restore the row — it lost to the newer read, and it also names a session
+    // this workflow has deleted.
+    release?.({ sessions: [archivedItem("deleted")] });
+    await inFlight;
+
+    expect(archivedIds(workflows)).toEqual([]);
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+  });
+
+  it("keeps a deleted session out of a page the server composed before the delete", async () => {
+    // This is the half the request version cannot cover: the newest read
+    // answers from a list that was already stale when it was produced, so only
+    // the delete filter keeps the row out.
+    const store = createWebuiSessionStore();
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        deleteSession: async () => ({ success: true }),
+        listArchivedSessions: async () => ({
+          sessions: [archivedItem("keep"), archivedItem("deleted")],
+        }),
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    await workflows.loadArchived();
+    // Before the delete, both rows are legitimately listed.
+    expect(archivedIds(workflows)).toEqual(["keep", "deleted"]);
+
+    await workflows.removeArchived("deleted");
+
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+  });
+
+  it("drops a stale archived failure instead of clearing a newer ready list", async () => {
+    const store = createWebuiSessionStore();
+    let reject: ((error: Error) => void) | undefined;
+    let calls = 0;
+    const listArchivedSessions = () => {
+      calls += 1;
+      return calls === 1
+        ? new Promise<{ sessions: WebuiSessionListItem[] }>((_resolve, rejectFirst) => {
+            reject = rejectFirst;
+          })
+        : Promise.resolve({ sessions: [archivedItem("keep")] });
+    };
+    const workflows = createWebuiSessionWorkflows({
+      store,
+      port: {
+        listArchivedSessions,
+      } as unknown as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+
+    const inFlight = workflows.loadArchived();
+    await workflows.loadArchived();
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+
+    reject?.(new Error("stale failure"));
+    await inFlight;
+
+    expect(workflows.getArchivedSnapshot().status).toBe("ready");
+    expect(archivedIds(workflows)).toEqual(["keep"]);
+    expect(workflows.getArchivedSnapshot().error).toBeUndefined();
+  });
+});
+
 describe("R7 · the catalog delete fence", () => {
   it("drops the entity, the flat identifier and the tree node together", () => {
     let catalog = reduceWebuiCatalogFlatLoaded(
@@ -393,6 +496,72 @@ describe("R7 · the command surface carries no raw writer", () => {
 
     commands.releaseStreamSubscription(generation ?? 0);
     expect(cell.get().subscription).toBeUndefined();
+  });
+
+  it("does not let a superseded sink take the lease back by re-claiming", () => {
+    const cell = streamCell();
+    const commands = createWebuiSessionCommands({
+      setStream: cell.setStream,
+      setSending: () => undefined,
+    });
+    // Two turns: `stale` opens first, `current` replaces it. That is the normal
+    // way a superseded sink ends up alive — the loop for the old turn has not
+    // finished when the newer one claims.
+    const stale = commands.createStreamSink();
+    const staleGeneration = stale.claimSubscription?.("local-send");
+    const current = commands.createStreamSink();
+    const currentGeneration = current.claimSubscription?.("recovered");
+    expect(cell.get().lastClaimedGeneration).toBe(currentGeneration);
+
+    // A second claim must not mint a newer generation. It used to: the sink
+    // wrote a fresh number as `lastClaimedGeneration`, made itself the newest
+    // claimant again and could then stamp `refused` over the turn that had
+    // replaced it.
+    expect(stale.claimSubscription?.("local-send")).toBe(staleGeneration);
+    expect(cell.get().lastClaimedGeneration).toBe(currentGeneration);
+    stale.refuse("stale failure");
+    stale.setPhase("waiting");
+    expect(cell.get().phase).toBe(initialWebuiStreamState.phase);
+    expect(cell.get().refusal).toBeUndefined();
+
+    // The live sink still writes normally.
+    current.refuse("current failure");
+    expect(cell.get().phase).toBe("refused");
+    expect(cell.get().refusal).toBe("current failure");
+  });
+
+  it("keeps the generation fence out of reach of setStreamExtra", () => {
+    const cell = streamCell();
+    const commands = createWebuiSessionCommands({
+      setStream: cell.setStream,
+      setSending: () => undefined,
+    });
+    const sink = commands.createStreamSink();
+    const generation = sink.claimSubscription?.("local-send");
+
+    // The seed fields the attach path needs still land.
+    sink.setStreamExtra?.({
+      contextUsage: { used: 11 },
+      processingStartedAtMs: 42,
+      resumeRequired: false,
+      refusal: undefined,
+    });
+    expect(cell.get().contextUsage).toEqual({ used: 11 });
+    expect(cell.get().processingStartedAtMs).toBe(42);
+
+    // A forged extra — a cast, or a plain-JavaScript caller — naming the two
+    // fields the fence reads must not reach them. With the open-ended
+    // `Partial<WebuiStreamState>` parameter this rewrote the fence and every
+    // later write from a superseded sink passed it.
+    const forged = {
+      subscription: { owner: "recovered", generation: 0 },
+      lastClaimedGeneration: 0,
+      phase: "waiting",
+    } as unknown as WebuiStreamLoopExtra;
+    sink.setStreamExtra?.(forged);
+    expect(cell.get().lastClaimedGeneration).toBe(generation);
+    expect(cell.get().subscription?.generation).toBe(generation);
+    expect(cell.get().phase).not.toBe("waiting");
   });
 
   it("builds the turn writer from the same intents, without an updateStream member", () => {

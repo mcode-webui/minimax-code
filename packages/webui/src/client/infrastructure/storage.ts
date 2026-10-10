@@ -137,8 +137,15 @@ export function createWebuiBrowserStorage(
 }
 
 export function readWebuiUnreadCounts(
-  storage: Storage | undefined = getWebuiBrowserStorage(),
+  storage: Storage | undefined,
 ): Record<string, number> {
+  // `storage` is a **required** argument on purpose. It used to default to
+  // `getWebuiBrowserStorage()`, which meant an explicit `undefined` — exactly
+  // what `createWebuiBrowserStorage(undefined)` hands down — silently fell back
+  // to the page's ambient `localStorage`. An adapter built with no storage then
+  // read and wrote the ambient one anyway, so the empty adapter above stopped
+  // meaning "no storage". A caller that does want the ambient store asks for it
+  // by name (`getWebuiBrowserStorage()`).
   if (!storage) return {};
   try {
     const raw = storage.getItem(SESSION_UNREAD_STORAGE_KEY);
@@ -163,8 +170,10 @@ export function readWebuiUnreadCounts(
 
 export function writeWebuiUnreadCounts(
   counts: Readonly<Record<string, number>>,
-  storage: Storage | undefined = getWebuiBrowserStorage(),
+  storage: Storage | undefined,
 ): void {
+  // Same required argument as `readWebuiUnreadCounts`: an explicit `undefined`
+  // must mean "no storage" rather than re-acquiring the ambient one.
   if (!storage) return;
   try {
     const entries = Object.entries(counts).filter(([, count]) => count > 0);

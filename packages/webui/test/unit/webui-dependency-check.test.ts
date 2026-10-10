@@ -63,7 +63,7 @@ afterAll(() => {
  * Writes a synthetic `${repositoryRoot}/packages/webui/src` tree and returns the
  * parsed, resolved evaluation, using the same builder and rules as the CLI.
  */
-function evaluateFixture(files: Record<string, string>) {
+function evaluateFixture(files: Record<string, string>, options: ts.CompilerOptions = compilerOptions) {
   const root = mkdtempSync(path.join(os.tmpdir(), "webui-dependency-"));
   temporaryRoots.push(root);
   const sourceRoot = path.join(root, "packages/webui/src");
@@ -76,7 +76,7 @@ function evaluateFixture(files: Record<string, string>) {
   }
   const graph = buildDependencyGraph({
     repositoryRoot: root,
-    compilerOptions,
+    compilerOptions: { ...options, baseUrl: options.baseUrl ?? sourceRoot },
     files: absoluteFiles,
   });
   return { graph, result: evaluateGraph(graph) };
@@ -117,6 +117,10 @@ describe("layer matrix", () => {
   it("denies the Node runtime importing a browser-only layer", () => {
     expect(isAllowedEdge(["runtime"], ["bindings"])).toBe(false);
     expect(isAllowedEdge(["runtime"], ["view"])).toBe(false);
+  });
+
+  it("requires every classification pair to allow an edge", () => {
+    expect(isAllowedEdge(["runtime", "server"], ["server"])).toBe(false);
   });
 
   it("classifies current paths by their target layer, not the directory", () => {
@@ -195,6 +199,11 @@ describe("reference collection", () => {
     expect(collected.references[0]?.kind).toBe("type-query");
     expect(collected.nonLiteralDynamic).toHaveLength(1);
   });
+
+  it("collects literal require calls as module references", () => {
+    const collected = collectModuleReferences("x.ts", 'const widget = require("./widget.js");\n');
+    expect(collected.references).toContainEqual({ specifier: "./widget.js", line: 1, kind: "require" });
+  });
 });
 
 describe("direction fixtures", () => {
@@ -234,6 +243,71 @@ describe("direction fixtures", () => {
     expect(BROWSER_ONLY_MODULES_RE.test("react-dom/client")).toBe(true);
   });
 
+  it("resolves a tsconfig alias to an actual component edge", () => {
+    const { graph, result } = evaluateFixture({
+      "client/components/Widget.tsx": widget,
+      "client/application/app.ts": 'import { widget } from "@/components/Widget.js";\nexport const use = widget;\n',
+    }, { ...compilerOptions, paths: { "@/*": ["client/*"] } });
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      from: "client/application/app.ts",
+      to: "client/components/Widget.tsx",
+      kind: "import",
+    }));
+    expect(result.direction).toHaveLength(1);
+  });
+
+  it("rejects an unresolved configured alias instead of treating it as a package import", () => {
+    const { result } = evaluateFixture({
+      "client/application/app.ts": 'import { missing } from "@/components/Missing.js";\nexport const use = missing;\n',
+    }, { ...compilerOptions, paths: { "@/*": ["client/*"] } });
+    expect(result.unresolved).toHaveLength(1);
+    expect(result.pass).toBe(false);
+  });
+
+  it("rejects direct document and storage globals in application and components", () => {
+    const { result } = evaluateFixture({
+      "client/application/app.ts": 'export const current = document.title;\n',
+      "client/components/Widget.tsx": 'export const saved = localStorage.getItem("k");\n',
+      "client/bindings/Other.ts": 'export const tab = sessionStorage.getItem("k");\n',
+    });
+    expect(result.browserGlobals.map((entry) => entry.global)).toEqual([
+      "document", "localStorage", "sessionStorage",
+    ]);
+  });
+
+  it("rejects a runtime transfer implementation importing the server", () => {
+    const { result } = evaluateFixture({
+      "server/http/route.ts": leaf,
+      "runtime/session-transfer.ts": 'import { leaf } from "../server/http/route.js";\nexport const use = leaf;\n',
+    });
+    expect(classifyLayers("runtime/session-transfer.ts")).toEqual(["runtime"]);
+    expect(result.direction).toHaveLength(1);
+    expect(result.direction[0]).toMatchObject({
+      from: "runtime/session-transfer.ts",
+      to: "server/http/route.ts",
+      layerFrom: ["runtime"],
+    });
+  });
+
+  it("rejects shared Node builtins", () => {
+    const { result } = evaluateFixture({
+      "shared/contracts/node.ts": 'import { readFileSync } from "node:fs";\nexport const read = readFileSync("/x");\n',
+    });
+    expect(result.sharedNodeBuiltins).toHaveLength(1);
+    expect(result.sharedNodeBuiltins[0]).toMatchObject({
+      file: "shared/contracts/node.ts",
+      specifier: "node:fs",
+    });
+  });
+
+  it("keeps the relative component negative control rejected", () => {
+    const { result } = evaluateFixture({
+      "client/components/Widget.tsx": widget,
+      "client/application/app.ts": 'import { widget } from "../components/Widget.js";\nexport const use = widget;\n',
+    });
+    expect(result.direction).toHaveLength(1);
+  });
+
   it("rejects a runtime -> browser-only import", () => {
     const { result } = evaluateFixture({
       "runtime/harness/adapter.ts": 'import { createElement } from "react";\nexport const use = createElement;\n',
@@ -264,6 +338,21 @@ describe("direction fixtures", () => {
       layerFrom: ["domain"],
       layerTo: ["infrastructure"],
     });
+  });
+});
+
+describe("require() direction fixtures", () => {
+  it("rejects a cross-layer dependency hidden behind require()", () => {
+    const { graph, result } = evaluateFixture({
+      "client/components/Widget.tsx": widget,
+      "client/application/consumer.ts": 'const Widget = require("../components/Widget.js");\nexport { Widget };\n',
+    });
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      from: "client/application/consumer.ts",
+      to: "client/components/Widget.tsx",
+      kind: "require",
+    }));
+    expect(result.direction).toHaveLength(1);
   });
 });
 
@@ -388,17 +477,13 @@ describe("baseline comparison", () => {
 });
 
 describe("the gate runs and matches the frozen baseline", () => {
-  it("passes on the current tree and agrees with the baseline file", () => {
-    // Structural agreement, not frozen literals: the reported baseline pair
-    // count and cycle count must track `scripts/lib/webui-dependency-baseline.json`
-    // itself, so a later slice that deletes or renames an exception never has
-    // to bump a hardcoded number here. Any drift between the CLI and the file
-    // still fails, and the pass/fail behaviour of the check is asserted below.
+  it("reports existing forbidden browser globals instead of hiding them", () => {
     const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));
     const run = runCli(["--json"]);
-    expect(run.status, run.stderr).toBe(0);
     const summary = JSON.parse(run.stdout);
-    expect(summary.ok).toBe(true);
+    expect(run.status).toBe(1);
+    expect(summary.ok).toBe(false);
+    expect(summary.browserGlobals.length).toBeGreaterThan(0);
     expect(summary.baselinePairs).toBe((baseline.entries ?? []).length);
     expect(summary.cycles).toHaveLength((baseline.cycles ?? []).length);
     expect(summary.newViolations).toHaveLength(0);

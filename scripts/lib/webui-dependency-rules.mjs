@@ -23,6 +23,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 /** @type {typeof import("typescript")} */
 const ts = require("typescript");
+const BROWSER_GLOBALS = new Set(["document", "localStorage", "sessionStorage"]);
 
 /** Directory (repository-relative) whose source files this check covers. */
 export const WEBUI_SOURCE_DIRECTORY = "packages/webui/src";
@@ -224,7 +225,7 @@ const CLIENT_FILE_PROVENANCE = Object.freeze({
   "value-readers.ts": ["contracts"],
   "rail-buckets.ts": ["view"],
   "router.ts": ["view"],
-  "slash-palette.ts": ["view", "bindings"],
+  "slash-palette.ts": ["bindings"],
   "markdown.tsx": ["bindings"],
   "icons.tsx": ["bindings"],
   "ConnectionStatus.tsx": ["bindings"],
@@ -311,23 +312,14 @@ export function classifyLayers(relative) {
   if (normalized.startsWith("client/contracts/")) return ["contracts"];
   if (normalized.startsWith("shared/")) return ["shared"];
   if (normalized.startsWith("runtime/")) {
-    // `session-transfer.ts` keeps the dual `runtime`/`server` target the
-    // current path carried: it is runtime-owned but the loopback HTTP layer
-    // (plan section 7.1: it absorbs the import workflow inside the service
-    // handler) legitimately consumes it.
-    if (normalized === "runtime/session-transfer.ts") return ["runtime", "server"];
-    if (
-      normalized === "runtime/port.ts" ||
-      normalized === "runtime/index.ts" ||
-      normalized.startsWith("runtime/harness/host-contract")
-    )
+    if (normalized === "runtime/port.ts" || normalized.startsWith("runtime/harness/host-contract"))
       return ["runtime-port"];
     return ["runtime"];
   }
 
   // Current layout: provenance from plan §7.1/§7.2/§7.3.
   if (normalized === "server/envelope.ts") return ["server"];
-  if (normalized === "server/session-transfer.ts") return ["runtime", "server"];
+  if (normalized === "server/session-transfer.ts") return ["runtime"];
   if (normalized.startsWith("server/operation/")) return ["server"];
   if (normalized.startsWith("server/projections/")) return ["server"];
   if (normalized.startsWith("server/")) {
@@ -384,11 +376,10 @@ export function normaliseSourcePath(repositoryRoot, absolutePath) {
 export function isAllowedEdge(fromLayers, toLayers) {
   for (const from of fromLayers) {
     for (const to of toLayers) {
-      if (from === to) return true;
-      if ((ALLOWED_EDGES[from] ?? []).includes(to)) return true;
+      if (from !== to && !(ALLOWED_EDGES[from] ?? []).includes(to)) return false;
     }
   }
-  return false;
+  return true;
 }
 
 const BROWSER_LAYERS = new Set([
@@ -455,7 +446,7 @@ export function categoriseViolation(from, to, fromLayers, toLayers) {
  *
  * @param {string} fileName
  * @param {string} sourceText
- * @returns {{references: Array<{specifier: string, line: number, kind: string}>, nonLiteralDynamic: Array<{line: number}>}}
+ * @returns {{references: Array<{specifier: string, line: number, kind: string}>, nonLiteralDynamic: Array<{line: number}>, browserGlobalUses: Array<{name: string, line: number}>}}
  */
 export function collectModuleReferences(fileName, sourceText) {
   const sourceFile = ts.createSourceFile(
@@ -467,6 +458,7 @@ export function collectModuleReferences(fileName, sourceText) {
   );
   const references = [];
   const nonLiteralDynamic = [];
+  const browserGlobalUses = [];
   const lineOf = (node) =>
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 
@@ -495,6 +487,14 @@ export function collectModuleReferences(fileName, sourceText) {
         nonLiteralDynamic.push({ line: lineOf(node) });
       }
     } else if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "require" &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      references.push({ specifier: node.arguments[0].text, line: lineOf(node), kind: "require" });
+    } else if (
       ts.isImportTypeNode(node) &&
       node.argument &&
       ts.isLiteralTypeNode(node.argument) &&
@@ -506,10 +506,30 @@ export function collectModuleReferences(fileName, sourceText) {
         kind: "type-query",
       });
     }
+    if (
+      ts.isIdentifier(node) &&
+      BROWSER_GLOBALS.has(node.text) &&
+      !isDeclarationOrPropertyName(node)
+    )
+      browserGlobalUses.push({ name: node.text, line: lineOf(node) });
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return { references, nonLiteralDynamic };
+  return { references, nonLiteralDynamic, browserGlobalUses };
+}
+
+function isDeclarationOrPropertyName(node) {
+  const parent = node.parent;
+  if (!parent) return false;
+  if (
+    (ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isFunctionDeclaration(parent) ||
+      ts.isClassDeclaration(parent) || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent) ||
+      ts.isPropertyDeclaration(parent) || ts.isPropertySignature(parent) || ts.isMethodDeclaration(parent)) &&
+    parent.name === node
+  ) return true;
+  if ((ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent)) && parent.name === node)
+    return true;
+  return false;
 }
 
 /**
@@ -520,8 +540,18 @@ export function collectModuleReferences(fileName, sourceText) {
  * the lib split cannot see.
  */
 export const BROWSER_ONLY_MODULES_RE = /^(?:react|react-dom)(?:\/|$)/u;
-
 const BROWSER_HOST_LAYERS = new Set(["root", "bindings"]);
+
+function isConfiguredPathAlias(specifier, options) {
+  return Object.keys(options.paths ?? {}).some((pattern) => {
+    const wildcard = pattern.indexOf("*");
+    if (wildcard < 0) return specifier === pattern;
+    const prefix = pattern.slice(0, wildcard);
+    const suffix = pattern.slice(wildcard + 1);
+    return specifier.startsWith(prefix) && specifier.endsWith(suffix) &&
+      specifier.length >= prefix.length + suffix.length;
+  });
+}
 
 function isSourceFile(absolutePath) {
   return SOURCE_SUFFIXES.some((suffix) => absolutePath.endsWith(suffix));
@@ -581,6 +611,7 @@ export function buildDependencyGraph(options) {
   const unresolved = [];
   const nonLiteralDynamic = [];
   const hostImports = [];
+  const browserGlobalUses = [];
 
   for (const absoluteFile of sourceFiles) {
     const from = normaliseSourcePath(repositoryRoot, absoluteFile);
@@ -591,34 +622,31 @@ export function buildDependencyGraph(options) {
     } catch {
       continue;
     }
-    const { references: fileReferences, nonLiteralDynamic: nonLiteral } =
+    const { references: fileReferences, nonLiteralDynamic: nonLiteral, browserGlobalUses: globals } =
       collectModuleReferences(absoluteFile, text);
+    for (const entry of globals) browserGlobalUses.push({ file: from, ...entry });
     for (const entry of nonLiteral)
       nonLiteralDynamic.push({ file: from, line: entry.line });
     for (const reference of fileReferences) {
-      if (!reference.specifier.startsWith(".")) {
-        hostImports.push({
-          from,
-          specifier: reference.specifier,
-          line: reference.line,
-          kind: reference.kind,
-        });
-        continue; // package/Node: outside the intra-package boundary
-      }
+      const compilerOptions = optionsFor(from);
       const resolved = ts.resolveModuleName(
         reference.specifier,
         absoluteFile,
-        optionsFor(from),
+        compilerOptions,
         ts.sys,
       ).resolvedModule;
       const target = resolved?.resolvedFileName;
-      if (!target) {
+      if (!target && (reference.specifier.startsWith(".") || isConfiguredPathAlias(reference.specifier, compilerOptions))) {
         unresolved.push({
           file: from,
           specifier: reference.specifier,
           line: reference.line,
           kind: reference.kind,
         });
+        continue;
+      }
+      if (!target) {
+        hostImports.push({ from, specifier: reference.specifier, line: reference.line, kind: reference.kind });
         continue;
       }
       const to = normaliseSourcePath(repositoryRoot, target);
@@ -650,6 +678,7 @@ export function buildDependencyGraph(options) {
     unresolved,
     nonLiteralDynamic,
     hostImports,
+    browserGlobalUses,
   };
 }
 
@@ -722,6 +751,33 @@ function nonLiteralDynamicRule(graph) {
   return { pass: violations.length === 0, violations };
 }
 
+function forbiddenGlobalRule(graph) {
+  const violations = graph.browserGlobalUses.filter((entry) => {
+    const layers = classifyLayers(entry.file);
+    return layers.some((layer) => layer === "application" || layer === "bindings");
+  }).map((entry) => ({
+    kind: "browser-global",
+    file: entry.file,
+    line: entry.line,
+    global: entry.name,
+    detail: `${entry.file}:${entry.line}: ${classifyLayers(entry.file).join("|")} may not access browser global "${entry.name}" directly`,
+  }));
+  return { pass: violations.length === 0, violations };
+}
+
+function forbiddenNodeBuiltinRule(graph) {
+  const violations = graph.hostImports.filter((entry) => {
+    return entry.specifier.startsWith("node:") && classifyLayers(entry.from).includes("shared");
+  }).map((entry) => ({
+    kind: "shared-node-builtin",
+    file: entry.from,
+    line: entry.line,
+    specifier: entry.specifier,
+    detail: `${entry.from}:${entry.line}: shared may not import Node builtin "${entry.specifier}"`,
+  }));
+  return { pass: violations.length === 0, violations };
+}
+
 /**
  * Returns cycles as canonical rotations (smallest path first, closed back to
  * itself) so a cycle compares stably regardless of where traversal entered.
@@ -784,6 +840,8 @@ function cycleRule(graph) {
 export const rules = Object.freeze([
   directionRule,
   browserOnlyRule,
+  forbiddenGlobalRule,
+  forbiddenNodeBuiltinRule,
   unresolvedRule,
   nonLiteralDynamicRule,
   cycleRule,
@@ -806,12 +864,16 @@ export function evaluateGraph(graph) {
   const results = rules.map((rule) => rule(graph));
   const direction = results[0].violations;
   const browserOnly = results[1].violations;
-  const unresolved = results[2].violations;
-  const nonLiteralDynamic = results[3].violations;
-  const cycles = results[4].violations;
+  const browserGlobals = results[2].violations;
+  const sharedNodeBuiltins = results[3].violations;
+  const unresolved = results[4].violations;
+  const nonLiteralDynamic = results[5].violations;
+  const cycles = results[6].violations;
   const violations = [
     ...direction,
     ...browserOnly,
+    ...browserGlobals,
+    ...sharedNodeBuiltins,
     ...unresolved,
     ...nonLiteralDynamic,
     ...cycles,
@@ -821,6 +883,8 @@ export function evaluateGraph(graph) {
     violations,
     direction,
     browserOnly,
+    browserGlobals,
+    sharedNodeBuiltins,
     unresolved,
     nonLiteralDynamic,
     cycles,

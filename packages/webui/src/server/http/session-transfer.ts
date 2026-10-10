@@ -2,17 +2,12 @@
 // file and recreate a session from a transfer file. Split from `service.ts`
 // (plan section 7.1) with no behaviour change — the network-facing half (body
 // and query reading, status codes, headers and bodies) is the one the service
-// wrote before; the import workflow itself lives in the runtime's
-// `session-transfer` module, which owns it.
+// wrote before; the import workflow arrives through the runtime capability
+// seam.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { rejectHttp, respondJson } from "./responses.js";
-import {
-  webuiSessionTransferFileName,
-  importWebuiSessionTransfer,
-  WEBUI_DEFAULT_IMPORT_AGENT,
-} from "../../runtime/session-transfer.js";
 import type { WebuiHarnessPort } from "../../runtime/port.js";
 import type { WebuiSessionInfo } from "../../shared/contracts/session.js";
 
@@ -22,6 +17,24 @@ import type { WebuiSessionInfo } from "../../shared/contracts/session.js";
  * while still refusing a body that is not a session file.
  */
 const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
+const WEBUI_DEFAULT_IMPORT_AGENT = "main";
+
+function webuiSessionTransferFileName(
+  sessionId: string,
+  session: { readonly title?: string; readonly agentName?: string },
+  exportedAt: string,
+): string {
+  const stamp = exportedAt.replace(/[-:]/gu, "").replace(/\..+$/u, "");
+  const raw = session.title?.trim() || session.agentName || sessionId;
+  const safe = raw
+    .replace(/[\\/:*?"<>|]/gu, "_")
+    .replace(/[\u0000-\u001F\u007F]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .replace(/[. ]+$/u, "")
+    .trim()
+    .slice(0, 120);
+  return `${/[\p{L}\p{N}]/u.test(safe) ? safe : sessionId}-${stamp}.transfer.json`;
+}
 
 /**
  * `maxBytes` is a parameter rather than a constant so the cap can be tested
@@ -111,7 +124,7 @@ export async function handleSessionTransfer(
  *
  * The route keeps the network-facing half -- reading the body and the query
  * string -- and delegates the workflow (create, import, title, rollback) to
- * the runtime's `session-transfer` module, which owns it (plan section 7.1).
+ * the runtime capability supplied by the composition root.
  * The outcome maps back onto the same status codes and bodies this handler
  * served before the move.
  */
@@ -136,7 +149,12 @@ export async function handleSessionImport(
   const agentName = url.searchParams.get("agentName")?.trim() || WEBUI_DEFAULT_IMPORT_AGENT;
   const workspaceDir = url.searchParams.get("workspaceDir")?.trim() || undefined;
 
-  const outcome = await importWebuiSessionTransfer(port, {
+  const importWorkflow = port.importSessionTransferWorkflow;
+  if (!importWorkflow) {
+    rejectHttp(response, 500, "Internal Server Error");
+    return;
+  }
+  const outcome = await importWorkflow({
     file,
     agentName,
     workspaceDir,

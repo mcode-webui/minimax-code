@@ -144,7 +144,9 @@ const failed =
   staleCycles.length > 0 ||
   newStructural.length > 0 ||
   staleAllowances.length > 0 ||
-  result.browserOnly.length > 0;
+  result.browserOnly.length > 0 ||
+  result.browserGlobals.length > 0 ||
+  result.sharedNodeBuiltins.length > 0;
 
 const summary = {
   ok: !failed,
@@ -156,6 +158,8 @@ const summary = {
   newViolations,
   staleEntries,
   browserOnly: result.browserOnly,
+  browserGlobals: result.browserGlobals,
+  sharedNodeBuiltins: result.sharedNodeBuiltins,
   cycles: result.cycles.map((entry) => entry.canonical),
   newCycles: newCycles.map((entry) => entry.canonical),
   staleCycles: staleCycles.map((entry) => entry.canonical),
@@ -188,6 +192,8 @@ if (values.json) {
     );
     for (const violation of result.browserOnly) lines.push(`  ${violation.detail}`);
   }
+  for (const violation of [...result.browserGlobals, ...result.sharedNodeBuiltins])
+    lines.push(`  ${violation.detail}`);
   if (newViolations.length) {
     lines.push("");
     lines.push(`NEW violations (${newViolations.length}), not in the baseline:`);

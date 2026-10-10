@@ -22,6 +22,7 @@ import { createSettingsAdapter } from "./settings.js";
 import { createModelsPluginsAdapter } from "./models-plugins.js";
 import { createAccountAdapter } from "./account.js";
 import { runWebuiCommand } from "../commands/runner.js";
+import { importWebuiSessionTransfer } from "../session-transfer.js";
 
 export function createHarnessPortFromHost(
   handle: WebuiRuntimeHostHandle,
@@ -33,7 +34,7 @@ export function createHarnessPortFromHost(
     ...(host.dataDir ? { dataDir: host.dataDir } : {}),
   };
   let closed = false;
-  const port: Omit<WebuiHarnessPort, "runCommand"> = {
+  const port: Omit<WebuiHarnessPort, "runCommand" | "importSessionTransferWorkflow"> = {
     version() {
       return version;
     },
@@ -53,11 +54,13 @@ export function createHarnessPortFromHost(
       await host.apiHost.close();
     },
   };
-  return {
+  const harnessPort: WebuiHarnessPort = {
     ...port,
     // The slash-command interpreter is runtime logic that reads several port
     // capabilities. Exposing it as a port method is what keeps the server on
     // `runtime-port` instead of importing the runtime implementation beside it.
     runCommand: (request) => runWebuiCommand(port, request),
+    importSessionTransferWorkflow: (input) => importWebuiSessionTransfer(port, input),
   };
+  return harnessPort;
 }

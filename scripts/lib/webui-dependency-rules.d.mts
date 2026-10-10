@@ -59,6 +59,7 @@ export interface ModuleReference {
 export interface CollectedReferences {
   readonly references: readonly ModuleReference[];
   readonly nonLiteralDynamic: readonly { readonly line: number }[];
+  readonly browserGlobalUses: readonly { readonly name: string; readonly line: number }[];
 }
 
 export function collectModuleReferences(
@@ -93,6 +94,12 @@ export interface GraphHostImport {
   readonly kind: string;
 }
 
+export interface GraphBrowserGlobalUse {
+  readonly file: string;
+  readonly name: string;
+  readonly line: number;
+}
+
 export interface DependencyGraph {
   readonly sourceDirectory: string;
   readonly files: readonly string[];
@@ -101,6 +108,7 @@ export interface DependencyGraph {
   readonly unresolved: readonly GraphUnresolved[];
   readonly nonLiteralDynamic: readonly GraphNonLiteral[];
   readonly hostImports: readonly GraphHostImport[];
+  readonly browserGlobalUses: readonly GraphBrowserGlobalUse[];
 }
 
 /** Browser-only host modules (React/ReactDOM) that only bindings/root may import. */
@@ -137,6 +145,8 @@ export interface GraphViolation {
   readonly kind: string;
   readonly file?: string;
   readonly line?: number;
+  readonly global?: string;
+  readonly specifier?: string;
   readonly cycle?: readonly string[];
   readonly canonical?: string;
   readonly detail: string;
@@ -165,6 +175,8 @@ export interface GraphEvaluation {
   readonly violations: readonly unknown[];
   readonly direction: readonly DirectionViolation[];
   readonly browserOnly: readonly GraphViolation[];
+  readonly browserGlobals: readonly GraphViolation[];
+  readonly sharedNodeBuiltins: readonly GraphViolation[];
   readonly unresolved: readonly GraphViolation[];
   readonly nonLiteralDynamic: readonly GraphViolation[];
   readonly cycles: readonly GraphViolation[];

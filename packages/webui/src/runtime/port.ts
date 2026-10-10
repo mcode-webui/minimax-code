@@ -145,6 +145,16 @@ export interface WebuiHarnessPort {
   importSessionTransfer(
     request: WebuiImportSessionTransferRequest,
   ): Promise<WebuiImportSessionTransferResult>;
+  importSessionTransferWorkflow?(input: {
+    readonly file: unknown;
+    readonly agentName: string;
+    readonly workspaceDir?: string;
+  }): Promise<
+    | { readonly kind: "imported"; readonly body: { readonly sessionId: string; readonly canonicalMessages: number; readonly displayMessages: number; readonly revision: string } }
+    | { readonly kind: "create-failed" }
+    | { readonly kind: "not-transfer-file" }
+    | { readonly kind: "import-failed" }
+  >;
   getSessionDiff(request: WebuiGetSessionDiffRequest): Promise<WebuiGetSessionDiffResult>;
   getTurnDiff(request: WebuiGetTurnDiffRequest): Promise<WebuiGetTurnDiffResult>;
   revertTurnDiff(request: WebuiRevertTurnDiffRequest): Promise<WebuiRevertTurnDiffResult>;

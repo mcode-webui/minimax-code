@@ -25,6 +25,7 @@ import type {
   WebuiUpdateSessionRequest,
 } from "../../src/shared/contracts/session.js";
 import type { WebuiHarnessPort } from "../../src/runtime/port.js";
+import { importWebuiSessionTransfer } from "../../src/runtime/session-transfer.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
@@ -55,8 +56,8 @@ const TRANSFER_FILE = {
   display: { messages: [{ msg_id: "msg-c1", role: "user" }] },
 };
 
-const port = (over: Partial<WebuiHarnessPort> = {}): WebuiHarnessPort =>
-  ({
+const port = (over: Partial<WebuiHarnessPort> = {}): WebuiHarnessPort => {
+  const merged = {
     version: () => ({ dataDir: "C:/data" } as never),
     getSession: async () => ({ session: { sessionId: "mvs_1", title: "T" } }),
     getMessages: async () => ({ messages: [{ msgId: "m1", role: "user" }], hasMore: false }),
@@ -68,7 +69,13 @@ const port = (over: Partial<WebuiHarnessPort> = {}): WebuiHarnessPort =>
     deleteSession: async () => ({ success: true }),
     close: async () => {},
     ...over,
-  }) as unknown as WebuiHarnessPort;
+  } as unknown as WebuiHarnessPort;
+  return {
+    ...merged,
+    importSessionTransferWorkflow: merged.importSessionTransferWorkflow ??
+      ((input) => importWebuiSessionTransfer(merged, input)),
+  };
+};
 
 const services: WebuiService[] = [];
 afterEach(async () => {

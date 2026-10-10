@@ -243,6 +243,26 @@ describe("direction fixtures", () => {
     expect(BROWSER_ONLY_MODULES_RE.test("react-dom/client")).toBe(true);
   });
 
+  it("keeps a React host dependency when TypeScript resolves it outside the WebUI source tree", () => {
+    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts");
+    expect(readFileSync(reactTypes, "utf8")).toContain("export = React");
+    const { graph, result } = evaluateFixture({
+      "client/application/app.ts": 'import { useState } from "react";\nexport const use = useState;\n',
+    }, {
+      ...compilerOptions,
+      paths: { react: [reactTypes] },
+    });
+    expect(graph.hostImports).toContainEqual(expect.objectContaining({
+      specifier: "react",
+      target: reactTypes,
+    }));
+    expect(result.browserOnly).toContainEqual(expect.objectContaining({
+      file: "client/application/app.ts",
+      specifier: "react",
+    }));
+    expect(result.pass).toBe(false);
+  });
+
   it("resolves a tsconfig alias to an actual component edge", () => {
     const { graph, result } = evaluateFixture({
       "client/components/Widget.tsx": widget,

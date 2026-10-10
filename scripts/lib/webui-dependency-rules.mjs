@@ -650,7 +650,13 @@ export function buildDependencyGraph(options) {
         continue;
       }
       const to = normaliseSourcePath(repositoryRoot, target);
-      if (to === null) continue; // external workspace source: outside boundary
+      if (to === null) {
+        // Resolved package imports are still host dependencies. Resolution is
+        // useful for following source aliases, but must not make a React or
+        // Node capability disappear from the host-import rules.
+        hostImports.push({ from, specifier: reference.specifier, line: reference.line, kind: reference.kind, target });
+        continue;
+      }
       references.push({
         from,
         to,

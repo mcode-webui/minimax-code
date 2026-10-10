@@ -1,7 +1,6 @@
 // Composer input history + cross-session draft store (roadmap Module B:
-// 输入历史/草稿). Pure decision functions plus a localStorage-backed
-// persisted state, mirroring the conventions of `no-project.ts` (best-effort
-// persistence that degrades silently when storage is unavailable).
+// 输入历史/草稿). Pure decision functions for persisted state; browser IO is
+// owned by `client/infrastructure/storage.ts`.
 //
 // The recall semantics follow the terminal readline convention codex uses:
 // every committed submission lands in a per-session list (newest last), ↑
@@ -129,17 +128,6 @@ export function shouldRecallWebuiHistory(value: string, caret: number): boolean 
   return !value.slice(0, caret).includes("\n");
 }
 
-type WebuiStorageLike = Pick<Storage, "getItem" | "setItem">;
-
-function resolveStorage(
-  storage?: WebuiStorageLike,
-): WebuiStorageLike | undefined {
-  if (storage) return storage;
-  // localStorage can be unavailable (privacy mode, quota); fall through the
-  // same way `no-project.ts` does.
-  return typeof localStorage === "undefined" ? undefined : localStorage;
-}
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -150,11 +138,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * empty state rather than throwing: the history is a convenience, never a
  * load-bearing dependency of the composer.
  */
-export function loadWebuiComposerPersisted(
-  storage?: WebuiStorageLike,
+export function parseWebuiComposerPersisted(
+  raw: string | null | undefined,
 ): WebuiComposerPersisted {
-  const resolved = resolveStorage(storage);
-  const raw = resolved?.getItem(WEBUI_COMPOSER_STATE_KEY);
   if (!raw) return { drafts: {}, history: {} };
   let parsed: unknown;
   try {
@@ -274,24 +260,11 @@ export function migrateWebuiHomeComposerState(
  * cold one. Quota or availability failures are swallowed: the in-memory
  * state keeps working and the next successful save recovers.
  */
-export function saveWebuiComposerPersisted(
+export function serializeWebuiComposerPersisted(
   state: WebuiComposerPersisted,
-  storage?: WebuiStorageLike,
   keepKeys?: readonly string[],
-): void {
-  const resolved = resolveStorage(storage);
-  if (!resolved) return;
-  try {
-    resolved.setItem(
-      WEBUI_COMPOSER_STATE_KEY,
-      JSON.stringify(
-        pruneWebuiComposerPersisted(
-          state,
-          keepKeys ? { keepKeys } : {},
-        ),
-      ),
-    );
-  } catch {
-    // Best-effort persistence — see `no-project.ts` for the convention.
-  }
+): string {
+  return JSON.stringify(
+    pruneWebuiComposerPersisted(state, keepKeys ? { keepKeys } : {}),
+  );
 }

@@ -27,11 +27,11 @@ import {
 } from "../../src/client/projection/model-picker-search.js";
 import {
   FAVORITES_SECTION_ID,
+  normalizeFavoriteModelIds,
   orderModelGroups,
-  readFavoriteModels,
   toggleFavoriteId,
-  writeFavoriteModels,
 } from "../../src/client/projection/model-favorites.js";
+import { createWebuiBrowserStorage } from "../../src/client/infrastructure/storage.js";
 import type { WebuiModelPickerEntry } from "../../src/client/contracts/model-view.js";
 
 function entry(
@@ -345,8 +345,21 @@ describe("model picker favourites — persistence", () => {
   it("reads empty when the store is unavailable, without throwing", () => {
     // This suite runs in the `node` environment, so there is no localStorage
     // at all — which is exactly the branch a server render takes.
-    expect(readFavoriteModels()).toEqual([]);
-    expect(() => writeFavoriteModels(["a"])).not.toThrow();
+    const storage = createWebuiBrowserStorage(undefined);
+    expect(storage.readFavoriteModels(normalizeFavoriteModelIds)).toEqual([]);
+    expect(() => storage.writeFavoriteModels(["a"], normalizeFavoriteModelIds)).not.toThrow();
+  });
+
+  it("normalizes favorite ids at the infrastructure storage boundary", () => {
+    const values = new Map<string, string>();
+    const browser = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    } as Storage;
+    const storage = createWebuiBrowserStorage(browser);
+    storage.writeFavoriteModels([" a ", "", "a", "b"], normalizeFavoriteModelIds);
+    expect(storage.readFavoriteModels(normalizeFavoriteModelIds)).toEqual(["a", "b"]);
   });
 });
 

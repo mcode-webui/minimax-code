@@ -13,32 +13,6 @@
  * `localStorage` so the cleared state survives the session lifecycle.
  */
 
-export const NO_PROJECT_STORAGE_KEY = "mavis-no-project";
-
-export function readNoProjectFlag(
-  storage: Storage | undefined = browserStorage(),
-): boolean {
-  if (!storage) return false;
-  try {
-    return storage.getItem(NO_PROJECT_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-export function writeNoProjectFlag(
-  value: boolean,
-  storage: Storage | undefined = browserStorage(),
-): void {
-  if (!storage) return;
-  try {
-    if (value) storage.setItem(NO_PROJECT_STORAGE_KEY, "true");
-    else storage.removeItem(NO_PROJECT_STORAGE_KEY);
-  } catch {
-    // localStorage can be unavailable (privacy mode, quota); fall through.
-  }
-}
-
-function browserStorage(): Storage | undefined {
-  return typeof localStorage === "undefined" ? undefined : localStorage;
+export function isNoProjectFlag(value: unknown): boolean {
+  return value === "true";
 }

@@ -45,9 +45,7 @@ import {
 } from "../projection/model-picker-search.js";
 import {
   orderModelGroups,
-  readFavoriteModels,
   toggleFavoriteId,
-  writeFavoriteModels,
 } from "../projection/model-favorites.js";
 import {
   isPreview,
@@ -94,6 +92,10 @@ export interface ModelPickerProps {
    * brain beside it says nothing about.
    */
   readonly triggerLevel?: string;
+  readonly favorites: {
+    readonly read: () => string[];
+    readonly write: (ids: readonly string[]) => void;
+  };
 }
 
 /** Group label: the provider's display name, falling back to its id. */
@@ -455,6 +457,7 @@ export function WebuiModelPicker({
   onSettingChange,
   triggerLabel,
   triggerLevel,
+  favorites,
 }: ModelPickerProps): ReactElement {
   const [open, setOpen] = useState(false);
   /**
@@ -605,13 +608,13 @@ export function WebuiModelPicker({
   // would also mean a server render and a client render disagreed.
   useEffect(() => {
     if (!open) return;
-    setFavoriteIds(readFavoriteModels());
-  }, [open]);
+    setFavoriteIds(favorites.read());
+  }, [favorites, open]);
 
   const handleToggleFavorite = (key: string) => {
     setFavoriteIds((current) => {
       const next = toggleFavoriteId(current, key);
-      writeFavoriteModels(next);
+      favorites.write(next);
       return next;
     });
   };

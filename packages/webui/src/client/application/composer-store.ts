@@ -17,12 +17,17 @@
 // in one committed transition (`create-application.ts`).
 
 import {
-  loadWebuiComposerPersisted,
   migrateWebuiHomeComposerState,
+  parseWebuiComposerPersisted,
   recordWebuiInputHistory,
-  saveWebuiComposerPersisted,
+  serializeWebuiComposerPersisted,
   type WebuiComposerPersisted,
 } from "../projection/composer-history.js";
+
+export interface WebuiComposerPersistence {
+  readonly loadComposer: <T>(parse: (raw: string | null | undefined) => T) => T;
+  readonly saveComposer: <T>(state: T, serialize: (state: T, keepKeys?: readonly string[]) => string, keepKeys?: readonly string[]) => void;
+}
 
 export interface WebuiComposerStore {
   /** The current persisted state; stable until something changes. */
@@ -50,8 +55,10 @@ export interface WebuiComposerStore {
 export function createWebuiComposerStore(options?: {
   /** Seed for SSR / tests; never a second load of storage. */
   readonly initial?: WebuiComposerPersisted;
+  /** Persistence is injected by the browser composition root. */
+  readonly storage?: WebuiComposerPersistence;
 }): WebuiComposerStore {
-  let state = options?.initial ?? loadWebuiComposerPersisted();
+  let state = options?.initial ?? options?.storage?.loadComposer(parseWebuiComposerPersisted) ?? { drafts: {}, history: {} };
   const listeners = new Set<() => void>();
 
   const notify = (): void => {
@@ -76,7 +83,7 @@ export function createWebuiComposerStore(options?: {
     const next = update(state);
     if (next === state) return;
     state = next;
-    saveWebuiComposerPersisted(state, undefined, [keepKey]);
+    options?.storage?.saveComposer(state, serializeWebuiComposerPersisted, [keepKey]);
     notify();
   };
 

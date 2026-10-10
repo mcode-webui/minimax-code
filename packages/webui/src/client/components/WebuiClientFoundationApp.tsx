@@ -87,7 +87,6 @@ import type {
   WebuiWorkspaceSubagent,
 } from "../projection/workspace-progress.js";
 import type { WebuiProjectGroup } from "./SessionRail.js";
-import { readNoProjectFlag, writeNoProjectFlag } from "../no-project.js";
 import { createWebuiCommandWorkflows } from "../application/command-workflows.js";
 import { createWebuiComposerStore } from "../application/composer-store.js";
 import {
@@ -120,16 +119,11 @@ import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
   writeWebuiUnreadCounts,
+  createWebuiBrowserStorage,
 } from "../infrastructure/storage.js";
 import { startWebuiSessionTransferDownload } from "../infrastructure/session-transfer-download.js";
 import { importWebuiSessionFile } from "../infrastructure/session-import.js";
-import {
-  readTeamModeOff,
-  readTeamModeSessionChoices,
-  writeTeamModeOff,
-  writeTeamModeSessionChoice,
-  type TeamModeSessionChoices,
-} from "../team-mode.js";
+import type { TeamModeSessionChoices } from "../team-mode.js";
 import {
   initialWebuiWorkspaceProgress,
   projectWebuiWorkspaceHistory,
@@ -143,6 +137,7 @@ import type { WebuiWorkspaceGitChangedSignal } from "../projection/workspace-pan
 import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
 import { deriveRecentWorkspaceDirs } from "../projection/composer-state.js";
+import { normalizeFavoriteModelIds } from "../projection/model-favorites.js";
 
 // The hash plumbing moved to `client/bindings/navigation.ts` (plan §7.2). Both
 // symbols stay re-exported here: `main.tsx` re-exports `subscribeToSessionHash`
@@ -350,6 +345,14 @@ export function WebuiClientFoundationApp(
   const dispatchShellSurface = useCallback((command: WebuiShellSurfaceCommand) => {
     setShellSurface((current) => reduceWebuiShellSurface(current, command));
   }, []);
+  const browserStorage = useMemo(() => createWebuiBrowserStorage(), []);
+  const favoriteStorage = useMemo(
+    () => ({
+      read: () => browserStorage.readFavoriteModels(normalizeFavoriteModelIds),
+      write: (ids: readonly string[]) => browserStorage.writeFavoriteModels(ids, normalizeFavoriteModelIds),
+    }),
+    [browserStorage],
+  );
   const [selectedSessionId, setSelectedSessionId] =
     useSelectedSessionId(locationHash);
   // Rail session links are plain `#session=<id>` anchors, so the navigation runs
@@ -368,7 +371,10 @@ export function WebuiClientFoundationApp(
   // named changes (ticket #49 criterion 5). One persisted store keyed by
   // session (home has its own slot), so a draft survives both a session switch
   // and a reload, and ↑ recalls that session's submitted inputs.
-  const composerStore = useMemo(() => createWebuiComposerStore(), []);
+  const composerStore = useMemo(
+    () => createWebuiComposerStore({ storage: browserStorage }),
+    [browserStorage],
+  );
   const composerState = useSyncExternalStore(
     composerStore.subscribe,
     composerStore.getSnapshot,
@@ -393,9 +399,9 @@ export function WebuiClientFoundationApp(
     },
     [composerStore],
   );
-  const [teamModeOff, setTeamModeOff] = useState(readTeamModeOff);
+  const [teamModeOff, setTeamModeOff] = useState(browserStorage.readTeamModeOff);
   const [teamModeChoices, setTeamModeChoices] =
-    useState<TeamModeSessionChoices>(readTeamModeSessionChoices);
+    useState<TeamModeSessionChoices>(browserStorage.readTeamModeSessionChoices);
   const pageError = catalog.flat.error;
   const setPageError = sessionWorkflows.setError;
   const [usageQuota, setUsageQuota] = useState<WebuiUsageQuotaResult | undefined>(
@@ -473,8 +479,8 @@ export function WebuiClientFoundationApp(
     return () => { cancelled = true; };
   }, [loadMessages, selectedSessionId]);
   useEffect(() => {
-    writeTeamModeOff(teamModeOff);
-  }, [teamModeOff]);
+    browserStorage.writeTeamModeOff(teamModeOff);
+  }, [browserStorage, teamModeOff]);
   useEffect(() => {
     if (!sessionWorkflows.canLoadFlat || sessionPage) return;
     void sessionWorkflows.loadFlat();
@@ -681,7 +687,7 @@ export function WebuiClientFoundationApp(
     () => {
       // Honour an explicit "no project" choice from localStorage so the
       // auto-fill below doesn't immediately pull a workspace back.
-      if (readNoProjectFlag()) return undefined;
+      if (browserStorage.readNoProjectFlag()) return undefined;
       return (
         selectedSession?.workspaceDir ??
         flatSessionsWithChildren.find((session) => session.workspaceDir)?.workspaceDir
@@ -698,7 +704,7 @@ export function WebuiClientFoundationApp(
   );
   // Tracks whether the user has explicitly cleared the workspace in *this*
   // session; the effect below checks both this and the persisted flag.
-  const userClearedWorkspaceRef = useRef(readNoProjectFlag());
+  const userClearedWorkspaceRef = useRef(browserStorage.readNoProjectFlag());
   useEffect(() => {
     if (userClearedWorkspaceRef.current) return;
     if (selectedSession?.workspaceDir) {
@@ -717,10 +723,10 @@ export function WebuiClientFoundationApp(
     (workspaceDir?: string) => {
       if (workspaceDir === undefined) {
         userClearedWorkspaceRef.current = true;
-        writeNoProjectFlag(true);
+        browserStorage.writeNoProjectFlag(true);
       } else {
         userClearedWorkspaceRef.current = false;
-        writeNoProjectFlag(false);
+        browserStorage.writeNoProjectFlag(false);
       }
       setNewTaskWorkspaceDir(workspaceDir);
       setWorkspaceMenuOpen(false);
@@ -734,7 +740,7 @@ export function WebuiClientFoundationApp(
     // separate migration + composer migration + selection.
     application.adoptHomeSession(id);
     setSelectedSessionId(id);
-    writeTeamModeSessionChoice(id, teamModeOff);
+    browserStorage.writeTeamModeSessionChoice(id, teamModeOff);
     setTeamModeChoices((current) => ({ ...current, [id]: teamModeOff }));
     // Refresh the rail projection after the first message creates a session —
     // the flat list (its failure is reported) and the tree (best effort),
@@ -753,7 +759,7 @@ export function WebuiClientFoundationApp(
     // that workspace; the global new-task action still clears the workspace.
     const clearedWorkspace = workspaceDir === undefined;
     userClearedWorkspaceRef.current = clearedWorkspace;
-    writeNoProjectFlag(clearedWorkspace);
+    browserStorage.writeNoProjectFlag(clearedWorkspace);
     setNewTaskWorkspaceDir(workspaceDir);
     setWorkspaceMenuOpen(false);
     setDraft("");
@@ -1449,6 +1455,7 @@ export function WebuiClientFoundationApp(
                     inputHistory={composerState.history[composerKey] ?? []}
                     onInputSubmitted={recordComposerInput}
                     teamModeOff={composerTeamModeOff}
+                    favoritesStorage={favoriteStorage}
                     sessions={page.sessions}
                     workspaceDir={selectedSession?.workspaceDir ?? newTaskWorkspaceDir}
                     onSelectSession={handleSelectComposerSession}

@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
-  loadWebuiComposerPersisted,
+  parseWebuiComposerPersisted,
   migrateWebuiHomeComposerState,
   pruneWebuiComposerPersisted,
   recordWebuiInputHistory,
-  saveWebuiComposerPersisted,
+  serializeWebuiComposerPersisted,
   shouldRecallWebuiHistory,
   startWebuiHistoryBrowse,
   stepWebuiHistoryBrowse,
 } from "../../src/client/projection/composer-history.js";
 import type { WebuiComposerPersisted } from "../../src/client/projection/composer-history.js";
+import { createWebuiComposerStore } from "../../src/client/application/composer-store.js";
+import { createWebuiBrowserStorage } from "../../src/client/infrastructure/storage.js";
 
 /**
  * Pure-function tests for the composer input history + cross-session draft
@@ -126,16 +128,16 @@ describe("persisted composer store", () => {
       drafts: { home: "unsent", "s-1": "draft one" },
       history: { home: ["hello", "world"], "s-1": ["fix the bug"] },
     };
-    saveWebuiComposerPersisted(state, storage);
-    expect(loadWebuiComposerPersisted(storage)).toEqual(state);
+    storage.setItem("webui.composer.state.v1", serializeWebuiComposerPersisted(state));
+    expect(parseWebuiComposerPersisted(storage.getItem("webui.composer.state.v1"))).toEqual(state);
   });
 
   it("returns empty state when nothing is stored or storage is unavailable", () => {
-    expect(loadWebuiComposerPersisted(memoryStorage())).toEqual({
+    expect(parseWebuiComposerPersisted(memoryStorage().getItem("webui.composer.state.v1"))).toEqual({
       drafts: {},
       history: {},
     });
-    expect(loadWebuiComposerPersisted(undefined)).toEqual({
+    expect(parseWebuiComposerPersisted(undefined)).toEqual({
       drafts: {},
       history: {},
     });
@@ -144,7 +146,7 @@ describe("persisted composer store", () => {
   it("tolerates corrupt payloads by falling back to empty state", () => {
     const storage = memoryStorage();
     storage.setItem("webui.composer.state.v1", "{not json");
-    expect(loadWebuiComposerPersisted(storage)).toEqual({
+    expect(parseWebuiComposerPersisted(storage.getItem("webui.composer.state.v1"))).toEqual({
       drafts: {},
       history: {},
     });
@@ -156,7 +158,7 @@ describe("persisted composer store", () => {
       "webui.composer.state.v1",
       JSON.stringify({ drafts: "nope", history: [1, 2] }),
     );
-    expect(loadWebuiComposerPersisted(storage)).toEqual({
+    expect(parseWebuiComposerPersisted(storage.getItem("webui.composer.state.v1"))).toEqual({
       drafts: {},
       history: {},
     });
@@ -171,7 +173,7 @@ describe("persisted composer store", () => {
         history: { "s-2": ["a", 4, ""], bad2: "nope" },
       }),
     );
-    expect(loadWebuiComposerPersisted(storage)).toEqual({
+    expect(parseWebuiComposerPersisted(storage.getItem("webui.composer.state.v1"))).toEqual({
       drafts: { "s-1": "ok" },
       history: { "s-2": ["a"] },
     });
@@ -239,8 +241,8 @@ describe("persisted composer store", () => {
     const drafts: Record<string, string> = {};
     const history: Record<string, string[]> = {};
     for (let i = 0; i < 60; i += 1) drafts[`s-${i}`] = "d";
-    saveWebuiComposerPersisted({ drafts, history }, storage, ["s-5"]);
-    const persisted = loadWebuiComposerPersisted(storage);
+    storage.setItem("webui.composer.state.v1", serializeWebuiComposerPersisted({ drafts, history }, ["s-5"]));
+    const persisted = parseWebuiComposerPersisted(storage.getItem("webui.composer.state.v1"));
     // s-5 is old by insertion order but is the live session — it survives.
     expect(persisted.drafts["s-5"]).toBe("d");
     expect(Object.keys(persisted.drafts)).toHaveLength(51);
@@ -269,5 +271,30 @@ describe("migrateWebuiHomeComposerState", () => {
   it("returns the same state when home is empty", () => {
     const state = { drafts: { "s-1": "d" }, history: { "s-1": ["h"] } };
     expect(migrateWebuiHomeComposerState(state, "s-2")).toBe(state);
+  });
+});
+
+describe("composer persistence ownership", () => {
+  it("persists through an injected infrastructure adapter", () => {
+    const values = new Map<string, string>();
+    const browser = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    } as Storage;
+    const adapter = createWebuiBrowserStorage(browser);
+    const composer = createWebuiComposerStore({ storage: adapter });
+    composer.setDraft("home", "draft");
+    composer.recordInput("home", "sent");
+    expect(createWebuiComposerStore({ storage: adapter }).getSnapshot()).toEqual({
+      drafts: { home: "draft" },
+      history: { home: ["sent"] },
+    });
+  });
+
+  it("does not access browser storage without an injected adapter", () => {
+    const composer = createWebuiComposerStore();
+    composer.setDraft("home", "local-only");
+    expect(composer.getSnapshot().drafts.home).toBe("local-only");
   });
 });

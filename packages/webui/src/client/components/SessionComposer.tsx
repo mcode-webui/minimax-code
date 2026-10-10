@@ -624,6 +624,7 @@ export function WebuiComposer({
   onSelectSession,
   onOpenPluginManagement,
   seedAttachment,
+  favoritesStorage,
 }: {
   readonly sessionId?: string;
   readonly sessionStatus?: unknown;
@@ -696,6 +697,10 @@ export function WebuiComposer({
   readonly onNeedsSession?: (draft: string) => void;
   readonly onSessionCreated?: (sessionId: string) => void;
   readonly teamModeOff: boolean;
+  readonly favoritesStorage: {
+    readonly read: () => string[];
+    readonly write: (ids: readonly string[]) => void;
+  };
   readonly listWorkspaceFileTree?: WebuiTransport["listWorkspaceFileTree"];
   readonly browseWorkspaceDirs?: WebuiTransport["browseWorkspaceDirs"];
   readonly pluginManagement?: WebuiTransport["pluginManagement"];
@@ -2459,6 +2464,7 @@ export function WebuiComposer({
                   <WebuiModelPicker
                     models={enabledModels}
                     selected={selectedModel}
+                    favorites={favoritesStorage}
                     // The level rides the model name. It is resolved from the
                     // SAME option list the brain trigger below reads, so the two
                     // cannot disagree about whether this model has a depth

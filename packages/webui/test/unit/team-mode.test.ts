@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { readSessionOverlay, toggleSessionOverlay } from "../../src/client/components/LeftRail.js";
 import {
   isTeamModeLocked,
-  readTeamModeOff,
-  writeTeamModeOff,
 } from "../../src/client/team-mode.js";
+import { createWebuiBrowserStorage } from "../../src/client/infrastructure/storage.js";
 
 function createMemoryLocalStorage(): Storage {
   const values = new Map<string, string>();
@@ -39,11 +38,30 @@ describe("team mode lock contract", () => {
 
   it("round-trips the create-time choice through mavis-team-mode", () => {
     localStorage.clear();
-    expect(readTeamModeOff()).toBe(true);
-    writeTeamModeOff(false);
-    expect(readTeamModeOff()).toBe(false);
-    writeTeamModeOff(true);
-    expect(readTeamModeOff()).toBe(true);
+    const storage = createWebuiBrowserStorage(localStorage);
+    expect(storage.readTeamModeOff()).toBe(true);
+    storage.writeTeamModeOff(false);
+    expect(storage.readTeamModeOff()).toBe(false);
+    storage.writeTeamModeOff(true);
+    expect(storage.readTeamModeOff()).toBe(true);
+  });
+
+  it("round-trips per-session team mode choices through the infrastructure adapter", () => {
+    localStorage.clear();
+    const storage = createWebuiBrowserStorage(localStorage);
+    expect(storage.readTeamModeSessionChoices()).toEqual({});
+    storage.writeTeamModeSessionChoice("s1", false);
+    expect(storage.readTeamModeSessionChoices()).toEqual({ s1: false });
+  });
+
+  it("persists the no-project choice through the infrastructure adapter", () => {
+    localStorage.clear();
+    const storage = createWebuiBrowserStorage(localStorage);
+    expect(storage.readNoProjectFlag()).toBe(false);
+    storage.writeNoProjectFlag(true);
+    expect(storage.readNoProjectFlag()).toBe(true);
+    storage.writeNoProjectFlag(false);
+    expect(storage.readNoProjectFlag()).toBe(false);
   });
 
   it("uses isolated v1 localStorage overlays for session row state", () => {

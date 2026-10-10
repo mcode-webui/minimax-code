@@ -7,7 +7,8 @@
  * would make it a per-account field that a model picker cannot express and
  * that nothing else reads. It is also versioned, because a key whose stored
  * shape can change must be able to move its version rather than be guessed at
- * on read.
+ * on read. The browser persistence adapter owns the key and IO; this module
+ * keeps only normalization, toggle arithmetic and provider ordering.
  *
  * The toggle is a pure function in its own right rather than a line inside
  * the click handler, so the suite can drive the ORDER it returns — the star
@@ -16,23 +17,16 @@
  *
  * Ported from `webapp/lib/model-favorites.ts` in the other WebUI
  * implementation. The storage accessor follows this repository's
- * `browserStorage()` convention (`team-mode.ts`) rather than reaching for
- * `window` directly, so a server render cannot touch it.
+ * infrastructure adapter rather than reaching for browser globals, so a
+ * server render cannot touch storage.
  */
 import type { WebuiModelProviderGroup } from "../contracts/model-view.js";
-
-/** The storage key. The `v1` is load-bearing: see the file comment. */
-export const MODEL_FAVORITES_KEY = "webui:model-favorites:v1";
 
 /** The section id the favourites list renders under. */
 export const FAVORITES_SECTION_ID = "__favorites";
 
-function browserStorage(): Storage | undefined {
-  return typeof localStorage === "undefined" ? undefined : localStorage;
-}
-
-/** A stored id list, guarded against a hand-edited or truncated value. */
-function toIdList(value: unknown): string[] {
+/** Normalize persisted model ids without performing storage IO. */
+export function normalizeFavoriteModelIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const out: string[] = [];
@@ -62,33 +56,6 @@ export function toggleFavoriteId(
   if (!id) return [...current];
   if (current.includes(id)) return current.filter((entry) => entry !== id);
   return [...current, id];
-}
-
-/** The persisted set, or empty when the store is absent or unreadable. */
-export function readFavoriteModels(): string[] {
-  const storage = browserStorage();
-  if (!storage) return [];
-  try {
-    const raw = storage.getItem(MODEL_FAVORITES_KEY);
-    if (!raw) return [];
-    return toIdList(JSON.parse(raw));
-  } catch {
-    // A store written by an older build, or by a user with devtools open,
-    // must not be able to take the selector down on open.
-    return [];
-  }
-}
-
-/** Persist the set. A store that refuses the write is not worth an error. */
-export function writeFavoriteModels(ids: readonly string[]): void {
-  const storage = browserStorage();
-  if (!storage) return;
-  try {
-    storage.setItem(MODEL_FAVORITES_KEY, JSON.stringify(toIdList(ids)));
-  } catch {
-    // Private-mode and quota-exceeded both land here. The star still works
-    // for this session; only the persistence is lost.
-  }
 }
 
 /**

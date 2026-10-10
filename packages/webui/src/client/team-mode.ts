@@ -6,9 +6,6 @@
  * there is no later server signal to reconstruct it.
  */
 
-export const TEAM_MODE_STORAGE_KEY = "mavis-team-mode";
-const TEAM_MODE_SESSION_STORAGE_KEY = "mavis-team-mode:sessions:v1";
-
 export interface TeamModeSession {
   readonly id: string;
   readonly teamModeOff?: boolean;
@@ -27,44 +24,21 @@ export function isTeamModeLocked(
   );
 }
 
-function browserStorage(): Storage | undefined {
-  return typeof localStorage === "undefined" ? undefined : localStorage;
-}
-
-function readBoolean(
-  storage: Storage | undefined,
-  key: string,
-  fallback: boolean,
-): boolean {
-  const raw = storage?.getItem(key);
-  if (raw === null || raw === undefined) return fallback;
+export function parseTeamModeOff(raw: string | null | undefined): boolean {
+  if (raw === null || raw === undefined) return true;
   try {
     const value: unknown = JSON.parse(raw);
-    return typeof value === "boolean" ? value : fallback;
+    return typeof value === "boolean" ? value : true;
   } catch {
-    return fallback;
+    return true;
   }
-}
-
-export function readTeamModeOff(
-  storage: Storage | undefined = browserStorage(),
-): boolean {
-  return readBoolean(storage, TEAM_MODE_STORAGE_KEY, true);
-}
-
-export function writeTeamModeOff(
-  teamModeOff: boolean,
-  storage: Storage | undefined = browserStorage(),
-): void {
-  storage?.setItem(TEAM_MODE_STORAGE_KEY, JSON.stringify(teamModeOff));
 }
 
 export type TeamModeSessionChoices = Readonly<Record<string, boolean>>;
 
-export function readTeamModeSessionChoices(
-  storage: Storage | undefined = browserStorage(),
+export function parseTeamModeSessionChoices(
+  raw: string | null | undefined,
 ): TeamModeSessionChoices {
-  const raw = storage?.getItem(TEAM_MODE_SESSION_STORAGE_KEY);
   if (raw === null || raw === undefined) return {};
   try {
     const value: unknown = JSON.parse(raw);
@@ -78,18 +52,6 @@ export function readTeamModeSessionChoices(
   } catch {
     return {};
   }
-}
-
-export function writeTeamModeSessionChoice(
-  sessionId: string,
-  teamModeOff: boolean,
-  storage: Storage | undefined = browserStorage(),
-): void {
-  const choices = {
-    ...readTeamModeSessionChoices(storage),
-    [sessionId]: teamModeOff,
-  };
-  storage?.setItem(TEAM_MODE_SESSION_STORAGE_KEY, JSON.stringify(choices));
 }
 
 export function teamModeCopy(locale?: string): {

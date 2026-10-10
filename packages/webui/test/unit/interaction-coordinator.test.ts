@@ -37,17 +37,22 @@ function sink(): WebuiInteractionSink & Record<string, unknown> {
     resumeAfterPermission: vi.fn(),
     afterQuestionnaireAnswer: vi.fn(),
     afterQuestionnaireDismiss: vi.fn(),
+    applyGoal: vi.fn(),
+    afterGoalReRead: vi.fn(),
   } as never;
 }
 
 function coordinator(port: Record<string, unknown>, s = sink()) {
+  const goalVersionRef = { current: 0 };
   return {
     s,
+    goalVersionRef,
     c: createWebuiInteractionCoordinator({
       port: port as never,
       sink: s,
       sessionId: "s1",
       agentName: "fallback-agent",
+      goalVersionRef,
     }),
   };
 }
@@ -159,6 +164,58 @@ describe("interaction coordinator — questionnaire replies", () => {
       error: "The questionnaire could not be dismissed",
     });
     expect(s.applyQuestionnaire).not.toHaveBeenCalled();
+  });
+});
+
+describe("interaction coordinator — the goal write path and its guards", () => {
+  it("bumps the version on every write and writes through the sink", () => {
+    const { c, s, goalVersionRef } = coordinator({});
+    c.applyGoal({ status: "active" } as never);
+    c.applyGoal(undefined);
+    expect(goalVersionRef.current).toBe(2);
+    expect(c.goalVersion()).toBe(2);
+    expect(s.applyGoal).toHaveBeenNthCalledWith(1, { status: "active" });
+    expect(s.applyGoal).toHaveBeenNthCalledWith(2, undefined);
+  });
+
+  it("applies a steering re-read and lets the caller reconcile view state", async () => {
+    const goal = { status: "active" };
+    const { c, s } = coordinator({ getGoal: vi.fn().mockResolvedValue(goal) });
+    await expect(c.refreshGoal()).resolves.toEqual({ ok: true });
+    expect(s.applyGoal).toHaveBeenCalledWith(goal);
+    expect(s.afterGoalReRead).toHaveBeenCalledWith(goal);
+  });
+
+  it("stands down when a newer write landed while the read was in flight", async () => {
+    let release!: (goal: unknown) => void;
+    const inFlightRead = new Promise((resolve) => {
+      release = resolve;
+    });
+    const { c, s, goalVersionRef } = coordinator({
+      getGoal: vi.fn().mockReturnValue(inFlightRead),
+    });
+    const reRead = c.refreshGoal();
+    // A `thread_goal.*` event lands while the read is in flight, writing a newer
+    // goal. The answer on its way back is stale.
+    goalVersionRef.current += 1;
+    release({ status: "complete" });
+    await expect(reRead).resolves.toEqual({ ok: true });
+    expect(s.applyGoal).not.toHaveBeenCalled();
+    expect(s.afterGoalReRead).not.toHaveBeenCalled();
+  });
+
+  it("carries a failed re-read back as a message", async () => {
+    const { c, s } = coordinator({
+      getGoal: vi.fn().mockRejectedValue(new Error("offline")),
+    });
+    await expect(c.refreshGoal()).resolves.toEqual({ ok: false, error: "offline" });
+    expect(s.applyGoal).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op without a goal read", async () => {
+    const { c, s } = coordinator({});
+    await expect(c.refreshGoal()).resolves.toEqual({ ok: true });
+    expect(s.applyGoal).not.toHaveBeenCalled();
   });
 });
 

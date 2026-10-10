@@ -22,6 +22,7 @@
 // by a guard.
 
 import type { InteractionPort } from "../contracts/interaction-port.js";
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import type {
   WebuiInteractionReplyResult,
   WebuiPendingPermission,
@@ -34,6 +35,7 @@ export type WebuiInteractionPortSlice = Pick<
   InteractionPort,
   | "listPendingPermissions"
   | "getPendingQuestionnaire"
+  | "getGoal"
   | "replyPermission"
   | "replyQuestionnaire"
   | "dismissQuestionnaire"
@@ -62,6 +64,15 @@ export interface WebuiInteractionSink {
   ) => void;
   /** A dismissal never resumes the turn: the runtime only marks it dismissed. */
   readonly afterQuestionnaireDismiss: () => void;
+  /** The one goal write path the coordinator drives. */
+  readonly applyGoal: (goal: WebuiGoal | undefined) => void;
+  /**
+   * After a steering re-read actually lands. The re-read is eventually
+   * consistent, so the caller may want to reconcile view-only state (the
+   * composer's goal mode) with what the read returned; the coordinator does not
+   * own that state and does not guess at it.
+   */
+  readonly afterGoalReRead: (goal: WebuiGoal | undefined) => void;
 }
 
 /**
@@ -90,11 +101,40 @@ export interface WebuiInteractionCoordinator {
   readonly dismissQuestionnaire: (
     request: WebuiQuestionnaireRequest,
   ) => Promise<WebuiInteractionOutcome>;
+  /**
+   * The goal version, bumped by every goal write. A re-read captures it before
+   * asking and compares after, so a late answer cannot resurrect the goal a
+   * newer write already replaced.
+   */
+  readonly goalVersion: () => number;
+  /**
+   * The one goal write path. Every writer goes through it — a direct store write
+   * would let an in-flight re-read resurrect the state it was meant to replace.
+   */
+  readonly applyGoal: (goal: WebuiGoal | undefined) => void;
+  /**
+   * The steering re-read. Goal events announce that the objective moved without
+   * carrying the new goal, so the banner is re-read rather than patched.
+   */
+  readonly refreshGoal: () => Promise<WebuiInteractionOutcome>;
+}
+
+/**
+ * The goal version cell. It is injected rather than held here because this
+ * coordinator is deliberately stateless: a component may construct it on every
+ * render, and a counter that lived in the coordinator would reset each time and
+ * silently disable the guards it protects. The *policy* — bump on every write,
+ * capture before a read and compare after — stays here; only the storage is the
+ * caller's.
+ */
+export interface WebuiGoalVersionCell {
+  current: number;
 }
 
 export interface WebuiInteractionCoordinatorOptions {
   readonly port: WebuiInteractionPortSlice;
   readonly sink: WebuiInteractionSink;
+  readonly goalVersionRef: WebuiGoalVersionCell;
   /** The session these flows belong to. Absent means nothing to refresh. */
   readonly sessionId?: string;
   /** Fallback requester name when the request carries none. */
@@ -110,10 +150,12 @@ export function createWebuiInteractionCoordinator({
   sink,
   sessionId,
   agentName,
+  goalVersionRef,
 }: WebuiInteractionCoordinatorOptions): WebuiInteractionCoordinator {
   const {
     listPendingPermissions,
     getPendingQuestionnaire,
+    getGoal,
     replyPermission,
     replyQuestionnaire,
     dismissQuestionnaire,
@@ -175,6 +217,29 @@ export function createWebuiInteractionCoordinator({
         if (result.ok !== true) throw new Error("The questionnaire was not accepted");
         sink.applyQuestionnaire(undefined);
         sink.afterQuestionnaireAnswer(answers);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: describe(error) };
+      }
+    },
+
+    goalVersion: () => goalVersionRef.current,
+
+    applyGoal: (goal) => {
+      goalVersionRef.current += 1;
+      sink.applyGoal(goal);
+    },
+
+    refreshGoal: async () => {
+      if (!sessionId || !getGoal) return { ok: true };
+      const versionAtRequest = goalVersionRef.current;
+      try {
+        const nextGoal = await getGoal({ sessionId });
+        // A newer write landed while this read was in flight: its answer is
+        // stale and is dropped rather than applied over the newer goal.
+        if (goalVersionRef.current !== versionAtRequest) return { ok: true };
+        sink.applyGoal(nextGoal);
+        sink.afterGoalReRead(nextGoal);
         return { ok: true };
       } catch (error) {
         return { ok: false, error: describe(error) };

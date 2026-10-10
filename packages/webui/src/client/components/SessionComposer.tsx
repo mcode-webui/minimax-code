@@ -725,10 +725,20 @@ export function WebuiComposer({
   // it, which permissions a re-read keeps — lives there. This component supplies
   // the wiring and keeps the one error slot that every other flow in this file
   // also writes, which is why the flows return an outcome instead of an error.
+  // Bumped by every write to the goal, so a steering re-read that lands after
+  // a newer update can tell it is stale and stand down. EVERY writer must go
+  // through `applyGoal` — a direct store write here would let an in-flight read
+  // resurrect the state it was meant to replace. The cell is held here and the
+  // policy is the coordinator's: it is constructed per render, so a counter
+  // living inside it would reset and silently disable both guards.
+  const goalVersionRef = useRef(0);
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
   const interactionCoordinator = createWebuiInteractionCoordinator({
     port: {
       listPendingPermissions,
       getPendingQuestionnaire,
+      getGoal,
       replyPermission,
       replyQuestionnaire,
       dismissQuestionnaire,
@@ -744,21 +754,16 @@ export function WebuiComposer({
           webuiAnswersEndTurn(answers) ? "idle" : "streaming",
         ),
       afterQuestionnaireDismiss: commands.endStreaming,
+      applyGoal: interactionCommands.applyGoal,
+      afterGoalReRead: (next) => {
+        if (next) setGoalMode(next.status !== "complete");
+      },
     },
     sessionId,
     agentName,
+    goalVersionRef,
   });
-  // Bumped by every write to the goal, so a steering re-read that lands after
-  // a newer update can tell it is stale and stand down. EVERY writer must go
-  // through `applyGoal` — a direct store write here would let an in-flight read
-  // resurrect the state it was meant to replace.
-  const goalVersionRef = useRef(0);
-  const sessionIdRef = useRef(sessionId);
-  sessionIdRef.current = sessionId;
-  const applyGoal = useCallback((next: WebuiGoal | undefined) => {
-    goalVersionRef.current += 1;
-    interactionCommands.applyGoal(next);
-  }, [interactionCommands]);
+  const applyGoal = interactionCoordinator.applyGoal;
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [goalMode, setGoalMode] = useState(false);
   const [planMode, setPlanMode] = useState(false);
@@ -932,17 +937,7 @@ export function WebuiComposer({
     // arrived while it was in flight: the version guard makes that decision,
     // and it has one implementation here, shared by the event callback and the
     // registered effects.
-    const refreshGoal = () => {
-      if (!sessionId || !getGoal) return undefined;
-      const readFor = sessionId;
-      const versionAtRequest = goalVersionRef.current;
-      return getGoal({ sessionId: readFor }).then((nextGoal) => {
-        if (readFor !== sessionIdRef.current) return;
-        if (goalVersionRef.current !== versionAtRequest) return;
-        applyGoal(nextGoal);
-        if (nextGoal) setGoalMode(nextGoal.status !== "complete");
-      });
-    };
+    const refreshGoal = () => interactionCoordinator.refreshGoal();
 
     // The mount probe. A turn that started before this client read the server
     // is still running, so `getActiveTurn` returns it; a turn that starts after
@@ -1107,18 +1102,18 @@ export function WebuiComposer({
     // Same stale-window as the steering re-read: this request can be overtaken
     // by a `thread_goal.*` event while it is in flight, and answering with the
     // older snapshot would resurrect what the event just replaced.
-    const versionAtRequest = goalVersionRef.current;
+    const versionAtRequest = interactionCoordinator.goalVersion();
     void getGoal({ sessionId })
       .then((nextGoal) => {
         if (cancelled) return;
-        if (goalVersionRef.current !== versionAtRequest) return;
+        if (interactionCoordinator.goalVersion() !== versionAtRequest) return;
         applyGoal(nextGoal);
         if (nextGoal) setGoalMode(nextGoal.status !== "complete");
       })
       .catch(() => {
         // Same guard on the error path: a rejection must not erase a goal that
         // a newer event installed while this request was in flight.
-        if (!cancelled && goalVersionRef.current === versionAtRequest)
+        if (!cancelled && interactionCoordinator.goalVersion() === versionAtRequest)
           applyGoal(undefined);
       });
     return () => {

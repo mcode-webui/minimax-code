@@ -658,13 +658,32 @@ export function applyFrameCursor(
 }
 
 /**
+ * Checkpoint labels for the reducer's optional probe. The ordering the
+ * probe exposes is not observable from the reducer's return value — the
+ * cursor and the data step apply disjoint fields, so a reducer that
+ * swapped them still produces the same final state. The test-only module
+ * `client/stream-instrumentation.ts` is the only caller that supplies one.
+ */
+export type WebuiStreamReduceCheckpoint = "after-data" | "after-cursor";
+
+/**
+ * The reducer's optional third argument. Production callers MUST NOT
+ * supply it: the probe is a test-only surface, reached through
+ * `client/stream-instrumentation.ts`. The shape is declared here, beside
+ * the parameter that uses it, because this module is a `view` projection
+ * and may not import the `mechanisms` module that drives the probe.
+ */
+export interface WebuiStreamReduceOptions {
+  readonly probe?: (
+    snapshot: WebuiStreamState,
+    checkpoint: WebuiStreamReduceCheckpoint,
+  ) => void;
+}
+
+/**
  * Pure reduction of the mixed session stream. Unknown or malformed
  * payloads are ignored safely.
  *
- * The third argument is typed against `ReduceOptions` from
- * `stream-instrumentation.ts`. Production callers MUST NOT supply it;
- * the type lives in a test-only module on purpose so that any caller
- * who wants to set a probe must reach into the test surface to do so.
  * The probe fires once after the data step and once after the cursor
  * step; the cursor-ordering test asserts that the post-data snapshot
  * has not yet advanced the cursor.
@@ -672,7 +691,7 @@ export function applyFrameCursor(
 export function reduceWebuiStreamFrame(
   state: WebuiStreamState,
   frame: WebuiStreamFrame,
-  options?: import("../stream-instrumentation.js").ReduceOptions,
+  options?: WebuiStreamReduceOptions,
 ): WebuiStreamState {
   const next = applyFrameData(state, frame);
   options?.probe?.(next, "after-data");

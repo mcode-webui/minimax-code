@@ -259,11 +259,12 @@ const PROJECTION_SPLIT = Object.freeze({
   "transcript-request-ownership": ["application"],
   "file-line-navigation": ["bindings"],
   // `stream-state.ts` is the pure frame reducer split out of `client/stream.ts`
-  // (plan §7.3). The mechanism-mapped stream loop and the test-only stream
-  // instrumentation still consume the reducer directly, so the relocated module
-  // keeps the `mechanisms` classification its predecessor carried alongside
-  // `view`; the mechanism→projection edge is retired in stage 4 (plan §7.2),
-  // not here.
+  // (plan §7.3). `client/stream-loop.ts` still consumes the reducer directly, so
+  // the relocated module keeps the `mechanisms` classification its predecessor
+  // carried alongside `view`; the mechanism→projection edge is retired in stage
+  // 4 (plan §7.2), not here. The test-only stream instrumentation no longer
+  // consumes it: `client/stream-instrumentation.ts` takes the reducer as an
+  // argument, which is what removed the stream-state <-> instrumentation cycle.
   "stream-state": ["mechanisms", "view"],
 });
 

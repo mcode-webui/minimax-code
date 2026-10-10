@@ -146,7 +146,8 @@ const failed =
   staleAllowances.length > 0 ||
   result.browserOnly.length > 0 ||
   result.browserGlobals.length > 0 ||
-  result.sharedNodeBuiltins.length > 0;
+  result.nodeBuiltins.length > 0 ||
+  result.forbiddenCalls.length > 0;
 
 const summary = {
   ok: !failed,
@@ -159,7 +160,9 @@ const summary = {
   staleEntries,
   browserOnly: result.browserOnly,
   browserGlobals: result.browserGlobals,
-  sharedNodeBuiltins: result.sharedNodeBuiltins,
+  nodeBuiltins: result.nodeBuiltins,
+  sharedNodeBuiltins: result.nodeBuiltins,
+  forbiddenCalls: result.forbiddenCalls,
   cycles: result.cycles.map((entry) => entry.canonical),
   newCycles: newCycles.map((entry) => entry.canonical),
   staleCycles: staleCycles.map((entry) => entry.canonical),
@@ -192,7 +195,7 @@ if (values.json) {
     );
     for (const violation of result.browserOnly) lines.push(`  ${violation.detail}`);
   }
-  for (const violation of [...result.browserGlobals, ...result.sharedNodeBuiltins])
+  for (const violation of [...result.browserGlobals, ...result.nodeBuiltins, ...result.forbiddenCalls])
     lines.push(`  ${violation.detail}`);
   if (newViolations.length) {
     lines.push("");

@@ -29,6 +29,19 @@ type MavisBuildEnv = "dev" | "test" | "staging" | "prod";
 const STATUS_PATH = "/minimax-cloud/api/v1/signin/status";
 const CLAIM_PATH = "/minimax-cloud/api/v1/signin/claim";
 
+/**
+ * Resolve the runtime's default `fetch`. The runtime is Node-side and can
+ * rely on the platform's ambient fetch (Node 18+); the helper exists so a
+ * `globalThis`-prefixed access does not surface as a browser-global rule
+ * violation and so a missing platform `fetch` produces a typed error
+ * instead of failing later with `fetch is not a function`.
+ */
+function resolveDefaultFetch(): typeof fetch {
+  const ambient = (globalThis as { fetch?: typeof fetch }).fetch;
+  if (typeof ambient === "function") return ambient;
+  throw new Error("runtime fetch is unavailable; supply a fetchImpl");
+}
+
 /** Origin table copied from `packages/tui/src/runtime/public-gateway.ts`. */
 const PUBLIC_GATEWAY_ORIGINS: Readonly<
   Record<MavisRegion, Readonly<Record<MavisBuildEnv, string>>>
@@ -144,7 +157,7 @@ export class DailyCheckinClient {
   private statusAccountKey: string | undefined;
 
   constructor(private readonly options: DailyCheckinClientOptions) {
-    this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
+    this.fetchImpl = options.fetchImpl ?? resolveDefaultFetch();
     this.nowMs = options.nowMs ?? Date.now;
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }

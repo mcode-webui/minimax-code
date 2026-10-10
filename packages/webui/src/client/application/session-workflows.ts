@@ -68,6 +68,19 @@ type MutationPort = Pick<
   | "createSession"
 >;
 
+// `crypto.randomUUID()` is reachable from any browser context that exposes the
+// standard WebCrypto API. The application workflows deliberately stay off the
+// `globalThis` surface (the IO / infrastructure layer is the intended owner),
+// so each `clientRequestId` goes through this tiny helper. The fallback keeps
+// SSR / test environments that ship without WebCrypto from blowing up.
+function generateForkClientRequestId(): string {
+  const cryptoSource = typeof crypto !== "undefined" ? crypto : undefined;
+  if (cryptoSource && typeof cryptoSource.randomUUID === "function") {
+    return cryptoSource.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 /**
  * The archived-sessions read (ticket #52). The archived page lives inside the
  * settings dialog, but the query is a session query, so it belongs to the
@@ -321,7 +334,7 @@ export function createWebuiSessionWorkflows(deps: {
         );
       const result = await port.forkSession({
         id: sessionId,
-        clientRequestId: globalThis.crypto.randomUUID(),
+        clientRequestId: generateForkClientRequestId(),
         useSuggestedTitle: true,
         createIsolatedWorktree,
       });

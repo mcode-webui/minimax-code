@@ -15,7 +15,13 @@
 // enforcement") and ADR 0014.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { builtinModules } from "node:module";
 import path from "node:path";
+
+// Registered Node builtin module names. Used by the node-builtin rule to
+// detect `import "fs"`-style specifiers in client / shared code that the
+// previous `node:`-prefixed rule missed.
+const BUILTIN_NODE_MODULES = new Set(builtinModules.map((name) => name.replace(/^node:/u, "")));
 
 // The Typescript compiler drives parsing and module resolution. Importing it is
 // side-effect-free; it is only *used* when `buildDependencyGraph` runs.
@@ -23,7 +29,17 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 /** @type {typeof import("typescript")} */
 const ts = require("typescript");
-const BROWSER_GLOBALS = new Set(["document", "localStorage", "sessionStorage"]);
+// Names whose resolution to a TypeScript lib `*.d.ts` declaration is the
+// signal of an ambient access. Local parameters or destructured fields with
+// the same identifier are filtered out below; this set is the candidate set,
+// not the verdict.
+const BROWSER_GLOBAL_CANDIDATES = new Set([
+  "document",
+  "localStorage",
+  "sessionStorage",
+  "window",
+  "globalThis",
+]);
 
 /** Directory (repository-relative) whose source files this check covers. */
 export const WEBUI_SOURCE_DIRECTORY = "packages/webui/src";
@@ -444,9 +460,23 @@ export function categoriseViolation(from, to, fromLayers, toLayers) {
  * Non-literal dynamic imports are returned separately because they cannot be
  * resolved and must not become an unchecked escape.
  *
+ * Two non-import facts are also collected as text-anchored candidates and
+ * resolved later against the TypeScript program: `browserGlobalCandidates`
+ * records every identifier whose name matches an ambient browser global so a
+ * subsequent symbol check can confirm the access reaches a `lib.dom.d.ts`
+ * declaration (filtering out local parameters with the same name); and
+ * `callCandidates` records the position of every call expression whose
+ * callee is a property access (used to drive the writer-creation /
+ * transport-RPC rule).
+ *
  * @param {string} fileName
  * @param {string} sourceText
- * @returns {{references: Array<{specifier: string, line: number, kind: string}>, nonLiteralDynamic: Array<{line: number}>, browserGlobalUses: Array<{name: string, line: number}>}}
+ * @returns {{
+ *   references: Array<{specifier: string, line: number, kind: string}>,
+ *   nonLiteralDynamic: Array<{line: number}>,
+ *   browserGlobalCandidates: Array<{name: string, line: number, position: number}>,
+ *   callCandidates: Array<{line: number, position: number}>,
+ * }}
  */
 export function collectModuleReferences(fileName, sourceText) {
   const sourceFile = ts.createSourceFile(
@@ -458,7 +488,8 @@ export function collectModuleReferences(fileName, sourceText) {
   );
   const references = [];
   const nonLiteralDynamic = [];
-  const browserGlobalUses = [];
+  const browserGlobalCandidates = [];
+  const callCandidates = [];
   const lineOf = (node) =>
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 
@@ -506,16 +537,33 @@ export function collectModuleReferences(fileName, sourceText) {
         kind: "type-query",
       });
     }
-    if (
-      ts.isIdentifier(node) &&
-      BROWSER_GLOBALS.has(node.text) &&
-      !isDeclarationOrPropertyName(node)
-    )
-      browserGlobalUses.push({ name: node.text, line: lineOf(node) });
+    collectBrowserGlobalCandidate(node, browserGlobalCandidates, lineOf);
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      callCandidates.push({
+        line: lineOf(node),
+        position: node.getStart(sourceFile),
+      });
+    }
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return { references, nonLiteralDynamic, browserGlobalUses };
+  return { references, nonLiteralDynamic, browserGlobalCandidates, callCandidates };
+}
+
+/**
+ * Records the position of every identifier whose name matches a browser-global
+ * candidate, including the *base* identifier of a member expression
+ * (`window.document.title` records both `window` and `document`). Local
+ * declarations and member-access property names are excluded; the ambient vs.
+ * local judgement is left to a later pass that consults the TypeScript
+ * symbol's source file, so a parameter named `document` is correctly
+ * identified as local.
+ */
+function collectBrowserGlobalCandidate(node, out, lineOf) {
+  if (!ts.isIdentifier(node)) return;
+  if (!BROWSER_GLOBAL_CANDIDATES.has(node.text)) return;
+  if (isDeclarationOrPropertyName(node)) return;
+  out.push({ name: node.text, line: lineOf(node), position: node.getStart() });
 }
 
 function isDeclarationOrPropertyName(node) {
@@ -611,7 +659,14 @@ export function buildDependencyGraph(options) {
   const unresolved = [];
   const nonLiteralDynamic = [];
   const hostImports = [];
-  const browserGlobalUses = [];
+  // Text-only candidates; the ambient-or-local judgement is resolved once the
+  // TypeScript program is built, in `resolveAmbientBrowserGlobals`.
+  const browserGlobalCandidates = [];
+  // File-anchored receiver calls — methods invoked through a typed expression
+  // (`transport.sendMessage(...)`, `store.createSessionWriter(...)`). Resolved
+  // by the same program-driven pass; the rule consults the *declared* type of
+  // the receiver to decide whether the call is a writer-creation or RPC action.
+  const callCandidates = [];
 
   for (const absoluteFile of sourceFiles) {
     const from = normaliseSourcePath(repositoryRoot, absoluteFile);
@@ -622,9 +677,18 @@ export function buildDependencyGraph(options) {
     } catch {
       continue;
     }
-    const { references: fileReferences, nonLiteralDynamic: nonLiteral, browserGlobalUses: globals } =
-      collectModuleReferences(absoluteFile, text);
-    for (const entry of globals) browserGlobalUses.push({ file: from, ...entry });
+    const {
+      references: fileReferences,
+      nonLiteralDynamic: nonLiteral,
+      browserGlobalCandidates: globalCandidates,
+      callCandidates: calls,
+    } = collectModuleReferences(absoluteFile, text);
+    for (const entry of globalCandidates) {
+      browserGlobalCandidates.push({ file: from, absoluteFile, ...entry });
+    }
+    for (const entry of calls) {
+      callCandidates.push({ file: from, absoluteFile, ...entry });
+    }
     for (const entry of nonLiteral)
       nonLiteralDynamic.push({ file: from, line: entry.line });
     for (const reference of fileReferences) {
@@ -674,6 +738,15 @@ export function buildDependencyGraph(options) {
       });
     }
   }
+
+  const { browserGlobalUses, callSites } = resolveAmbientFacts(
+    sourceFiles,
+    repositoryRoot,
+    optionsFor,
+    browserGlobalCandidates,
+    callCandidates,
+  );
+
   return {
     sourceDirectory,
     files: sourceFiles
@@ -685,7 +758,152 @@ export function buildDependencyGraph(options) {
     nonLiteralDynamic,
     hostImports,
     browserGlobalUses,
+    callSites,
   };
+}
+
+/**
+ * Resolves text-only candidates against the TypeScript program. Two distinct
+ * results come out of one program build:
+ *
+ *  * `browserGlobalUses` keeps only the candidates whose symbol's *declaration*
+ *    lives inside a TypeScript lib `*.d.ts` (`lib.dom.d.ts`, `lib.es5.d.ts`).
+ *    Local parameters and member-access names never produce such a
+ *    declaration, so they are filtered out by construction.
+ *  * `callSites` records the calls whose receiver's declared type is one of
+ *    the writer-factory / transport-RPC interfaces the plan lists (§7.5,
+ *    §7.7). Each entry keeps the method name, the receiver's declared
+ *    interface name, and the source file of the declaration so a stale-rename
+ *    or an accidentally-shared interface surfaces immediately.
+ */
+function resolveAmbientFacts(sourceFiles, repositoryRoot, optionsFor, globalCandidates, callCandidates) {
+  if (sourceFiles.length === 0) {
+    return { browserGlobalUses: [], callSites: [] };
+  }
+  const groups = new Map();
+  const globalByFile = new Map();
+  for (const entry of globalCandidates) {
+    if (!globalByFile.has(entry.absoluteFile)) globalByFile.set(entry.absoluteFile, []);
+    globalByFile.get(entry.absoluteFile).push(entry);
+  }
+  const callsByFile = new Map();
+  for (const entry of callCandidates) {
+    if (!callsByFile.has(entry.absoluteFile)) callsByFile.set(entry.absoluteFile, []);
+    callsByFile.get(entry.absoluteFile).push(entry);
+  }
+  for (const absoluteFile of sourceFiles) {
+    const relative = normaliseSourcePath(repositoryRoot, absoluteFile) ?? absoluteFile.replaceAll("\\", "/");
+    const compilerOptions = optionsFor(relative);
+    const signature = JSON.stringify({
+      configFilePath: compilerOptions.configFilePath,
+      module: compilerOptions.module,
+      moduleResolution: compilerOptions.moduleResolution,
+      target: compilerOptions.target,
+      paths: compilerOptions.paths,
+      baseUrl: compilerOptions.baseUrl,
+      types: compilerOptions.types,
+    });
+    if (!groups.has(signature)) groups.set(signature, { options: compilerOptions, files: [] });
+    groups.get(signature).files.push(absoluteFile);
+  }
+
+  const browserGlobalUses = [];
+  const callSites = [];
+
+  for (const { options, files: rootNames } of groups.values()) {
+    let program;
+    try {
+      program = ts.createProgram({
+        rootNames,
+        options: { ...options, noEmit: true, skipLibCheck: true },
+      });
+    } catch {
+      // Program construction can fail on edge fixtures (e.g. fixtures with no
+      // real source set). Treat the candidates as unresolvable rather than
+      // crash the gate — the candidates that did resolve still drive the
+      // judgements that matter.
+      continue;
+    }
+    const checker = program.getTypeChecker();
+    for (const absoluteFile of rootNames) {
+      const sourceFile = program.getSourceFile(absoluteFile);
+      if (!sourceFile) continue;
+      const relative = normaliseSourcePath(repositoryRoot, absoluteFile) ?? absoluteFile.replaceAll("\\", "/");
+      const findNodeAt = (position) => {
+        let match;
+        const visit = (node) => {
+          if (match) return;
+          if (node.getStart(sourceFile) === position && ts.isIdentifier(node)) {
+            match = node;
+            return;
+          }
+          ts.forEachChild(node, visit);
+        };
+        ts.forEachChild(sourceFile, visit);
+        return match;
+      };
+      const isLibDeclaration = (symbol) => {
+        if (!symbol) return false;
+        const declarations = symbol.declarations ?? [];
+        // `globalThis` is synthesised inside the TypeScript checker rather
+        // than declared in any `lib.*.d.ts`. A local user declaration (very
+        // rare) shadows it; otherwise the access is ambient.
+        if (symbol.name === "globalThis") {
+          return !declarations.some((decl) => !decl.getSourceFile().isDeclarationFile);
+        }
+        return declarations.some((declaration) => {
+          const fileName = declaration.getSourceFile().fileName.replaceAll("\\", "/");
+          return declaration.getSourceFile().isDeclarationFile
+            && /\/typescript\/lib\/lib\.(?:dom|es5|webworker|scripthost|es2020|esnext(?:\.full)?)\.d\.ts$/u.test(fileName);
+        });
+      };
+      for (const candidate of globalByFile.get(absoluteFile) ?? []) {
+        const node = findNodeAt(candidate.position);
+        if (!node) continue;
+        const symbol = checker.getSymbolAtLocation(node);
+        if (isLibDeclaration(symbol)) {
+          browserGlobalUses.push({ file: relative, name: candidate.name, line: candidate.line });
+        }
+      }
+      for (const candidate of callsByFile.get(absoluteFile) ?? []) {
+        // The candidate.position recorded here is the *call expression* start;
+        // recurse one step to recover the property-access expression so we can
+        // ask the checker about the receiver's declared type. Without this
+        // indirection the receiver and method names cannot be resolved.
+        const findCallExpression = () => {
+          let match;
+          const visit = (node) => {
+            if (match) return;
+            if (node.getStart(sourceFile) === candidate.position && ts.isCallExpression(node)) {
+              match = node;
+              return;
+            }
+            ts.forEachChild(node, visit);
+          };
+          ts.forEachChild(sourceFile, visit);
+          return match;
+        };
+        const call = findCallExpression();
+        if (!call || !ts.isPropertyAccessExpression(call.expression)) continue;
+        const propertyAccess = call.expression;
+        const methodSymbol = checker.getSymbolAtLocation(propertyAccess.name);
+        const methodName = propertyAccess.name.text;
+        const methodDeclaration = methodSymbol?.valueDeclaration ?? methodSymbol?.declarations?.[0];
+        const methodSource = methodDeclaration?.getSourceFile().fileName.replaceAll("\\", "/") ?? "";
+        const receiverType = checker.getTypeAtLocation(propertyAccess.expression);
+        const receiverSymbol = receiverType.aliasSymbol ?? receiverType.getSymbol();
+        const receiverName = receiverSymbol?.name ?? "";
+        callSites.push({
+          file: relative,
+          line: sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile)).line + 1,
+          method: methodName,
+          receiver: receiverName,
+          methodSource,
+        });
+      }
+    }
+  }
+  return { browserGlobalUses, callSites };
 }
 
 // ---------------------------------------------------------------------------
@@ -757,30 +975,147 @@ function nonLiteralDynamicRule(graph) {
   return { pass: violations.length === 0, violations };
 }
 
+// Per-name exemption policy for ambient browser globals. Each candidate has
+// its own allowed layer set (and an optional path allowlist) so the rule can
+// permit bindings that legitimately listen to `window` events without
+// letting arbitrary `localStorage` access slip into a component.
+//
+// `window`/`globalThis` are legitimate in bindings (hashchange, online event
+// reconnection), root (composition) and infrastructure (browser IO). Local
+// parameters with the same name are still filtered by the AST ambient check.
+// `document`/`localStorage`/`sessionStorage` are restricted to a narrow IO
+// owner list — they are what the lead flagged as application/projection
+// violations and what the storage injection refactor removed from bindings.
+const BROWSER_GLOBAL_POLICY = {
+  window: { layers: new Set(["root", "bindings", "infrastructure"]) },
+  // `globalThis` is also the Node-side ambient object — the runtime and
+  // runtime-port layers may legitimately read platform properties from it
+  // (fetch, crypto, performance). The browser-specific globals below stay
+  // restricted to the browser IO surface.
+  globalThis: {
+    layers: new Set(["root", "bindings", "infrastructure", "runtime", "runtime-port"]),
+  },
+  document: {
+    layers: new Set(["root", "infrastructure"]),
+    files: new Set(["client/infrastructure/storage.ts"]),
+  },
+  localStorage: {
+    layers: new Set(["root", "infrastructure"]),
+    files: new Set(["client/infrastructure/storage.ts"]),
+  },
+  sessionStorage: {
+    layers: new Set(["root", "infrastructure"]),
+    files: new Set(["client/infrastructure/storage.ts"]),
+  },
+};
+
+function isBrowserGlobalAllowed(name, file, layers) {
+  const policy = BROWSER_GLOBAL_POLICY[name];
+  if (!policy) return false;
+  if (policy.files?.has(file)) return true;
+  return layers.some((layer) => policy.layers.has(layer));
+}
+
 function forbiddenGlobalRule(graph) {
   const violations = graph.browserGlobalUses.filter((entry) => {
     const layers = classifyLayers(entry.file);
-    return layers.some((layer) => layer === "application" || layer === "bindings");
+    // The candidates passed through `resolveAmbientFacts` are already filtered
+    // to those whose symbols live in lib.dom.d.ts / lib.es5.d.ts. Local
+    // parameters and member-access names never produce such declarations, so
+    // they have been dropped before this rule runs.
+    return !isBrowserGlobalAllowed(entry.name, entry.file, layers);
   }).map((entry) => ({
     kind: "browser-global",
     file: entry.file,
     line: entry.line,
     global: entry.name,
-    detail: `${entry.file}:${entry.line}: ${classifyLayers(entry.file).join("|")} may not access browser global "${entry.name}" directly`,
+    detail: `${entry.file}:${entry.line}: ${classifyLayers(entry.file).join("|")} may not access ambient browser capability "${entry.name}" directly`,
   }));
   return { pass: violations.length === 0, violations };
 }
 
+// Layers whose modules may import Node builtins directly. Everything else —
+// including `client/` packages and `shared/` contracts — must reach the host
+// through the harness port / runtime adapter, never through `import "fs"`.
+const NODE_BUILTIN_ALLOWED_LAYERS = new Set(["server", "runtime", "runtime-port"]);
+
+function isNodeBuiltinSpecifier(specifier) {
+  if (specifier.startsWith("node:")) return true;
+  // Bare specifier; only a Node builtin if its name is registered as one and
+  // no relative/file path is implied.
+  if (specifier.startsWith(".") || specifier.startsWith("/")) return false;
+  return BUILTIN_NODE_MODULES.has(specifier);
+}
+
 function forbiddenNodeBuiltinRule(graph) {
   const violations = graph.hostImports.filter((entry) => {
-    return entry.specifier.startsWith("node:") && classifyLayers(entry.from).includes("shared");
+    if (!isNodeBuiltinSpecifier(entry.specifier)) return false;
+    const layers = classifyLayers(entry.from);
+    return layers.every((layer) => !NODE_BUILTIN_ALLOWED_LAYERS.has(layer));
   }).map((entry) => ({
-    kind: "shared-node-builtin",
+    kind: "node-builtin",
     file: entry.from,
     line: entry.line,
     specifier: entry.specifier,
-    detail: `${entry.from}:${entry.line}: shared may not import Node builtin "${entry.specifier}"`,
+    detail: `${entry.from}:${entry.line}: ${classifyLayers(entry.from).join("|")} may not import Node builtin "${entry.specifier}"`,
   }));
+  return { pass: violations.length === 0, violations };
+}
+
+/**
+ * Capability interface names whose method invocations are reserved for
+ * application / infrastructure code. A `bindings` or `view` layer
+ * performing one of these calls is reaching for a writer or a business RPC
+ * that belongs inside the application.
+ */
+const FORBIDDEN_RECEIVER_INTERFACES = new Map([
+  // [declaredReceiverName, forbiddenMethodNames]
+  ["WebuiSessionStore", new Set(["createSessionWriter", "createInteractionWriter"])],
+  ["WebuiTransport", null], // any method call is a business RPC; null = wildcard
+  ["SessionPort", null],
+  ["ExecutionPort", null],
+  ["InteractionPort", null],
+  ["WorkspacePort", null],
+  ["SettingsPort", null],
+  ["AccountPort", null],
+  ["PluginPort", null],
+  ["TerminalPort", null],
+]);
+
+// Layers that must *not* invoke a writer-factory or a business-RPC method.
+// The `bindings` layer is intentionally absent: it is the legitimate bridge
+// that turns a writer into a command surface (plan §7.2
+// `client/bindings/use-session-state.ts`). Components and lower-level layers
+// (view/domain/contracts/shared/mechanisms) do not own capability
+// interactions, so a writer or RPC call there is treated as a sign the
+// application contract has slipped.
+const CALL_FORBIDDEN_LAYERS = new Set([
+  "view",
+  "domain",
+  "contracts",
+  "shared",
+  "mechanisms",
+]);
+
+function forbiddenActualCallRule(graph) {
+  const violations = [];
+  for (const site of graph.callSites ?? []) {
+    const allowed = FORBIDDEN_RECEIVER_INTERFACES.get(site.receiver);
+    if (allowed === undefined) continue;
+    if (allowed !== null && !allowed.has(site.method)) continue;
+    const layers = classifyLayers(site.file);
+    // Allow when the file lives in `application` (the workflow owner) or
+    // `infrastructure` (the IO owner). A split layer whose *every* target
+    // layer is forbidden fails the check.
+    if (layers.every((layer) => !CALL_FORBIDDEN_LAYERS.has(layer))) continue;
+    violations.push({
+      kind: "forbidden-call",
+      file: site.file,
+      line: site.line,
+      target: `${site.receiver}.${site.method}`,
+      detail: `${site.file}:${site.line}: ${layers.join("|")} may not invoke writer or business-RPC method "${site.receiver}.${site.method}"`,
+    });
+  }
   return { pass: violations.length === 0, violations };
 }
 
@@ -848,6 +1183,7 @@ export const rules = Object.freeze([
   browserOnlyRule,
   forbiddenGlobalRule,
   forbiddenNodeBuiltinRule,
+  forbiddenActualCallRule,
   unresolvedRule,
   nonLiteralDynamicRule,
   cycleRule,
@@ -864,6 +1200,8 @@ export const rules = Object.freeze([
  *   unresolved: Array<object>,
  *   nonLiteralDynamic: Array<object>,
  *   cycles: Array<object>,
+ *   nodeBuiltins: Array<object>,
+ *   forbiddenCalls: Array<object>,
  * }}
  */
 export function evaluateGraph(graph) {
@@ -871,15 +1209,17 @@ export function evaluateGraph(graph) {
   const direction = results[0].violations;
   const browserOnly = results[1].violations;
   const browserGlobals = results[2].violations;
-  const sharedNodeBuiltins = results[3].violations;
-  const unresolved = results[4].violations;
-  const nonLiteralDynamic = results[5].violations;
-  const cycles = results[6].violations;
+  const nodeBuiltins = results[3].violations;
+  const forbiddenCalls = results[4].violations;
+  const unresolved = results[5].violations;
+  const nonLiteralDynamic = results[6].violations;
+  const cycles = results[7].violations;
   const violations = [
     ...direction,
     ...browserOnly,
     ...browserGlobals,
-    ...sharedNodeBuiltins,
+    ...nodeBuiltins,
+    ...forbiddenCalls,
     ...unresolved,
     ...nonLiteralDynamic,
     ...cycles,
@@ -890,7 +1230,9 @@ export function evaluateGraph(graph) {
     direction,
     browserOnly,
     browserGlobals,
-    sharedNodeBuiltins,
+    nodeBuiltins,
+    forbiddenCalls,
+    sharedNodeBuiltins: nodeBuiltins,
     unresolved,
     nonLiteralDynamic,
     cycles,

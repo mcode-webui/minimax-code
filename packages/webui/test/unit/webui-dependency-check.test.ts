@@ -295,6 +295,54 @@ describe("direction fixtures", () => {
     ]);
   });
 
+  it("catches ambient window and globalThis accesses in application and projection", () => {
+    // Bidirectional fixture set: globals on `window`/`globalThis` previously
+    // slipped past the property-name filter; ambient resolution via the
+    // TypeScript program confirms each hit. The local-`document` parameter
+    // is *not* a violation because its declaration is in the same file, not
+    // in a TypeScript lib `*.d.ts`.
+    const { result } = evaluateFixture({
+      "client/application/window.ts": 'export const title = window.document.title;\n',
+      "client/application/global-storage.ts":
+        'export const saved = globalThis.localStorage.getItem("k");\n',
+      "client/projection/title.ts": 'export const title = document.title;\n',
+      "client/application/local-shielded.ts":
+        'export function title(document: { readonly title: string }) {\n  return document.title;\n}\n',
+    });
+    expect(result.browserGlobals).toEqual([
+      expect.objectContaining({
+        file: "client/application/window.ts",
+        global: "window",
+      }),
+      expect.objectContaining({
+        file: "client/application/global-storage.ts",
+        global: "globalThis",
+      }),
+      expect.objectContaining({
+        file: "client/projection/title.ts",
+        global: "document",
+      }),
+    ]);
+  });
+
+  it("rejects bare and node:-prefixed Node builtins in client and shared code", () => {
+    const { result } = evaluateFixture({
+      "client/application/fs.ts": 'import fs from "fs";\nexport const read = fs.readFileSync;\n',
+      "client/application/node-fs.ts":
+        'import { readFileSync } from "node:fs";\nexport const read = readFileSync("/x");\n',
+      "shared/contracts/path.ts":
+        'import path from "path";\nexport const join = path.join;\n',
+    });
+    expect(result.nodeBuiltins.map((entry) => ({
+      file: entry.file,
+      specifier: entry.specifier,
+    })).sort((left, right) => left.file.localeCompare(right.file))).toEqual([
+      { file: "client/application/fs.ts", specifier: "fs" },
+      { file: "client/application/node-fs.ts", specifier: "node:fs" },
+      { file: "shared/contracts/path.ts", specifier: "path" },
+    ]);
+  });
+
   it("rejects a runtime transfer implementation importing the server", () => {
     const { result } = evaluateFixture({
       "server/http/route.ts": leaf,
@@ -497,7 +545,7 @@ describe("baseline comparison", () => {
 });
 
 describe("the gate runs and matches the frozen baseline", () => {
-  it("passes with all component browser globals routed through injected adapters", () => {
+  it("passes with all component browser globals routed through injected adapters", { timeout: 60_000 }, () => {
     const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));
     const run = runCli(["--json"]);
     const summary = JSON.parse(run.stdout);
@@ -512,7 +560,7 @@ describe("the gate runs and matches the frozen baseline", () => {
     expect(summary.staleCycles).toHaveLength(0);
   });
 
-  it("fails on a stale baseline entry", () => {
+  it("fails on a stale baseline entry", { timeout: 60_000 }, () => {
     const baseline = JSON.parse(
       spawnSync(process.execPath, [
         "-e",

@@ -111,6 +111,46 @@ export interface WebuiStreamLoopArgs {
   readonly afterCursor?: string;
 }
 
+/**
+ * The stream fields an attachment may seed while it loads history. Closed on
+ * purpose (plan §7.6 "who may write"): the loop's attach path needs the context
+ * snapshot, the elapsed anchor, the `resume_overflow` flag it is repairing and
+ * the refusal it clears — and nothing else. It deliberately excludes
+ * `subscription` and `lastClaimedGeneration`, which the generation fence reads;
+ * an extra that could write them would let any holder of a superseded sink
+ * re-admit its own writes.
+ */
+export interface WebuiStreamLoopExtra {
+  readonly contextUsage?: Record<string, unknown>;
+  readonly processingStartedAtMs?: number;
+  readonly resumeRequired?: boolean;
+  readonly refusal?: string;
+}
+
+/**
+ * Applies a {@link WebuiStreamLoopExtra} to a stream state. The four declared
+ * fields are copied one by one rather than spread, so an undeclared key — from
+ * a plain-JavaScript caller or a cast — cannot reach any other field of the
+ * slice. A field absent from `extra` is left untouched, which keeps the
+ * "seed, do not patch" semantics the spread had for these four.
+ */
+export function applyWebuiStreamLoopExtra(
+  current: WebuiStreamState,
+  extra: WebuiStreamLoopExtra,
+): WebuiStreamState {
+  const has = (key: keyof WebuiStreamLoopExtra): boolean =>
+    Object.prototype.hasOwnProperty.call(extra, key);
+  return {
+    ...current,
+    ...(has("contextUsage") ? { contextUsage: extra.contextUsage } : {}),
+    ...(has("processingStartedAtMs")
+      ? { processingStartedAtMs: extra.processingStartedAtMs }
+      : {}),
+    ...(has("resumeRequired") ? { resumeRequired: extra.resumeRequired } : {}),
+    ...(has("refusal") ? { refusal: extra.refusal } : {}),
+  };
+}
+
 export interface WebuiStreamLoopSink {
   /** Push a single frame through the reducer; called for every frame. */
   readonly applyFrame: (frame: WebuiStreamFrame) => void;
@@ -123,6 +163,10 @@ export interface WebuiStreamLoopSink {
    * `session.start` event for our own turn adopts the lease instead of
    * opening a second stream. Local sends claim as `local-send`; attachments
    * claim as `recovered` because the turn was not ours.
+   *
+   * A sink claims **once**. Implementations return the generation they already
+   * own on a repeat call instead of minting another one, because a second claim
+   * would re-stamp the fence and let a superseded loop take the lease back.
    *
    * Optional: a caller that does not model subscription ownership (the
    * throw-on-everything failure fixtures, for instance) simply has no lease to
@@ -144,8 +188,14 @@ export interface WebuiStreamLoopSink {
   /**
    * Extra stream fields an attachment seeds while loading history — the
    * context snapshot and the turn start the live elapsed counter reads.
+   *
+   * The parameter is {@link WebuiStreamLoopExtra}, not `Partial<WebuiStreamState>`:
+   * the open-ended version also accepted `subscription` and
+   * `lastClaimedGeneration`, the two fields the generation fence itself reads,
+   * so a caller holding a superseded sink could re-stamp itself as the newest
+   * claimant and every write after that passed the fence.
    */
-  readonly setStreamExtra?: (extra: Partial<WebuiStreamState>) => void;
+  readonly setStreamExtra?: (extra: WebuiStreamLoopExtra) => void;
   /**
    * Record an unrecoverable failure with a user-visible reason. The
    * second argument is set when the reducer had already accepted at
@@ -299,7 +349,18 @@ export function buildWebuiStreamLoopSink(
     return current.lastClaimedGeneration === generation;
   };
   return {
+    /**
+     * Claims once and only once. A second claim would mint a new generation and
+     * write it as `lastClaimedGeneration`, which is the whole escalation the
+     * fence exists to stop: a superseded loop still holding its own sink could
+     * take the lease back from the turn that replaced it and then write
+     * `refused` over that turn's state. The loop claims at most once per run —
+     * its attach and local-send claims are exclusive branches behind the `sent`
+     * flag — so returning the first claim keeps every caller's contract and
+     * makes a repeat inert.
+     */
     claimSubscription: (owner, turnId) => {
+      if (generation !== undefined) return generation;
       const next = streamState.nextSubscriptionGeneration();
       generation = next;
       setStream((current) => ({
@@ -322,7 +383,9 @@ export function buildWebuiStreamLoopSink(
     setMessages: (messages) =>
       setStream((current) => (mine(current) ? { ...current, messages } : current)),
     setStreamExtra: (extra) =>
-      setStream((current) => (mine(current) ? { ...current, ...extra } : current)),
+      setStream((current) =>
+        mine(current) ? applyWebuiStreamLoopExtra(current, extra) : current,
+      ),
     // Scoped by generation: if a newer loop already claimed, this clears
     // nothing.
     releaseSubscription: () => {

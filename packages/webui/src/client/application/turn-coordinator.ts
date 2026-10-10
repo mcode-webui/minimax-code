@@ -26,6 +26,7 @@ import type { WebuiStreamState } from "../projection/stream-state.js";
 import { reduceWebuiStreamFrame } from "../projection/stream-state.js";
 import { fenceWebuiLeaseStream } from "../mechanisms/stream-lease.js";
 import {
+  applyWebuiStreamLoopExtra,
   runWebuiStreamLoop,
   type WebuiStreamLoopSink,
 } from "../mechanisms/stream-loop.js";
@@ -73,7 +74,10 @@ function createLeaseSink(
     );
   };
   return {
+    // Claims once, like every sink: a repeat call hands back the generation
+    // this attempt already owns instead of taking the lease from a newer one.
     claimSubscription: (owner, turnId) => {
+      if (generation !== undefined) return generation;
       generation = leases.claim(sessionId, owner, turnId);
       return generation;
     },
@@ -86,7 +90,10 @@ function createLeaseSink(
     applyFrame: (frame) => write((current) => reduceWebuiStreamFrame(current, frame)),
     setPhase: (phase) => write((current) => ({ ...current, phase })),
     setMessages: (messages) => write((current) => ({ ...current, messages })),
-    setStreamExtra: (extra) => write((current) => ({ ...current, ...extra })),
+    // The seed fields only, through the same closed projection the loop sink
+    // uses — not a spread of the caller's object.
+    setStreamExtra: (extra) =>
+      write((current) => applyWebuiStreamLoopExtra(current, extra)),
     refuse: (reason, options) =>
       write((current) => ({
         ...current,

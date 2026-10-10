@@ -27,16 +27,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { PluginManagement } from "../../src/client/components/PluginManagement.js";
-import type { WebuiTransport } from "../../src/client/contracts/transport.js";
-
-const transport = {
-  pluginManagement: async () => ({ plugins: [] }),
-} as unknown as WebuiTransport;
-
 const marketplace = (initialArea: "plugins" | "skills"): string =>
   renderToStaticMarkup(
     createElement(PluginManagement, {
-      transport,
       initialArea,
     }),
   );

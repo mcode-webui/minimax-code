@@ -55,7 +55,7 @@ import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiUserProfil
  * into a server module; a test pins both to the same literal so the two cannot
  * drift silently.
  */
-export const WEBUI_DEFAULT_AGENT_NAME = "mavis";
+export { WEBUI_DEFAULT_AGENT_NAME } from "../shared/contracts/personalization.js";
 
 /**
  * Mirrors `GLOBAL_INSTRUCTIONS_MAX_BYTES` in

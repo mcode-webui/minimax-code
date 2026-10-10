@@ -109,3 +109,12 @@ export interface WebuiMemorySettingsView {
   readonly enabled: boolean;
   readonly proactive: boolean;
 }
+
+/**
+ * The agent whose profile files a browser request addresses when it names none.
+ *
+ * It is a wire-level default — the server operation and the runtime adapter must
+ * agree on it — so it lives with the shared contracts rather than with the
+ * runtime implementation. The runtime re-exports it for its own consumers.
+ */
+export const WEBUI_DEFAULT_AGENT_NAME = "mavis";

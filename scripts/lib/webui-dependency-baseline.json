@@ -10,16 +10,6 @@
   },
   "entries": [
     {
-      "from": "server/operation/agent-memory.ts",
-      "to": "runtime/profile-files.ts",
-      "layerFrom": "server",
-      "layerTo": "runtime",
-      "rule": "server -> runtime",
-      "category": "server-operation-to-runtime",
-      "stage": 3,
-      "reason": "A server operation module imports runtime implementation. Stage 3 rewires the operation layer to register typed bindings instead of calling the runner/profile implementation, so the edge disappears then."
-    },
-    {
       "from": "server/operation/handlers/commands.ts",
       "to": "runtime/commands/runner.ts",
       "layerFrom": "server",

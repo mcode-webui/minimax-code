@@ -506,9 +506,7 @@ describe("round-3 stream state and transcript render units", () => {
 describe("plugin management WebUI operation", () => {
   it("renders its entry surface and rejects actions outside the allowlist", () => {
     const markup = renderToStaticMarkup(
-      createElement(PluginManagement, {
-        transport: { pluginManagement: async () => ({ plugins: [] }) },
-      }),
+      createElement(PluginManagement, {}),
     );
     expect(markup).toContain('data-testid="plugin-management"');
     expect(markup).toContain("市场");

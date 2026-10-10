@@ -117,3 +117,44 @@ describe("a settings write invalidates exactly what it affects", () => {
     );
   });
 });
+
+describe("an optimistic provider patch stays the owner's", () => {
+  it("shows the patched models at once and the reload is the truth", async () => {
+    let providers: readonly Record<string, unknown>[] = [
+      { providerId: "a", models: [{ modelId: "m1", enabled: true }] },
+    ];
+    const workflows = createWebuiSettingsWorkflows({
+      port: {
+        listUserModelProviders: async () => providers,
+        updateUserModelProvider: async (body) => {
+          providers = [{ providerId: "a", models: body.models as readonly Record<string, unknown>[] }];
+          return { ok: true };
+        },
+      },
+    });
+
+    await workflows.loadProviders();
+    workflows.patchProviderModels("a", [{ modelId: "m1", enabled: false }]);
+    expect(
+      (workflows.getSnapshot().providers.value?.[0]?.models as readonly Record<string, unknown>[])[0]?.enabled,
+    ).toBe(false);
+  });
+
+  it("reloads the truth when the write fails", async () => {
+    const workflows = createWebuiSettingsWorkflows({
+      port: {
+        listUserModelProviders: async () => [
+          { providerId: "a", models: [{ modelId: "m1", enabled: true }] },
+        ],
+        updateUserModelProvider: async () => Promise.reject(new Error("nope")),
+      },
+    });
+
+    await workflows.loadProviders();
+    workflows.patchProviderModels("a", [{ modelId: "m1", enabled: false }]);
+    await expect(workflows.updateProvider({ providerId: "a" })).rejects.toThrow("nope");
+    expect(
+      (workflows.getSnapshot().providers.value?.[0]?.models as readonly Record<string, unknown>[])[0]?.enabled,
+    ).toBe(true);
+  });
+});

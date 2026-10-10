@@ -1298,7 +1298,6 @@ export function WebuiClientFoundationApp(
                     if (!selectedSessionId || !selectedSession?.workspaceDir) return;
                     dispatchWorkspacePanel({ type: "open-file", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir, path, lineStart: line, lineEnd: line });
                   }}
-                  transport={transport}
                   onCreateMemorySession={createMemorySession}
                 />
               </div> : null}

@@ -18,8 +18,7 @@ import type {
   WebuiUsageQuotaWindowView,
 } from "../../shared/contracts/usage-quota.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
-import type { WebuiTransport } from "../contracts/transport.js";
-import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsModal.js";
+import { SettingsModal } from "./SettingsModal.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import type { MemoryHandoff } from "./settings/PersonalizationSettings.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
@@ -29,15 +28,6 @@ import {
 } from "../bindings/use-query-state.js";
 
 type AccountStatus = Record<string, unknown>;
-
-/** Capability subset the user menu actually reads through `transport`.
- *  The menu itself only needs `getAccountStatus` and `getUsageQuota`, but
- *  the same reference is forwarded to `<SettingsModal>` which needs the
- *  full 9-member set — so the menu accepts that same set to avoid a second
- *  type split at the shell. `getSigninPanel` and `claimSignin` are not in
- *  this contract (they live in `WebuiTransport` but the brief keeps them
- *  as separate props on the menu for now), so they stay as siblings. */
-type WebuiUserMenuCapabilities = WebuiSettingsModalCapabilities;
 
 interface UserMenuProps {
   readonly collapsed: boolean;
@@ -51,12 +41,6 @@ interface UserMenuProps {
   /** Forwarded to the settings modal. The review page turns a diff line into
    *  a real editor jump through it. */
   readonly onOpenFileLine?: (path: string, line: number) => void;
-  /** Capability source for the settings modal. Typed as the narrow 9-member
-   *  contract so neither the menu nor the modal can accidentally start reading
-   *  members they do not consume. The menu's own account, usage and check-in
-   *  answers come from the application account workflow (ticket #52), not from
-   *  here. */
-  readonly transport?: WebuiUserMenuCapabilities;
   /** Forwarded to the settings modal, which owns 记忆摘要's 「在会话中创建」.
    *  The menu neither interprets nor stores it. */
   readonly onCreateMemorySession?: (input: MemoryHandoff) => void;
@@ -730,7 +714,6 @@ export function UserMenu({
   version,
   workspaceDir,
   onOpenFileLine,
-  transport,
   onCreateMemorySession,
 }: UserMenuProps): ReactElement {
   // The account, usage, check-in and login answers all come from the one
@@ -905,6 +888,6 @@ export function UserMenu({
         loadUsage(true);
       }}
     />
-    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
+    {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
   </>;
 }

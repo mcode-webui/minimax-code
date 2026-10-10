@@ -92,6 +92,9 @@ export interface WebuiSessionWorkflows {
   readonly loadArchived: () => Promise<void>;
   /** Delete one archived session and refresh the archived list. */
   readonly removeArchived: (sessionId: string) => Promise<void>;
+  /** Take one session back out of the archive and refresh both views. */
+  readonly unarchive: (sessionId: string) => Promise<void>;
+  readonly canUnarchive: boolean;
   /** Whether a flat-list loader is wired (the shell skips the first load when seeded). */
   readonly canLoadFlat: boolean;
   readonly canLoadTree: boolean;
@@ -297,6 +300,13 @@ export function createWebuiSessionWorkflows(deps: {
       await port.deleteSession({ id: sessionId });
       await loadArchived();
     },
+    unarchive: async (sessionId) => {
+      if (!port.archiveSession) return;
+      await port.archiveSession({ id: sessionId, archived: false });
+      await refresh();
+      if (archived.status !== "idle") await loadArchived();
+    },
+    canUnarchive: port.archiveSession !== undefined,
     canFork: port.forkSession !== undefined,
     fork: async (sessionId, createIsolatedWorktree) => {
       if (!port.forkSession) return undefined;

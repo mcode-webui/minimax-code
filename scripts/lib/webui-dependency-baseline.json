@@ -40,16 +40,6 @@
       "canonical": "client/projection/stream-state.ts -> client/stream-instrumentation.ts -> client/projection/stream-state.ts",
       "stage": 4,
       "reason": "Stream frame reduction and stream instrumentation reference each other. The reducer moved out of client/stream.ts to client/projection/stream-state.ts (plan §7.3) but the back edge remains until stage 4 separates the stream lease/loop mechanisms from the projection state."
-    },
-    {
-      "cycle": [
-        "client/components/SettingsModal.tsx",
-        "client/components/settings/UsageModelSettings.tsx",
-        "client/components/SettingsModal.tsx"
-      ],
-      "canonical": "client/components/SettingsModal.tsx -> client/components/settings/UsageModelSettings.tsx -> client/components/SettingsModal.tsx",
-      "stage": 6,
-      "reason": "Two React components reference each other. Stage 6 finalises the presentation boundary and removes the reciprocal import."
     }
   ],
   "allowances": [

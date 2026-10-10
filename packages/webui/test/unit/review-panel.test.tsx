@@ -324,8 +324,10 @@ describe("the chosen workspace reaches the review load", () => {
    * the review page's own call: the worktree page is handed the same loader, so
    * an unscoped substring check is satisfied by that call alone — which is
    * exactly what the first negative-injection run found. */
-  it("gives the review page the session loader it lists workspaces from", () => {
-    expect(source).toMatch(/<SettingsReviewPage[^>]*loadSessions=\{loadSessions\}/u);
+  it("lists workspaces from the session catalog, not a session fetch of its own", () => {
+    expect(page).toContain("selectWebuiCatalogFlatPage");
+    expect(page).toContain("useWebuiSessionStoreContext");
+    expect(page).not.toContain("loadSessions");
   });
 
   /* Asserting that the picker component exists would still pass if the page
@@ -343,6 +345,6 @@ describe("the chosen workspace reaches the review load", () => {
   });
 
   it("loads the summary for the effective workspace, not the raw prop", () => {
-    expect(page).toContain("getWorkspaceReviewSummary({ workspaceDir: effectiveWorkspaceDir })");
+    expect(page).toContain("loadReviewSummary(tabId, effectiveWorkspaceDir)");
   });
 });

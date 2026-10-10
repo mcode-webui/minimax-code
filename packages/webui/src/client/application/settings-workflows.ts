@@ -161,6 +161,15 @@ export interface WebuiSettingsWorkflows {
   }) => Promise<void>;
 
   readonly loadProviders: () => Promise<void>;
+  /**
+   * Apply an optimistic local patch to one provider's `models` list, so a
+   * toggle or a reorder shows immediately. The reload that follows the write is
+   * the truth, and a failed write rolls the patch back by reloading.
+   */
+  readonly patchProviderModels: (
+    providerId: string,
+    models: readonly Record<string, unknown>[],
+  ) => void;
   readonly createProvider: (body: Record<string, unknown>) => Promise<unknown>;
   readonly updateProvider: (body: Record<string, unknown>) => Promise<unknown>;
   readonly deleteProvider: (providerId: string) => Promise<unknown>;
@@ -388,6 +397,25 @@ export function createWebuiSettingsWorkflows(deps: {
     await loadProviders();
   };
 
+  const patchProviderModels = (
+    providerId: string,
+    models: readonly Record<string, unknown>[],
+  ): void => {
+    set((current) => {
+      const providers = current.providers.value;
+      if (!providers) return current;
+      return {
+        ...current,
+        providers: {
+          status: "ready",
+          value: providers.map((provider) =>
+            provider.providerId === providerId ? { ...provider, models } : provider,
+          ),
+        },
+      };
+    });
+  };
+
   const createProvider = async (body: Record<string, unknown>): Promise<unknown> => {
     if (!port.createUserModelProvider) throw new Error("当前运行时不支持自定义提供商。");
     const result = await port.createUserModelProvider(body);
@@ -397,9 +425,15 @@ export function createWebuiSettingsWorkflows(deps: {
 
   const updateProvider = async (body: Record<string, unknown>): Promise<unknown> => {
     if (!port.updateUserModelProvider) throw new Error("当前运行时不支持自定义提供商。");
-    const result = await port.updateUserModelProvider(body);
-    await afterProviderMutation();
-    return result;
+    try {
+      const result = await port.updateUserModelProvider(body);
+      await afterProviderMutation();
+      return result;
+    } catch (reason) {
+      // Undo an optimistic patch by re-reading the truth.
+      await loadProviders();
+      throw reason;
+    }
   };
 
   const deleteProvider = async (providerId: string): Promise<unknown> => {
@@ -559,6 +593,7 @@ export function createWebuiSettingsWorkflows(deps: {
     loadModels,
     selectModel,
     loadProviders,
+    patchProviderModels,
     createProvider,
     updateProvider,
     deleteProvider,

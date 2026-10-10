@@ -358,14 +358,12 @@ export function WebuiClientFoundationApp(
     useSelectedSessionId(locationHash);
   const planReviewWorkflow = useMemo(
     () => createWebuiPlanReviewWorkflow({
-      replyQuestionnaire: transport?.replyQuestionnaire,
-      clearQuestionnaire: () => sessionStore.createInteractionWriter(
+      answerQuestionnaire: (request, answers) =>
         selectedSessionId
-          ? { kind: "session", sessionId: selectedSessionId }
-          : { kind: "home" },
-      ).setQuestionnaire(undefined),
+          ? eventEffectsRegistry.answerQuestionnaire(selectedSessionId, request, answers)
+          : Promise.resolve({ ok: false, error: "Questionnaire replies are unavailable" }),
     }),
-    [selectedSessionId, sessionStore, transport?.replyQuestionnaire],
+    [eventEffectsRegistry, selectedSessionId],
   );
   // Rail session links are plain `#session=<id>` anchors, so the navigation runs
   // through the hash subscription inside `useSelectedSessionId` rather than

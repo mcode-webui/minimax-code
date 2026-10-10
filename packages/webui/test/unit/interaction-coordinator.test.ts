@@ -49,6 +49,7 @@ function coordinator(port: Record<string, unknown>, s = sink()) {
   return {
     s,
     goalVersionRef,
+    pendingVersionRef,
     c: createWebuiInteractionCoordinator({
       port: port as never,
       sink: s,
@@ -64,8 +65,8 @@ describe("plan-review workflow ownership", () => {
   it("submits the plan decision through the application and clears the shared questionnaire projection", async () => {
     const request = questionnaire({ requester: { agentName: "reviewer" } }) as WebuiQuestionnaireRequest;
     const replyQuestionnaire = vi.fn(async () => ({ ok: true as const }));
-    const clearQuestionnaire = vi.fn();
-    const workflow = createWebuiPlanReviewWorkflow({ replyQuestionnaire, clearQuestionnaire });
+    const { c, s, pendingVersionRef } = coordinator({ replyQuestionnaire });
+    const workflow = createWebuiPlanReviewWorkflow({ answerQuestionnaire: c.answerQuestionnaire });
     await workflow.answerPlanBuild(request);
     expect(replyQuestionnaire).toHaveBeenCalledWith({
       name: "reviewer",
@@ -73,18 +74,36 @@ describe("plan-review workflow ownership", () => {
       schemaVersion: 3,
       answers: [{ stepId: "plan-review", selectedOptionIds: ["approve"], selectedOther: false }],
     });
-    expect(clearQuestionnaire).toHaveBeenCalledOnce();
+    expect(s.applyQuestionnaire).toHaveBeenCalledWith(undefined);
+    expect(s.afterQuestionnaireAnswer).toHaveBeenCalledOnce();
+    expect(pendingVersionRef.current).toBe(2);
+  });
+
+  it("does not let a pending refresh revive the questionnaire after plan execution", async () => {
+    const request = questionnaire({ id: "plan-q" }) as WebuiQuestionnaireRequest;
+    let resolveRefresh: (value: { request: WebuiQuestionnaireRequest }) => void = () => {};
+    const { c, s } = coordinator({
+      getPendingQuestionnaire: () => new Promise((resolve) => { resolveRefresh = resolve; }),
+      replyQuestionnaire: async () => ({ ok: true as const }),
+    });
+    const refresh = c.refresh();
+    const workflow = createWebuiPlanReviewWorkflow({ answerQuestionnaire: c.answerQuestionnaire });
+    await workflow.answerPlanBuild(request);
+    resolveRefresh({ request });
+    await refresh;
+    expect(s.applyQuestionnaire).toHaveBeenCalledTimes(1);
+    expect(s.applyQuestionnaire).toHaveBeenCalledWith(undefined);
+    expect(s.afterQuestionnaireAnswer).toHaveBeenCalledOnce();
   });
 
   it("keeps the pending questionnaire when the runtime rejects the plan decision", async () => {
     const request = questionnaire() as WebuiQuestionnaireRequest;
-    const clearQuestionnaire = vi.fn();
+    const { c, s } = coordinator({ replyQuestionnaire: async () => ({ ok: false }) });
     const workflow = createWebuiPlanReviewWorkflow({
-      replyQuestionnaire: async () => ({ ok: false }),
-      clearQuestionnaire,
+      answerQuestionnaire: c.answerQuestionnaire,
     });
-    await expect(workflow.answerPlanBuild(request)).rejects.toThrow("The plan decision was not accepted");
-    expect(clearQuestionnaire).not.toHaveBeenCalled();
+    await expect(workflow.answerPlanBuild(request)).rejects.toThrow("The questionnaire was not accepted");
+    expect(s.applyQuestionnaire).not.toHaveBeenCalled();
   });
 });
 

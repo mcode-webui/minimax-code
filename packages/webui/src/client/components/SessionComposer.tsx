@@ -963,6 +963,7 @@ export function WebuiComposer({
     // coordinator. The coordinator runs them for events addressed to this
     // session, so the composer holds no channel and no raw event callback.
     const unregisterEffects = effectsRegistry?.register(sessionId, {
+      answerQuestionnaire: (request, answers) => interactionCoordinator.answerQuestionnaire(request, answers),
       invalidatePending: () => interactionCoordinator.invalidatePendingReads(),
       refreshPending: () => refreshPending(),
       refreshGoal,

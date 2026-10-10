@@ -30,7 +30,11 @@ import type {
   WebuiEffectCommand,
   WebuiEffectState,
 } from "../projection/effect-reducer.js";
-import type { WebuiPendingPermission, WebuiQuestionnaireRequest } from "../../shared/contracts/interactions.js";
+import type {
+  WebuiPendingPermission,
+  WebuiQuestionnaireAnswer,
+  WebuiQuestionnaireRequest,
+} from "../../shared/contracts/interactions.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
 // The same resolver the effect reducer's own session guard uses. It carries
 // the nested-goal fallback for `thread_goal.*` events, whose payload declares
@@ -134,6 +138,10 @@ export interface WebuiWorkspaceGitChangedPayload {
  * calls behind them live in the turn coordinator or the infrastructure layer.
  */
 export interface WebuiEventEffects {
+  readonly answerQuestionnaire?: (
+    request: WebuiQuestionnaireRequest,
+    answers: readonly WebuiQuestionnaireAnswer[],
+  ) => Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>;
   /** A session event may invalidate an in-flight pending-interaction snapshot. */
   readonly invalidatePending?: (sessionId: string) => void;
   readonly refreshPending?: (sessionId: string) => void | Promise<unknown>;

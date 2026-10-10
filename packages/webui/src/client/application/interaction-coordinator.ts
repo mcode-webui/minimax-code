@@ -149,23 +149,17 @@ export interface WebuiInteractionCoordinatorOptions {
 
 /** Application-owned plan-review reply; the transcript submits this intent. */
 export function createWebuiPlanReviewWorkflow(options: {
-  readonly replyQuestionnaire: InteractionPort["replyQuestionnaire"];
-  readonly clearQuestionnaire: () => void;
+  readonly answerQuestionnaire: WebuiInteractionCoordinator["answerQuestionnaire"];
 }): {
   readonly answerPlanBuild: (request: WebuiQuestionnaireRequest) => Promise<void>;
 } {
   return {
     answerPlanBuild: async (request) => {
-      const reply = options.replyQuestionnaire;
-      if (!reply) throw new Error("Questionnaire replies are unavailable");
-      const result = await reply({
-        name: request.requester?.agentName ?? "main",
-        requestId: request.id,
-        schemaVersion: request.schemaVersion,
-        answers: buildWebuiPlanApproveAnswers(),
-      });
-      if (result.ok !== true) throw new Error("The plan decision was not accepted");
-      options.clearQuestionnaire();
+      const outcome = await options.answerQuestionnaire(
+        request,
+        buildWebuiPlanApproveAnswers(),
+      );
+      if (!outcome.ok) throw new Error(outcome.error);
     },
   };
 }

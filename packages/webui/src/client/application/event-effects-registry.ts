@@ -21,6 +21,10 @@
 
 import type { WebuiEventEffects } from "./event-coordinator.js";
 import type { WebuiGoal } from "../../shared/contracts/goal.js";
+import type {
+  WebuiQuestionnaireAnswer,
+  WebuiQuestionnaireRequest,
+} from "../../shared/contracts/interactions.js";
 
 export interface WebuiEventEffectsRegistry {
   /**
@@ -34,6 +38,11 @@ export interface WebuiEventEffectsRegistry {
   ) => () => void;
   /** The effect set currently registered for a session, if any. */
   readonly read: (sessionId: string) => WebuiEventEffects | undefined;
+  readonly answerQuestionnaire: (
+    sessionId: string,
+    request: WebuiQuestionnaireRequest,
+    answers: readonly WebuiQuestionnaireAnswer[],
+  ) => Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>;
   /** Drops every registration (application disposal). */
   readonly clear: () => void;
   /**
@@ -55,6 +64,12 @@ export function createWebuiEventEffectsRegistry(): WebuiEventEffectsRegistry {
       };
     },
     read: (sessionId) => perSession.get(sessionId),
+    answerQuestionnaire: async (sessionId, request, answers) => {
+      const answer = perSession.get(sessionId)?.answerQuestionnaire;
+      return answer
+        ? answer(request, answers)
+        : { ok: false, error: "Questionnaire replies are unavailable" };
+    },
     clear: () => perSession.clear(),
     asWebuiEventEffects: () => ({
       invalidatePending: (sessionId) =>

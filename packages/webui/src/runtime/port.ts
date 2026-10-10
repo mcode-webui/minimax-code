@@ -1,5 +1,9 @@
 import type { WebuiPluginManagementRequest } from "../shared/plugin-management.js";
 import type {
+  WebuiRunCommandRequest,
+  WebuiRunCommandResult,
+} from "../shared/contracts/terminal.js";
+import type {
   WebuiActiveTurnResult,
   WebuiCreateSessionRequest,
   WebuiCreateSessionResult,
@@ -367,5 +371,13 @@ export interface WebuiHarnessPort {
     readonly enabled?: boolean;
     readonly proactive?: boolean;
   }): Promise<WebuiMemorySettingsView>;
+  /**
+   * Interpret one slash command. The interpreter reads several capabilities
+   * above (`createSession`, `getSession`, `getSessionUsage`, `listModels`,
+   * `selectModel`, `requestCompaction`), so it is a port method rather than a
+   * server-side import of the runtime implementation: the layer matrix lets
+   * `server` reach `runtime-port` only.
+   */
+  runCommand(request: WebuiRunCommandRequest): Promise<WebuiRunCommandResult>;
   close(): Promise<void>;
 }

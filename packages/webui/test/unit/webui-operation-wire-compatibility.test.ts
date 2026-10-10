@@ -35,6 +35,7 @@ import {
   WEBUI_OPERATION_BINDINGS,
 } from "../../src/server/operation/bind-handlers.js";
 import { createLegacyOperationHandlers } from "./webui-legacy-operation-handlers.js";
+import { runWebuiCommand } from "../../src/runtime/commands/runner.js";
 
 /** An async iterable that yields nothing; deterministic for both sides. */
 function emptyStream(): AsyncIterable<never> {
@@ -77,6 +78,13 @@ function recordingPort(): RecordingPort {
             calls.push({ method: key, args });
             return Promise.resolve({ ok: true, source: emptyStream() });
           };
+        // `runCommand` is a port capability whose implementation is the command
+        // interpreter over the rest of the port. The scripted port models it the
+        // same way the runtime adapter does, so both registries drive identical
+        // capability calls and the comparison stays a wire comparison.
+        if (key === "runCommand")
+          return (request: unknown) =>
+            runWebuiCommand(port as unknown as WebuiHarnessPort, request as never);
         return (...args: readonly unknown[]) => {
           calls.push({ method: key, args });
           return Promise.resolve({ method: key, args });

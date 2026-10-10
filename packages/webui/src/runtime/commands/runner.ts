@@ -2,17 +2,17 @@ import { WEBUI_COMMAND_DESCRIPTORS, type WebuiCommandName } from "./descriptors.
 import type { WebuiHarnessPort } from "../port.js";
 import type { WebuiModelEntry } from "../../shared/contracts/models.js";
 
-export interface WebuiRunCommandRequest {
-  readonly command: WebuiCommandName;
-  readonly input?: string;
-  readonly sessionId?: string;
-  readonly agentName?: string;
-  readonly workspaceDir?: string;
-}
-
-export type WebuiRunCommandResult =
-  | { readonly handled: true; readonly output: string; readonly data?: unknown }
-  | { readonly handled: true; readonly output?: undefined; readonly data: unknown };
+// The request and result shapes are the wire contract, declared once in
+// `shared/contracts/terminal.ts` and re-exported here so the runner's callers
+// keep one import site.
+export type {
+  WebuiRunCommandRequest,
+  WebuiRunCommandResult,
+} from "../../shared/contracts/terminal.js";
+import type {
+  WebuiRunCommandRequest,
+  WebuiRunCommandResult,
+} from "../../shared/contracts/terminal.js";
 
 export async function runWebuiCommand(
   port: Pick<

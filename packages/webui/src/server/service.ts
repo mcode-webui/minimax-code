@@ -158,6 +158,7 @@ export class WebuiService {
         version: this.port.version().version,
         protocolVersion: this.port.version().protocolVersion,
       }),
+      runCommand: (request) => this.port.runCommand(request),
       listSessions: (request) => this.port.listSessions(request),
       getActiveTurn: (request) => this.port.getActiveTurn(request),
       listVisibleProjects: (request) => {

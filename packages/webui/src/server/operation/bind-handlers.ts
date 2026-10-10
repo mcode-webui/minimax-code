@@ -236,6 +236,7 @@ export type WebuiOperationPort = Pick<
   | "setUserProfile"
   | "getMemorySettings"
   | "setMemorySettings"
+  | "runCommand"
 >;
 
 type MethodKeys<T> = {

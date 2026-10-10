@@ -92,6 +92,14 @@ interface WorkspaceFileTree {
 }
 
 class ScriptedHarnessPort implements WebuiHarnessPort {
+  /** Recorded so a test can assert the command reached the port, not a runner. */
+  readonly commandsRun: Array<{ readonly command: string; readonly input?: string }> = [];
+  async runCommand(request: { readonly command: string; readonly input?: string }): Promise<
+    { readonly handled: true; readonly output: string }
+  > {
+    this.commandsRun.push(request);
+    return { handled: true, output: `scripted:${request.command}` };
+  }
   lastProviderTest?: { readonly providerId: string; readonly apiKey?: string };
   lastModelTest?: { readonly providerId: string; readonly modelId: string };
   providerMutations: Array<{ readonly operation: string; readonly request: unknown }> = [];
@@ -3494,6 +3502,9 @@ describe("WebUI shutdown order (criterion 7)", () => {
       version() {
         return { version: "0.4.2-shutdown-test", protocolVersion: 1 };
       },
+      runCommand() {
+        return Promise.resolve({ handled: true as const, output: "recording-test" });
+      },
       async readWorkspaceArchive() {
         return { archivePath: "", entries: [], totalEntries: 0, truncated: false };
       },
@@ -3879,6 +3890,9 @@ describe("WebUI shutdown order (criterion 7)", () => {
       version() {
         versionCalls += 1;
         return { version: "0.4.2-shutdown-gate", protocolVersion: 1 };
+      },
+      runCommand() {
+        return Promise.resolve({ handled: true as const, output: "shutdown-gate" });
       },
       async readWorkspaceArchive() {
         return { archivePath: "", entries: [], totalEntries: 0, truncated: false };

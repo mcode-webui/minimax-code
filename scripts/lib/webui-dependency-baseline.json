@@ -9,16 +9,6 @@
     "violatingOccurrences": 69
   },
   "entries": [
-    {
-      "from": "server/operation/handlers/commands.ts",
-      "to": "runtime/commands/runner.ts",
-      "layerFrom": "server",
-      "layerTo": "runtime",
-      "rule": "server -> runtime",
-      "category": "server-operation-to-runtime",
-      "stage": 3,
-      "reason": "The dedicated runCommand handler interprets a slash command by calling runtime/commands/runner.ts. Stage 3 moved the operation layer from the forwarding handler map to typed bindings, but runCommand is one of the 13 operations that keeps a dedicated handler because it shapes a handled/unhandled result over several port calls. The server -> runtime edge therefore follows the code to its new home instead of disappearing; it is the same exception as before, relocated, exactly like the agent-memory.ts -> profile-files.ts pair."
-    }
   ],
   "cycles": [
     {

@@ -71,6 +71,9 @@ class FullPort implements WebuiHarnessPort {
   version() {
     return { version: "invariant-test", protocolVersion: 1 };
   }
+  runCommand() {
+    return Promise.resolve({ handled: true as const, output: "invariant-test" });
+  }
   // Added with the F-zone archive contract. This class exists to make a
   // forgotten port member a compile error, so the members land here rather
   // than being left optional.

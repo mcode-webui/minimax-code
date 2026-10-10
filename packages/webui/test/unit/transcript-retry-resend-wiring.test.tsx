@@ -132,6 +132,7 @@ function renderComposer(props: {
         draft: props.draft ?? "",
         onDraftChange: () => undefined,
         teamModeOff: false,
+        favoritesStorage: { read: () => [], write: () => undefined },
         sendMessage: props.sendMessage ?? (async () => undefined),
         abortSession: props.abortSession,
         loadMessages: props.loadMessages,

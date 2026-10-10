@@ -64,6 +64,7 @@ describe("model picker — provider grouping", () => {
         selected: undefined,
         onSelect: () => undefined,
         onSettingChange: () => undefined,
+        favorites: { read: () => [], write: () => undefined },
       }),
     );
 

@@ -105,8 +105,16 @@ import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
 import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
 import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-context.js";
-import { WebuiWorkspaceQueriesProvider } from "../bindings/use-query-state.js";
+import {
+  WebuiAccountWorkflowsProvider,
+  WebuiPluginWorkflowsProvider,
+  WebuiSettingsWorkflowsProvider,
+  WebuiWorkspaceQueriesProvider,
+} from "../bindings/use-query-state.js";
 import { createWebuiWorkspaceQueries } from "../application/workspace-queries.js";
+import { createWebuiAccountWorkflows } from "../application/account-workflows.js";
+import { createWebuiSettingsWorkflows } from "../application/settings-workflows.js";
+import { createWebuiPluginWorkflows } from "../application/plugin-workflows.js";
 import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
 import {
   readWebuiUnreadCounts,
@@ -331,6 +339,22 @@ export function WebuiClientFoundationApp(
   // workspace panels, which submit query commands and read its snapshot.
   const workspaceQueries = useMemo(
     () => createWebuiWorkspaceQueries({ port: transport ?? {} }),
+    [transport],
+  );
+  // The account, settings and plugin owners (ticket #52). One of each per
+  // mount, provided to the user menu, the settings dialog and the plugin
+  // manager; those components submit commands and read the snapshot instead of
+  // holding their own copies of the answers.
+  const accountWorkflows = useMemo(
+    () => createWebuiAccountWorkflows({ port: transport ?? {} }),
+    [transport],
+  );
+  const settingsWorkflows = useMemo(
+    () => createWebuiSettingsWorkflows({ port: transport ?? {} }),
+    [transport],
+  );
+  const pluginWorkflows = useMemo(
+    () => createWebuiPluginWorkflows({ port: transport ?? {} }),
     [transport],
   );
   // Which surface the main column renders. Plugin management replaces the
@@ -1082,6 +1106,9 @@ export function WebuiClientFoundationApp(
   return (
     <WebuiEventEffectsRegistryProvider registry={eventEffectsRegistry}>
     <WebuiWorkspaceQueriesProvider queries={workspaceQueries}>
+    <WebuiAccountWorkflowsProvider workflows={accountWorkflows}>
+    <WebuiSettingsWorkflowsProvider workflows={settingsWorkflows}>
+    <WebuiPluginWorkflowsProvider workflows={pluginWorkflows}>
     <WebuiSessionStoreProvider store={sessionStore}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
@@ -1270,8 +1297,6 @@ export function WebuiClientFoundationApp(
                     dispatchWorkspacePanel({ type: "open-file", sessionId: selectedSessionId, workspaceDir: selectedSession.workspaceDir, path, lineStart: line, lineEnd: line });
                   }}
                   transport={transport}
-                  getSigninPanel={transport?.getSigninPanel}
-                  claimSignin={transport?.claimSignin}
                   onCreateMemorySession={createMemorySession}
                 />
               </div> : null}
@@ -1500,6 +1525,9 @@ export function WebuiClientFoundationApp(
     </div>
     </ArchonShell>
     </WebuiSessionStoreProvider>
+    </WebuiPluginWorkflowsProvider>
+    </WebuiSettingsWorkflowsProvider>
+    </WebuiAccountWorkflowsProvider>
     </WebuiWorkspaceQueriesProvider>
     </WebuiEventEffectsRegistryProvider>
   );

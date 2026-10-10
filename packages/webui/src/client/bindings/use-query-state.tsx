@@ -22,6 +22,21 @@ import {
   type WebuiWorkspaceQueries,
   type WebuiWorkspaceQueriesState,
 } from "../application/workspace-queries.js";
+import {
+  initialWebuiAccountWorkflowsState,
+  type WebuiAccountWorkflows,
+  type WebuiAccountWorkflowsState,
+} from "../application/account-workflows.js";
+import {
+  initialWebuiSettingsWorkflowsState,
+  type WebuiSettingsWorkflows,
+  type WebuiSettingsWorkflowsState,
+} from "../application/settings-workflows.js";
+import {
+  initialWebuiPluginWorkflowsState,
+  type WebuiPluginWorkflows,
+  type WebuiPluginWorkflowsState,
+} from "../application/plugin-workflows.js";
 
 const WebuiWorkspaceQueriesContext = createContext<WebuiWorkspaceQueries | undefined>(
   undefined,
@@ -66,4 +81,118 @@ function noopSubscribe(): () => void {
 
 function initialSnapshot(): WebuiWorkspaceQueriesState {
   return initialWebuiWorkspaceQueriesState;
+}
+
+// ---------------------------------------------------------------------------
+// Account, settings and plugin owners (ticket #52)
+//
+// Same shape as the workspace queries above: one provider, one imperative hook
+// for commands, one subscription hook for the snapshot. A component with no
+// provider reads the initial snapshot and submits no-ops, which is what an SSR
+// render or a unit test that mounts a panel without the runtime should get.
+// ---------------------------------------------------------------------------
+
+const WebuiAccountWorkflowsContext = createContext<WebuiAccountWorkflows | undefined>(
+  undefined,
+);
+
+export function WebuiAccountWorkflowsProvider({
+  workflows,
+  children,
+}: {
+  readonly workflows: WebuiAccountWorkflows;
+  readonly children: ReactNode;
+}): JSX.Element {
+  return (
+    <WebuiAccountWorkflowsContext.Provider value={workflows}>
+      {children}
+    </WebuiAccountWorkflowsContext.Provider>
+  );
+}
+
+export function useWebuiAccountWorkflows(): WebuiAccountWorkflows | undefined {
+  return useContext(WebuiAccountWorkflowsContext);
+}
+
+export function useWebuiAccountWorkflowsState(): WebuiAccountWorkflowsState {
+  const workflows = useContext(WebuiAccountWorkflowsContext);
+  return useSyncExternalStore(
+    workflows ? workflows.subscribe : noopSubscribe,
+    workflows ? workflows.getSnapshot : accountInitialSnapshot,
+    workflows ? workflows.getSnapshot : accountInitialSnapshot,
+  );
+}
+
+function accountInitialSnapshot(): WebuiAccountWorkflowsState {
+  return initialWebuiAccountWorkflowsState;
+}
+
+const WebuiSettingsWorkflowsContext = createContext<WebuiSettingsWorkflows | undefined>(
+  undefined,
+);
+
+export function WebuiSettingsWorkflowsProvider({
+  workflows,
+  children,
+}: {
+  readonly workflows: WebuiSettingsWorkflows;
+  readonly children: ReactNode;
+}): JSX.Element {
+  return (
+    <WebuiSettingsWorkflowsContext.Provider value={workflows}>
+      {children}
+    </WebuiSettingsWorkflowsContext.Provider>
+  );
+}
+
+export function useWebuiSettingsWorkflows(): WebuiSettingsWorkflows | undefined {
+  return useContext(WebuiSettingsWorkflowsContext);
+}
+
+export function useWebuiSettingsWorkflowsState(): WebuiSettingsWorkflowsState {
+  const workflows = useContext(WebuiSettingsWorkflowsContext);
+  return useSyncExternalStore(
+    workflows ? workflows.subscribe : noopSubscribe,
+    workflows ? workflows.getSnapshot : settingsInitialSnapshot,
+    workflows ? workflows.getSnapshot : settingsInitialSnapshot,
+  );
+}
+
+function settingsInitialSnapshot(): WebuiSettingsWorkflowsState {
+  return initialWebuiSettingsWorkflowsState;
+}
+
+const WebuiPluginWorkflowsContext = createContext<WebuiPluginWorkflows | undefined>(
+  undefined,
+);
+
+export function WebuiPluginWorkflowsProvider({
+  workflows,
+  children,
+}: {
+  readonly workflows: WebuiPluginWorkflows;
+  readonly children: ReactNode;
+}): JSX.Element {
+  return (
+    <WebuiPluginWorkflowsContext.Provider value={workflows}>
+      {children}
+    </WebuiPluginWorkflowsContext.Provider>
+  );
+}
+
+export function useWebuiPluginWorkflows(): WebuiPluginWorkflows | undefined {
+  return useContext(WebuiPluginWorkflowsContext);
+}
+
+export function useWebuiPluginWorkflowsState(): WebuiPluginWorkflowsState {
+  const workflows = useContext(WebuiPluginWorkflowsContext);
+  return useSyncExternalStore(
+    workflows ? workflows.subscribe : noopSubscribe,
+    workflows ? workflows.getSnapshot : pluginInitialSnapshot,
+    workflows ? workflows.getSnapshot : pluginInitialSnapshot,
+  );
+}
+
+function pluginInitialSnapshot(): WebuiPluginWorkflowsState {
+  return initialWebuiPluginWorkflowsState;
 }

@@ -23,6 +23,10 @@ import { SettingsModal, type WebuiSettingsModalCapabilities } from "./SettingsMo
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import type { MemoryHandoff } from "./settings/PersonalizationSettings.js";
 import { evaluateOutsideClose } from "../projection/outside-close.js";
+import {
+  useWebuiAccountWorkflows,
+  useWebuiAccountWorkflowsState,
+} from "../bindings/use-query-state.js";
 
 type AccountStatus = Record<string, unknown>;
 
@@ -47,12 +51,12 @@ interface UserMenuProps {
   /** Forwarded to the settings modal. The review page turns a diff line into
    *  a real editor jump through it. */
   readonly onOpenFileLine?: (path: string, line: number) => void;
-  /** Capability source for the menu's own panels and the settings modal.
-   *  Typed as the narrow 9-member contract so neither the menu nor the
-   *  modal can accidentally start reading members they do not consume. */
+  /** Capability source for the settings modal. Typed as the narrow 9-member
+   *  contract so neither the menu nor the modal can accidentally start reading
+   *  members they do not consume. The menu's own account, usage and check-in
+   *  answers come from the application account workflow (ticket #52), not from
+   *  here. */
   readonly transport?: WebuiUserMenuCapabilities;
-  readonly getSigninPanel?: () => Promise<WebuiSigninPanelView>;
-  readonly claimSignin?: () => Promise<WebuiClaimSigninView>;
   /** Forwarded to the settings modal, which owns 记忆摘要's 「在会话中创建」.
    *  The menu neither interprets nor stores it. */
   readonly onCreateMemorySession?: (input: MemoryHandoff) => void;
@@ -727,21 +731,13 @@ export function UserMenu({
   workspaceDir,
   onOpenFileLine,
   transport,
-  getSigninPanel,
-  claimSignin,
   onCreateMemorySession,
 }: UserMenuProps): ReactElement {
-  // Bound once per transport, not per render: the login dialog's effects
-  // key on these callbacks, and a fresh binding every render would restart
-  // its poll (and its begin) on every unrelated re-render.
-  const { getUsageQuota, getAccountStatus, beginAccountLogin, getAccountLoginStatus, cancelAccountLogin, signOut } = useMemo(() => ({
-    getUsageQuota: transport?.getUsageQuota?.bind(transport),
-    getAccountStatus: transport?.getAccountStatus?.bind(transport),
-    beginAccountLogin: transport?.beginAccountLogin?.bind(transport),
-    getAccountLoginStatus: transport?.getAccountLoginStatus?.bind(transport),
-    cancelAccountLogin: transport?.cancelAccountLogin?.bind(transport),
-    signOut: transport?.signOut?.bind(transport),
-  }), [transport]);
+  // The account, usage, check-in and login answers all come from the one
+  // application owner (ticket #52). This component submits commands and reads
+  // the snapshot; it holds no transport method for them.
+  const accountWorkflows = useWebuiAccountWorkflows();
+  const accountSnapshot = useWebuiAccountWorkflowsState();
   const anchorRef = useRef<HTMLDivElement>(null);
   // The settings modal is the menu's own state, so the menu is also the only
   // thing that can dismiss it. Handing the memory to a conversation moves the
@@ -755,11 +751,37 @@ export function UserMenu({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
-  const [usage, setUsage] = useState<UsageState>({ status: "idle" });
   const [signinOpen, setSigninOpen] = useState(false);
-  const [signin, setSignin] = useState<SigninState>({ loading: false, claiming: false });
   const [animatedDay, setAnimatedDay] = useState<number | null>(null);
-  const [account, setAccount] = useState<AccountStatus>();
+  // Derived from the one owner's snapshot rather than held locally: the menu
+  // and the login dialog read the same answer, and neither writes it.
+  const account: AccountStatus | undefined = accountSnapshot.account.value;
+  const usage: UsageState =
+    accountSnapshot.usage.status === "ready"
+      ? { status: "ready", result: accountSnapshot.usage.result }
+      : accountSnapshot.usage.status === "error"
+        ? { status: "error", errorMessage: accountSnapshot.usage.error }
+        : { status: accountSnapshot.usage.status };
+  const signin: SigninState = {
+    loading: accountSnapshot.signin.loading,
+    claiming: accountSnapshot.signin.claiming,
+    ...(accountSnapshot.signin.panel ? { panel: accountSnapshot.signin.panel } : {}),
+    // The owner stores the raw failure; the two copy strings are the menu's,
+    // exactly as they were when the menu owned the request.
+    ...(accountSnapshot.signin.error !== undefined
+      ? { error: formatSigninError(accountSnapshot.signin.error) }
+      : {}),
+  };
+  // The claim result drives the day animation once per claim. The owner keeps
+  // the result; the menu only turns it into the animation's day number.
+  const claimedDay =
+    accountSnapshot.signin.claim?.claim_result === SigninClaimResult.Claimed
+      ? accountSnapshot.signin.claim.day_no
+      : undefined;
+  useEffect(() => {
+    if (claimedDay === undefined) return;
+    setAnimatedDay(claimedDay);
+  }, [claimedDay]);
 
   const closePanels = () => {
     setUsageOpen(false);
@@ -804,67 +826,24 @@ export function UserMenu({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !getAccountStatus) return;
-    let cancelled = false;
-    void getAccountStatus({ sessionId }).then((next) => {
-      if (!cancelled) setAccount(next);
-    }).catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [getAccountStatus, open, sessionId]);
+    if (!open) return;
+    void accountWorkflows?.loadAccount(sessionId);
+  }, [accountWorkflows, open, sessionId]);
 
   const loadUsage = (forceRefresh = false) => {
     setUsageOpen(true);
     setSigninOpen(false);
-    if (!getUsageQuota) {
-      setUsage({ status: "idle" });
-      return;
-    }
-    setUsage({ status: "loading" });
-    void getUsageQuota(forceRefresh ? { forceRefresh: true } : undefined)
-      .then((result) => {
-        setUsage({ status: "ready", result });
-      })
-      .catch((error: unknown) => {
-        setUsage({
-          status: "error",
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-      });
+    void accountWorkflows?.loadUsage(forceRefresh);
   };
 
   const loadSignin = () => {
     setSigninOpen(true);
     setUsageOpen(false);
-    if (!getSigninPanel) {
-      setSignin({ loading: false, claiming: false, error: SIGNIN.error });
-      return;
-    }
-    setSignin((state) => ({ ...state, loading: true, error: undefined }));
-    void getSigninPanel()
-      .then((panel) => {
-        // Keep an in-flight claim flag: a silent refresh must not clear it.
-        setSignin((state) => ({ loading: false, claiming: state.claiming, panel, error: undefined }));
-      })
-      .catch((error: unknown) => {
-        setSignin((state) => ({ ...state, loading: false, error: formatSigninError(error) }));
-      });
+    void accountWorkflows?.loadSigninPanel();
   };
 
   const claim = () => {
-    if (!claimSignin || signin.claiming) return;
-    setSignin((state) => ({ ...state, claiming: true, error: undefined }));
-    void claimSignin()
-      .then((result) => {
-        setAnimatedDay(
-          result.claim_result === SigninClaimResult.Claimed ? result.day_no : null,
-        );
-        setSignin({ loading: false, claiming: false, panel: result.panel });
-      })
-      .catch((error: unknown) => {
-        setSignin((state) => ({ ...state, claiming: false, error: formatSigninError(error) }));
-      });
+    void accountWorkflows?.claimSignin();
   };
 
   const nickname = accountString(account, "nickname") ?? accountString(account, "name") ?? "MiniMax Code";
@@ -925,10 +904,6 @@ export function UserMenu({
       onAuthenticated={() => {
         loadUsage(true);
       }}
-      beginAccountLogin={beginAccountLogin}
-      getAccountLoginStatus={getAccountLoginStatus}
-      cancelAccountLogin={cancelAccountLogin}
-      signOut={signOut}
     />
     {typeof document !== "undefined" ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, document.body) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} transport={transport} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}
   </>;

@@ -13,11 +13,12 @@
 // not run, so these commands return an outcome instead of writing an error
 // themselves.
 //
-// Ownership boundary, stated because the file name is broader than what it holds:
-// the goal re-read and its version guard are still in the composer, and the
-// pending/questionnaire/goal re-reads registered with the event coordinator still
-// route through `application/event-effects-registry.ts`. Moving those here is the
-// rest of this file's duty sentence and is not done. This owner is constructed per
+// All four of the duties §7.1 names for this file are here: the permission and
+// questionnaire replies, the pending/questionnaire re-read, the goal re-read, and
+// the late-read protection both re-reads need. The event coordinator still
+// reaches them through `application/event-effects-registry.ts` — that registry is
+// the per-session routing seam, not an owner, and the composer registers this
+// coordinator's commands with it. This owner is constructed per
 // session, so a re-read cannot land in the wrong one by construction rather than
 // by a guard.
 

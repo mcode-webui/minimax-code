@@ -17,7 +17,6 @@
 import { useMemo } from "react";
 
 import type { WebuiSessionActivity } from "../projection/session-activity.js";
-import type { WebuiSessionStore } from "../application/session-store.js";
 import {
   selectWebuiSession,
   selectWebuiSessionActivity,
@@ -50,11 +49,6 @@ import {
   useWebuiSessionStoreContext,
   useWebuiSessionStoreSnapshot,
 } from "./application-context.js";
-
-/** The session store for imperative reads outside render. */
-export function useWebuiSessionStore(): WebuiSessionStore {
-  return useWebuiSessionStoreContext();
-}
 
 export function useWebuiSessionState(
   sessionId: string | undefined,

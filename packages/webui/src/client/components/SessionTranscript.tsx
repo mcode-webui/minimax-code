@@ -15,10 +15,9 @@ import { TurnNavigator, type TurnSummary } from "./TurnNavigator.js";
 import { MessageItem } from "./MessageItem.js";
 import { formatWebuiMessageTimestamp } from "./MessageActions.js";
 import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
-import { useWebuiSessionStream } from "../bindings/use-session-state.js";
+import { useWebuiSessionQuestionnaire, useWebuiSessionStream } from "../bindings/use-session-state.js";
 import { isTurnLive } from "../projection/composer-state.js";
 import {
-  buildWebuiPlanApproveAnswers,
   isWebuiPlanReviewRequest,
   webuiPlanMarkdown,
   webuiPlanPath,
@@ -42,8 +41,6 @@ type WebuiSessionTranscriptCapabilities = Pick<
   | "getSessionRewindPreview"
   | "rewindSession"
   | "editSessionMessage"
-  | "getPendingQuestionnaire"
-  | "replyQuestionnaire"
 >;
 import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
 import type { WebuiQuestionnaireResponseSummary } from "../contracts/transcript-view.js";
@@ -208,8 +205,7 @@ export function WebuiSessionTranscript({
   getSessionRewindPreview,
   rewindSession,
   editSessionMessage,
-  getPendingQuestionnaire,
-  replyQuestionnaire,
+  answerPlanBuild,
   workspaceDir,
   onOpenFile,
   onOpenTurnReview,
@@ -222,6 +218,7 @@ export function WebuiSessionTranscript({
   readonly onOpenFile?: (input: { readonly sessionId: string; readonly workspaceDir: string; readonly reference: WebuiMessageFileReference }) => void;
   readonly onOpenTurnReview?: (command: Extract<WorkspacePanelCommand, { type: "open-turn-review" }>) => void;
   readonly onOpenPlanFile?: (input: { readonly sessionId: string; readonly path: string; readonly content: string }) => void;
+  readonly answerPlanBuild?: (request: WebuiQuestionnaireRequest) => Promise<void>;
 } & WebuiSessionTranscriptCapabilities): ReactElement {
   const coordinatorRef = useRef(createWebuiTranscriptRequestCoordinator(sessionId));
   const coordinator = coordinatorRef.current;
@@ -281,54 +278,23 @@ export function WebuiSessionTranscript({
   //
   // The composer keeps its own copy for the decision; this read only decides
   // whether a plan card belongs in the message column.
-  const [planReview, setPlanReview] = useState<WebuiQuestionnaireRequest | undefined>(undefined);
-  useEffect(() => {
-    if (!getPendingQuestionnaire) return undefined;
-    let cancelled = false;
-    void getPendingQuestionnaire({ name: "main", sessionId })
-      .then((result) => {
-        if (cancelled) return;
-        const request = result.request;
-        setPlanReview(isWebuiPlanReviewRequest(request) ? request : undefined);
-      })
-      .catch(() => {
-        if (!cancelled) setPlanReview(undefined);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // Re-read on every phase change, not just on mount: a plan request is
-    // raised mid-turn and only becomes visible as the turn settles into
-    // `waiting`. Phases change a few times per turn, so the extra reads are
-    // cheaper than tracking the transition precisely.
-  }, [getPendingQuestionnaire, sessionId, streamPhase]);
-  // The plan card's 执行 button answers the same `plan-review` step the
-  // decision card does, so both paths post through the ordinary questionnaire
-  // reply. `requester.agentName` is the agent the runtime registered the
-  // request under; falling back to the default name keeps the server-side
-  // resolution in play.
+  const pendingQuestionnaire = useWebuiSessionQuestionnaire(sessionId);
+  const planReview = isWebuiPlanReviewRequest(pendingQuestionnaire)
+    ? pendingQuestionnaire
+    : undefined;
   const [planSubmitting, setPlanSubmitting] = useState(false);
   const [planError, setPlanError] = useState<string | undefined>(undefined);
   const planAnchorMessageId = planReview?.tool?.messageId;
   const submitPlanBuild = useCallback(() => {
-    if (!planReview || !replyQuestionnaire) return;
+    if (!planReview || !answerPlanBuild) return;
     setPlanError(undefined);
     setPlanSubmitting(true);
-    void replyQuestionnaire({
-      name: planReview.requester?.agentName ?? "main",
-      requestId: planReview.id,
-      schemaVersion: planReview.schemaVersion,
-      answers: buildWebuiPlanApproveAnswers(),
-    })
-      .then((result) => {
-        if (result.ok !== true) throw new Error("The plan decision was not accepted");
-        setPlanReview(undefined);
-      })
+    void answerPlanBuild(planReview)
       .catch((error: unknown) => {
         setPlanError(error instanceof Error ? error.message : String(error));
       })
       .finally(() => setPlanSubmitting(false));
-  }, [planReview, replyQuestionnaire]);
+  }, [answerPlanBuild, planReview]);
   // 预览 opens the whole plan file in the workspace panel, the way the desktop
   // hands the markdown to its file viewer. The file lives outside the workspace
   // root, so the content travels with the command instead of being read back.

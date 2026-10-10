@@ -11,9 +11,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createWebuiInteractionCoordinator,
+  createWebuiPlanReviewWorkflow,
   type WebuiInteractionSink,
 } from "../../src/client/application/interaction-coordinator.js";
-import type { WebuiPendingPermission } from "../../src/shared/contracts/interactions.js";
+import type { WebuiPendingPermission, WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
 
 const permission = (
   overrides: Partial<WebuiPendingPermission> = {},
@@ -58,6 +59,34 @@ function coordinator(port: Record<string, unknown>, s = sink()) {
     }),
   };
 }
+
+describe("plan-review workflow ownership", () => {
+  it("submits the plan decision through the application and clears the shared questionnaire projection", async () => {
+    const request = questionnaire({ requester: { agentName: "reviewer" } }) as WebuiQuestionnaireRequest;
+    const replyQuestionnaire = vi.fn(async () => ({ ok: true as const }));
+    const clearQuestionnaire = vi.fn();
+    const workflow = createWebuiPlanReviewWorkflow({ replyQuestionnaire, clearQuestionnaire });
+    await workflow.answerPlanBuild(request);
+    expect(replyQuestionnaire).toHaveBeenCalledWith({
+      name: "reviewer",
+      requestId: "q-1",
+      schemaVersion: 3,
+      answers: [{ stepId: "plan-review", selectedOptionIds: ["approve"], selectedOther: false }],
+    });
+    expect(clearQuestionnaire).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the pending questionnaire when the runtime rejects the plan decision", async () => {
+    const request = questionnaire() as WebuiQuestionnaireRequest;
+    const clearQuestionnaire = vi.fn();
+    const workflow = createWebuiPlanReviewWorkflow({
+      replyQuestionnaire: async () => ({ ok: false }),
+      clearQuestionnaire,
+    });
+    await expect(workflow.answerPlanBuild(request)).rejects.toThrow("The plan decision was not accepted");
+    expect(clearQuestionnaire).not.toHaveBeenCalled();
+  });
+});
 
 describe("interaction coordinator — permission replies", () => {
   it("applies an accepted reply: drops the request and resumes the turn", async () => {

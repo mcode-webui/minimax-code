@@ -131,6 +131,7 @@ import {
   webuiWorkspaceSubagentStatus,
 } from "../projection/workspace-progress.js";
 import { createWebuiApplication, type WebuiApplication } from "../application/create-application.js";
+import { createWebuiPlanReviewWorkflow } from "../application/interaction-coordinator.js";
 import type { WebuiEventEffects } from "../application/event-coordinator.js";
 import { createWebuiOpenEventChannel } from "../bindings/event-channel-adapter.js";
 import type { WebuiWorkspaceGitChangedSignal } from "../projection/workspace-panel-state.js";
@@ -355,6 +356,17 @@ export function WebuiClientFoundationApp(
   );
   const [selectedSessionId, setSelectedSessionId] =
     useSelectedSessionId(locationHash);
+  const planReviewWorkflow = useMemo(
+    () => createWebuiPlanReviewWorkflow({
+      replyQuestionnaire: transport?.replyQuestionnaire,
+      clearQuestionnaire: () => sessionStore.createInteractionWriter(
+        selectedSessionId
+          ? { kind: "session", sessionId: selectedSessionId }
+          : { kind: "home" },
+      ).setQuestionnaire(undefined),
+    }),
+    [selectedSessionId, sessionStore, transport?.replyQuestionnaire],
+  );
   // Rail session links are plain `#session=<id>` anchors, so the navigation runs
   // through the hash subscription inside `useSelectedSessionId` rather than
   // through the setter this shell holds. Watching the resolved id is the one
@@ -1481,8 +1493,7 @@ export function WebuiClientFoundationApp(
                         getSessionRewindPreview={transport?.getSessionRewindPreview}
                         rewindSession={transport?.rewindSession}
                         editSessionMessage={transport?.editSessionMessage}
-                        getPendingQuestionnaire={transport?.getPendingQuestionnaire}
-                        replyQuestionnaire={transport?.replyQuestionnaire}
+                        answerPlanBuild={planReviewWorkflow.answerPlanBuild}
                         onOpenPlanFile={({ sessionId: planSessionId, path, content }) => dispatchWorkspacePanel({ type: "open-plan-file", sessionId: planSessionId, workspaceDir: selectedSession?.workspaceDir ?? "", path, content })}
                       />
                       </Transcript>

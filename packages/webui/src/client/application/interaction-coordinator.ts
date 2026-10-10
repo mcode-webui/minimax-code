@@ -30,6 +30,7 @@ import type {
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
 } from "../../shared/contracts/interactions.js";
+import { buildWebuiPlanApproveAnswers } from "../projection/plan-mode.js";
 
 /** The transport methods this owner drives. Absent means "not wired". */
 export type WebuiInteractionPortSlice = Pick<
@@ -144,6 +145,29 @@ export interface WebuiInteractionCoordinatorOptions {
   readonly sessionId?: string;
   /** Fallback requester name when the request carries none. */
   readonly agentName: string;
+}
+
+/** Application-owned plan-review reply; the transcript submits this intent. */
+export function createWebuiPlanReviewWorkflow(options: {
+  readonly replyQuestionnaire: InteractionPort["replyQuestionnaire"];
+  readonly clearQuestionnaire: () => void;
+}): {
+  readonly answerPlanBuild: (request: WebuiQuestionnaireRequest) => Promise<void>;
+} {
+  return {
+    answerPlanBuild: async (request) => {
+      const reply = options.replyQuestionnaire;
+      if (!reply) throw new Error("Questionnaire replies are unavailable");
+      const result = await reply({
+        name: request.requester?.agentName ?? "main",
+        requestId: request.id,
+        schemaVersion: request.schemaVersion,
+        answers: buildWebuiPlanApproveAnswers(),
+      });
+      if (result.ok !== true) throw new Error("The plan decision was not accepted");
+      options.clearQuestionnaire();
+    },
+  };
 }
 
 function describe(error: unknown): string {

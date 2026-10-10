@@ -245,7 +245,8 @@ export function createWebuiInteractionCoordinator({
     },
 
     answerQuestionnaire: async (request, answers) => {
-      if (!replyQuestionnaire) return { ok: true };
+      if (!replyQuestionnaire)
+        return { ok: false, error: "Questionnaire replies are unavailable" };
       invalidatePendingReads();
       try {
         const result = await replyQuestionnaire({

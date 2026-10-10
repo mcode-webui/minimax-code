@@ -105,6 +105,16 @@ describe("plan-review workflow ownership", () => {
     await expect(workflow.answerPlanBuild(request)).rejects.toThrow("The questionnaire was not accepted");
     expect(s.applyQuestionnaire).not.toHaveBeenCalled();
   });
+
+  it("reports an unavailable questionnaire capability instead of accepting a no-op", async () => {
+    const { c, s } = coordinator({});
+    const workflow = createWebuiPlanReviewWorkflow({
+      answerQuestionnaire: c.answerQuestionnaire,
+    });
+    await expect(workflow.answerPlanBuild(questionnaire() as WebuiQuestionnaireRequest))
+      .rejects.toThrow("Questionnaire replies are unavailable");
+    expect(s.applyQuestionnaire).not.toHaveBeenCalled();
+  });
 });
 
 describe("interaction coordinator — permission replies", () => {

@@ -53,7 +53,7 @@ interface RecordingPort {
   readonly calls: Call[];
 }
 
-function recordingPort(): RecordingPort {
+function recordingPort(streamFactory?: () => AsyncIterable<unknown>): RecordingPort {
   const calls: Call[] = [];
   const port = new Proxy(
     {},
@@ -76,7 +76,7 @@ function recordingPort(): RecordingPort {
         if (key === "sendMessage" || key === "resumeSession")
           return (...args: readonly unknown[]) => {
             calls.push({ method: key, args });
-            return Promise.resolve({ ok: true, source: emptyStream() });
+            return Promise.resolve({ ok: true, source: streamFactory?.() ?? emptyStream() });
           };
         // `runCommand` is a port capability whose implementation is the command
         // interpreter over the rest of the port. The scripted port models it the
@@ -152,7 +152,7 @@ function legacyRegistry(
   const registry = new Map<string, WebuiOperationRegistryEntry>();
   for (const [name, handle] of Object.entries(handlers)) {
     const source = descriptors.get(name);
-    if (!source) continue;
+    if (!source) throw new Error(`legacy oracle is missing a descriptor for ${name}`);
     registry.set(name, {
       operation: source.operation,
       handle: handle as WebuiOperationHandler<unknown>,
@@ -184,8 +184,9 @@ async function run(
   operations: ReadonlyMap<string, WebuiOperationRegistryEntry>,
   frame: unknown,
   socket: RecordingSocket,
+  getSignal: () => AbortSignal | undefined = () => undefined,
 ): Promise<void> {
-  await dispatchWebuiFrame(socket as unknown as WebSocket, frame, operations, true, () => undefined);
+  await dispatchWebuiFrame(socket as unknown as WebSocket, frame, operations, true, getSignal);
 }
 
 function requestFrame(operation: string, body: unknown): unknown {
@@ -403,5 +404,79 @@ describe("WebUI operation wire compatibility (old handlers vs typed bindings)", 
     await run(createOperationRegistry(makePort(), recordingTerminal().terminal), frame, newSocket);
     assert.ok(Buffer.from(oldSocket.sent[0] ?? "", "utf8").equals(Buffer.from(newSocket.sent[0] ?? "", "utf8")));
     assert.ok((oldSocket.sent[0] ?? "").includes("session diff is unavailable"));
+  });
+
+  it("matches multiple stream frames, failures, and generator finalization counts byte-for-byte", async () => {
+    const oldFinalized = { count: 0 };
+    const newFinalized = { count: 0 };
+    const stream = (counter: { count: number }, fail: boolean) => async function* () {
+      try {
+        yield { frame: 1, optional: undefined };
+        yield { frame: 2, omitted: undefined };
+        if (fail) throw new Error("stream failed after frame two");
+      } finally {
+        counter.count += 1;
+      }
+    };
+    for (const fail of [false, true]) {
+      const oldPort = recordingPort(stream(oldFinalized, fail));
+      const newPort = recordingPort(stream(newFinalized, fail));
+      const oldSocket = recordingSocket();
+      const newSocket = recordingSocket();
+      await run(legacyRegistry(oldPort.port, recordingTerminal().terminal), requestFrame("sendMessage", VALID_BODIES.sendMessage), oldSocket);
+      await run(createOperationRegistry(newPort.port, recordingTerminal().terminal), requestFrame("sendMessage", VALID_BODIES.sendMessage), newSocket);
+      assert.deepEqual(oldSocket.sent.length, newSocket.sent.length);
+      for (let index = 0; index < oldSocket.sent.length; index += 1) {
+        assert.ok(Buffer.from(oldSocket.sent[index] ?? "", "utf8").equals(Buffer.from(newSocket.sent[index] ?? "", "utf8")));
+      }
+    }
+    expect(oldFinalized.count).toBe(2);
+    expect(newFinalized.count).toBe(2);
+  });
+
+  it("finalizes once when the request signal closes during a pending stream", async () => {
+    const makePendingPort = (controller: AbortController, finalizations: { count: number }): WebuiHarnessPort =>
+      new Proxy({}, {
+        get(_target, key) {
+          if (typeof key !== "string") return undefined;
+          if (key === "sendMessage") return () => Promise.resolve({
+            ok: true,
+            source: {
+              [Symbol.asyncIterator]() {
+                return {
+                  next: () => new Promise<IteratorResult<unknown>>((resolve) => {
+                    controller.signal.addEventListener("abort", () => resolve({ done: true, value: undefined }), { once: true });
+                  }),
+                  return: async () => {
+                    finalizations.count += 1;
+                    return { done: true, value: undefined };
+                  },
+                };
+              },
+            },
+          });
+          if (key === "watchEvents") return () => emptyStream();
+          if (key === "resumeSession") return () => Promise.resolve({ ok: true, source: emptyStream() });
+          return () => Promise.resolve({});
+        },
+      }) as unknown as WebuiHarnessPort;
+    const oldController = new AbortController();
+    const newController = new AbortController();
+    const oldFinalized = { count: 0 };
+    const newFinalized = { count: 0 };
+    const oldRun = run(
+      legacyRegistry(makePendingPort(oldController, oldFinalized), recordingTerminal().terminal),
+      requestFrame("sendMessage", VALID_BODIES.sendMessage), recordingSocket(), () => oldController.signal,
+    );
+    const newRun = run(
+      createOperationRegistry(makePendingPort(newController, newFinalized), recordingTerminal().terminal),
+      requestFrame("sendMessage", VALID_BODIES.sendMessage), recordingSocket(), () => newController.signal,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    oldController.abort();
+    newController.abort();
+    await Promise.all([oldRun, newRun]);
+    expect(oldFinalized.count).toBe(1);
+    expect(newFinalized.count).toBe(1);
   });
 });

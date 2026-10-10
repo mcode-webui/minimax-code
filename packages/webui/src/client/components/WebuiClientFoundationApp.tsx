@@ -102,7 +102,7 @@ import { createWebuiSessionWorkflows } from "../application/session-workflows.js
 import { selectWebuiSessionStream } from "../application/selectors.js";
 import { WEBUI_HOME_SESSION_KEY } from "../application/state.js";
 import { createWebuiEventEffectsRegistry } from "../application/event-effects-registry.js";
-import { WebuiSessionStoreProvider } from "../bindings/application-context.js";
+import { WebuiApplicationProvider } from "../bindings/application-context.js";
 import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-context.js";
 import {
@@ -995,6 +995,7 @@ export function WebuiClientFoundationApp(
             ? { loadMessages: transport.loadMessages }
             : {}),
         },
+        ...(transport?.loadMessages ? { loadMessages: transport.loadMessages } : {}),
       }),
     [
       applicationEffects,
@@ -1114,7 +1115,7 @@ export function WebuiClientFoundationApp(
     <WebuiSettingsWorkflowsProvider workflows={settingsWorkflows}>
     <WebuiPluginWorkflowsProvider workflows={pluginWorkflows}>
     <WebuiSessionWorkflowsProvider workflows={sessionWorkflows}>
-    <WebuiSessionStoreProvider store={sessionStore}>
+    <WebuiApplicationProvider application={application}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
       <div className="relative flex h-screen overflow-hidden bg-bg_grouped_secondary">
@@ -1483,7 +1484,6 @@ export function WebuiClientFoundationApp(
                         workspaceDir={selectedSession?.workspaceDir}
                         onOpenFile={({ sessionId, workspaceDir, reference }) => dispatchWorkspacePanel({ type: "open-file", sessionId, workspaceDir, path: reference.path, ...(reference.lineStart !== undefined ? { lineStart: reference.lineStart } : {}), ...(reference.lineEnd !== undefined ? { lineEnd: reference.lineEnd } : {}) })}
                         onOpenTurnReview={(command) => dispatchWorkspacePanel(command)}
-                        loadMessages={loadMessages}
                         {...(initialMessages ? { initialMessages } : {})}
                         getTurnDiff={transport?.getTurnDiff}
                         revertTurnDiff={transport?.revertTurnDiff}
@@ -1527,7 +1527,7 @@ export function WebuiClientFoundationApp(
       </div>
     </div>
     </ArchonShell>
-    </WebuiSessionStoreProvider>
+    </WebuiApplicationProvider>
     </WebuiSessionWorkflowsProvider>
     </WebuiPluginWorkflowsProvider>
     </WebuiSettingsWorkflowsProvider>

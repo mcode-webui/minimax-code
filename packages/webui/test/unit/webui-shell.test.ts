@@ -391,7 +391,6 @@ describe("WebUI shell", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionTranscript, {
         sessionId: "empty-session",
-        loadMessages: async () => ({ messages: [], hasMore: false }),
         initialMessages: { messages: [], hasMore: false },
       }),
     );
@@ -598,7 +597,6 @@ describe("WebUI shell", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionTranscript, {
         sessionId: "reading-column",
-        loadMessages: async () => ({ messages: [], hasMore: false }),
       }),
     );
     // The reading column and the message list region survive regardless of
@@ -1242,7 +1240,6 @@ describe("WebUI shell — desktop anatomy", () => {
     const transcript = renderToStaticMarkup(
       createElement(WebuiSessionTranscript, {
         sessionId: "s",
-        loadMessages: async () => ({ messages: [], hasMore: false }),
         initialMessages: { messages: [], hasMore: false },
       }),
     );
@@ -2719,24 +2716,6 @@ describe("WebUI composer transcriptIncomplete", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionTranscript, {
         sessionId: "merge-session",
-        loadMessages: async () => ({
-          messages: [
-            { msgId: "u1", role: "user", msgContent: "做" },
-            {
-              msgId: "a1",
-              thinkingContent: "第一段",
-              toolCalls: [{ name: "read" }],
-              msgContent: "中间",
-            },
-            {
-              msgId: "a2",
-              thinkingContent: "第二段",
-              toolCalls: [{ name: "write" }],
-              msgContent: "结尾",
-            },
-          ],
-          hasMore: false,
-        }),
       }),
     );
     // Effect-gated load: SSR never runs effects, so assert the grouping
@@ -2748,7 +2727,6 @@ describe("WebUI composer transcriptIncomplete", () => {
     const html = renderToStaticMarkup(
       createElement(WebuiSessionTranscript, {
         sessionId: "group-enrichment-session",
-        loadMessages: async () => ({ messages: [], hasMore: false }),
         initialMessages: {
           messages: [
             {

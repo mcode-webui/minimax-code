@@ -44,7 +44,9 @@ export interface WebuiSessionCommands {
    * composer (New Task), so the previous session's turn cannot bleed through.
    */
   readonly clearStream: () => void;
-  /** Apply a stream update — the generic "updating" arm of the slice. */
+  /** Apply the history-derived context snapshot without exposing the stream writer. */
+  readonly setContextUsage: (contextUsage: Record<string, unknown>) => void;
+  /** Turn orchestration callbacks; callers outside application workflows use named commands above. */
   readonly updateStream: (
     update: (current: WebuiStreamState) => WebuiStreamState,
   ) => void;
@@ -66,9 +68,10 @@ export function createWebuiSessionCommands(
   const { setStream, setSending } = targets;
   return {
     clearStream: () => setStream(() => initialWebuiStreamState),
+    setContextUsage: (contextUsage) =>
+      setStream((current) => ({ ...current, contextUsage })),
     updateStream: (update) => setStream(update),
-    markStreamPhase: (phase) =>
-      setStream((current) => ({ ...current, phase })),
+    markStreamPhase: (phase) => setStream((current) => ({ ...current, phase })),
     startStreaming: () =>
       setStream((current) => ({ ...current, phase: "streaming" })),
     endStreaming: () => setStream((current) => ({ ...current, phase: "idle" })),
@@ -159,11 +162,15 @@ export interface WebuiTurnCommandWriter {
 
 export function createWebuiTurnCommands(writer: {
   readonly kind: "session" | "home";
-  readonly setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void;
+  readonly setStream: (
+    update: (current: WebuiStreamState) => WebuiStreamState,
+  ) => void;
   readonly setSending: (sending: boolean) => void;
   readonly migrateToSession?: (sessionId: string) => {
     readonly kind: "session";
-    readonly setStream: (update: (current: WebuiStreamState) => WebuiStreamState) => void;
+    readonly setStream: (
+      update: (current: WebuiStreamState) => WebuiStreamState,
+    ) => void;
     readonly setSending: (sending: boolean) => void;
   };
 }): WebuiTurnCommandWriter {

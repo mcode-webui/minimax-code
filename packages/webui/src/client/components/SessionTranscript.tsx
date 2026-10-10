@@ -15,7 +15,7 @@ import { TurnNavigator, type TurnSummary } from "./TurnNavigator.js";
 import { MessageItem } from "./MessageItem.js";
 import { formatWebuiMessageTimestamp } from "./MessageActions.js";
 import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
-import { useWebuiSessionQuestionnaire, useWebuiSessionStream } from "../bindings/use-session-state.js";
+import { useWebuiSessionQuestionnaire, useWebuiSessionState, useWebuiSessionStream, useWebuiTranscriptHistoryOwner } from "../bindings/use-session-state.js";
 import { isTurnLive } from "../projection/composer-state.js";
 import {
   isWebuiPlanReviewRequest,
@@ -23,7 +23,7 @@ import {
   webuiPlanPath,
 } from "../projection/plan-mode.js";
 import { WebuiPlanDeliveryCard } from "./PlanModeCards.js";
-import type { WebuiClientMessageLoader, WebuiClientMessagePage } from "../contracts/message-view.js";
+import type { WebuiClientMessagePage } from "../contracts/message-view.js";
 import type { WebuiTranscriptItem } from "../contracts/transcript-view.js";
 import type { WebuiTransport } from "../contracts/transport.js";
 import type { WebuiQuestionnaireRequest } from "../../shared/contracts/interactions.js";
@@ -59,15 +59,6 @@ import {
   type WebuiLiveTurnView,
   type WebuiTurnView,
 } from "../projection/transcript-shape.js";
-import {
-  createWebuiTranscriptRequestCoordinator,
-  getOwnedTranscriptPage,
-  mergeOlderTranscriptPage,
-  runWebuiTranscriptPageRequest,
-  updateOwnedTranscriptState,
-  type WebuiOwnedTranscriptState,
-  type WebuiTranscriptRequestToken,
-} from "../application/transcript-request-ownership.js";
 import {
   webuiScrollBottomTop,
   webuiScrollFollowsBottom,
@@ -195,7 +186,6 @@ export function WebuiQuestionnaireResponse({
 
 export function WebuiSessionTranscript({
   sessionId,
-  loadMessages,
   initialMessages,
   getTurnDiff,
   revertTurnDiff,
@@ -212,7 +202,6 @@ export function WebuiSessionTranscript({
   onOpenPlanFile,
 }: {
   readonly sessionId: string;
-  readonly loadMessages: WebuiClientMessageLoader;
   readonly initialMessages?: WebuiClientMessagePage;
   readonly workspaceDir?: string;
   readonly onOpenFile?: (input: { readonly sessionId: string; readonly workspaceDir: string; readonly reference: WebuiMessageFileReference }) => void;
@@ -220,53 +209,12 @@ export function WebuiSessionTranscript({
   readonly onOpenPlanFile?: (input: { readonly sessionId: string; readonly path: string; readonly content: string }) => void;
   readonly answerPlanBuild?: (request: WebuiQuestionnaireRequest) => Promise<void>;
 } & WebuiSessionTranscriptCapabilities): ReactElement {
-  const coordinatorRef = useRef(createWebuiTranscriptRequestCoordinator(sessionId));
-  const coordinator = coordinatorRef.current;
-  useLayoutEffect(() => {
-    coordinator.commitOwner(sessionId);
-  }, [coordinator, sessionId]);
-  const committedOwner = coordinator.getCommittedOwner();
-  const [transcriptState, setTranscriptState] = useState<WebuiOwnedTranscriptState>(
-    () => ({
-      ownerSessionId: sessionId,
-      generation: 0,
-      page: initialMessages ?? {},
-      loading: initialMessages === undefined,
-    }),
-  );
-  const commitTranscriptRequest = (
-    token: WebuiTranscriptRequestToken,
-    update: (current: WebuiOwnedTranscriptState) => WebuiOwnedTranscriptState,
-  ) => {
-    setTranscriptState((current) => coordinator.isCurrent(token)
-      ? updateOwnedTranscriptState(current, token.ownerSessionId, token.generation, update)
-      : current);
-  };
-  const visibleState = transcriptState.ownerSessionId === sessionId &&
-      transcriptState.generation === committedOwner.generation
-    ? transcriptState
-    : undefined;
-  const visiblePage = visibleState
-    ? getOwnedTranscriptPage(visibleState, sessionId) ?? EMPTY_TRANSCRIPT_PAGE
-    : EMPTY_TRANSCRIPT_PAGE;
-  const loading = visibleState?.loading ?? true;
-  const error = visibleState?.error;
+  const historyOwner = useWebuiTranscriptHistoryOwner();
+  const transcriptState = useWebuiSessionState(sessionId).transcript;
+  const visiblePage = initialMessages ?? transcriptState.page ?? EMPTY_TRANSCRIPT_PAGE;
+  const loading = initialMessages ? false : transcriptState.loading;
+  const error = transcriptState.error;
   const transcriptRef = useRef<HTMLElement | null>(null);
-  const loadingLifecycleRef = useRef(0);
-  const beginLoadingLifecycle = () => ++loadingLifecycleRef.current;
-  const settleLoadingLifecycle = (
-    lifecycleId: number,
-    ownerSessionId: string,
-    generation: number,
-  ) => {
-    setTranscriptState((current) =>
-      lifecycleId === loadingLifecycleRef.current &&
-      current.ownerSessionId === ownerSessionId &&
-      current.generation === generation
-        ? { ...current, loading: false }
-        : current,
-    );
-  };
   const stream = useWebuiSessionStream(sessionId);
   const streamPhase = stream.phase;
   const autoFollowRef = useRef(true);
@@ -312,82 +260,17 @@ export function WebuiSessionTranscript({
   const turnLive = isTurnLive(streamPhase);
   const previousTurnStateRef = useRef({ sessionId, turnLive });
   useEffect(() => {
-    const token = coordinator.beginRequest(sessionId);
-    if (!token) return;
-    const loadingLifecycleId = beginLoadingLifecycle();
-    setTranscriptState((current) => {
-      if (!coordinator.isCurrent(token)) return current;
-      if (current.ownerSessionId !== token.ownerSessionId || current.generation !== token.generation) {
-        return {
-          ownerSessionId: token.ownerSessionId,
-          generation: token.generation,
-          page: initialMessages ?? EMPTY_TRANSCRIPT_PAGE,
-          loading: initialMessages === undefined,
-        };
-      }
-      return {
-        ...current,
-        loading: initialMessages === undefined ? true : current.loading,
-        error: undefined,
-      };
-    });
-    void runWebuiTranscriptPageRequest(
-      coordinator,
-      token,
-      () => loadMessages({ id: sessionId }),
-      (update) => commitTranscriptRequest(token, update),
-      (nextPage, commit) => {
-        commit((owned) => ({
-          ...owned,
-          page: nextPage,
-        }));
-      },
-      (reason, commit) => {
-        commit((owned) => ({
-          ...owned,
-          error: reason instanceof Error ? reason.message : String(reason),
-        }));
-      },
-      () => settleLoadingLifecycle(
-        loadingLifecycleId,
-        token.ownerSessionId,
-        token.generation,
-      ),
-    );
-  }, [coordinator, loadMessages, sessionId]);
+    if (initialMessages) historyOwner?.seed(sessionId, initialMessages);
+    void historyOwner?.loadPage(sessionId);
+  }, [historyOwner, initialMessages, sessionId]);
   useEffect(() => {
     const previous = previousTurnStateRef.current;
     previousTurnStateRef.current = { sessionId, turnLive };
     // 加载历史页只处理会话内的 live → idle 转换；切换会话由首屏请求负责。
     if (previous.sessionId !== sessionId || !previous.turnLive || turnLive) return undefined;
-    const token = coordinator.beginRequest(sessionId);
-    if (!token) return undefined;
-    const loadingLifecycleId = beginLoadingLifecycle();
-    void runWebuiTranscriptPageRequest(
-      coordinator,
-      token,
-      () => loadMessages({ id: sessionId }),
-      (update) => commitTranscriptRequest(token, update),
-      (nextPage, commit) => {
-        commit((owned) => ({
-          ...owned,
-          page: nextPage,
-        }));
-      },
-      (reason, commit) => {
-        commit((owned) => ({
-          ...owned,
-          error: reason instanceof Error ? reason.message : String(reason),
-        }));
-      },
-      () => settleLoadingLifecycle(
-        loadingLifecycleId,
-        token.ownerSessionId,
-        token.generation,
-      ),
-    );
+    void historyOwner?.loadPage(sessionId);
     return undefined;
-  }, [coordinator, loadMessages, sessionId, turnLive]);
+  }, [historyOwner, sessionId, turnLive]);
   const messages = useMemo(
     () => projectWebuiTranscriptMessages(visiblePage, stream.messages, streamPhase !== "done"),
     [visiblePage, stream.messages, streamPhase],
@@ -606,57 +489,25 @@ export function WebuiSessionTranscript({
             : "default",
     }));
   }, [groups, streamPhase]);
-  const loadOlder = visibleState?.page.hasMore && visibleState.page.nextCursor
+  const loadOlder = visiblePage.hasMore && visiblePage.nextCursor
     ? () => {
         if (loading) return;
-        const requestedCursor = visibleState.page.nextCursor;
+        const requestedCursor = visiblePage.nextCursor;
         if (!requestedCursor) return;
         // 翻历史是用户主动往上走：交还控制权，否则更早消息并进来之后
         // 贴底跟随会把他从正在读的位置拽回末尾。
         openScrollFollowRef.current = false;
-        const token = coordinator.beginRequest(sessionId);
-        if (!token) return;
-        const loadingLifecycleId = beginLoadingLifecycle();
         const viewport = transcriptRef.current?.closest<HTMLElement>(
           '[data-webui-session-scroll="true"]',
         );
         const previousScrollTop = viewport?.scrollTop;
-        commitTranscriptRequest(token, (owned) => ({
-          ...owned,
-          loading: true,
-          error: undefined,
-        }));
-        void runWebuiTranscriptPageRequest(
-          coordinator,
-          token,
-          () => loadMessages({ id: token.ownerSessionId, before: requestedCursor }),
-          (update) => commitTranscriptRequest(token, update),
-          (olderPage, commit) => {
-            const applied = commit((owned) => {
-              const result = mergeOlderTranscriptPage(owned, olderPage, requestedCursor);
-              return { ...result.state, error: result.error };
-            });
-            if (!applied) return;
-            requestAnimationFrame(() => {
-              if (
-                coordinator.isCurrent(token) &&
-                viewport?.isConnected &&
-                previousScrollTop !== undefined
-              ) viewport.scrollTop = previousScrollTop;
-            });
-          },
-          (reason, commit) => {
-            commit((owned) => ({
-              ...owned,
-              error: reason instanceof Error ? reason.message : String(reason),
-            }));
-          },
-          () => settleLoadingLifecycle(
-            loadingLifecycleId,
-            token.ownerSessionId,
-            token.generation,
-          ),
-        );
+        void historyOwner?.loadOlder(sessionId, requestedCursor).then(() => {
+          requestAnimationFrame(() => {
+            if (viewport?.isConnected && previousScrollTop !== undefined) {
+              viewport.scrollTop = previousScrollTop;
+            }
+          });
+        });
       }
     : undefined;
   return (

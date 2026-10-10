@@ -23,6 +23,14 @@ import type { WebuiSessionCatalogState } from "./session-catalog.js";
 import { initialWebuiSessionCatalogState } from "./session-catalog.js";
 import { initialWebuiStreamState } from "../projection/stream-state.js";
 import type { WebuiStreamState } from "../projection/stream-state.js";
+import type { WebuiClientMessagePage } from "../contracts/message-view.js";
+
+export interface WebuiApplicationTranscriptState {
+  readonly generation: number;
+  readonly page: WebuiClientMessagePage;
+  readonly loading: boolean;
+  readonly error?: string;
+}
 
 /**
  * The application's per-session record: the slices the effect reducer already
@@ -36,6 +44,7 @@ export interface WebuiApplicationSessionState {
   readonly permissions: readonly WebuiPendingPermission[];
   readonly questionnaire: WebuiQuestionnaireRequest | undefined;
   readonly goal: WebuiGoal | undefined;
+  readonly transcript: WebuiApplicationTranscriptState;
 }
 
 export const initialWebuiApplicationSessionState: WebuiApplicationSessionState =
@@ -45,6 +54,7 @@ export const initialWebuiApplicationSessionState: WebuiApplicationSessionState =
     permissions: [],
     questionnaire: undefined,
     goal: undefined,
+    transcript: { generation: 0, page: {}, loading: true },
   };
 
 /**

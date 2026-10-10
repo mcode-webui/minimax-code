@@ -46,9 +46,14 @@ import {
   type WebuiTurnCommandWriter,
 } from "../application/session-commands.js";
 import {
+  useWebuiApplicationOptional,
   useWebuiSessionStoreContext,
   useWebuiSessionStoreSnapshot,
 } from "./application-context.js";
+
+export function useWebuiTranscriptHistoryOwner() {
+  return useWebuiApplicationOptional()?.transcriptHistory;
+}
 
 export function useWebuiSessionState(
   sessionId: string | undefined,

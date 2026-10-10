@@ -859,7 +859,7 @@ export function WebuiComposer({
       const snapshot = readContextUsageSnapshot(page.contextSnapshot);
       const fromMessages = latestContextUsage((page.messages ?? []).map(projectWebuiMessageToStreamMessage));
       const contextUsage = snapshot ?? fromMessages;
-      if (contextUsage) commands.updateStream((current) => ({ ...current, contextUsage }));
+      if (contextUsage) commands.setContextUsage(contextUsage);
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [sessionId, sessionStatus, loadMessages]);

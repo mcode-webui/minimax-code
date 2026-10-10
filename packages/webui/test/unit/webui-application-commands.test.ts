@@ -22,11 +22,39 @@ import {
   sendWebuiTurn,
 } from "../../src/client/application/turn-commands.js";
 import { initialWebuiStreamState } from "../../src/client/projection/stream-state.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import { createWebuiTranscriptHistoryOwner } from "../../src/client/application/transcript-history.js";
+import type { WebuiClientMessagePage } from "../../src/client/contracts/message-view.js";
 import type { WebuiSessionActivityMap } from "../../src/client/projection/session-activity.js";
 import type { WebuiActiveTurn } from "../../src/shared/contracts/session.js";
 import type { WebuiRuntimeEvent } from "../../src/shared/contracts/stream.js";
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+describe("application-owned transcript history", () => {
+  it("commits into the session entity and fences a late result after switching sessions", async () => {
+    let resolveA: (page: WebuiClientMessagePage) => void = () => {};
+    const store = createWebuiSessionStore();
+    const owner = createWebuiTranscriptHistoryOwner({
+      store,
+      loadMessages: vi.fn(
+        ({ id }: { readonly id: string; readonly before?: string }): Promise<WebuiClientMessagePage> =>
+          id === "A"
+            ? new Promise((resolve) => { resolveA = resolve; })
+            : Promise.resolve({ messages: [{ msgId: "B-message" }] }),
+      ),
+    });
+    const loadA = owner.loadPage("A");
+    const loadB = owner.loadPage("B");
+    await loadB;
+    resolveA({ messages: [{ msgId: "A-late" }] });
+    await loadA;
+
+    expect(store.readSession("B").transcript.page.messages?.map((message) => message.msgId))
+      .toEqual(["B-message"]);
+    expect(store.readSession("A").transcript.page.messages).toBeUndefined();
+  });
+});
 
 function runtimeEvent(
   type: string,

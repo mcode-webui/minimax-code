@@ -41,6 +41,11 @@ import {
   createWebuiComposerStore,
   type WebuiComposerStore,
 } from "./composer-store.js";
+import {
+  createWebuiTranscriptHistoryOwner,
+  type WebuiTranscriptHistoryOwner,
+} from "./transcript-history.js";
+import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
 
 export interface WebuiApplicationDeps {
   /** Opens the process-event channel. Called exactly once per instance. */
@@ -57,6 +62,7 @@ export interface WebuiApplicationDeps {
   readonly effects?: WebuiEventEffects;
   /** Transport-facing dependencies of the turn coordinator. */
   readonly turns: Omit<WebuiTurnCoordinatorDeps, "store" | "leases">;
+  readonly loadMessages?: WebuiClientMessageLoader;
   /**
    * The unread storage adapter (`infrastructure/storage.ts`), injected because
    * the application layer may not import infrastructure. Absent degrades to a
@@ -81,6 +87,7 @@ export interface WebuiApplication {
   readonly leases: WebuiStreamLeaseController;
   readonly events: WebuiEventCoordinator;
   readonly turns: WebuiTurnCoordinator;
+  readonly transcriptHistory: WebuiTranscriptHistoryOwner;
   /** The one owner of unread hydration ordering (plan §7.6). */
   readonly unread: WebuiUnreadController;
   /** The one owner of composer drafts and input history (plan §7.6). */
@@ -125,6 +132,10 @@ export function createWebuiApplication(
     leases,
     ...deps.turns,
   });
+  const transcriptHistory = createWebuiTranscriptHistoryOwner({
+    store,
+    loadMessages: deps.loadMessages,
+  });
   // Exactly one channel per application instance, opened once. The coordinator
   // is its sole consumer; nothing else subscribes to it directly.
   const channel = deps.openEventChannel();
@@ -138,6 +149,7 @@ export function createWebuiApplication(
     leases,
     events,
     turns,
+    transcriptHistory,
     unread,
     composer,
     adoptHomeSession: (sessionId) => {

@@ -97,6 +97,10 @@ export function useWebuiApplication(): WebuiApplication {
   return application;
 }
 
+export function useWebuiApplicationOptional(): WebuiApplication | undefined {
+  return useContext(WebuiApplicationContext);
+}
+
 /**
  * Subscribe to the whole application snapshot. `subscribe` is the store's and
  * is stable across renders, and `getSnapshot` returns a cached object, so a

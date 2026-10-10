@@ -1,5 +1,6 @@
 // Event-channel connection health — the transport's always-on watcher,
-// surfaced.
+// surfaced. (Plan §7.2 `client/infrastructure/connection-health.ts`: the fact
+// is recorded here, with no React.)
 //
 // The WebUI holds no single "connection" to lose: every request opens its own
 // WebSocket. The one socket that IS long-lived is the `watchEvents`
@@ -20,8 +21,9 @@
 // once-healthy watcher being down degrades the channel; the transport owns
 // the reporting, so every current and future `watchEvents` caller is covered
 // without each of them wiring callbacks.
-
-import { useEffect, useState } from "react";
+//
+// This module is framework-free. The React subscription lives in
+// `client/bindings/use-connection-health.ts`.
 
 interface WebuiWatcherHealth {
   readonly token: number;
@@ -77,22 +79,17 @@ export function unregisterWebuiEventWatcher(token: number): void {
 }
 
 /**
- * Whether the event channel has lost a link it previously held. Subscribe
- * through the hook; read imperatively only for assertions in tests.
+ * Whether the event channel has lost a link it previously held. Read
+ * imperatively only for assertions; React reads it through the binding.
  */
 export function isWebuiEventChannelDegraded(): boolean {
   return degraded();
 }
 
-export function useWebuiEventChannelDegraded(): boolean {
-  const [value, setValue] = useState(degraded);
-  useEffect(() => {
-    setValue(degraded());
-    const listener = () => setValue(degraded());
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  }, []);
-  return value;
+/** Subscribe to changes of the degraded fact. Returns a detach. */
+export function subscribeWebuiConnectionHealth(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }

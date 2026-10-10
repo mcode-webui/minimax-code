@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useWebuiSessionStream } from "./bindings/use-session-state.js";
-import { useWebuiEventChannelDegraded } from "./connection-health.js";
+import { useWebuiEventChannelDegraded } from "./bindings/use-connection-health.js";
 import type { WebuiStreamState } from "./projection/stream-state.js";
 
 /**

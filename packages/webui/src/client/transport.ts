@@ -52,7 +52,7 @@ import {
   markWebuiEventWatcherHealthy,
   registerWebuiEventWatcher,
   unregisterWebuiEventWatcher,
-} from "./connection-health.js";
+} from "./infrastructure/connection-health.js";
 
 declare const document: {
   readonly visibilityState: string;

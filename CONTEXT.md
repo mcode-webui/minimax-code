@@ -65,8 +65,8 @@ _Avoid_: socket, connection, subscription
 
 **Stream loop**:
 The browser mechanism that reads a session's stream frames and manages resume and
-cancellation. It performs the history and context transforms it needs through
-injected functions rather than reaching into projection modules.
+cancellation. It performs the history, context and stream-state transforms it needs through
+injected bundles rather than reaching into projection modules.
 _Avoid_: stream handler, reader
 
 ### Sessions

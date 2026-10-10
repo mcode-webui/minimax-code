@@ -1,16 +1,23 @@
 // Protocol compatibility for every operation (stage 3, part B).
 //
-// The old forwarding handlers and the new registry run against *separately
-// created* deterministic synthetic ports — same request ids, same generated
-// values, same argument shapes — and a fake open WebSocket records the exact
-// strings `send()` received. Frames are compared as UTF-8 bytes with
-// `Buffer.from(a, "utf8").equals(...)`, never as parsed-and-re-sorted objects,
-// because field order, omitted fields and undefined serialisation are part of
-// the contract. Capability calls (port and terminal) and their arguments are
-// compared too.
+// The old side is **the frozen pre-refactor implementation itself**, copied
+// byte-for-byte from the original baseline commit into
+// `./legacy-protocol/` (see `./legacy-protocol/README.md` for provenance). It is
+// not an approximation: the operation roster comes from its own registry, the
+// accept/reject decision comes from its own descriptor validators, and the
+// frames come from its own dispatcher. An earlier revision of this file
+// reconstructed the baseline validators by hand, which made the oracle accept
+// bodies the real baseline rejected (`version` with `body: null`,
+// `archiveSession` with `archived: "yes"`, `getSession` with `{}`) — the
+// canary test below pins that regression.
 //
-// The old handlers and accepted-request corpus are independent fixtures from
-// the pre-refactor path; this old side does not borrow production descriptors.
+// The two sides run against *separately created* deterministic synthetic ports
+// — same request ids, same generated values, same argument shapes — and a fake
+// open WebSocket records the exact strings `send()` received. Frames are
+// compared as UTF-8 bytes with `Buffer.from(a, "utf8").equals(...)`, never as
+// parsed-and-re-sorted objects, because field order, omitted fields and
+// undefined serialisation are part of the contract. Capability calls and the
+// abort signal each capability received are compared too.
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
@@ -20,20 +27,23 @@ import type { WebSocket } from "ws";
 
 import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
 import type { WebuiHarnessPort } from "../../src/runtime/port.js";
-import type { WebuiTerminalManager } from "../../src/server/terminal.js";
-import type {
-  WebuiOperation,
-  WebuiOperationHandler,
-  WebuiOperationRegistryEntry,
-} from "../../src/server/operation/operation-contract.js";
 import { createOperationRegistry } from "../../src/server/index.js";
 import { dispatchWebuiFrame } from "../../src/server/operation/operation-dispatch.js";
 import {
   DEDICATED_OPERATION_NAMES,
   WEBUI_OPERATION_BINDINGS,
 } from "../../src/server/operation/bind-handlers.js";
-import { createLegacyOperationHandlers } from "./webui-legacy-operation-handlers.js";
 import { runWebuiCommand } from "../../src/runtime/commands/runner.js";
+import {
+  createOperationRegistry as createLegacyOperationRegistry,
+} from "./legacy-protocol/server/operation/operations.js";
+import {
+  dispatchWebuiFrame as dispatchLegacyWebuiFrame,
+} from "./legacy-protocol/server/operation/operation-dispatch.js";
+
+type LegacyRegistry = ReturnType<typeof createLegacyOperationRegistry>;
+type LegacyPort = Parameters<typeof createLegacyOperationRegistry>[0];
+type LegacyTerminal = Parameters<typeof createLegacyOperationRegistry>[1];
 
 /** An async iterable that yields nothing; deterministic for both sides. */
 function emptyStream(): AsyncIterable<never> {
@@ -45,22 +55,60 @@ interface Call {
   readonly args: readonly unknown[];
 }
 
+/**
+ * Replace an abort signal with a stable label so the two sides' recorded call
+ * arguments stay comparable without sharing an object identity. `injected` is
+ * the signal the dispatcher was told to hand the handler: a capability that
+ * received it records `<injected-signal>`, so a side that passed a different
+ * signal (or none) cannot match.
+ */
+function normaliseArg(arg: unknown, injected: AbortSignal | undefined): unknown {
+  if (arg instanceof AbortSignal)
+    return arg === injected ? "<injected-signal>" : "<foreign-signal>";
+  return arg;
+}
+
+function normaliseArgs(
+  args: readonly unknown[],
+  injected: AbortSignal | undefined,
+): readonly unknown[] {
+  return args.map((arg) => normaliseArg(arg, injected));
+}
+
 /** A port whose every method records its call and returns a fixed value. */
 interface RecordingPort {
   readonly port: WebuiHarnessPort;
   readonly calls: Call[];
 }
 
-function recordingPort(streamFactory?: () => AsyncIterable<unknown>): RecordingPort {
+interface PortPlan {
+  /**
+   * Substitute one member before the default behaviour applies. A key present
+   * with value `undefined` models an **absent** optional capability; a key
+   * present with a non-function value models a **non-callable** one.
+   */
+  readonly override?: Readonly<Record<string, unknown>>;
+  /** A live async iterable for the streaming capabilities. */
+  readonly stream?: () => AsyncIterable<unknown>;
+  /** The signal the dispatcher hands the handler, used for argument labels. */
+  readonly injectedSignal?: AbortSignal | undefined;
+}
+
+function recordingPort(plan: PortPlan = {}): RecordingPort {
   const calls: Call[] = [];
   const port = new Proxy(
     {},
     {
       get(_target, key) {
         if (typeof key !== "string") return undefined;
+        if (plan.override && Object.prototype.hasOwnProperty.call(plan.override, key))
+          return plan.override[key];
+        const record = (...args: readonly unknown[]): void => {
+          calls.push({ method: key, args: normaliseArgs(args, plan.injectedSignal) });
+        };
         if (key === "version")
           return (...args: readonly unknown[]) => {
-            calls.push({ method: key, args });
+            record(...args);
             return { version: "0.0.0-fixed", protocolVersion: 1 };
           };
         // Streams return a live async iterable, not a promise. The data
@@ -68,13 +116,13 @@ function recordingPort(streamFactory?: () => AsyncIterable<unknown>): RecordingP
         // watcher returns it directly.
         if (key === "watchEvents")
           return (...args: readonly unknown[]) => {
-            calls.push({ method: key, args });
-            return emptyStream();
+            record(...args);
+            return plan.stream?.() ?? emptyStream();
           };
         if (key === "sendMessage" || key === "resumeSession")
           return (...args: readonly unknown[]) => {
-            calls.push({ method: key, args });
-            return Promise.resolve({ ok: true, source: streamFactory?.() ?? emptyStream() });
+            record(...args);
+            return Promise.resolve({ ok: true, source: plan.stream?.() ?? emptyStream() });
           };
         // `runCommand` is a port capability whose implementation is the command
         // interpreter over the rest of the port. The scripted port models it the
@@ -84,7 +132,7 @@ function recordingPort(streamFactory?: () => AsyncIterable<unknown>): RecordingP
           return (request: unknown) =>
             runWebuiCommand(port as unknown as WebuiHarnessPort, request as never);
         return (...args: readonly unknown[]) => {
-          calls.push({ method: key, args });
+          record(...args);
           return Promise.resolve({ method: key, args });
         };
       },
@@ -95,14 +143,14 @@ function recordingPort(streamFactory?: () => AsyncIterable<unknown>): RecordingP
 
 /** A terminal adapter whose every method records its call and returns a fixed value. */
 interface RecordingTerminal {
-  readonly terminal: WebuiTerminalManager;
+  readonly terminal: LegacyTerminal;
   readonly calls: Call[];
 }
 
-function recordingTerminal(): RecordingTerminal {
+function recordingTerminal(injectedSignal?: AbortSignal): RecordingTerminal {
   const calls: Call[] = [];
   const record = (method: string, args: readonly unknown[]) => {
-    calls.push({ method, args });
+    calls.push({ method, args: normaliseArgs(args, injectedSignal) });
   };
   const terminal = {
     create(workspaceDir: string) {
@@ -132,44 +180,8 @@ function recordingTerminal(): RecordingTerminal {
     disposeBySession() {
       record("terminal.disposeBySession", []);
     },
-  } as unknown as WebuiTerminalManager;
+  } as unknown as LegacyTerminal;
   return { terminal, calls };
-}
-
-/**
- * Independent legacy oracle assembled from the copied pre-refactor handlers
- * and the frozen protocol request fixtures below.
- */
-function legacyRegistry(
-  port: WebuiHarnessPort,
-  terminal: WebuiTerminalManager,
-): ReadonlyMap<string, WebuiOperationRegistryEntry> {
-  const handlers = createLegacyOperationHandlers(port, terminal);
-  const registry = new Map<string, WebuiOperationRegistryEntry>();
-  for (const [name, handle] of Object.entries(handlers)) {
-    const operation: WebuiOperation<unknown, unknown> = {
-      name,
-      ...(name === "watchEvents" ? { acknowledgesStream: true } : {}),
-      validate(body) {
-        if (name === "archiveSession") {
-          if (body === null || typeof body !== "object" || Array.isArray(body))
-            return { ok: false, code: WebuiErrorCode.invalidBody, message: "archiveSession body must be an object" };
-          const record = body as Record<string, unknown>;
-          if (typeof record.id !== "string" || !record.id.trim())
-            return { ok: false, code: WebuiErrorCode.invalidBody, message: "archiveSession body requires a non-empty id" };
-          return { ok: true, body: { id: record.id.trim(), ...(typeof record.archived === "boolean" ? { archived: record.archived } : {}) } };
-        }
-        if (name === "getAgentMemory" || name === "setAgentMemory")
-          return { ok: true, body: { ...(body as Record<string, unknown>), agentName: "mavis" } };
-        return { ok: true, body };
-      },
-    };
-    registry.set(name, {
-      operation,
-      handle: handle as WebuiOperationHandler<unknown>,
-    });
-  }
-  return registry;
 }
 
 interface RecordingSocket {
@@ -191,17 +203,112 @@ function recordingSocket(): RecordingSocket {
   return socket;
 }
 
-async function run(
-  operations: ReadonlyMap<string, WebuiOperationRegistryEntry>,
-  frame: unknown,
-  socket: RecordingSocket,
-  getSignal: () => AbortSignal | undefined = () => undefined,
-): Promise<void> {
-  await dispatchWebuiFrame(socket as unknown as WebSocket, frame, operations, true, getSignal);
+type Side = "baseline" | "production";
+
+interface SideOptions {
+  readonly plan?: PortPlan;
+  readonly terminal?: boolean;
+  readonly signal?: AbortSignal;
+  readonly accepting?: boolean;
+  /** Replaces `send` on the recording socket (socket-close abort fixtures). */
+  readonly onSend?: (payload: string) => void;
 }
 
+interface SideRun {
+  readonly sent: readonly string[];
+  readonly calls: readonly Call[];
+}
+
+/** One dispatch of one frame through one independently created side. */
+async function runSide(side: Side, frame: unknown, options: SideOptions = {}): Promise<SideRun> {
+  const recordedPort = recordingPort({ ...options.plan, injectedSignal: options.signal });
+  const recordedTerminal = recordingTerminal(options.signal);
+  const terminal = options.terminal === false ? undefined : recordedTerminal.terminal;
+  const getSignal = (): AbortSignal | undefined => options.signal;
+  const socket = recordingSocket();
+  if (options.onSend) {
+    const send = socket.send.bind(socket);
+    socket.send = (payload: string) => {
+      send(payload);
+      options.onSend?.(payload);
+    };
+  }
+  if (side === "baseline") {
+    const registry: LegacyRegistry = createLegacyOperationRegistry(
+      recordedPort.port as unknown as LegacyPort,
+      terminal,
+    );
+    await dispatchLegacyWebuiFrame(
+      socket as unknown as WebSocket,
+      frame,
+      registry,
+      options.accepting ?? true,
+      getSignal,
+    );
+  } else {
+    const registry = createOperationRegistry(
+      recordedPort.port,
+      terminal as unknown as Parameters<typeof createOperationRegistry>[1],
+    );
+    await dispatchWebuiFrame(
+      socket as unknown as WebSocket,
+      frame,
+      registry,
+      options.accepting ?? true,
+      getSignal,
+    );
+  }
+  return { sent: socket.sent, calls: [...recordedPort.calls, ...recordedTerminal.calls] };
+}
+
+function describeFrames(frames: readonly string[]): string {
+  return frames.map((frame, index) => `  [${index}] ${frame}`).join("\n");
+}
+
+/** Byte comparison of the dispatched frames — never a parsed re-serialisation. */
+function assertFrameBytesEqual(
+  baseline: readonly string[],
+  production: readonly string[],
+  label: string,
+): void {
+  assert.equal(
+    baseline.length,
+    production.length,
+    `${label}: frame count diverged (baseline ${baseline.length}, production ${production.length})\nbaseline:\n${describeFrames(baseline)}\nproduction:\n${describeFrames(production)}`,
+  );
+  for (let index = 0; index < baseline.length; index += 1) {
+    const a = baseline[index] ?? "";
+    const b = production[index] ?? "";
+    assert.ok(
+      Buffer.from(a, "utf8").equals(Buffer.from(b, "utf8")),
+      `${label}: frame ${index} diverged\nbaseline:  ${a}\nproduction: ${b}`,
+    );
+  }
+}
+
+/** Run one frame through both sides and require identical bytes and calls. */
+async function compareFrame(
+  label: string,
+  frame: unknown,
+  options: SideOptions = {},
+): Promise<void> {
+  const baseline = await runSide("baseline", frame, options);
+  const production = await runSide("production", frame, options);
+  assertFrameBytesEqual(baseline.sent, production.sent, label);
+  assert.deepEqual(baseline.calls, production.calls, `${label}: capability calls diverged`);
+}
+
+const MISSING_BODY = Symbol("body key omitted");
+
 function requestFrame(operation: string, body: unknown): unknown {
-  return { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-1", operation, body };
+  const frame: Record<string, unknown> = {
+    protocolVersion: WEBUI_PROTOCOL_VERSION,
+    kind: "request",
+    requestId: "req-1",
+    operation,
+  };
+  if (body !== MISSING_BODY) frame.body = body;
+  return frame;
 }
 
 // `browseWorkspaceDirs` reads the real filesystem, so the comparison needs a
@@ -313,132 +420,218 @@ const VALID_BODIES: Readonly<Record<string, unknown>> = {
   resumeSession: { id: "s1" },
 };
 
-/** The 99 operation names: 86 bindings plus the 13 dedicated handlers. */
-const ALL_OPERATION_NAMES: readonly string[] = [
-  ...Object.keys(WEBUI_OPERATION_BINDINGS),
-  ...DEDICATED_OPERATION_NAMES,
+/**
+ * The baseline roster, read from the frozen registry — never from the
+ * production binding tables. Deriving it from production would let an operation
+ * added or removed today silently reshape the corpus the oracle is compared
+ * against.
+ */
+const BASELINE_OPERATION_NAMES: readonly string[] = [
+  ...createLegacyOperationRegistry(
+    recordingPort().port as unknown as LegacyPort,
+    recordingTerminal().terminal,
+  ).keys(),
 ];
 
-async function compareOperation(name: string): Promise<void> {
-  const oldPort = recordingPort();
-  const newPort = recordingPort();
-  const oldTerminal = recordingTerminal();
-  const newTerminal = recordingTerminal();
-  const oldRegistry = legacyRegistry(oldPort.port, oldTerminal.terminal);
-  const newRegistry = createOperationRegistry(newPort.port, newTerminal.terminal);
-  const frame = requestFrame(name, VALID_BODIES[name]);
+const TERMINAL_OPERATION_NAMES: readonly string[] = [
+  "createTerminal",
+  "listTerminals",
+  "writeTerminal",
+  "resizeTerminal",
+  "disposeTerminal",
+  "watchTerminal",
+];
 
-  const oldSocket = recordingSocket();
-  const newSocket = recordingSocket();
-  await run(oldRegistry, frame, oldSocket);
-  await run(newRegistry, frame, newSocket);
+/** Optional capabilities with a declared missing policy the wire must keep. */
+const OPTIONAL_CAPABILITY_OPERATIONS: Readonly<Record<string, string>> = {
+  listVisibleProjects: "listVisibleProjects",
+  pluginManagement: "pluginManagement",
+  getPermissionMode: "getPermissionMode",
+  setPermissionMode: "setPermissionMode",
+  getGlobalInstructions: "getGlobalInstructions",
+  setGlobalInstructions: "setGlobalInstructions",
+  getAgentMemory: "getAgentMemory",
+  setAgentMemory: "setAgentMemory",
+  getUserProfile: "getUserProfile",
+  setUserProfile: "setUserProfile",
+  getMemorySettings: "getMemorySettings",
+  setMemorySettings: "setMemorySettings",
+  signOut: "signOutAccount",
+};
 
-  assert.equal(
-    oldSocket.sent.length,
-    newSocket.sent.length,
-    `${name}: frame count diverged (old ${oldSocket.sent.length}, new ${newSocket.sent.length})`,
-  );
-  for (let index = 0; index < oldSocket.sent.length; index += 1) {
-    const oldFrame = oldSocket.sent[index] ?? "";
-    const newFrame = newSocket.sent[index] ?? "";
-    assert.ok(
-      Buffer.from(oldFrame, "utf8").equals(Buffer.from(newFrame, "utf8")),
-      `${name}: frame ${index} diverged\nold: ${oldFrame}\nnew: ${newFrame}`,
-    );
-  }
-  assert.deepEqual(
-    [...oldPort.calls, ...oldTerminal.calls],
-    [...newPort.calls, ...newTerminal.calls],
-    `${name}: capability calls diverged`,
-  );
-}
-
-describe("WebUI operation wire compatibility (old handlers vs typed bindings)", () => {
-  it("covers all 99 operations exactly once (86 bindings + 13 dedicated handlers)", () => {
+describe("WebUI operation wire compatibility (baseline implementation vs typed bindings)", () => {
+  it("reads the 99-operation roster from the frozen baseline registry", () => {
+    expect(BASELINE_OPERATION_NAMES).toHaveLength(99);
+    expect(new Set(BASELINE_OPERATION_NAMES).size).toBe(99);
+    // The production split stays 86 bindings + 13 dedicated handlers, and it
+    // must still name exactly the roster the baseline served.
     expect(Object.keys(WEBUI_OPERATION_BINDINGS)).toHaveLength(86);
     expect(DEDICATED_OPERATION_NAMES).toHaveLength(13);
-    expect(ALL_OPERATION_NAMES).toHaveLength(99);
-    expect(new Set(ALL_OPERATION_NAMES).size).toBe(99);
+    const productionRoster = [
+      ...Object.keys(WEBUI_OPERATION_BINDINGS),
+      ...DEDICATED_OPERATION_NAMES,
+    ];
+    expect(new Set(productionRoster).size).toBe(99);
+    assert.deepEqual(
+      [...productionRoster].sort(),
+      [...BASELINE_OPERATION_NAMES].sort(),
+    );
+    for (const name of BASELINE_OPERATION_NAMES) {
+      expect(
+        Object.prototype.hasOwnProperty.call(VALID_BODIES, name),
+        `no valid body fixture for ${name}`,
+      ).toBe(true);
+    }
+    expect(new Set(Object.keys(VALID_BODIES))).toEqual(new Set(BASELINE_OPERATION_NAMES));
+  });
+
+  it("keeps the real baseline validators, not a hand-written approximation", async () => {
+    // The exact three inputs that exposed the previous approximation: the old
+    // oracle answered them with a response frame while the real baseline
+    // validator (and the production one) answer `invalid_body`.
+    const cases: ReadonlyArray<readonly [string, unknown]> = [
+      ["version", null],
+      ["archiveSession", { id: "s1", archived: "yes" }],
+      ["getSession", {}],
+    ];
+    for (const [operation, body] of cases) {
+      const baseline = await runSide("baseline", requestFrame(operation, body));
+      const production = await runSide("production", requestFrame(operation, body));
+      assertFrameBytesEqual(baseline.sent, production.sent, `canary ${operation}`);
+      const frame = baseline.sent[0] ?? "";
+      assert.ok(
+        frame.includes(`"${WebuiErrorCode.invalidBody}"`),
+        `${operation}: baseline oracle answered ${frame}`,
+      );
+    }
   });
 
   it("sends byte-identical frames for every operation, with identical capability calls", async () => {
-    for (const name of ALL_OPERATION_NAMES) await compareOperation(name);
+    for (const name of BASELINE_OPERATION_NAMES)
+      await compareFrame(name, requestFrame(name, VALID_BODIES[name]));
   });
 
-  it("compares the 13 dedicated operations old-vs-new", async () => {
-    expect(DEDICATED_OPERATION_NAMES).toHaveLength(13);
-    for (const name of DEDICATED_OPERATION_NAMES) await compareOperation(name);
+  it("rejects the same adversarial bodies for every operation", async () => {
+    const bodies: ReadonlyArray<readonly [string, unknown]> = [
+      ["null", null],
+      ["array", []],
+      ["empty object", {}],
+      ["omitted", MISSING_BODY],
+      ["wrong id type", { id: 7 }],
+    ];
+    for (const name of BASELINE_OPERATION_NAMES) {
+      for (const [label, body] of bodies) {
+        await compareFrame(
+          `${name} (${label})`,
+          requestFrame(name, body),
+        );
+      }
+    }
+  });
+
+  it("leaves terminal operations unregistered when no terminal manager is wired", async () => {
+    for (const name of TERMINAL_OPERATION_NAMES) {
+      await compareFrame(
+        `${name} without a terminal manager`,
+        requestFrame(name, VALID_BODIES[name]),
+        { terminal: false },
+      );
+    }
+    // A non-terminal operation is unaffected by the same absence.
+    await compareFrame(
+      "getSession without a terminal manager",
+      requestFrame("getSession", VALID_BODIES.getSession),
+      { terminal: false },
+    );
+  });
+
+  it("preserves absent and non-callable optional capabilities identically", async () => {
+    for (const [operation, method] of Object.entries(OPTIONAL_CAPABILITY_OPERATIONS)) {
+      const body = VALID_BODIES[operation];
+      await compareFrame(
+        `${operation} with an absent ${method}`,
+        requestFrame(operation, body),
+        { plan: { override: { [method]: undefined } } },
+      );
+      await compareFrame(
+        `${operation} with a non-callable ${method}`,
+        requestFrame(operation, body),
+        { plan: { override: { [method]: 42 } } },
+      );
+    }
+  });
+
+  it("hands each streaming capability the request signal and keeps the frames identical", async () => {
+    const operations = ["watchEvents", "sendMessage", "resumeSession", "watchTerminal"] as const;
+    for (const name of operations) {
+      const baselineController = new AbortController();
+      const productionController = new AbortController();
+      const baseline = await runSide("baseline", requestFrame(name, VALID_BODIES[name]), {
+        signal: baselineController.signal,
+      });
+      const production = await runSide("production", requestFrame(name, VALID_BODIES[name]), {
+        signal: productionController.signal,
+      });
+      assertFrameBytesEqual(baseline.sent, production.sent, `${name} (signal)`);
+      const streamCalls = baseline.calls.filter((call) =>
+        /signal|watch|sendMessage|resumeSession|watchEvents/.test(call.method),
+      );
+      expect(streamCalls.length, `${name}: no capability call recorded`).toBeGreaterThan(0);
+      for (const call of streamCalls) {
+        const labels = call.args.filter((arg) => typeof arg === "string");
+        expect(
+          labels.includes("<injected-signal>"),
+          `${name}: capability ${call.method} did not receive the request signal (${JSON.stringify(call.args)})`,
+        ).toBe(true);
+        expect(labels).not.toContain("<foreign-signal>");
+      }
+      assert.deepEqual(baseline.calls, production.calls, `${name}: capability calls diverged`);
+    }
+  });
+
+  it("acknowledges the event watcher with the same response frame before any event", async () => {
+    const frame = requestFrame("watchEvents", VALID_BODIES.watchEvents);
+    const baseline = await runSide("baseline", frame);
+    const production = await runSide("production", frame);
+    assertFrameBytesEqual(baseline.sent, production.sent, "watchEvents acknowledgement");
+    expect(baseline.sent).toHaveLength(1);
+    assert.deepEqual(JSON.parse(baseline.sent[0] ?? ""), {
+      protocolVersion: WEBUI_PROTOCOL_VERSION,
+      kind: "response",
+      requestId: "req-1",
+      body: { stream: true },
+    });
   });
 
   it("keeps the envelope, unknown-operation and invalid-body frames identical", async () => {
-    const oldRegistry = legacyRegistry(recordingPort().port, recordingTerminal().terminal);
-    const newRegistry = createOperationRegistry(recordingPort().port, recordingTerminal().terminal);
-
-    const cases: ReadonlyArray<unknown> = [
-      { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-2", operation: "notAnOperation", body: {} },
-      { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "response", requestId: "req-3", body: {} },
-      { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-4", operation: "archiveSession", body: {} },
-      { protocolVersion: 99, kind: "request", requestId: "req-5", operation: "archiveSession", body: {} },
-      { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-6", operation: "createTerminal", body: {} },
+    const cases: ReadonlyArray<readonly [string, unknown]> = [
+      ["unknown operation", { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-2", operation: "notAnOperation", body: {} }],
+      ["non-request frame", { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "response", requestId: "req-3", body: {} }],
+      ["id-less body", { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-4", operation: "archiveSession", body: {} }],
+      ["protocol mismatch", { protocolVersion: 99, kind: "request", requestId: "req-5", operation: "archiveSession", body: {} }],
+      ["terminal body dropped", { protocolVersion: WEBUI_PROTOCOL_VERSION, kind: "request", requestId: "req-6", operation: "createTerminal", body: {} }],
     ];
+    for (const [label, frame] of cases) await compareFrame(label, frame);
 
-    for (const frame of cases) {
-      const oldSocket = recordingSocket();
-      const newSocket = recordingSocket();
-      await run(oldRegistry, frame, oldSocket);
-      await run(newRegistry, frame, newSocket);
-      assert.equal(oldSocket.sent.length, newSocket.sent.length);
-      assert.ok(Buffer.from(oldSocket.sent[0] ?? "", "utf8").equals(Buffer.from(newSocket.sent[0] ?? "", "utf8")));
-    }
+    // The disconnecting service is an error frame too, and it is decided
+    // before the registry is consulted.
+    await compareFrame("shutting down", cases[2]?.[1], { accepting: false });
   });
 
   it("preserves a recognised error code and message from a capability", async () => {
-    const failure = Object.assign(new Error("session diff is unavailable"), {
-      code: "harness_error",
-    });
-    const makePort = (): WebuiHarnessPort =>
-      new Proxy({}, {
-        get(_t, key) {
-          if (typeof key !== "string") return undefined;
-          if (key === "getSessionDiff") return () => Promise.reject(failure);
-          if (key === "watchEvents") return () => emptyStream();
-          if (key === "sendMessage" || key === "resumeSession")
-            return () => Promise.resolve({ ok: true, source: emptyStream() });
-          return () => Promise.resolve({});
-        },
-      }) as unknown as WebuiHarnessPort;
-
-    const frame = requestFrame("getSessionDiff", { id: "s1" });
-    const oldSocket = recordingSocket();
-    const newSocket = recordingSocket();
-    await run(legacyRegistry(makePort(), recordingTerminal().terminal), frame, oldSocket);
-    await run(createOperationRegistry(makePort(), recordingTerminal().terminal), frame, newSocket);
-    assert.ok(Buffer.from(oldSocket.sent[0] ?? "", "utf8").equals(Buffer.from(newSocket.sent[0] ?? "", "utf8")));
-    assert.ok((oldSocket.sent[0] ?? "").includes("session diff is unavailable"));
-  });
-
-  it("preserves ordinary capability errors and missing-capability failures", async () => {
-    const makePort = (missing: boolean): WebuiHarnessPort =>
-      new Proxy({}, {
-        get(_target, key) {
-          if (key === "getSessionDiff") return missing
-            ? undefined
-            : () => Promise.reject(new Error("ordinary lookup failure"));
-          if (key === "watchEvents") return () => emptyStream();
-          if (key === "sendMessage" || key === "resumeSession")
-            return () => Promise.resolve({ ok: true, source: emptyStream() });
-          return () => Promise.resolve({});
-        },
-      }) as unknown as WebuiHarnessPort;
-    for (const missing of [false, true]) {
-      const frame = requestFrame("getSessionDiff", { id: "s1" });
-      const oldSocket = recordingSocket();
-      const newSocket = recordingSocket();
-      await run(legacyRegistry(makePort(missing), recordingTerminal().terminal), frame, oldSocket);
-      await run(createOperationRegistry(makePort(missing), recordingTerminal().terminal), frame, newSocket);
-      assert.ok(Buffer.from(oldSocket.sent[0] ?? "", "utf8").equals(Buffer.from(newSocket.sent[0] ?? "", "utf8")));
-      assert.ok((oldSocket.sent[0] ?? "").includes(missing ? "harness_error" : "ordinary lookup failure"));
-    }
+    const baseline = await runSide(
+      "baseline",
+      requestFrame("getSessionDiff", VALID_BODIES.getSessionDiff),
+      { plan: { override: { getSessionDiff: () => Promise.reject(rejectWith("session diff is unavailable", WebuiErrorCode.harnessError)) } } },
+    );
+    const production = await runSide(
+      "production",
+      requestFrame("getSessionDiff", VALID_BODIES.getSessionDiff),
+      { plan: { override: { getSessionDiff: () => Promise.reject(rejectWith("session diff is unavailable", WebuiErrorCode.harnessError)) } } },
+    );
+    assertFrameBytesEqual(baseline.sent, production.sent, "recognised error");
+    assert.ok((baseline.sent[0] ?? "").includes("session diff is unavailable"));
+    assert.ok((baseline.sent[0] ?? "").includes(`"${WebuiErrorCode.harnessError}"`));
   });
 
   it("matches multiple stream frames, failures, and generator finalization counts byte-for-byte", async () => {
@@ -454,59 +647,36 @@ describe("WebUI operation wire compatibility (old handlers vs typed bindings)", 
       }
     };
     for (const fail of [false, true]) {
-      const oldPort = recordingPort(stream(oldFinalized, fail));
-      const newPort = recordingPort(stream(newFinalized, fail));
-      const oldSocket = recordingSocket();
-      const newSocket = recordingSocket();
-      await run(legacyRegistry(oldPort.port, recordingTerminal().terminal), requestFrame("sendMessage", VALID_BODIES.sendMessage), oldSocket);
-      await run(createOperationRegistry(newPort.port, recordingTerminal().terminal), requestFrame("sendMessage", VALID_BODIES.sendMessage), newSocket);
-      assert.deepEqual(oldSocket.sent.length, newSocket.sent.length);
-      for (let index = 0; index < oldSocket.sent.length; index += 1) {
-        assert.ok(Buffer.from(oldSocket.sent[index] ?? "", "utf8").equals(Buffer.from(newSocket.sent[index] ?? "", "utf8")));
-      }
+      const baseline = await runSide(
+        "baseline",
+        requestFrame("sendMessage", VALID_BODIES.sendMessage),
+        { plan: { stream: stream(oldFinalized, fail) } },
+      );
+      const production = await runSide(
+        "production",
+        requestFrame("sendMessage", VALID_BODIES.sendMessage),
+        { plan: { stream: stream(newFinalized, fail) } },
+      );
+      assertFrameBytesEqual(baseline.sent, production.sent, `sendMessage (fail=${fail})`);
     }
     expect(oldFinalized.count).toBe(2);
     expect(newFinalized.count).toBe(2);
   });
 
   it("finalizes once when the request signal closes during a pending stream", async () => {
-    const makePendingPort = (controller: AbortController, finalizations: { count: number }): WebuiHarnessPort =>
-      new Proxy({}, {
-        get(_target, key) {
-          if (typeof key !== "string") return undefined;
-          if (key === "sendMessage") return () => Promise.resolve({
-            ok: true,
-            source: {
-              [Symbol.asyncIterator]() {
-                return {
-                  next: () => new Promise<IteratorResult<unknown>>((resolve) => {
-                    controller.signal.addEventListener("abort", () => resolve({ done: true, value: undefined }), { once: true });
-                  }),
-                  return: async () => {
-                    finalizations.count += 1;
-                    return { done: true, value: undefined };
-                  },
-                };
-              },
-            },
-          });
-          if (key === "watchEvents") return () => emptyStream();
-          if (key === "resumeSession") return () => Promise.resolve({ ok: true, source: emptyStream() });
-          return () => Promise.resolve({});
-        },
-      }) as unknown as WebuiHarnessPort;
+    const runPending = async (side: Side, controller: AbortController, finalized: { count: number }) => {
+      const port = pendingStreamPort(controller, finalized);
+      await runSide(side, requestFrame("sendMessage", VALID_BODIES.sendMessage), {
+        signal: controller.signal,
+        plan: { override: { sendMessage: port } },
+      });
+    };
     const oldController = new AbortController();
     const newController = new AbortController();
     const oldFinalized = { count: 0 };
     const newFinalized = { count: 0 };
-    const oldRun = run(
-      legacyRegistry(makePendingPort(oldController, oldFinalized), recordingTerminal().terminal),
-      requestFrame("sendMessage", VALID_BODIES.sendMessage), recordingSocket(), () => oldController.signal,
-    );
-    const newRun = run(
-      createOperationRegistry(makePendingPort(newController, newFinalized), recordingTerminal().terminal),
-      requestFrame("sendMessage", VALID_BODIES.sendMessage), recordingSocket(), () => newController.signal,
-    );
+    const oldRun = runPending("baseline", oldController, oldFinalized);
+    const newRun = runPending("production", newController, newFinalized);
     await new Promise((resolve) => setTimeout(resolve, 0));
     oldController.abort();
     newController.abort();
@@ -516,48 +686,76 @@ describe("WebUI operation wire compatibility (old handlers vs typed bindings)", 
   });
 
   it("finalizes once when a socket-close abort arrives after the first stream frame", async () => {
-    const runClose = async (kind: "old" | "new") => {
+    const runClose = async (side: Side) => {
       const controller = new AbortController();
       const finalized = { count: 0 };
-      const port = new Proxy({}, {
-        get(_target, key) {
-          if (key === "sendMessage") return () => Promise.resolve({
-            ok: true,
-            source: {
-              [Symbol.asyncIterator]() {
-                let emitted = false;
-                return {
-                  next: () => emitted
-                    ? new Promise<IteratorResult<unknown>>(() => {})
-                    : (emitted = true, Promise.resolve({ done: false as const, value: { chunk: "first" } })),
-                  return: async () => {
-                    finalized.count += 1;
-                    return { done: true, value: undefined };
-                  },
-                };
-              },
-            },
-          });
-          if (key === "watchEvents") return () => emptyStream();
-          if (key === "resumeSession") return () => Promise.resolve({ ok: true, source: emptyStream() });
-          return () => Promise.resolve({});
+      const run = runSide(side, requestFrame("sendMessage", VALID_BODIES.sendMessage), {
+        signal: controller.signal,
+        plan: { override: { sendMessage: firstFrameThenParkedPort(finalized) } },
+        onSend: (payload) => {
+          if (payload.includes('"kind":"event"')) controller.abort();
         },
-      }) as unknown as WebuiHarnessPort;
-      const terminal = recordingTerminal().terminal;
-      const operations = kind === "old" ? legacyRegistry(port, terminal) : createOperationRegistry(port, terminal);
-      const socket = recordingSocket();
-      const send = socket.send;
-      socket.send = (payload) => {
-        send(payload);
-        if (payload.includes('"kind":"event"')) controller.abort();
-      };
-      await run(operations, requestFrame("sendMessage", VALID_BODIES.sendMessage), socket, () => controller.signal);
-      return { sent: socket.sent, finalized: finalized.count };
+      });
+      const result = await run;
+      return { sent: result.sent, finalized: finalized.count };
     };
-    const old = await runClose("old");
-    const current = await runClose("new");
-    assert.ok(Buffer.from(JSON.stringify(old.sent), "utf8").equals(Buffer.from(JSON.stringify(current.sent), "utf8")));
-    expect(old.finalized).toBe(1);
-    expect(current.finalized).toBe(1);
+    const baseline = await runClose("baseline");
+    const production = await runClose("production");
+    assertFrameBytesEqual(baseline.sent, production.sent, "socket-close abort");
+    expect(baseline.finalized).toBe(1);
+    expect(production.finalized).toBe(1);
   });
 });
+
+function rejectWith(message: string, code: string): Error {
+  return Object.assign(new Error(message), { code });
+}
+
+/** A `sendMessage` capability whose stream parks until the signal aborts. */
+function pendingStreamPort(controller: AbortController, finalizations: { count: number }) {
+  return () =>
+    Promise.resolve({
+      ok: true,
+      source: {
+        [Symbol.asyncIterator]() {
+          return {
+            next: () =>
+              new Promise<IteratorResult<unknown>>((resolve) => {
+                controller.signal.addEventListener(
+                  "abort",
+                  () => resolve({ done: true, value: undefined }),
+                  { once: true },
+                );
+              }),
+            return: async () => {
+              finalizations.count += 1;
+              return { done: true, value: undefined };
+            },
+          };
+        },
+      },
+    });
+}
+
+/** A `sendMessage` capability that yields one frame and then parks forever. */
+function firstFrameThenParkedPort(finalizations: { count: number }) {
+  return () =>
+    Promise.resolve({
+      ok: true,
+      source: {
+        [Symbol.asyncIterator]() {
+          let emitted = false;
+          return {
+            next: () =>
+              emitted
+                ? new Promise<IteratorResult<unknown>>(() => {})
+                : ((emitted = true), Promise.resolve({ done: false as const, value: { chunk: "first" } })),
+            return: async () => {
+              finalizations.count += 1;
+              return { done: true, value: undefined };
+            },
+          };
+        },
+      },
+    });
+}

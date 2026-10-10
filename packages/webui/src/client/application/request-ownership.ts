@@ -15,8 +15,6 @@
 
 export interface WebuiRequestTicket {
   readonly sessionId: string;
-  /** Monotonic issue order, so a newer request for the same session can win. */
-  readonly version: number;
 }
 
 export interface WebuiRequestOwnership {
@@ -37,12 +35,8 @@ export interface WebuiRequestOwnership {
 export function createWebuiRequestOwnership(
   readSelectedSessionId: () => string | undefined,
 ): WebuiRequestOwnership {
-  let version = 0;
   return {
-    capture: (sessionId) => {
-      version += 1;
-      return { sessionId, version };
-    },
+    capture: (sessionId) => ({ sessionId }),
     owns: (ticket) => readSelectedSessionId() === ticket.sessionId,
     guard:
       (ticket, apply) =>

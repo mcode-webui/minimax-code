@@ -37,6 +37,33 @@ import {
   resolveEditorSeed,
 } from "../../src/client/components/settings/PersonalizationSettings.js";
 
+import { useMemo } from "react";
+import { createWebuiSettingsWorkflows } from "../../src/client/application/settings-workflows.js";
+import { WebuiSettingsWorkflowsProvider } from "../../src/client/bindings/use-query-state.js";
+
+type PanelCaps = {
+  readonly getGlobalInstructions?: (() => Promise<unknown>) | undefined;
+  readonly setGlobalInstructions?: ((request: { readonly content: string }) => Promise<unknown>) | undefined;
+  readonly getAgentMemory?: ((request?: { readonly includeContent?: boolean }) => Promise<unknown>) | undefined;
+  readonly setAgentMemory?: ((request: { readonly content: string }) => Promise<unknown>) | undefined;
+  readonly getUserProfile?: (() => Promise<unknown>) | undefined;
+  readonly setUserProfile?: ((request: { readonly nickname: string; readonly occupation: string; readonly moreAbout: string }) => Promise<unknown>) | undefined;
+  readonly getMemorySettings?: (() => Promise<unknown>) | undefined;
+  readonly setMemorySettings?: ((request: { readonly enabled?: boolean; readonly proactive?: boolean }) => Promise<unknown>) | undefined;
+};
+
+/**
+ * Test host that stands in for the shell: it builds a settings workflow owner
+ * from the injected capability callbacks and provides it, so the panel under
+ * test consumes the owner the same way it does in the app. `renderToStaticMarkup`
+ * runs no effects, so the callbacks act purely as capability-presence toggles in
+ * these assertions — none of them is invoked during a static render.
+ */
+function PanelHost(caps: PanelCaps) {
+  const workflows = useMemo(() => createWebuiSettingsWorkflows({ port: caps as never }), []);
+  return <WebuiSettingsWorkflowsProvider workflows={workflows}><PersonalizationSettings /></WebuiSettingsWorkflowsProvider>;
+}
+
 describe("记忆摘要 save button states", () => {
   it("stays disabled until the text actually changes", () => {
     // The desktop's predicate, lifted so it can be tested without an effect
@@ -258,7 +285,7 @@ describe("PersonalizationSettings markup", () => {
 
   it("shows no file size on the 记忆摘要 row, matching the desktop", () => {
     const markup = renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getAgentMemory={() => Promise.resolve({
           content: "lesson",
           exists: true,
@@ -290,7 +317,7 @@ describe("PersonalizationSettings markup", () => {
   it("does not read the memory document just to render the settings pane", () => {
     const calls: string[] = [];
     renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getAgentMemory={() => {
           calls.push("getAgentMemory");
           return Promise.resolve({
@@ -316,7 +343,7 @@ describe("PersonalizationSettings markup", () => {
   });
 
   it("keeps save disabled before anything is loaded", () => {    const markup = renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getGlobalInstructions={() => Promise.resolve({
           content: "",
           exists: false,
@@ -365,7 +392,7 @@ describe("记忆 section markup", () => {
 
   it("declines to open a manager it cannot save through", () => {
     const markup = renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getAgentMemory={() => Promise.resolve({
           agentName: "mavis",
           path: "/tmp/agents/mavis/memory/MEMORY.md",
@@ -519,7 +546,7 @@ describe("关于你 section markup", () => {
 
   it("shows an untouched region as three empty fields, not as its own text", () => {
     const markup = renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getUserProfile={() =>
           Promise.resolve({
             nickname: "",
@@ -568,7 +595,7 @@ describe("关于你 section markup", () => {
 
   it("refuses to write a half-marked profile", () => {
     const markup = renderToStaticMarkup(
-      <PersonalizationSettings
+      <PanelHost
         getUserProfile={() => Promise.resolve({
           nickname: "",
           occupation: "",

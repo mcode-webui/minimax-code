@@ -27,10 +27,7 @@ import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react"
 // The attachment shape lives in contracts.ts (so projection/message-projection.ts
 // can return it without importing the React component). Re-export it under the
 // historical name so every existing importer keeps its path unchanged.
-import type {
-  WebuiMessageAttachment as MessageAttachment,
-  WebuiMessageAttachmentType as MessageAttachmentType,
-} from "../contracts.js";
+import type { WebuiMessageAttachment as MessageAttachment, WebuiMessageAttachmentType as MessageAttachmentType } from "../contracts/message-view.js";
 export type { MessageAttachment, MessageAttachmentType };
 
 export interface MessageAttachmentsProps {

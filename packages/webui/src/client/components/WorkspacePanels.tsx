@@ -18,22 +18,22 @@ import toml from "highlight.js/lib/languages/ini";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
 import { WebuiMarkdown } from "../markdown.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
+import type { WebuiFileDiffInfoView } from "../../shared/contracts/session.js";
 import type {
-  WebuiCanvasDocument,
-  WebuiFileDiffInfoView,
   WebuiWorkspaceEnvironment,
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
   WebuiWorkspaceArchiveListing,
   WebuiWorkspaceArchiveExtractResult,
-  WebuiWorkspaceReviewDiffs,
+} from "../../shared/contracts/workspace.js";
+import type {
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
-} from "../../server/port.js";
+} from "../../shared/contracts/review.js";
 import type { WorkspacePanelCommand, WorkspacePanelState, WorkspacePanelTab } from "../projection/workspace-panel-state.js";
-import { focusWebuiFileLine, webuiFileLineTargetId } from "../projection/file-line-navigation.js";
-import type { WebuiClientEventWatcher } from "../contracts.js";
+import { focusWebuiFileLine, webuiFileLineTargetId } from "../bindings/browser-effects.js";
 import {
   projectWebuiWorkspaceHistory,
   type WebuiWorkspaceSubagent,
@@ -46,11 +46,27 @@ import { WorkspaceCanvas } from "./WorkspaceCanvas.js";
 import type { CanvasOperation } from "./WorkspaceCanvas.js";
 import { WorkspaceArchiveView } from "./WorkspaceArchiveView.js";
 import { WorkspaceHtmlPreview } from "./WorkspaceHtmlPreview.js";
+import {
+  WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE,
+  chunkWebuiWorkspaceReviewFileIds,
+  type WebuiWorkspaceQueries,
+} from "../application/workspace-queries.js";
+import {
+  useWebuiWorkspaceQueries,
+  useWebuiWorkspaceQueriesState,
+} from "../bindings/use-query-state.js";
 
 export type WebuiTodo = WebuiWorkspaceTodo;
-// `mergeWorkspaceFileChildren` is re-exported below: the file-tree tests
-// import it from this module, which stays the panel's public surface.
-export { mergeWorkspaceFileChildren };
+// `mergeWorkspaceFileChildren`, `chunkWebuiWorkspaceReviewFileIds` and
+// `WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE` are re-exported below: the panel
+// tests import them from this module, which stays the panel's public surface.
+// The implementations moved to `projection/workspace-file-tree.ts` and
+// `application/workspace-queries.ts`.
+export {
+  mergeWorkspaceFileChildren,
+  chunkWebuiWorkspaceReviewFileIds,
+  WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE,
+};
 const DESKTOP_COPY = { environment: "环境信息", progress: "进度", progressEmpty: "跟踪较长任务的进度", newTerminal: "新建终端", terminalLimit: "最多可以打开 5 个终端", terminalLabel: "终端", terminalExited: "已退出", terminalEmptyTitle: "还没有终端", terminalEmptyDescription: "可直接在右侧面板中启动当前工作区的 Shell。", fileClose: "关闭", changes: "变更", commit: "提交或推送", openTerminal: "打开终端", unsupported: "WebUI 尚未接入此操作" } as const;
 
 const FILE_CODE_LANGUAGES = {
@@ -101,16 +117,6 @@ export type WebuiUnifiedDiffLine = {
   readonly oldLine?: number;
   readonly newLine?: number;
 };
-
-export const WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE = 5;
-
-export function chunkWebuiWorkspaceReviewFileIds(fileIds: readonly string[]): string[][] {
-  const batches: string[][] = [];
-  for (let index = 0; index < fileIds.length; index += WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE) {
-    batches.push(fileIds.slice(index, index + WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE));
-  }
-  return batches;
-}
 
 export function projectWebuiUnifiedDiffLines(diff: string): WebuiUnifiedDiffLine[] {
   let oldLine: number | undefined;
@@ -218,12 +224,11 @@ export function WebuiSubagentsPanel({ subagents, collapsed = false, onToggle, on
   </div>;
 }
 
-function WorkspaceCommitDialog({ environment, workspaceDir, mutateWorkspaceGit, onClose, onCommitted }: {
+function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }: {
   readonly environment: WebuiWorkspaceEnvironment;
   readonly workspaceDir: string;
-  readonly mutateWorkspaceGit: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
+  readonly mutateGit: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
   readonly onClose: () => void;
-  readonly onCommitted: () => void;
 }): ReactElement {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -233,8 +238,10 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateWorkspaceGit, 
     if (action !== "push" && !message.trim()) return;
     setBusy(true);
     setError(undefined);
-    void mutateWorkspaceGit({ workspaceDir, action, ...(message.trim() ? { message: message.trim() } : {}) })
-      .then(() => { onCommitted(); onClose(); })
+    // The mutation runs through the query owner, which invalidates exactly the
+    // environment and review views for this workspace on completion.
+    void mutateGit({ workspaceDir, action, ...(message.trim() ? { message: message.trim() } : {}) })
+      .then(() => { onClose(); })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setBusy(false));
   };
@@ -250,55 +257,34 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateWorkspaceGit, 
   </div>;
 }
 
-export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, getWorkspaceEnvironment, watchEvents, mutateWorkspaceGit, collapsed = false, onToggle, onOpenChanges, onOpenTerminal }: {
+export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, queries: queriesProp, collapsed = false, onToggle, onOpenChanges, onOpenTerminal }: {
   readonly workspaceDir?: string;
   readonly isDefaultWorkspace?: boolean;
   readonly workspaceEnvironment?: WebuiWorkspaceEnvironment;
-  readonly getWorkspaceEnvironment?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceEnvironment>;
-  readonly watchEvents?: WebuiClientEventWatcher;
-  readonly mutateWorkspaceGit?: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
+  /** Injected in tests; defaults to the provided query owner. */
+  readonly queries?: WebuiWorkspaceQueries;
   readonly collapsed?: boolean;
   readonly onToggle?: () => void;
   readonly onOpenChanges?: () => void;
   readonly onOpenTerminal?: () => void;
 }): ReactElement | null {
-  const [environment, setEnvironment] = useState<WebuiWorkspaceEnvironment | undefined>(workspaceEnvironment);
+  const contextQueries = useWebuiWorkspaceQueries();
+  const queries = queriesProp ?? contextQueries;
+  const queryState = useWebuiWorkspaceQueriesState();
   const [commitOpen, setCommitOpen] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
-  const environmentWorkspaceDir = useRef(workspaceDir);
+  const environmentRevision = queryState.environmentRevision;
+  const ownerEnvironment = queryState.environment.workspaceDir === workspaceDir ? queryState.environment.environment : undefined;
+  const environment = workspaceEnvironment ?? ownerEnvironment;
   useEffect(() => {
-    let cancelled = false;
-    if (environmentWorkspaceDir.current !== workspaceDir) {
-      environmentWorkspaceDir.current = workspaceDir;
-      setEnvironment(undefined);
-    }
-    if (workspaceEnvironment) {
-      setEnvironment(workspaceEnvironment);
-      return () => { cancelled = true; };
-    }
-    if (!workspaceDir || isDefaultWorkspace || !getWorkspaceEnvironment) return () => { cancelled = true; };
-    void getWorkspaceEnvironment({ workspaceDir }).then((next) => { if (!cancelled) setEnvironment(next); }).catch(() => { if (!cancelled) setEnvironment(undefined); });
-    return () => { cancelled = true; };
-  }, [getWorkspaceEnvironment, isDefaultWorkspace, reloadToken, workspaceDir, workspaceEnvironment]);
-  useEffect(() => {
-    if (!workspaceDir || isDefaultWorkspace || !getWorkspaceEnvironment || !watchEvents) return undefined;
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = watchEvents((event) => {
-      if (event.type !== "workspace.git.changed") return;
-      const changedWorkspace = event.payload.workspace;
-      const aliases = event.payload.aliases;
-      if (changedWorkspace !== workspaceDir && !(Array.isArray(aliases) && aliases.includes(workspaceDir))) return;
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => setReloadToken((current) => current + 1), 350);
-    });
-    return () => {
-      unsubscribe();
-      if (refreshTimer) clearTimeout(refreshTimer);
-    };
-  }, [getWorkspaceEnvironment, isDefaultWorkspace, watchEvents, workspaceDir]);
-  if (!workspaceDir || isDefaultWorkspace || (!getWorkspaceEnvironment && !workspaceEnvironment) || !environment?.isGitRepo) return null;
+    if (workspaceEnvironment) return;
+    if (!workspaceDir || isDefaultWorkspace || !queries?.canReadEnvironment) return;
+    // `environmentRevision` re-runs the load when the owner invalidates this
+    // workspace's environment (a commit or a git-changed signal).
+    queries.loadEnvironment(workspaceDir);
+  }, [queries, workspaceDir, isDefaultWorkspace, workspaceEnvironment, environmentRevision]);
+  if (!workspaceDir || isDefaultWorkspace || (!queries?.canReadEnvironment && !workspaceEnvironment) || !environment?.isGitRepo) return null;
   const hasChanges = environment.changedFiles > 0;
-  const canMutate = Boolean(mutateWorkspaceGit && !environment.changesError && !environment.metadataError && (hasChanges || environment.canPush));
+  const canMutate = Boolean(queries?.canMutateGit && !environment.changesError && !environment.metadataError && (hasChanges || environment.canPush));
   const hasLineChanges = environment.lineStatsStatus === "ready" && (environment.insertions > 0 || environment.deletions > 0);
   return <>
     <div className="webui-environment-panel" data-webui-environment-panel="true" data-workspace-section="true">
@@ -312,7 +298,7 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
           <button type="button" className="webui-environment-action" onClick={onOpenChanges} disabled={!onOpenChanges} title={environment.changesError ?? undefined}>
             <WebuiIconRunLocation className="size-5" /><span>{DESKTOP_COPY.changes}</span>{hasLineChanges ? <small aria-label={`新增 ${environment.insertions} 行，删除 ${environment.deletions} 行`}><span className="webui-diff-additions">+{environment.insertions}</span><span className="webui-diff-deletions">-{environment.deletions}</span></small> : null}
           </button>
-          <button type="button" className="webui-environment-action" onClick={() => setCommitOpen(true)} disabled={!canMutate} title={!mutateWorkspaceGit ? DESKTOP_COPY.unsupported : environment.metadataError ?? environment.changesError}>
+          <button type="button" className="webui-environment-action" onClick={() => setCommitOpen(true)} disabled={!canMutate} title={!queries?.canMutateGit ? DESKTOP_COPY.unsupported : environment.metadataError ?? environment.changesError}>
             <WebuiIconFile className="size-5" /><span>{DESKTOP_COPY.commit}</span>
           </button>
           <button type="button" className="webui-environment-action" onClick={onOpenTerminal} disabled={!onOpenTerminal}>
@@ -321,7 +307,7 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
         </div>
       </div>
     </div>
-    {commitOpen && mutateWorkspaceGit ? <WorkspaceCommitDialog environment={environment} workspaceDir={workspaceDir} mutateWorkspaceGit={mutateWorkspaceGit} onClose={() => setCommitOpen(false)} onCommitted={() => setReloadToken((value) => value + 1)} /> : null}
+    {commitOpen && queries?.canMutateGit ? <WorkspaceCommitDialog environment={environment} workspaceDir={workspaceDir} mutateGit={queries.mutateGit} onClose={() => setCommitOpen(false)} /> : null}
   </>;
 }
 
@@ -332,9 +318,9 @@ export function WebuiWorkspacePanelControls({ filePanelOpen, progressPanelOpen, 
   </div>;
 }
 
-export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, todos, subagents = [], showProgress = true, showEmptyProgress = true, getWorkspaceEnvironment, watchEvents, mutateWorkspaceGit, environmentCollapsed = false, progressCollapsed = false, subagentsCollapsed = false, onToggleEnvironment, onToggleProgress, onToggleSubagents, onMemberClick, onOpenChanges, onOpenTerminal }: { readonly workspaceDir?: string; readonly isDefaultWorkspace?: boolean; readonly workspaceEnvironment?: WebuiWorkspaceEnvironment; readonly todos: readonly WebuiTodo[]; readonly subagents?: readonly WebuiWorkspaceSubagent[]; readonly showProgress?: boolean; readonly showEmptyProgress?: boolean; readonly getWorkspaceEnvironment?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceEnvironment>; readonly watchEvents?: WebuiClientEventWatcher; readonly mutateWorkspaceGit?: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>; readonly environmentCollapsed?: boolean; readonly progressCollapsed?: boolean; readonly subagentsCollapsed?: boolean; readonly onToggleEnvironment?: () => void; readonly onToggleProgress?: () => void; readonly onToggleSubagents?: () => void; readonly onMemberClick?: (subagent: WebuiWorkspaceSubagent) => void; readonly onOpenChanges?: () => void; readonly onOpenTerminal?: () => void }): ReactElement {
+export function WebuiProgressOverviewPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, todos, subagents = [], showProgress = true, showEmptyProgress = true, environmentCollapsed = false, progressCollapsed = false, subagentsCollapsed = false, onToggleEnvironment, onToggleProgress, onToggleSubagents, onMemberClick, onOpenChanges, onOpenTerminal }: { readonly workspaceDir?: string; readonly isDefaultWorkspace?: boolean; readonly workspaceEnvironment?: WebuiWorkspaceEnvironment; readonly todos: readonly WebuiTodo[]; readonly subagents?: readonly WebuiWorkspaceSubagent[]; readonly showProgress?: boolean; readonly showEmptyProgress?: boolean; readonly environmentCollapsed?: boolean; readonly progressCollapsed?: boolean; readonly subagentsCollapsed?: boolean; readonly onToggleEnvironment?: () => void; readonly onToggleProgress?: () => void; readonly onToggleSubagents?: () => void; readonly onMemberClick?: (subagent: WebuiWorkspaceSubagent) => void; readonly onOpenChanges?: () => void; readonly onOpenTerminal?: () => void }): ReactElement {
   return <div className="webui-progress-overview-card" data-testid="progress-overview-card">
-    <WebuiEnvironmentPanel workspaceDir={workspaceDir} isDefaultWorkspace={isDefaultWorkspace} workspaceEnvironment={workspaceEnvironment} getWorkspaceEnvironment={getWorkspaceEnvironment} watchEvents={watchEvents} mutateWorkspaceGit={mutateWorkspaceGit} collapsed={environmentCollapsed} onToggle={onToggleEnvironment} onOpenChanges={onOpenChanges} onOpenTerminal={onOpenTerminal} />
+    <WebuiEnvironmentPanel workspaceDir={workspaceDir} isDefaultWorkspace={isDefaultWorkspace} workspaceEnvironment={workspaceEnvironment} collapsed={environmentCollapsed} onToggle={onToggleEnvironment} onOpenChanges={onOpenChanges} onOpenTerminal={onOpenTerminal} />
     <WebuiProgressPanel todos={todos} showProgress={showProgress} showEmptyProgress={showEmptyProgress} collapsed={progressCollapsed} onToggle={onToggleProgress} />
     <WebuiSubagentsPanel subagents={subagents} collapsed={subagentsCollapsed} onToggle={onToggleSubagents} onMemberClick={onMemberClick} />
   </div>;
@@ -393,12 +379,10 @@ export function WebuiFilePreview({ tab, result, codeMode, workspaceFileUrl, read
   </div>;
 }
 
-export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, listWorkspaceFileTree, readWorkspaceFile, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, watchEvents, getWorkspaceReviewSummary, listWorkspaceReviewFileDiffs, searchWorkspaceReviewDiffs, onClose }: {
+export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, workspaceFileUrl, readWorkspaceArchive, extractWorkspaceArchive, readCanvas, applyCanvas, createTerminal, listTerminals, writeTerminal, disposeTerminal, watchTerminal, onClose }: {
   readonly state: WorkspacePanelState;
   readonly dispatch: (command: WorkspacePanelCommand) => void;
   readonly sessionId?: string; readonly workspaceDir?: string;
-  readonly listWorkspaceFileTree?: (request: { workspaceDir: string; path?: string }) => Promise<readonly WebuiWorkspaceFile[]>;
-  readonly readWorkspaceFile?: (request: { workspaceDir: string; path: string }) => Promise<WebuiWorkspaceFileContent>;
   readonly workspaceFileUrl?: (request: { readonly workspaceDir: string; readonly path: string }) => string;
   readonly readWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveListing>;
   readonly extractWorkspaceArchive?: (request: { readonly workspaceDir: string; readonly path: string; readonly destination: string; readonly prefix?: string }) => Promise<WebuiWorkspaceArchiveExtractResult>;
@@ -412,49 +396,28 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   readonly writeTerminal?: (request: { terminalId: string; data: string }) => Promise<unknown>;
   readonly disposeTerminal?: (request: { terminalId: string }) => Promise<unknown>;
   readonly watchTerminal?: (request: { terminalId: string }, onFrame: (frame: { terminalId: string; data: string; exited: boolean }) => void) => () => void;
-  readonly watchEvents?: WebuiClientEventWatcher;
-  readonly getWorkspaceReviewSummary?: (request: { readonly workspaceDir: string }) => Promise<WebuiWorkspaceReviewSummary>;
-  readonly listWorkspaceReviewFileDiffs?: (request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly fileIds: readonly string[] }) => Promise<WebuiWorkspaceReviewDiffs>;
-  readonly searchWorkspaceReviewDiffs?: (request: { readonly workspaceDir: string; readonly reviewSnapshotId: string; readonly query: string; readonly includeUntrackedFiles: boolean; readonly pageIndex?: number; readonly pageSize?: number }) => Promise<WebuiWorkspaceReviewSearchResult>;
   readonly onClose?: () => void;
 }): ReactElement {
+  // Query truth lives in the owner; this component reads its snapshot and
+  // submits query commands. Display state — active tab, expansion, search box,
+  // code mode — stays here (ticket #51).
+  const queries = useWebuiWorkspaceQueries();
+  const queryState = useWebuiWorkspaceQueriesState();
+  const fileTree = queryState.fileTree;
+  const fileResults = queryState.files;
+  const reviewSummary = queryState.reviewSummary;
+  const reviewDiffs = queryState.reviewDiffs;
+  const reviewSearch = queryState.reviewSearch;
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
   const tab = activeTab?.kind ?? "files";
   const tabListRef = useRef<HTMLDivElement>(null);
   const fileTreeScrollRef = useRef<HTMLDivElement>(null);
   const autoNavigationRequests = useRef(new Set<string>());
-  const [files, setFiles] = useState<readonly WebuiWorkspaceFile[]>([]);
-  const filesRef = useRef(files);
-  filesRef.current = files;
   const [fileSearch, setFileSearch] = useState("");
   const [fileTreeOpen, setFileTreeOpen] = useState(true);
   const [expandedDirectories, setExpandedDirectories] = useState<ReadonlySet<string>>(() => new Set());
-  const [loadedDirectories, setLoadedDirectories] = useState<ReadonlySet<string>>(() => new Set());
-  const [loadingDirectories, setLoadingDirectories] = useState<ReadonlySet<string>>(() => new Set());
-  const loadedDirectoriesRef = useRef(loadedDirectories);
-  loadedDirectoriesRef.current = loadedDirectories;
-  const loadingDirectoriesRef = useRef(loadingDirectories);
-  loadingDirectoriesRef.current = loadingDirectories;
-  const [directoryErrors, setDirectoryErrors] = useState<Readonly<Record<string, string>>>({});
   const [fileCodeMode, setFileCodeMode] = useState(false);
-  const [fileTreeState, setFileTreeState] = useState<{ readonly workspaceDir?: string; readonly loading: boolean; readonly error?: string }>({ loading: false });
-  const [fileResults, setFileResults] = useState<Record<string, { loading: boolean; content?: WebuiWorkspaceFileContent; error?: string }>>({});
-  const fileResultsRef = useRef(fileResults);
-  fileResultsRef.current = fileResults;
-  const [reviewSummary, setReviewSummary] = useState<{ readonly tabId: string; readonly summary?: WebuiWorkspaceReviewSummary; readonly error?: string; readonly loading: boolean; readonly stale?: boolean }>();
-  const [reviewDiffs, setReviewDiffs] = useState<{ readonly tabId: string; readonly snapshotId: string; readonly loading: boolean; readonly diffs: Readonly<Record<string, { readonly diff?: string; readonly error?: string; readonly binary?: boolean }>>; readonly error?: string }>();
   const [reviewSearchQuery, setReviewSearchQuery] = useState("");
-  const [reviewSearch, setReviewSearch] = useState<{ readonly tabId: string; readonly snapshotId: string; readonly loading: boolean; readonly result?: WebuiWorkspaceReviewSearchResult; readonly error?: string }>();
-  const [reviewRefreshToken, setReviewRefreshToken] = useState(0);
-  const retriedSnapshots = useRef(new Set<string>());
-  const currentPanelState = useRef(state);
-  currentPanelState.current = state;
-  const refreshStaleReview = (tabId: string, snapshotId: string) => {
-    const retryKey = `${tabId}:${snapshotId}`;
-    if (retriedSnapshots.current.has(retryKey)) return;
-    retriedSnapshots.current.add(retryKey);
-    setReviewRefreshToken((value) => value + 1);
-  };
   const [terminals, setTerminals] = useState<readonly Record<string, unknown>[]>([]);
   const [activeTerminalId, setActiveTerminalId] = useState<string>();
   const [terminalError, setTerminalError] = useState<string>();
@@ -464,17 +427,19 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   const activeWorkspace = activeTab && "workspaceDir" in activeTab ? activeTab.workspaceDir : workspaceDir;
   const activeWorkspaceRef = useRef(activeWorkspace);
   activeWorkspaceRef.current = activeWorkspace;
-  const activeFileResult = activeTab?.kind === "file-preview" ? fileResults[activeTab.id]?.content : undefined;
+  const activeFileResult = activeTab?.kind === "file-preview" ? fileResults.get(activeTab.id)?.content : undefined;
   const selectedFilePath = activeTab?.kind === "file-preview" ? activeFileResult?.resolvedPath ?? activeTab.path : undefined;
   const hasFileWorkspace = tab === "files" || activeTab?.kind === "file-preview" || activeTab?.kind === "review";
-  const visibleFiles = filterWorkspaceFiles(files, fileSearch);
+  const visibleFiles = filterWorkspaceFiles(fileTree.files, fileSearch);
+  const currentPanelState = useRef(state);
+  currentPanelState.current = state;
+  const filesRef = useRef(fileResults);
+  filesRef.current = fileResults;
   useEffect(() => {
+    queries?.selectWorkspace(activeWorkspace);
     setFileSearch("");
     setExpandedDirectories(new Set());
-    setLoadedDirectories(new Set());
-    setLoadingDirectories(new Set());
-    setDirectoryErrors({});
-  }, [activeWorkspace]);
+  }, [activeWorkspace, queries]);
   useEffect(() => {
     setFileCodeMode(activeTab?.kind === "file-preview" && activeTab.lineStart !== undefined);
   }, [activeTab?.id]);
@@ -482,71 +447,33 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     tabListRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [activeTab?.id]);
   useEffect(() => {
-    if (!activeWorkspace || !listWorkspaceFileTree) { setFiles([]); setFileTreeState({ workspaceDir: activeWorkspace, loading: false, ...(!listWorkspaceFileTree ? { error: "文件浏览能力暂不可用。" } : {}) }); return undefined; }
-    let cancelled = false;
-    setFiles([]);
-    setFileTreeState({ workspaceDir: activeWorkspace, loading: true });
-    void listWorkspaceFileTree({ workspaceDir: activeWorkspace }).then((next) => { if (!cancelled) { setFiles(next); setFileTreeState({ workspaceDir: activeWorkspace, loading: false }); } }).catch((reason: unknown) => { if (!cancelled) { setFiles([]); setFileTreeState({ workspaceDir: activeWorkspace, loading: false, error: reason instanceof Error ? reason.message : String(reason) }); } });
-    return () => { cancelled = true; };
-  }, [activeWorkspace, listWorkspaceFileTree]);
+    if (!activeWorkspace) return;
+    queries?.loadFileTree(activeWorkspace);
+  }, [activeWorkspace, queries]);
   useEffect(() => {
-    if (activeTab?.kind !== "file-preview" || !readWorkspaceFile) return undefined;
-    if (fileResultsRef.current[activeTab.id]?.content) return undefined;
+    if (activeTab?.kind !== "file-preview" || !queries) return undefined;
     // A tab opened with inline content (the session's plan file) has nothing
     // to read: `readWorkspaceFile` would reject the path anyway, since the
     // artifacts directory is outside the workspace root.
     if (activeTab.content !== undefined) {
-      // Captured before the updater: narrowing does not survive into a
-      // callback, so reading it inline widens `content` back to `string |
-      // undefined` and the state type stops matching.
-      const inlineContent = activeTab.content;
-      const inlinePath = activeTab.path;
-      setFileResults((current) => ({
-        ...current,
-        [activeTab.id]: {
-          loading: false,
-          content: { type: "text", content: inlineContent, resolvedPath: inlinePath },
-        },
-      }));
+      queries.setInlineFile(activeTab.id, activeTab.content, activeTab.path);
       return undefined;
     }
-    let cancelled = false;
-    setFileResults((current) => ({ ...current, [activeTab.id]: { loading: true } }));
-    void readWorkspaceFile({ workspaceDir: activeTab.workspaceDir, path: activeTab.path }).then((content) => {
-      if (!cancelled) setFileResults((current) => ({ ...current, [activeTab.id]: { loading: false, content } }));
-    }).catch((reason: unknown) => {
-      if (!cancelled) setFileResults((current) => ({ ...current, [activeTab.id]: { loading: false, error: reason instanceof Error ? reason.message : String(reason) } }));
-    });
-    return () => { cancelled = true; };
-  }, [activeTab?.id, readWorkspaceFile]);
+    queries.readFile(activeTab.id, activeTab.workspaceDir, activeTab.path);
+    return undefined;
+  }, [activeTab?.id, queries]);
   useEffect(() => {
-    if (activeTab?.kind !== "file-preview" || activeTab.lineStart === undefined || fileResults[activeTab.id]?.loading || !fileResults[activeTab.id]?.content || fileResults[activeTab.id]?.error) return;
+    if (activeTab?.kind !== "file-preview" || activeTab.lineStart === undefined || fileResults.get(activeTab.id)?.loading || !fileResults.get(activeTab.id)?.content || fileResults.get(activeTab.id)?.error) return;
     const target = document.getElementById(webuiFileLineTargetId(activeTab.id, activeTab.lineStart));
     if (target) focusWebuiFileLine(target);
   }, [activeTab?.id, activeTab?.kind === "file-preview" ? activeTab.lineStart : undefined, fileResults]);
   useEffect(() => {
-    if (activeTab?.kind !== "review" || activeTab.source !== "workspace") return undefined;
-    if (!getWorkspaceReviewSummary) {
-      setReviewSummary({ tabId: activeTab.id, loading: false, error: "工作区变更审查能力暂不可用。" });
-      return undefined;
-    }
-    let cancelled = false;
-    setReviewSummary((current) => ({ tabId: activeTab.id, summary: current?.tabId === activeTab.id ? current.summary : undefined, loading: true, stale: current?.tabId === activeTab.id && Boolean(current.summary) }));
-    void getWorkspaceReviewSummary({ workspaceDir: activeTab.workspaceDir }).then((summary) => {
-      if (cancelled) return;
-      setReviewSummary({ tabId: activeTab.id, summary, loading: false });
-      dispatch({ type: "set-review-snapshot", tabId: activeTab.id, reviewSnapshotId: summary.reviewSnapshotId });
-    }).catch((reason: unknown) => { if (!cancelled) setReviewSummary((current) => ({ tabId: activeTab.id, summary: current?.tabId === activeTab.id ? current.summary : undefined, loading: false, stale: current?.tabId === activeTab.id && Boolean(current.summary), error: reason instanceof Error ? reason.message : String(reason) })); });
-    return () => { cancelled = true; };
-  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, getWorkspaceReviewSummary, dispatch, reviewRefreshToken]);
-  useEffect(() => {
-    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !watchEvents) return undefined;
-    return watchEvents((event) => {
-      if (event.type !== "workspace.git.changed") return;
-      const aliases = event.payload.aliases;
-      if (event.payload.workspace === activeTab.workspaceDir || (Array.isArray(aliases) && aliases.includes(activeTab.workspaceDir))) setReviewRefreshToken((value) => value + 1);
+    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !queries) return undefined;
+    void queries.loadReviewSummary(activeTab.id, activeTab.workspaceDir).then((summary) => {
+      if (summary) dispatch({ type: "set-review-snapshot", tabId: activeTab.id, reviewSnapshotId: summary.reviewSnapshotId });
     });
-  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, watchEvents]);
+    return undefined;
+  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, queries, queryState.reviewRevision]);
   const workspaceReviewSelectedPath = activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.selectedPath : undefined;
   const workspaceReviewFiles = reviewSummary !== undefined && reviewSummary.tabId === activeTab?.id ? reviewSummary.summary?.files ?? [] : [];
   const turnReviewFiles = activeTab?.kind === "review" && activeTab.source === "turn" ? activeTab.files ?? [] : [];
@@ -559,63 +486,13 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.selectedPath : undefined, selectedReviewPath, dispatch]);
   useEffect(() => {
     const summary = reviewSummary && reviewSummary.tabId === activeTab?.id ? reviewSummary.summary : undefined;
-    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !summary || !activeTab.reviewSnapshotId || summary.reviewSnapshotId !== activeTab.reviewSnapshotId) return undefined;
-    if (!listWorkspaceReviewFileDiffs) {
-      setReviewDiffs({ tabId: activeTab.id, snapshotId: activeTab.reviewSnapshotId, loading: false, diffs: {}, error: "工作区文件差异能力暂不可用。" });
-      return undefined;
-    }
-    let cancelled = false;
-    const tabId = activeTab.id;
-    const snapshotId = activeTab.reviewSnapshotId;
-    const workspaceDir = activeTab.workspaceDir;
-    setReviewDiffs({ tabId, snapshotId, loading: true, diffs: {} });
-    void (async () => {
-      const diffs: Record<string, { readonly diff?: string; readonly error?: string; readonly binary?: boolean }> = {};
-      try {
-        for (const fileIds of chunkWebuiWorkspaceReviewFileIds(summary.files.map((file) => file.fileId))) {
-          const result = await listWorkspaceReviewFileDiffs({ workspaceDir, reviewSnapshotId: snapshotId, fileIds });
-          if (cancelled) return;
-          if (result.reviewSnapshotId !== snapshotId) {
-            setReviewDiffs({ tabId, snapshotId, loading: false, diffs, error: "工作区变更已更新，正在刷新审查…" });
-            refreshStaleReview(tabId, snapshotId);
-            return;
-          }
-          for (const fileDiff of result.diffs) {
-            diffs[fileDiff.fileId] = {
-              ...(fileDiff.diff?.type === "text" ? { diff: fileDiff.diff.diff ?? fileDiff.diff.content } : fileDiff.diff?.type === "binary" ? { binary: true } : {}),
-              ...(fileDiff.error ?? fileDiff.errorCode ? { error: fileDiff.error ?? fileDiff.errorCode } : {}),
-            };
-          }
-          setReviewDiffs({ tabId, snapshotId, loading: true, diffs: { ...diffs } });
-        }
-        if (!cancelled) setReviewDiffs({ tabId, snapshotId, loading: false, diffs: { ...diffs } });
-      } catch (reason: unknown) {
-        if (!cancelled) {
-          setReviewDiffs({ tabId, snapshotId, loading: false, diffs: { ...diffs }, error: reason instanceof Error ? reason.message : String(reason) });
-          refreshStaleReview(tabId, snapshotId);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.reviewSnapshotId : undefined, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, reviewSummary?.summary?.reviewSnapshotId, listWorkspaceReviewFileDiffs]);
+    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !summary || !activeTab.reviewSnapshotId || summary.reviewSnapshotId !== activeTab.reviewSnapshotId || !queries) return undefined;
+    void queries.loadReviewDiffs({ tabId: activeTab.id, workspaceDir: activeTab.workspaceDir, snapshotId: activeTab.reviewSnapshotId, fileIds: summary.files.map((file) => file.fileId) });
+    return undefined;
+  }, [activeTab?.id, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.reviewSnapshotId : undefined, activeTab?.kind === "review" && activeTab.source === "workspace" ? activeTab.workspaceDir : undefined, reviewSummary?.summary?.reviewSnapshotId, queries]);
   const runReviewSearch = () => {
-    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !activeTab.reviewSnapshotId || !searchWorkspaceReviewDiffs) return;
-    const tabId = activeTab.id;
-    const snapshotId = activeTab.reviewSnapshotId;
-    setReviewSearch({ tabId, snapshotId, loading: true });
-    void searchWorkspaceReviewDiffs({ workspaceDir: activeTab.workspaceDir, reviewSnapshotId: snapshotId, query: reviewSearchQuery, includeUntrackedFiles: true }).then((result) => {
-      if (result.reviewSnapshotId !== snapshotId) {
-        setReviewSearch({ tabId, snapshotId, loading: false, error: "工作区变更已更新，正在刷新审查…" });
-        refreshStaleReview(tabId, snapshotId);
-        return;
-      }
-      const currentTab = currentPanelState.current.tabs.find((tab) => tab.id === tabId);
-      if (currentTab?.kind !== "review" || currentTab.source !== "workspace" || currentTab.reviewSnapshotId !== snapshotId) return;
-      setReviewSearch({ tabId, snapshotId, loading: false, result });
-    }).catch((reason: unknown) => {
-      setReviewSearch({ tabId, snapshotId, loading: false, error: reason instanceof Error ? reason.message : String(reason) });
-      refreshStaleReview(tabId, snapshotId);
-    });
+    if (activeTab?.kind !== "review" || activeTab.source !== "workspace" || !activeTab.reviewSnapshotId || !queries) return;
+    void queries.searchReviewDiffs({ tabId: activeTab.id, workspaceDir: activeTab.workspaceDir, snapshotId: activeTab.reviewSnapshotId, query: reviewSearchQuery });
   };
   const toggleWorkspaceDirectory = (directory: WebuiWorkspaceFile) => {
     const path = directory.path;
@@ -628,47 +505,23 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       return;
     }
     setExpandedDirectories((current) => new Set(current).add(path));
-    if (directory.children !== undefined || loadedDirectories.has(path) || loadingDirectories.has(path)) return;
-    if (!activeWorkspace || !listWorkspaceFileTree) {
-      setDirectoryErrors((current) => ({ ...current, [path]: "文件夹读取能力暂不可用。" }));
-      return;
-    }
-    const requestWorkspace = activeWorkspace;
-    setDirectoryErrors((current) => {
-      const next = { ...current };
-      delete next[path];
-      return next;
-    });
-    setLoadingDirectories((current) => new Set(current).add(path));
-    void listWorkspaceFileTree({ workspaceDir: requestWorkspace, path }).then((children) => {
-      if (activeWorkspaceRef.current !== requestWorkspace) return;
-      setFiles((current) => mergeWorkspaceFileChildren(current, path, children));
-      setLoadedDirectories((current) => new Set(current).add(path));
-    }).catch((reason: unknown) => {
-      if (activeWorkspaceRef.current !== requestWorkspace) return;
-      setDirectoryErrors((current) => ({ ...current, [path]: reason instanceof Error ? reason.message : String(reason) }));
-    }).finally(() => {
-      if (activeWorkspaceRef.current !== requestWorkspace) return;
-      setLoadingDirectories((current) => {
-        const next = new Set(current);
-        next.delete(path);
-        return next;
-      });
-    });
+    if (directory.children !== undefined || fileTree.loadedDirectories.has(path) || fileTree.loadingDirectories.has(path)) return;
+    if (!activeWorkspace || !queries) return;
+    void queries.loadDirectory(activeWorkspace, path);
   };
   useEffect(() => {
-    if (activeTab?.kind !== "file-preview" || !selectedFilePath || !activeWorkspace || !listWorkspaceFileTree || fileTreeState.workspaceDir !== activeWorkspace || fileTreeState.loading) return;
+    if (activeTab?.kind !== "file-preview" || !selectedFilePath || !activeWorkspace || !queries || fileTree.workspaceDir !== activeWorkspace || fileTree.loading) return;
     let cancelled = false;
     const isCurrentFile = () => {
       const currentTab = currentPanelState.current.tabs.find((candidate) => candidate.id === currentPanelState.current.activeTabId);
       return activeWorkspaceRef.current === activeWorkspace
         && currentTab?.kind === "file-preview"
         && currentTab.id === activeTab.id
-        && (fileResultsRef.current[currentTab.id]?.content?.resolvedPath ?? currentTab.path) === selectedFilePath;
+        && (filesRef.current.get(currentTab.id)?.content?.resolvedPath ?? currentTab.path) === selectedFilePath;
     };
     const navigateToFile = async () => {
       setFileSearch("");
-      let tree = filesRef.current;
+      let tree = fileTree.files;
       const parentPaths = getWorkspaceFileParentPaths(selectedFilePath);
       for (const [index, path] of parentPaths.entries()) {
         if (cancelled || !isCurrentFile()) return;
@@ -678,44 +531,29 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
         const expectedChildPath = parentPaths[index + 1] ?? selectedFilePath;
         const expectedChildExists = Boolean(findWorkspaceFile(directory.children ?? [], expectedChildPath));
         const refreshMissingPath = directory.children !== undefined && !expectedChildExists;
-        if (!refreshMissingPath && (directory.children !== undefined || loadedDirectoriesRef.current.has(path))) continue;
+        if (!refreshMissingPath && (directory.children !== undefined || fileTree.loadedDirectories.has(path))) continue;
         const requestKey = `${activeWorkspace}\0${path}`;
-        if (loadingDirectoriesRef.current.has(path) || autoNavigationRequests.current.has(requestKey)) return;
+        if (fileTree.loadingDirectories.has(path) || autoNavigationRequests.current.has(requestKey)) return;
         autoNavigationRequests.current.add(requestKey);
-        setLoadingDirectories((current) => new Set(current).add(path));
-        setDirectoryErrors((current) => {
-          const next = { ...current };
-          delete next[path];
-          return next;
-        });
         try {
-          const children = await listWorkspaceFileTree({ workspaceDir: activeWorkspace, path });
+          const children = await queries.loadDirectory(activeWorkspace, path);
           if (cancelled || !isCurrentFile()) return;
+          if (children === undefined) return;
           tree = mergeWorkspaceFileChildren(tree, path, children);
-          setFiles((current) => mergeWorkspaceFileChildren(current, path, children));
-          setLoadedDirectories((current) => new Set(current).add(path));
           if (!findWorkspaceFile(children, expectedChildPath)) {
-            setDirectoryErrors((current) => ({ ...current, [path]: `无法在工作区文件树中定位 ${selectedFilePath}。` }));
+            queries.reportDirectoryError(activeWorkspace, path, `无法在工作区文件树中定位 ${selectedFilePath}。`);
             return;
           }
-        } catch (reason) {
-          if (!cancelled && isCurrentFile()) setDirectoryErrors((current) => ({ ...current, [path]: reason instanceof Error ? reason.message : String(reason) }));
+        } catch {
           return;
         } finally {
           autoNavigationRequests.current.delete(requestKey);
-          if (activeWorkspaceRef.current === activeWorkspace) {
-            setLoadingDirectories((current) => {
-              const next = new Set(current);
-              next.delete(path);
-              return next;
-            });
-          }
         }
       }
     };
     void navigateToFile();
     return () => { cancelled = true; };
-  }, [activeTab?.id, activeTab?.kind === "file-preview" ? activeTab.path : undefined, selectedFilePath, activeWorkspace, fileTreeState.workspaceDir, fileTreeState.loading, listWorkspaceFileTree]);
+  }, [activeTab?.id, activeTab?.kind === "file-preview" ? activeTab.path : undefined, selectedFilePath, activeWorkspace, fileTree.workspaceDir, fileTree.loading, queries]);
   useEffect(() => {
     fileTreeScrollRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [selectedFilePath, selectedReviewPath, expandedDirectories, visibleFiles]);
@@ -793,13 +631,13 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     <div className="webui-workspace-panel-body">
       <div className="webui-workspace-view">
     {tab === "files" ? <div className="webui-workspace-files-empty" data-testid="workspace-files-empty"><WebuiIconFolder className="size-8" /><strong>查看文件</strong><p>从工作区目录树中选择文件</p></div> : null}
-    {tab === "file-preview" && activeTab?.kind === "file-preview" ? <WebuiFilePreview tab={activeTab} result={fileResults[activeTab.id]} codeMode={fileCodeMode} workspaceFileUrl={workspaceFileUrl} readWorkspaceArchive={readWorkspaceArchive} extractWorkspaceArchive={extractWorkspaceArchive} /> : null}
+    {tab === "file-preview" && activeTab?.kind === "file-preview" ? <WebuiFilePreview tab={activeTab} result={fileResults.get(activeTab.id)} codeMode={fileCodeMode} workspaceFileUrl={workspaceFileUrl} readWorkspaceArchive={readWorkspaceArchive} extractWorkspaceArchive={extractWorkspaceArchive} /> : null}
     {tab === "review" && activeTab?.kind === "review" && activeTab.source === "workspace" ? <div className="webui-turn-review" data-testid="workspace-review">
       {reviewSummary?.tabId !== activeTab.id || reviewSummary.loading && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="status">正在收集变更…</p> : reviewSummary.error && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="alert">{reviewSummary.error}</p> : reviewSummary.summary ? <>
         <div className="webui-turn-review-summary"><span>{reviewSummary.summary.totals.files} 个文件</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{reviewSummary.summary.totals.additions}</span>{reviewSummary.summary.totals.deletions ? <span className="webui-diff-del">-{reviewSummary.summary.totals.deletions}</span> : null}</span></div>
         {reviewSummary.stale || reviewSummary.error ? <p className="webui-workspace-review-status" role="status">变更列表可能已过期{reviewSummary.error ? `：${reviewSummary.error}` : "，正在刷新…"}</p> : null}
         {reviewSummary.summary.files.length ? <>
-          <form className="webui-workspace-review-search" onSubmit={(event) => { event.preventDefault(); runReviewSearch(); }}><input aria-label="搜索变更" value={reviewSearchQuery} onChange={(event) => setReviewSearchQuery(event.currentTarget.value)} placeholder="搜索变更" /><button type="submit" disabled={!searchWorkspaceReviewDiffs || reviewSearch?.loading}>搜索</button></form>
+          <form className="webui-workspace-review-search" onSubmit={(event) => { event.preventDefault(); runReviewSearch(); }}><input aria-label="搜索变更" value={reviewSearchQuery} onChange={(event) => setReviewSearchQuery(event.currentTarget.value)} placeholder="搜索变更" /><button type="submit" disabled={!queries?.canSearchReviewDiffs || reviewSearch?.loading}>搜索</button></form>
           {reviewSearch?.tabId === activeTab.id && reviewSearch.snapshotId === activeTab.reviewSnapshotId ? reviewSearch.loading ? <p className="webui-workspace-review-status" role="status">正在搜索变更…</p> : reviewSearch.error ? <p className="webui-workspace-review-status" role="alert">{reviewSearch.error}</p> : reviewSearch.result ? <ul className="webui-workspace-review-search-results" data-testid="workspace-review-search-results">{reviewSearch.result.matchedFiles.map((match) => <li key={match.fileId}><button type="button" onClick={() => dispatch({ type: "select-review-file", tabId: activeTab.id, path: match.path })}>{match.path} <small>{match.matchCount}</small></button></li>)}</ul> : null : null}
           {reviewDiffs?.error && reviewDiffs.tabId === activeTab.id && reviewDiffs.snapshotId === activeTab.reviewSnapshotId ? <p className="webui-workspace-review-status" role="alert">{reviewDiffs.error}</p> : null}
           <div className="webui-turn-review-files">{reviewSummary.summary.files.map((file) => {
@@ -820,7 +658,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       {hasFileWorkspace && fileTreeOpen ? <aside className="webui-workspace-file-tree-panel" aria-label="工作区文件树">
         <label className="webui-workspace-file-search"><WebuiIconSearch className="size-4" /><input aria-label="搜索文件" placeholder="搜索" value={fileSearch} onChange={(event) => setFileSearch(event.currentTarget.value)} /></label>
         <div className="webui-workspace-file-tree-scroll" ref={fileTreeScrollRef}>
-          {fileTreeState.workspaceDir !== activeWorkspace || fileTreeState.loading ? <p role="status">正在加载文件…</p> : fileTreeState.error ? <p role="alert">{fileTreeState.error}</p> : files.length ? visibleFiles.length ? <FileTree files={visibleFiles} expandedPaths={expandedDirectories} loadingPaths={loadingDirectories} directoryErrors={directoryErrors} onToggle={toggleWorkspaceDirectory} selectedPath={activeTab?.kind === "file-preview" ? selectedFilePath : activeTab?.kind === "review" ? selectedReviewPath : undefined} onOpen={(entry) => { const context = activeTab && "sessionId" in activeTab ? activeTab.sessionId : sessionId; if (!activeWorkspace || !context || entry.type === "directory") return; if (activeTab?.kind === "review" && activeTab.source === "turn" && turnReviewFiles.some((file) => file.file === entry.path) || activeTab?.kind === "review" && activeTab.source === "workspace" && workspaceReviewFiles.some((file) => file.path === entry.path)) dispatch({ type: "select-review-file", tabId: activeTab.id, path: entry.path }); else dispatch({ type: "open-file", sessionId: context, workspaceDir: activeWorkspace, path: entry.path }); }} /> : <p className="webui-workspace-tree-empty">没有匹配的文件。</p> : <p className="webui-workspace-tree-empty">此工作区没有可显示的文件。</p>}
+          {fileTree.workspaceDir !== activeWorkspace || fileTree.loading ? <p role="status">正在加载文件…</p> : fileTree.error ? <p role="alert">{fileTree.error}</p> : fileTree.files.length ? visibleFiles.length ? <FileTree files={visibleFiles} expandedPaths={expandedDirectories} loadingPaths={fileTree.loadingDirectories} directoryErrors={fileTree.directoryErrors} onToggle={toggleWorkspaceDirectory} selectedPath={activeTab?.kind === "file-preview" ? selectedFilePath : activeTab?.kind === "review" ? selectedReviewPath : undefined} onOpen={(entry) => { const context = activeTab && "sessionId" in activeTab ? activeTab.sessionId : sessionId; if (!activeWorkspace || !context || entry.type === "directory") return; if (activeTab?.kind === "review" && activeTab.source === "turn" && turnReviewFiles.some((file) => file.file === entry.path) || activeTab?.kind === "review" && activeTab.source === "workspace" && workspaceReviewFiles.some((file) => file.path === entry.path)) dispatch({ type: "select-review-file", tabId: activeTab.id, path: entry.path }); else dispatch({ type: "open-file", sessionId: context, workspaceDir: activeWorkspace, path: entry.path }); }} /> : <p className="webui-workspace-tree-empty">没有匹配的文件。</p> : <p className="webui-workspace-tree-empty">此工作区没有可显示的文件。</p>}
         </div>
       </aside> : null}
     </div>

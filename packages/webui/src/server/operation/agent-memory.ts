@@ -1,10 +1,10 @@
-import { WebuiErrorCode } from "../envelope.js";
-import { WEBUI_DEFAULT_AGENT_NAME } from "../profile-files.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
+import { WEBUI_DEFAULT_AGENT_NAME } from "../../shared/contracts/personalization.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import {
   GET_AGENT_MEMORY_OPERATION_NAME,
   SET_AGENT_MEMORY_OPERATION_NAME,
-} from "./names.js";
+} from "../../shared/operation-names.js";
 
 /**
  * Summary read by default — size, mtime, path — with no body. `includeContent`

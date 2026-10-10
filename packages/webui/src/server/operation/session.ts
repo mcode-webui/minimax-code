@@ -1,4 +1,4 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import {
   invalidBody,
   requireNonEmptyString,
@@ -14,9 +14,9 @@ import type {
   WebuiSessionLookupResult,
   WebuiSessionTreeRequest,
   WebuiSessionTreePage,
-} from "../port.js";
+} from "../../shared/contracts/session.js";
 import { validateAbsoluteDirectory, validateSessionIdBody } from "./common.js";
-import { VERSION_OPERATION_NAME, LIST_SESSIONS_OPERATION_NAME, LIST_VISIBLE_PROJECTS_OPERATION_NAME, GET_SESSION_TREE_OPERATION_NAME, CREATE_SESSION_OPERATION_NAME, GET_SESSION_OPERATION_NAME, GET_ACTIVE_TURN_OPERATION_NAME } from "./names.js";
+import { VERSION_OPERATION_NAME, LIST_SESSIONS_OPERATION_NAME, LIST_VISIBLE_PROJECTS_OPERATION_NAME, GET_SESSION_TREE_OPERATION_NAME, CREATE_SESSION_OPERATION_NAME, GET_SESSION_OPERATION_NAME, GET_ACTIVE_TURN_OPERATION_NAME } from "../../shared/operation-names.js";
 type VersionRequestBody = undefined;
 
 interface VersionResponseBody {
@@ -70,7 +70,7 @@ function validateListSessionsRequestBody(
 
 export const listSessionsOperation: WebuiOperation<
   WebuiSessionListRequest,
-  import("../port.js").WebuiSessionPage
+  import("../../shared/contracts/session.js").WebuiSessionPage
 > = {
   name: LIST_SESSIONS_OPERATION_NAME,
   validate: validateListSessionsRequestBody,
@@ -78,7 +78,7 @@ export const listSessionsOperation: WebuiOperation<
 
 export const listVisibleProjectsOperation: WebuiOperation<
   { readonly limit?: number },
-  readonly import("../port.js").WebuiProjectRecord[]
+  readonly import("../../shared/contracts/session.js").WebuiProjectRecord[]
 > = {
   name: LIST_VISIBLE_PROJECTS_OPERATION_NAME,
   validate(body) {

@@ -18,9 +18,13 @@
 // `renderToStaticMarkup` convention), and the dialog owns the effects —
 // start on open, poll while pending, stop on close.
 
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import type { WebuiAccountLoginView } from "../../server/port.js";
+import type { WebuiAccountLoginView } from "../../shared/contracts/account.js";
+import {
+  useWebuiAccountWorkflows,
+  useWebuiAccountWorkflowsState,
+} from "../bindings/use-query-state.js";
 
 /** Everything the panel can show, derived (not fetched). */
 export type WebuiAccountLoginPhase =
@@ -188,77 +192,38 @@ export function AccountLoginDialog({
   open,
   onClose,
   onAuthenticated,
-  beginAccountLogin,
-  getAccountLoginStatus,
-  cancelAccountLogin,
-  signOut,
 }: {
   readonly open: boolean;
   readonly onClose: () => void;
   /** Fires once per transition into the authenticated state, so the host can
    *  refresh whatever account surfaces it shows. */
   readonly onAuthenticated?: () => void;
-  readonly beginAccountLogin?: () => Promise<WebuiAccountLoginView>;
-  readonly getAccountLoginStatus?: () => Promise<WebuiAccountLoginView>;
-  readonly cancelAccountLogin?: () => Promise<{ readonly ok: true }>;
-  readonly signOut?: () => Promise<{ readonly success?: boolean }>;
 }): ReactElement | null {
-  const [phase, setPhase] = useState<WebuiAccountLoginPhase>({ kind: "loading" });
-  const authenticatedNotifiedRef = useRef(false);
+  // The device flow — begin, poll and cancel — belongs to the application
+  // account owner (ticket #52). This dialog is a view over its snapshot: it
+  // submits commands and renders `login.view`; it owns no interval.
+  const workflows = useWebuiAccountWorkflows();
+  const snapshot = useWebuiAccountWorkflowsState();
+  const phase = deriveWebuiAccountLoginPhase(snapshot.login.view);
+  const authenticatedAt = snapshot.login.authenticatedAt;
+  const notifiedRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
-    // Reset per open: a closed dialog forgets the previous attempt's state,
-    // and the authenticated notification must fire again next time.
-    authenticatedNotifiedRef.current = false;
-    let cancelled = false;
-    setPhase({ kind: "loading" });
-    const start = () => {
-      if (!beginAccountLogin) {
-        setPhase({ kind: "error", error: "当前服务未提供账号登录" });
-        return;
-      }
-      void beginAccountLogin()
-        .then((view) => {
-          if (!cancelled) setPhase(deriveWebuiAccountLoginPhase(view));
-        })
-        .catch((error: unknown) => {
-          if (!cancelled)
-            setPhase({
-              kind: "error",
-              error: error instanceof Error ? error.message : String(error),
-            });
-        });
-    };
-    start();
-    // Poll while the dialog is open: the credential lands on the server, and
-    // only the server can see the authorization complete.
-    const timer = window.setInterval(() => {
-      if (!getAccountLoginStatus) return;
-      void getAccountLoginStatus()
-        .then((view) => {
-          if (cancelled) return;
-          const next = deriveWebuiAccountLoginPhase(view);
-          // The first reply may still be `loading` while the attempt starts;
-          // never walk a live phase back to loading — only forward matters.
-          setPhase((current) =>
-            next.kind === "loading" && current.kind !== "loading" ? current : next,
-          );
-          if (next.kind === "authenticated" && !authenticatedNotifiedRef.current) {
-            authenticatedNotifiedRef.current = true;
-            onAuthenticated?.();
-          }
-        })
-        .catch(() => undefined);
-    }, 2_000);
+    // A closed dialog forgets the previous attempt's state; the owner is told
+    // to begin a fresh flow, and to stop polling when this dialog closes.
+    void workflows?.beginLogin();
     return () => {
-      cancelled = true;
-      window.clearInterval(timer);
+      workflows?.stopLoginPolling();
     };
-    // `phase` is deliberately not a dependency: the poll closure reading it
-    // would restart the interval on every poll's own setState.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, beginAccountLogin, getAccountLoginStatus]);
+  }, [open, workflows]);
+
+  useEffect(() => {
+    if (authenticatedAt === undefined) return;
+    if (notifiedRef.current === authenticatedAt) return;
+    notifiedRef.current = authenticatedAt;
+    onAuthenticated?.();
+  }, [authenticatedAt, onAuthenticated]);
 
   if (!open) return null;
   const dialog = (
@@ -272,35 +237,16 @@ export function AccountLoginDialog({
       <AccountLoginPanel
         phase={phase}
         onRetry={() => {
-          setPhase({ kind: "loading" });
-          void beginAccountLogin?.()
-            .then((view) => setPhase(deriveWebuiAccountLoginPhase(view)))
-            .catch((error: unknown) =>
-              setPhase({
-                kind: "error",
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            );
+          void workflows?.beginLogin();
         }}
         onCancel={() => {
-          void cancelAccountLogin?.().catch(() => undefined);
+          void workflows?.cancelLogin();
           onClose();
         }}
         onSwitch={() => {
           // The real switch: sign out (revoke + wipe) and immediately start
           // a fresh device flow, in the same surface.
-          setPhase({ kind: "loading" });
-          void signOut?.()
-            .then(() => beginAccountLogin?.())
-            .then((view) => {
-              if (view) setPhase(deriveWebuiAccountLoginPhase(view));
-            })
-            .catch((error: unknown) =>
-              setPhase({
-                kind: "error",
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            );
+          void workflows?.switchAccount();
         }}
         onClose={onClose}
       />

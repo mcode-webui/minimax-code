@@ -18,21 +18,27 @@ does change `release/public-source.json`, which must be regenerated.
 
 ```
 src/
-  client/             shell entry, transport, stream loop, contracts, runtime store, router
+  client/             browser shell: entry, transport, contracts, runtime store, router
     components/       React components (the shell and every panel it renders)
+    contracts/        capability ports and view types; transport.ts joins them into WebuiTransport
     projection/       pure state and message projections — no React, no transport
     styles/           index.css, tokens.css, shell.css, transcript-widgets.css
     assets/           fonts, images, lottie
-  server/             loopback service: envelope, credentials, port, host, assembly
-    operation/        the operation registry, split by domain
-    commands/         slash-command adapters
+  runtime/            Node-side runtime: port, assembly, lifecycle, auth-session, commands/, harness/
+  server/             loopback service: envelope, credentials, index, service, terminal
+    operation/        operation registry, per-domain descriptors, handlers, dispatch
     projections/      server-side projections shared by handlers
-  shared/             placeholder.ts — a placeholder type surface, imported by nothing here
+  shared/             wire DTOs and constants
+    contracts/        per-domain request/result types (session, messages, stream, goal,
+                      interactions, queue, workspace, review, canvas, models, account,
+                      usage-quota, terminal, version, personalization)
 ```
 
-`client/` and `server/` type-check under separate tsconfigs (`tsconfig.client.json`,
-`tsconfig.server.json`); `tsconfig.standalone.json` covers neither. The browser bundle has its own
-metafile (`dist-webui/metafile.json`) and is checked by `scripts/check-webui-boundary.mjs`.
+`client/` type-checks under `tsconfig.client.json`; `server/` and `runtime/` share
+`tsconfig.server.json`; both include `shared/`. The dev launcher (`scripts/run-webui-server.mjs`)
+runs the Node side through the repo-root `tsconfig.standalone.json` via `tsx`, not through either
+package tsconfig. The browser bundle has its own metafile (`dist-webui/metafile.json`) and is
+checked by `scripts/check-webui-boundary.mjs`.
 
 `@mavis/shared` is a **different** workspace package (`packages/shared`), not `src/shared/` — the
 server imports `@mavis/shared/daily-signin` and `@mavis/shared/runtime-boundary-env` from it.
@@ -44,10 +50,10 @@ server imports `@mavis/shared/daily-signin` and `@mavis/shared/runtime-boundary-
 | Module | Role | Use it by |
 | --- | --- | --- |
 | `client/main.tsx` | Build entry. Mounts the shell into `#webui-root` and constructs the transport **once** at module scope. | Importing nothing from it — it runs for side effects. |
-| `client/contracts.ts` | The client-facing contracts: session/message/workspace view types and the `WebuiTransport` interface (every method optional — `undefined` means "this operation is not wired"). | Importing types from here rather than from a component or the shell. |
-| `client/transport.ts` | `createWebuiTransport` — one method per operation, framed over the authenticated WebSocket. | Receiving the transport object as a prop; never constructing a second one. |
-| `client/session-runtime-store.ts` | The module-level `sessionRuntimeStates` Map plus its listener registry, and `useSessionRuntimeState`. | Importing the canonical path — components must not reach the store through the shell. |
-| `client/stream.ts`, `client/stream-loop.ts` | Stream frame reduction (`reduceWebuiStreamFrame`) and the send/resume loop (`runWebuiStreamLoop`, `buildWebuiStreamLoopSink`). | Through `projection/effect-reducer.ts` and the composer; tests drive them directly. |
+| `client/contracts/` | The client-facing contracts: eight capability ports (`session-port`, `execution-port`, `interaction-port`, `workspace-port`, `settings-port`, `account-port`, `plugin-port`, `terminal-port`) plus the view types, joined by `contracts/transport.ts` into the `WebuiTransport` interface (every method optional — `undefined` means "this operation is not wired"). `contracts/transport.ts` declares no method of its own. | Importing types from here rather than from a component or the shell. |
+| `client/transport.ts` | `createWebuiTransport` — one method per operation, implementing every capability port from `contracts/`, framed over the authenticated WebSocket. | Receiving the transport object as a prop; never constructing a second one. |
+| `client/application/session-store.ts` + `client/bindings/use-session-state.ts` | The framework-free canonical session/interaction store (`createWebuiSessionStore`, the writer and home-adoption types) and its React read binding (`useWebuiSessionStore`, `useWebuiSessionState`, `useWebuiSessionStream`, `useWebuiSessionSending`, `useWebuiSessionActivity`, `useWebuiSessionPermissions`). One map, one listener registry, no second writable copy. | Importing the binding from a component — components must not reach the store through the shell, and they never receive a writer. |
+| `client/projection/stream-state.ts`, `client/stream-loop.ts` | Stream frame reduction (`reduceWebuiStreamFrame`, a pure `view` projection) and the send/resume loop (`runWebuiStreamLoop`, `buildWebuiStreamLoopSink`). The loop is a `mechanisms` module: it receives its history/context transforms and its stream-state transforms as injected bundles (`WebuiStreamLoopDeps.projection`, `.streamState`), supplied by `projection/stream-recovery.ts` and `projection/stream-state-bundle.ts`. | Through `projection/effect-reducer.ts` and the composer; tests drive them directly. |
 | `client/router.ts` | `route(pathname)` → `"login" \| "onboarding" \| "archon" \| "404"`. Pathname routing only. | Importing `route`; the `#session=<id>` deep link is a separate concern, parsed by `readSessionIdFromHash` in `components/WebuiClientFoundationApp.tsx`. |
 | `client/slash-palette.ts`, `client/value-readers.ts`, `client/team-mode.ts`, `client/markdown.tsx`, `client/icons.tsx` | Slash-command palette, defensive readers for untrusted payload fields, team-mode helpers, markdown and icon renderers. | Importing directly; these are leaves. |
 
@@ -69,13 +75,15 @@ the components render, and they hold the state machines that are otherwise untes
 
 | Module | Role |
 | --- | --- |
-| `server/index.ts` | The package's public server surface: a barrel re-exporting `WebuiService`, the registry, credentials, the envelope, the port types, the host and the assembly. It is the server build entry (`scripts/build-webui.mjs`), and the launcher imports it — `scripts/run-webui-server.mjs` does `const { createWebuiRuntimeHost, createHarnessPortFromHost, WebuiService } = await import(".../src/server/index.ts")`, assembles the host, constructs `new WebuiService(...)` and calls `service.start()`. |
+| `server/index.ts` | The loopback network entry: it re-exports `WebuiService`, the operation registry, credentials, the envelope and the wire DTOs, and holds no runtime implementation. It is the server build entry (`scripts/build-webui.mjs`). The dev launcher (`scripts/run-webui-server.mjs`) imports `createWebuiRuntimeHost` and `createHarnessPortFromHost` from `runtime/index.ts` and `WebuiService` from `src/server/index.ts` separately, assembles the host, constructs `new WebuiService(...)` and calls `service.start()`. |
 | `server/service.ts` | `WebuiService` — HTTP/asset serving, the authenticated WebSocket upgrade, connection lifecycle, and the call into `operation/operation-dispatch.ts`. Construct it with `WebuiServiceOptions`; `start()` resolves `WebuiServiceInfo` (with `boundUrl`). |
-| `server/envelope.ts` | Frame validation (`isWebuiFrame`) and the error codes. The envelope shape is an external contract. |
-| `server/credentials.ts`, `server/auth-context.ts` | The loopback credential and the per-request auth context. |
-| `server/port.ts` | `WebuiHarnessPort` — the boundary to the harness layer. Every operation's request/result types live here. |
-| `server/host.ts`, `server/assembly.ts` | The runtime host handle and the assembly that builds it once and spreads it onto the returned object. |
-| `server/terminal.ts`, `server/usage-quota.ts`, `server/check-in.ts`, `server/runtime-environment.ts` | Terminal manager, quota client, check-in, runtime environment reporting. |
+| `server/envelope.ts` | Runtime envelope validation (`isWebuiFrame`). The frame shape, protocol version and error codes live in `shared/envelope.ts`; the envelope shape is an external contract. |
+| `server/credentials.ts`, `runtime/auth-context.ts` | The loopback credential and the per-request auth context. |
+| `runtime/port.ts` | `WebuiHarnessPort` — the boundary to the harness layer: the callable, `AsyncIterable` and cancellation types, plus one method per operation. The request/result DTOs it uses live in `shared/contracts/<domain>.ts`. |
+| `runtime/harness/host-contract.ts`, `runtime/assembly.ts` | The runtime host handle (`WebuiRuntimeHostHandle`, `WebuiRuntimeCliService`) and the composition root that creates and wires the process resources. The per-domain adapters that implement the port from the host live under `runtime/harness/`; the launcher builds the host once with `createWebuiRuntimeHost` and derives the port with `createHarnessPortFromHost`. |
+| `runtime/lifecycle.ts`, `runtime/auth-session.ts`, `runtime/account-login.ts` | Resource registration with close ordering and failure recovery; the sole OAuth core with its lease and refresh timer; account login. |
+| `server/terminal.ts`, `runtime/usage-quota.ts`, `runtime/check-in.ts`, `runtime/runtime-environment.ts` | Terminal manager, quota client, check-in, runtime environment reporting. |
+| `runtime/mcode-tools*.ts`, `runtime/profile-files.ts`, `runtime/workspace-archive.ts`, `runtime/session-transfer.ts` | The mcode-tools broker, profile files, workspace archive and session transfer. |
 
 ### Server / operation
 
@@ -84,20 +92,22 @@ The registry is one module per concern. Add code in the layer it belongs to, not
 | Module | Role |
 | --- | --- |
 | `operation/operation-contract.ts` | `WebuiOperation` and friends, `ValidationFailure`, and the three validation primitives (`invalidBody`, `requireRecord`, `requireNonEmptyString`). |
-| `operation/names.ts` | Every `*_OPERATION_NAME` constant. |
-| `operation/<domain>.ts` | The operation descriptors (name + `validate`) grouped by domain: `session`, `workspace`, `messages`, `goal`, `interaction`, `questionnaire`, `queue`, `provider`. |
-| `operation/operation-handlers.ts` | `createOperationHandlers(port, terminal)`. The handler map's type is derived from the descriptors, so each handler's `body` is that operation's request type and a descriptor/handler mismatch fails to compile. |
+| `shared/operation-names.ts` | Every `*_OPERATION_NAME` constant. |
+| `operation/<domain>.ts` | The operation descriptors (name + `validate`) grouped by domain: `session`, `workspace`, `messages`, `goal`, `interaction`, `questionnaire`, `queue`, `provider`, `plugin-management`, `permission-mode`, `personalization`, `agent-memory`, `user-profile`, `memory-settings`. |
+| `operation/bind-handlers.ts` | `WEBUI_OPERATION_BINDINGS` — the statically declared operation→capability mapping — plus `createBindingEntries` and `DEDICATED_OPERATION_NAMES` for the thirteen operations that keep a hand-written handler. It consumes the port from `runtime/port.ts`. |
 | `operation/operation-dispatch.ts` | `dispatchWebuiFrame` — one inbound frame → validate → look up → handle → response, stream, or error frame. |
-| `operation/operations.ts` | `createOperationRegistry` (the single `registerOperation` call site) and `registerOperation`. Re-exports the descriptors, so importers keep one entry point. The registry order is observable on the wire; preserve it when adding/removing operations. The set of operations it registers is contractually the same as `WebuiHarnessPort`'s — `operation-handlers.ts` derives its `Pick` from the port, so a port method added or removed must reach this file in the same change, and `test/unit/webui-host-shape-invariant.test.ts` (added in batch C) fails loudly if the two diverge. |
+| `operation/operations.ts` | `createOperationRegistry` (the single `registerOperation` call site) and `registerOperation`. Re-exports the descriptors, so importers keep one entry point. The registry order is observable on the wire; preserve it when adding/removing operations. The set of operations it registers is contractually the same as `WebuiHarnessPort`'s — `bind-handlers.ts` derives its `Pick` from the port, so a port method added or removed must reach this file in the same change, and `test/unit/webui-host-shape-invariant.test.ts` (added in batch C) fails loudly if the two diverge. |
 
 ## How a request travels
 
-1. The browser calls a `WebuiTransport` method (`client/transport.ts`), which frames
+1. The browser calls a `WebuiTransport` method (the interface in `client/contracts/transport.ts`,
+   implemented in `client/transport.ts`), which frames
    `{protocolVersion, kind: "request", requestId, operation, body}`.
 2. `WebuiService` validates the frame and hands it to `dispatchWebuiFrame`.
 3. The dispatcher looks the operation up in the registry; an unregistered name or a failed
    `validate` becomes an error frame with `invalidBody`.
-4. The handler calls the matching `WebuiHarnessPort` method.
+4. The handler calls the matching `WebuiHarnessPort` method (`runtime/port.ts`), which the runtime
+   adapter under `runtime/harness/` implements by delegating to the harness host.
 5. The result becomes a response frame, or a stream of event frames for the operations that stream
    (`sendMessage`, `resumeSession`, `watchEvents`, `watchTerminal`).
 
@@ -108,8 +118,12 @@ Registry order is the `registerOperation` call order and is observable; keep it 
 The allowed direction, top to bottom:
 
 ```
-client/  →  components/  →  session-runtime-store.ts  →  projection/  →  contracts.ts / value-readers.ts
+components/  →  projection/  →  client/contracts/  →  shared/
+server/      →  runtime/port.ts  ↔  runtime/  →  shared/
 ```
+
+`shared/` imports neither execution side, and the browser never imports `server/` or `runtime/`.
+`pnpm check:webui-dependency` enforces this direction over the source (including `import type` edges).
 
 - **Never import `packages/tui`.** ADR 0003: read it as the specification, compose the equivalent
   here.
@@ -155,21 +169,27 @@ client/  →  components/  →  session-runtime-store.ts  →  projection/  → 
 
 Edit in this order so each layer compiles against the previous one:
 
-1. `server/port.ts` — request/result types and the method on `WebuiHarnessPort`.
-2. `server/host.ts` — the method on `WebuiRuntimeHostHandle`, delegating to the host object.
-3. `server/operation/names.ts` — the `*_OPERATION_NAME` constant.
-4. `server/operation/<domain>.ts` — the descriptor (validator + `WebuiOperation`).
-5. `server/operation/operation-handlers.ts` — the handler. The map is derived from the descriptors,
+1. `shared/contracts/<domain>.ts` — the request/result wire DTOs (for example `Webui…Request` /
+   `Webui…Result`), in the domain file that owns the capability.
+2. `runtime/port.ts` — the method on `WebuiHarnessPort`, typed with those DTOs.
+3. `runtime/harness/host-contract.ts` — the method on `WebuiRuntimeHostHandle`, delegating to the host
+   object (`cliService`).
+4. `runtime/harness/<domain>.ts` — the domain adapter that implements the `WebuiHarnessPort` method by
+   calling the host handle.
+5. `shared/operation-names.ts` — the `*_OPERATION_NAME` constant.
+6. `server/operation/<domain>.ts` — the descriptor (validator + `WebuiOperation`).
+7. `server/operation/bind-handlers.ts` — the binding, or the dedicated handler for the thirteen operations that keep one.
    so a missing handler is a compile error.
-6. `server/operation/operations.ts` — the `registerOperation` call, in the position the order needs.
-7. `client/contracts.ts` — the method on `WebuiTransport` (optional, like its neighbours).
-8. `client/transport.ts` — the implementation, then plumb it to the component that needs it.
-9. `test/unit/webui-service.test.ts` — extend `ScriptedHarnessPort`. Since batch A,
-   `pnpm typecheck:webui` includes `tsconfig.test.json`, so a missing or
-   wrongly-typed stub surfaces as a `Type ... is missing the following properties from type 'WebuiHarnessPort'`
-   compile error, not a runtime failure. Keep the stubs exhaustive: a forgotten member
-   `Partial<WebuiHarnessPort>` would defeat the type-checked-port guarantee batch C relies on.
-10. `server/assembly.ts` — only when the implementation needs a session-scoped dependency (oauth
+8. `server/operation/operations.ts` — the `registerOperation` call, in the position the order needs.
+9. `client/contracts/<capability>-port.ts` — the method on the right capability port (optional, like
+   its neighbours); it reaches `WebuiTransport` through `client/contracts/transport.ts`.
+10. `client/transport.ts` — the implementation, then plumb it to the component that needs it.
+11. `test/unit/webui-service.test.ts` — extend `ScriptedHarnessPort`. Since batch A,
+    `pnpm typecheck:webui` includes `tsconfig.test.json`, so a missing or
+    wrongly-typed stub surfaces as a `Type ... is missing the following properties from type 'WebuiHarnessPort'`
+    compile error, not a runtime failure. Keep the stubs exhaustive: a forgotten member
+    `Partial<WebuiHarnessPort>` would defeat the type-checked-port guarantee batch C relies on.
+12. `runtime/assembly.ts` — only when the implementation needs a session-scoped dependency (oauth
     lease client, quota client). Build it once and spread it onto the object **returned** as `host`:
     the dev launcher rebuilds the port from `createHarnessPortFromHost(assembled.host)` while unit
     tests use `assembled.harnessPort`, so enriching only the inner port keeps every gate green and
@@ -220,6 +240,7 @@ Run these before handing work back; `pnpm verify` runs the same set as CI.
 ```bash
 pnpm typecheck:webui        # server + client tsconfigs
 pnpm test:webui             # the webui Vitest group
+pnpm check:webui-dependency # source-level dependency direction — sees `import type` edges; runs before the build
 pnpm build:webui            # prints server/client input counts — a new file must raise them
 pnpm check:webui-boundary   # nothing outside the allowed entries entered the graph
 node scripts/source-inventory.mjs --write && pnpm check:source
@@ -228,3 +249,10 @@ git diff --check
 
 `pnpm build:webui` printing the input counts is the cheapest proof that a new module is actually in
 the build graph: a file that exists while the counts do not move has been written but never wired.
+
+`pnpm check:webui-dependency` reads the source, so it sees the `import type` edges and the dependency
+*direction* that `check:webui-boundary` cannot: the metafile check reads build output, where type-only
+edges are already erased and an input's presence says nothing about which way it points. Its frozen
+exception baseline is `scripts/lib/webui-dependency-baseline.json`; every entry must shrink as its
+migration stage lands, and the gate fails on both a NEW violation and a baseline entry that is no
+longer violated.

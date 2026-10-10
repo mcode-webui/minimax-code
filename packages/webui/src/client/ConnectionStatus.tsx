@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import { useSessionRuntimeState } from "./session-runtime-store.js";
-import { useWebuiEventChannelDegraded } from "./connection-health.js";
-import type { WebuiStreamState } from "./stream.js";
+import { useWebuiSessionStream } from "./bindings/use-session-state.js";
+import { useWebuiEventChannelDegraded } from "./bindings/use-connection-health.js";
+import type { WebuiStreamState } from "./projection/stream-state.js";
 
 /**
  * The three states a user can act on.
@@ -103,13 +103,13 @@ export function ConnectionStatus({
   onRetry,
   retryLabel = "重试连接",
 }: ConnectionStatusProps): ReactElement | null {
-  const { state } = useSessionRuntimeState(sessionId);
+  const stream = useWebuiSessionStream(sessionId);
   // Two independent signals, merged: the selected session's stream phase (a
   // turn that failed mid-flight) and the event channel's health (the
   // always-on watcher, which is the only live link while the page is idle).
   // Either one saying "trouble" shows the region; a terminal stream failure
   // outranks a degraded-but-retrying channel.
-  const streamConnection = projectWebuiConnectionState(state.stream.phase);
+  const streamConnection = projectWebuiConnectionState(stream.phase);
   const channelDegraded = useWebuiEventChannelDegraded();
   const connection =
     streamConnection === "failed"
@@ -123,7 +123,7 @@ export function ConnectionStatus({
   // is the looser status string. Both are preferred over the generic detail so
   // the user sees the actual cause, and the fallback keeps the region from
   // rendering an empty line when a phase failed without a recorded reason.
-  const reason = state.stream.refusal ?? state.stream.status;
+  const reason = stream.refusal ?? stream.status;
   return (
     <div
       role="status"

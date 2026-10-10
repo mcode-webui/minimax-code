@@ -1,9 +1,11 @@
-// Unit tests for `createSessionStreamRetry` — the manual arm of the stream
-// loop's recovery.
+// Unit tests for the turn coordinator's manual retry — the manual arm of the
+// stream loop's recovery, now owned by `application/turn-coordinator.ts`
+// (ticket #45, the atomic ingress flip).
 //
-// The loop's own tests cover the automatic arm (drop → `reconnecting` → one
-// `resumeSession` attempt). What this suite pins is the arm the user pulls:
-// after the loop has committed `refused` and stopped, the retry has to
+// This suite used to drive `client/session-stream-retry.ts`. That module is
+// deleted once its behaviour moved; the module path goes, the manual recovery
+// feature does not. The same three properties are pinned here against the
+// command that replaced it, through `createWebuiApplication`:
 //
 //   * clear the standing refusal synchronously (a banner that still says
 //     连接失败 over a loop that is already streaming is a lie),
@@ -11,21 +13,26 @@
 //   * be exactly one attempt: a still-dead server refuses again through the
 //     identical path, and the banner returns with the new reason.
 //
-// Driven against the real module-level runtime store — the same Map the shell
-// and the composer read — because the retry's entire job is to move that
-// store from `refused` back to a live subscription.
+// Driven against the application store the command reads and writes, so the
+// command's entire job — moving that store from `refused` back to a live
+// subscription — is what the assertions observe.
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createSessionStreamRetry } from "../../src/client/session-stream-retry.js";
-import {
-  readSessionRuntimeState,
-  updateSessionRuntimeState,
-} from "../../src/client/session-runtime-store.js";
-import type { WebuiClientSessionResumer } from "../../src/client/contracts.js";
-import type { WebuiStreamState } from "../../src/client/stream.js";
+import { createWebuiApplication } from "../../src/client/application/create-application.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
+import type { WebuiProcessEventChannel } from "../../src/client/application/event-channel.js";
+import type { WebuiClientSessionResumer } from "../../src/client/contracts/execution-port.js";
+import type { WebuiStreamState } from "../../src/client/projection/stream-state.js";
 
 type ResumeRequest = Parameters<WebuiClientSessionResumer>[0];
+
+/** The one application store the retry moves (plan §7.6; ticket #45). */
+const store = createWebuiSessionStore();
+
+const channel: WebuiProcessEventChannel = {
+  subscribe: () => () => undefined,
+};
 
 function seed(
   sessionId: string,
@@ -33,7 +40,7 @@ function seed(
     Pick<WebuiStreamState, "phase" | "refusal" | "cursor" | "transcriptIncomplete">
   >,
 ): string {
-  updateSessionRuntimeState(sessionId, (current) => ({
+  store.updateSession(sessionId, (current) => ({
     ...current,
     stream: { ...current.stream, ...patch },
     sending: false,
@@ -49,7 +56,17 @@ function pendingResume() {
   );
 }
 
-describe("createSessionStreamRetry", () => {
+function appWithResume(resumeSession: WebuiClientSessionResumer) {
+  // The command reads and writes the shared store; the application is built on
+  // it (not a second map) so the assertions observe the same records.
+  return createWebuiApplication({
+    openEventChannel: () => channel,
+    store,
+    turns: { resumeSession },
+  });
+}
+
+describe("the turn coordinator's manual retry", () => {
   it("clears the standing refusal and re-attaches from the recorded cursor", () => {
     const sessionId = seed("srt-cursor", {
       phase: "refused",
@@ -57,11 +74,10 @@ describe("createSessionStreamRetry", () => {
       cursor: "c9",
     });
     const resumeSession = pendingResume();
-    const retry = createSessionStreamRetry({ sessionId, resumeSession });
+    const application = appWithResume(resumeSession);
+    void application.turns.retry(sessionId);
 
-    retry();
-
-    const stream = readSessionRuntimeState(sessionId).stream;
+    const stream = store.readSession(sessionId).stream;
     // The attach loop's synchronous prefix: the lease is claimed and the
     // phase is `streaming` by the time the click handler returns, and the
     // old refusal is gone rather than lingering under the new attempt.
@@ -83,25 +99,24 @@ describe("createSessionStreamRetry", () => {
       refusal: "connection failed",
     });
     const resumeSession = pendingResume();
-    const retry = createSessionStreamRetry({
-      sessionId,
-      resumeSession,
-      loadMessages: async () => ({
-        messages: [
-          { msgId: "m2", role: "assistant", msgContent: "partial answer", timestamp: 2 },
-          { msgId: "msg-user-3", role: "user", msgContent: "the question", timestamp: 3 },
-        ],
-        hasMore: false,
-      }),
+    const application = createWebuiApplication({
+      openEventChannel: () => channel,
+      store,
+      turns: {
+        resumeSession,
+        loadMessages: async () => ({
+          messages: [
+            { msgId: "m2", role: "assistant", msgContent: "partial answer", timestamp: 2 },
+            { msgId: "msg-user-3", role: "user", msgContent: "the question", timestamp: 3 },
+          ],
+          hasMore: false,
+        }),
+      },
     });
 
-    retry();
+    void application.turns.retry(sessionId);
     // The loadMessages history seeding is awaited inside the loop; flush the
     // microtask queue before reading what the resume was anchored on.
-    void vi.waitFor(() => {
-      expect(resumeSession).toHaveBeenCalled();
-    });
-
     return vi.waitFor(() => {
       expect(resumeSession).toHaveBeenCalledWith(
         // No `afterCursor` (there was none), and the anchor is the newest
@@ -122,13 +137,15 @@ describe("createSessionStreamRetry", () => {
     });
     const resumeSession = vi.fn(async () => {
       throw new Error("connection refused again");
+    }) as unknown as WebuiClientSessionResumer;
+    const application = createWebuiApplication({
+      openEventChannel: () => channel,
+      store,
+      turns: { resumeSession },
     });
-    const retry = createSessionStreamRetry({ sessionId, resumeSession });
 
-    retry();
-
-    return vi.waitFor(() => {
-      const stream = readSessionRuntimeState(sessionId).stream;
+    return application.turns.retry(sessionId).then(() => {
+      const stream = store.readSession(sessionId).stream;
       // Back to the terminal state with the NEW reason — the banner returns,
       // it does not spin: one click ran exactly one resume.
       expect(stream.phase).toBe("refused");
@@ -136,6 +153,7 @@ describe("createSessionStreamRetry", () => {
       // And the failed attempt leaves no lease behind for the next retry to
       // collide with.
       expect(stream.subscription).toBeUndefined();
+      expect(resumeSession).toHaveBeenCalledTimes(1);
     });
   });
 });

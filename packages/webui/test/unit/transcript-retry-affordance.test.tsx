@@ -21,9 +21,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { OutputError } from "../../src/client/components/OutputError.js";
 import { WebuiAssistantBody } from "../../src/client/components/AssistantBody.js";
 import { WebuiClientFoundationApp } from "../../src/client/components/WebuiClientFoundationApp.js";
-import { updateSessionRuntimeState } from "../../src/client/session-runtime-store.js";
+import { createWebuiSessionStore } from "../../src/client/application/session-store.js";
 import { projectMessageParts } from "../../src/client/projection/message-parts.js";
-import type { WebuiClientMessage } from "../../src/client/contracts.js";
+import type { WebuiClientMessage } from "../../src/client/contracts/message-view.js";
 
 /** Captures the retry control's click handler out of a static render. */
 function renderWithRetryCapture(props: {
@@ -309,24 +309,15 @@ describe("C-4.3 image and text in one assistant message render together, in orde
       },
     ];
 
-    // The runtime map is module-scoped; clear any prior turn on this key.
-    updateSessionRuntimeState(SESSION_ID, (current) => ({
-      ...current,
-      sending: false,
-      stream: {
-        phase: "idle",
-        messages: [],
-        runtimeEvents: [],
-        actionDeltas: [],
-        workspaceProgress: current.stream.workspaceProgress,
-        resumeRequired: false,
-        transcriptIncomplete: false,
-      },
-    }));
+    // The shell is handed the one application store, so the transcript reads
+    // exactly this instance (ticket #45). A fresh store starts at the idle
+    // phase this case wants; no prior turn can bleed in.
+    const sessionStore = createWebuiSessionStore();
 
     const html = renderToStaticMarkup(
       createElement(WebuiClientFoundationApp, {
         label: "webui-foundation",
+        sessionStore,
         locationHash: `#session=${SESSION_ID}`,
         sessionPage: {
           sessions: [

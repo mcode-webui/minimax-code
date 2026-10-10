@@ -31,7 +31,7 @@ import {
   type ReactElement,
   type WheelEvent as ReactWheelEvent,
 } from "react";
-import type { WebuiCanvasDocument } from "../../server/port.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
 
 const DESKTOP_COPY = {
   canvasEmptyTitle: "把文件放到画布上",
@@ -72,9 +72,9 @@ const CANVAS_PAN_KEY_SCALE = 4;
 
 // Re-exported so the canvas keeps a single import site for everything a
 // caller or a test needs, while the definitions themselves live in
-// `contracts.ts` — the only layer `WebuiTransport` is allowed to depend on.
-export type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../contracts.js";
-import type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../contracts.js";
+// `shared/contracts/canvas.ts` — the wire contract they mirror.
+export type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../../shared/contracts/canvas.js";
+import type { CanvasMutation, CanvasNodeLayout, CanvasOperation } from "../../shared/contracts/canvas.js";
 
 export interface CanvasNodeView {
   readonly id: string;

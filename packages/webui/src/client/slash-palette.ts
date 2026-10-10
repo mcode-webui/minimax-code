@@ -102,7 +102,7 @@ export interface SlashCommandEntry {
  * Capability gating today is the static `supported` flag. Goal is backed by
  * the goal operations, plan entry is backed by the send-message
  * `plan-entry` intent, and compact is backed by the harness port's
- * `runCommand` — `server/commands/runner.ts` routes `command === "compact"`
+ * `runCommand` — `runtime/commands/runner.ts` routes `command === "compact"`
  * into `requestCompaction`, and the operation is registered in
  * `server/operation/operations.ts`. Commands without a WebUI path remain
  * inert until their transport is wired.

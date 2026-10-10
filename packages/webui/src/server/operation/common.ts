@@ -1,12 +1,10 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import { statSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { invalidBody, requireNonEmptyString, requireRecord } from "./operation-contract.js";
 import type { WebuiOperationValidation } from "./operation-contract.js";
-import type {
-  WebuiPermissionDecision,
-  WebuiSessionLookupRequest,
-} from "../port.js";
+import type { WebuiPermissionDecision } from "../../shared/contracts/interactions.js";
+import type { WebuiSessionLookupRequest } from "../../shared/contracts/session.js";
 export function validateSessionIdBody(
   operation: string,
   body: unknown,

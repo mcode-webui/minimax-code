@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { WebuiErrorCode } from "../../src/server/envelope.js";
+import { WebuiErrorCode } from "../../src/shared/envelope.js";
 import {
   getGlobalInstructionsOperation,
   setGlobalInstructionsOperation,

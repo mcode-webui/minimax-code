@@ -22,8 +22,8 @@ import {
   buildWebuiSessionTransferUrl,
   startWebuiSessionTransferDownload,
   WebuiSessionExportUnavailable,
-} from "../../src/client/session-transfer-download.js";
-import { readWebuiSessionTransferTarget } from "../../src/client/session-transfer-target.js";
+} from "../../src/client/infrastructure/session-transfer-download.js";
+import { readWebuiSessionTransferTarget } from "../../src/client/infrastructure/session-transfer-target.js";
 
 const target = { origin: "http://127.0.0.1:8788", token: "test-token" };
 
@@ -158,7 +158,7 @@ describe("the rail's export button", () => {
     // constant a rejection is raised against. Anywhere else it would be a tag
     // being written into a file, which is the defect.
     const importer = readFileSync(
-      new URL("../../src/client/session-import.ts", import.meta.url),
+      new URL("../../src/client/infrastructure/session-import.ts", import.meta.url),
       "utf8",
     );
     // Declared as the refusal constant, and read only to raise the refusal.
@@ -170,7 +170,7 @@ describe("the rail's export button", () => {
 
     for (const name of ["session-transfer-download.ts", "session-transfer-target.ts"]) {
       const source = readFileSync(
-        new URL(`../../src/client/${name}`, import.meta.url),
+        new URL(`../../src/client/infrastructure/${name}`, import.meta.url),
         "utf8",
       );
       // Comments are exempt, and have to be: this module's header explains in

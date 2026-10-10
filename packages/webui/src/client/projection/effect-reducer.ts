@@ -45,12 +45,12 @@
 //           `payload.error` is a string; other shapes leave `refusal`
 //           alone.
 
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
 import type {
-  WebuiGoal,
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
-  WebuiRuntimeEvent,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
+import type { WebuiRuntimeEvent } from "../../shared/contracts/stream.js";
 import {
   eventSessionId,
   pendingPermissionFromEvent,
@@ -62,13 +62,10 @@ import {
   reduceWebuiWorkspaceProgressEvent,
   type WebuiWorkspaceProgressState,
 } from "./workspace-progress.js";
+import { claimWebuiSubscriptionTurn, decideWebuiSessionStart, matchesWebuiTerminalTurn, type WebuiStreamState } from "./stream-state.js";
 import {
-  claimWebuiSubscriptionTurn,
-  decideWebuiSessionStart,
-  matchesWebuiTerminalTurn,
   releaseWebuiSubscription,
-  type WebuiStreamState,
-} from "../stream.js";
+} from "../mechanisms/stream-lease.js";
 import { projectWebuiThreadGoalMessage } from "./goal-state.js";
 
 /** The slice of component state the reducer mutates. Workspace progress

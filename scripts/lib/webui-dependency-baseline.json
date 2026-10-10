@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "pathBase": "packages/webui/src",
+  "description": "Frozen direct-boundary baseline for the WebUI internal dependency check, measured before any migration (plan section 7.5). Each entry is one violating file pair. `stage` is the migration stage after which the entry must be deleted; deleting it is enforced because a baseline entry that is no longer violated fails the check.",
+  "measured": {
+    "intraPackageReferences": 498,
+    "unresolvedRelativeReferences": 0,
+    "violatingPairs": 53,
+    "violatingOccurrences": 69
+  },
+  "entries": [
+  ],
+  "cycles": [],
+  "allowances": [
+    {
+      "kind": "non-literal-dynamic-import",
+      "file": "runtime/mcode-tools-entry.ts",
+      "line": 6,
+      "permanent": true,
+      "reason": "Node subprocess entry point. It loads the embedded mcode-tools CLI through a runtime URL because the target is a build artifact: `copyMcodeToolsArtifact` writes it into `dist-webui/server/embedded/`, and it does not exist in the source tree, so a statically resolvable specifier would fail the typecheck and the source checks. The specifier is permanently non-literal, which means static analysis can never verify this edge. Declared permanent rather than stage-scoped: no migration stage removes it. The checker's stale-allowance rule still applies, so if the dynamic load ever disappears this entry must be deleted."
+    }
+  ]
+}

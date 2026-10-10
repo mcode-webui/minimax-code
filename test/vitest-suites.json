@@ -243,6 +243,7 @@
       "packages/webui/test/unit/settings-modal.test.tsx",
       "packages/webui/test/unit/webui-package.test.ts",
       "packages/webui/test/unit/webui-boundary-check.test.ts",
+      "packages/webui/test/unit/webui-dependency-check.test.ts",
       "packages/webui/test/unit/webui-service.test.ts",
       "packages/webui/test/unit/webui-design-tokens.test.ts",
       "packages/webui/test/unit/webui-shell.test.ts",
@@ -296,6 +297,7 @@
       "packages/webui/test/unit/session-transfer.test.ts",
       "packages/webui/test/unit/session-import.test.ts",
       "packages/webui/test/unit/session-activity.test.ts",
+      "packages/webui/test/unit/webui-session-catalog.test.ts",
       "packages/webui/test/unit/rail-buckets.test.ts",
       "packages/webui/test/unit/rail-pin-affordance.test.ts",
       "packages/webui/test/unit/rail-star-favorites.test.ts",
@@ -305,6 +307,7 @@
       "packages/webui/test/unit/queue-panel.test.ts",
       "packages/webui/test/unit/vite-dev-proxy.test.ts",
       "packages/webui/test/unit/session-transfer-route.test.ts",
+      "packages/webui/test/unit/webui-runtime-lifecycle-invariants.test.ts",
       "packages/webui/test/unit/outside-close.test.ts",
       "packages/webui/test/unit/plugin-market-catalogue.test.tsx",
       "packages/webui/test/unit/plugin-mcp-status.test.tsx",
@@ -330,7 +333,20 @@
       "packages/webui/test/unit/global-instructions-operation.test.ts",
       "packages/webui/test/unit/personalization-settings.test.tsx",
       "packages/webui/test/unit/profile-files.test.ts",
-      "packages/webui/test/unit/webui-personalization-wiring.test.ts"
+      "packages/webui/test/unit/webui-personalization-wiring.test.ts",
+      "packages/webui/test/unit/webui-operation-binding.test.ts",
+      "packages/webui/test/unit/webui-operation-wire-compatibility.test.ts",
+      "packages/webui/test/unit/webui-application.test.ts",
+      "packages/webui/test/unit/webui-application-bindings.test.tsx",
+      "packages/webui/test/unit/webui-application-commands.test.ts",
+      "packages/webui/test/unit/webui-event-effects-registry.test.ts",
+      "packages/webui/test/unit/workspace-queries.test.ts",
+      "packages/webui/test/unit/account-workflows.test.ts",
+      "packages/webui/test/unit/settings-workflows.test.ts",
+      "packages/webui/test/unit/plugin-workflows.test.ts",
+      "packages/webui/test/unit/webui-event-coordinator.test.ts",
+      "packages/webui/test/unit/interaction-coordinator.test.ts",
+      "packages/webui/test/unit/stream-lease.test.ts"
     ]
   }
 }

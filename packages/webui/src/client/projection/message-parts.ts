@@ -6,6 +6,11 @@
  * renderers all consume the same ordering and synthetic-message rules.
  */
 
+import type {
+  WebuiQuestionnaireResponseAnswer,
+  WebuiQuestionnaireResponseSummary,
+} from "../contracts/transcript-view.js";
+
 export interface WebuiMessageForParts {
   readonly msgId: string;
   readonly turnId?: string;
@@ -393,24 +398,6 @@ export function projectMessageParts(
 export interface StrippedQuestionnaire {
   readonly content: string;
   readonly questionnaire?: WebuiQuestionnaireResponseSummary;
-}
-
-export interface WebuiQuestionnaireResponseAnswer {
-  /** The question text from the trailing `Q:` line, when available. */
-  readonly question: string;
-  /** One human-readable label per answer; for multi-select responses we
-   *  keep every option the user chose in order, joined by the renderer. */
-  readonly labels: readonly string[];
-}
-
-export interface WebuiQuestionnaireResponseSummary {
-  readonly requestId: string;
-  readonly schemaVersion?: string;
-  readonly submittedAt?: string;
-  readonly mode?: string;
-  readonly source?: string;
-  readonly featureKey?: string;
-  readonly answers: readonly WebuiQuestionnaireResponseAnswer[];
 }
 
 const QUESTIONNAIRE_RESPONSE_BLOCK = /<questionnaire-response>[\s\S]*?<\/questionnaire-response>/g;

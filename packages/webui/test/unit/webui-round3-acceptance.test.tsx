@@ -47,15 +47,17 @@ import {
   bucketPhrases,
   type ThinkingPhraseSet,
 } from "../../src/client/components/ActivityIndicator.js";
-import { initialWebuiStreamState, reduceWebuiStreamFrame } from "../../src/client/stream.js";
+import { initialWebuiStreamState, reduceWebuiStreamFrame } from "../../src/client/projection/stream-state.js";
 import {
   getSessionDiffOperation,
   getTurnDiffOperation,
   reapplyTurnDiffOperation,
   revertTurnDiffOperation,
 } from "../../src/server/operation/operations.js";
-import { type WebuiGoal, type WebuiQuestionnaireRequest, type WebuiTurnDiffView } from "../../src/server/port.js";
-import { WebuiErrorCode } from "../../src/server/envelope.js";
+import type { WebuiGoal } from "../../src/shared/contracts/goal.js";
+import type { WebuiQuestionnaireRequest } from "../../src/shared/contracts/interactions.js";
+import type { WebuiTurnDiffView } from "../../src/shared/contracts/session.js";
+import { WebuiErrorCode } from "../../src/shared/envelope.js";
 import { pluginManagementOperation } from "../../src/server/operation/plugin-management.js";
 
 const files = [
@@ -504,9 +506,7 @@ describe("round-3 stream state and transcript render units", () => {
 describe("plugin management WebUI operation", () => {
   it("renders its entry surface and rejects actions outside the allowlist", () => {
     const markup = renderToStaticMarkup(
-      createElement(PluginManagement, {
-        transport: { pluginManagement: async () => ({ plugins: [] }) },
-      }),
+      createElement(PluginManagement, {}),
     );
     expect(markup).toContain('data-testid="plugin-management"');
     expect(markup).toContain("市场");

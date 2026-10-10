@@ -19,7 +19,7 @@
  * `browserStorage()` convention (`team-mode.ts`) rather than reaching for
  * `window` directly, so a server render cannot touch it.
  */
-import type { WebuiModelProviderGroup } from "../components/ModelPicker.js";
+import type { WebuiModelProviderGroup } from "../contracts/model-view.js";
 
 /** The storage key. The `v1` is load-bearing: see the file comment. */
 export const MODEL_FAVORITES_KEY = "webui:model-favorites:v1";

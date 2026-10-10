@@ -9,13 +9,11 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ToggleSwitch } from "../ToggleSwitch.js";
-import type {
-  WebuiAgentMemoryView,
-  WebuiGlobalInstructionsView,
-  WebuiMemorySettingsView,
-  WebuiUserProfileFields,
-  WebuiUserProfileView,
-} from "../../contracts.js";
+import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiMemorySettingsView, WebuiUserProfileFields, WebuiUserProfileView } from "../../../shared/contracts/personalization.js";
+import {
+  useWebuiSettingsWorkflows,
+  useWebuiSettingsWorkflowsState,
+} from "../../bindings/use-query-state.js";
 
 /**
  * Personalization panel — the three blocks the desktop surface ships:
@@ -206,34 +204,6 @@ function MemoryRow({
   );
 }
 
-export interface PersonalizationSettingsProps {
-  readonly getGlobalInstructions?: () => Promise<WebuiGlobalInstructionsView>;
-  readonly setGlobalInstructions?: (request: {
-    readonly content: string;
-  }) => Promise<WebuiGlobalInstructionsView>;
-  readonly getAgentMemory?: (request?: {
-    readonly includeContent?: boolean;
-  }) => Promise<WebuiAgentMemoryView>;
-  readonly setAgentMemory?: (request: {
-    readonly content: string;
-  }) => Promise<WebuiAgentMemoryView>;
-  readonly getUserProfile?: () => Promise<WebuiUserProfileView>;
-  readonly setUserProfile?: (request: {
-    readonly nickname: string;
-    readonly occupation: string;
-    readonly moreAbout: string;
-  }) => Promise<WebuiUserProfileView>;
-  readonly getMemorySettings?: () => Promise<WebuiMemorySettingsView>;
-  readonly setMemorySettings?: (request: {
-    readonly enabled?: boolean;
-    readonly proactive?: boolean;
-  }) => Promise<WebuiMemorySettingsView>;
-  /** 「在会话中创建」. Optional on purpose: without a host that can receive the
-   *  hand-off the menu item is not rendered at all, rather than rendered and
-   *  quietly doing nothing when clicked. */
-  readonly onCreateInSession?: (input: MemoryHandoff) => void;
-}
-
 /**
  * Pre-migration storage key from the pre-AGENTS.md prototype. If it holds
  * text, that text is user-authored and would be lost on upgrade, so it is
@@ -274,29 +244,117 @@ export function resolveEditorSeed(input: {
   return input.legacyDraft.trim() ? input.legacyDraft : "";
 }
 
-export function PersonalizationSettings(props: PersonalizationSettingsProps): ReactElement {
+export interface PersonalizationSettingsProps {
+  /** 「在会话中创建」. Optional on purpose: without a host that can receive the
+   *  hand-off the menu item is not rendered at all, rather than rendered and
+   *  quietly doing nothing when clicked. */
+  readonly onCreateInSession?: (input: MemoryHandoff) => void;
+}
+
+/**
+ * Personalization panel — the settings owner's per-surface consumer.
+ *
+ * Every read and write below is derived from the settings workflow owner
+ * (ticket #52): this component calls the owner's commands and reads its
+ * snapshot, and hands the three section components the same read/write
+ * callback shape they always took. The sections keep their own uncommitted
+ * editor state; only what was submitted belongs to the application.
+ */
+export function PersonalizationSettings({ onCreateInSession }: PersonalizationSettingsProps = {}): ReactElement {
+  const settings = useWebuiSettingsWorkflows();
+  // Subscribe so a settings write anywhere re-renders this consumer. The
+  // sections hold their own editor state and read the snapshot imperatively,
+  // so the values themselves are not threaded through here.
+  useWebuiSettingsWorkflowsState();
+
+  const sections = useMemo(() => {
+    const s = settings;
+    const getGlobalInstructions = s && s.canReadInstructions
+      ? async (): Promise<WebuiGlobalInstructionsView> => {
+          await s.loadInstructions();
+          const state = s.getSnapshot().instructions;
+          if (state.value === undefined) throw new Error(state.error ?? "当前运行时不支持自定义指令读写。");
+          return state.value;
+        }
+      : undefined;
+    const setGlobalInstructions = s && s.canWriteInstructions
+      ? async (request: { readonly content: string }): Promise<WebuiGlobalInstructionsView> => s.saveInstructions(request.content)
+      : undefined;
+    const getUserProfile = s && s.canReadProfile
+      ? async (): Promise<WebuiUserProfileView> => {
+          await s.loadProfile();
+          const state = s.getSnapshot().profile;
+          if (state.value === undefined) throw new Error(state.error ?? "当前运行时不支持「关于你」读写。");
+          return state.value;
+        }
+      : undefined;
+    const setUserProfile = s && s.canWriteProfile
+      ? async (request: WebuiUserProfileFields): Promise<WebuiUserProfileView> => s.saveProfile(request)
+      : undefined;
+    const getAgentMemory = s && s.canReadMemory
+      ? async (request?: { readonly includeContent?: boolean }): Promise<WebuiAgentMemoryView> => {
+          await s.loadAgentMemory(request?.includeContent);
+          const state = s.getSnapshot().agentMemory;
+          if (state.value === undefined) throw new Error(state.error ?? "当前运行时不支持长期记忆读写。");
+          return state.value;
+        }
+      : undefined;
+    const setAgentMemory = s && s.canWriteMemory
+      ? async (request: { readonly content: string }): Promise<WebuiAgentMemoryView> => s.saveAgentMemory(request.content)
+      : undefined;
+    const getMemorySettings = s && s.canReadMemorySettings
+      ? async (): Promise<WebuiMemorySettingsView> => {
+          await s.loadMemorySettings();
+          const state = s.getSnapshot().memorySettings;
+          if (state.value === undefined) throw new Error(state.error ?? "当前运行时不支持记忆开关。");
+          return state.value;
+        }
+      : undefined;
+    const setMemorySettings = s && s.canWriteMemorySettings
+      ? async (request: { readonly enabled?: boolean; readonly proactive?: boolean }): Promise<WebuiMemorySettingsView> => s.saveMemorySettings(request)
+      : undefined;
+    return {
+      getGlobalInstructions,
+      setGlobalInstructions,
+      getUserProfile,
+      setUserProfile,
+      getAgentMemory,
+      setAgentMemory,
+      getMemorySettings,
+      setMemorySettings,
+    };
+  }, [settings]);
+
   return (
     <div data-testid="content-body" className="webui-personalization-page">
-      <GlobalInstructionsSection {...props} />
+      <GlobalInstructionsSection
+        getGlobalInstructions={sections.getGlobalInstructions}
+        setGlobalInstructions={sections.setGlobalInstructions}
+      />
       <UserProfileSection
-        getUserProfile={props.getUserProfile}
-        setUserProfile={props.setUserProfile}
+        getUserProfile={sections.getUserProfile}
+        setUserProfile={sections.setUserProfile}
       />
       <MemorySection
-        getAgentMemory={props.getAgentMemory}
-        setAgentMemory={props.setAgentMemory}
-        getMemorySettings={props.getMemorySettings}
-        setMemorySettings={props.setMemorySettings}
-        {...(props.onCreateInSession ? { onCreateInSession: props.onCreateInSession } : {})}
+        getAgentMemory={sections.getAgentMemory}
+        setAgentMemory={sections.setAgentMemory}
+        getMemorySettings={sections.getMemorySettings}
+        setMemorySettings={sections.setMemorySettings}
+        {...(onCreateInSession ? { onCreateInSession } : {})}
       />
     </div>
   );
 }
 
+interface GlobalInstructionsSectionProps {
+  readonly getGlobalInstructions?: () => Promise<WebuiGlobalInstructionsView>;
+  readonly setGlobalInstructions?: (request: { readonly content: string }) => Promise<WebuiGlobalInstructionsView>;
+}
+
 function GlobalInstructionsSection({
   getGlobalInstructions,
   setGlobalInstructions,
-}: PersonalizationSettingsProps): ReactElement {
+}: GlobalInstructionsSectionProps): ReactElement {
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState<string>();
   const [maxBytes, setMaxBytes] = useState(32 * 1024);

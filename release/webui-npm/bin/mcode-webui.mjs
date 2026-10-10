@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { WebuiService } from "../server/server.js";
 import {
   createHarnessPortFromHost,
   createWebuiRuntimeHost,
-  WebuiService,
-} from "../server/server.js";
+} from "../server/runtime.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { version } = JSON.parse(await readFile(path.join(packageRoot, "server/package-info.json"), "utf8"));

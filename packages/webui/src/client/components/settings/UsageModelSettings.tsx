@@ -3,14 +3,17 @@ import { createPortal } from "react-dom";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { WebuiUsageQuotaResult } from "../../../server/port.js";
-import type { WebuiSettingsModalCapabilities } from "../SettingsModal.js";
 import { ToggleSwitch } from "../ToggleSwitch.js";
 import { reorderModelIds } from "../../projection/model-reorder.js";
 import { formatResetLabel, getActiveSourceBadge, projectProviderHeaders, type ProviderHeaderDraft } from "../../projection/usage-settings.js";
+import {
+  useWebuiAccountWorkflows,
+  useWebuiAccountWorkflowsState,
+  useWebuiSettingsWorkflows,
+  useWebuiSettingsWorkflowsState,
+} from "../../bindings/use-query-state.js";
 
 type Props = {
-  readonly capabilities: WebuiSettingsModalCapabilities;
   readonly sessionId?: string;
 };
 
@@ -48,27 +51,24 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
   </div>;
 }
 
-export function UsageModelSettings({ capabilities, sessionId }: Props): ReactElement {
+export function UsageModelSettings({ sessionId }: Props): ReactElement {
+  // The models/providers/api-key/model-source/codex answers come from the
+  // settings owner and the usage quota from the account owner (ticket #52).
+  // This panel submits commands and reads snapshots; every uncommitted form
+  // field below stays local, and the one-second quota clock stays local too.
+  const settings = useWebuiSettingsWorkflows();
+  const settingsState = useWebuiSettingsWorkflowsState();
+  const account = useWebuiAccountWorkflows();
+  const accountState = useWebuiAccountWorkflowsState();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const [sourceTab, setSourceTab] = useState<"token-plan" | "minimax-api" | "custom">("token-plan");
-  const [activeSource, setActiveSource] = useState<"token_plan" | "minimax_api_key">();
-  const [sourceLoaded, setSourceLoaded] = useState(false);
-  const [quota, setQuota] = useState<WebuiUsageQuotaResult>();
-  const [quotaLoading, setQuotaLoading] = useState(true);
-  const [quotaError, setQuotaError] = useState<string>();
-  const [apiStatus, setApiStatus] = useState<Record<string, unknown>>();
-  const [apiLoading, setApiLoading] = useState(true);
-  const [apiError, setApiError] = useState<string>();
   const [apiKey, setApiKey] = useState("");
   const [quotaClock, setQuotaClock] = useState(() => Date.now());
   const [savingKey, setSavingKey] = useState(false);
   const [testingKey, setTestingKey] = useState(false);
   const [keyResult, setKeyResult] = useState<string>();
-  const [providers, setProviders] = useState<readonly Record<string, unknown>[]>([]);
   const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
-  const [providerLoading, setProviderLoading] = useState(true);
-  const [providerError, setProviderError] = useState<string>();
-  const [oauth, setOauth] = useState<Record<string, unknown>>();
+  const [providerActionError, setProviderActionError] = useState<string>();
   const [oauthError, setOauthError] = useState<string>();
   const [oauthLoginId, setOauthLoginId] = useState<string>();
   const [editingProvider, setEditingProvider] = useState<string>();
@@ -85,32 +85,30 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
   const [skipTest, setSkipTest] = useState(false);
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string>();
-  const [presets, setPresets] = useState<readonly Record<string, unknown>[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>();
 
-  const loadQuota = async () => {
-    setQuotaLoading(true); setQuotaError(undefined);
-    try { const result = await capabilities.getUsageQuota?.(); if (!result) throw new Error("Usage quota capability unavailable"); setQuota(result); }
-    catch (error) { setQuotaError(error instanceof Error ? error.message : String(error)); }
-    finally { setQuotaLoading(false); }
-  };
-  const loadApiStatus = async () => {
-    setApiLoading(true); setApiError(undefined);
-    try { const result = await capabilities.getMiniMaxApiKeyStatus?.(); if (!result) throw new Error("MiniMax API key status unavailable"); setApiStatus(result); }
-    catch (error) { setApiError(error instanceof Error ? error.message : String(error)); }
-    finally { setApiLoading(false); }
-  };
-  const loadProviders = async () => {
-    setProviderLoading(true); setProviderError(undefined);
-    try { setProviders(await capabilities.listUserModelProviders?.() ?? []); }
-    catch (error) { setProviderError(error instanceof Error ? error.message : String(error)); }
-    finally { setProviderLoading(false); }
-  };
+  // Committed read state, derived from the owner snapshots.
+  const quota = accountState.usage.result;
+  const quotaLoading = accountState.usage.status === "idle" || accountState.usage.status === "loading";
+  const quotaError = accountState.usage.status === "error" ? accountState.usage.error : undefined;
+  const apiStatus = settingsState.apiKeyStatus.value;
+  const apiLoading = settingsState.apiKeyStatus.status === "idle" || settingsState.apiKeyStatus.status === "loading";
+  const apiError = settingsState.apiKeyStatus.status === "error" ? settingsState.apiKeyStatus.error : undefined;
+  const providers = settingsState.providers.value ?? [];
+  const providerLoading = settingsState.providers.status === "idle" || settingsState.providers.status === "loading";
+  const providerError = providerActionError ?? (settingsState.providers.status === "error" ? settingsState.providers.error : undefined);
+  const presets = settingsState.presets.value ?? [];
+  const oauth = settingsState.codexOAuth.value;
+  const activeSource = settingsState.modelSource.value;
+  const sourceLoaded = settingsState.modelSource.status === "ready";
+
+  const loadQuota = () => { void account?.loadUsage(); };
+  const loadApiStatus = () => { void settings?.loadApiKeyStatus(); };
+  const loadProviders = () => { setProviderActionError(undefined); void settings?.loadProviders(); };
   useEffect(() => {
-    void loadQuota(); void loadApiStatus(); void loadProviders();
-    void capabilities.getMiniMaxModelSource?.().then((source) => { setActiveSource(source); setSourceLoaded(true); }).catch(() => setSourceLoaded(false));
-    void capabilities.getCodexOAuthStatus?.().then(setOauth).catch((error) => setOauthError(error instanceof Error ? error.message : String(error)));
-  // Calls are stable bound functions from the modal's transport object.
+    void account?.loadUsage(); void settings?.loadApiKeyStatus(); void settings?.loadProviders();
+    void settings?.loadModelSource(); void settings?.loadCodexOAuthStatus();
+  // Owner objects are stable; the initial loads are keyed on the session as before.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
   useEffect(() => {
@@ -118,60 +116,53 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (!oauthLoginId || !capabilities.getCodexOAuthStatus) return;
-    const timer = setInterval(() => {
-      void capabilities.getCodexOAuthStatus?.().then((status) => {
-        setOauth(status);
-        if (status.state === "connected") setOauthLoginId(undefined);
-      }).catch((error) => setOauthError(error instanceof Error ? error.message : String(error)));
-    }, 1000);
+    if (!oauthLoginId || !settings) return;
+    const timer = setInterval(() => { void settings.loadCodexOAuthStatus(); }, 1000);
     return () => clearInterval(timer);
-  }, [capabilities.getCodexOAuthStatus, oauthLoginId]);
+  }, [settings, oauthLoginId]);
 
   const chooseSource = async (source: "token_plan" | "minimax_api_key") => {
     setSourceTab(source === "token_plan" ? "token-plan" : "minimax-api");
-    if (source === activeSource || !capabilities.setMiniMaxModelSource) return;
+    if (source === activeSource || !settings?.canSetModelSource) return;
     if (source === "minimax_api_key" && apiStatus?.valid !== true) return;
-    try { setActiveSource(await capabilities.setMiniMaxModelSource(source)); }
+    try { await settings.setModelSource(source); }
     catch (error) { setKeyResult(error instanceof Error ? error.message : String(error)); }
   };
   const testKey = async () => {
-    if ((!apiKey.trim() && !apiValid) || !capabilities.testUserModelProvider) return;
+    if ((!apiKey.trim() && !apiValid) || !settings) return;
     setTestingKey(true); setKeyResult(undefined);
     try {
-      const result = record(await capabilities.testUserModelProvider({ providerId: "minimax_api", ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }));
+      const result = record(await settings.testProvider({ providerId: "minimax_api", ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }));
       setKeyResult(result.success === true ? "连接成功" : text(record(result.status).lastErrorMessage) || "连接失败");
     } catch (error) { setKeyResult(error instanceof Error ? error.message : String(error)); }
     finally { setTestingKey(false); }
   };
   const saveKey = async () => {
-    if (!apiKey.trim() || !capabilities.upsertMiniMaxApiKey) return;
+    if (!apiKey.trim() || !settings) return;
     setSavingKey(true); setKeyResult(undefined);
-    try { await capabilities.upsertMiniMaxApiKey({ apiKey: apiKey.trim(), saveAndUse: true }); setActiveSource("minimax_api_key"); await loadApiStatus(); }
+    try { await settings.upsertApiKey({ apiKey: apiKey.trim(), saveAndUse: true }); void settings.loadModelSource(); }
     catch (error) { setKeyResult(error instanceof Error ? error.message : String(error)); }
     finally { setSavingKey(false); }
   };
   const beginCodexLogin = async () => {
-    if (!capabilities.startCodexOAuthLogin) return;
+    if (!settings?.canStartCodexOAuth) return;
     const popup = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
     setOauthError(undefined);
     try {
-      const result = record(await capabilities.startCodexOAuthLogin({}));
+      const result = record(await settings.startCodexOAuth({}));
       const loginId = text(result.loginId);
       const authUrl = text(result.authUrl);
       if (loginId) setOauthLoginId(loginId);
       if (authUrl && popup) popup.location.replace(authUrl);
       else if (popup) popup.close();
-      const status = record(result.status);
-      if (Object.keys(status).length) setOauth(status);
     } catch (error) {
       popup?.close();
       setOauthError(error instanceof Error ? error.message : String(error));
     }
   };
   const cancelCodexLogin = async () => {
-    if (!oauthLoginId || !capabilities.cancelCodexOAuthLogin) return;
-    try { setOauth(await capabilities.cancelCodexOAuthLogin({ loginId: oauthLoginId }) as Record<string, unknown>); setOauthLoginId(undefined); }
+    if (!oauthLoginId || !settings) return;
+    try { await settings.cancelCodexOAuth(oauthLoginId); setOauthLoginId(undefined); }
     catch (error) { setOauthError(error instanceof Error ? error.message : String(error)); }
   };
   const openProviderForm = async (provider?: Record<string, unknown>) => {
@@ -184,10 +175,10 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
     setOriginalHeaderNames(entries.map(([name]) => name));
     setDraftHeaders(entries.map(([name, value], index) => ({ id: `${text(provider?.providerId) || "new"}-${index}`, name, value: String(value), persistedName: name })));
     setDraftApiKey(""); setShowProviderForm(true);
-    try { setPresets(await capabilities.listProviderPresets?.() ?? []); }
+    try { await settings?.loadPresets(); }
     catch (error) { setFormError(error instanceof Error ? error.message : String(error)); }
-    if (provider && capabilities.revealModelProviderApiKey) {
-      try { setDraftApiKey(await capabilities.revealModelProviderApiKey({ providerId: text(provider.providerId) })); }
+    if (provider && settings) {
+      try { setDraftApiKey(await settings.revealApiKey(text(provider.providerId))); }
       catch (error) { setFormError(error instanceof Error ? error.message : String(error)); }
     }
   };
@@ -203,38 +194,41 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
     };
   };
   const runCandidateTest = async () => {
-    if (!capabilities.testUserModelCandidate || !draftModelId.trim()) return;
+    if (!settings || !draftModelId.trim()) return;
     const headers = projectProviderHeaders(draftHeaders, originalHeaderNames);
     if (headers.error) { setFormError(headers.error === "duplicate-name" ? "Header 名称不能重复" : "新增 Header 必须填写值"); return; }
     setFormBusy(true); setFormError(undefined); setDraftTested(false);
-    try { const result = record(await capabilities.testUserModelCandidate({ candidate: draftCandidate(), modelId: draftModelId.split("\n")[0]!.trim() })); if (result.ok !== true && result.success !== true) throw new Error(text(record(result.status).lastErrorMessage) || "连接失败"); setDraftTested(true); }
+    try { const result = record(await settings.testCandidate({ candidate: draftCandidate(), modelId: draftModelId.split("\n")[0]!.trim() })); if (result.ok !== true && result.success !== true) throw new Error(text(record(result.status).lastErrorMessage) || "连接失败"); setDraftTested(true); }
     catch (error) { setFormError(error instanceof Error ? error.message : String(error)); }
     finally { setFormBusy(false); }
   };
   const saveProvider = async () => {
-    if (!capabilities.saveUserModelProviderCandidate || (!draftTested && !skipTest)) return;
+    if (!settings || (!draftTested && !skipTest)) return;
     const headers = projectProviderHeaders(draftHeaders, originalHeaderNames);
     if (headers.error) { setFormError(headers.error === "duplicate-name" ? "Header 名称不能重复" : "新增 Header 必须填写值"); return; }
     setFormBusy(true); setFormError(undefined);
-    try { const result = record(await capabilities.saveUserModelProviderCandidate({ candidate: draftCandidate(), modelId: draftModelId.split("\n")[0]?.trim(), saveAndUse: false, skipConnectionTest: skipTest })); if (result.success !== true) throw new Error("保存失败"); setShowProviderForm(false); await loadProviders(); }
+    try { const result = record(await settings.saveCandidate({ candidate: draftCandidate(), modelId: draftModelId.split("\n")[0]?.trim(), saveAndUse: false, skipConnectionTest: skipTest })); if (result.success !== true) throw new Error("保存失败"); setShowProviderForm(false); }
     catch (error) { setFormError(error instanceof Error ? error.message : String(error)); }
     finally { setFormBusy(false); }
   };
   const confirmDeleteProvider = async () => {
     const id = text(providerPendingDelete?.providerId);
-    if (!id || !capabilities.deleteUserModelProvider) return;
+    if (!id || !settings) return;
     setFormBusy(true);
-    try { await capabilities.deleteUserModelProvider(id); setProviderPendingDelete(undefined); await loadProviders(); }
+    try { await settings.deleteProvider(id); setProviderPendingDelete(undefined); }
     catch (error) { setFormError(error instanceof Error ? error.message : String(error)); }
     finally { setFormBusy(false); }
   };
   const toggleModel = async (providerId: string, model: Record<string, unknown>, enabled: boolean) => {
+    if (!settings) return;
     const nextModels = providerModels(providers.find((provider) => provider.providerId === providerId) ?? {}).map((candidate) =>
       candidate.modelId === model.modelId ? { ...candidate, enabled } : candidate,
     );
-    setProviders((items) => items.map((provider) => provider.providerId === providerId ? { ...provider, models: nextModels } : provider));
-    try { await capabilities.updateUserModelProvider?.({ providerId, models: nextModels }); }
-    catch (error) { setProviderError(error instanceof Error ? error.message : String(error)); await loadProviders(); }
+    // Show the toggle immediately; the owner reloads the truth after the write
+    // and rolls the patch back if the write fails.
+    settings.patchProviderModels(providerId, nextModels);
+    try { await settings.updateProvider({ providerId, models: nextModels }); }
+    catch (error) { setProviderActionError(error instanceof Error ? error.message : String(error)); }
   };
   const quotaView = quota?.signedIn ? quota : undefined;
   const quotaData = quotaView && "quota" in quotaView ? quotaView.quota : undefined;
@@ -290,7 +284,7 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
               <div className="flex min-w-0 items-center gap-2"><span className="truncate text-[14px] font-medium leading-5 text-text_default_primary">{text(provider.name) || id}</span>{provider.kind === "oauth" ? <span className="rounded-[6px] bg-bg_interaction_tertiary_press px-1 text-[12px]">OAuth</span> : null}</div>
               <div className="flex items-center gap-2">
                 <IconButton label="编辑提供商" onClick={() => void openProviderForm(provider)}><path d="M9.47052 2.9037C10.4714 1.9029 12.0945 1.90312 13.0955 2.9037C14.0963 3.9047 14.0964 5.52775 13.0955 6.5287L6.76935 12.8559C6.37727 13.2479 5.86805 13.5029 5.31915 13.5814L3.54767 13.8344C2.74184 13.9495 2.05079 13.2583 2.16583 12.4525L2.41876 10.681C2.49721 10.132 2.7522 9.623 3.14435 9.23085L9.47052 2.9037ZM3.92169 10.0092C3.69798 10.2329 3.55245 10.5231 3.50763 10.8363L3.2547 12.6078C3.24339 12.6875 3.31173 12.7566 3.39142 12.7455L5.1629 12.4926C5.47619 12.4478 5.76722 12.3023 5.99103 12.0785L10.9813 7.0873L8.91193 5.01796L3.92169 10.0092ZM12.3182 3.68202C11.7468 3.11062 10.8203 3.11066 10.2488 3.68202L9.68927 4.24062L11.7586 6.30995L12.3182 5.75136C12.8895 5.18001 12.8893 4.25345 12.3182 3.68202Z" /></IconButton>
-                <IconButton label="删除" disabled={!capabilities.deleteUserModelProvider} onClick={() => { setFormError(undefined); setProviderPendingDelete(provider); }}><path d="M9.80273 1.80527C10.605 1.80541 11.2549 2.45615 11.2549 3.2584V4.35606H14.666C14.9422 4.35606 15.166 4.57991 15.166 4.85606C15.1658 5.132 14.942 5.35606 14.666 5.35606H12.8096L12.7861 5.68027L12.3281 11.9645C12.2362 13.2214 11.1891 14.1948 9.92871 14.1949H5.99414C4.72231 14.1949 3.67 13.2045 3.59277 11.9352L3.21387 5.67442L3.19434 5.35606H1.33301C1.05715 5.3559 0.833241 5.1319 0.833008 4.85606C0.833008 4.58001 1.057 4.35622 1.33301 4.35606H4.74512V3.2584C4.74512 2.45607 5.39591 1.80527 6.19824 1.80527H9.80273ZM4.21191 5.61387L4.59082 11.8746C4.63603 12.6162 5.25109 13.1949 5.99414 13.1949H9.92871C10.6649 13.1948 11.2761 12.6263 11.3301 11.8922L11.7891 5.60801L11.8076 5.35606H4.19629L4.21191 5.61387ZM6.19824 2.80527C5.9482 2.80527 5.74512 3.00835 5.74512 3.2584V4.35606H10.2549V3.2584C10.2549 3.00844 10.0527 2.80541 9.80273 2.80527H6.19824Z" /></IconButton>
+                <IconButton label="删除" disabled={!settings?.canManageProviders} onClick={() => { setFormError(undefined); setProviderPendingDelete(provider); }}><path d="M9.80273 1.80527C10.605 1.80541 11.2549 2.45615 11.2549 3.2584V4.35606H14.666C14.9422 4.35606 15.166 4.57991 15.166 4.85606C15.1658 5.132 14.942 5.35606 14.666 5.35606H12.8096L12.7861 5.68027L12.3281 11.9645C12.2362 13.2214 11.1891 14.1948 9.92871 14.1949H5.99414C4.72231 14.1949 3.67 13.2045 3.59277 11.9352L3.21387 5.67442L3.19434 5.35606H1.33301C1.05715 5.3559 0.833241 5.1319 0.833008 4.85606C0.833008 4.58001 1.057 4.35622 1.33301 4.35606H4.74512V3.2584C4.74512 2.45607 5.39591 1.80527 6.19824 1.80527H9.80273ZM4.21191 5.61387L4.59082 11.8746C4.63603 12.6162 5.25109 13.1949 5.99414 13.1949H9.92871C10.6649 13.1948 11.2761 12.6263 11.3301 11.8922L11.7891 5.60801L11.8076 5.35606H4.19629L4.21191 5.61387ZM6.19824 2.80527C5.9482 2.80527 5.74512 3.00835 5.74512 3.2584V4.35606H10.2549V3.2584C10.2549 3.00844 10.0527 2.80541 9.80273 2.80527H6.19824Z" /></IconButton>
               </div>
             </div>
             {models.length ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={async (event: DragEndEvent) => {
@@ -298,18 +292,20 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
               if (!over || active === over) return;
               const orderedIds = reorderModelIds(ids, String(active), String(over));
               const nextModels = orderedIds.map((modelId) => models[ids.indexOf(modelId)]).filter((model): model is Record<string, unknown> => model !== undefined);
-              setProviders((items) => items.map((item) => item.providerId === id ? { ...item, models: nextModels } : item));
-              await capabilities.updateUserModelProvider?.({ providerId: id, models: nextModels });
-            }}><SortableContext items={ids} strategy={verticalListSortingStrategy}><div className="w-full rounded-[16px] bg-bg_grouped_tertiary p-1">{models.map((model, index) => <SortableModelRow key={ids[index]} id={ids[index]!} model={model} onTest={() => void capabilities.testUserModel?.({ providerId: id, modelId: text(model.modelId) })} onToggle={(enabled) => void toggleModel(id, model, enabled)} />)}</div></SortableContext></DndContext> : null}
+              // Optimistic like the toggle: the row moves at once, the write
+              // follows, and a failure reloads the truth.
+              settings?.patchProviderModels(id, nextModels);
+              await settings?.updateProvider({ providerId: id, models: nextModels });
+            }}><SortableContext items={ids} strategy={verticalListSortingStrategy}><div className="w-full rounded-[16px] bg-bg_grouped_tertiary p-1">{models.map((model, index) => <SortableModelRow key={ids[index]} id={ids[index]!} model={model} onTest={() => void settings?.testModel({ providerId: id, modelId: text(model.modelId) })} onToggle={(enabled) => void toggleModel(id, model, enabled)} />)}</div></SortableContext></DndContext> : null}
           </div>;
         })}
-        <button type="button" disabled={!capabilities.saveUserModelProviderCandidate} className="h-9 w-fit rounded-[8px] px-3" onClick={() => void openProviderForm()}>添加模型</button>
+        <button type="button" disabled={!settings?.canManageProviders} className="h-9 w-fit rounded-[8px] px-3" onClick={() => void openProviderForm()}>添加模型</button>
         {showProviderForm && typeof document !== "undefined" ? createPortal(<div role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void saveProvider(); }}>
           <header className="webui-provider-form-header"><h3>{editingProvider ? "编辑提供商" : "添加模型"}</h3><button type="button" aria-label="关闭" onClick={() => setShowProviderForm(false)}><CloseIcon /></button></header>
           <div className="webui-provider-form-body">
             {!editingProvider ? <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">提供商<ProviderPresetPicker presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); setDraftName(""); setDraftBaseUrl(""); setDraftApiFormat("openai-completions"); setDraftModelId(""); return; } setSelectedPresetId(text(preset.providerId)); setDraftName(text(preset.name)); setDraftBaseUrl(text(preset.baseUrl)); setDraftApiFormat(text(preset.apiFormat)); setDraftModelId(""); }} /></label>{selectedPresetId === "__other__" ? <label className="webui-provider-form-field">提供商名称<input aria-label="提供商名称" value={draftName} onChange={(event) => setDraftName(event.target.value)} required /></label> : null}</div> : null}
             {editingProvider ? <label className="webui-provider-form-field">提供商名称<input value={draftName} onChange={(event) => setDraftName(event.target.value)} required /></label> : null}
-            <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">API 格式<input value={draftApiFormat} onChange={(event) => setDraftApiFormat(event.target.value)} /></label><label className="webui-provider-form-field">接口地址<input value={draftBaseUrl} onChange={(event) => setDraftBaseUrl(event.target.value)} required />{editingProvider && providers.find((provider) => provider.providerId === editingProvider)?.revision ? <button type="button" disabled={!capabilities.discoverUserModelsCandidate || formBusy} onClick={async () => { const provider = providers.find((item) => item.providerId === editingProvider); try { const result = await capabilities.discoverUserModelsCandidate?.({ providerId: editingProvider, expectedRevision: text(provider?.revision), baseUrl: draftBaseUrl }); if (Array.isArray(result) && result.length) setDraftModelId(result.map((item) => text(record(item).modelId)).filter(Boolean).join("\n")); } catch (error) { setFormError(error instanceof Error ? error.message : String(error)); } }}>自动获取</button> : null}</label></div>
+            <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">API 格式<input value={draftApiFormat} onChange={(event) => setDraftApiFormat(event.target.value)} /></label><label className="webui-provider-form-field">接口地址<input value={draftBaseUrl} onChange={(event) => setDraftBaseUrl(event.target.value)} required />{editingProvider && providers.find((provider) => provider.providerId === editingProvider)?.revision ? <button type="button" disabled={!settings?.canManageProviders || formBusy} onClick={async () => { const provider = providers.find((item) => item.providerId === editingProvider); try { const result = await settings?.discoverCandidate({ providerId: editingProvider, expectedRevision: text(provider?.revision), baseUrl: draftBaseUrl }); if (Array.isArray(result) && result.length) setDraftModelId(result.map((item) => text(record(item).modelId)).filter(Boolean).join("\n")); } catch (error) { setFormError(error instanceof Error ? error.message : String(error)); } }}>自动获取</button> : null}</label></div>
             <label className="webui-provider-form-field">API Key<input type="password" value={draftApiKey} onChange={(event) => { setDraftApiKey(event.target.value); setDraftTested(false); }} placeholder={editingProvider ? "留空保留原值" : ""} required={!editingProvider} /></label>
             <label className="webui-provider-form-field">模型名称<textarea value={draftModelId} onChange={(event) => { setDraftModelId(event.target.value); setDraftTested(false); }} required /></label>
             <div className="webui-provider-form-headers"><div className="text-[13px] font-medium leading-5 text-text_default_primary">自定义 Headers</div>{draftHeaders.map((header) => <div key={header.id} className="webui-provider-form-header-row"><input aria-label="Header 名称" placeholder="Header 名称" value={header.name} onChange={(event) => setDraftHeaders((items) => items.map((item) => item.id === header.id ? { ...item, name: event.target.value } : item))} /><input aria-label="Header 值" placeholder={header.persistedName ? "留空保留原值" : "Header 值"} value={header.value} onChange={(event) => setDraftHeaders((items) => items.map((item) => item.id === header.id ? { ...item, value: event.target.value } : item))} /><IconButton label="移除 Header" onClick={() => setDraftHeaders((items) => items.filter((item) => item.id !== header.id))}><path d="M9.80273 1.80527C10.605 1.80541 11.2549 2.45615 11.2549 3.2584V4.35606H14.666C14.9422 4.35606 15.166 4.57991 15.166 4.85606C15.1658 5.132 14.942 5.35606 14.666 5.35606H12.8096L12.7861 5.68027L12.3281 11.9645C12.2362 13.2214 11.1891 14.1948 9.92871 14.1949H5.99414C4.72231 14.1949 3.67 13.2045 3.59277 11.9352L3.21387 5.67442L3.19434 5.35606H1.33301C1.05715 5.3559 0.833241 5.1319 0.833008 4.85606C0.833008 4.58001 1.057 4.35622 1.33301 4.35606H4.74512V3.2584C4.74512 2.45607 5.39591 1.80527 6.19824 1.80527H9.80273ZM4.21191 5.61387L4.59082 11.8746C4.63603 12.6162 5.25109 13.1949 5.99414 13.1949H9.92871C10.6649 13.1948 11.2761 12.6263 11.3301 11.8922L11.7891 5.60801L11.8076 5.35606H4.19629L4.21191 5.61387ZM6.19824 2.80527C5.9482 2.80527 5.74512 3.00835 5.74512 3.2584V4.35606H10.2549V3.2584C10.2549 3.00844 10.0527 2.80541 9.80273 2.80527H6.19824Z" /></IconButton></div>)}<button type="button" className="webui-provider-form-add-header" onClick={() => setDraftHeaders((items) => [...items, { id: `new-${Date.now()}-${items.length}`, name: "", value: "" }])}>＋ 添加 Header</button></div>
@@ -318,7 +314,7 @@ export function UsageModelSettings({ capabilities, sessionId }: Props): ReactEle
           <footer className="webui-provider-form-actions"><label><input type="checkbox" checked={skipTest} onChange={(event) => setSkipTest(event.target.checked)} />跳过连通检测</label><span /><button type="button" disabled={formBusy || !draftModelId.trim()} onClick={() => void runCandidateTest()}>连通检测</button><button type="button" disabled={formBusy} onClick={() => setShowProviderForm(false)}>取消</button><button type="submit" disabled={formBusy || (!draftTested && !skipTest)}>{formBusy ? "加载中…" : "保存"}</button></footer>
         </form></div>, document.body) : null}
         {providerPendingDelete ? <div role="dialog" aria-modal="true" aria-label={`删除供应商${text(providerPendingDelete.name)}`} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.25)]"><div className="w-[480px] overflow-clip rounded-[20px] bg-bg_grouped_secondary p-6" style={{ boxShadow: "0 4px 10px 0 rgba(0,0,0,0.04)" }}><div className="flex flex-col gap-6"><div className="flex flex-col gap-4"><div className="flex items-center justify-between"><h3 className="text-[18px] font-medium leading-[26px] text-text_default_primary">删除供应商"{text(providerPendingDelete.name)}"吗？</h3><button type="button" aria-label="关闭" className="flex size-[22px] items-center justify-center text-icon_default_tertiary hover:text-icon_default_secondary" onClick={() => setProviderPendingDelete(undefined)}><CloseIcon /></button></div><p className="text-[14px] leading-5 text-text_default_secondary">删除后将移除该供应商下的所有模型选项。</p></div>{formError ? <p role="alert">{formError}</p> : null}<div className="flex justify-end gap-4"><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] px-4" onClick={() => setProviderPendingDelete(undefined)}>取消</button><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] bg-bg_status_error px-4" onClick={() => void confirmDeleteProvider()}>{formBusy ? "删除中…" : "删除"}</button></div></div></div></div> : null}
-        {oauthError ? <p role="alert">{oauthError}</p> : oauth?.state === "connected" ? <div className="flex items-center gap-3"><span>Codex OAuth 已连接</span><button type="button" disabled={!capabilities.refreshModels} onClick={() => void capabilities.refreshModels?.()}>获取模型列表</button></div> : <div className="flex items-center gap-2"><button type="button" disabled={!capabilities.startCodexOAuthLogin || Boolean(oauthLoginId)} onClick={() => void beginCodexLogin()}>{oauthLoginId ? "正在连接 Codex OAuth" : "连接 Codex OAuth"}</button>{oauthLoginId ? <button type="button" disabled={!capabilities.cancelCodexOAuthLogin} onClick={() => void cancelCodexLogin()}>取消</button> : null}</div>}
+        {oauthError ? <p role="alert">{oauthError}</p> : oauth?.state === "connected" ? <div className="flex items-center gap-3"><span>Codex OAuth 已连接</span><button type="button" disabled={!settings?.canManageProviders} onClick={() => void settings?.refreshModels?.()}>获取模型列表</button></div> : <div className="flex items-center gap-2"><button type="button" disabled={!settings?.canStartCodexOAuth || Boolean(oauthLoginId)} onClick={() => void beginCodexLogin()}>{oauthLoginId ? "正在连接 Codex OAuth" : "连接 Codex OAuth"}</button>{oauthLoginId ? <button type="button" disabled={!settings?.canStartCodexOAuth} onClick={() => void cancelCodexLogin()}>取消</button> : null}</div>}
       </>}
     </section> : null}
   </div>;

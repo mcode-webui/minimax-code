@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { WebuiQueuePanel } from "../../src/client/components/QueuePanel.js";
-import type { WebuiQueueItem } from "../../src/server/port.js";
+import type { WebuiQueueItem } from "../../src/shared/contracts/queue.js";
 
 function item(over: Partial<WebuiQueueItem> = {}): WebuiQueueItem {
   return {

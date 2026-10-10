@@ -30,8 +30,8 @@
 // tracks `busy` and `unread` per session, and the starred set is handed in, so
 // this is a filter and a sort over data the rail is already holding.
 
-import type { WebuiClientSession } from "./contracts.js";
-import type { WebuiSessionActivityMap } from "./session-activity.js";
+import type { WebuiClientSession } from "./contracts/session-view.js";
+import type { WebuiSessionActivityMap } from "./projection/session-activity.js";
 
 export type WebuiRailView = "projects" | "running" | "unread" | "stars";
 

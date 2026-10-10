@@ -1,12 +1,10 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
 import type {
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
   WebuiGetTurnDiffRequest,
   WebuiGetTurnDiffResult,
-  WebuiMessagesRequest,
-  WebuiMessagesResult,
   WebuiReapplyTurnDiffRequest,
   WebuiReapplyTurnDiffResult,
   WebuiRevertTurnDiffRequest,
@@ -17,9 +15,13 @@ import type {
   WebuiRewindSessionResult,
   WebuiEditSessionMessageRequest,
   WebuiEditSessionMessageResult,
-} from "../port.js";
+} from "../../shared/contracts/session.js";
+import type {
+  WebuiMessagesRequest,
+  WebuiMessagesResult,
+} from "../../shared/contracts/messages.js";
 import { validateSessionIdBody, validateObjectBody, validateConversationMutationBody, validateBooleanField } from "./common.js";
-import { GET_MESSAGES_OPERATION_NAME, GET_SESSION_DIFF_OPERATION_NAME, GET_TURN_DIFF_OPERATION_NAME, REVERT_TURN_DIFF_OPERATION_NAME, REAPPLY_TURN_DIFF_OPERATION_NAME, GET_SESSION_REWIND_PREVIEW_OPERATION_NAME, REWIND_SESSION_OPERATION_NAME, EDIT_SESSION_MESSAGE_OPERATION_NAME } from "./names.js";
+import { GET_MESSAGES_OPERATION_NAME, GET_SESSION_DIFF_OPERATION_NAME, GET_TURN_DIFF_OPERATION_NAME, REVERT_TURN_DIFF_OPERATION_NAME, REAPPLY_TURN_DIFF_OPERATION_NAME, GET_SESSION_REWIND_PREVIEW_OPERATION_NAME, REWIND_SESSION_OPERATION_NAME, EDIT_SESSION_MESSAGE_OPERATION_NAME } from "../../shared/operation-names.js";
 function validateGetMessagesBody(
   body: unknown,
 ): WebuiOperationValidation<WebuiMessagesRequest> {

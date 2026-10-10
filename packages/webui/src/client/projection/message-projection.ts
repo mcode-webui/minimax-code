@@ -15,13 +15,13 @@ import {
   recordValue,
   stringValue,
 } from "../value-readers.js";
+import type { WebuiClientMessage, WebuiMessageAttachment } from "../contracts/message-view.js";
+import type { WebuiTranscriptItem } from "../contracts/transcript-view.js";
+import type { WebuiStreamMessage } from "./stream-state.js";
 import type {
-  WebuiClientMessage,
-  WebuiMessageAttachment,
-  WebuiTranscriptItem,
-} from "../contracts.js";
-import type { WebuiStreamMessage } from "../stream.js";
-import type { WebuiFileDiffInfoView, WebuiTurnDiffView } from "../../server/port.js";
+  WebuiFileDiffInfoView,
+  WebuiTurnDiffView,
+} from "../../shared/contracts/session.js";
 import {
   projectMessageParts,
   type WebuiMessageForParts,

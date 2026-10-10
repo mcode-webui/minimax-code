@@ -29,8 +29,8 @@ import {
   markWebuiEventWatcherHealthy,
   registerWebuiEventWatcher,
   unregisterWebuiEventWatcher,
-} from "../../src/client/connection-health.js";
-import { createWebuiTransport } from "../../src/client/transport.js";
+} from "../../src/client/infrastructure/connection-health.js";
+import { createWebuiTransport } from "../../src/client/infrastructure/transport.js";
 
 const tracked: number[] = [];
 

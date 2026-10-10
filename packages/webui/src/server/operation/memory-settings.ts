@@ -1,9 +1,9 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import {
   GET_MEMORY_SETTINGS_OPERATION_NAME,
   SET_MEMORY_SETTINGS_OPERATION_NAME,
-} from "./names.js";
+} from "../../shared/operation-names.js";
 
 /**
  * The two long-term-memory switches.

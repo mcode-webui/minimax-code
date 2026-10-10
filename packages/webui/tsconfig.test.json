@@ -9,7 +9,7 @@
     "test/unit/webui-scheduled-task-upstream-probe.test.ts",
     "src/server/**/*.ts",
     "src/shared/**/*.ts",
-    "src/client/contracts.ts",
+    "src/client/contracts/**/*.ts",
     "src/client/transport.ts"
   ]
 }

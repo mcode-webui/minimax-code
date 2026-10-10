@@ -31,17 +31,12 @@
  * the runtime field-ownership truth lives in the two adapters.
  */
 
-import type {
-  WebuiClientMessage,
-  WebuiMessageAttachment,
-  WebuiTransport,
-  WebuiTranscriptItem,
-  WebuiTranscriptProcessSegment,
-  WebuiTranscriptActivityPart,
-} from "../contracts.js";
-import type { WebuiStreamMessage } from "../stream.js";
-import type { WebuiTurnDiffView } from "../../server/port.js";
-import type { WebuiMessageActionCapabilities } from "../components/MessageActions.js";
+import type { WebuiClientMessage, WebuiMessageAttachment } from "../contracts/message-view.js";
+import type { WebuiTranscriptItem, WebuiTranscriptProcessSegment, WebuiTranscriptActivityPart } from "../contracts/transcript-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
+import type { WebuiStreamMessage } from "./stream-state.js";
+import type { WebuiTurnDiffView } from "../../shared/contracts/session.js";
+import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
 import {
   projectMessageAttachments,
   readMessageDiff,

@@ -45,10 +45,7 @@ import {
   type FlyoutRect,
 } from "../projection/flyout-position.js";
 import { resolveThinkingVerdict } from "../projection/thinking-control.js";
-import type {
-  WebuiModelPickerDraft,
-  WebuiModelPickerEntry,
-} from "../contracts.js";
+import type { WebuiModelPickerDraft, WebuiModelPickerEntry } from "../contracts/model-view.js";
 
 function formatContextWindow(value: number): string {
   if (value >= 1_000_000) return `${value / 1_000_000}M`;

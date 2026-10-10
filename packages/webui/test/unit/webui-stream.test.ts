@@ -12,8 +12,8 @@ import {
   reduceWebuiStreamFrame,
   recogniseWebuiStreamPayload,
   webuiSessionStatusType,
-} from "../../src/client/stream.js";
-import { __webuiProbeReduce } from "../../src/client/stream-instrumentation.js";
+} from "../../src/client/projection/stream-state.js";
+import { __webuiProbeReduce } from "../../src/client/mechanisms/stream-instrumentation.js";
 
 const frame = (dataJson: string) => ({ dataJson });
 
@@ -486,7 +486,7 @@ describe("WebUI mixed stream reducer", () => {
     // before the data step would emit `c1` already at the
     // `after-data` probe call, and the assertion below would fail.
     const probes: { checkpoint: string; cursor?: string; messages: number }[] = [];
-    __webuiProbeReduce(initialWebuiStreamState, frame, (snapshot, checkpoint) => {
+    __webuiProbeReduce(reduceWebuiStreamFrame, initialWebuiStreamState, frame, (snapshot, checkpoint) => {
       probes.push({
         checkpoint,
         cursor: snapshot.cursor,

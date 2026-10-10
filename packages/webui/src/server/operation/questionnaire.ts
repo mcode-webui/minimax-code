@@ -1,12 +1,12 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import type { WebuiOperation } from "./operation-contract.js";
 import type {
   WebuiInteractionReplyResult,
   WebuiPermissionDecision,
   WebuiQuestionnaireAnswer,
-} from "../port.js";
+} from "../../shared/contracts/interactions.js";
 import { validateOptionalObjectBody, validateNamedSessionBody, validatePermissionDecision } from "./common.js";
-import { WATCH_EVENTS_OPERATION_NAME, LIST_PENDING_PERMISSIONS_OPERATION_NAME, GET_PENDING_QUESTIONNAIRE_OPERATION_NAME, REPLY_PERMISSION_OPERATION_NAME, REPLY_QUESTIONNAIRE_OPERATION_NAME, DISMISS_QUESTIONNAIRE_OPERATION_NAME } from "./names.js";
+import { WATCH_EVENTS_OPERATION_NAME, LIST_PENDING_PERMISSIONS_OPERATION_NAME, GET_PENDING_QUESTIONNAIRE_OPERATION_NAME, REPLY_PERMISSION_OPERATION_NAME, REPLY_QUESTIONNAIRE_OPERATION_NAME, DISMISS_QUESTIONNAIRE_OPERATION_NAME } from "../../shared/operation-names.js";
 export const watchEventsOperation: WebuiOperation<Record<string, unknown>> = {
   name: WATCH_EVENTS_OPERATION_NAME,
   // The event watcher is the only stream the client has to reason about
@@ -30,7 +30,7 @@ export const getPendingQuestionnaireOperation: WebuiOperation<
     readonly name: string;
     readonly sessionId: string;
   },
-  { readonly request?: import("../port.js").WebuiQuestionnaireRequest }
+  { readonly request?: import("../../shared/contracts/interactions.js").WebuiQuestionnaireRequest }
 > = {
   name: GET_PENDING_QUESTIONNAIRE_OPERATION_NAME,
   validate: (body) =>
@@ -44,7 +44,7 @@ export const replyPermissionOperation: WebuiOperation<
     readonly requestId: string;
     readonly reply: WebuiPermissionDecision;
   },
-  import("../port.js").WebuiInteractionReplyResult
+  import("../../shared/contracts/interactions.js").WebuiInteractionReplyResult
 > = {
   name: REPLY_PERMISSION_OPERATION_NAME,
   validate: (body) => {
@@ -112,7 +112,7 @@ export const replyQuestionnaireOperation: WebuiOperation<
     readonly schemaVersion: number;
     readonly answers: WebuiQuestionnaireAnswer[];
   },
-  import("../port.js").WebuiInteractionReplyResult
+  import("../../shared/contracts/interactions.js").WebuiInteractionReplyResult
 > = {
   name: REPLY_QUESTIONNAIRE_OPERATION_NAME,
   validate: (body) => {
@@ -156,7 +156,7 @@ export const dismissQuestionnaireOperation: WebuiOperation<
     readonly name: string;
     readonly requestId: string;
   },
-  import("../port.js").WebuiInteractionReplyResult
+  import("../../shared/contracts/interactions.js").WebuiInteractionReplyResult
 > = {
   name: DISMISS_QUESTIONNAIRE_OPERATION_NAME,
   validate: (body) => {

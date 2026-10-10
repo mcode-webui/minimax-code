@@ -4,7 +4,10 @@ import {
   MarketplaceCategory,
 } from "@mavis/protocol/local";
 import type { WebuiPluginManagementAction } from "../../shared/plugin-management.js";
-import type { WebuiTransport } from "../contracts.js";
+import {
+  useWebuiPluginWorkflows,
+  useWebuiPluginWorkflowsState,
+} from "../bindings/use-query-state.js";
 import { WebuiIconAgent } from "../icons.js";
 import { ToggleSwitch } from "./ToggleSwitch.js";
 
@@ -121,11 +124,9 @@ const rows = (value: unknown, key: string): Row[] => {
 };
 
 export function PluginManagement({
-  transport,
   initialArea = "plugins",
   onChatWithAgent,
 }: {
-  readonly transport?: WebuiTransport;
   readonly initialArea?: Area;
   readonly onChatWithAgent?: (name: string) => Promise<void>;
 }): ReactElement {
@@ -143,18 +144,10 @@ export function PluginManagement({
   });
   selectionRef.current = { area, view, query, category };
   const reloadRequestRef = useRef(0);
-  const [data, setData] = useState<Row[]>([]);
-  const [marketPluginTotal, setMarketPluginTotal] = useState(0);
-  /* The skill hub reports `hasMore`/`nextCursor` where the plugin marketplace
-   * reports a `pluginTotal`, so a skill count is only known to be exact when the
-   * listing came back complete. `null` means "the total is not knowable from
-   * this response" and the label falls back to a bare 「查看全部技能」. */
-  const [marketSkillTotal, setMarketSkillTotal] = useState<number | null>(
-    null,
-  );
   const [showAllCatalogue, setShowAllCatalogue] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  /* Local form-level messages only. A load or mutation failure belongs to the
+   * application plugin owner (ticket #52) and is read from its snapshot. */
+  const [localError, setLocalError] = useState("");
   const [dialog, setDialog] = useState<"mcp" | "agent" | "skill" | null>(null);
   const [editing, setEditing] = useState<Row | undefined>();
   const [selectedAgent, setSelectedAgent] = useState<Row | undefined>();
@@ -189,206 +182,28 @@ export function PluginManagement({
   const [pluginPreview, setPluginPreview] = useState<Row | undefined>();
   const [pluginImportDialog, setPluginImportDialog] = useState(false);
 
-  const request = async (
-    action: WebuiPluginManagementAction,
-    input?: Row,
-  ): Promise<unknown> => {
-    if (!transport?.pluginManagement)
-      throw new Error("Plugin management is not connected to the runtime");
-    return transport.pluginManagement({
-      action,
-      ...(input ? { input } : {}),
-    });
-  };
-  const reload = async () => {
-    const selection: PluginManagementSelection = { area, view, query, category };
-    const isSelectionCurrent = () =>
-      sameSelection(selectionRef.current, selection);
-    if (!isSelectionCurrent()) return;
-    const requestId = ++reloadRequestRef.current;
-    const isRequestCurrent = () =>
-      requestId === reloadRequestRef.current && isSelectionCurrent();
-    setBusy(true);
-    setError("");
-    try {
-      let result: unknown;
-      if (area === "plugins" && view === "market") {
-        const [market, installed] = await Promise.all([
-          request("listMarketplacePlugins", {
-            source: InstalledPluginSource.OFFICIAL,
-            limit: 100,
-            keyword: query || undefined,
-            category: category ? MARKETPLACE_CATEGORY[category] : undefined,
-          }),
-          request("listInstalledPlugins", { limit: 200 }),
-        ]);
-        const installedNames = new Set(
-          rows(installed, "plugins")
-            .filter((item) => item.source === InstalledPluginSource.OFFICIAL)
-            .map((item) => nameOf(item).toLowerCase()),
-        );
-        result = {
-          plugins: rows(market, "plugins").map((item) => ({
-            ...item,
-            installed:
-              item.installed === true ||
-              installedNames.has(nameOf(item).toLowerCase()),
-          })),
-        };
-        if (isRequestCurrent()) {
-          setMarketPluginTotal(
-            typeof (market as Row)?.pluginTotal === "number"
-              ? ((market as Row).pluginTotal as number)
-              : rows(market, "plugins").length,
-          );
-        }
-      } else if (area === "plugins") {
-        if (view === "personal") {
-          const [installed, marketplace] = await Promise.all([
-            request("listInstalledPlugins", {
-              limit: 100,
-              keyword: query || undefined,
-            }),
-            request("listMarketplacePlugins", { limit: 100 }),
-          ]);
-          const marketplaceIcons = new Map(
-            rows(marketplace, "plugins").flatMap((item) => {
-              const icon = read(item, "iconUrl", "icon_url");
-              return [
-                nameOf(item).toLocaleLowerCase(),
-                read(item, "displayName", "display_name").toLocaleLowerCase(),
-              ]
-                .filter(Boolean)
-                .map((name) => [name, icon] as const);
-            }),
-          );
-          result = {
-            plugins: rows(installed, "plugins").map((item) => ({
-              ...item,
-              iconUrl:
-                marketplaceIcons.get(nameOf(item).toLocaleLowerCase()) ||
-                marketplaceIcons.get(
-                  read(item, "displayName", "display_name").toLocaleLowerCase(),
-                ) ||
-                read(item, "iconUrl", "icon_url"),
-            })),
-          };
-        } else
-          result = await request("listInstalledPlugins", {
-            limit: 100,
-            keyword: query || undefined,
-          });
-      } else if (area === "skills") {
-        if (view === "market") {
-          result = await request("listSkillHub", {
-            limit: 100,
-            keyword: query || undefined,
-          });
-          const listed = rows(result, "skills");
-          if (isRequestCurrent())
-            setMarketSkillTotal(
-              result && typeof result === "object" && (result as Row).hasMore === true
-                ? null
-                : listed.length,
-            );
-        } else {
-          // Runtime skills intentionally exclude disabled entries. The
-          // management list must include them so the user can turn them back on.
-          const skills: Row[] = [];
-          let cursor: string | undefined;
-          for (;;) {
-            const page = await request("listManageableSkills", {
-              limit: 200,
-              keyword: query || undefined,
-              excludeBuiltin: true,
-              cursor,
-            });
-            skills.push(...rows(page, "skills"));
-            const nextCursor =
-              page && typeof page === "object" &&
-              typeof (page as Row).nextCursor === "string"
-                ? ((page as Row).nextCursor as string)
-                : undefined;
-            if (
-              !page ||
-              typeof page !== "object" ||
-              (page as Row).hasMore !== true ||
-              !nextCursor
-            )
-              break;
-            cursor = nextCursor;
-          }
-          result = { skills };
-          if (isRequestCurrent()) setMarketSkillTotal(null);
-        }
-      } else if (area === "apps") result = await request("listApps");
-      else if (area === "mcp")
-        result = await request("listMcpServers", {
-          keyword: query || undefined,
-        });
-      else
-        result = await request("listAgents", {
-          limit: 100,
-          search: query || undefined,
-          include: "identity,persona,system_prompt",
-        });
-      const key =
-        area === "plugins"
-          ? "plugins"
-          : area === "skills"
-            ? "skills"
-            : area === "apps"
-              ? "miniApps"
-              : area === "mcp"
-                ? "servers"
-                : "agents";
-      if (!isRequestCurrent()) return;
-      let nextRows = rows(result, key);
-      if (area === "agents") {
-        nextRows = await Promise.all(
-          nextRows.map(async (item) => {
-            if (!read(item, "avatar")) return item;
-            try {
-              const asset = await request("readAgentAvatar", {
-                name: nameOf(item),
-              });
-              return asset && typeof asset === "object"
-                ? { ...item, ...(asset as Row) }
-                : item;
-            } catch {
-              return item;
-            }
-          }),
-        );
-      }
-      if (!isRequestCurrent()) return;
-      setData(nextRows);
-      if (area === "agents") {
-        const selectedName = nameOf(selectedAgentRef.current ?? {});
-        const selected =
-          nextRows.find((item) => nameOf(item) === selectedName) ??
-          nextRows[0];
-        setSelectedAgent(selected);
-        setEditing(selected);
-        setAgentName(read(selected ?? {}, "name", "displayName", "display_name"));
-        setAgentDescription(read(selected ?? {}, "description"));
-        setAgentPrompt(read(selected ?? {}, "systemPrompt", "system_prompt"));
-        setAgentModel(read(selected ?? {}, "model"));
-      }
-    } catch (cause) {
-      if (!isRequestCurrent()) return;
-      setData([]);
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      if (isRequestCurrent()) setBusy(false);
-    }
+  // The plugin manager's listings and mutations belong to the application
+  // plugin owner (ticket #52). This component submits commands and reads the
+  // snapshot; it holds no transport method and no request-generation counter —
+  // the owner drops an answer for a selection it has left.
+  const workflows = useWebuiPluginWorkflows();
+  const snapshot = useWebuiPluginWorkflowsState();
+  const listing = snapshot.listing;
+  const data = listing.rows;
+  const marketPluginTotal = listing.pluginTotal ?? 0;
+  /* The skill hub reports `hasMore`/`nextCursor` where the plugin marketplace
+   * reports a `pluginTotal`, so a skill count is only known to be exact when the
+   * listing came back complete. `null` means "the total is not knowable from
+   * this response" and the label falls back to a bare 「查看全部技能」. */
+  const marketSkillTotal = listing.skillTotal ?? null;
+  const busy = listing.loading || snapshot.mutating;
+  const error = localError || snapshot.mutationError || listing.error || "";
+  const reload = async (): Promise<void> => {
+    await workflows?.loadListing({ area, view, query, category });
   };
   useEffect(() => {
-    void reload();
-    return () => {
-      reloadRequestRef.current += 1;
-    };
-  }, [area, view, query, category]);
+    void workflows?.loadListing({ area, view, query, category });
+  }, [area, view, query, category, workflows]);
   const filtered = useMemo(
     () =>
       data.filter(
@@ -414,25 +229,45 @@ export function PluginManagement({
   // page itself overflows the preview, so the control is never gated on a
   // number this response could not supply.
   const visibleMarketTotal = marketTotal ?? filtered.length;
+  /** One UI action → the owner's named command. The component's own action
+   *  vocabulary is the wire's; the owner exposes named intents. */
+  const runAction = async (
+    action: WebuiPluginManagementAction,
+    input: Row,
+  ): Promise<unknown> => {
+    if (!workflows)
+      throw new Error("Plugin management is not connected to the runtime");
+    switch (action) {
+      case "installPlugin": return workflows.installPlugin(input);
+      case "uninstallPlugin": return workflows.uninstallPlugin(input);
+      case "enablePlugin": return workflows.enablePlugin(input);
+      case "disablePlugin": return workflows.disablePlugin(input);
+      case "importGithubPlugin": return workflows.importGithubPlugin(input);
+      case "installSkill": return workflows.installSkill(input);
+      case "createSkill": return workflows.createSkill(input);
+      case "setSkillEnabled": return workflows.setSkillEnabled(input);
+      case "deleteSkill": return workflows.deleteSkill(input);
+      case "createMcpServer": return workflows.createMcpServer(input);
+      case "updateMcpServer": return workflows.updateMcpServer(input);
+      case "deleteMcpServer": return workflows.deleteMcpServer(input);
+      case "setMcpServerEnabled": return workflows.setMcpServerEnabled(input);
+      case "testMcpServer": return workflows.testMcpServer(input);
+      case "createAgent": return workflows.createAgent(input);
+      case "updateAgent": return workflows.updateAgent(input);
+      case "deleteAgent": return workflows.deleteAgent(input);
+      default: throw new Error(`未支持的操作：${action}`);
+    }
+  };
   const mutate = async (
     action: WebuiPluginManagementAction,
     input: Row,
   ): Promise<boolean> => {
-    const selection: PluginManagementSelection = { area, view, query, category };
-    const isSelectionCurrent = () =>
-      sameSelection(selectionRef.current, selection);
-    setBusy(true);
-    setError("");
     try {
-      await request(action, input);
-      if (isSelectionCurrent()) await reload();
+      await runAction(action, input);
       return true;
-    } catch (cause) {
-      if (isSelectionCurrent())
-        setError(cause instanceof Error ? cause.message : String(cause));
+    } catch {
+      // The owner records the failure and reloads; this only reports it.
       return false;
-    } finally {
-      if (isSelectionCurrent()) setBusy(false);
     }
   };
   const confirmMutation = (
@@ -518,10 +353,10 @@ export function PluginManagement({
       return;
     }
     try {
-      const detail = await request("getMcpServer", { name: nameOf(item) });
+      const detail = await workflows?.getMcpServer(nameOf(item));
       beginMcp((detail && typeof detail === "object" ? detail : item) as Row);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setLocalError(cause instanceof Error ? cause.message : String(cause));
     }
   };
   const saveMcp = async () => {
@@ -588,7 +423,7 @@ export function PluginManagement({
         enabled = draft.enabled;
         config = draft.config;
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setLocalError(cause instanceof Error ? cause.message : String(cause));
         return;
       }
     } else {
@@ -611,7 +446,7 @@ export function PluginManagement({
             : { url: mcpUrl, ...(headers ? { headers } : {}) }),
         };
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setLocalError(cause instanceof Error ? cause.message : String(cause));
         return;
       }
     }
@@ -667,9 +502,9 @@ export function PluginManagement({
       setMcpHeaders(JSON.stringify(config.headers ?? {}, null, 2));
       setMcpTimeoutMs(typeof config.timeoutMs === "number" ? String(config.timeoutMs) : "");
       setMcpJsonMode(false);
-      setError("");
+      setLocalError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setLocalError(cause instanceof Error ? cause.message : String(cause));
     }
   };
   const switchMcpToJson = () => {
@@ -715,9 +550,9 @@ export function PluginManagement({
         ),
       );
       setMcpJsonMode(true);
-      setError("");
+      setLocalError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setLocalError(cause instanceof Error ? cause.message : String(cause));
     }
   };
   const beginAgent = (item?: Row) => {
@@ -755,7 +590,7 @@ export function PluginManagement({
     try {
       await onChatWithAgent(nameOf(editing));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setLocalError(cause instanceof Error ? cause.message : String(cause));
     }
   };
   const saveSkill = async () => {
@@ -772,16 +607,13 @@ export function PluginManagement({
   };
   const previewPlugin = async () => {
     try {
-      setBusy(true);
-      setError("");
-      const result = await request("previewGithubPlugin", {
+      setLocalError("");
+      const result = await workflows?.previewGithubPlugin({
         url: pluginUrl.trim(),
       });
       setPluginPreview(result as Row);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusy(false);
+      setLocalError(cause instanceof Error ? cause.message : String(cause));
     }
   };
   const importPlugin = async () => {
@@ -966,9 +798,7 @@ export function PluginManagement({
                   key={item.id}
                   aria-pressed={area === item.id}
                   onClick={() => {
-                    setData([]);
-                    setBusy(true);
-                    setError("");
+                    setLocalError("");
                     setArea(item.id);
                     setView("personal");
                   }}

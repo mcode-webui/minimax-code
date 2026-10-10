@@ -18,16 +18,17 @@
 import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readRequestBody, WebuiService } from "../../src/server/service.js";
+import { WebuiService } from "../../src/server/service.js";
+import { readRequestBody } from "../../src/server/http/session-transfer.js";
 import type {
   WebuiCreateSessionRequest,
-  WebuiHarnessPort,
   WebuiUpdateSessionRequest,
-} from "../../src/server/port.js";
+} from "../../src/shared/contracts/session.js";
+import type { WebuiHarnessPort } from "../../src/runtime/port.js";
 import {
   assertWebuiTransferFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
-} from "../../src/client/session-import.js";
+} from "../../src/client/infrastructure/session-import.js";
 
 const token = "test-token";
 

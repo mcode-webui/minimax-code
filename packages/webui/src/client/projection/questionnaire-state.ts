@@ -14,7 +14,7 @@ import type {
   WebuiQuestionnaireOption,
   WebuiQuestionnaireRequest,
   WebuiQuestionnaireStep,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
 
 /** Read the selected option ids for one step, defaulting to an empty list
  *  when the user hasn't touched that step yet. Internal to this module — the

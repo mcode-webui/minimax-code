@@ -22,7 +22,17 @@ function controlGoalCapability() {
       }
       if (frame?.operation === "getGoal") {
         window.__fixture.requests.push({ operation: "getGoal", body: frame.body });
-        this.emit("message", { data: JSON.stringify({ protocolVersion: 1, kind: "response", requestId: frame.requestId, body: window.__testGoal }) });
+        // The fallback matters: `openApp` performs a real navigation, so a
+        // `window.__testGoal` set on the previous document is gone by the time
+        // the app boots and issues its first `getGoal`. Without it the boot
+        // read answers `undefined`, no goal reaches the store, and the banner
+        // never renders -- which is what the production-shape test was seeing,
+        // not a defect in the goal update path.
+        const seeded = window.__testGoal ?? {
+          sessionId: "A", goalId: "g1", objective: "初始目标", status: "active",
+          tokensUsed: 1, turnsUsed: 1, timeUsedSeconds: 1, updatedAt: 1,
+        };
+        this.emit("message", { data: JSON.stringify({ protocolVersion: 1, kind: "response", requestId: frame.requestId, body: seeded }) });
         return undefined;
       }
       return super.send(serialized);
@@ -69,13 +79,15 @@ async function attachLiveTurn(page) {
 
 async function startGoalTurn(page) {
   await configureFixture(page, controlGoalCapability);
+  await openApp(page);
+  // Seeded after the navigation: `openApp` performs a real `goto`, so a value
+  // written to the previous document would not be there when the app boots.
   await page.evaluate(() => {
     window.__testGoal = {
       sessionId: "A", goalId: "g1", objective: "初始目标", status: "active",
       tokensUsed: 1, turnsUsed: 1, timeUsedSeconds: 1, updatedAt: 1,
     };
   });
-  await openApp(page);
   await attachLiveTurn(page);
 }
 

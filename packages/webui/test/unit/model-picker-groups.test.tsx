@@ -11,7 +11,7 @@ import {
   WebuiModelMenuList,
   WebuiModelPicker,
 } from "../../src/client/components/ModelPicker.js";
-import type { WebuiModelPickerEntry } from "../../src/client/contracts.js";
+import type { WebuiModelPickerEntry } from "../../src/client/contracts/model-view.js";
 
 function entry(
   providerId: string,

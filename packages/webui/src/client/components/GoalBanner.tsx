@@ -11,8 +11,11 @@ import {
   WEBUI_GOAL_STATUS_COPY,
   WEBUI_GOAL_WAIT_COPY,
 } from "../projection/goal-state.js";
-import type { WebuiGoal, WebuiGoalStatus } from "../../server/port.js";
-import type { WebuiTransport } from "../contracts.js";
+import type {
+  WebuiGoal,
+  WebuiGoalStatus,
+} from "../../shared/contracts/goal.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 
 /** Capability subset the goal banner consumes. Single source of truth lives
  *  in `WebuiTransport`; this alias keeps the prop block free of per-key

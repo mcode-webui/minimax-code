@@ -236,28 +236,27 @@ function holdSessionTree(page) {
 }
 
 /**
- * Answers the held tree request with a node that has no `childSessions` key,
- * leaving the app sitting in the boundary's fallback.
+ * Answers the held tree request with a node whose `title` is not a string.
  *
- * The wire type says every node carries an array, but nothing on the wire
- * enforces that: a serializer that omits empty fields, a runtime older than the
- * tree projection, or a hand-rolled adapter that only populates the field when
- * there ARE children all produce exactly this answer -- and a session with no
- * sub-agents is the overwhelmingly common case, so omitting the field is the
- * cheap, natural encoding rather than an exotic one. `WebuiClientFoundationApp`
- * already reads one such node defensively (`node?.childSessions ?? []`, for the
- * subagent list) while iterating the same field unguarded to build the flat
- * lookup, so this is a live inconsistency in the app rather than an invented
- * shape. The result is `node.childSessions is not iterable`, thrown from a
- * `useMemo` during the app's render -- no production hook, no test-only flag,
- * no stubbing of the component under test.
+ * This exercises the error boundary, and it is deliberately independent of the
+ * tree field the client now reads defensively: a missing `childSessions` used
+ * to be the crash, but the ingest reducer guards it now (see the
+ * "a tree node without childSessions degrades instead of crashing" test below),
+ * so it can no longer provoke a render throw. What is still unguarded is the
+ * session's own title: the rail derives the row label with
+ * `session.title?.trim()`, and optional chaining does not save an object from
+ * `.trim()` — the throw is a plain `TypeError` from a render path, which is
+ * exactly what the boundary exists to catch.
+ *
+ * The wire type says `title` is a string; serving an object is malformed input
+ * of the same class the tree test used, and no component is stubbed.
  */
 async function crashAppIntoBoundary(page) {
   await expect.poll(() => page.evaluate(() => window.__fixture.requests.filter((request) => request.operation === "getSessionTree").length)).toBeGreaterThan(0);
   await page.evaluate(() =>
     window.__fixture.resolve("getSessionTree", { name: "main" }, {
-      // No `childSessions` key at all -- see the note above.
-      sessions: [{ session: { sessionId: "A", agentName: "synthetic-A", title: "绿川椒 Demo 订货小程序", createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000, workspaceDir: "/synthetic/workspace" } }],
+      // `title` is an object, not a string -- see the note above.
+      sessions: [{ session: { sessionId: "A", agentName: "synthetic-A", title: { not: "a string" }, createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000, workspaceDir: "/synthetic/workspace" }, childSessions: [] }],
       hasMore: false,
     }),
   );
@@ -286,8 +285,12 @@ test("a render throw in the app becomes a retryable surface", async ({ page }) =
   // match would also pass if the app failed somewhere else entirely, which is
   // the one thing this test exists to rule out.
   await expect(page.locator('[data-testid="webui-error-boundary-title"]')).toHaveText("界面出现错误");
+  // React's own validation error is the one that reaches the boundary here: the
+  // rail renders the malformed title as a child, so the object-as-child check
+  // fires first. Pinned verbatim, because a fuzzy match would also pass if the
+  // app failed somewhere else entirely -- the one thing this test rules out.
   await expect(page.locator('[data-testid="webui-error-boundary-message"]'))
-    .toHaveText("node.childSessions is not iterable");
+    .toHaveText("Objects are not valid as a React child (found: object with keys {not}). If you meant to render a collection of children, use an array instead.");
   await expect(page.locator('[data-testid="webui-error-boundary-retry"]')).toBeEnabled();
 
   // The app is genuinely unmounted, not merely covered. Counting rows is the
@@ -321,6 +324,28 @@ test("retry after a render error brings the app back", async ({ page }) => {
   // rail takes input again.
   await clickSessionRow(page, "B");
   await expect(page.getByText("History B synthetic")).toBeVisible();
+});
+
+test("a tree node without childSessions degrades instead of crashing", async ({ page }) => {
+  await holdSessionTree(page);
+  await openApp(page, "#session=A");
+  await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);
+
+  // The node has no `childSessions` key at all. The ingest reducer reads it
+  // defensively, so the node survives as a session with no children and the
+  // rest of the page still loads -- the failure this used to be was silent and
+  // total: the throw was swallowed by `loadTree`'s catch, so one such node
+  // emptied the whole tree view with no error anywhere.
+  await page.evaluate(() =>
+    window.__fixture.resolve("getSessionTree", { name: "main" }, {
+      sessions: [{ session: { sessionId: "A", agentName: "synthetic-A", title: "绿川椒 Demo 订货小程序", createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000, workspaceDir: "/synthetic/workspace" } }],
+      hasMore: false,
+    }),
+  );
+
+  await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);
+  await expect(page.locator('[data-webui-session-link="A"]')).toBeVisible();
+  await expect(page.getByPlaceholder("输入消息…（输入 / 唤起命令）")).toBeVisible();
 });
 
 test("a malformed msgContent is handled, not crashed on", async ({ page }) => {

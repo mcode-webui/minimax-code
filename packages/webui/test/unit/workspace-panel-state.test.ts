@@ -13,7 +13,7 @@ import {
   setWorkspaceSessionProgressPanelOpen,
   type WorkspacePanelSessionStates,
 } from "../../src/client/projection/workspace-panel-state.js";
-import { focusWebuiFileLine, webuiFileLineTargetId } from "../../src/client/projection/file-line-navigation.js";
+import { focusWebuiFileLine, webuiFileLineTargetId } from "../../src/client/bindings/browser-effects.js";
 
 describe("right workspace panel navigation", () => {
   it("keeps workspace and progress visibility isolated per session", () => {

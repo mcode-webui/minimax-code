@@ -8,9 +8,10 @@
 // (Tier 5) uses it — the call site stays in `app.tsx` and reaches the new
 // module via a local `import { WebuiComposer } from "./components/SessionComposer.js";`.
 //
-// The component reads the runtime store (`useSessionRuntimeState`), so the
-// W2.75 invariant about `sessionKeyRef.current` is preserved by importing
-// the hook from `./session-runtime-store.js` rather than re-implementing it.
+// The component reads the stream/sending slices through the application
+// bindings (`useWebuiSessionState` / `useWebuiSessionCommands` /
+// `useWebuiTurnWriter`), which subscribe to the one application store and
+// submit purpose-named commands; the component holds no store writer.
 
 import {
   Fragment,
@@ -18,25 +19,23 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
   type ReactElement,
 } from "react";
-import {
-  type WebuiClientEventWatcher,
-  type WebuiClientMessageEnqueuer,
-  type WebuiClientMessageLoader,
-  type WebuiClientMessageSender,
-  type WebuiClientSessionCreator,
-  type WebuiClientSessionResumer,
-  type WebuiClientSessionPage,
-  type WebuiModelSelectionRequest,
-  type WebuiTransport,
-  type WebuiClientSession,
-} from "../contracts.js";
+import type { WebuiClientMessageEnqueuer, WebuiClientMessageSender, WebuiClientSessionResumer } from "../contracts/execution-port.js";
+import type { WebuiClientMessageLoader } from "../contracts/message-view.js";
+import type { WebuiModelSelectionRequest } from "../contracts/model-view.js";
+import type { WebuiClientSessionCreator } from "../contracts/session-port.js";
+import type { WebuiClientSessionPage, WebuiClientSession } from "../contracts/session-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projection/message-projection.js";
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
+import {
+  createWebuiInteractionCoordinator,
+} from "../application/interaction-coordinator.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";
 import {
   contextUsagePopoverStyle,
@@ -52,16 +51,26 @@ import {
   drawableBreakdownRows,
 } from "../projection/context-breakdown.js";
 import { isTokenPlanModel } from "../projection/token-plan-model.js";
+import { stopWebuiTurn } from "../application/turn-coordinator.js";
 import {
-  isWebuiSubscriptionProbeCurrent,
-  ownsWebuiStreamGeneration,
-  reduceWebuiStreamFrame,
-  releaseWebuiSubscription,
-  resolveWebuiSubscriptionRecheck,
-  stopWebuiTurn,
-  webuiSessionStatusType,
-} from "../stream.js";
-import { buildWebuiStreamLoopSink, runWebuiStreamLoop } from "../stream-loop.js";
+  attachWebuiTurn,
+  recheckWebuiSubscription,
+  recoverMissedWebuiTurn,
+  sendWebuiTurn,
+  type WebuiTurnWriterOwner,
+} from "../application/turn-commands.js";
+import { webuiActiveTurnProbeFor } from "../application/active-turn-probe.js";
+import {
+  useWebuiInteractionCommands,
+  useWebuiSessionCommands,
+  useWebuiSessionGoal,
+  useWebuiSessionPermissions,
+  useWebuiSessionQuestionnaire,
+  useWebuiSessionState,
+  useWebuiTurnWriter,
+} from "../bindings/use-session-state.js";
+import { useWebuiEventEffectsRegistry } from "../bindings/event-effects-context.js";
+import { webuiSessionStatusType } from "../projection/stream-state.js";
 
 /** Capability subset the session composer consumes. Single source of truth
  *  lives in `WebuiTransport`; this alias keeps the prop block free of
@@ -82,21 +91,27 @@ type WebuiSessionComposerCapabilities = Pick<
 >;
 import type {
   WebuiGoal,
-  WebuiActiveTurnRequest,
-  WebuiActiveTurnResult,
   WebuiGoalCreateRequest,
   WebuiGoalEnabledResult,
   WebuiGoalSessionRequest,
+} from "../../shared/contracts/goal.js";
+import type {
+  WebuiActiveTurnRequest,
+  WebuiActiveTurnResult,
+} from "../../shared/contracts/session.js";
+import type {
   WebuiInteractionReplyResult,
-  WebuiModelEntry,
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-  WebuiQueueItem,
+} from "../../shared/contracts/interactions.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
+import type { WebuiQueueItem } from "../../shared/contracts/queue.js";
+import type {
   WebuiWorkspaceDirectoryListing,
   WebuiWorkspaceFile,
-  WebuiUsageQuotaResult,
-} from "../../server/port.js";
+} from "../../shared/contracts/workspace.js";
+import type { WebuiUsageQuotaResult } from "../../shared/contracts/usage-quota.js";
 import { formatUsageResetLabel } from "./UserMenu.js";
 import { WebuiGoalBanner } from "./GoalBanner.js";
 import { WebuiInteractionPanel } from "./InteractionPanel.js";
@@ -126,12 +141,8 @@ import {
 } from "../icons.js";
 import { OutputError } from "./OutputError.js";
 import {
-  createWebuiWatchEventCallback,
-} from "../projection/effect-reducer.js";
-import {
   buildWebuiComposerHandlers,
   submitWebuiGoal,
-  submitWebuiComposerTurn,
   resolveWebuiSubmissionIntent,
   resolveWebuiComposerEnterAction,
   isTurnLive,
@@ -141,13 +152,6 @@ import { evaluateComposerDismiss, evaluateOutsideClose } from "../projection/out
 import {
   buildWebuiModelSelectionRequest,
 } from "../projection/action-requests.js";
-import {
-  createSessionRuntimeWriter,
-  HOME_SESSION_RUNTIME_KEY,
-  readSessionRuntimeState,
-  useSessionRuntimeState,
-} from "../session-runtime-store.js";
-import { initialWebuiStreamState } from "../stream.js";
 import { workspaceProjectName } from "./SessionRail.js";
 import {
   findWebuiMentionRange,
@@ -587,7 +591,6 @@ export function WebuiComposer({
   patchGoal,
   clearGoal,
   isGoalEnabled,
-  watchEvents,
   listPendingPermissions,
   getPendingQuestionnaire,
   replyPermission,
@@ -647,7 +650,6 @@ export function WebuiComposer({
   readonly createGoal?: (request: WebuiGoalCreateRequest) => Promise<WebuiGoal>;
 
   readonly isGoalEnabled?: () => Promise<WebuiGoalEnabledResult>;
-  readonly watchEvents?: WebuiClientEventWatcher;
   readonly listPendingPermissions?: () => Promise<{ readonly requests: readonly WebuiPendingPermission[] }>;
   readonly getPendingQuestionnaire?: (request: { readonly name: string; readonly sessionId: string }) => Promise<{ readonly request?: WebuiQuestionnaireRequest }>;
   readonly replyPermission?: (request: { readonly name: string; readonly requestId: string; readonly reply: "allowOnce" | "allowAlways" | "deny" }) => Promise<WebuiInteractionReplyResult>;
@@ -701,29 +703,67 @@ export function WebuiComposer({
   readonly onSelectSession?: (sessionId: string) => void;
   readonly onOpenPluginManagement?: (area: "plugins" | "skills") => void;
 } & WebuiSessionComposerCapabilities): ReactElement {
-  const {
-    state: runtimeState,
-    setStream,
-    setSending,
-  } = useSessionRuntimeState(sessionId);
-  const { stream, sending } = runtimeState;
-  const [permissions, setPermissions] = useState<
-    readonly WebuiPendingPermission[]
-  >([]);
-  const [questionnaire, setQuestionnaire] =
-    useState<WebuiQuestionnaireRequest>();
-  const [goal, setGoal] = useState<WebuiGoal>();
+  const { stream, sending } = useWebuiSessionState(sessionId);
+  const { commands, readStream } = useWebuiSessionCommands(sessionId);
+  const createTurnWriter = useWebuiTurnWriter();
+  // The per-session effects registry the shell provides (ticket #45). The
+  // composer registers this session's event handlers here so the application
+  // event coordinator — the sole consumer of the process-event channel — runs
+  // them for events addressed to this session; it holds no channel and
+  // registers nothing when no provider is mounted (SSR, tests).
+  const effectsRegistry = useWebuiEventEffectsRegistry();
+  // The interaction slices live on the one application store, read here through
+  // selectors and kept nowhere else (plan §7.6; ticket #45). The commands write
+  // through the store's interaction writer; the composer holds no store writer
+  // and no local copy of permissions, questionnaire or goal.
+  const permissions = useWebuiSessionPermissions(sessionId);
+  const questionnaire = useWebuiSessionQuestionnaire(sessionId);
+  const goal = useWebuiSessionGoal(sessionId);
+  const interactionCommands = useWebuiInteractionCommands(sessionId);
+  // The interaction flows (plan §7.1 `client/application/interaction-coordinator.ts`).
+  // The policy — what counts as an accepted reply, what state transition follows
+  // it, which permissions a re-read keeps — lives there. This component supplies
+  // the wiring and keeps the one error slot that every other flow in this file
+  // also writes, which is why the flows return an outcome instead of an error.
   // Bumped by every write to the goal, so a steering re-read that lands after
   // a newer update can tell it is stale and stand down. EVERY writer must go
-  // through `applyGoal` — a direct `setGoal` here would let an in-flight read
-  // resurrect the state it was meant to replace.
+  // through `applyGoal` — a direct store write here would let an in-flight read
+  // resurrect the state it was meant to replace. The cell is held here and the
+  // policy is the coordinator's: it is constructed per render, so a counter
+  // living inside it would reset and silently disable both guards.
   const goalVersionRef = useRef(0);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
-  const applyGoal = useCallback((next: WebuiGoal | undefined) => {
-    goalVersionRef.current += 1;
-    setGoal(next);
-  }, []);
+  const interactionCoordinator = createWebuiInteractionCoordinator({
+    port: {
+      listPendingPermissions,
+      getPendingQuestionnaire,
+      getGoal,
+      replyPermission,
+      replyQuestionnaire,
+      dismissQuestionnaire,
+    },
+    sink: {
+      replacePendingPermissions: interactionCommands.replacePendingPermissions,
+      removePendingPermission: interactionCommands.removePendingPermission,
+      applyQuestionnaire: interactionCommands.applyQuestionnaire,
+      awaitInteraction: commands.awaitInteraction,
+      resumeAfterPermission: commands.startStreaming,
+      afterQuestionnaireAnswer: (answers) =>
+        commands.markStreamPhase(
+          webuiAnswersEndTurn(answers) ? "idle" : "streaming",
+        ),
+      afterQuestionnaireDismiss: commands.endStreaming,
+      applyGoal: interactionCommands.applyGoal,
+      afterGoalReRead: (next) => {
+        if (next) setGoalMode(next.status !== "complete");
+      },
+    },
+    sessionId,
+    agentName,
+    goalVersionRef,
+  });
+  const applyGoal = interactionCoordinator.applyGoal;
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [goalMode, setGoalMode] = useState(false);
   const [planMode, setPlanMode] = useState(false);
@@ -807,7 +847,7 @@ export function WebuiComposer({
       const snapshot = readContextUsageSnapshot(page.contextSnapshot);
       const fromMessages = latestContextUsage((page.messages ?? []).map(projectWebuiMessageToStreamMessage));
       const contextUsage = snapshot ?? fromMessages;
-      if (contextUsage) setStream((current) => ({ ...current, contextUsage }));
+      if (contextUsage) commands.updateStream((current) => ({ ...current, contextUsage }));
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [sessionId, sessionStatus, loadMessages]);
@@ -820,24 +860,15 @@ export function WebuiComposer({
       setAccountStatus(undefined);
       // The live turn bleeds the same way: the module-level runtime map kept
       // the previous turn's stream under the welcome hero on every 新建任务.
-      setStream(() => initialWebuiStreamState);
-      setSending(false);
+      commands.clearStream();
+      commands.setTurnSending(false);
       return undefined;
     }
     let cancelled = false;
     const refreshPending = async () => {
-      const [permissionResult, questionnaireResult] = await Promise.all([
-        listPendingPermissions?.(),
-        getPendingQuestionnaire?.({ name: agentName, sessionId }),
-      ]);
+      const outcome = await interactionCoordinator.refresh();
       if (cancelled) return;
-      const sessionPermissions = (permissionResult?.requests ?? []).filter(
-        (permission) => permission.sessionId === sessionId,
-      );
-      setPermissions(sessionPermissions);
-      setQuestionnaire(questionnaireResult?.request);
-      if (sessionPermissions.length > 0 || questionnaireResult?.request)
-        setStream((current) => ({ ...current, phase: "waiting" }));
+      if (!outcome.ok) setInteractionError(outcome.error);
       if (listQueueMessages) {
         const queue = await listQueueMessages({ id: sessionId });
         if (cancelled) return;
@@ -851,65 +882,38 @@ export function WebuiComposer({
           error instanceof Error ? error.message : String(error),
         );
     });
-    const readStream = () =>
-      readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream;
+    // The current stream slice is read through the application-store binding
+    // (`useWebuiSessionCommands`), never a module-level map.
+    // One shared, deduplicated probe per transport (plan §7.1 slice): the shell
+    // and this composer ask the same `getActiveTurn`, so a same-session probe
+    // racing between them collapses to a single round trip.
+    const activeTurnProbe = webuiActiveTurnProbeFor(getActiveTurn);
 
-    /**
-     * The single entry point for following a turn this client did not start.
-     * It runs the same stream loop a local send uses, so history anchoring,
-     * cursor resume, `resume_overflow` resync, the lease and every terminal
-     * exit are handled in exactly one place.
-     */
+    // The attach/recheck/gap-recovery commands now live in the application
+    // layer (`application/turn-commands.ts`). These are the component's
+    // bindings onto them, closing over the current session and its setters —
+    // the same shape `stopWebuiTurn` already uses.
     const attachToTurn = (turnId: string | undefined) => {
-      if (!sessionId || !resumeSession) return;
-      const existing = readStream();
-      if (existing.subscription) return;
-      setSending(true);
-      void runWebuiStreamLoop(
-        { resumeSession, loadMessages },
-        {
-          sessionId,
-          attachTurnId: turnId,
-          ...(existing.cursor ? { afterCursor: existing.cursor } : {}),
-        },
-        buildWebuiStreamLoopSink(setStream),
-      ).then((generation) => {
-        // Only clear the indicator if this loop still owns the stream. A
-        // loop that finished after a newer turn started would otherwise
-        // make the new turn look idle while it is still streaming.
-        if (ownsWebuiStreamGeneration(readStream(), generation))
-          setSending(false);
+      attachWebuiTurn({
+        sessionId,
+        turnId,
+        resumeSession,
+        loadMessages,
+        readStream,
+        setSending: commands.setTurnSending,
+        setStream: commands.updateStream,
       });
     };
 
     /** `session.start` named a turn we do not hold while holding another. */
     const recheckSubscription = (turnId: string | undefined) => {
-      if (!sessionId || !getActiveTurn) return;
-      // Read the lease *before* the probe leaves, not when it returns. A
-      // local send that claims during the round trip gets a lease with no
-      // turn id yet; reading only at resolution time would let this stale
-      // snapshot retarget the user's own turn away from them.
-      const probed = readStream().subscription;
-      if (!probed) return;
-      void getActiveTurn({ id: sessionId }).then((active) => {
-        const owned = readStream().subscription;
-        // The lease this probe was about is gone or has been replaced. The
-        // answer describes a turn that is no longer ours to act on.
-        if (!isWebuiSubscriptionProbeCurrent(probed, owned) || !owned) return;
-        const decision = resolveWebuiSubscriptionRecheck(owned, active);
-        if (decision === "hold") return;
-        // Scoped to the generation we decided is stale: a newer loop may
-        // have claimed while the probe was in flight, and that lease is
-        // the live one. The old stream is not cancelled server-side, so its
-        // late frames stay fenced out by the generation guard in the sink.
-        setStream((current) =>
-          releaseWebuiSubscription(current, { generation: owned.generation }),
-        );
-        // `release` means the turn the event announced is already over (or is
-        // a compaction, which produces no transcript); its own terminal event
-        // settles the phase.
-        if (decision === "retarget" && active) attachToTurn(active.turnId);
-      }).catch(() => undefined);
+      recheckWebuiSubscription({
+        sessionId,
+        probe: activeTurnProbe,
+        readStream,
+        setStream: commands.updateStream,
+        attach: attachToTurn,
+      });
     };
 
     /**
@@ -919,91 +923,66 @@ export function WebuiComposer({
      * turn id and never refreshes on those events. Ask the server instead.
      */
     const recoverMissedTurn = () => {
-      if (!sessionId || !getActiveTurn) return;
-      void getActiveTurn({ id: sessionId }).then((active) => {
-        if (!active || active.busyReason !== "turn") return;
-        // Read the lease at resolution time, not at call time: a local send
-        // that started while the probe was in flight has already claimed it.
-        if (readStream().subscription) return;
-        attachToTurn(active.turnId);
-      }).catch(() => undefined);
+      recoverMissedWebuiTurn({
+        sessionId,
+        probe: activeTurnProbe,
+        readStream,
+        attach: attachToTurn,
+      });
     };
 
-    const onRuntimeEvent = createWebuiWatchEventCallback(
-      sessionId,
-      () => readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream,
-      () => ({ permissions, questionnaire, goal }),
-      {
-        refreshPending: () => {
-          void refreshPending().catch(() => undefined);
-        },
-        setSending,
-        setStream,
-        setPermissions,
-        setQuestionnaire,
-        // A goal-bearing event landing here invalidates any steering re-read
-        // still in flight: that read is older than what we just applied.
-        // `applyGoal` performs the version bump the re-read guard checks, so
-        // the event path needs no writer of its own.
-        setGoal: applyGoal,
-        // Goal steering events announce that the objective moved without
-        // carrying the new goal, so the banner is re-read rather than patched.
-        // The read is eventually consistent, so a late answer must not undo a
-        // newer goal that arrived while it was in flight.
-        refreshGoal: () => {
-          if (!sessionId || !getGoal) return undefined;
-          const readFor = sessionId;
-          const versionAtRequest = goalVersionRef.current;
-          return getGoal({ sessionId: readFor }).then((nextGoal) => {
-            if (readFor !== sessionIdRef.current) return;
-            if (goalVersionRef.current !== versionAtRequest) return;
-            applyGoal(nextGoal);
-            if (nextGoal) setGoalMode(nextGoal.status !== "complete");
-          });
-        },
-        attachStream: (turnId, mode) => {
-          // `recheck` means we already hold a different turn's lease. The
-          // event alone cannot say whether that lease is stale or genuinely
-          // concurrent, so ask the server which turn is actually running.
-          if (mode === "recheck") {
-            void recheckSubscription(turnId);
-            return;
-          }
-          attachToTurn(turnId);
-        },
+    // Goal steering events announce that the objective moved without carrying
+    // the new goal, so the banner is re-read rather than patched. The read is
+    // eventually consistent, so a late answer must not undo a newer goal that
+    // arrived while it was in flight: the version guard makes that decision,
+    // and it has one implementation here, shared by the event callback and the
+    // registered effects.
+    const refreshGoal = () => interactionCoordinator.refreshGoal();
+
+    // The mount probe. A turn that started before this client read the server
+    // is still running, so `getActiveTurn` returns it; a turn that starts after
+    // announces itself on the single process-event channel, which the
+    // application event coordinator owns. The composer no longer opens its own
+    // `watchEvents` subscription — the coordinator is the channel's sole
+    // consumer, reduces each event, and runs this session's registered effects
+    // below (ticket #45, the atomic ingress flip).
+    recoverMissedTurn();
+    // Register this session's effect handlers for the application event
+    // coordinator. The coordinator runs them for events addressed to this
+    // session, so the composer holds no channel and no raw event callback.
+    const unregisterEffects = effectsRegistry?.register(sessionId, {
+      refreshPending: () => refreshPending(),
+      refreshGoal,
+      // The coordinator's set-goal command routes here, so a goal-bearing
+      // event performs the same version bump `applyGoal` owns — a late steering
+      // re-read cannot resurrect the goal the event just replaced. Every goal
+      // write still goes through `applyGoal`.
+      setGoal: (_targetSessionId, nextGoal) => applyGoal(nextGoal),
+      attachStream: (turnId, mode) => {
+        if (mode === "recheck") {
+          void recheckSubscription(turnId);
+          return;
+        }
+        attachToTurn(turnId);
       },
-    );
-    const unsubscribe = watchEvents?.(onRuntimeEvent, () => {
-      // The server accepted `watchEvents` and is pumping it. Not a
-      // subscription barrier — the runtime subscribes on the server's first
-      // pull, just after this — so this is the same probe the mount path
-      // runs, repeated once the stream is being established rather than
-      // only requested. A reconnect may also have missed permission,
-      // questionnaire, queue or `session.start` events while the browser
-      // was suspended, so re-read the authoritative state too.
-      void refreshPending().catch(() => undefined);
-      recoverMissedTurn();
+      channelReady: () => {
+        void refreshPending().catch(() => undefined);
+        recoverMissedTurn();
+      },
     });
-    // Neither probe is gated on the watcher, and the two are not ordered
-    // against each other. A turn that started before a probe read the server
-    // is still running, so `getActiveTurn` returns it; a turn that starts
-    // after announces itself on the event stream. When there is no watcher
-    // there is no announcement to wait for, so the mount probe is the only
-    // recovery this client has.
-    if (unsubscribe === undefined) recoverMissedTurn();
     return () => {
       cancelled = true;
-      unsubscribe?.();
+      unregisterEffects?.();
     };
   }, [
     agentName,
+    effectsRegistry,
     getActiveTurn,
     getPendingQuestionnaire,
     listPendingPermissions,
     listQueueMessages,
     resumeSession,
     sessionId,
-    watchEvents,
   ]);
 
   useEffect(() => {
@@ -1123,18 +1102,18 @@ export function WebuiComposer({
     // Same stale-window as the steering re-read: this request can be overtaken
     // by a `thread_goal.*` event while it is in flight, and answering with the
     // older snapshot would resurrect what the event just replaced.
-    const versionAtRequest = goalVersionRef.current;
+    const versionAtRequest = interactionCoordinator.goalVersion();
     void getGoal({ sessionId })
       .then((nextGoal) => {
         if (cancelled) return;
-        if (goalVersionRef.current !== versionAtRequest) return;
+        if (interactionCoordinator.goalVersion() !== versionAtRequest) return;
         applyGoal(nextGoal);
         if (nextGoal) setGoalMode(nextGoal.status !== "complete");
       })
       .catch(() => {
         // Same guard on the error path: a rejection must not erase a goal that
         // a newer event installed while this request was in flight.
-        if (!cancelled && goalVersionRef.current === versionAtRequest)
+        if (!cancelled && interactionCoordinator.goalVersion() === versionAtRequest)
           applyGoal(undefined);
       });
     return () => {
@@ -1173,85 +1152,42 @@ export function WebuiComposer({
     permission: WebuiPendingPermission,
     decision: "allowOnce" | "allowAlways" | "deny",
   ) => {
-    if (!replyPermission) return;
     setInteractionError(undefined);
-    try {
-      const result = await replyPermission({
-        name: permission.agentName,
-        requestId: permission.requestId,
-        reply: decision,
-      });
-      if (result.success !== true)
-        throw new Error("The permission request was no longer pending");
-      setPermissions((current) =>
-        current.filter((item) => item.requestId !== permission.requestId),
-      );
-      setStream((current) => ({ ...current, phase: "streaming" }));
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.replyPermission(
+      permission,
+      decision,
+    );
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleQuestionnaire = async (
     request: WebuiQuestionnaireRequest,
     answers: readonly WebuiQuestionnaireAnswer[],
   ) => {
-    if (!replyQuestionnaire) return;
     setInteractionError(undefined);
-    try {
-      const result = await replyQuestionnaire({
-        name: request.requester?.agentName ?? agentName,
-        requestId: request.id,
-        schemaVersion: request.schemaVersion,
-        answers,
-      });
-      if (result.ok !== true)
-        throw new Error("The questionnaire was not accepted");
-      setQuestionnaire(undefined);
-      // Answering resumes the turn; a skipped answer ends it (see
-      // `webuiAnswersEndTurn`). Leaving `streaming` after a skip strands the
-      // transcript's thinking pulse, because a finished turn never sends the
-      // `[DONE]` frame that would otherwise clear it.
-      setStream((current) => ({
-        ...current,
-        phase: webuiAnswersEndTurn(answers) ? "idle" : "streaming",
-      }));
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.answerQuestionnaire(
+      request,
+      answers,
+    );
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleDismiss = async (request: WebuiQuestionnaireRequest) => {
-    if (!dismissQuestionnaire) return;
     setInteractionError(undefined);
-    try {
-      const result = await dismissQuestionnaire({
-        name: request.requester?.agentName ?? agentName,
-        requestId: request.id,
-      });
-      if (result.ok !== true)
-        throw new Error("The questionnaire could not be dismissed");
-      setQuestionnaire(undefined);
-      // A dismissal never resumes the turn — the runtime only marks the
-      // request dismissed — so this is the same "nothing happens now" state
-      // a skip produces, and `streaming` was simply wrong here.
-      setStream((current) => ({ ...current, phase: "idle" }));
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.dismissQuestionnaire(request);
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleStop = async () => {
     if (!sessionId || !abortSession) return;
     setInteractionError(undefined);
     try {
-      await stopWebuiTurn({ abortSession, sessionId, setSending, setStream });
+      await stopWebuiTurn({
+        abortSession,
+        sessionId,
+        setSending: commands.setTurnSending,
+        setStream: commands.updateStream,
+      });
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : String(error),
@@ -1717,9 +1653,10 @@ export function WebuiComposer({
   // Turn phase remains part of session runtime state; the transcript owns all
   // visible messages for both the live and settled phases.
   // `isTurnLive` is the single source of truth for the three-value phase
-  // predicate; `session-runtime-store.ts` carries `sending` as a separate
-  // submit-lifecycle boolean the reducer deliberately does NOT merge with
-  // `phase` — `submitWebuiComposerTurn` relies on the two staying distinct.
+  // predicate; the application session record (`application/state.ts`) carries
+  // `sending` as a separate submit-lifecycle boolean the reducer deliberately
+  // does NOT merge with `phase` — `submitWebuiComposerTurn` relies on the two
+  // staying distinct.
   useLayoutEffect(() => {
     if (!sessionLayout) return undefined;
     const region = composerRegionRef.current;
@@ -1766,9 +1703,9 @@ export function WebuiComposer({
   // cannot be exercised, and source-text assertions are not part
   // of this project's policy.
   const handlers = buildWebuiComposerHandlers({
-    setStream,
-    readStream: () => readSessionRuntimeState(sessionId ?? HOME_SESSION_RUNTIME_KEY).stream,
-    setSending,
+    setStream: commands.updateStream,
+    readStream,
+    setSending: commands.setTurnSending,
     onDraftChange,
     onNeedsSession,
     onSessionCreated,
@@ -1799,50 +1736,29 @@ export function WebuiComposer({
     readonly message: string;
     readonly clientIntent?: string;
   }) => {
-    // A newly submitted turn is a Desktop-style request to follow the latest
-    // frontier. The scroll listener can still release this lock immediately
-    // if the user wheels back into history while the turn is running.
-    let turnRuntimeWriter = sessionId
-      ? createSessionRuntimeWriter({ kind: "session", sessionId })
-      : createSessionRuntimeWriter({ kind: "home" });
-    const turnHandlers = {
-      ...handlers,
-      setStream: (update: Parameters<typeof turnRuntimeWriter.setStream>[0]) =>
-        turnRuntimeWriter.setStream(update),
-      setSending: (sending: boolean) => turnRuntimeWriter.setSending(sending),
-      onSessionCreated: (createdSessionId: string) => {
-        handlers.onSessionCreated?.(createdSessionId);
-        if (turnRuntimeWriter.kind === "home") {
-          turnRuntimeWriter = turnRuntimeWriter.migrateToSession(createdSessionId);
-        }
+    await sendWebuiTurn({
+      sessionId,
+      message: turn.message,
+      ...(turn.clientIntent ? { clientIntent: turn.clientIntent } : {}),
+      planMode,
+      attachments: attachmentWire,
+      onAttachmentsSubmitted: () => {
+        setAttachments([]);
+        setUrlReferences([]);
       },
-    };
-    await submitWebuiComposerTurn(
-      {
-        sessionId,
-        // `submitWebuiComposerTurn` reads `args.message ?? args.draft` and
-        // trims it, so passing the effective text as `message` re-sends it
-        // through exactly the path an ordinary send takes. `draft` carries the
-        // same value so the "no session yet" hand-off reports the input that
-        // is actually going to be sent.
-        draft: turn.message,
-        message: turn.message,
-        ...(turn.clientIntent
-          ? { clientIntent: turn.clientIntent }
-          : planMode
-            ? { clientIntent: "plan-entry" }
-            : {}),
-        attachments: attachmentWire,
-        onAttachmentsSubmitted: () => { setAttachments([]); setUrlReferences([]); },
-        sending,
-        deps: { sendMessage, resumeSession, loadMessages },
-        enqueueMessage,
-        createSession,
-        createSessionWorkspaceDir,
-        teamModeOff,
-      },
-      turnHandlers,
-    );
+      sending,
+      handlers,
+      deps: { sendMessage, resumeSession, loadMessages },
+      enqueueMessage,
+      createSession,
+      createSessionWorkspaceDir,
+      teamModeOff,
+      // The owner union is narrowed per branch so the overloaded factory
+      // resolves; the binding builds the command-shaped writer from the
+      // application store, so this component submits `updateStream` /
+      // `setTurnSending` and never holds the store writer itself.
+      createWriter: (owner: WebuiTurnWriterOwner) => createTurnWriter(owner),
+    });
   };
   // The input of the last turn this composer submitted, kept locally so retry
   // can re-send it without asking the server what was asked. Two holders, one

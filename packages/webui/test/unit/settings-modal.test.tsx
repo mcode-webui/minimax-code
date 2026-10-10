@@ -46,7 +46,7 @@ describe("desktop settings registry", () => {
   });
 
   it("renders the usage source shell and its loading branch without a DOM runtime", () => {
-    const markup = renderToStaticMarkup(<UsageModelSettings capabilities={{}} />);
+    const markup = renderToStaticMarkup(<UsageModelSettings />);
     expect(markup).toContain("Token Plan");
     expect(markup).toContain("加载中…");
   });

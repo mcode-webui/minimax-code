@@ -5,7 +5,7 @@ import {
   importWebuiSessionFile,
   WEBUI_LEGACY_CLIENT_EXPORT_FORMAT,
   WebuiSessionImportRefused,
-} from "../../src/client/session-import.js";
+} from "../../src/client/infrastructure/session-import.js";
 import { WEBUI_SESSION_TRANSFER_FORMAT } from "../../src/shared/session-transfer-format.js";
 
 const TRANSFER = {

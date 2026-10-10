@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { WebuiQueueItem } from "../../server/port.js";
+import type { WebuiQueueItem } from "../../shared/contracts/queue.js";
 
 /**
  * The messages waiting behind a running turn, and whether the queue is held.

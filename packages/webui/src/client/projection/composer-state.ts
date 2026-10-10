@@ -10,27 +10,27 @@
 // enqueues the message, and routes failures into the `refusal` field so the
 // panel surfaces them inline.
 
-import type {
-  WebuiClientCreateSessionResult,
-  WebuiClientMessageEnqueuer,
-  WebuiClientSessionCreator,
-} from "../contracts.js";
+import type { WebuiClientMessageEnqueuer } from "../contracts/execution-port.js";
+import type { WebuiClientCreateSessionResult, WebuiClientSessionCreator } from "../contracts/session-port.js";
 import type {
   WebuiGoal,
   WebuiGoalCreateRequest,
   WebuiGoalPatchRequest,
-} from "../../server/port.js";
-import type { WebuiAttachmentInput } from "../../server/port.js";
+} from "../../shared/contracts/goal.js";
+import type { WebuiAttachmentInput } from "../../shared/contracts/messages.js";
 import { formatWebuiError } from "../value-readers.js";
-import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "../stream.js";
+import { queueWebuiTurn } from "../application/queue-command.js";
+import { initialWebuiStreamState, ownsWebuiStreamGeneration } from "./stream-state.js";
 import {
   buildWebuiStreamLoopSink,
   runWebuiStreamLoop,
   type WebuiStreamLoopDeps,
-} from "../stream-loop.js";
-import type { WebuiStreamState } from "../stream.js";
+} from "../mechanisms/stream-loop.js";
+import { streamRecoveryProjection } from "./stream-recovery.js";
+import type { WebuiStreamState } from "./stream-state.js";
 import type { SlashCommandEntry, WebuiRunCommandName } from "../slash-palette.js";
 import { isWebuiRunnableCommand, classifyWebuiSlashCommand } from "../slash-palette.js";
+import { streamStateBundle } from "../application/stream-state-bundle.js";
 
 /**
  * Absolute-path check shared by the project picker and the submit guard.
@@ -270,7 +270,13 @@ export interface WebuiComposerSubmitArgs {
   readonly attachments?: readonly WebuiAttachmentInput[];
   readonly onAttachmentsSubmitted?: () => void;
   readonly sending: boolean;
-  readonly deps: WebuiStreamLoopDeps;
+  /**
+   * Stream-loop transports. The loop's `projection` bundle is supplied here,
+   * not by the caller: this orchestration already lives below the mechanism
+   * boundary and injects the existing pure transforms, so a caller that never
+   * traverses a resync/attach path cannot forget them.
+   */
+  readonly deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   /** Create the first session silently when New Task has no selected session. */
   readonly createSession?: WebuiClientSessionCreator;
@@ -421,17 +427,21 @@ export async function submitWebuiComposerTurn(
   }
   if (args.sending) {
     if (!args.enqueueMessage) return;
-    try {
-      await args.enqueueMessage({ id: sessionId, content: message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) });
-      handlers.onDraftChange("");
-      args.onAttachmentsSubmitted?.();
-      handlers.onQueued?.();
-    } catch (error) {
-      handlers.setStream((current) => ({
-        ...current,
-        refusal: formatWebuiError(error),
-      }));
-    }
+    // The queue orchestration lives in the application layer
+    // (`application/queue-command.ts`); this is the single implementation both
+    // this path and any explicit queue command share.
+    await queueWebuiTurn({
+      sessionId,
+      message,
+      ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}),
+      ...(attachments.length ? { attachments } : {}),
+      enqueueMessage: args.enqueueMessage,
+      onDraftChange: handlers.onDraftChange,
+      onAttachmentsSubmitted: args.onAttachmentsSubmitted,
+      onQueued: handlers.onQueued,
+      setRefusal: (refusal) =>
+        handlers.setStream((current) => ({ ...current, refusal })),
+    });
     return;
   }
   if (!args.deps.sendMessage) return;
@@ -446,9 +456,9 @@ export async function submitWebuiComposerTurn(
   let claimed: number | undefined;
   try {
     claimed = await runWebuiStreamLoop(
-      args.deps,
+      { ...args.deps, projection: streamRecoveryProjection, streamState: streamStateBundle },
       { sessionId, message, ...(args.clientIntent ? { clientIntent: args.clientIntent } : {}), ...(attachments.length ? { attachments } : {}) },
-      buildWebuiStreamLoopSink(handlers.setStream),
+      buildWebuiStreamLoopSink(handlers.setStream, streamStateBundle),
     );
   } finally {
     // Only clear the indicator if this turn still owns the stream. A submit

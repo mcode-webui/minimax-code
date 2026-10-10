@@ -1,4 +1,7 @@
-import type { WebuiRuntimeEvent, WebuiStreamFrame } from "../port.js";
+import type {
+  WebuiRuntimeEvent,
+  WebuiStreamFrame,
+} from "../../shared/contracts/stream.js";
 import { isCompactionEvent, projectCompactionEvent } from "./compaction.js";
 import {
   initialProjectionState,

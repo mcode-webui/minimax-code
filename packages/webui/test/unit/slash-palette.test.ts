@@ -178,7 +178,7 @@ describe("WebUI slash palette — runtime narrowing", () => {
   it("exposes the run-command the server transport actually routes", () => {
     // The cross-module contract, stated so that deleting the entry fails it.
     //
-    // `server/commands/runner.ts` routes `command === "compact"` into
+    // `runtime/commands/runner.ts` routes `command === "compact"` into
     // `port.requestCompaction`, and the operation is registered in
     // `server/operation/operations.ts`. A palette that omits the row leaves
     // `resolveWebuiSubmissionIntent` unable to find the name, so the

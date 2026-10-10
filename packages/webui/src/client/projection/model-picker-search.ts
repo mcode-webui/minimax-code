@@ -16,7 +16,7 @@
 import type {
   WebuiModelPickerEntry,
   WebuiModelProviderGroup,
-} from "../components/ModelPicker.js";
+} from "../contracts/model-view.js";
 
 /**
  * Lowercase and drop everything that is not a letter or a digit.

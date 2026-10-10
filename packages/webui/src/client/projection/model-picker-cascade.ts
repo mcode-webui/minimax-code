@@ -29,7 +29,7 @@
  * returning constants: a function that ignores its argument and always says
  * "close" is a name the next reader will trust.
  */
-import type { WebuiModelPickerEntry } from "../components/ModelPicker.js";
+import type { WebuiModelPickerEntry } from "../contracts/model-view.js";
 
 /** Which tier of the cascade is showing. */
 export type CascadeTier = "list" | "settings";

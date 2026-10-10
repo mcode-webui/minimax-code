@@ -44,6 +44,7 @@
     "src/client/**/*",
     "src/shared/**/*.ts",
     "src/server/**/*.ts",
+    "src/runtime/**/*.ts",
     "vite.config.ts"
   ]
 }

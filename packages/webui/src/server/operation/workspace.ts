@@ -1,11 +1,11 @@
-import { WebuiErrorCode } from "../envelope.js";
+import { WebuiErrorCode } from "../../shared/envelope.js";
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { WebuiOperation, WebuiOperationValidation } from "./operation-contract.js";
 import { invalidBody } from "./operation-contract.js";
+import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
 import type {
-  WebuiCanvasDocument,
   WebuiWorkspaceArchiveListing,
   WebuiWorkspaceArchiveExtractResult,
   WebuiWorkspaceDirectoryListing,
@@ -13,17 +13,19 @@ import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
   WebuiWorkspaceGitMutationRequest,
+} from "../../shared/contracts/workspace.js";
+import type {
   WebuiWorkspaceReviewDiffs,
   WebuiWorkspaceReviewFileContent,
   WebuiWorkspaceReviewSearchResult,
   WebuiWorkspaceReviewSummary,
-} from "../port.js";
+} from "../../shared/contracts/review.js";
 import {
   validateAbsoluteDirectory,
   validateObjectBody,
   validateOptionalObjectBody,
 } from "./common.js";
-import { LIST_WORKSPACE_FILE_TREE_OPERATION_NAME, BROWSE_WORKSPACE_DIRS_OPERATION_NAME, READ_WORKSPACE_FILE_OPERATION_NAME, GET_WORKSPACE_ENVIRONMENT_OPERATION_NAME, MUTATE_WORKSPACE_GIT_OPERATION_NAME, GET_WORKSPACE_REVIEW_SUMMARY_OPERATION_NAME, LIST_WORKSPACE_REVIEW_FILE_DIFFS_OPERATION_NAME, GET_WORKSPACE_REVIEW_FILE_CONTENT_OPERATION_NAME, SEARCH_WORKSPACE_REVIEW_DIFFS_OPERATION_NAME, READ_CANVAS_OPERATION_NAME, APPLY_CANVAS_OPERATION_NAME, READ_WORKSPACE_ARCHIVE_OPERATION_NAME, EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME, CREATE_TERMINAL_OPERATION_NAME, LIST_TERMINALS_OPERATION_NAME, WRITE_TERMINAL_OPERATION_NAME, RESIZE_TERMINAL_OPERATION_NAME, DISPOSE_TERMINAL_OPERATION_NAME, WATCH_TERMINAL_OPERATION_NAME } from "./names.js";
+import { LIST_WORKSPACE_FILE_TREE_OPERATION_NAME, BROWSE_WORKSPACE_DIRS_OPERATION_NAME, READ_WORKSPACE_FILE_OPERATION_NAME, GET_WORKSPACE_ENVIRONMENT_OPERATION_NAME, MUTATE_WORKSPACE_GIT_OPERATION_NAME, GET_WORKSPACE_REVIEW_SUMMARY_OPERATION_NAME, LIST_WORKSPACE_REVIEW_FILE_DIFFS_OPERATION_NAME, GET_WORKSPACE_REVIEW_FILE_CONTENT_OPERATION_NAME, SEARCH_WORKSPACE_REVIEW_DIFFS_OPERATION_NAME, READ_CANVAS_OPERATION_NAME, APPLY_CANVAS_OPERATION_NAME, READ_WORKSPACE_ARCHIVE_OPERATION_NAME, EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME, CREATE_TERMINAL_OPERATION_NAME, LIST_TERMINALS_OPERATION_NAME, WRITE_TERMINAL_OPERATION_NAME, RESIZE_TERMINAL_OPERATION_NAME, DISPOSE_TERMINAL_OPERATION_NAME, WATCH_TERMINAL_OPERATION_NAME } from "../../shared/operation-names.js";
 
 /** Upper bound on one directory listing. A home directory can hold
  *  thousands of folders and the picker only needs a browsable page. */

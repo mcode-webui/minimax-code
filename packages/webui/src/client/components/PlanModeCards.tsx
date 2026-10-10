@@ -40,7 +40,7 @@ import {
 import type {
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
-} from "../../server/port.js";
+} from "../../shared/contracts/interactions.js";
 
 /** Eye glyph for 预览. The desktop ships this one inside a per-chunk icon
  *  module whose path data is not addressable offline; this is an equivalent

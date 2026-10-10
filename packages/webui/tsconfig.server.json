@@ -1,10 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "lib": ["ES2022"],
+    "lib": ["ES2023"],
     "types": ["node"],
     "jsx": "preserve",
     "noEmit": true
   },
-  "include": ["src/server/**/*.ts", "src/shared/**/*.ts"]
+  "include": ["src/server/**/*.ts", "src/runtime/**/*.ts", "src/shared/**/*.ts"]
 }

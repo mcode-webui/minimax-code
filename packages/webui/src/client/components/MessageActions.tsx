@@ -13,7 +13,8 @@
 //   * `WebuiMessageActions`      — full action row (copy / rewind / edit / fork / timestamp)
 //   * `WebuiRewindDialog`        — rewind preview modal
 //   * helpers:
-//       `WebuiMessageActionCapabilities` (type),
+//       `WebuiMessageActionCapabilities` (type) lives in `contracts/transcript-view.ts`;
+//         this cluster imports it rather than declaring it (plan §3),
 //       `WebuiCopyDependencies` (interface),
 //       `toggleWebuiFeedback`,
 //       `copyWebuiMessageText`,
@@ -34,13 +35,8 @@ import {
   WebuiIconMessageLikeOn,
   WebuiIconMessageRewind,
 } from "../icons.js";
-import type { WebuiGetSessionRewindPreviewResult } from "../../server/port.js";
-
-export type WebuiMessageActionCapabilities = {
-  readonly fork?: boolean;
-  readonly rewind?: boolean;
-  readonly edit?: boolean;
-};
+import type { WebuiGetSessionRewindPreviewResult } from "../../shared/contracts/session.js";
+import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
 
 export function toggleWebuiFeedback(
   value: "like" | "dislike" | undefined,

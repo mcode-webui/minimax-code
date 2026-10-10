@@ -20,7 +20,7 @@ import {
   createWebuiAuthContextReader,
   readWebuiAuthContext,
   resolveAuthScope,
-} from "../../src/server/auth-context.js";
+} from "../../src/runtime/auth-context.js";
 
 const TOKEN = "token-from-the-installed-client";
 const RENEWED_TOKEN = "token-after-upstream-renewal";

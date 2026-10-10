@@ -43,7 +43,7 @@ import { WebuiInteractionPanel } from "../../src/client/components/InteractionPa
 import type {
   WebuiQuestionnaireRequest,
   WebuiQuestionnaireStep,
-} from "../../src/server/port.js";
+} from "../../src/shared/contracts/interactions.js";
 
 const PLAN_MARKDOWN = [
   "# 鹦鹉骑自行车 SVG",

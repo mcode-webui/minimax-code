@@ -3,7 +3,7 @@
 // C-3 was marked "not verified" by the roadmap. These tests drive the real
 // product path with no DOM, exactly as `packages/webui/AGENTS.md` prescribes
 // for `client/stream.ts` / `client/stream-loop.ts`: a shared `setStream`,
-// one `buildWebuiStreamLoopSink(setStream)` per submit (what the composer
+// one `buildWebuiStreamLoopSink(setStream, streamStateBundle)` per submit (what the composer
 // does), `runWebuiStreamLoop` for the turn, and `stopWebuiTurn` for the
 // interrupt.
 //
@@ -24,26 +24,50 @@
 
 import { describe, expect, it } from "vitest";
 
+import { stopWebuiTurn } from "../../src/client/application/turn-coordinator.js";
 import {
   initialWebuiStreamState,
   ownsWebuiStreamGeneration,
-  stopWebuiTurn,
   type WebuiStreamState,
-} from "../../src/client/stream.js";
+} from "../../src/client/projection/stream-state.js";
 import {
   buildWebuiStreamLoopSink,
-  runWebuiStreamLoop,
+  runWebuiStreamLoop as runStreamLoop,
+  type WebuiStreamLoopArgs,
+  type WebuiStreamLoopDeps,
   type WebuiStreamLoopSink,
-} from "../../src/client/stream-loop.js";
-import type { WebuiClientMessageSender } from "../../src/client/contracts.js";
-import type { WebuiStreamFrame } from "../../src/server/port.js";
+} from "../../src/client/mechanisms/stream-loop.js";
+import { streamRecoveryProjection } from "../../src/client/projection/stream-recovery.js";
+import type { WebuiClientMessageSender } from "../../src/client/contracts/execution-port.js";
+import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
+import { streamStateBundle } from "../../src/client/application/stream-state-bundle.js";
 
 const SESSION_ID = "session-under-test";
 
 /**
+ * `runWebuiStreamLoop` now requires the injected history/context bundle so a
+ * caller cannot forget it and get a mis-shaped transcript. None of these cases
+ * traverse a resync/attach path that reads the bundle, so the real pure
+ * transforms stand in and change nothing about what is asserted.
+ */
+const loopWithProjection = (
+  deps: Omit<WebuiStreamLoopDeps, "projection" | "streamState"> & {
+    readonly projection?: WebuiStreamLoopDeps["projection"];
+    readonly streamState?: WebuiStreamLoopDeps["streamState"];
+  },
+  args: WebuiStreamLoopArgs,
+  sink: WebuiStreamLoopSink,
+) =>
+  runStreamLoop(
+    { ...deps, projection: deps.projection ?? streamRecoveryProjection, streamState: deps.streamState ?? streamStateBundle },
+    args,
+    sink,
+  );
+
+/**
  * The React shell's binding, minus React: one shared state cell, one updater,
  * and a fresh sink per submit. `newSink()` mirrors the composer calling
- * `buildWebuiStreamLoopSink(setStream)` once per submit — each turn owns its
+ * `buildWebuiStreamLoopSink(setStream, streamStateBundle)` once per submit — each turn owns its
  * own sink instance, which is what makes the generation fence meaningful.
  */
 function createShell() {
@@ -56,7 +80,7 @@ function createShell() {
       return current;
     },
     setStream,
-    newSink: (): WebuiStreamLoopSink => buildWebuiStreamLoopSink(setStream),
+    newSink: (): WebuiStreamLoopSink => buildWebuiStreamLoopSink(setStream, streamStateBundle),
   };
 }
 
@@ -135,7 +159,7 @@ describe("C-3.1 interrupting a turn preserves the order of already-received fram
       chunk("msg-1", "第二段", "cursor-2"),
     ]);
 
-    const loop = runWebuiStreamLoop(
+    const loop = loopWithProjection(
       { sendMessage: sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       sink,
@@ -177,7 +201,7 @@ describe("C-3.1 interrupting a turn preserves the order of already-received fram
       wholeMessage("msg-1", "已经写好的部分", "cursor-1"),
     ]);
 
-    const loop = runWebuiStreamLoop(
+    const loop = loopWithProjection(
       { sendMessage: sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       sink,
@@ -200,7 +224,7 @@ describe("C-3.1 interrupting a turn preserves the order of already-received fram
     const sink = shell.newSink();
     const { sender, open } = gatedSender([wholeMessage("msg-1", "被中断的回答", "cursor-1")]);
 
-    const loop = runWebuiStreamLoop(
+    const loop = loopWithProjection(
       { sendMessage: sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       sink,
@@ -227,7 +251,7 @@ describe("C-3.1 interrupting a turn preserves the order of already-received fram
     const interruptedSink = shell.newSink();
     const { sender, open } = gatedSender([wholeMessage("msg-1", "被中断的回答", "cursor-1")]);
 
-    const interrupted = runWebuiStreamLoop(
+    const interrupted = loopWithProjection(
       { sendMessage: sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       interruptedSink,
@@ -236,7 +260,7 @@ describe("C-3.1 interrupting a turn preserves the order of already-received fram
     await interrupt(shell);
 
     const nextSender = completingSender([wholeMessage("msg-2", "新的回答", "cursor-4")]);
-    const next = runWebuiStreamLoop(
+    const next = loopWithProjection(
       { sendMessage: nextSender.sender },
       { sessionId: SESSION_ID, message: "第二个问题" },
       shell.newSink(),
@@ -265,7 +289,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
   it("sends a new turn instead of resuming the aborted one", async () => {
     const shell = createShell();
     const first = gatedSender([wholeMessage("msg-1", "被中断的回答", "cursor-1")]);
-    const interrupted = runWebuiStreamLoop(
+    const interrupted = loopWithProjection(
       { sendMessage: first.sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       shell.newSink(),
@@ -275,7 +299,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
 
     const resumes: { id: string; afterCursor?: string; afterMsgId?: string }[] = [];
     const second = completingSender([wholeMessage("msg-2", "新的回答", "cursor-2")]);
-    const next = runWebuiStreamLoop(
+    const next = loopWithProjection(
       {
         sendMessage: second.sender,
         resumeSession: async (request) => {
@@ -301,7 +325,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
     const first = gatedSender([
       wholeMessage("msg-1", "这是被中断时的半截答案", "cursor-1"),
     ]);
-    const interrupted = runWebuiStreamLoop(
+    const interrupted = loopWithProjection(
       { sendMessage: first.sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       shell.newSink(),
@@ -310,7 +334,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
     await interrupt(shell);
 
     const second = completingSender([chunk("msg-2", "全新的回答", "cursor-2")]);
-    await runWebuiStreamLoop(
+    await loopWithProjection(
       { sendMessage: second.sender },
       { sessionId: SESSION_ID, message: "第二个问题" },
       shell.newSink(),
@@ -332,7 +356,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
     const shell = createShell();
     const firstSink = shell.newSink();
     const first = gatedSender([wholeMessage("msg-1", "被中断的回答", "cursor-1")]);
-    const interrupted = runWebuiStreamLoop(
+    const interrupted = loopWithProjection(
       { sendMessage: first.sender },
       { sessionId: SESSION_ID, message: "第一个问题" },
       firstSink,
@@ -343,7 +367,7 @@ describe("C-3.2 a message sent after a stop starts a new turn", () => {
 
     const secondSink = shell.newSink();
     const second = gatedSender([wholeMessage("msg-2", "新的回答", "cursor-2")]);
-    const secondLoop = runWebuiStreamLoop(
+    const secondLoop = loopWithProjection(
       { sendMessage: second.sender },
       { sessionId: SESSION_ID, message: "第二个问题" },
       secondSink,

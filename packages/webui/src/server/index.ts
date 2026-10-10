@@ -1,9 +1,10 @@
-// Server entry for the WebUI package. The server owns a runtime host,
-// binds loopback, refuses
-// foreign Host / Origin headers and missing per-start credentials, answers
-// the version query, and shuts down in the order the assembly checklist
-// step 13 requires. The standalone CLI build never bundles the server
-// module (it is its own entry in `scripts/build-webui.mjs`).
+// Server entry for the WebUI package. Exports the loopback network entry only:
+// the service, the operation registry, credentials, the envelope and the wire
+// DTOs. It holds no runtime implementation — the runtime factory and the
+// harness adapter are exported from `../runtime/index.ts`, which the Node
+// startup file imports separately (plan section 7.5). The standalone CLI build
+// never bundles the server module (it is its own entry in
+// `scripts/build-webui.mjs`).
 
 export {
   WebuiService,
@@ -34,10 +35,10 @@ export {
   credentialMatches,
   type WebuiCredential,
 } from "./credentials.js";
+export { isWebuiFrame } from "./envelope.js";
 export {
   WEBUI_PROTOCOL_VERSION,
   WebuiErrorCode,
-  isWebuiFrame,
   type WebuiRequestFrame,
   type WebuiResponseFrame,
   type WebuiErrorFrame,
@@ -47,10 +48,10 @@ export {
   type WebuiFrame,
   type WebuiEnvelopeKind,
   type WebuiErrorCodeValue,
-} from "./envelope.js";
+} from "../shared/envelope.js";
+export type { WebuiHarnessPort } from "../runtime/port.js";
+export type { WebuiVersionInfo } from "../shared/contracts/version.js";
 export type {
-  WebuiHarnessPort,
-  WebuiVersionInfo,
   WebuiSessionListRequest,
   WebuiSessionListItem,
   WebuiSessionPage,
@@ -77,43 +78,30 @@ export type {
   WebuiRevertTurnDiffResult,
   WebuiReapplyTurnDiffRequest,
   WebuiReapplyTurnDiffResult,
+} from "../shared/contracts/session.js";
+export type {
   WebuiMessage,
   WebuiMessagesRequest,
   WebuiMessagesResult,
+} from "../shared/contracts/messages.js";
+export type {
   WebuiSendMessageRequest,
   WebuiSendMessageResult,
-  WebuiEnqueueMessageRequest,
-  WebuiEnqueueMessageResult,
   WebuiResumeSessionRequest,
   WebuiStreamResult,
   WebuiStreamFrame,
+  WebuiRuntimeEvent,
+} from "../shared/contracts/stream.js";
+export type {
+  WebuiEnqueueMessageRequest,
+  WebuiEnqueueMessageResult,
+  WebuiQueueItem,
+} from "../shared/contracts/queue.js";
+export type {
   WebuiPendingPermission,
   WebuiQuestionnaireRequest,
   WebuiQuestionnaireAnswer,
-  WebuiRuntimeEvent,
   WebuiInteractionReplyResult,
   WebuiPermissionDecision,
-  WebuiQueueItem,
-  WebuiModelEntry,
-} from "./port.js";
-export {
-  createHarnessPortFromHost,
-  type WebuiRuntimeHostHandle,
-} from "./host.js";
-export {
-  createWebuiRuntimeHost,
-  type CreateWebuiRuntimeHostOptions,
-  type WebuiAssembledHost,
-  type WebuiRuntimeHost,
-  type WebuiRuntimeHostFactory,
-  type WebuiBrowserAdapter,
-  type WebuiBrowserToolExposure,
-  type WebuiBrowserProvider,
-} from "./assembly.js";
-export {
-  prepareWebuiMcodeToolsIntegration,
-  createWebuiAuthLeaseSession,
-  type WebuiMcodeToolsReadiness,
-  type WebuiMcodeToolsIntegrationOptions,
-  type WebuiMcodeToolsIntegrationDependencies,
-} from "./mcode-tools.js";
+} from "../shared/contracts/interactions.js";
+export type { WebuiModelEntry } from "../shared/contracts/models.js";

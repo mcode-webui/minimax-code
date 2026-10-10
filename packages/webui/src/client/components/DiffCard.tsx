@@ -19,8 +19,9 @@ import type {
   WebuiRevertTurnDiffRequest,
   WebuiRevertTurnDiffResult,
   WebuiTurnDiffView,
-} from "../../server/port.js";
-import type { WebuiDiffState, WebuiDiffStateAction, WebuiTransport } from "../contracts.js";
+} from "../../shared/contracts/session.js";
+import type { WebuiDiffState, WebuiDiffStateAction } from "../contracts/review-view.js";
+import type { WebuiTransport } from "../contracts/transport.js";
 
 /** Capability subset the diff card consumes. The contract lives in
  * `WebuiTransport`; this alias keeps the prop block compact and avoids

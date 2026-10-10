@@ -11,10 +11,10 @@
 import type {
   WebuiEditSessionMessageRequest,
   WebuiForkSessionRequest,
-  WebuiModelEntry,
   WebuiRewindSessionRequest,
-} from "../../server/port.js";
-import type { WebuiModelSelectionRequest, WebuiModelPickerDraft } from "../contracts.js";
+} from "../../shared/contracts/session.js";
+import type { WebuiModelEntry } from "../../shared/contracts/models.js";
+import type { WebuiModelSelectionRequest, WebuiModelPickerDraft } from "../contracts/model-view.js";
 
 /** Rewind a session to a specific user message, optionally reverting the
  *  file changes that turn produced. */

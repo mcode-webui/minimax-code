@@ -344,7 +344,8 @@
       "packages/webui/test/unit/account-workflows.test.ts",
       "packages/webui/test/unit/settings-workflows.test.ts",
       "packages/webui/test/unit/plugin-workflows.test.ts",
-      "packages/webui/test/unit/webui-event-coordinator.test.ts"
+      "packages/webui/test/unit/webui-event-coordinator.test.ts",
+      "packages/webui/test/unit/interaction-coordinator.test.ts"
     ]
   }
 }

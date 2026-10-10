@@ -33,6 +33,9 @@ import type { WebuiClientSessionPage, WebuiClientSession } from "../contracts/se
 import type { WebuiTransport } from "../contracts/transport.js";
 import { projectWebuiMessageToStreamMessage, readUsageNumber } from "../projection/message-projection.js";
 import { webuiAnswersEndTurn } from "../projection/questionnaire-state.js";
+import {
+  createWebuiInteractionCoordinator,
+} from "../application/interaction-coordinator.js";
 import { latestContextUsage, readContextUsageSnapshot } from "../projection/context-usage.js";
 import {
   contextUsagePopoverStyle,
@@ -717,6 +720,34 @@ export function WebuiComposer({
   const questionnaire = useWebuiSessionQuestionnaire(sessionId);
   const goal = useWebuiSessionGoal(sessionId);
   const interactionCommands = useWebuiInteractionCommands(sessionId);
+  // The interaction flows (plan §7.1 `client/application/interaction-coordinator.ts`).
+  // The policy — what counts as an accepted reply, what state transition follows
+  // it, which permissions a re-read keeps — lives there. This component supplies
+  // the wiring and keeps the one error slot that every other flow in this file
+  // also writes, which is why the flows return an outcome instead of an error.
+  const interactionCoordinator = createWebuiInteractionCoordinator({
+    port: {
+      listPendingPermissions,
+      getPendingQuestionnaire,
+      replyPermission,
+      replyQuestionnaire,
+      dismissQuestionnaire,
+    },
+    sink: {
+      replacePendingPermissions: interactionCommands.replacePendingPermissions,
+      removePendingPermission: interactionCommands.removePendingPermission,
+      applyQuestionnaire: interactionCommands.applyQuestionnaire,
+      awaitInteraction: commands.awaitInteraction,
+      resumeAfterPermission: commands.startStreaming,
+      afterQuestionnaireAnswer: (answers) =>
+        commands.markStreamPhase(
+          webuiAnswersEndTurn(answers) ? "idle" : "streaming",
+        ),
+      afterQuestionnaireDismiss: commands.endStreaming,
+    },
+    sessionId,
+    agentName,
+  });
   // Bumped by every write to the goal, so a steering re-read that lands after
   // a newer update can tell it is stale and stand down. EVERY writer must go
   // through `applyGoal` — a direct store write here would let an in-flight read
@@ -830,18 +861,9 @@ export function WebuiComposer({
     }
     let cancelled = false;
     const refreshPending = async () => {
-      const [permissionResult, questionnaireResult] = await Promise.all([
-        listPendingPermissions?.(),
-        getPendingQuestionnaire?.({ name: agentName, sessionId }),
-      ]);
+      const outcome = await interactionCoordinator.refresh();
       if (cancelled) return;
-      const sessionPermissions = (permissionResult?.requests ?? []).filter(
-        (permission) => permission.sessionId === sessionId,
-      );
-      interactionCommands.replacePendingPermissions(sessionPermissions);
-      interactionCommands.applyQuestionnaire(questionnaireResult?.request);
-      if (sessionPermissions.length > 0 || questionnaireResult?.request)
-        commands.awaitInteraction();
+      if (!outcome.ok) setInteractionError(outcome.error);
       if (listQueueMessages) {
         const queue = await listQueueMessages({ id: sessionId });
         if (cancelled) return;
@@ -1135,73 +1157,30 @@ export function WebuiComposer({
     permission: WebuiPendingPermission,
     decision: "allowOnce" | "allowAlways" | "deny",
   ) => {
-    if (!replyPermission) return;
     setInteractionError(undefined);
-    try {
-      const result = await replyPermission({
-        name: permission.agentName,
-        requestId: permission.requestId,
-        reply: decision,
-      });
-      if (result.success !== true)
-        throw new Error("The permission request was no longer pending");
-      interactionCommands.removePendingPermission(permission.requestId);
-      commands.startStreaming();
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.replyPermission(
+      permission,
+      decision,
+    );
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleQuestionnaire = async (
     request: WebuiQuestionnaireRequest,
     answers: readonly WebuiQuestionnaireAnswer[],
   ) => {
-    if (!replyQuestionnaire) return;
     setInteractionError(undefined);
-    try {
-      const result = await replyQuestionnaire({
-        name: request.requester?.agentName ?? agentName,
-        requestId: request.id,
-        schemaVersion: request.schemaVersion,
-        answers,
-      });
-      if (result.ok !== true)
-        throw new Error("The questionnaire was not accepted");
-      interactionCommands.applyQuestionnaire(undefined);
-      // Answering resumes the turn; a skipped answer ends it (see
-      // `webuiAnswersEndTurn`). Leaving `streaming` after a skip strands the
-      // transcript's thinking pulse, because a finished turn never sends the
-      // `[DONE]` frame that would otherwise clear it.
-      commands.markStreamPhase(webuiAnswersEndTurn(answers) ? "idle" : "streaming");
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.answerQuestionnaire(
+      request,
+      answers,
+    );
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleDismiss = async (request: WebuiQuestionnaireRequest) => {
-    if (!dismissQuestionnaire) return;
     setInteractionError(undefined);
-    try {
-      const result = await dismissQuestionnaire({
-        name: request.requester?.agentName ?? agentName,
-        requestId: request.id,
-      });
-      if (result.ok !== true)
-        throw new Error("The questionnaire could not be dismissed");
-      interactionCommands.applyQuestionnaire(undefined);
-      // A dismissal never resumes the turn — the runtime only marks the
-      // request dismissed — so this is the same "nothing happens now" state
-      // a skip produces, and `streaming` was simply wrong here.
-      commands.endStreaming();
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    const outcome = await interactionCoordinator.dismissQuestionnaire(request);
+    if (!outcome.ok) setInteractionError(outcome.error);
   };
 
   const handleStop = async () => {

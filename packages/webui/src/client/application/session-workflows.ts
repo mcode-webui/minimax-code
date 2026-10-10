@@ -18,6 +18,7 @@ import type {
   WebuiClientProject,
   WebuiClientSessionPage,
 } from "../contracts/session-view.js";
+import type { WebuiSessionListItem } from "../../shared/contracts/session.js";
 import {
   patchWebuiCatalogEntity,
   reduceWebuiCatalogFlatAppended,
@@ -55,7 +56,7 @@ export type WebuiSessionImporter = (
 
 type QueryPort = Pick<
   SessionPort,
-  "loadSessions" | "loadSessionTree" | "loadProjects"
+  "loadSessions" | "loadSessionTree" | "loadProjects" | "listArchivedSessions"
 >;
 type MutationPort = Pick<
   SessionPort,
@@ -67,7 +68,30 @@ type MutationPort = Pick<
   | "createSession"
 >;
 
+/**
+ * The archived-sessions read (ticket #52). The archived page lives inside the
+ * settings dialog, but the query is a session query, so it belongs to the
+ * session workflows rather than to a settings owner.
+ */
+export interface WebuiArchivedSessionsState {
+  readonly status: "idle" | "loading" | "ready" | "error";
+  readonly sessions: readonly WebuiSessionListItem[];
+  readonly error?: string;
+}
+
+export const initialWebuiArchivedSessionsState: WebuiArchivedSessionsState = {
+  status: "idle",
+  sessions: [],
+};
+
 export interface WebuiSessionWorkflows {
+  /** The archived-sessions read plus a subscription for its readers. */
+  readonly getArchivedSnapshot: () => WebuiArchivedSessionsState;
+  readonly subscribeArchived: (listener: () => void) => () => void;
+  readonly canLoadArchived: boolean;
+  readonly loadArchived: () => Promise<void>;
+  /** Delete one archived session and refresh the archived list. */
+  readonly removeArchived: (sessionId: string) => Promise<void>;
   /** Whether a flat-list loader is wired (the shell skips the first load when seeded). */
   readonly canLoadFlat: boolean;
   readonly canLoadTree: boolean;
@@ -131,6 +155,32 @@ export function createWebuiSessionWorkflows(deps: {
   const { store, port, importSession } = deps;
   const message = (reason: unknown): string =>
     reason instanceof Error ? reason.message : String(reason);
+
+  // The archived-sessions read keeps its own small state: it is not part of the
+  // catalog the rail resolves from, and nothing else writes it.
+  let archived: WebuiArchivedSessionsState = initialWebuiArchivedSessionsState;
+  const archivedListeners = new Set<() => void>();
+  const setArchived = (next: WebuiArchivedSessionsState): void => {
+    archived = next;
+    for (const listener of archivedListeners) listener();
+  };
+  const loadArchived = async (): Promise<void> => {
+    if (!port.listArchivedSessions) {
+      setArchived({
+        status: "error",
+        sessions: [],
+        error: "当前运行时不支持读取已归档任务。",
+      });
+      return;
+    }
+    setArchived({ ...archived, status: "loading" });
+    try {
+      const page = await port.listArchivedSessions();
+      setArchived({ status: "ready", sessions: page.sessions });
+    } catch (reason) {
+      setArchived({ status: "error", sessions: [], error: message(reason) });
+    }
+  };
 
   const applyFlatLoaded = (page: WebuiClientSessionPage): void => {
     store.updateCatalog((current) => reduceWebuiCatalogFlatLoaded(current, page));
@@ -216,11 +266,13 @@ export function createWebuiSessionWorkflows(deps: {
       if (!port.archiveSession) return;
       await port.archiveSession({ id: sessionId });
       await refresh();
+      if (archived.status !== "idle") await loadArchived();
     },
     archiveMany: async (sessionIds) => {
       if (!port.archiveSession) return;
       await Promise.all(sessionIds.map((id) => port.archiveSession!({ id })));
       await refresh();
+      if (archived.status !== "idle") await loadArchived();
     },
     remove: async (sessionId) => {
       if (!port.deleteSession) return;
@@ -229,6 +281,21 @@ export function createWebuiSessionWorkflows(deps: {
         removeWebuiCatalogEntities(current, [sessionId]),
       );
       await refresh();
+      if (archived.status !== "idle") await loadArchived();
+    },
+    getArchivedSnapshot: () => archived,
+    subscribeArchived: (listener) => {
+      archivedListeners.add(listener);
+      return () => {
+        archivedListeners.delete(listener);
+      };
+    },
+    canLoadArchived: port.listArchivedSessions !== undefined,
+    loadArchived,
+    removeArchived: async (sessionId) => {
+      if (!port.deleteSession) return;
+      await port.deleteSession({ id: sessionId });
+      await loadArchived();
     },
     canFork: port.forkSession !== undefined,
     fork: async (sessionId, createIsolatedWorktree) => {

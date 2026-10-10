@@ -37,6 +37,11 @@ import {
   type WebuiPluginWorkflows,
   type WebuiPluginWorkflowsState,
 } from "../application/plugin-workflows.js";
+import {
+  initialWebuiArchivedSessionsState,
+  type WebuiArchivedSessionsState,
+  type WebuiSessionWorkflows,
+} from "../application/session-workflows.js";
 
 const WebuiWorkspaceQueriesContext = createContext<WebuiWorkspaceQueries | undefined>(
   undefined,
@@ -195,4 +200,47 @@ export function useWebuiPluginWorkflowsState(): WebuiPluginWorkflowsState {
 
 function pluginInitialSnapshot(): WebuiPluginWorkflowsState {
   return initialWebuiPluginWorkflowsState;
+}
+
+// ---------------------------------------------------------------------------
+// The session workflows (ticket #52)
+//
+// Provided so the settings dialog can read the archived-sessions query — a
+// session query that lives inside a settings surface — without holding a
+// transport call of its own.
+// ---------------------------------------------------------------------------
+
+const WebuiSessionWorkflowsContext = createContext<WebuiSessionWorkflows | undefined>(
+  undefined,
+);
+
+export function WebuiSessionWorkflowsProvider({
+  workflows,
+  children,
+}: {
+  readonly workflows: WebuiSessionWorkflows;
+  readonly children: ReactNode;
+}): JSX.Element {
+  return (
+    <WebuiSessionWorkflowsContext.Provider value={workflows}>
+      {children}
+    </WebuiSessionWorkflowsContext.Provider>
+  );
+}
+
+export function useWebuiSessionWorkflows(): WebuiSessionWorkflows | undefined {
+  return useContext(WebuiSessionWorkflowsContext);
+}
+
+export function useWebuiArchivedSessionsState(): WebuiArchivedSessionsState {
+  const workflows = useContext(WebuiSessionWorkflowsContext);
+  return useSyncExternalStore(
+    workflows ? workflows.subscribeArchived : noopSubscribe,
+    workflows ? workflows.getArchivedSnapshot : archivedInitialSnapshot,
+    workflows ? workflows.getArchivedSnapshot : archivedInitialSnapshot,
+  );
+}
+
+function archivedInitialSnapshot(): WebuiArchivedSessionsState {
+  return initialWebuiArchivedSessionsState;
 }

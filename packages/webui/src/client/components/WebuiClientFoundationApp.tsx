@@ -108,6 +108,7 @@ import { WebuiEventEffectsRegistryProvider } from "../bindings/event-effects-con
 import {
   WebuiAccountWorkflowsProvider,
   WebuiPluginWorkflowsProvider,
+  WebuiSessionWorkflowsProvider,
   WebuiSettingsWorkflowsProvider,
   WebuiWorkspaceQueriesProvider,
 } from "../bindings/use-query-state.js";
@@ -1109,6 +1110,7 @@ export function WebuiClientFoundationApp(
     <WebuiAccountWorkflowsProvider workflows={accountWorkflows}>
     <WebuiSettingsWorkflowsProvider workflows={settingsWorkflows}>
     <WebuiPluginWorkflowsProvider workflows={pluginWorkflows}>
+    <WebuiSessionWorkflowsProvider workflows={sessionWorkflows}>
     <WebuiSessionStoreProvider store={sessionStore}>
     <ArchonShell>
     <div data-webui-shell="two-column" className="w-full h-screen relative">
@@ -1525,6 +1527,7 @@ export function WebuiClientFoundationApp(
     </div>
     </ArchonShell>
     </WebuiSessionStoreProvider>
+    </WebuiSessionWorkflowsProvider>
     </WebuiPluginWorkflowsProvider>
     </WebuiSettingsWorkflowsProvider>
     </WebuiAccountWorkflowsProvider>

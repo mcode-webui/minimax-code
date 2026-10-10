@@ -27,8 +27,8 @@
       "kind": "non-literal-dynamic-import",
       "file": "runtime/mcode-tools-entry.ts",
       "line": 6,
-      "stage": 2,
-      "reason": "Node subprocess entry point loads its bundled embedded CLI through a URL object, not a statically resolvable specifier. It is a Node executable entry, not part of the browser or server module graph."
+      "permanent": true,
+      "reason": "Node subprocess entry point. It loads the embedded mcode-tools CLI through a runtime URL because the target is a build artifact: `copyMcodeToolsArtifact` writes it into `dist-webui/server/embedded/`, and it does not exist in the source tree, so a statically resolvable specifier would fail the typecheck and the source checks. The specifier is permanently non-literal, which means static analysis can never verify this edge. Declared permanent rather than stage-scoped: no migration stage removes it. The checker's stale-allowance rule still applies, so if the dynamic load ever disappears this entry must be deleted."
     }
   ]
 }

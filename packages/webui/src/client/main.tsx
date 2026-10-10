@@ -5,8 +5,8 @@ export { WebuiSessionList } from "./components/SessionRail.js";
 export { WebuiSessionTranscript } from "./components/SessionTranscript.js";
 export {
   WebuiClientFoundationApp,
-  subscribeToSessionHash,
 } from "./components/WebuiClientFoundationApp.js";
+export { subscribeToSessionHash } from "./bindings/navigation.js";
 import { createWebuiTransport } from "./infrastructure/transport.js";
 import { route } from "./router.js";
 import { NotFound } from "./components/NotFound.js";

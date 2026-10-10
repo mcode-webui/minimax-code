@@ -144,19 +144,14 @@ import { ConnectionStatus } from "../ConnectionStatus.js";
 import { deriveConversationUsageNotice } from "../projection/message-projection.js";
 import { deriveRecentWorkspaceDirs } from "../projection/composer-state.js";
 
-/**
- * Hash helpers used by the shell. `main.tsx` also calls
- * `readSessionIdFromHash` for the SSR snapshot, so the symbol is re-exported
- * from `app.tsx` for back-compat (W2 moved it here from the original
- * `url.ts`; the Tier 5 move keeps it co-located with `WebuiClientFoundationApp`).
- */
-export function readSessionIdFromHash(hash: string): string | undefined {
-  const params = new URLSearchParams(
-    hash.startsWith("#") ? hash.slice(1) : hash,
-  );
-  const id = params.get("session");
-  return id?.trim() || undefined;
-}
+// The hash plumbing moved to `client/bindings/navigation.ts` (plan §7.2). Both
+// symbols stay re-exported here: `main.tsx` re-exports `subscribeToSessionHash`
+// from this module, and the SSR snapshot reads `readSessionIdFromHash` through it.
+import {
+  readSessionIdFromHash,
+  subscribeToSessionHash,
+} from "../bindings/navigation.js";
+export { readSessionIdFromHash, subscribeToSessionHash };
 
 export interface WebuiClientFoundationAppProps {
   // Non-method props (seed / UI / SSR). The 78 method props that used to
@@ -217,16 +212,6 @@ function useSelectedSessionId(
     return subscribeToSessionHash((id) => setSelected(id));
   }, [locationHash]);
   return [selected, setSelected];
-}
-
-export function subscribeToSessionHash(
-  onChange: (sessionId: string | undefined) => void,
-): () => void {
-  if (typeof window === "undefined") return () => undefined;
-  const onHashChange = () =>
-    onChange(readSessionIdFromHash(window.location.hash));
-  window.addEventListener("hashchange", onHashChange);
-  return () => window.removeEventListener("hashchange", onHashChange);
 }
 
 export function WebuiClientFoundationApp(
@@ -1471,7 +1456,6 @@ export function WebuiClientFoundationApp(
                     onSessionCreated={handleSessionCreated}
                     />
                     </Composer>
-
 
                     {selectedSessionId && loadMessages ? (
                       <Transcript>

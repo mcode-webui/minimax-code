@@ -56,10 +56,37 @@ export interface ModuleReference {
   readonly kind: string;
 }
 
+/**
+ * A text-anchored identifier whose name matches an ambient browser global. The
+ * `position` is the character offset the ambient/local judgement resolves
+ * against the TypeScript program; it is carried out of the collector rather
+ * than recomputed.
+ */
+export interface CollectedBrowserGlobalCandidate {
+  readonly name: string;
+  readonly line: number;
+  readonly position: number;
+}
+
+/** A call whose callee is a property access, anchored by its start offset. */
+export interface CollectedCallCandidate {
+  readonly line: number;
+  readonly position: number;
+}
+
+/**
+ * What {@link collectModuleReferences} returns. The two candidate lists are the
+ * raw material for the later program pass, not verdicts: `browserGlobalCandidates`
+ * still contains local parameters with a matching name, and `callCandidates`
+ * contains every property-access call. The ambient-vs-local and
+ * writer-vs-action decisions are made against the TypeScript checker in
+ * `resolveAmbientFacts`.
+ */
 export interface CollectedReferences {
   readonly references: readonly ModuleReference[];
   readonly nonLiteralDynamic: readonly { readonly line: number }[];
-  readonly browserGlobalUses: readonly { readonly name: string; readonly line: number }[];
+  readonly browserGlobalCandidates: readonly CollectedBrowserGlobalCandidate[];
+  readonly callCandidates: readonly CollectedCallCandidate[];
 }
 
 export function collectModuleReferences(
@@ -92,12 +119,28 @@ export interface GraphHostImport {
   readonly specifier: string;
   readonly line: number;
   readonly kind: string;
+  /** Present when the specifier resolved outside the package (a package entry). */
+  readonly target?: string;
 }
 
 export interface GraphBrowserGlobalUse {
   readonly file: string;
   readonly name: string;
   readonly line: number;
+}
+
+/**
+ * A property-access call whose receiver's declared type came from the
+ * TypeScript checker. `receiver` is the declared interface name and
+ * `methodSource` the file the method was declared in, so a stale rename or an
+ * accidentally shared interface surfaces instead of silently matching.
+ */
+export interface GraphCallSite {
+  readonly file: string;
+  readonly line: number;
+  readonly method: string;
+  readonly receiver: string;
+  readonly methodSource: string;
 }
 
 export interface DependencyGraph {
@@ -109,6 +152,7 @@ export interface DependencyGraph {
   readonly nonLiteralDynamic: readonly GraphNonLiteral[];
   readonly hostImports: readonly GraphHostImport[];
   readonly browserGlobalUses: readonly GraphBrowserGlobalUse[];
+  readonly callSites: readonly GraphCallSite[];
 }
 
 /** Browser-only host modules (React/ReactDOM) that only bindings/root may import. */

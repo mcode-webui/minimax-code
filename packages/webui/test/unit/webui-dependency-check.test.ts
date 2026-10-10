@@ -544,6 +544,95 @@ describe("baseline comparison", () => {
   });
 });
 
+// The declaration file is the contract every consumer of these rules compiles
+// against: this test, and `scripts/check-webui-dependency.mjs`. A declaration
+// that drifts from the implementation is worse than no declaration at all — it
+// type-checks at the call site and fails at runtime, which is exactly how
+// `collectModuleReferences(...).browserGlobalUses.length` read a member the
+// collector never returned. These read the *declared* member names out of the
+// `.d.mts` and compare them with the keys the runtime object actually carries,
+// in both directions.
+describe("declared shapes match the runtime shapes", () => {
+  const declaredPath = path.join(
+    repoRoot,
+    "scripts/lib/webui-dependency-rules.d.mts",
+  );
+
+  /** Required property names of one interface, read from the declaration. */
+  function declaredMembers(interfaceName: string): string[] {
+    const sourceFile = ts.createSourceFile(
+      declaredPath,
+      readFileSync(declaredPath, "utf8"),
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TS,
+    );
+    let members: string[] | undefined;
+    const visit = (node: ts.Node): void => {
+      if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName) {
+        members = node.members.flatMap((member) =>
+          ts.isPropertySignature(member) && ts.isIdentifier(member.name)
+            ? [member.name.text]
+            : [],
+        );
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    expect(
+      members,
+      `no interface ${interfaceName} declared in webui-dependency-rules.d.mts`,
+    ).toBeDefined();
+    return members ?? [];
+  }
+
+  function expectShapeMatches(interfaceName: string, value: object, label: string): void {
+    expect(
+      Object.keys(value).sort(),
+      `${label}: runtime keys vs the declared ${interfaceName}`,
+    ).toEqual([...declaredMembers(interfaceName)].sort());
+  }
+
+  it("matches the collector, graph and evaluation shapes", () => {
+    const { graph, result } = evaluateFixture({
+      "client/application/app.ts": leaf,
+    });
+    expectShapeMatches(
+      "CollectedReferences",
+      collectModuleReferences("x.ts", leaf),
+      "collector",
+    );
+    expectShapeMatches("DependencyGraph", graph, "graph");
+    expectShapeMatches("GraphEvaluation", result, "evaluation");
+  });
+
+  it("returns the collector's candidates under the declared names", () => {
+    const collected = collectModuleReferences(
+      "client/application/app.ts",
+      'export const title = document.title;\nexport const saved = localStorage.getItem("k");\n',
+    );
+    // The two candidate lists the program pass consumes. Reading them by the
+    // declared names is the property the declaration-drift bug broke.
+    expect(collected.browserGlobalCandidates.map((entry) => entry.name)).toEqual([
+      "document",
+      "localStorage",
+    ]);
+    expect(collected.callCandidates).toHaveLength(1);
+  });
+
+  it("carries the graph's call sites and ambient global uses", () => {
+    const { graph } = evaluateFixture({
+      "client/application/app.ts":
+        'export const title = document.title;\nexport const store = {} as { setItem(k: string): void };\nstore.setItem("k");\n',
+    });
+    expect(graph.browserGlobalUses.map((entry) => entry.name)).toContain("document");
+    expect(
+      graph.callSites.some((site) => site.method === "setItem"),
+      `no call site for setItem in ${JSON.stringify(graph.callSites)}`,
+    ).toBe(true);
+  });
+});
+
 describe("the gate runs and matches the frozen baseline", () => {
   it("passes with all component browser globals routed through injected adapters", { timeout: 60_000 }, () => {
     const baseline = JSON.parse(readFileSync(realBaselinePath, "utf8"));

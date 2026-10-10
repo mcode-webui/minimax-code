@@ -265,3 +265,53 @@ describe("workspace progress selector", () => {
     expect(view.subagents[1]).toMatchObject({ agentName: "t", title: "live" });
   });
 });
+
+describe("the tree ingest reads a node's children defensively", () => {
+  /* The wire type says every node carries `childSessions`, but nothing on the
+   * wire enforces it: omitting the field when there are no sub-agents is the
+   * cheap, natural encoding. Reading it raw used to throw inside this reducer,
+   * and `loadTree`'s catch swallowed the throw — so one such node silently
+   * emptied the entire tree view. A missing or non-array value must mean "no
+   * children", and the rest of the page must still load. */
+  it("keeps the node and the rest of the page when childSessions is missing", () => {
+    const page = {
+      sessions: [
+        { session: session({ sessionId: "A" }) },
+        { session: session({ sessionId: "B" }), childSessions: [] },
+      ],
+      hasMore: false,
+    } as never;
+
+    const catalog = reduceWebuiCatalogTreeLoaded(initialWebuiSessionCatalogState, page);
+    const resolved = selectWebuiCatalogTreePage(catalog);
+
+    expect(resolved.sessions.map((node) => node.session.sessionId)).toEqual(["A", "B"]);
+    expect(resolved.sessions[0]?.childSessions).toEqual([]);
+  });
+
+  it("treats a non-array childSessions as no children", () => {
+    const page = {
+      sessions: [{ session: session({ sessionId: "A" }), childSessions: {} }],
+      hasMore: false,
+    } as never;
+
+    const catalog = reduceWebuiCatalogTreeLoaded(initialWebuiSessionCatalogState, page);
+    expect(selectWebuiCatalogTreePage(catalog).sessions[0]?.childSessions).toEqual([]);
+  });
+
+  it("still projects real children and their ids", () => {
+    const page = {
+      sessions: [
+        {
+          session: session({ sessionId: "A" }),
+          childSessions: [session({ sessionId: "A1" }), session({ sessionId: "A2" })],
+        },
+      ],
+      hasMore: false,
+    } as never;
+
+    const catalog = reduceWebuiCatalogTreeLoaded(initialWebuiSessionCatalogState, page);
+    const resolved = selectWebuiCatalogTreePage(catalog);
+    expect(resolved.sessions[0]?.childSessions.map((child) => child.sessionId)).toEqual(["A1", "A2"]);
+  });
+});

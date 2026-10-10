@@ -28,9 +28,11 @@ import {
   reduceWebuiEffect,
 } from "../projection/effect-reducer.js";
 import type { WebuiEffectHandlers } from "../projection/effect-reducer.js";
-import {
-  readWebuiEventSessionId,
-} from "../projection/session-activity.js";
+// The same resolver the effect reducer's own session guard uses. It carries
+// the nested-goal fallback for `thread_goal.*` events, whose payload declares
+// the id inside `goal` rather than at the top level. Reading the top level
+// only here dropped every such event before it could reach the reducer.
+import { eventSessionId } from "../projection/event-parsers.js";
 import {
   recogniseWebuiStreamPayload,
   reduceWebuiStreamFrame,
@@ -190,7 +192,7 @@ export function createWebuiEventCoordinator(
       });
       return;
     }
-    const sessionId = readWebuiEventSessionId(event);
+    const sessionId = eventSessionId(event);
     if (!sessionId) return;
     const current = store.readSession(sessionId);
     const { commands } = reduceWebuiEffect(

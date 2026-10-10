@@ -129,6 +129,25 @@ export function reduceWebuiCatalogFlatAppended(
   };
 }
 
+/**
+ * The children a wire node declares, read defensively.
+ *
+ * The wire type says every node carries an array, but nothing on the wire
+ * enforces that: a serializer that omits empty fields, a runtime older than the
+ * tree projection, or a hand-rolled adapter that only populates the field when
+ * there ARE children all produce a node without it — and a session with no
+ * sub-agents is the overwhelmingly common case, so omitting the field is the
+ * cheap, natural encoding rather than an exotic one. Reading it raw used to
+ * throw here, and the throw was swallowed by the caller's catch, so one
+ * malformed node silently emptied the whole tree view. A missing or non-array
+ * value now means "no children", which is what the sibling read path
+ * (`selectWebuiCatalogTreePage`) has always done.
+ */
+function childSessionsOf(node: WebuiClientSessionTreePage["sessions"][number]): readonly WebuiClientSession[] {
+  const children = (node as { readonly childSessions?: unknown }).childSessions;
+  return Array.isArray(children) ? (children as readonly WebuiClientSession[]) : [];
+}
+
 /** Replace the tree query with a freshly loaded projection. */
 export function reduceWebuiCatalogTreeLoaded(
   catalog: WebuiSessionCatalogState,
@@ -137,10 +156,12 @@ export function reduceWebuiCatalogTreeLoaded(
   const sessions: WebuiClientSession[] = [];
   const nodes: WebuiCatalogTreeQueryNode[] = [];
   for (const node of page.sessions) {
-    sessions.push(node.session, ...node.childSessions);
+    if (!node?.session) continue;
+    const children = childSessionsOf(node);
+    sessions.push(node.session, ...children);
     nodes.push({
       sessionId: node.session.sessionId,
-      childIds: node.childSessions.map((child) => child.sessionId),
+      childIds: children.map((child) => child.sessionId),
     });
   }
   return {

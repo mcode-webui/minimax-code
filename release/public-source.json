@@ -3874,6 +3874,7 @@
     "packages/webui/test/unit/webui-dependency-check.test.ts",
     "packages/webui/test/unit/webui-design-tokens.test.ts",
     "packages/webui/test/unit/webui-error-boundary.test.tsx",
+    "packages/webui/test/unit/webui-event-coordinator.test.ts",
     "packages/webui/test/unit/webui-event-effects-registry.test.ts",
     "packages/webui/test/unit/webui-host-shape-invariant.test.ts",
     "packages/webui/test/unit/webui-legacy-operation-handlers.ts",

@@ -69,9 +69,10 @@ export interface WebuiAttachTurnDeps {
   readonly readStream: () => WebuiStreamState;
   readonly setSending: (sending: boolean) => void;
   /**
-   * This attachment's stream sink. Built by the application command surface, so
-   * its writes are already fenced against the generation it claims; the caller
-   * that supplies it cannot write a slice field of its own.
+   * This attachment's stream sink. Built by the binding that owns the store
+   * writer — the sole caller of this command — so its writes are already fenced
+   * against the generation it claims, and no component ever holds the factory
+   * that mints it.
    */
   readonly sink: WebuiStreamLoopSink;
 }

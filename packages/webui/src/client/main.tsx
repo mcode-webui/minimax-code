@@ -13,13 +13,14 @@ import { NotFound } from "./components/shell/NotFound.js";
 import { ArchonPage } from "./components/shell/ArchonPage.js";
 import { WebuiErrorBoundary } from "./components/shell/WebuiErrorBoundary.js";
 import { WebuiStartupFallback } from "./components/shell/StartupFallback.js";
-import { WebuiBrowserCapabilitiesProvider } from "./bindings/browser-capabilities.js";
+import { WebuiBrowserCapabilitiesProvider, useWebuiBrowserCapabilities } from "./bindings/browser-capabilities.js";
 import { createWebuiBrowserDom } from "./infrastructure/browser-dom.js";
 import {
   createWebuiBrowserStorage,
   getWebuiBrowserStorage,
 } from "./infrastructure/storage.js";
 import { createWebuiApplication } from "./application/create-application.js";
+import { createWebuiComposerStore } from "./application/composer/composer-store.js";
 import { createWebuiEventEffectsRegistry } from "./application/turn/event-effects-registry.js";
 import { createWebuiPortSlices } from "./application/port-slices.js";
 import { createWebuiOpenEventChannel } from "./bindings/event-channel-adapter.js";
@@ -69,6 +70,17 @@ function WebuiClientRoot({
     () => createWebuiEventEffectsRegistry(),
     [],
   );
+  // The same storage adapter the shell would have built for its own composer
+  // store. The application layer may not import infrastructure, so the
+  // composition root injects it — without this the adopted composer store has
+  // no storage at all and every draft dies with the page (regression from
+  // e40a63f: the root stopped handing the shell a store to build, and the
+  // application's own default is storage-less by design).
+  const { storage } = useWebuiBrowserCapabilities();
+  const composerStore = React.useMemo(
+    () => createWebuiComposerStore({ storage }),
+    [storage],
+  );
   const slices = React.useMemo(
     () => createWebuiPortSlices(transport),
     [transport],
@@ -85,6 +97,7 @@ function WebuiClientRoot({
         // own view reactions on top and registers them through
         // `setEventEffects`, because it renders after this instance exists.
         effects: effectsRegistry.asWebuiEventEffects(),
+        composer: composerStore,
         turns: {
           resumeSession: transport.resumeSession ?? (async () => {}),
           ...(transport.loadMessages
@@ -96,7 +109,7 @@ function WebuiClientRoot({
           ? { loadMessages: transport.loadMessages }
           : {}),
       }),
-    [effectsRegistry, transport],
+    [composerStore, effectsRegistry, transport],
   );
   React.useEffect(() => () => application.dispose(), [application]);
 

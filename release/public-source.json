@@ -2767,6 +2767,7 @@
     "packages/local-runtime/test/unit/local-permission-facade.test.ts",
     "packages/local-runtime/test/unit/local-runtime-host-input-safety-v2.test.ts",
     "packages/local-runtime/test/unit/local-runtime-host-output-safety-concurrency.test.ts",
+    "packages/local-runtime/test/unit/diff-mutation-precheck.test.ts",
     "packages/local-runtime/test/unit/local-task-append.test.ts",
     "packages/local-runtime/test/unit/local-thread-goal-orchestrator.test.ts",
     "packages/local-runtime/test/unit/local-thread-goal-store.test.ts",

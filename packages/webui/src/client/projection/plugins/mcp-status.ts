@@ -53,3 +53,40 @@ export function describeWebuiMcpServerStatus(item: Row): WebuiMcpServerStatusVie
       return { key: "unknown", label: "未知状态", tone: "text-text_default_tertiary" };
   }
 }
+
+/**
+ * One on-demand connection test's outcome, as the row shows it.
+ *
+ * `testMcpServer` is the only action that returns a real connection result
+ * (`McpConnectionTestResult`: `{ success, toolCount?, errorCode?,
+ * errorMessage? }`), and the panel never called it — so a server that could
+ * not connect had no way to say WHY from the UI, even though the reason
+ * (a `spawnSync ENOENT` binary, an unlogged-in CLI) was sitting in the
+ * server log. The listing rows carry no status at all
+ * (`listConfiguredServers` → `configuredSummary` is upstream's to fix), so
+ * this probe is the honest surface until then.
+ *
+ * The failure text is the runtime's own `errorMessage` verbatim; when it is
+ * absent the `errorCode` rides along rather than a blank detail, because a
+ * machine token still beats nothing when it is all the runtime said.
+ */
+export interface WebuiMcpTestResultView {
+  readonly key: "connected" | "failed";
+  readonly label: string;
+  readonly detail?: string;
+}
+
+export function describeWebuiMcpTestResult(result: unknown): WebuiMcpTestResultView {
+  const record = result && typeof result === "object" && !Array.isArray(result)
+    ? (result as Record<string, unknown>)
+    : {};
+  if (record.success !== true) {
+    const message = typeof record.errorMessage === "string" ? record.errorMessage.trim() : "";
+    const code = typeof record.errorCode === "string" ? record.errorCode.trim() : "";
+    return { key: "failed", label: "连接失败", ...(message || code ? { detail: message || code } : {}) };
+  }
+  const toolCount = typeof record.toolCount === "number" && Number.isFinite(record.toolCount)
+    ? `${record.toolCount} 个工具`
+    : undefined;
+  return { key: "connected", label: "已连接", ...(toolCount ? { detail: toolCount } : {}) };
+}

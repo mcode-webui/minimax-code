@@ -93,3 +93,59 @@ test("the calm states are labelled too, so trouble has honest neighbours", async
   // And no row invents a reason where the runtime gave none.
   await expect(page.locator("[data-webui-mcp-status-reason]")).toHaveCount(0);
 });
+
+/* D-5 — the row's 测试连接 probe. The listing rows carry no connection
+ * status at all (upstream `configuredSummary` sends only name/enabled/
+ * transport/description/endpoint/configJson), and `testMcpServer` is the one
+ * action whose answer is a real connection result — so the probe is where a
+ * user learns WHY a server cannot connect, without a server log. The fixture
+ * answers with the same `{ success, toolCount?, errorCode?, errorMessage? }`
+ * the runtime sends. */
+test("测试连接 on a row shows the runtime's real reason", async ({ page }) => {
+  // The honest listing shape: no `status` key anywhere, because upstream
+  // does not send one. A panel that only worked on rows already carrying a
+  // status would be a demo, not a fix.
+  await stageMcpServers(page, [
+    { name: "baidu-map", transport: "stdio", enabled: true, description: "地图服务", configJson: "{}" },
+  ]);
+  await openApp(page, "#session=A");
+  await openMcpArea(page);
+
+  const row = rowOf(page, "baidu-map");
+  await expect(row.locator('[data-testid="mcp-test-connection"]')).toBeVisible();
+
+  // The failing probe, in the runtime's own words: a CLI that never spawned.
+  await page.evaluate(() =>
+    window.__fixture.setPluginManagementResult("testMcpServer", {
+      success: false,
+      errorCode: "spawn_enoent",
+      errorMessage: "spawnSync /usr/local/bin/bmap-cli ENOENT — command not found; the CLI may not be installed",
+    }),
+  );
+  await row.locator('[data-testid="mcp-test-connection"]').click();
+
+  // The click reached the transport — not a decoration. Plugin actions ride
+  // the one `pluginManagement` facade, so the request is recorded as that
+  // operation with the action in its body.
+  await expect.poll(() =>
+    page.evaluate(() =>
+      window.__fixture.requests.some(
+        (request) => request.operation === "pluginManagement" && request.body?.action === "testMcpServer",
+      ),
+    ),
+  ).toBe(true);
+  // …and the runtime's reason is on the row, verbatim, as visible text.
+  const failed = row.locator('[data-testid="mcp-test-result"]');
+  await expect(failed).toHaveAttribute("data-webui-mcp-test", "failed");
+  await expect(failed).toHaveText("连接失败 · spawnSync /usr/local/bin/bmap-cli ENOENT — command not found; the CLI may not be installed");
+
+  // The passing probe is labelled too, with its tool count — a button that
+  // only ever reports failure would train users to ignore it.
+  await page.evaluate(() =>
+    window.__fixture.setPluginManagementResult("testMcpServer", { success: true, toolCount: 12 }),
+  );
+  await row.locator('[data-testid="mcp-test-connection"]').click();
+  const passed = row.locator('[data-testid="mcp-test-result"]');
+  await expect(passed).toHaveAttribute("data-webui-mcp-test", "connected");
+  await expect(passed).toHaveText("已连接 · 12 个工具");
+});

@@ -5,6 +5,7 @@ import type { WebuiClientMessage, WebuiClientMessagePage, WebuiQueryCollapseView
 import type { WebuiTranscriptItem, WebuiTranscriptActivityPart, WebuiTranscriptProcessSegment } from "../../contracts/transcript/transcript-view.js";
 import type { WebuiStreamMessage } from "../turn/stream-state.js";
 import { readUsageNumber } from "./message-projection.js";
+import { describeRuntimeWarning } from "./message-parts.js";
 
 /** A render block: one user bubble, or one assistant turn. The transcript
  * renderer iterates these groups; per-block fields tell it how long the turn
@@ -174,6 +175,10 @@ export function projectWebuiProcessSegments(
       else if (activity.activityType === "asset_list") parts = [{ type: "asset_list", assets: Array.isArray(activity.detail?.assets) ? activity.detail.assets.flatMap((asset) => asset && typeof asset === "object" && !Array.isArray(asset) ? [asset as Record<string, unknown>] : []) : [] }];
       else if (activity.activityType === "cognitive") parts = [{ type: "cognitive", text: activity.text ?? "" }];
       else if (activity.activityType === "compaction") parts = [{ type: "compaction", text: activity.text ?? "" }];
+      else if (activity.activityType === "runtime_warning" && activity.warning) {
+        const labels = describeRuntimeWarning(activity.warning);
+        parts = [{ type: "runtime_warning", title: labels.title, ...(labels.meta ? { meta: labels.meta } : {}), text: labels.body }];
+      }
       else parts = [];
     }
     const next: WebuiTranscriptProcessSegment = item.kind === "thinking"

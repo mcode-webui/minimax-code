@@ -322,6 +322,7 @@
       "packages/webui/test/unit/rail-pin-affordance.test.ts",
       "packages/webui/test/unit/rail-star-favorites.test.ts",
       "packages/webui/test/unit/rail-context-menu.test.ts",
+      "packages/webui/test/unit/runtime-warning-rendering.test.tsx",
       "packages/webui/test/unit/session-stream-retry.test.ts",
       "packages/webui/test/unit/webui-startup-fallback.test.tsx",
       "packages/webui/test/unit/queue-panel.test.ts",

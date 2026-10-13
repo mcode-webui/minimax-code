@@ -3263,6 +3263,10 @@
   .webui-tool-detail-label.is-error { color: var(--text_status_error); }
   .webui-tool-detail-section pre { max-height: 180px; overflow: auto; margin: 0; color: var(--text_default_secondary); font-size: 14px; line-height: 20px; white-space: pre-wrap; word-break: break-all; }
   .webui-agent-delegation { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--border_default); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: 14px; line-height: 20px; }
+  .webui-runtime-warning { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--orange_200); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: 14px; line-height: 20px; }
+  .webui-runtime-warning-title { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--spacing_4); color: var(--orange_500); font-size: 14px; line-height: 20px; }
+  .webui-runtime-warning-icon { flex: 0 0 14px; }
+  .webui-runtime-warning-meta { color: var(--text_default_tertiary); font-size: 12px; line-height: 16px; }
   .webui-agent-delegation-summary { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); color: var(--text_default_tertiary); font-size: 14px; line-height: 20px; }
   .webui-agent-delegation-avatar { display: inline-flex; width: 16px; height: 16px; flex: 0 0 16px; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg_default_tertiary); color: var(--text_default_secondary); font-size: 10px; }
   .webui-agent-activity-title { color: var(--text_default_tertiary); font-size: 12px; line-height: 16px; }

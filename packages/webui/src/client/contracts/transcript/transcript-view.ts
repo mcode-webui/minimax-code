@@ -79,9 +79,11 @@ export type WebuiTranscriptItem =
       readonly kind: "activity";
       readonly messageId: string;
       readonly turnId?: string;
-      readonly activityType: "cognitive" | "compaction" | "delegation" | "agent_joined" | "asset_list";
+      readonly activityType: "cognitive" | "compaction" | "delegation" | "agent_joined" | "asset_list" | "runtime_warning";
       readonly text?: string;
       readonly detail?: Record<string, unknown>;
+      /** Parsed `runtime.warning` envelope, carried structured so the renderer never re-parses JSON. */
+      readonly warning?: WebuiRuntimeWarningView;
       readonly timestamp?: number;
     };
 
@@ -102,4 +104,27 @@ export type WebuiTranscriptActivityPart =
   | { readonly type: "tool"; readonly tool: Record<string, unknown> }
   | { readonly type: "delegation"; readonly message: Record<string, unknown> }
   | { readonly type: "agent_joined"; readonly agent: Record<string, unknown> }
-  | { readonly type: "asset_list"; readonly assets: readonly Record<string, unknown>[] };
+  | { readonly type: "asset_list"; readonly assets: readonly Record<string, unknown>[] }
+  | { readonly type: "runtime_warning"; readonly title: string; readonly meta?: string; readonly text: string };
+
+/* Runtime warning surface — the humanized form of a `runtime.warning`
+ * SystemEvent envelope (see `agent-core/src/event-bridge/runtime-warning.ts`
+ * for the producer; the wire contract is untouched, only the display). */
+
+/** The parsed envelope. `message` is the producer's human-readable reason. */
+export interface WebuiRuntimeWarningView {
+  readonly message: string;
+  /** Producer-owned category (e.g. `system-message`); consumers must not infer it from the message text. */
+  readonly category?: string;
+  readonly code?: string;
+  readonly pluginName?: string;
+  readonly hookEvent?: string;
+  readonly source?: string;
+}
+
+/** The composed row: what the reader sees instead of the JSON envelope. */
+export interface WebuiRuntimeWarningLabels {
+  readonly title: string;
+  readonly meta?: string;
+  readonly body: string;
+}

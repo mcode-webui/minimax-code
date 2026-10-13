@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import { configureFixture, openApp, switchSession, test } from "./harness.mjs";
+import { configureFixture, openApp, switchSession, test, assistantBody } from "./harness.mjs";
 
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
@@ -165,4 +165,36 @@ test("a late questionnaire.dismiss cannot revive the turn after a local skip", a
 
   await expect(page.getByTestId("questionnaire-composer")).toHaveCount(0);
   await expect(page.getByText("思考中…")).toHaveCount(0);
+});
+
+// A Mermaid fence renders to a real SVG diagram — the acceptance table's
+// "markdown-图表(mmd)" row, end to end in a browser.
+//
+// This case carries the reverse verification the task book demands: the unit
+// suite stubs the diagram library, so it cannot see the wiring between the
+// fence branch and the renderer. Remove the Mermaid branch from
+// `markdown.tsx` and the fence falls through to the plain code path — no
+// `svg` ever appears and the assertion below goes red, which is exactly the
+// property the task book asks a reviewer to check by deleting the branch.
+test("a mermaid fence renders to an SVG diagram", async ({ page }) => {
+  await configureFixture(page, () => {
+    window.__fixture.setPage("A", {
+      messages: [
+        {
+          msgId: "mermaid-turn",
+          role: "assistant",
+          msgContent: "```mermaid\ngraph TD; Start-->Finish;\n```",
+          timestamp: 1_700_000_000_100,
+        },
+      ],
+      hasMore: false,
+    });
+  });
+  await openApp(page, "#session=A");
+  const body = assistantBody(page, "mermaid-turn");
+  // The diagram library is a lazily loaded chunk, fetched on the first fence.
+  // The budget sits well above the renderer's own timeout, so a slow machine
+  // fails here loudly instead of silently falling back to the plain fence.
+  await expect(body.locator(".webui-mermaid svg")).toBeVisible({ timeout: 20_000 });
+  await expect(body.locator(".webui-code-block")).toHaveCount(0);
 });

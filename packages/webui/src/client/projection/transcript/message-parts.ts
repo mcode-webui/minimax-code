@@ -14,6 +14,8 @@ import { basenamePath } from "../common/paths.js";
 import type {
   WebuiQuestionnaireResponseAnswer,
   WebuiQuestionnaireResponseSummary,
+  WebuiRuntimeWarningLabels,
+  WebuiRuntimeWarningView,
 } from "../../contracts/transcript/transcript-view.js";
 
 export interface WebuiMessageForParts {
@@ -88,7 +90,12 @@ export type WebuiMessagePart =
       readonly type: "questionnaire_response";
       readonly summary: WebuiQuestionnaireResponseSummary;
     }
-  | { readonly id: string; readonly type: "asset_list"; readonly assets: readonly WebuiDeliveredAsset[] };
+  | { readonly id: string; readonly type: "asset_list"; readonly assets: readonly WebuiDeliveredAsset[] }
+  | {
+      readonly id: string;
+      readonly type: "runtime_warning";
+      readonly warning: WebuiRuntimeWarningView;
+    };
 
 export interface WebuiTurnMessageGroup {
   readonly key: string;
@@ -234,6 +241,72 @@ function isTodoUpdatedEventMessage(message: WebuiMessageForParts): boolean {
   }
 }
 
+/**
+ * Parse a serialized `runtime.warning` SystemEvent envelope.
+ *
+ * The runtime persists and fans out these events as an ordinary
+ * `MsgType.SystemEvent` whose `msg_content` is the JSON envelope built by
+ * `agent-core/src/event-bridge/runtime-warning.ts` (fields in that order:
+ * eventType, message, source, then the optional category/code/pluginName/
+ * hookEvent/terminalSequence). Left alone the transcript renders that whole
+ * string as an assistant message — the user reads wire JSON instead of the
+ * warning. Parsing here (and NOT changing the wire contract) is what makes
+ * the envelope displayable; `terminalSequence` is deliberately dropped: it
+ * carries allowlisted terminal bytes that only a live TUI surface may
+ * execute, and a browser must never render or act on them.
+ */
+export function parseRuntimeWarningEventMessage(
+  message: WebuiMessageForParts,
+): WebuiRuntimeWarningView | undefined {
+  const content = message.msgContent?.trimStart();
+  if (!content?.startsWith('{"eventType":')) return undefined;
+  try {
+    const parsed = recordValue(JSON.parse(content));
+    if (parsed?.eventType !== "runtime.warning") return undefined;
+    const body = stringValue(parsed, "message")?.trim();
+    if (!body) return undefined;
+    const category = stringValue(parsed, "category")?.trim();
+    const code = stringValue(parsed, "code")?.trim();
+    const pluginName = stringValue(parsed, "pluginName", "plugin_name")?.trim();
+    const hookEvent = stringValue(parsed, "hookEvent", "hook_event")?.trim();
+    const source = stringValue(parsed, "source")?.trim();
+    return {
+      message: body,
+      ...(category ? { category } : {}),
+      ...(code ? { code } : {}),
+      ...(pluginName ? { pluginName } : {}),
+      ...(hookEvent ? { hookEvent } : {}),
+      ...(source ? { source } : {}),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Compose the warning row's human-readable labels.
+ *
+ * The title names the surface and the producer-owned category; the meta line
+ * names where it came from when the producer said (plugin + hook event). The
+ * body is the reason verbatim — the one field that is already prose, so it is
+ * never reworded, only trimmed.
+ */
+export function describeRuntimeWarning(
+  warning: WebuiRuntimeWarningView,
+): WebuiRuntimeWarningLabels {
+  const title = warning.category
+    ? `运行时告警 · ${warning.category}`
+    : "运行时告警";
+  const meta = [warning.pluginName, warning.hookEvent]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" · ");
+  return {
+    title,
+    ...(meta ? { meta } : {}),
+    body: warning.message,
+  };
+}
+
 function decodeXmlAttribute(value: string): string {
   return value.replace(/&quot;/giu, '"').replace(/&apos;/giu, "'").replace(/&lt;/giu, "<").replace(/&gt;/giu, ">").replace(/&amp;/giu, "&");
 }
@@ -295,6 +368,12 @@ export function projectMessageParts(
   // consumes it separately; mirroring Desktop means omitting it from the
   // conversational transcript while retaining actual `todowrite` calls.
   if (isTodoUpdatedEventMessage(message)) return [];
+  // A `runtime.warning` SystemEvent envelope is also persisted JSON, but this
+  // one is the user's to read: project it into a warning part instead of
+  // letting the raw envelope render as an assistant message.
+  const runtimeWarning = parseRuntimeWarningEventMessage(message);
+  if (runtimeWarning)
+    return [{ id: `runtime-warning-${message.msgId}`, type: "runtime_warning", warning: runtimeWarning }];
   const assetProjection = projectDeliveredAssets(message.msgContent ?? "", message.msgId);
   const thinkingProjection = projectMavisThinking(assetProjection.content, message.msgId);
   if (Array.isArray(message.parts) && message.parts.length > 0) {

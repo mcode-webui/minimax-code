@@ -3957,6 +3957,7 @@
     "packages/webui/test/unit/review-owner.test.ts",
     "packages/webui/test/unit/review-panel.test.tsx",
     "packages/webui/test/unit/review-state.test.ts",
+    "packages/webui/test/unit/runtime-warning-rendering.test.tsx",
     "packages/webui/test/unit/session-activity.test.ts",
     "packages/webui/test/unit/session-import.test.ts",
     "packages/webui/test/unit/session-rail-search.test.ts",

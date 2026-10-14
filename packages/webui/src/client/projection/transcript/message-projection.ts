@@ -287,6 +287,19 @@ export function projectWebuiMessage(
         summary: part.summary,
         ...(normalized.timestamp !== undefined ? { timestamp: normalized.timestamp } : {}),
       };
+    } else if (part.type === "runtime_warning") {
+      // A humanized warning row, not an assistant message: the envelope's
+      // `message` is the body, and the structured fields ride along so the
+      // renderer composes the title without re-parsing JSON.
+      item = {
+        kind: "activity",
+        activityType: "runtime_warning",
+        messageId: normalized.msgId,
+        ...turn,
+        text: part.warning.message,
+        warning: part.warning,
+        ...(normalized.timestamp !== undefined ? { timestamp: normalized.timestamp } : {}),
+      };
     }
     if (item) orderedItems.push(item);
   }

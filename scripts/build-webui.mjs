@@ -113,6 +113,16 @@ const client = await build({
   metafile: true,
   jsx: "automatic",
   loader: { ".html": "text" },
+  // Code splitting is load-bearing, not an optimisation: without it esbuild
+  // inlines every dynamically imported module into `client.js`, and the
+  // transcript lazily loads the diagram library (`webui-mermaid.tsx`'s
+  // `import("mermaid")`) — the entry bundle would grow by the library's full
+  // source instead of a chunk that only downloads when a diagram appears.
+  // Chunks land under `assets/`, the prefix the loopback service's static
+  // resolver already serves alongside the entry (see `resolveClientAsset` in
+  // `packages/webui/src/server/http/client-assets.ts`).
+  splitting: true,
+  chunkNames: "assets/[name]-[hash]",
   // Same workspace resolution as the server build: the browser bundle
   // imports `@mavis/shared/daily-signin` (the check-in card shares the
   // desktop's validators), and a source checkout has no package dist/ to

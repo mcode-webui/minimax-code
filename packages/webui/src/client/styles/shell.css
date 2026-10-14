@@ -3551,6 +3551,31 @@
   .webui-code-block .hljs-title, .webui-code-block .hljs-title.function_, .webui-code-block .hljs-function, .webui-code-block .hljs-section { color: var(--text_label_accent_default); }
   .webui-code-block .hljs-type, .webui-code-block .hljs-built_in, .webui-code-block .hljs-title.class_ { color: var(--text_label_danger_secondary_default); }
   .webui-code-block .hljs-attr, .webui-code-block .hljs-variable, .webui-code-block .hljs-property { color: var(--text_default_secondary); }
+  /* Mermaid diagrams: the container the rendered SVG lands in, and the raw
+     diagram text before the render settles. The surface tokens mirror
+     `.webui-code-block` so a diagram and a fence read as one panel. The SVG
+     itself carries Mermaid's own inline styles (rendered under
+     `securityLevel: "strict"`, so no external references); only its scaling
+     is pinned here. The `pre` covers the pending state, which shows the
+     diagram source while the library chunk loads. */
+  .webui-mermaid {
+    background-color: var(--bg_grouped_tertiary);
+    border-radius: var(--radius_16);
+    overflow: hidden;
+    padding: var(--spacing_12) var(--spacing_16);
+  }
+  .webui-mermaid pre {
+    margin: 0;
+    max-height: 400px;
+    overflow: auto;
+    font-size: 13px;
+    line-height: 20px;
+  }
+  .webui-mermaid svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
   .webui-table-shell {
     max-width: 100%;
     overflow-x: auto;

@@ -92,6 +92,10 @@ const client = await build({
   metafile: true,
   jsx: "automatic",
   loader: { ".html": "text" },
+  // Same reason as `build-webui.mjs`: a dynamic `import()` must leave the
+  // entry as its own chunk under `assets/`, not be inlined into `client.js`.
+  splitting: true,
+  chunkNames: "assets/[name]-[hash]",
   plugins: [workspacePlugin],
   logLevel: "info",
 });

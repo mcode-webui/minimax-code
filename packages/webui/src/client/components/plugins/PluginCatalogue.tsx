@@ -13,7 +13,7 @@ import { ToggleSwitch } from "../shared/ToggleSwitch.js";
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../../contracts/plugins/plugin-rows.js";
 import { PluginImportDialog } from "./PluginImportDialog.js";
 import { PluginItemDialog } from "./PluginItemDialog.js";
-import { describeWebuiMcpServerStatus } from "../../projection/plugins/mcp-status.js";
+import { describeWebuiMcpServerStatus, describeWebuiMcpTestResult, type WebuiMcpTestResultView } from "../../projection/plugins/mcp-status.js";
 
 type Area = "plugins" | "skills" | "apps" | "mcp" | "agents";
 type PluginCatalogueSelection = {
@@ -126,6 +126,15 @@ export function PluginCatalogue({
       2,
     ),
   );
+  /* The on-demand connection probe's outcome, keyed by server name: the one
+   * action that answers with a real connection result, driven from the row so
+   * a server that cannot connect can say why without a log file. One slot is
+   * enough — a user tests one server at a time. */
+  const [mcpTest, setMcpTest] = useState<{
+    readonly name: string;
+    readonly busy: boolean;
+    readonly view?: WebuiMcpTestResultView;
+  } | null>(null);
   const [agentName, setAgentName] = useState("");
   const [agentDescription, setAgentDescription] = useState("");
   const [agentPrompt, setAgentPrompt] = useState("");
@@ -231,6 +240,22 @@ export function PluginCatalogue({
   ) => {
     if (window.confirm(`确定${label}？此操作会立即影响本地配置。`))
       void mutate(action, input);
+  };
+  /* Drive `testMcpServer` from the row and show what came back. Unlike the
+   * other mutations this one's RESULT is the feature: `{ success, toolCount?,
+   * errorCode?, errorMessage? }` is the only place the real connection reason
+   * exists, so the outcome is read here rather than through `mutate`'s
+   * boolean. A thrown request is reported as a failed probe with an honest
+   * "never sent" detail — the row must never stay silent after a click. */
+  const runMcpTest = async (item: Row) => {
+    const name = nameOf(item);
+    setMcpTest({ name, busy: true });
+    try {
+      const result = await runAction("testMcpServer", { name });
+      setMcpTest({ name, busy: false, view: describeWebuiMcpTestResult(result) });
+    } catch {
+      setMcpTest({ name, busy: false, view: { key: "failed", label: "连接失败", detail: "测试请求未能发送" } });
+    }
   };
   const nameOf = (item: Row) =>
     read(
@@ -1050,8 +1075,29 @@ export function PluginCatalogue({
                           {mcpStatus.reason}
                         </small>
                       ) : null}
+                      {/* The probe's outcome for this row: the runtime's own
+                       * reason as visible text, replacing the need to read a
+                       * server log. Keyed by name so a test on one row does
+                       * not decorate another. */}
+                      {mcpTest?.name === name && mcpTest.view ? (
+                        <small
+                          className={`text-size_12 ${mcpTest.view.key === "failed" ? "text-text_label_danger_secondary_default" : "text-text_default_secondary"}`}
+                          data-webui-mcp-test={mcpTest.view.key}
+                          data-testid="mcp-test-result"
+                        >
+                          {mcpTest.view.label}
+                          {mcpTest.view.detail ? ` · ${mcpTest.view.detail}` : ""}
+                        </small>
+                      ) : null}
                     </div>
                     <div className="webui-plugin-actions">
+                    <button
+                      data-testid="mcp-test-connection"
+                      disabled={mcpTest?.name === name && mcpTest.busy}
+                      onClick={() => void runMcpTest(item)}
+                    >
+                      {mcpTest?.name === name && mcpTest.busy ? "测试中…" : "测试连接"}
+                    </button>
                     <button onClick={() => void prepareMcp(item)}>编辑</button>
                     <button
                       onClick={() =>

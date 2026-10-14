@@ -11,7 +11,9 @@
 // Two layers here:
 //   * the store's aggregation rule — degraded means "lost a link it
 //     previously held"; a never-accepted watcher is unknown, not degraded,
-//     so a booting page never flashes a reconnecting banner;
+//     so a booting page never flashes a reconnecting banner — but that
+//     unknown state has a deadline, so a page whose backend was already
+//     unreachable when it loaded stops being silent (the Q-4b remnant);
 //   * the transport wiring — `watchEvents` registers, marks healthy on the
 //     server's acceptance, marks down on socket close, and unregisters on
 //     unsubscribe, so every current and future watcher counts without its
@@ -21,7 +23,7 @@
 // unregisters in `afterEach` — a leaked once-healthy watcher would degrade
 // every later suite in this worker.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   isWebuiEventChannelDegraded,
@@ -52,6 +54,60 @@ describe("the watcher health store", () => {
     register();
     expect(isWebuiEventChannelDegraded()).toBe(false);
   });
+
+describe("the startup grace on a never-accepted watcher", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps a booting watcher unknown until the grace runs out, then degrades", () => {
+    // The remnant: "unknown" used to last forever, so a page that loaded
+    // against an already-unreachable backend showed nothing at all — the
+    // banner reads the stream phase, which stays idle ("connected"). The
+    // grace is what keeps the boot shape quiet while giving the dead-backend
+    // shape a deadline.
+    register();
+    vi.advanceTimersByTime(9_000);
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+    vi.advanceTimersByTime(1_500);
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+  });
+
+  it("stays unknown for good once the server accepts the watcher", () => {
+    // The ordinary boot: accepted in milliseconds, and the cancelled grace
+    // never fires — a healthy channel must not degrade on a timer later.
+    const token = register();
+    markWebuiEventWatcherHealthy(token);
+    vi.advanceTimersByTime(120_000);
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("an acceptance after the grace still clears the flag", () => {
+    // A slow-but-alive backend: the grace fired while the socket was still
+    // opening, and the acceptance that arrives afterwards must restore the
+    // channel rather than leave it degraded for the page's lifetime.
+    const token = register();
+    vi.advanceTimersByTime(10_000);
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+    markWebuiEventWatcherHealthy(token);
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("expires the grace even when the socket keeps closing and retrying", () => {
+    // The unreachable-backend shape end to end: the connect fails, the
+    // transport's close handler marks the watcher down and retries every
+    // 250ms. None of that is an acceptance, so the grace still runs out —
+    // which is exactly the state that used to stay silent.
+    const token = register();
+    markWebuiEventWatcherDown(token);
+    vi.advanceTimersByTime(10_000);
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+  });
+});
 
   it("degrades only after a healthy watcher goes down", () => {
     const token = register();

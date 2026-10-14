@@ -25,7 +25,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-import { describeWebuiMcpServerStatus } from "../../src/client/projection/plugins/mcp-status.js";
+import { describeWebuiMcpServerStatus, describeWebuiMcpTestResult } from "../../src/client/projection/plugins/mcp-status.js";
 
 const SOURCE = readFileSync(
   new URL("../../src/client/components/plugins/PluginCatalogue.tsx", import.meta.url),
@@ -135,5 +135,77 @@ describe("the MCP row wiring", () => {
     expect(mapAt).toBeGreaterThan(0);
     expect(deriveAt).toBeGreaterThan(mapAt);
     expect(deriveAt - mapAt).toBeLessThan(2_000);
+  });
+});
+
+describe("describeWebuiMcpTestResult", () => {
+  /* D-5's surface: the row's 测试连接 button drives `testMcpServer`, the only
+   * action whose answer is a real connection result, and the reason it
+   * returns is what the user reads instead of a server log. These assertions
+   * pin the shape the runtime actually sends (`McpConnectionTestResult`:
+   * success / toolCount / errorCode / errorMessage). */
+  it("shows a passing probe with its tool count", () => {
+    expect(describeWebuiMcpTestResult({ success: true, toolCount: 7 })).toEqual({
+      key: "connected",
+      label: "已连接",
+      detail: "7 个工具",
+    });
+  });
+
+  it("shows a failing probe with the runtime's own reason verbatim", () => {
+    // The real field pair from a binary that never spawned.
+    expect(
+      describeWebuiMcpTestResult({
+        success: false,
+        errorCode: "spawn_enoent",
+        errorMessage: 'spawnSync /usr/local/bin/bmap-cli ENOENT — command not found; the CLI may not be installed',
+      }),
+    ).toEqual({
+      key: "failed",
+      label: "连接失败",
+      detail: "spawnSync /usr/local/bin/bmap-cli ENOENT — command not found; the CLI may not be installed",
+    });
+  });
+
+  it("falls back to the code when the runtime sent no message", () => {
+    expect(describeWebuiMcpTestResult({ success: false, errorCode: "MCP_TIMEOUT" })).toEqual({
+      key: "failed",
+      label: "连接失败",
+      detail: "MCP_TIMEOUT",
+    });
+  });
+
+  it("stays honest when the answer carries neither message nor code", () => {
+    // A bare `{ success: false }` is reported as failed with no invented
+    // detail — the label alone is what the runtime actually said.
+    expect(describeWebuiMcpTestResult({ success: false })).toEqual({
+      key: "failed",
+      label: "连接失败",
+    });
+    // …and a non-object answer is the same failure, not a crash.
+    expect(describeWebuiMcpTestResult(undefined)).toEqual({ key: "failed", label: "连接失败" });
+    expect(describeWebuiMcpTestResult("nope")).toEqual({ key: "failed", label: "连接失败" });
+  });
+
+  it("wires the probe into the MCP row, button and result", () => {
+    // Source-level pins, same contract as the status chip above. The handler
+    // and the row JSX live apart by design (the handler beside the other
+    // mutations, the row in the render), so each fact is pinned where it
+    // actually lives rather than inside one window that cannot span both.
+    const buttonAt = SOURCE.indexOf('data-testid="mcp-test-connection"');
+    expect(buttonAt, "the mcp row no longer renders the test button").toBeGreaterThanOrEqual(0);
+    const button = SOURCE.slice(buttonAt - 300, buttonAt + 500);
+    expect(button).toContain("runMcpTest(item)");
+
+    const handlerAt = SOURCE.indexOf('runAction("testMcpServer"');
+    expect(handlerAt, "the probe no longer drives the real action").toBeGreaterThanOrEqual(0);
+    const handler = SOURCE.slice(handlerAt - 200, handlerAt + 300);
+    expect(handler).toContain("describeWebuiMcpTestResult(result)");
+
+    const resultAt = SOURCE.indexOf('data-testid="mcp-test-result"');
+    expect(resultAt, "the row no longer renders the probe outcome").toBeGreaterThanOrEqual(0);
+    const result = SOURCE.slice(resultAt - 200, resultAt + 700);
+    expect(result).toContain("mcpTest.view.label");
+    expect(result).toContain("data-webui-mcp-test={mcpTest.view.key}");
   });
 });

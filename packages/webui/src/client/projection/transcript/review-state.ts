@@ -347,21 +347,19 @@ function trimmedOrUndefined(value: string | undefined): string | undefined {
  * The reasons are machine tokens, and the authoritative one is
  * `applyLocalTurnDiffSnapshotMutation`'s `unsafe_path`. Read the runtime, not
  * the name: `normalizeCapturePath` *accepts* a path resolving outside the
- * workspace, and returns `undefined` for in-workspace paths the capture layer
- * filters (`.git/`, `node_modules/`, the root itself). The `safeCapturedPath`
- * check also sits inside the write loop, so the operation is NOT all-or-nothing
- * — earlier entries have already been written or `fs.rm`'d. The copy below
- * therefore says the run was interrupted and earlier files may have changed,
- * because that is what happened. Surfacing the raw token tells the user
- * nothing, and the other codes read the same way — `conflict` in particular
- * does not say that the files changed *after* the turn, which is the part that
- * matters.
+ * workspace (returning it absolute), and returns `undefined` for in-workspace
+ * paths the capture layer filters (`.git/`, `node_modules/`, the root itself).
+ * The mutation now resolves and validates every target in a full precheck
+ * before the first write — the checks used to sit inside the write loop, which
+ * left a refused run half-applied — so the copy below can say plainly that
+ * nothing was touched. `conflict` in particular does not say that the files
+ * changed *after* the turn, which is the part that matters.
  *
  * A reason not in this table is passed through unchanged. That is deliberate:
  * `git apply` failures arrive as free-form stderr, and discarding them would
  * replace a real message with a guess. */
 const WEBUI_DIFF_FAILURE_COPY: Readonly<Record<string, string>> = {
-  unsafe_path: "这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。",
+  unsafe_path: "这轮改动里有文件路径不在工作区内或无法安全定位，操作未执行，磁盘文件均未改动。",
   conflict: "这轮改动之后文件又被修改过，撤销前请先确认当前内容。",
   not_undoable: "这轮文件改动没有留下可撤销的快照。",
   "Turn diff not found": "找不到这轮文件改动。",

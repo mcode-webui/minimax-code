@@ -303,7 +303,7 @@ describe("resolveWebuiDiffMutation reads the transport result the way the wire m
  * `body.error` as the message. Without a translation the user reads the token. */
 describe("runtime reason codes become something a person can act on", () => {
   it("translates every reason the mutation path can produce", () => {
-    expect(describeWebuiDiffFailure("unsafe_path")).toBe("这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。");
+    expect(describeWebuiDiffFailure("unsafe_path")).toBe("这轮改动里有文件路径不在工作区内或无法安全定位，操作未执行，磁盘文件均未改动。");
     expect(describeWebuiDiffFailure("conflict")).toBe("这轮改动之后文件又被修改过，撤销前请先确认当前内容。");
     expect(describeWebuiDiffFailure("not_undoable")).toBe("这轮文件改动没有留下可撤销的快照。");
     expect(describeWebuiDiffFailure("Turn diff not found")).toBe("找不到这轮文件改动。");
@@ -313,7 +313,7 @@ describe("runtime reason codes become something a person can act on", () => {
 
   it("no longer shows a raw token as the user-facing reason", () => {
     const action = resolveWebuiDiffMutation("revert", { success: false, error: "unsafe_path" });
-    expect(action).toEqual({ type: "mutation-failed", error: "这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。" });
+    expect(action).toEqual({ type: "mutation-failed", error: "这轮改动里有文件路径不在工作区内或无法安全定位，操作未执行，磁盘文件均未改动。" });
     expect(action.type === "mutation-failed" && action.error).not.toBe("unsafe_path");
   });
 
@@ -321,7 +321,7 @@ describe("runtime reason codes become something a person can act on", () => {
    * a real message; replacing them with a guess would be worse than useless. */
   it("passes an unknown reason through unchanged", () => {
     expect(describeWebuiDiffFailure("error: patch failed: src/one.ts:3")).toBe("error: patch failed: src/one.ts:3");
-    expect(describeWebuiDiffFailure("  unsafe_path  ")).toBe("这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。");
+    expect(describeWebuiDiffFailure("  unsafe_path  ")).toBe("这轮改动里有文件路径不在工作区内或无法安全定位，操作未执行，磁盘文件均未改动。");
   });
 
   it("still reports no reason when there is none", () => {
@@ -333,7 +333,7 @@ describe("runtime reason codes become something a person can act on", () => {
   it("translates a thrown unsafe_path the same way as a reported one", () => {
     expect(resolveWebuiDiffMutation("revert", undefined, new Error("unsafe_path"))).toEqual({
       type: "mutation-failed",
-      error: "这轮改动里有文件的路径无法安全定位，操作已中断，之前处理过的文件可能已改动。",
+      error: "这轮改动里有文件路径不在工作区内或无法安全定位，操作未执行，磁盘文件均未改动。",
     });
   });
 });

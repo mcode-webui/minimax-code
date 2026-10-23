@@ -11,10 +11,12 @@ import {
   extractWorkspaceArchiveDirectory,
   readWorkspaceArchiveListing,
 } from "../workspace-archive.js";
+import { checkWorkspaceFence } from "../workspace-real-path.js";
 import type { WebuiHarnessPort } from "../port.js";
-import type { WebuiRuntimeHostHandle } from "./host-contract.js";
+import type { WebuiRuntimeCliService, WebuiRuntimeHostHandle } from "./host-contract.js";
 import { requireCliService, requireHostSlot } from "./requirements.js";
 import { toRuntimeCanvasInput } from "./canvas-input.js";
+import { WebuiErrorCode, WebuiWireError } from "../../shared/envelope.js";
 import {
   toWebuiCanvasApplyResult,
   toWebuiCanvasDocument,
@@ -99,6 +101,14 @@ export function createWorkspaceAdapter(
 
     async extractWorkspaceArchive(request) {
       const cliService = requireCliService(host);
+      // The destination is where the entries are written, so it is fenced
+      // before anything is created: a destination that leaves the workspace
+      // through a symlink would otherwise create its directory outside first
+      // and be refused afterwards.
+      await assertArchiveDestinationInsideWorkspace(
+        request.workspaceDir,
+        request.destination,
+      );
       if (cliService.extractWorkspaceArchive) return cliService.extractWorkspaceArchive(request);
       return extractWorkspaceArchiveDirectory(request);
     },
@@ -246,12 +256,101 @@ export function createWorkspaceAdapter(
 
     async applyCanvas(request) {
       const cliService = requireCliService(host);
+      const input = toRuntimeCanvasInput(request);
+      // Fenced before the runtime is asked to apply the operation: the canvas
+      // names workspace files, and a name that leaves the workspace through a
+      // symlink has to be refused here rather than after the runtime resolved
+      // it. The path itself is passed on unchanged — the fence only decides.
+      await assertCanvasPathsInsideWorkspace(cliService, input);
       return toWebuiCanvasApplyResult(
         await requireHostSlot(cliService.applyCanvas, "canvas writes").call(
           cliService,
-          toRuntimeCanvasInput(request),
+          input,
         ),
       );
     },
   };
+}
+
+/**
+ * The archive destination has to really live inside the workspace.
+ *
+ * `destination` is a path the browser chose, and the extraction creates it
+ * before it writes anything into it. The fence therefore runs first: a
+ * destination that leaves the workspace through a symlink is refused before the
+ * directory exists, not after.
+ *
+ * The wording is the archive reader's own — the panel shows this message next
+ * to the extraction it refused.
+ */
+async function assertArchiveDestinationInsideWorkspace(
+  workspaceDir: string,
+  destination: string,
+): Promise<void> {
+  const verdict = await checkWorkspaceFence(
+    workspaceDir,
+    path.resolve(workspaceDir, destination),
+  );
+  if (verdict.allowed) return;
+  throw new WebuiWireError(
+    WebuiErrorCode.invalidBody,
+    verdict.reason === "outside"
+      ? `解压目标越界：${destination}`
+      : `解压目标无法解析：${destination}`,
+  );
+}
+
+/**
+ * Every workspace file the canvas operation names has to really live inside the
+ * session's workspace.
+ *
+ * The canvas carries workspace *relative* names, and the root they are relative
+ * to is the session's — the runtime resolves the same root on its side, so the
+ * fence asks the same question of the same source. A mutation that names no
+ * file (an asset-backed one, whose path the runtime picks) is not fenced: there
+ * is no client-chosen path to check.
+ */
+async function assertCanvasPathsInsideWorkspace(
+  cliService: WebuiRuntimeCliService,
+  input: ReturnType<typeof toRuntimeCanvasInput>,
+): Promise<void> {
+  const workspaceDir = await resolveSessionWorkspaceDir(cliService, input.sessionId);
+  // Without a workspace there is no root to compare against. The runtime
+  // refuses such a canvas itself ("Session workspace is unavailable"), so no
+  // write can follow from this.
+  if (!workspaceDir) return;
+  for (const mutation of input.operation.mutations) {
+    if (mutation.kind !== "add_file") continue;
+    const relativePath = mutation.relativePath;
+    if (relativePath === undefined) continue;
+    const verdict = await checkWorkspaceFence(
+      workspaceDir,
+      path.resolve(workspaceDir, relativePath),
+    );
+    if (verdict.allowed) continue;
+    throw new WebuiWireError(
+      WebuiErrorCode.invalidBody,
+      verdict.reason === "outside"
+        ? `Canvas file path escapes the workspace: ${relativePath}`
+        : `Canvas file path cannot be resolved: ${relativePath}`,
+    );
+  }
+}
+
+/**
+ * The workspace the session works in, as the runtime reports it.
+ *
+ * `undefined` when the host cannot answer: the session lookup is a required
+ * member of the host contract, but a host that does not implement it leaves the
+ * canvas root unknown, and the runtime then resolves the canvas path against
+ * the session's own workspace and refuses a path that is not inside it.
+ */
+async function resolveSessionWorkspaceDir(
+  cliService: WebuiRuntimeCliService,
+  sessionId: string,
+): Promise<string | undefined> {
+  if (typeof cliService.getSession !== "function") return undefined;
+  const found = await cliService.getSession({ id: sessionId }, {});
+  const workspaceDir = found.session?.workspaceDir?.trim();
+  return workspaceDir ? workspaceDir : undefined;
 }

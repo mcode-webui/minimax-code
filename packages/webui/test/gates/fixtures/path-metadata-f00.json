@@ -3910,6 +3910,15 @@
       "home": "outside"
     },
     {
+      "path": "runtime/workspace-real-path.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "server/access-policy.ts",
       "layers": [
         "server"

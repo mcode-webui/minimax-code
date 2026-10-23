@@ -36,7 +36,7 @@ test("shell and session rail layout baseline", async ({ page }) => {
   await expect.poll(() => page.locator('img[src^="/assets/"]').evaluateAll((images) =>
     images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0),
   )).toBe(true);
-  await expect(shell).toHaveScreenshot("shell-and-rail.png", { animations: "disabled", maxDiffPixels: 2 });
+  await expect(shell).toHaveScreenshot("shell-and-rail.png", { animations: "disabled" });
 });
 
 test("transcript and composer layout baseline", async ({ page }) => {

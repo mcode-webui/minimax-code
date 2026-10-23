@@ -983,6 +983,11 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await composer.fill("/plan Plan this synthetic task.");
     await composer.press("Enter");
     await browserExpect(page.getByText("Synthetic plan-entry turn completed.")).toBeVisible({ timeout: 30_000 });
+    // The captured frame and the rendered answer are two different writes, so
+    // the capture is polled the way the history below is polled rather than
+    // read once and raced.
+    await expect.poll(() => requests.some((request) => request.operation === "sendMessage" &&
+      request.body?.content === "Plan this synthetic task."), { timeout: 20_000 }).toBe(true);
     const planEntry = requests.find((request) => request.operation === "sendMessage" &&
       request.body?.content === "Plan this synthetic task.");
     expect(planEntry?.body).toMatchObject({ clientIntent: "plan-entry" });
@@ -1189,6 +1194,14 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     const forkEditResponse = received.find((response) => response.requestId === forkEditRequest?.requestId);
     expect(forkEditResponse?.body).toMatchObject({ rewound: true, userMessageId: expect.any(String) });
     await browserExpect(page.getByText("Edited fork message response.")).toBeVisible({ timeout: 30_000 });
+    // The rendered answer and the retired turn are two different moments: the
+    // answer shows up when the model has answered, the turn is only over once
+    // the runtime says so. Sending into a session whose turn has not been
+    // retired yet does not start a turn — the message is queued instead, and
+    // it never reaches the model, so the case waits for the turn to be over
+    // the way the rest of this case does before it sends the next message.
+    await browserExpect.poll(() => port.getActiveTurn({ id: String(messageForkSessionId) }), { timeout: 20_000 })
+      .toBeUndefined();
     const editedForkHistory = await port.getMessages({ id: String(messageForkSessionId) });
     const forkUserMessages = (editedForkHistory.messages ?? []).filter((message) => message.role === "user");
     expect(forkUserMessages.some((message) => message.msgContent === "Fork isolation probe edited.")).toBe(true);
@@ -1253,18 +1266,40 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await browserExpect.poll(() => port.getActiveTurn({ id: String(messageForkSessionId) }), {
       timeout: 30_000,
     }).toBeUndefined();
-    retryLifecycleAbort.abort();
-    await retryLifecycleWatch;
     const observedLifecycleEvents = () => received.flatMap((frame) => {
       if (frame.kind !== "event" || !frame.body || typeof frame.body !== "object" || Array.isArray(frame.body)) return [];
       const event = frame.body as { type?: unknown; payload?: unknown };
       return typeof event.type === "string" && event.type.startsWith("session.") ? [event] : [];
     });
-    await browserExpect.poll(() => observedLifecycleEvents().some((event) =>
+    const errorTurnId = (event: { type?: unknown; payload?: unknown }) =>
+      (event.payload as { turnId?: unknown } | undefined)?.turnId;
+    // The runtime's event stream and the client's are two deliveries of the
+    // same event, and the runtime's watch used to be torn down the moment the
+    // turn went inactive — which is exactly when the runtime reports the
+    // failure. An event still in flight when the watch is aborted is lost, and
+    // the comparison then has nothing on the runtime side to compare the
+    // client's event against. The watch therefore stays open until both sides
+    // carry the error.
+    await browserExpect.poll(() => {
+      const observed = observedLifecycleEvents().filter((event) => event.type === "session.error");
+      const runtime = retryLifecycleEvents.filter((event) => event.type === "session.error");
+      return { bothCarried: observed.length > 0 && runtime.length > 0, observed, runtime };
+    }, { timeout: 20_000 }).toMatchObject({ bothCarried: true });
+    retryLifecycleAbort.abort();
+    await retryLifecycleWatch;
+    // The turn retries the failing model call, so the runtime reports the
+    // failure more than once and the first report is not necessarily the one
+    // the client saw. The two views have to name the same turn, and the
+    // pairing looks at every error each side reported.
+    expect(observedLifecycleEvents().some((event) =>
       event.type === "session.error" &&
-      (event.payload as { turnId?: unknown } | undefined)?.turnId ===
-        (retryLifecycleEvents.find((event) => event.type === "session.error")?.payload as { turnId?: unknown } | undefined)?.turnId,
-    )).toBe(true);
+      retryLifecycleEvents.some((runtimeEvent) =>
+        runtimeEvent.type === "session.error" && errorTurnId(runtimeEvent) === errorTurnId(event),
+      ),
+    ), JSON.stringify({
+      observed: observedLifecycleEvents(),
+      runtime: retryLifecycleEvents,
+    })).toBe(true);
     const retryFailureVisible = await retryError.isVisible();
     expect(retryFailureVisible, JSON.stringify({
       retryModelAttempts,

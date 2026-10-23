@@ -290,15 +290,6 @@ export class ConversationApplication {
           `Session not found: ${req.id}`,
         );
       }
-      // The active turn is the authoritative answer to "is a turn running", and
-      // it is the answer `getActiveTurn` already gave the client that is
-      // attaching. The session's persisted status is an asynchronous projection
-      // of the runtime's status events, so it still reads "idle" while a turn
-      // runs — for a queue-drained turn that is exactly what happens, and the
-      // resumed stream would then replay the history and close, dropping the
-      // answer the drained turn commits a moment later. Read both, and let the
-      // turn decide.
-      const activeTurnId = this.options.turnInspection?.activeTurnId(req.id);
       const frames = this.options.stream.resume({
         sessionId: req.id,
         ...(req.afterMsgId ? { afterMsgId: req.afterMsgId } : {}),
@@ -306,9 +297,7 @@ export class ConversationApplication {
         waitForTerminal: shouldWaitForTerminal(
           req.drainQueued === true || req.continuePausedQueue === true,
           session.status,
-          activeTurnId !== undefined,
         ),
-        ...(activeTurnId ? { followTurnId: activeTurnId } : {}),
       });
       try {
         if (req.continuePausedQueue) {
@@ -524,9 +513,8 @@ function queueContinueApplicationError(
 function shouldWaitForTerminal(
   drainQueued: boolean | undefined,
   status: SessionStatus,
-  turnRunning: boolean,
 ): boolean {
-  return drainQueued === true || status === "started" || turnRunning;
+  return drainQueued === true || status === "started";
 }
 
 function turnContinuationStateView(

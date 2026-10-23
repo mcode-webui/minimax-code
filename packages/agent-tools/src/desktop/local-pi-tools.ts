@@ -17,12 +17,11 @@ import {
 import { getShellConfig } from '@earendil-works/pi-coding-agent/shell';
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core';
 import { access } from 'node:fs/promises';
-import { isAbsolute, join, resolve as resolvePath } from 'node:path';
+import { isAbsolute, resolve as resolvePath } from 'node:path';
 import { homedir, release } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { resolveBashDescription } from './local-bash-input.js';
-import { findWorkspaceFenceViolation } from './workspace-fence.js';
 import {
   DEFAULT_FOREGROUND_BASH_SOFT_YIELD_MS,
   resolveLocalBashTiming,
@@ -124,20 +123,6 @@ export class LocalReadTool implements ToolImpl<
   ): Promise<ToolResult> {
     if (signal?.aborted) throw new Error('Operation aborted');
     const readAbs = await resolveLocalReadPath(input.path, this.workspaceRoot);
-
-    // Workspace fence: the file the tool touches has to really live inside
-    // the workspace. A symlink inside the workspace would otherwise let the
-    // read reach out of it, and the permission layer cannot see that because
-    // it compares paths lexically. Validation only — pi still receives the
-    // lexical path below, so the ledger key stays aligned with pi's own
-    // `resolveToCwd` output.
-    const fenceViolation = await findWorkspaceFenceViolation(
-      [...piReadPathCandidates(input.path, this.workspaceRoot), readAbs],
-      this.workspaceRoot,
-    );
-    if (fenceViolation) {
-      return workspaceFenceErrorResult(LocalReadToolDef.name, fenceViolation);
-    }
 
     // Guard order (design doc §3): the device check comes first because
     // every later step that opens the file (binary sampling, PDF/notebook
@@ -266,17 +251,6 @@ export class LocalWriteTool implements ToolImpl<
     signal?: AbortSignal,
   ): Promise<ToolResult> {
     if (signal?.aborted) throw new Error('Operation aborted');
-    // Workspace fence: pi writes the path it resolves from `input.path`, so
-    // that is the path the fence has to check. A symlinked directory or a
-    // dangling symlink would otherwise create the file outside the
-    // workspace.
-    const fenceViolation = await findWorkspaceFenceViolation(
-      [piResolvedPath(input.path, this.workspaceRoot)],
-      this.workspaceRoot,
-    );
-    if (fenceViolation) {
-      return workspaceFenceErrorResult(LocalWriteToolDef.name, fenceViolation);
-    }
     // Per-execute capture context. This tool instance is a process-level
     // singleton (buildLocalToolRegistry), so an instance-level pending map
     // would be shared across concurrent writes; binding capture to a single
@@ -311,20 +285,6 @@ export class LocalEditTool implements ToolImpl<
     signal?: AbortSignal,
   ): Promise<ToolResult> {
     if (signal?.aborted) throw new Error('Operation aborted');
-
-    // Workspace fence: pi edits the path it resolves from `input.file_path`,
-    // and the `replace_all` branch below reads that path itself — so both
-    // spellings have to be inside the workspace for real.
-    const fenceViolation = await findWorkspaceFenceViolation(
-      [
-        piResolvedPath(input.file_path, this.workspaceRoot),
-        resolveLocalCandidatePath(input.file_path, this.workspaceRoot),
-      ],
-      this.workspaceRoot,
-    );
-    if (fenceViolation) {
-      return workspaceFenceErrorResult(LocalEditToolDef.name, fenceViolation);
-    }
 
     // Translate the compatible style public schema (file_path + old_string +
     // new_string + optional replace_all) into pi's internal
@@ -825,61 +785,6 @@ function resolveLocalCandidatePath(input: string, workspaceRoot: string): string
     path = resolvePath(homedir(), path.slice(2));
   }
   return normalizeLocalExistingPath(isAbsolute(path) ? path : resolvePath(workspaceRoot, path));
-}
-
-/**
- * The absolute path pi itself opens for `input`.
- *
- * Mirrors pi's `resolveToCwd` (`normalizePath` + `path.resolve` against the
- * tool cwd): unicode-space normalization, the `@` prefix strip, `~` expansion
- * and `file://` URLs all happen before the path is resolved. The fence has to
- * check the same target pi touches — otherwise a spelling pi rewrites could
- * still reach outside the workspace.
- */
-function piResolvedPath(input: string, workspaceRoot: string): string {
-  let normalized = input.replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, ' ');
-  if (normalized.startsWith('@')) normalized = normalized.slice(1);
-  if (normalized === '~') return resolvePath(homedir());
-  if (normalized.startsWith('~/') || (process.platform === 'win32' && normalized.startsWith('~\\'))) {
-    normalized = join(homedir(), normalized.slice(2));
-  }
-  if (/^file:\/\//.test(normalized)) normalized = fileURLToPath(normalized);
-  return isAbsolute(normalized) ? resolvePath(normalized) : resolvePath(workspaceRoot, normalized);
-}
-
-/**
- * Every path the read tool can end up opening for `input`.
- *
- * pi's read tool resolves the requested path and, when that spelling does not
- * exist, retries the macOS-flavoured ones (narrow no-break space before
- * AM/PM, NFD, curly quote). The desktop wrapper resolves the same variants
- * for its own dispatch (PDF / notebook / binary sniffing). The fence checks
- * all of them: a variant spelling must not be a way around it.
- */
-function piReadPathCandidates(input: string, workspaceRoot: string): string[] {
-  const resolved = piResolvedPath(input, workspaceRoot);
-  const amPm = resolved.replace(/ (AM|PM)\./gi, '\u202f$1.');
-  const nfd = resolved.normalize('NFD');
-  const curly = resolved.replace(/'/g, '\u2019');
-  const nfdCurly = nfd.replace(/'/g, '\u2019');
-  return [resolved, amPm, nfd, curly, nfdCurly];
-}
-
-/**
- * Uniform, recoverable tool error for a workspace-fence violation.
- *
- * The model sees it as a tool error it can react to — the same channel the
- * other wrapper-level guards use — instead of a thrown exception that
- * arrives without structured details.
- */
-function workspaceFenceErrorResult(toolName: string, reason: string): ToolResult {
-  return {
-    tool_name: toolName,
-    text: reason,
-    content: [{ type: 'text', text: reason }],
-    details: { status: 'workspace_fence_violation', error_code: 'WORKSPACE_PATH_ESCAPE' },
-    isError: true,
-  };
 }
 
 async function resolveLocalReadPath(input: string, workspaceRoot: string): Promise<string> {

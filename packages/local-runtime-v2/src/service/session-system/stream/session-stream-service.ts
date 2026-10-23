@@ -42,15 +42,6 @@ export interface ResumeSessionInput {
    * always live-only. Defaults to true for internal callers.
    */
   readonly waitForTerminal?: boolean;
-  /**
-   * The turn this stream follows.
-   *
-   * A turn that already published its terminal will publish no other, so a
-   * stream that waits for one has to end at the replay instead. The caller
-   * names the turn it is following so the stream can tell "this turn is still
-   * running" from "this turn is already over".
-   */
-  readonly followTurnId?: string;
 }
 
 export interface SessionStreamReservation {
@@ -69,14 +60,6 @@ interface SessionStreamState {
   hasFrames: boolean;
   reservationCount: number;
   deleted: boolean;
-  /**
-   * The turn of the last terminal this session published.
-   *
-   * A resume that follows that turn must end at its replay: the turn has
-   * published its terminal and will publish no other, so waiting for one
-   * would wait forever.
-   */
-  lastTerminalTurnId?: string;
 }
 
 type SessionRingEntry = RingEntry<RetainedSessionFrame>;
@@ -100,11 +83,6 @@ export class SessionStreamService implements SessionStreamWriter {
 
   write(input: SessionFrameInput): SessionFrameWriteResult {
     const state = this.state(input.sessionId);
-    // Recorded before the frame is published, so a resume that subscribes in
-    // the same tick sees the terminal as already published.
-    if (input.kind === 'turn-terminal' && input.turnId) {
-      state.lastTerminalTurnId = input.turnId;
-    }
     const value: UnsequencedSessionFrame = {
       identity: input.identity,
       sessionId: input.sessionId,
@@ -268,12 +246,6 @@ class SessionResumeIterator implements AsyncIterableIterator<SessionFrame> {
   private async initialize(): Promise<void> {
     const waitForTerminal = this.input.waitForTerminal ?? true;
     if (this.initializeUnanchored(waitForTerminal)) return;
-    // The anchored paths deliver a replay, so the stream can end at it. The
-    // turn this stream follows already published its terminal: it will publish
-    // no other, so waiting for one would wait forever.
-    if (waitForTerminal && this.followedTurnAlreadyTerminated()) {
-      this.closeAfterReplay = true;
-    }
     const initial = this.state.ring.replay(this.input.afterCursor);
     if (initial.status !== 'ok') {
       this.finishWithResync(initial.status);
@@ -284,19 +256,6 @@ class SessionResumeIterator implements AsyncIterableIterator<SessionFrame> {
       return;
     }
     await this.initializeDurable(initial.entries, waitForTerminal);
-  }
-
-  /**
-   * Whether the turn this stream follows has already published its terminal.
-   *
-   * Read against the same state the subscription was taken from, so the two
-   * cannot disagree: a terminal published before the subscription is already
-   * recorded, and one published after it is delivered to the subscriber.
-   */
-  private followedTurnAlreadyTerminated(): boolean {
-    const followTurnId = this.input.followTurnId;
-    if (!followTurnId) return false;
-    return this.state.lastTerminalTurnId === followTurnId;
   }
 
   private async initializeDurable(

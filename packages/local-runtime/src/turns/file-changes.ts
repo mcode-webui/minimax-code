@@ -44,14 +44,6 @@ const PATCH_CONTEXT_LINES = 3;
  * past this budget we fall back to the whole-file deletion+addition hunk.
  */
 const MAX_DIFF_EDIT_LENGTH = 2000;
-/**
- * Upper bound on the symlink hops followed while resolving a mutation
- * target's real path. A path that needs more hops than this — a symlink
- * cycle, or a chain long enough to look like one — is refused rather than
- * followed: this is a containment boundary, so a path that cannot be
- * resolved is not a safe path.
- */
-const MAX_REAL_PATH_SYMLINK_HOPS = 32;
 const STRUCTURED_WRITE_TOOLS = new Set([
   'edit',
   'write',
@@ -414,19 +406,9 @@ export async function applyLocalTurnDiffSnapshotMutation(
    *
    * Safety first, ahead of the conflict check below: an operation that would
    * write outside the workspace is refused without even reading the files. */
-  const workspaceRoot = path.resolve(record.workspaceDir);
-  /* The real workspace root, resolved once for the whole run: the
-   * containment check compares real paths, and the root does not change while
-   * the operation runs. A workspace that cannot be resolved refuses the run. */
-  const realWorkspaceRoot = await resolveRealPath(workspaceRoot);
-  if (!realWorkspaceRoot) return { success: false, reason: 'unsafe_path' };
   const targets: string[] = [];
   for (const undo of record.undo) {
-    const absolute = await resolveMutationTargetPath(
-      workspaceRoot,
-      realWorkspaceRoot,
-      undo.file,
-    );
+    const absolute = resolveMutationTargetPath(record.workspaceDir, undo.file);
     if (!absolute) return { success: false, reason: 'unsafe_path' };
     const target = undo[targetKey];
     if (target.exists && target.content === undefined) {
@@ -464,135 +446,29 @@ export async function applyLocalTurnDiffSnapshotMutation(
  * records out-of-workspace writes — so a truthy result is NOT proof of
  * containment and the mutation has to check it. It returns `undefined` for
  * the in-workspace paths the capture layer filters (`.git/`,
- * `.harness-def/`, the root itself), which is also a refusal here. The
+ * `node_modules/`, the root itself), which is also a refusal here. The
  * containment re-check after `path.resolve` is deliberate: this is a
  * security boundary, so it does not rely on `normalizeCapturePath`'s
  * contract holding forever.
  *
- * Containment is checked twice, and the second check is the one that binds:
- *
- *  1. Lexically, against the workspace root. It costs no syscall and
- *     refuses the plain escapes — an absolute path, a `..` climb, a sibling
- *     directory whose name starts with the workspace's name — before any
- *     path on disk is looked at.
- *  2. Against the *real* paths, with symlinks resolved. Lexical containment
- *     is not containment: a path inside the workspace whose final component
- *     is a symlink pointing outside it is inside the workspace as a string
- *     and outside it as a file, and the write follows the link. The real
- *     path of the target is therefore compared with the real path of the
- *     workspace root, which also means a workspace that is itself reached
- *     through a symlink still contains its own files.
- *
- * `realWorkspaceRoot` is the already-resolved real root, passed in so a
- * record with many entries does not resolve it once per entry.
- *
- * Known boundary (unchanged by this check): the real path is resolved before
- * the write, so a symlink swapped between the check and the write is still
- * a race. Closing that needs a write that cannot follow a link, which is a
- * larger change than this refusal.
+ * Known boundary (lexical containment only): a contained path that is a
+ * symlink pointing outside the workspace still resolves outside. Closing
+ * that needs `realpath` on every target with careful handling of
+ * not-yet-existing files, which is a larger change than this refusal.
  */
-async function resolveMutationTargetPath(
-  workspaceRoot: string,
-  realWorkspaceRoot: string,
+function resolveMutationTargetPath(
+  workspaceDir: string,
   file: string,
-): Promise<string | undefined> {
-  const normalized = normalizeCapturePath(workspaceRoot, file);
+): string | undefined {
+  const normalized = normalizeCapturePath(workspaceDir, file);
   if (!normalized) return undefined;
   if (path.isAbsolute(normalized) || path.win32.isAbsolute(normalized)) {
     return undefined;
   }
-  const absolute = path.resolve(workspaceRoot, normalized);
-  const prefix = workspaceRoot.endsWith(path.sep)
-    ? workspaceRoot
-    : `${workspaceRoot}${path.sep}`;
-  if (absolute !== workspaceRoot && !absolute.startsWith(prefix)) return undefined;
-  const realTarget = await resolveRealPath(absolute);
-  if (!realTarget) return undefined;
-  return isInsideDirectory(realWorkspaceRoot, realTarget) ? absolute : undefined;
-}
-
-/**
- * Resolve a path to the real location the filesystem uses for it, following
- * symlinks.
- *
- * The shape follows the tool path guard
- * (`agent-tools/src/desktop/path-guard.ts`): `realpath` the target, and when
- * the target does not exist yet — a revert recreates a deleted file — resolve
- * its nearest existing ancestor and re-attach the missing segments.
- *
- * One thing that guard does not have to handle and this one does: the target
- * may be a *dangling* symlink. `realpath` fails on it the same way it fails
- * on a missing file, but a write through a dangling link creates the file it
- * points at, so the link is followed by hand instead of being treated as a
- * missing path.
- *
- * Returns `undefined` when the path cannot be resolved at all — a symlink
- * cycle, a permission error — so the caller refuses the target instead of
- * guessing where it points.
- */
-async function resolveRealPath(
-  absolutePath: string,
-  hops = 0,
-): Promise<string | undefined> {
-  let candidate = path.resolve(absolutePath);
-  const suffixParts: string[] = [];
-  for (;;) {
-    try {
-      const ancestorReal = await fs.realpath(candidate);
-      return suffixParts.length === 0
-        ? ancestorReal
-        : path.resolve(ancestorReal, ...suffixParts);
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException | undefined)?.code;
-      if (code !== 'ENOENT' && code !== 'ENOTDIR') return undefined;
-      const link = await readlinkOrUndefined(candidate);
-      if (link !== undefined) {
-        if (hops >= MAX_REAL_PATH_SYMLINK_HOPS) return undefined;
-        const realParent = await realpathOrUndefined(path.dirname(candidate));
-        if (!realParent) return undefined;
-        // A relative link is relative to the directory that holds it, which
-        // is the *real* directory when the link sits in a symlinked one.
-        const followed = path.isAbsolute(link)
-          ? path.resolve(link)
-          : path.resolve(realParent, link);
-        const resolved = await resolveRealPath(followed, hops + 1);
-        if (!resolved) return undefined;
-        return suffixParts.length ? path.resolve(resolved, ...suffixParts) : resolved;
-      }
-      const parent = path.dirname(candidate);
-      if (parent === candidate) return undefined;
-      suffixParts.unshift(path.basename(candidate));
-      candidate = parent;
-    }
-  }
-}
-
-/**
- * Whether `candidate` is `root` itself or a path inside it.
- *
- * The comparison follows the tool path guard
- * (`agent-tools/src/desktop/path-guard.ts`): `path.relative` decides, and it
- * is case-insensitive on Windows, where the filesystem is.
- */
-function isInsideDirectory(root: string, candidate: string): boolean {
-  const rel = path.relative(root, candidate);
-  return !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
-}
-
-async function realpathOrUndefined(target: string): Promise<string | undefined> {
-  try {
-    return await fs.realpath(target);
-  } catch {
-    return undefined;
-  }
-}
-
-async function readlinkOrUndefined(target: string): Promise<string | undefined> {
-  try {
-    return await fs.readlink(target);
-  } catch {
-    return undefined;
-  }
+  const root = path.resolve(workspaceDir);
+  const absolute = path.resolve(root, normalized);
+  const prefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return absolute === root || absolute.startsWith(prefix) ? absolute : undefined;
 }
 
 function makeCaptureId(): string {
@@ -838,53 +714,11 @@ function normalizeCapturePath(workspaceDir: string, filePath: string): string | 
   return relative;
 }
 
-/**
- * The absolute path the capture layer may read, or `undefined` when the path
- * is not one the capture layer handles at all.
- *
- * The result is a *lexical* answer: the path is inside the workspace as a
- * string. Whether it is inside the workspace as a file is decided by
- * `isCapturedPathInsideWorkspace`, which the caller has to ask before it
- * reads anything.
- */
 function safeCapturedPath(workspaceDir: string, filePath: string): string | undefined {
   const normalized = normalizeCapturePath(workspaceDir, filePath);
   if (!normalized) return undefined;
   if (path.isAbsolute(normalized) || path.win32.isAbsolute(normalized)) return normalized;
   return path.resolve(workspaceDir, normalized);
-}
-
-/**
- * Whether `absolute` really lives inside the workspace.
- *
- * Containment is decided on the *real* paths, not on the strings: a path
- * inside the workspace whose final component — or one of its parent
- * directories — is a symlink pointing outside it is inside the workspace as
- * a string and outside it as a file, and `fs.stat`/`fs.open` follow the
- * link. Reading such a path would put the content of a file outside the
- * workspace into the turn-diff record, and from there into the database and
- * into the WebUI review panel.
- *
- * The check is the read-side twin of the one the mutation does before it
- * writes (`resolveMutationTargetPath`): the real path of the target is
- * compared with the real path of the workspace root, so a workspace that is
- * itself reached through a symlink still contains its own files, and a
- * target that cannot be resolved at all is refused rather than guessed at.
- *
- * Known boundary (unchanged by this check): the real path is resolved
- * before the read, so a symlink swapped between the check and the read is
- * still a race. Closing that needs a read that cannot follow a link
- * (`O_NOFOLLOW`), which is a larger change than this refusal.
- */
-async function isCapturedPathInsideWorkspace(
-  workspaceDir: string,
-  absolute: string,
-): Promise<boolean> {
-  const realRoot = await resolveRealPath(path.resolve(workspaceDir));
-  if (!realRoot) return false;
-  const realTarget = await resolveRealPath(absolute);
-  if (!realTarget) return false;
-  return isInsideDirectory(realRoot, realTarget);
 }
 
 async function snapshotCapturedFile(
@@ -894,13 +728,6 @@ async function snapshotCapturedFile(
 ): Promise<LocalTurnDiffSnapshotEntry> {
   const normalized = normalizeCapturePath(workspaceDir, filePath);
   if (!normalized) return { file: filePath, exists: false };
-  /* An *absolute* normalized path is the capture layer's deliberate record
-   * of a write that landed outside the workspace: `normalizeCapturePath`
-   * hands the absolute path back for those, and they keep their existing
-   * behaviour. A workspace-relative path is the one that has to be
-   * re-checked by real path below — it only *looks* contained, and a
-   * symlink inside it can point anywhere. */
-  const outsideWorkspace = path.isAbsolute(normalized) || path.win32.isAbsolute(normalized);
   const absolute = safeCapturedPath(workspaceDir, normalized);
   if (!absolute) return { file: normalized, exists: false };
   try {
@@ -912,15 +739,6 @@ async function snapshotCapturedFile(
       hash: metadataSnapshotHash(stats),
       sizeBytes: stats.size,
     };
-    if (!outsideWorkspace && !(await isCapturedPathInsideWorkspace(workspaceDir, absolute))) {
-      /* The path is inside the workspace as a string and outside it as a
-       * file: a symlink. Record that something is there — the turn did
-       * touch it — but never its content. `oversized` is the marker the
-       * rest of this layer already reads as "no content was captured", so
-       * the snapshot is not restorable either, which is what we want: the
-       * mutation refuses such a target anyway. */
-      return { ...metadataEntry, oversized: true };
-    }
     if (stats.size > MAX_TEXT_SNAPSHOT_BYTES) return { ...metadataEntry, oversized: true };
     if (budget && stats.size > budget.remainingTextBytes) {
       return { ...metadataEntry, oversized: true };

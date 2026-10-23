@@ -15,7 +15,9 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # This job runs the same verification pipeline the CI verify job runs, so
+    # it needs the same ceiling.
+    timeout-minutes: 45
     # `secrets` cannot be read inside a step's `if:` ("Secrets cannot be
     # directly referenced in if: conditionals"), so a step cannot be gated on
     # whether the credential exists without going through a job-level env entry

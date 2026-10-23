@@ -12,7 +12,9 @@ jobs:
   compatibility:
     name: compatibility (${{ matrix.os }}, ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    # This job runs the same platform profile the CI verify job runs, so it
+    # needs the same ceiling.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

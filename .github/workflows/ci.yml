@@ -54,8 +54,13 @@ jobs:
     # A ceiling, not a cost: a job that finishes in eleven minutes still takes
     # eleven minutes. The Linux profile drives the real-browser suite, which
     # launches a browser per case because each case needs a clean extension
-    # state, and that suite does not fit in fifteen minutes any more.
-    timeout-minutes: 25
+    # state, and that suite does not fit in fifteen minutes any more. The
+    # WebUI group now runs its files one at a time, and the browser gate
+    # installs the browser's system dependencies — an apt run that takes
+    # between a minute and a quarter of an hour depending on the runner's
+    # cache. The ceiling has to fit the slow end of that, or the runner
+    # cancels a job that was working.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

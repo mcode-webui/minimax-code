@@ -52,7 +52,9 @@ jobs:
   validate:
     needs: export
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # This job runs the same verification pipeline the CI verify job runs, so
+    # it needs the same ceiling.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

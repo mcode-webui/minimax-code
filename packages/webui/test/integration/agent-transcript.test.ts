@@ -709,6 +709,18 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await browserExpect(forkDialog).toBeVisible();
     await browserExpect.poll(() => requests.some((request) => request.operation === "getSessionForkOptions"))
       .toBe(true);
+    // The suggested title arrives with the fork options and is written into the
+    // field. Wait for that write to land before typing. Playwright's fill
+    // selects the field and then inserts the text in a second round trip, and
+    // a suggestion landing between the two moves the caret to the end of the
+    // suggestion, so the typed name would be appended to it instead of
+    // replacing it.
+    const forkOptionsRequest = requests.find((request) => request.operation === "getSessionForkOptions");
+    await browserExpect.poll(() => received.some((response) =>
+      response.requestId === forkOptionsRequest?.requestId && response.kind === "response",
+    )).toBe(true);
+    await browserExpect.poll(() => forkDialog.getByLabel("会话名称").inputValue(), { timeout: 20_000 })
+      .not.toBe("");
     await forkDialog.getByLabel("会话名称").fill("synthetic-message-fork");
     await forkDialog.getByRole("button", { name: "复制并进入" }).click();
     await browserExpect.poll(() => requests.some((request) => request.operation === "forkSession"))

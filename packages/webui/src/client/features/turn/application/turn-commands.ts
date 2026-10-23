@@ -86,6 +86,19 @@ export interface WebuiAttachTurnDeps {
 }
 
 /**
+ * Whether the server's active-turn answer names the turn it is talking about.
+ *
+ * The contract says the answer carries a turn id, but the wire answer is read
+ * as it arrives: a runtime that reports a busy session without naming the turn
+ * is a real answer, and this client has to decide what it can do with it. An
+ * answer that names no turn cannot be followed — there is nothing to resume,
+ * and a lease opened for it would hold the next `session.start` off.
+ */
+function namesWebuiTurn(active: { readonly turnId?: unknown }): boolean {
+  return typeof active.turnId === "string" && active.turnId.length > 0;
+}
+
+/**
  * Follow a turn this client did not start, through the same stream loop a local
  * send uses — so history anchoring, cursor resume, `resume_overflow` resync, the
  * lease and every terminal exit stay handled in exactly one place.
@@ -95,7 +108,19 @@ export function attachWebuiTurn(deps: WebuiAttachTurnDeps): Promise<void> {
   if (!sessionId || !resumeSession) return Promise.resolve();
   const existing = readStream();
   if (existing.subscription) return Promise.resolve();
-  setSending(true);
+  // The "a turn is live" mark is a claim about a **named** turn. An attach that
+  // cannot name the turn it follows is following whatever the session happens
+  // to have, and the runtime answers such an attach with whatever is left of
+  // it — often nothing, because the turn it was about has already finished.
+  //
+  // Marking the session live on that guess is not a cosmetic slip: the
+  // submission admission reads this flag as "a turn is live", so the next
+  // message is queued instead of sent, and the composer's send button becomes
+  // the stop button, which swallows the click that was meant to send it. An
+  // unnamed attach therefore never marks the session live, and never clears a
+  // mark it did not raise.
+  const marksLive = turnId !== undefined;
+  if (marksLive) setSending(true);
   return runWebuiStreamLoop(
     {
       resumeSession,
@@ -112,7 +137,7 @@ export function attachWebuiTurn(deps: WebuiAttachTurnDeps): Promise<void> {
     // Only clear the indicator if this loop still owns the stream. A loop that
     // finished after a newer turn started would otherwise make the new turn
     // look idle while it is still streaming.
-    if (ownsWebuiStreamGeneration(readStream(), generation)) setSending(false);
+    if (marksLive && ownsWebuiStreamGeneration(readStream(), generation)) setSending(false);
   });
 }
 
@@ -169,7 +194,10 @@ export function recheckWebuiSubscription(deps: WebuiRecheckSubscriptionDeps): vo
       // Scoped to the generation we decided is stale: a newer loop may have
       // claimed while the probe was in flight, and that lease is the live one.
       releaseSubscription(owned.generation);
-      if (decision === "retarget" && active) attach(active.turnId);
+      // A retarget needs a turn to retarget to. An active turn the server
+      // names without an id cannot be followed, and the lease just released
+      // leaves the next `session.start` free to attach to the turn it names.
+      if (decision === "retarget" && active && namesWebuiTurn(active)) attach(active.turnId);
       else if (decision === "release" && !active && !readStream().subscription) attach(undefined);
     })
     .catch(() => undefined);
@@ -216,6 +244,11 @@ export function recoverMissedWebuiTurn(deps: WebuiRecoverMissedTurnDeps): void {
       // Read the lease at resolution time, not at call time: a local send that
       // started while the probe was in flight has already claimed it.
       if (readStream().subscription) return;
+      // The answer has to name the turn. An active turn without an id cannot be
+      // followed, and attaching to it would claim a lease with no turn in it —
+      // and a turn-less lease holds the next `session.start` off instead of
+      // letting this client follow it.
+      if (!namesWebuiTurn(active)) return;
       attach(active.turnId);
     })
     .catch(() => undefined);

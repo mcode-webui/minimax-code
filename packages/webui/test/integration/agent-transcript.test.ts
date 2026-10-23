@@ -54,8 +54,15 @@ function frame(delta: Record<string, unknown>, finishReason: string | null = nul
 
 function isWorkspaceChangedEvent(event: unknown, workspaceDir: string): boolean {
   if (!event || typeof event !== "object") return false;
-  const candidate = event as { type?: unknown; payload?: { workspace?: unknown } };
-  return candidate.type === "workspace.git.changed" && candidate.payload?.workspace === workspaceDir;
+  const candidate = event as { type?: unknown; payload?: { workspace?: unknown; aliases?: unknown } };
+  if (candidate.type !== "workspace.git.changed") return false;
+  // The Runtime owns the canonical realpath and reports the caller's own
+  // spelling alongside it as an alias. On macOS the two differ (`/var` is a
+  // symlink to `/private/var`), so the event names this workspace either by
+  // its canonical path or by one of its aliases.
+  if (candidate.payload?.workspace === workspaceDir) return true;
+  const aliases = candidate.payload?.aliases;
+  return Array.isArray(aliases) && aliases.includes(workspaceDir);
 }
 
 async function waitForSignal(signal: Promise<void>, label: string, timeoutMs = 20_000): Promise<void> {
@@ -407,17 +414,33 @@ it("a real agent turn resumes after refresh and drains a queued message in order
       origin: new URL(url).origin,
     });
     await browserExpect(page.locator("#webui-root")).toBeVisible();
-    await browserExpect.poll(() => requests.some((request) => request.operation === "watchEvents"))
+    // The event channel opens as the client boots, so this wait is bounded by
+    // the boot budget the file already documents — not by the default 5s, which
+    // a loaded runner can pass without the client having started at all.
+    await browserExpect.poll(() => requests.some((request) => request.operation === "watchEvents"),
+      { timeout: FIRST_SCREEN_TIMEOUT_MS })
       .toBe(true);
     const composer = page.getByPlaceholder("输入消息…（输入 / 唤起命令）");
+    // The composer's own send button.
+    //
+    // `getByRole("button", { name: "发送" })` matches by substring, so it also
+    // matches the inline message editor's 发送 button and the plan card's 发送
+    // button. While a turn is live the composer shows 停止 instead of 发送, so
+    // the role query can land on one of those other buttons and the message is
+    // never dispatched at all. The composer marks its own button, and that
+    // button is in the document exactly while the composer is ready to send,
+    // so clicking it waits for the composer to settle instead of racing it.
+    const sendComposerMessage = async (message: string): Promise<void> => {
+      await composer.fill(message);
+      await page.locator("[data-webui-composer-submit]").click();
+    };
     // Wait for the product handshake deadline; a visible mount node alone does not prove React booted.
     await browserExpect(composer).toBeVisible({ timeout: FIRST_SCREEN_TIMEOUT_MS });
 
     // Exercise the latest user-message controls on a newly opened session,
     // before this page has ever been refreshed. Both actions are canceled so
     // the probe does not mutate the transcript used by the remaining journey.
-    await composer.fill("Message actions before refresh.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Message actions before refresh.");
     await browserExpect(page.getByText("Unrefreshed action probe response.")).toBeVisible({ timeout: 30_000 });
     await browserExpect.poll(() => port.getActiveTurn({ id: sessionId })).toBeUndefined();
     await expect.poll(async () => JSON.stringify((await port.getMessages({ id: sessionId })).messages ?? []))
@@ -598,8 +621,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await postRewindEditor.getByRole("button", { name: "取消" }).click();
     await browserExpect(postRewindEditor).toHaveCount(0);
 
-    await composer.fill("Please reason, then answer.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Please reason, then answer.");
 
     await waitForSignal(reasoningGate, "reasoning stream frame");
     await browserExpect(page.getByText("Reasoning before refresh.")).toBeVisible();
@@ -916,7 +938,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await browserExpect(mention).toBeVisible();
     await mention.click();
     await browserExpect(composer).toHaveValue("Summarize the referenced project file. @reference-target.md ");
-    await page.getByRole("button", { name: "发送" }).click();
+    await page.locator("[data-webui-composer-submit]").click();
     await browserExpect(page.getByText("Reference and attachment reached the runtime.")).toBeVisible({ timeout: 30_000 });
     await browserExpect.poll(async () => (await page.locator("body").textContent()) ?? "")
       .toContain("Summarize the referenced project file.");
@@ -964,8 +986,13 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     const planEntry = requests.find((request) => request.operation === "sendMessage" &&
       request.body?.content === "Plan this synthetic task.");
     expect(planEntry?.body).toMatchObject({ clientIntent: "plan-entry" });
-    expect((await port.getMessages({ id: sessionId })).messages?.some((message) =>
-      message.role === "assistant" && message.msgContent === "Synthetic plan-entry turn completed.")).toBe(true);
+    // The rendered answer and the persisted history are two different writes:
+    // the transcript shows the frame as it arrives, while the history lands a
+    // beat later. Poll the history the way the rest of this case does instead
+    // of reading it once and racing the write.
+    await expect.poll(async () => (await port.getMessages({ id: sessionId })).messages?.some((message) =>
+      message.role === "assistant" && message.msgContent === "Synthetic plan-entry turn completed.") === true)
+      .toBe(true);
     await page.getByRole("button", { name: "退出计划模式" }).click();
     await browserExpect(composer).toBeVisible();
 
@@ -1171,17 +1198,11 @@ it("a real agent turn resumes after refresh and drains a queued message in order
 
     // Stop an actively streamed turn from the mounted composer, then send a
     // follow-up in the same persisted session to prove it recovered.
-    await composer.fill("Stop this turn, then recover.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Stop this turn, then recover.");
     // The gate is the model server seeing the request that a cancelable local
     // response is streaming. The wait is for that event, not for a fixed
     // pause; the ceiling only decides how long the case may look for it.
-    // The macOS runner needs more room than the 20 seconds the other waits
-    // use: its whole verification run is about 1.5x the Linux one (197.8s
-    // against 134.3s measured on the same gate set), and this step is the
-    // first one in the case that only runs once the earlier assertions hold,
-    // so on macOS it is also the first to be reached.
-    await waitForSignal(stopResponseStartedGate, "held cancellation response", 60_000);
+    await waitForSignal(stopResponseStartedGate, "held cancellation response");
     await browserExpect(page.getByText("Cancelable local response is active.")).toBeVisible();
     const activeStopButton = page.getByRole("button", { name: "停止" });
     await browserExpect(activeStopButton).toBeVisible();
@@ -1195,7 +1216,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
       response.requestId === abortRequest?.requestId && response.kind === "response" &&
       JSON.stringify(response.body).includes('"success":true'),
     )).toBe(true);
-    await browserExpect(page.getByRole("button", { name: "发送" })).toBeVisible();
+    await browserExpect(page.locator("[data-webui-composer-submit]")).toBeVisible();
     await browserExpect(page.getByRole("button", { name: "停止" })).toHaveCount(0);
     await browserExpect.poll(() => port.getActiveTurn({ id: String(messageForkSessionId) }))
       .toBeUndefined();
@@ -1205,8 +1226,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     expect(JSON.stringify(stoppedTurnHistory.messages)).toContain("Stop this turn, then recover.");
     expect(JSON.stringify(stoppedTurnHistory.messages)).not.toContain("Canceled response must not be rendered.");
 
-    await composer.fill("Continue after stopping the prior turn.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Continue after stopping the prior turn.");
     await browserExpect(page.getByText("The session recovered after stop.")).toBeVisible({ timeout: 30_000 });
     await browserExpect.poll(() => port.getActiveTurn({ id: String(messageForkSessionId) }))
       .toBeUndefined();
@@ -1227,8 +1247,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
         }
       }
     })();
-    await composer.fill("Retry this synthetic turn after a model failure.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Retry this synthetic turn after a model failure.");
     const retryError = page.getByTestId("output-error-surface");
     await browserExpect.poll(() => retryModelAttempts, { timeout: 30_000 }).toBeGreaterThan(0);
     await browserExpect.poll(() => port.getActiveTurn({ id: String(messageForkSessionId) }), {
@@ -1322,8 +1341,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     const runtimeEventReader = (async () => {
       for await (const event of port.watchEvents(runtimeEventAbort?.signal)) runtimeEvents.push(event);
     })();
-    await composer.fill("Write a synthetic workspace change.");
-    await page.getByRole("button", { name: "发送" }).click();
+    await sendComposerMessage("Write a synthetic workspace change.");
     await browserExpect.poll(() => requests.filter((request) => request.operation === "sendMessage" &&
       request.body?.id === messageForkSessionId && request.body?.content === "Write a synthetic workspace change.",
     ).length).toBeGreaterThan(0);

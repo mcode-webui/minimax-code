@@ -155,7 +155,16 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
     });
   });
   await openManagement(page);
-  await page.getByRole("button", { name: "创建 Agent" }).click();
+  // The create menu mounts in an effect after its trigger is clicked, so the
+  // entry can still be missing a moment later — and "创建 Agent" is also the
+  // name of a button of its own on the agent list, which this same page shows
+  // once an agent form has been opened. The query is scoped to the menu and
+  // waits for the entry, so the click lands on the menu entry and never on
+  // whatever else happens to carry the same name.
+  const createMenu = page.getByRole("menu", { name: "创建" });
+  const createAgent = createMenu.getByRole("button", { name: "创建 Agent" });
+  await expect(createAgent).toBeVisible();
+  await createAgent.click();
   const dialog = page.getByRole("dialog", { name: "Agent" });
   await expectCenteredDialog(dialog, page, ".webui-agent-form");
   await expectMobileDialog(dialog, page, ".webui-agent-form");
@@ -182,7 +191,8 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
   await expect(dialog).toHaveCount(0);
 
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "创建 Agent" }).click();
+  await expect(createAgent).toBeVisible();
+  await createAgent.click();
   const reopened = page.getByRole("dialog", { name: "Agent" });
   await reopened.getByLabel("名称").fill("local-agent");
   await reopened.getByLabel("描述").fill("A synthetic local agent");

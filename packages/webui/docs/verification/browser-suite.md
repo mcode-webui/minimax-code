@@ -4,7 +4,9 @@
 `styles.css` and files under `assets/` — in a real browser. The deterministic harness server serves
 those built assets from the client output directory and refuses paths outside that directory. Run
 `pnpm build:webui` first; the script installs the
-lockfile-pinned Chromium revision when it is missing. The deterministic cases are evidence level 4 in
+lockfile-pinned Chromium revision when it is missing, and on Linux also installs Chromium's system
+dependencies, which include the CJK fonts the Chinese UI renders with. The deterministic cases are
+evidence level 4 in
 [`gates.md`](gates.md): the built client and its transport wiring are real, the server behind them is
 not in the deterministic fixture cases. `native-runtime.spec.mjs` additionally boots the real
 assembly, loopback service and native PTY bridge in a separate process with an isolated,
@@ -99,10 +101,22 @@ pnpm build:webui
 pnpm test:webui-browser
 ```
 
+The screenshots are only comparable within one font environment. The gate installs Chromium's
+Linux system dependencies, which include the CJK fonts the Chinese surfaces need; on a runner
+without them the browser has no glyph to draw for Chinese text and renders tofu boxes instead.
+The committed baselines therefore record real Chinese glyphs, and a reviewer reading a diff can
+read the Chinese in it. The same applies in reverse: regenerating the baselines anywhere that
+does not install those fonts produces boxes, and the comparison against the committed baselines
+fails. Treat a font change on the runner as a baseline change, not as a rendering difference to
+be accepted.
+
 To deliberately regenerate only these baselines, use
 `pnpm exec playwright test packages/webui/test/browser/visual-baselines.spec.mjs --update-snapshots`
 on Linux CI Chromium, inspect every resulting image, then run the same command without
-`--update-snapshots` to compare. A passing fixture screenshot proves the built client's rendered
+`--update-snapshots` to compare. Regenerate on a Linux environment that has the gate's fonts
+installed — `pnpm exec playwright install --with-deps chromium` before the run — so the new
+baselines carry the same glyphs the committed ones do. A passing fixture screenshot proves the
+built client's rendered
 state under the in-page deterministic transport; it does not prove the production service or runtime
 path. Those boundaries require the integration suites described above.
 

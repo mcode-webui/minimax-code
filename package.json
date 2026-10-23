@@ -30,7 +30,7 @@
     "check:webui-dependency": "node scripts/check-webui-dependency.mjs",
     "test:webui": "node scripts/run-vitest-suite.mjs webui",
     "test:webui-package": "node scripts/verify-webui-package.mjs",
-    "test:webui-browser": "playwright install chromium && playwright test packages/webui/test/browser",
+    "test:webui-browser": "playwright install --with-deps chromium && playwright test packages/webui/test/browser",
     "typecheck:webui": "pnpm --filter @mavis/webui typecheck:server && pnpm --filter @mavis/webui typecheck:client && pnpm --filter @mavis/webui typecheck:test",
     "check:source": "node scripts/source-inventory.mjs",
     "check:plugin": "node tools/plugins/validate-plugin.mjs",

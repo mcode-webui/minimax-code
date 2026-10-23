@@ -56,6 +56,7 @@ import type {
 import { WEBUI_BROWSER_RESTRICTED_COMMANDS } from "../../../shared/contracts/browser.js";
 import { browserOperationError } from "../errors.js";
 import {
+  WEBUI_BROWSER_CDP_INPUT_TIMEOUT_MS,
   WebuiBrowserCdpConnection,
   type WebuiBrowserCdpEvent,
 } from "./cdp-connection.js";
@@ -685,12 +686,17 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
         // Input is not retried: after a CDP timeout it is unknown whether the
         // browser acted, and replaying a click or key sequence can duplicate it.
         {
+          // An input command is answered by the browser without waiting for the
+          // page to do anything, so it carries the shorter input budget rather
+          // than the one the commands that wait for the browser to work use.
+          const budget = { timeoutMs: WEBUI_BROWSER_CDP_INPUT_TIMEOUT_MS };
           const base = { x: command.x, y: command.y };
           if (command.action === "move") {
             await connection.send(
               "Input.dispatchMouseEvent",
               { ...base, type: "mouseMoved", button: "none" },
               sessionId,
+              budget,
             );
           } else if (command.action === "scroll") {
             await connection.send("Input.dispatchMouseEvent", {
@@ -699,31 +705,32 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
               deltaX: command.deltaX,
               deltaY: command.deltaY,
               button: "none",
-            }, sessionId);
+            }, sessionId, budget);
           } else if (command.action === "press" || command.action === "release") {
             await connection.send("Input.dispatchMouseEvent", {
               ...base,
               type: command.action === "press" ? "mousePressed" : "mouseReleased",
               button: command.button,
               clickCount: command.clickCount ?? 1,
-            }, sessionId);
+            }, sessionId, budget);
           } else {
             await connection.send("Input.dispatchMouseEvent", {
               ...base,
               type: "mousePressed",
               button: command.button,
               clickCount: command.clickCount,
-            }, sessionId);
+            }, sessionId, budget);
             await connection.send("Input.dispatchMouseEvent", {
               ...base,
               type: "mouseReleased",
               button: command.button,
               clickCount: command.clickCount,
-            }, sessionId);
+            }, sessionId, budget);
           }
         }
         return;
       case "key": {
+        const budget = { timeoutMs: WEBUI_BROWSER_CDP_INPUT_TIMEOUT_MS };
         const modifiers = command.modifiers.reduce(
           (mask, modifier) => mask | CDP_MODIFIER_MASK[modifier],
           0,
@@ -737,12 +744,18 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
           "Input.dispatchKeyEvent",
           { type: command.text ? "keyDown" : "rawKeyDown", text: command.text ?? "", ...base },
           sessionId,
+          budget,
         );
-        await connection.send("Input.dispatchKeyEvent", { type: "keyUp", ...base }, sessionId);
+        await connection.send("Input.dispatchKeyEvent", { type: "keyUp", ...base }, sessionId, budget);
         return;
       }
       case "text":
-        await connection.send("Input.insertText", { text: command.text }, sessionId);
+        await connection.send(
+          "Input.insertText",
+          { text: command.text },
+          sessionId,
+          { timeoutMs: WEBUI_BROWSER_CDP_INPUT_TIMEOUT_MS },
+        );
         return;
       default: {
         const exhaustive: never = command;

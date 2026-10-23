@@ -23,8 +23,31 @@ import WebSocket from "ws";
 
 import { browserOperationError } from "../errors.js";
 
-/** How long a single CDP command may take before it is abandoned. */
-export const WEBUI_BROWSER_CDP_COMMAND_TIMEOUT_MS = 15_000;
+/**
+ * How long a single CDP command may take before it is abandoned.
+ *
+ * The budget is a guard against a wedged browser, not a performance target: a
+ * command that runs out of time rejects instead of hanging the caller
+ * forever. It has to be generous enough for a browser that is *busy* rather
+ * than broken, because the two are the same thing from here.
+ *
+ * On a loaded machine — a CI runner with three cores, where the WebUI suite
+ * drives a browser while an Agent turn is still streaming — the browser
+ * answers a page open in about half a minute and a pointer dispatch in
+ * seconds. The old fifteen-second budget turned that slowness into a
+ * failure: the open was abandoned halfway, so the panel never received a
+ * frame and the person saw an empty browser instead of a slow one.
+ */
+export const WEBUI_BROWSER_CDP_COMMAND_TIMEOUT_MS = 60_000;
+
+/**
+ * How long an input command may take.
+ *
+ * An input command is answered by the browser without waiting for the page to
+ * do anything, so it gets a shorter budget than the commands that wait for
+ * the browser to work on the page. A person is waiting for a click to land.
+ */
+export const WEBUI_BROWSER_CDP_INPUT_TIMEOUT_MS = 30_000;
 
 /** How long the WebSocket handshake may take. */
 export const WEBUI_BROWSER_CDP_HANDSHAKE_TIMEOUT_MS = 10_000;

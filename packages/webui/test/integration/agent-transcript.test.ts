@@ -699,6 +699,14 @@ it("a real agent turn resumes after refresh and drains a queued message in order
       createIsolatedWorktree: false,
     });
     expect(messageForkRequest?.body?.assistantMessageId).toEqual(expect.any(String));
+    // The reply travels on its own frame and can land after the request was
+    // observed, so wait for the forked session's id itself rather than
+    // reading the first response that happens to be there.
+    await browserExpect.poll(() => {
+      const response = received.find((candidate) => candidate.requestId === messageForkRequest?.requestId);
+      const sessionId = (response?.body as { session?: { sessionId?: unknown } } | undefined)?.session?.sessionId;
+      return typeof sessionId === "string";
+    }).toBe(true);
     const messageForkResponse = received.find((response) => response.requestId === messageForkRequest?.requestId);
     const messageForkSessionId = (messageForkResponse?.body as { session?: { sessionId?: unknown } } | undefined)
       ?.session?.sessionId;

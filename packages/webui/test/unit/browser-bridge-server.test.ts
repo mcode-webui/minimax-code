@@ -111,6 +111,32 @@ interface BridgeClient {
   readonly frames: BridgeFrame[];
   readonly opened: Promise<void>;
   waitFor<T extends object>(kind: string, timeoutMs?: number): Promise<T & BridgeFrame>;
+  /**
+   * Waits for a frame of a kind that has not been seen yet.
+   *
+   * `waitFor` finds the first frame of a kind and keeps finding it, so a
+   * command that is answered twice — a step that reads and a step that acts —
+   * needs to say which frame it is waiting for. The index is where the search
+   * starts, so the caller passes the length it had already seen.
+   */
+  waitForNext<T extends object>(
+    kind: string,
+    sinceIndex: number,
+    timeoutMs?: number,
+  ): Promise<T & BridgeFrame>;
+  /**
+   * Waits for a DevTools command of one method.
+   *
+   * An action over the bridge is a series of commands, and the one a case is
+   * about is not the first: going back reads the page, then reads the
+   * history, and only then navigates. Waiting for the method rather than for
+   * the next command is what says which of them the case is about.
+   */
+  waitForCommand<T extends object>(
+    method: string,
+    sinceIndex: number,
+    timeoutMs?: number,
+  ): Promise<T & BridgeFrame>;
 }
 
 function connectClient(url: string, headers: Record<string, string>): BridgeClient {
@@ -142,7 +168,41 @@ function connectClient(url: string, headers: Record<string, string>): BridgeClie
       await new Promise<void>((resolve) => setTimeout(resolve, 10));
     }
   };
-  return { socket, frames, opened, waitFor };
+  const waitForNext = async <T extends object>(
+    kind: string,
+    sinceIndex: number,
+    timeoutMs = 4_000,
+  ): Promise<T & BridgeFrame> => {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const found = frames
+        .slice(sinceIndex)
+        .find((frame) => frame.kind === kind);
+      if (found) return found as T & BridgeFrame;
+      if (Date.now() > deadline) {
+        throw new Error(`timed out waiting for a second "${kind}" frame`);
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  const waitForCommand = async <T extends object>(
+    method: string,
+    sinceIndex: number,
+    timeoutMs = 4_000,
+  ): Promise<T & BridgeFrame> => {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const found = frames
+        .slice(sinceIndex)
+        .find((frame) => frame.kind === "cdp" && frame.method === method);
+      if (found) return found as T & BridgeFrame;
+      if (Date.now() > deadline) {
+        throw new Error(`timed out waiting for the "${method}" command`);
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  return { socket, frames, opened, waitFor, waitForNext, waitForCommand };
 }
 
 /**
@@ -180,6 +240,138 @@ async function pairEdge(harness: Harness): Promise<BridgeClient> {
 const settle = async (): Promise<void> => {
   await new Promise<void>((resolve) => setTimeout(resolve, 150));
 };
+
+/**
+ * Answers the DevTools commands the Browser Core sends.
+ *
+ * A restricted browser-tool action is executed by the Browser Core, and the
+ * core reaches the browser through a series of DevTools commands rather than
+ * through one command that happens to do the whole thing. The commands it
+ * issues for a page move are: read the page's own summary, read the
+ * navigation history, and then navigate to the entry that was chosen from it.
+ *
+ * The answers here are the shapes the core reads. They are not a browser: the
+ * extension is a stand-in that says what a page would say.
+ */
+function answerCoreCommands(
+  client: BridgeClient,
+  seen: number,
+  history: { currentIndex: number; entries: readonly { id: number; url: string }[] },
+): void {
+  let cursor = seen;
+  // The history the extension reports moves once the page has moved: the
+  // core waits for the history to show the entry it navigated to, so a
+  // stand-in that always reported the old position would keep it waiting.
+  let currentIndex = history.currentIndex;
+  const respond = (frame: BridgeFrame, result: unknown): void => {
+    client.socket.send(
+      JSON.stringify({
+        kind: "cdp-result",
+        commandId: frame.commandId,
+        accepted: true,
+        result,
+      }),
+    );
+  };
+  const answer = async (): Promise<void> => {
+    // The cursor moves past every frame that was answered, so the loop waits
+    // for the *next* command rather than finding the same one again.
+    const frame = await client.waitForNext<BridgeFrame>("cdp", cursor);
+    cursor = client.frames.indexOf(frame) + 1;
+    switch (frame.method) {
+      case "Runtime.evaluate": {
+        // The page summary the core reads before it moves: where the page is,
+        // what it is called, and how big it is. The core also asks for the
+        // document's readiness, which is a different question and gets a
+        // different answer.
+        const expression = String(
+          (frame.params as { expression?: string } | undefined)?.expression ?? "",
+        );
+        const value = expression.includes("readyState")
+          ? { url: "https://example.com/", readyState: "complete", timeOrigin: 1 }
+          : {
+              url: "https://example.com/",
+              title: "Example",
+              viewport: { width: 1280, height: 800 },
+              scrollPosition: { x: 0, y: 0 },
+              pageHeight: 800,
+              pageWidth: 1280,
+            };
+        respond(frame, { result: { type: "object", value } });
+        return;
+      }
+      case "Page.getNavigationHistory":
+        respond(frame, { currentIndex, entries: history.entries });
+        return;
+      case "Page.navigateToHistoryEntry": {
+        const entryId = (frame.params as { entryId?: number } | undefined)?.entryId;
+        const index = history.entries.findIndex((entry) => entry.id === entryId);
+        if (index >= 0) currentIndex = index;
+        respond(frame, { frameId: "frame-1" });
+        return;
+      }
+      case "Page.getLayoutMetrics":
+        respond(frame, { cssLayoutViewport: { clientWidth: 1280, clientHeight: 800 } });
+        return;
+      case "Page.getFrameTree":
+        respond(frame, {
+          frameTree: {
+            frame: {
+              id: "frame-1",
+              url: "https://example.com/",
+              securityOrigin: "https://example.com",
+            },
+            childFrames: [],
+          },
+        });
+        return;
+      case "Page.stopLoading":
+      case "Page.enable":
+      case "DOM.enable":
+      case "Runtime.enable":
+      case "Accessibility.enable":
+        respond(frame, {});
+        return;
+      case "DOM.getDocument":
+        respond(frame, {
+          root: {
+            nodeId: 1,
+            backendNodeId: 1,
+            nodeType: 9,
+            nodeName: "#document",
+            childNodeCount: 0,
+            children: [],
+          },
+        });
+        return;
+      case "DOMSnapshot.captureSnapshot":
+        respond(frame, { documents: [], strings: [], nodes: [] });
+        return;
+      case "Accessibility.getFullAXTree":
+        respond(frame, { nodes: [] });
+        return;
+      default:
+        client.socket.send(
+          JSON.stringify({
+            kind: "cdp-result",
+            commandId: frame.commandId,
+            accepted: false,
+            error: `the extension does not support the DevTools command "${frame.method}"`,
+            unsupported: true,
+          }),
+        );
+    }
+  };
+  void (async () => {
+    for (;;) {
+      try {
+        await answer();
+      } catch {
+        return;
+      }
+    }
+  })();
+}
 
 function announceTarget(client: BridgeClient, generation: number): void {
   client.socket.send(
@@ -271,26 +463,85 @@ describe("WebUI browser bridge — the providers it lends to the browser service
     await settle();
 
     // The extension drives the person's own browser through `chrome.debugger`,
-    // which cannot open a page in it. The extension refuses the method
-    // because it is outside its supported subset, and the refusal reaches the
-    // caller as `browser_capability_denied`.
+    // which cannot open a page in it. The provider knows that without asking:
+    // the capability is missing on this surface, so the request is refused
+    // here rather than spending a round trip to be refused by the extension.
+    // The refusal reaches the caller as `browser_capability_denied`.
+    const outcome = await provider!
+      .sendCommand(
+        { targetId: TARGET_ID, generation: 4 },
+        "open_tab",
+        { url: "https://example.com/" },
+      )
+      .catch((error: unknown) => error);
+    expect(outcome).toMatchObject({ code: "browser_capability_denied" });
+    client.socket.terminate();
+  });
+
+  it("moves the page along its history when the toolbar asks to go back", { timeout: 30_000 }, async () => {
+    const harness = await startHarness();
+    const client = await pairEdge(harness);
+    const provider = harness.bridge.createProvider("edge");
+    expect(provider).toBeDefined();
+    announceTarget(client, 4);
+    await settle();
+
+    // Going back is more than one command: the page is read, the history is
+    // read, and the entry to land on is chosen from it. The extension can
+    // only be asked for the history — it does not know which direction the
+    // person pressed — so the navigation is a decision made here.
+    const seen = client.frames.length;
+    answerCoreCommands(client, seen, {
+      currentIndex: 2,
+      entries: [
+        { id: 1, url: "https://example.com/one" },
+        { id: 2, url: "https://example.com/two" },
+        { id: 3, url: "https://example.com/three" },
+      ],
+    });
+
     const pending = provider!.sendCommand(
       { targetId: TARGET_ID, generation: 4 },
-      "open_tab",
-      { url: "https://example.com/" },
+      "back",
+      {},
     );
-    const request = await client.waitFor<{ commandId: string }>("cdp");
-    client.socket.send(
-      JSON.stringify({
-        kind: "cdp-result",
-        commandId: request.commandId,
-        accepted: false,
-        error: 'the extension does not support the DevTools command "open_tab"',
-        unsupported: true,
-      }),
-    );
-    const outcome = await pending.catch((error: unknown) => error);
-    expect(outcome).toMatchObject({ code: "browser_capability_denied" });
+    const navigation = await client.waitForCommand<{
+      commandId: string;
+      method: string;
+      params: { entryId: number };
+    }>("Page.navigateToHistoryEntry", seen);
+    // The entry is the one before the current position.
+    expect(navigation.method).toBe("Page.navigateToHistoryEntry");
+    expect(navigation.params.entryId).toBe(2);
+    await expect(pending).resolves.toMatchObject({ success: true });
+    client.socket.terminate();
+  });
+
+  it("refuses to go back when the page has no history behind it", async () => {
+    const harness = await startHarness();
+    const client = await pairEdge(harness);
+    const provider = harness.bridge.createProvider("edge");
+    expect(provider).toBeDefined();
+    announceTarget(client, 4);
+    await settle();
+
+    // A history with nothing behind the current entry cannot be moved along.
+    // The action answers that it did not happen rather than navigating to the
+    // same page, which would look like the browser had ignored the person.
+    const seen = client.frames.length;
+    answerCoreCommands(client, seen, {
+      currentIndex: 0,
+      entries: [{ id: 1, url: "https://example.com/one" }],
+    });
+
+    const outcome = await provider!
+      .sendCommand(
+        { targetId: TARGET_ID, generation: 4 },
+        "back",
+        {},
+      )
+      .catch((error: unknown) => error);
+    expect(outcome).toMatchObject({ success: false });
     client.socket.terminate();
   });
 

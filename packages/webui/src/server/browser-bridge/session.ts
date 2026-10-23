@@ -98,6 +98,7 @@ export interface BrowserBridgeBridgeTargetExport {
   readonly targetId: string;
   readonly title: string;
   readonly url: string;
+  readonly faviconUrl?: string;
   readonly generation: number;
 }
 
@@ -919,6 +920,7 @@ function toTargetExport(target: WebuiBrowserBridgeTarget): BrowserBridgeBridgeTa
     targetId: target.targetId,
     title: target.title,
     url: target.url,
+    ...(target.faviconUrl ? { faviconUrl: target.faviconUrl } : {}),
     generation: target.generation,
   };
 }

@@ -105,6 +105,7 @@ export interface WebuiBrowserBridgeTarget {
   readonly targetId: string;
   readonly title: string;
   readonly url: string;
+  readonly faviconUrl?: string;
   readonly generation: number;
 }
 

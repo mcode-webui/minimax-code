@@ -323,6 +323,7 @@ export class WebuiBrowserService {
         target: { ...target, generation: state?.id.generation ?? target.generation },
         title: state?.title ?? "",
         url: state?.url ?? "",
+        ...(state?.faviconUrl ? { faviconUrl: state.faviconUrl } : {}),
         selected: selected
           ? selected.surface === target.surface &&
             selected.browserId === target.browserId &&

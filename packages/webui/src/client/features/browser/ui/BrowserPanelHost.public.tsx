@@ -473,7 +473,30 @@ export async function webuiBrowserToolbarRun(input: {
       retryable: false,
     } satisfies WebuiBrowserError;
   }
-  await input.send(webuiBrowserToolbarRequest(input.target, input.command));
+  const answer = await input.send(webuiBrowserToolbarRequest(input.target, input.command));
+  // The runtime answers a browser action that could not be carried out with
+  // `success: false` rather than with a refusal: an action that did not happen
+  // is a fact about the action, and the Agent's tools read it as such. The
+  // person pressing a toolbar button is not reading a fact — they pressed a
+  // button and nothing happened, and the panel has to say so. So the same
+  // answer is turned into the refusal the panel has always raised.
+  //
+  // The action's own answer is inside the runtime's envelope, next to the
+  // target it acted on.
+  const result = isRecord(answer) && "result" in answer ? answer.result : answer;
+  if (isRecord(result) && result.success === false) {
+    const detail = typeof result.error === "string" ? result.error : undefined;
+    throw {
+      code: "browser_capability_denied",
+      message: detail ?? "这个页面无法执行该操作。",
+      retryable: false,
+    } satisfies WebuiBrowserError;
+  }
+}
+
+/** Whether a value is a plain object the answer's fields can be read from. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 /**

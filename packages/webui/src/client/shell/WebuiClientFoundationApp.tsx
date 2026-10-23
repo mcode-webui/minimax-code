@@ -919,7 +919,7 @@ export function WebuiClientFoundationApp(
               progressOpen={progressPanelOpen}
               onOpenBrowser={() => {
                 setProgressPanelOpen(false);
-                dispatchWorkspacePanel({ type: "open-new-tab" });
+                dispatchWorkspacePanel({ type: "open-panel" });
               }}
               onToggleProgress={() => setProgressPanelOpen((open) => !open)}
               usageBanner={visibleUsageNotice ? <ConversationUsageBanner

@@ -1320,7 +1320,7 @@ export function WebuiComposer({
                  * next to controls this small. 3.2 is the floor: the hit areas
                  * are neighbouring 28px squares, and 0 or 2px stops reading as
                  * separate controls at all. */}
-                <div className="ml-auto flex items-center gap-[3.2px]">
+                <div className="webui-composer-toolbar-actions ml-auto flex items-center gap-[3.2px]">
                   <ContextUsageIndicator
                     usage={contextUsage}
                     usageQuota={usageQuota}

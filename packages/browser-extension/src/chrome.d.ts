@@ -11,6 +11,7 @@ interface WebuiBrowserExtensionTab {
   readonly active?: boolean;
   readonly title?: string;
   readonly url?: string;
+  readonly favIconUrl?: string;
   readonly status?: string;
 }
 

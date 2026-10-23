@@ -921,6 +921,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
+      '@mavis/browser-core':
+        specifier: workspace:^
+        version: link:../browser-core
       '@mavis/config':
         specifier: workspace:*
         version: link:../config

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 import { Terminal } from "@xterm/xterm";
 import { IconEdit } from "@tabler/icons-react";
 import { FitAddon } from "@xterm/addon-fit";
@@ -201,6 +201,13 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
   readonly onClose?: () => void;
 }): ReactElement {
   const [panelWidth, setPanelWidth] = useState<number>();
+  const [panelCovering, setPanelCovering] = useState(false);
+  const [panelClosing, setPanelClosing] = useState(false);
+  const [expansionMotion, setExpansionMotion] = useState<"expanding" | "collapsing">();
+  const panelStateRef = useRef(state);
+  panelStateRef.current = state;
+  const panelClosingRef = useRef(false);
+  const pendingPanelClose = useRef<WorkspacePanelCommand | undefined>(undefined);
   const resizeGesture = useRef<{ readonly pointerId: number; readonly startX: number; readonly startWidth: number } | undefined>(undefined);
   const { dom } = useWebuiBrowserCapabilities();
   // Query truth lives in the owner; this component reads its snapshot and
@@ -523,10 +530,11 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     const gesture = resizeGesture.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     const parentWidth = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect().width ?? window.innerWidth;
-    const maxWidth = Math.max(320, parentWidth * 0.95);
+    const maxWidth = Math.max(1, parentWidth);
     const minWidth = Math.min(360, maxWidth);
     const requestedWidth = Math.min(maxWidth, Math.max(minWidth, gesture.startWidth - (event.clientX - gesture.startX)));
     setPanelWidth(requestedWidth);
+    setPanelCovering(requestedWidth >= parentWidth - 1);
   };
   const stopPanelResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (resizeGesture.current?.pointerId !== event.pointerId) return;
@@ -539,17 +547,47 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     const panel = event.currentTarget.parentElement;
     const parentWidth = panel?.parentElement?.getBoundingClientRect().width ?? window.innerWidth;
     const currentWidth = panel?.getBoundingClientRect().width ?? parentWidth / 2;
-    setPanelWidth(Math.min(parentWidth * 0.95, Math.max(Math.min(360, parentWidth * 0.95), currentWidth + (event.key === "ArrowLeft" ? 24 : -24))));
+    const maxWidth = Math.max(1, parentWidth);
+    const requestedWidth = Math.min(maxWidth, Math.max(Math.min(360, maxWidth), currentWidth + (event.key === "ArrowLeft" ? 24 : -24)));
+    setPanelWidth(requestedWidth);
+    setPanelCovering(requestedWidth >= parentWidth - 1);
   };
-  return <aside className={`webui-workspace-panel ${state.expanded ? "is-expanded" : ""}`} style={panelWidth !== undefined && !state.expanded ? { width: `${panelWidth}px`, flex: `0 0 ${panelWidth}px` } : undefined} data-testid="workspace-panel" data-active-tab={tab}>
+  const handlePanelAnimationEnd = (event: ReactAnimationEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.animationName === "webui-workspace-panel-exit") {
+      const pendingClose = pendingPanelClose.current;
+      pendingPanelClose.current = undefined;
+      if (pendingClose) dispatch(pendingClose);
+      else if (onClose) onClose();
+      else dispatch({ type: "close-panel" });
+    }
+  };
+  const startPanelClosing = () => {
+    if (panelClosingRef.current) return;
+    panelClosingRef.current = true;
+    setPanelClosing(true);
+  };
+  const panelDispatch = useCallback((command: WorkspacePanelCommand) => {
+    if (command.type === "close-tab" && panelStateRef.current.tabs.length === 1) {
+      pendingPanelClose.current = command;
+      startPanelClosing();
+      return;
+    }
+    dispatch(command);
+  }, [dispatch]);
+  const toggleExpanded = () => {
+    setExpansionMotion(state.expanded ? "collapsing" : "expanding");
+    dispatch({ type: "toggle-expanded" });
+  };
+  return <aside className={`webui-workspace-panel ${state.expanded ? "is-expanded" : ""} ${panelCovering && !state.expanded ? "is-covering" : ""} ${panelClosing ? "is-closing" : ""} ${expansionMotion ? `is-${expansionMotion}` : ""}`} onAnimationEnd={handlePanelAnimationEnd} style={panelWidth !== undefined && !state.expanded && !panelCovering ? { width: `${panelWidth}px`, flex: `0 0 ${panelWidth}px` } : undefined} data-testid="workspace-panel" data-active-tab={tab}>
     <div className="webui-workspace-panel-resize-handle" role="separator" aria-label="调整工作区面板宽度" aria-orientation="vertical" aria-valuenow={Math.round(panelWidth ?? 50)} tabIndex={state.expanded ? -1 : 0} onPointerDown={startPanelResize} onPointerMove={movePanelResize} onPointerUp={stopPanelResize} onPointerCancel={stopPanelResize} onKeyDown={nudgePanelResize} />
     <div className="webui-workspace-panel-header">
       <div className="webui-workspace-tabs" role="tablist" aria-label="工作区面板标签">
-        <WebuiWorkspaceTabStrip state={state} dispatch={dispatch} sessionId={sessionId} />
+        <WebuiWorkspaceTabStrip state={state} dispatch={panelDispatch} sessionId={sessionId} />
       </div>
       <div className="webui-workspace-panel-actions">
-        <button type="button" aria-label={state.expanded ? "收起面板" : "展开面板"} aria-pressed={state.expanded} onClick={() => dispatch({ type: "toggle-expanded" })}><WebuiIconWorkspaceExpand className="size-[18px]" /></button>
-        <button type="button" className="webui-workspace-panel-close" aria-label="关闭面板" onClick={onClose}><WebuiIconClose className="size-[18px]" /></button>
+        <button type="button" aria-label={state.expanded ? "收起面板" : "展开面板"} aria-pressed={state.expanded} onClick={toggleExpanded}><WebuiIconWorkspaceExpand expanded={state.expanded} className="size-[18px]" /></button>
+        <button type="button" className="webui-workspace-panel-close" aria-label="关闭面板" disabled={panelClosing} onClick={startPanelClosing}><WebuiIconClose className="size-[18px]" /></button>
       </div>
     </div>
     {hasFileWorkspace ? <div className="webui-workspace-file-toolbar">
@@ -591,7 +629,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     {tab === "web" && activeTab?.content.kind === "web" ? <div className="webui-workspace-web-tab" data-testid="workspace-web-tab" data-tab-id={activeTab.id}>
       <BrowserPanelHost target={activeTab.content.target} url={activeTab.content.url} />
     </div> : null}
-    {tab === "launcher" && activeTab?.content.kind === "launcher" ? <WebuiWorkspaceLauncher tab={activeTab} dispatch={dispatch} sessionId={sessionId} workspaceDir={workspaceDir} /> : null}
+    {tab === "launcher" && activeTab?.content.kind === "launcher" ? <WebuiWorkspaceLauncher tab={activeTab} dispatch={panelDispatch} sessionId={sessionId} workspaceDir={workspaceDir} /> : null}
     {tab === "terminal" && terminalAvailability ? <p role="status" data-webui-terminal-availability={terminalSupport}>{terminalAvailability}</p> : null}
     {tab === "terminal" && terminalError && terminals.length === 0 ? <p role="alert">{terminalError}</p> : null}
     {tab === "terminal" ? <div className="webui-terminal-empty">{!terminalsReady ? <><p>{DESKTOP_COPY.terminalLoading}</p></> : terminals.length === 0 ? <><strong>{DESKTOP_COPY.terminalEmptyTitle}</strong><p>{DESKTOP_COPY.terminalEmptyDescription}</p></> : <><div className="webui-terminal-tabs">{terminals.map((terminal, index) => <button type="button" key={String(terminal.terminalId)} className={`file-tab group/tab-close h-8 w-40 min-w-20 ${String(terminal.terminalId) === (activeTerminalId ?? String(terminals[0]?.terminalId)) ? "bg-bg_interaction_tertiary_selected" : ""}`} onClick={() => setActiveTerminalId(String(terminal.terminalId))}><span>#{index + 1}</span>{terminal.status === "exited" ? DESKTOP_COPY.terminalExited : DESKTOP_COPY.terminalLabel}<span className="file-tab-close opacity-0 group-hover/tab-close:opacity-100"><WebuiIconClose className="size-[14px]" /></span></button>)}</div><div ref={terminalHost} className="webui-xterm-host" />{terminalError ? <p role="alert">{terminalError}</p> : null}<div className="webui-terminal-actions"><button type="button" disabled={terminalCreateDisabled} title={terminalCreateReason} onClick={createTerminal}>{DESKTOP_COPY.newTerminal}</button><button type="button" onClick={() => { const active = terminals.find((candidate) => String(candidate.terminalId) === (activeTerminalId ?? String(terminals[0]?.terminalId))); if (active && terminalOwner?.canDispose) void terminalOwner.disposeProcess(String(active.terminalId)).then(() => syncTerminalsFromOwner(terminalOwner)); }}>{DESKTOP_COPY.fileClose}</button></div></> }{terminalsReady && terminals.length === 0 ? <button type="button" disabled={terminalCreateDisabled} title={terminalCreateReason} onClick={createTerminal}>{DESKTOP_COPY.newTerminal}</button> : null}</div> : null}

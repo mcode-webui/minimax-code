@@ -38,6 +38,13 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { access, mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
+import {
+  BrowserCore,
+  type BrowserCoreSession,
+  type ClipboardProvider,
+  IsolatedClipboardProvider,
+} from "@mavis/browser-core";
+
 import type {
   WebuiBrowserImageFrame,
   WebuiBrowserInputCommand,
@@ -52,6 +59,7 @@ import {
   WebuiBrowserCdpConnection,
   type WebuiBrowserCdpEvent,
 } from "./cdp-connection.js";
+import { WebuiIsolatedChromiumCoreTransport } from "./core-transport.js";
 
 /** How long the browser may take to publish its DevTools endpoint. */
 const STARTUP_TIMEOUT_MS = 30_000;
@@ -182,12 +190,29 @@ interface WebuiIsolatedChromiumPage {
   readonly sessionId: string;
   /** The generation of the page behind the tab. */
   generation: number;
+  /** The page URL for which its favicon was last read. */
+  faviconUrlFor?: string;
+  faviconUrl?: string;
   /** The sequence number of the last frame this page delivered. */
   frameSequence: number;
   /** Whether a subscriber is currently asking for this page's pictures. */
   streaming: boolean;
   /** The subscriber that asked for this page's pictures. */
   frameHandler?: (frame: WebuiBrowserImageFrame) => void;
+  /**
+   * The Browser Core session that drives this page.
+   *
+   * One session per page, because the core models a session as a single
+   * document: the element map, the retained snapshot and the generation are
+   * facts about one page, and a second page in the same browser has its own.
+   *
+   * The core raises the generation on the same event the provider does — the
+   * main frame's navigation — so the page's own accounting and the core's
+   * agree about when a reference recorded before the navigation went stale.
+   */
+  coreSession?: BrowserCoreSession;
+  /** The clipboard this page's actions use. One per page, like the session. */
+  readonly clipboardProvider: ClipboardProvider;
 }
 
 /**
@@ -202,6 +227,16 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
 
   readonly #options: WebuiIsolatedChromiumProviderOptions;
   readonly #userDataDir: string;
+  /**
+   * The Browser Core this provider's pages are driven through.
+   *
+   * The core is provider-neutral: it owns the action set, the element
+   * references, the retained snapshots and the action deadlines, and the
+   * provider supplies only the transport. The action set it is given is the
+   * restricted command set, so the core refuses an action the set does not
+   * contain rather than the provider refusing it in a second place.
+   */
+  readonly #core: BrowserCore<string>;
   #child: ChildProcess | undefined;
   #connection: WebuiBrowserCdpConnection | undefined;
   /**
@@ -234,6 +269,11 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
     this.#options = options;
     this.#userDataDir = join(options.dataDir, "browser", "isolated-chromium", "profile");
     this.browserId = `isolated-chromium-${randomSuffix()}`;
+    this.#core = new BrowserCore({
+      provider: "webui-isolated-chromium",
+      version: 1,
+      actions: WEBUI_BROWSER_RESTRICTED_COMMANDS,
+    });
   }
 
   /**
@@ -360,6 +400,7 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
       generation: 1,
       frameSequence: 0,
       streaming: false,
+      clipboardProvider: new IsolatedClipboardProvider(),
     };
     this.#pages.set(targetId, page);
     this.#pagesBySession.set(page.sessionId, page);
@@ -375,6 +416,19 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
           "The browser page closed before it could be attached.",
         );
       }
+      // The Browser Core session is created once the page is attached and its
+      // `Page` domain is enabled. It is created here rather than lazily at the
+      // first action so that the core's own navigation listener is subscribed
+      // before the page can navigate: a session created after a navigation
+      // would miss the event and would not know that the references it holds
+      // are stale.
+      page.coreSession = this.#core.createSession(
+        new WebuiIsolatedChromiumCoreTransport(connection, {
+          sessionId: page.sessionId,
+          targetId: page.targetId,
+        }),
+        { clipboardProvider: page.clipboardProvider },
+      );
       return page;
     } catch (error) {
       this.#forgetPage(targetId);
@@ -466,6 +520,27 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
       // generation here — and cannot be driven either, so the number is only
       // ever read as the first one.
       const page = this.#pageOf(info.targetId);
+      if (page && page.faviconUrlFor !== info.url && /^https?:/u.test(info.url)) {
+        try {
+          const favicon = await connection.send<{ result?: { value?: unknown } }>(
+            "Runtime.evaluate",
+            {
+              expression: "(() => { if (document.readyState !== 'complete') return ''; const link = document.querySelector('link[rel~=icon]'); return link?.href || new URL('/favicon.ico', location.href).href; })()",
+              returnByValue: true,
+              awaitPromise: true,
+            },
+            page.sessionId,
+            { timeoutMs: 1_500 },
+          );
+          if (typeof favicon.result?.value === "string" && /^https?:/u.test(favicon.result.value)) {
+            page.faviconUrlFor = info.url;
+            page.faviconUrl = favicon.result.value;
+          }
+        } catch {
+          // A page can navigate or close between Target.getTargets and this
+          // optional metadata read; its title and URL remain usable meanwhile.
+        }
+      }
       states.push({
         id: {
           surface: this.surface,
@@ -475,6 +550,7 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
         },
         title: info.title,
         url: info.url,
+        ...(page?.faviconUrl ? { faviconUrl: page.faviconUrl } : {}),
         status: "open",
         selected: info.targetId === this.#launchTargetId,
       });
@@ -681,11 +757,14 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
   /**
    * Runs one browser command.
    *
-   * A restricted action is executed through the DevTools commands that
-   * implement it. An action that needs an element map — the ones that act on
-   * a specific element rather than on the page — is refused explicitly rather
-   * than approximated: those belong to the browser-tools path, and guessing
-   * where to click would be worse than refusing.
+   * A restricted action is executed by the Browser Core, which owns the
+   * semantics the action needs: the element map an `inspect` produced, the
+   * retained snapshot a `click`'s reference belongs to, the generation check
+   * that refuses a reference recorded before a navigation, and the action
+   * deadlines. The provider supplies the transport and nothing else.
+   *
+   * `open_tab` is the one action the core does not run: it creates a page
+   * rather than acting on one, so it is the provider's to do.
    *
    * A raw DevTools method is forwarded as-is. It reaches this method only
    * when the Full CDP switch is on; the runtime enforces that.
@@ -713,76 +792,65 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
         true,
       );
     }
-    const sessionId = page.sessionId;
-    switch (command) {
-      case "navigate": {
-        const url = params.url;
-        if (typeof url !== "string" || url.length === 0) {
-          throw browserOperationError(
-            "browser_command_invalid",
-            "navigate needs a url.",
-          );
-        }
-        return await this.#withAttachmentRetry(() =>
-          connection.send("Page.navigate", { url }, sessionId),
-        );
-      }
-      case "reload":
-        return await this.#withAttachmentRetry(() =>
-          connection.send("Page.reload", { ignoreCache: false }, sessionId),
-        );
-      case "back":
-      case "forward": {
-        const history = await connection.send<{
-          entries?: readonly { id: number; url: string }[];
-          currentIndex?: number;
-        }>("Page.getNavigationHistory", {}, sessionId);
-        const entries = history.entries ?? [];
-        const index = history.currentIndex ?? 0;
-        const next = command === "back" ? index - 1 : index + 1;
-        const entry = entries[next];
-        if (!entry) {
-          throw browserOperationError(
-            "browser_capability_denied",
-            `There is nothing to ${command} in this page's history.`,
-          );
-        }
-        return await this.#withAttachmentRetry(() =>
-          connection.send("Page.navigateToHistoryEntry", { entryId: entry.id }, sessionId),
-        );
-      }
-      case "screenshot": {
-        return await this.#withAttachmentRetry(() =>
-          connection.send("Page.captureScreenshot", { format: "png" }, sessionId),
-        );
-      }
-      case "get_dom": {
-        return await connection.send("DOM.getDocument", { depth: -1 }, sessionId);
-      }
-      case "open_tab": {
-        // The answer names the page that was created: the surface, the
-        // browser, the target and the generation the provider's own accounting
-        // gives it. A caller can address the page from this answer alone.
-        return await this.openTab(params);
-      }
-      default:
-        break;
+    if (command === "open_tab") {
+      // The answer names the page that was created: the surface, the
+      // browser, the target and the generation the provider's own accounting
+      // gives it. A caller can address the page from this answer alone.
+      return await this.openTab(params);
     }
-    if (WEBUI_BROWSER_RESTRICTED_COMMANDS.includes(command as never)) {
-      // A restricted action the isolated provider cannot execute without an
-      // element map. Refusing is the honest answer: the page is not touched.
+    if (command === "return_to_previous_tab") {
+      // The action is in the restricted set, but it is not an action of the
+      // page: it moves between the pages a run has open, and the pages a run
+      // has open are the service's record, not the provider's. The provider
+      // owns the pages of one browser, while the tabs of a run may span
+      // surfaces.
+      //
+      // The refusal names the fact rather than pretending the page could not
+      // do it: the page is fine, and the request is about something the
+      // page does not know.
       throw browserOperationError(
         "browser_capability_denied",
-        `The isolated Chromium cannot run the "${command}" action directly.`,
+        "The isolated Chromium cannot return to a previous tab; a tab belongs to the run that opened it.",
       );
+    }
+    if (WEBUI_BROWSER_RESTRICTED_COMMANDS.includes(command as never)) {
+      // A restricted action goes through the core. The core's own gate refuses
+      // an action it does not implement, and the two refuse it in one place
+      // rather than in the provider and the core.
+      const session = page.coreSession;
+      if (!session) {
+        throw browserOperationError(
+          "browser_provider_unavailable",
+          "The isolated Chromium has no such target.",
+          true,
+        );
+      }
+      return await this.#runCoreAction(session, command, params);
     }
     // Not a restricted action: a raw DevTools method, which reaches this point
     // only when the Full CDP switch is on. The result is returned rather than
     // discarded: a command whose caller asked for a value — a runtime
     // evaluation, a document snapshot — would otherwise answer with nothing.
     return await this.#withAttachmentRetry(() =>
-      connection.send(command, params, sessionId),
+      connection.send(command, params, page.sessionId),
     );
+  }
+
+  /**
+   * Runs one action through the Browser Core.
+   *
+   * The core's errors are the tool's errors: a stale reference, a missing
+   * element, an action that timed out. They are raised as they are, because
+   * the code they carry is what tells the Agent whether to inspect again, to
+   * pick another element or to try something else. Flattening them into one
+   * failure would leave the Agent guessing.
+   */
+  async #runCoreAction(
+    session: BrowserCoreSession,
+    command: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
+    return await session.execute(command, params);
   }
 
   async close(): Promise<void> {
@@ -897,6 +965,18 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
       if (frame && frame.parentId === undefined) {
         // The generation is the page's own, so one page navigating does not
         // move any other page's generation.
+        //
+        // The core keeps a generation of its own, and it raises that one on
+        // the same event: it listens for the navigation through this page's
+        // transport. The two counters are therefore moved by the same event
+        // but they are not the same number — the core's starts at zero and
+        // counts its own invalidations, while this one starts at one and
+        // counts the page's. Nothing compares them: the core checks its
+        // references against its own counter, and the panel and the target
+        // registry check an input against this one. What they must share is
+        // the *moment* — a reference has to go stale for the core at the same
+        // time the page stops being current for the panel — and they do,
+        // because both move on this event.
         page.generation += 1;
         this.#announceTargetChange(page);
       }

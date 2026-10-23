@@ -6,7 +6,24 @@
    * radius, with the shadow added from `sm` upward. Same reason
    * as `.webui-hero-avatar` for living here instead of in the markup. */
   .webui-composer-card {
+    min-width: 0;
     box-shadow: 0 0 10px 0 var(--shadow_default);
+  }
+
+  [data-webui-composer-toolbar] {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  [data-webui-composer-toolbar] > * {
+    min-width: 0;
+  }
+
+  .webui-composer-toolbar-actions {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   /* The surface — the background, the border, the radius, the shadow and the

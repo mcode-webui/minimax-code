@@ -16,6 +16,30 @@
 //
 // The list covers what Browser Use actually needs: reading a page, evaluating
 // against it, and driving it.
+//
+// The list is what the **Browser Core** needs, not what this extension would
+// like to be able to do. Browser Core is the layer that turns an opaque
+// element reference into a coordinate, that keeps a reference from outliving
+// the document it was taken from, and that reports what a page is made of. It
+// reaches all of that through the DevTools domains below, so a command that is
+// not listed is a command the Browser Use on this surface cannot work
+// without.
+//
+// The surface the extension drives is the person's own browser, so the list
+// stays as narrow as the work needs: every entry is one the Browser Core's
+// action path calls, and nothing is listed for a capability that only the
+// isolated Chromium — which this process launches and owns, and which can
+// therefore be driven directly — needs.
+//
+// One capability is deliberately absent: `Page.captureScreenshot`. The
+// extension's live image stream is how the panel shows a tab, and it goes
+// through `chrome.tabs.captureVisibleTab`, which can only capture the tab
+// the person is currently looking at in a window that is in front. A
+// DevTools screenshot has no such limit — it would capture any tab, including
+// the ones the person is not looking at. That is a different thing from
+// showing them a tab they opened, and it is not a capability the Browser Core
+// needs in order to act on a page: it needs to see the page, and the page's
+// own geometry is read from the DOM.
 
 /**
  * The DevTools commands the extension will send.
@@ -23,31 +47,51 @@
  * Chrome documents the `chrome.debugger` API's supported domains at
  * <https://developer.chrome.com/docs/extensions/reference/api/debugger>. The
  * commands below are drawn from the domains it lists — Accessibility, DOM,
- * DOMDebugger, Emulation, Fetch, Input, Log, Network, Page, Runtime — and each
- * is one that the browser's own documentation lists as supported.
+ * DOMDebugger, DOMSnapshot, Emulation, Fetch, Input, Log, Network, Page,
+ * Runtime — and each is one that the browser's own documentation lists as
+ * supported.
  */
 export const WEBUI_BROWSER_BRIDGE_CDP_COMMANDS: ReadonlySet<string> = new Set([
   // Reading the page.
+  "DOM.enable",
   "DOM.getDocument",
   "DOM.querySelector",
+  "DOM.querySelectorAll",
   "DOM.getOuterHTML",
   "DOM.describeNode",
+  "DOM.getBoxModel",
+  "DOM.getContentQuads",
+  "DOM.getAttributes",
+  "DOM.getFrameOwner",
+  "DOM.resolveNode",
+  "DOM.pushNodesByBackendIdsToFrontend",
+  "DOM.scrollIntoViewIfNeeded",
+  "DOM.focus",
   "DOMDebugger.getEventListeners",
+  "DOMSnapshot.captureSnapshot",
+  "DOMSnapshot.enable",
+  "Runtime.enable",
   "Runtime.evaluate",
   "Runtime.callFunctionOn",
   "Runtime.getProperties",
   "Runtime.releaseObject",
+  "Accessibility.enable",
   "Accessibility.getFullAXTree",
+  "Network.enable",
   // Driving the page.
   "Input.dispatchMouseEvent",
   "Input.dispatchKeyEvent",
   "Input.insertText",
   "Input.dispatchTouchEvent",
   // Navigating it.
+  "Page.enable",
   "Page.navigate",
   "Page.reload",
   "Page.getNavigationHistory",
   "Page.navigateToHistoryEntry",
+  "Page.getFrameTree",
+  "Page.getLayoutMetrics",
+  "Page.stopLoading",
   // The network, read-only.
   "Network.getCookies",
   "Network.getResponseBody",

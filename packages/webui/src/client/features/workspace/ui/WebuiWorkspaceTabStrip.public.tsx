@@ -47,7 +47,6 @@ import {
   type WorkspacePanelTab,
 } from "../projection/workspace-panel-state.js";
 import {
-  WebuiIconAgent,
   WebuiIconClose,
   WebuiIconDiffFile,
   WebuiIconFile,
@@ -126,12 +125,13 @@ export function webuiWorkspaceTabStripReconcile(
     .filter((published) => {
       const current = known.get(`${published.target.browserId}/${published.target.targetId}`);
       // A web tab the panel does not have yet is new, and a web tab whose
-      // title, url or generation moved is the same tab showing another page.
+      // title, url, favicon or generation moved is the same tab showing another page.
       // A snapshot that changes nothing produces no work.
       if (!current) return true;
       return (
         current.title !== published.title ||
         current.url !== published.url ||
+        current.faviconUrl !== published.faviconUrl ||
         current.target.generation !== published.target.generation
       );
     })
@@ -141,6 +141,7 @@ export function webuiWorkspaceTabStripReconcile(
         target: published.target,
         title: published.title,
         url: published.url,
+        ...(published.faviconUrl ? { faviconUrl: published.faviconUrl } : {}),
       },
       target: published.target,
     }));
@@ -153,11 +154,22 @@ export function webuiWorkspaceTabStripReconcile(
  * are the strip's, because a glyph is a rendering of the content rather than
  * a fact about it.
  */
-function fileTabGlyph(item: WorkspacePanelTab): ReactElement | null {
+function workspaceTabGlyph(item: WorkspacePanelTab): ReactElement {
+  if (item.content.kind === "review") {
+    return <WebuiIconWorkspaceReview className="webui-workspace-tab-file-icon" />;
+  }
+  if (item.content.kind === "terminal") {
+    return <WebuiIconWorkspaceTerminal className="webui-workspace-tab-file-icon" />;
+  }
+  if (item.content.kind === "canvas") {
+    return <WebuiIconWorkspaceCanvas className="webui-workspace-tab-file-icon" />;
+  }
   if (item.content.kind === "files") {
     return <WebuiIconFile className="webui-workspace-tab-file-icon" />;
   }
-  if (item.content.kind !== "file-preview") return null;
+  if (item.content.kind !== "file-preview") {
+    return <WebuiIconFile className="webui-workspace-tab-file-icon" />;
+  }
   const extension = item.content.path.split(/[./\\]/u).at(-1)?.toLowerCase();
   if (extension === "md" || extension === "mdx") {
     return <span className="webui-workspace-filetype-badge is-markdown" aria-hidden="true">M↓</span>;
@@ -172,6 +184,38 @@ function fileTabGlyph(item: WorkspacePanelTab): ReactElement | null {
     return <span className="webui-workspace-filetype-badge is-json" aria-hidden="true">{ }</span>;
   }
   return <WebuiIconDiffFile fileName={item.content.path} className="webui-workspace-tab-file-icon" />;
+}
+
+function workspaceTabStripGlyph(item: WorkspacePanelTab): ReactElement {
+  if (item.content.kind === "launcher") {
+    return <span className="webui-workspace-tab-glyph webui-workspace-web-glyph" aria-hidden="true"><WebuiIconGlobe className="size-[18px]" /></span>;
+  }
+  if (item.content.kind === "web" && item.content.faviconUrl) {
+    const pageUrl = item.content.url;
+    return <span className="webui-workspace-tab-glyph webui-workspace-web-glyph" aria-hidden="true">
+      <img src={item.content.faviconUrl} alt="" onError={(event) => {
+        const image = event.currentTarget;
+        if (image.dataset.fallback !== "true") {
+          image.dataset.fallback = "true";
+          try {
+            const fallback = new URL("/favicon.ico", pageUrl);
+            if ((fallback.protocol === "https:" || fallback.protocol === "http:") && fallback.href !== image.src) {
+              image.src = fallback.href;
+              return;
+            }
+          } catch {
+            // A malformed page URL has no site-level fallback icon.
+          }
+        }
+        image.hidden = true;
+        image.nextElementSibling?.removeAttribute("hidden");
+      }} />
+      <span hidden><WebuiIconGlobe className="size-[18px]" /></span>
+    </span>;
+  }
+  return item.content.kind === "web"
+    ? <span className="webui-workspace-tab-glyph webui-workspace-web-glyph" aria-hidden="true"><WebuiIconGlobe className="size-[18px]" /></span>
+    : workspaceTabGlyph(item);
 }
 
 /**
@@ -278,17 +322,7 @@ export function WebuiWorkspaceTabStrip({
             data-testid={`workspace-tab-${item.id}`}
             onClick={() => dispatch({ type: "select-tab", tabId: item.id })}
           >
-            {item.content.kind === "launcher" || item.content.kind === "web" ? (
-              // A web tab's glyph is the globe every browser puts on a page
-              // that has no icon of its own. The new tab page uses it too:
-              // both tabs lead to web pages. Fetching a site's icon is a
-              // separate piece of work and is not part of this.
-              <span className="webui-workspace-tab-glyph webui-workspace-web-glyph" aria-hidden="true">
-                <WebuiIconGlobe className="size-3" />
-              </span>
-            ) : (
-              fileTabGlyph(item)
-            )}
+            {workspaceTabStripGlyph(item)}
             <span className="webui-workspace-tab-label">{webuiWorkspaceTabLabel(item)}</span>
           </button>
           <button
@@ -380,11 +414,17 @@ export function WebuiWorkspaceLauncher({
         a browser's new tab page is built: the one thing a person came here to
         do is the first thing in front of them, and the shortcuts follow it.
       */}
-      <div className="webui-workspace-launcher-brand" data-testid="workspace-launcher-brand" aria-hidden="true">
-        <WebuiIconAgent className="size-20" />
+      <div className="webui-workspace-launcher-brand" data-testid="workspace-launcher-brand" role="img" aria-label="MiniMax">
+        <span className="webui-workspace-launcher-wordmark" aria-hidden="true">
+          <span className="webui-workspace-launcher-wordmark-mini">
+            <span className="is-blue">M</span><span className="is-red is-lower">i</span><span className="is-yellow is-lower">n</span><span className="is-blue is-lower">i</span>
+          </span><span className="webui-workspace-launcher-wordmark-max">
+            <span className="is-green">M</span><span className="is-red is-lower">a</span><span className="is-blue is-lower is-final">x</span>
+          </span>
+        </span>
       </div>
       <form className="webui-workspace-launcher-omnibox" onSubmit={submit}>
-        <WebuiIconSearch className="webui-workspace-launcher-omnibox-glyph size-4 shrink-0" />
+        <WebuiIconSearch className="webui-workspace-launcher-omnibox-glyph size-5 shrink-0" />
         <input
           className="webui-workspace-launcher-omnibox-input"
           type="text"
@@ -404,7 +444,7 @@ export function WebuiWorkspaceLauncher({
           {request && !request.error ? (
             STRIP_COPY.launcherPending
           ) : (
-            <WebuiIconSend className="size-3" />
+            <WebuiIconSend className="size-4" />
           )}
         </button>
       </form>
@@ -529,12 +569,12 @@ export function webuiWorkspaceLauncherTileCommand(
 function launcherTileGlyph(kind: WebuiWorkspaceLauncherTile["kind"]): ReactElement {
   switch (kind) {
     case "review":
-      return <WebuiIconWorkspaceReview className="size-[18px] shrink-0" />;
+      return <WebuiIconWorkspaceReview className="size-6 shrink-0" />;
     case "terminal":
-      return <WebuiIconWorkspaceTerminal className="size-[18px] shrink-0" />;
+      return <WebuiIconWorkspaceTerminal className="size-6 shrink-0" />;
     case "canvas":
-      return <WebuiIconWorkspaceCanvas className="size-[18px] shrink-0" />;
+      return <WebuiIconWorkspaceCanvas className="size-6 shrink-0" />;
     default:
-      return <WebuiIconFile className="size-[18px] shrink-0" />;
+      return <WebuiIconFile className="size-6 shrink-0" />;
   }
 }

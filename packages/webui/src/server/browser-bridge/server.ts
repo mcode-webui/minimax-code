@@ -30,6 +30,12 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import {
+  BrowserCore,
+  type BrowserCoreSession,
+} from "@mavis/browser-core";
+
+import {
+  WEBUI_BROWSER_RESTRICTED_COMMANDS,
   WEBUI_BRIDGE_BROWSER_SURFACES,
   type WebuiBrowserErrorCode,
   type WebuiBrowserImageFrame,
@@ -47,6 +53,7 @@ import {
   type SecureCredentialStore,
 } from "./credential-store.js";
 import { admitBrowserBridgeUpgrade, parseExtensionOrigin } from "./admission.js";
+import { WebuiBridgeCoreTransport } from "./core-transport.js";
 import { BrowserBridgePairing } from "./pairing.js";
 import { BrowserBridgeRegistry } from "./registry.js";
 import { BrowserBridgeSession } from "./session.js";
@@ -188,6 +195,16 @@ interface BridgeSurfaceState {
   readonly targetChangeListeners: Set<
     (change: { readonly targetId: string; readonly generation: number }) => void
   >;
+  /**
+   * The Browser Core session of each tab, keyed by tab.
+   *
+   * The sessions live on the surface rather than on a provider because a
+   * provider is borrowed for one operation and handed back: the browser
+   * service asks for a provider per call, and a session that lived on the
+   * provider would be rebuilt every time — losing the element map and the
+   * retained snapshot on each call, which is exactly what those hold.
+   */
+  readonly coreSessions: Map<string, BrowserCoreSession>;
 }
 
 /** The non-secret per-surface state `snapshot()` reports. */
@@ -450,6 +467,7 @@ async readInstallationKey(
       targets: new Map(),
       frameListeners: new Map(),
       targetChangeListeners: new Set(),
+      coreSessions: new Map(),
     };
     this.#observeHello(ws, state);
     session.on("targets", (announcedBrowserId: string, targets) => {
@@ -567,6 +585,15 @@ async readInstallationKey(
       if (previous && previous.generation > target.generation) continue;
       state.targets.set(target.targetId, target);
       if (previous && previous.generation < target.generation) {
+        // The extension raises a tab's generation when the document behind it
+        // is replaced, and the bridge carries no DevTools events — so this
+        // announcement is how the Browser Core learns that the page it was
+        // looking at is gone. The core's references into the previous document
+        // must stop being usable at that moment, and this is the call that
+        // makes them stop.
+        state.coreSessions
+          .get(target.targetId)
+          ?.synchronizeGeneration(target.generation);
         for (const listener of [...state.targetChangeListeners]) {
           listener({ targetId: target.targetId, generation: target.generation });
         }
@@ -619,6 +646,16 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
 
   readonly #state: BridgeSurfaceState;
   readonly #registry: BrowserBridgeRegistry;
+  /**
+   * The Browser Core the bridged tabs are driven through.
+   *
+   * The core is provider-neutral: it owns the action set, the element
+   * references, the retained snapshots and the action deadlines, and the
+   * bridge supplies only the transport. The action set it is given is the
+   * restricted command set, so the core refuses an action the set does not
+   * contain rather than the provider refusing it in a second place.
+   */
+  readonly #core: BrowserCore<string>;
   /** The callback this provider installed per streamed target. */
   readonly #streamed = new Map<string, (frame: WebuiBrowserImageFrame) => void>();
 
@@ -630,6 +667,11 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
     this.#state = state;
     this.#registry = registry;
     this.surface = surface;
+    this.#core = new BrowserCore({
+      provider: `webui-bridge-${surface}`,
+      version: 1,
+      actions: WEBUI_BROWSER_RESTRICTED_COMMANDS,
+    });
   }
 
   /**
@@ -653,6 +695,7 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
         },
         title: target.title,
         url: target.url,
+        ...(target.faviconUrl ? { faviconUrl: target.faviconUrl } : {}),
         status: "open",
         // Selection is the browser service's state, not the bridge's: the panel
         // decides which tab it is showing and overwrites this.
@@ -755,10 +798,15 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
   /**
    * Runs one browser command against the extension's browser.
    *
-   * A **restricted browser-tool action** is mapped to the DevTools command
-   * that implements it. A **raw DevTools method** is forwarded as-is — the
-   * runtime has already decided whether the Full CDP switch allows it, and
-   * this class does not keep a second opinion about that.
+   * A **restricted browser-tool action** is executed by the Browser Core,
+   * which owns the semantics the action needs: the element map an `inspect`
+   * produced, the retained snapshot a `click`'s reference belongs to, and the
+   * generation check that refuses a reference recorded before the document
+   * behind the tab was replaced.
+   *
+   * A **raw DevTools method** is forwarded as-is — the runtime has already
+   * decided whether the Full CDP switch allows it, and this class does not
+   * keep a second opinion about that.
    *
    * An action the extension cannot perform is refused with a reason. It is not
    * approximated: a click that landed somewhere else would be worse than a
@@ -769,6 +817,22 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
     command: string,
     params: Record<string, unknown>,
   ): Promise<unknown> {
+    if (command === "open_tab") {
+      // The extension's debugger cannot open a page in the person's browser.
+      // The refusal names that fact rather than the action's name, because
+      // what is missing is the capability and not the request.
+      throw new WebuiBridgeOperationError(
+        "browser_capability_denied",
+        `The ${this.surface} surface cannot open a tab; it is driven through the extension's debugger, which cannot open a page in the person's browser.`,
+      );
+    }
+    if (WEBUI_BROWSER_RESTRICTED_COMMANDS.includes(command as never)) {
+      // A restricted action goes through the core. The core's own gate
+      // refuses an action it does not implement, and the two refuse it in one
+      // place rather than in the provider and the core.
+      const session = this.#coreSessionOf(target);
+      return await session.execute(command, params);
+    }
     const wire = this.#wireCommand(target, command, params);
     if (!wire) {
       throw new WebuiBridgeOperationError(
@@ -792,6 +856,77 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
       throw new WebuiBridgeOperationError(
         "browser_operation_timeout",
         `The ${this.surface} surface did not answer the command "${command}" in time.`,
+      );
+    }
+    throw new WebuiBridgeOperationError(
+      outcome.unsupported ? "browser_capability_denied" : "browser_provider_failed",
+      outcome.reason,
+    );
+  }
+
+  /**
+   * The Browser Core session of a tab.
+   *
+   * One session per tab, and it outlives the provider that borrows it: the
+   * browser service asks the bridge for a provider per call, and a session
+   * that were rebuilt on each call would lose the element map and the retained
+   * snapshot every time — which is what makes a reference act on the element
+   * it names.
+   *
+   * A tab whose generation has moved since the session was created has a
+   * session whose references are stale, and the core has been told so when
+   * the announcement arrived. The session is still the right one: it holds
+   * the core's own record of the tab, and a new session would start with an
+   * empty element map — which is the same state, reached by throwing away
+   * work the Agent may still be relying on.
+   */
+  #coreSessionOf(target: { readonly targetId: string; readonly generation: number }): BrowserCoreSession {
+    const existing = this.#state.coreSessions.get(target.targetId);
+    if (existing) return existing;
+    const session = this.#core.createSession(
+      new WebuiBridgeCoreTransport(
+        {
+          run: async (targetId, generation, method, params) =>
+            await this.#dispatchCdp({ targetId, generation }, method, params),
+        },
+        {
+          targetId: target.targetId,
+          currentGeneration: () =>
+            this.#state.targets.get(target.targetId)?.generation ?? target.generation,
+        },
+      ),
+    );
+    this.#state.coreSessions.set(target.targetId, session);
+    return session;
+  }
+
+  /**
+   * Dispatches one DevTools command to a target and returns its result.
+   *
+   * The refusal of a command that did not run comes back as an error here,
+   * because every caller of this path is a single action whose failure is the
+   * caller's failure.
+   */
+  async #dispatchCdp(
+    target: { readonly targetId: string; readonly generation: number },
+    method: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
+    const outcome = await this.#registry.dispatchCdp({
+      target: {
+        surface: this.surface,
+        browserId: this.#state.browserId,
+        targetId: target.targetId,
+        generation: target.generation,
+      },
+      method,
+      params,
+    });
+    if (outcome.kind === "accepted") return outcome.result;
+    if (outcome.kind === "timeout") {
+      throw new WebuiBridgeOperationError(
+        "browser_operation_timeout",
+        `The ${this.surface} surface did not answer the command "${method}" in time.`,
       );
     }
     throw new WebuiBridgeOperationError(
@@ -826,11 +961,6 @@ class BridgeProvider implements WebuiBridgeSurfaceProvider {
       }
       case "reload":
         return { ...base, method: "Page.reload", params: {} };
-      case "back":
-      case "forward":
-        // The history is read first, so the navigation is a decision rather
-        // than an offset the extension would have to guess.
-        return { ...base, method: "Page.getNavigationHistory", params: {} };
       case "get_dom":
         return { ...base, method: "DOM.getDocument", params: { depth: -1 } };
       default:

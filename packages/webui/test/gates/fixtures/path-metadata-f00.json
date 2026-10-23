@@ -3514,6 +3514,15 @@
       "home": "outside"
     },
     {
+      "path": "runtime/browser/isolated-chromium/core-transport.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/browser/isolated-chromium/provider.ts",
       "layers": [
         "runtime"
@@ -3920,6 +3929,15 @@
     },
     {
       "path": "server/browser-bridge/credential-store.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/core-transport.ts",
       "layers": [
         "server"
       ],

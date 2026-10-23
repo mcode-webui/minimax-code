@@ -29,6 +29,7 @@ export interface WebuiBrowserExtensionTab {
   readonly active?: boolean;
   readonly title?: string;
   readonly url?: string;
+  readonly favIconUrl?: string;
 }
 
 export interface WebuiBrowserBridgeTabsApi {
@@ -163,6 +164,7 @@ export function createWebuiBrowserBridgeTargetRegistry(
           targetId,
           title: tab.title ?? "",
           url,
+          ...(tab.favIconUrl ? { faviconUrl: tab.favIconUrl } : {}),
           generation: generations[targetId] ?? FIRST_GENERATION,
         });
       }

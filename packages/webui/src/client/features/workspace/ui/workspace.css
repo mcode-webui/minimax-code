@@ -177,8 +177,13 @@
   }
 
   /* Workspace panel, progress overview and workspace review surfaces. */
-  .webui-workspace-panel { position: relative; display: flex; width: 50%; min-width: 0; min-height: 0; flex: 0 1 50%; flex-direction: column; overflow: hidden; border-left: 1px solid var(--border_default); background: var(--bg_default_primary); color: var(--text_default_primary); animation: webui-panel-enter-right 180ms cubic-bezier(.2, .7, .2, 1) both; }
-  .webui-workspace-panel.is-expanded { position: fixed; inset: 0; }
+  .webui-workspace-panel { position: relative; display: flex; width: 50%; min-width: 0; min-height: 0; flex: 0 1 50%; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; border-left: 1px solid var(--border_default); background: var(--bg_default_primary); color: var(--text_default_primary); animation: webui-panel-enter-right 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-expanded, .webui-workspace-panel.is-covering { position: absolute; inset: 0; z-index: 70; width: auto; flex: none; }
+  .webui-workspace-panel.is-expanded { animation: webui-workspace-panel-expand 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-covering:not(.is-expanded) { animation: none; }
+  .webui-workspace-panel.is-expanding { animation: webui-workspace-panel-expand 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-collapsing { animation: webui-workspace-panel-collapse 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-closing { pointer-events: none; animation: webui-workspace-panel-exit 180ms cubic-bezier(.2, .7, .2, 1) both; }
   .webui-workspace-panel-resize-handle { position: absolute; top: 0; bottom: 0; left: 0; z-index: 5; width: 8px; cursor: col-resize; touch-action: none; }
   .webui-workspace-panel-resize-handle:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -2px; }
   .webui-workspace-panel.is-expanded .webui-workspace-panel-resize-handle { display: none; }
@@ -187,22 +192,30 @@
    * from its fixed edge. Width is composited by layout without the expensive
    * clip-path redraw that made the old top-to-bottom reveal stutter. */
   .webui-session-has-progress-panel { box-sizing: border-box; padding-right: 312px; }
+
+  @keyframes webui-workspace-panel-expand { from { opacity: .88; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes webui-workspace-panel-collapse { from { opacity: .88; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes webui-workspace-panel-exit { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(18px); } }
   .webui-workspace-panel-header, .webui-workspace-panel-actions, .webui-workspace-tabs, .webui-workspace-tab { display: flex; align-items: center; }
-  .webui-workspace-panel-header { position: relative; z-index: 2; min-height: 56px; flex: 0 0 56px; justify-content: space-between; gap: var(--spacing_8); border-bottom: 1px solid var(--border_default); padding: 0 var(--spacing_8); }
-  .webui-workspace-tabs { min-width: 0; flex: 1 1 auto; gap: var(--spacing_8); overflow: visible; }
-  .webui-workspace-tab-list { display: flex; min-width: 0; flex: 1 1 0; align-items: center; gap: var(--spacing_4); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .webui-workspace-panel-header { position: relative; z-index: 2; min-height: 42px; flex: 0 0 42px; justify-content: space-between; gap: var(--spacing_8); border-bottom: 1px solid var(--border_default); background: var(--bg_default_secondary); padding: 0 var(--spacing_8); }
+  .webui-workspace-tabs { min-width: 0; flex: 1 1 auto; align-self: stretch; gap: var(--spacing_8); overflow: visible; }
+  .webui-workspace-tab-list { display: flex; min-width: 0; flex: 1 1 0; align-items: center; gap: 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
   .webui-workspace-tab-list::-webkit-scrollbar { display: none; }
-  .webui-workspace-tab { max-width: 180px; min-width: 104px; height: 40px; flex: 0 0 auto; gap: var(--spacing_4); border-radius: 10px; background: transparent; color: var(--text_default_secondary); }
-  .webui-workspace-tab.is-active { background: var(--bg_interaction_tertiary_selected); color: var(--text_default_primary); }
+  .webui-workspace-tab { position: relative; max-width: 144px; min-width: 88px; height: 32px; flex: 0 1 144px; gap: var(--spacing_4); border: 1px solid transparent; border-bottom: 1px solid transparent; border-radius: 12px 12px 0 0; background: var(--bg_default_secondary); color: var(--text_default_secondary); transition: background-color 100ms ease; }
+  .webui-workspace-tab.is-active { border-color: var(--border_default); border-bottom-color: var(--bg_default_primary); background: var(--bg_default_primary); color: var(--text_default_primary); }
+  .webui-workspace-tab:not(.is-active)::after { position: absolute; top: 50%; right: -2px; width: 1px; height: 20px; transform: translateY(-50%); background: var(--border_default); content: ""; }
+  .webui-workspace-tab:not(.is-active):hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-tab button, .webui-workspace-panel-actions button { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; padding: var(--spacing_8); color: inherit; }
-  .webui-workspace-tab button:first-child { width: 100%; min-width: 0; height: 100%; justify-content: flex-start; gap: var(--spacing_8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .webui-workspace-tab-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .webui-workspace-tab-file-icon { width: 16px; height: 16px; flex: 0 0 16px; }
-  /* The strip owns the per-tab glyphs for the new kinds. Web and launcher
-   * tabs both use the browser's globe; the strip does not fetch favicons. */
-  .webui-workspace-tab-glyph { width: 16px; height: 16px; flex: 0 0 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; }
-  .webui-workspace-web-glyph { color: var(--icon_default_secondary, #5b6473); }
-  .webui-workspace-filetype-badge { display: inline-flex; width: 16px; height: 16px; flex: 0 0 16px; align-items: center; justify-content: center; font-family: ui-monospace, monospace; font-size: 9px; font-weight: 600; line-height: 1; }
+  .webui-workspace-tab button:first-child { width: 100%; min-width: 0; height: 100%; justify-content: flex-start; gap: var(--spacing_8); overflow: hidden; padding-right: 28px; text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-tab button:first-child:focus-visible, .webui-workspace-tab button:last-child:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -3px; }
+  .webui-workspace-tab-label { min-width: 0; overflow: hidden; font-size: var(--size_14); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-tab-file-icon { width: 18px; height: 18px; flex: 0 0 18px; }
+  /* The strip owns the per-tab glyphs for the new kinds. */
+  .webui-workspace-tab-glyph { width: 18px; height: 18px; flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; color: var(--icon_default_primary); }
+  .webui-workspace-web-glyph { color: var(--icon_default_primary); }
+  .webui-workspace-web-glyph img { display: block; width: 18px; height: 18px; object-fit: contain; }
+  .webui-workspace-web-glyph img[hidden] { display: none; }
+  .webui-workspace-filetype-badge { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; line-height: 1; }
   .webui-workspace-filetype-badge.is-markdown { color: var(--text_default_accent); }
   .webui-workspace-filetype-badge.is-javascript { border-radius: 2px; background: #f4d54e; color: #403600; }
   .webui-workspace-filetype-badge.is-typescript { border-radius: 2px; background: #3178c6; color: #fff; }
@@ -218,15 +231,13 @@
   .webui-workspace-filetype-badge.is-xml { color: #e37933; font-weight: 700; }
   .webui-workspace-filetype-badge.is-yaml { color: #cb171e; font-weight: 700; }
   .webui-workspace-filetype-badge.is-code { color: #3178c6; font-weight: 700; }
-  .webui-workspace-tab button:last-child { position: absolute; top: 50%; right: 4px; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 5px; padding: 0; color: var(--icon_default_tertiary); opacity: 0; }
-  .webui-workspace-tab { position: relative; }
+  .webui-workspace-tab button:last-child { position: absolute; top: 50%; right: 4px; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 5px; padding: 0; color: var(--icon_default_tertiary); opacity: .72; }
   .webui-workspace-tab:hover button:last-child, .webui-workspace-tab.is-active button:last-child { opacity: 1; }
-  .webui-workspace-tab:hover button:first-child, .webui-workspace-tab.is-active button:first-child { padding-right: 24px; }
   .webui-workspace-panel-actions button:hover { background: var(--bg_interaction_tertiary_hover); }
   /* The strip's "+" opens a fresh new tab page. It used to sit beside the add
    * menu's "+", which opened a tool tab behind a dropdown; the menu's four
    * entries are the launcher's tiles now, and this is the only way in. */
-  .webui-workspace-new-tab-trigger { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 6px; background: transparent; color: var(--icon_default_secondary, #5b6473); font-size: 16px; line-height: 1; }
+  .webui-workspace-new-tab-trigger { display: inline-flex; width: 36px; height: 36px; flex: 0 0 36px; align-items: center; justify-content: center; border-radius: 8px; background: transparent; color: var(--icon_default_secondary, #5b6473); font-size: 22px; font-weight: var(--weight_regular); line-height: 1; }
   .webui-workspace-new-tab-trigger:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-panel-actions { flex: 0 0 auto; gap: var(--spacing_8); padding-left: var(--spacing_4); }
   .webui-workspace-panel-actions button { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; color: var(--icon_default_secondary); }
@@ -278,25 +289,36 @@
   /* The new tab page: the tiles it opens a view from, and the URL box that
    * opens a page. It is a tab's content, so it fills the body of the panel
    * rather than sitting in the strip. */
-  .webui-workspace-launcher { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing_32); padding: var(--spacing_24) var(--spacing_24) calc(var(--spacing_24) + var(--spacing_48)); background: var(--bg_default_primary); color: var(--text_default_primary); }
-  .webui-workspace-launcher-brand { display: flex; width: 80px; height: 80px; flex: 0 0 80px; align-items: center; justify-content: center; }
+  .webui-workspace-launcher { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; padding: var(--spacing_24); background: var(--bg_default_primary); color: var(--text_default_primary); }
+  .webui-workspace-launcher-brand { display: flex; min-height: clamp(72px, 10vw, 112px); flex: 0 0 auto; align-items: center; justify-content: center; margin-bottom: clamp(24px, 4vw, 48px); }
+  .webui-workspace-launcher-wordmark { font-family: "Century Gothic", "Arial Rounded MT Bold", "Segoe UI", sans-serif; font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+  .webui-workspace-launcher-wordmark span { display: inline-block; }
+  .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-mini { font-size: 0.88em; }
+  .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-max { font-size: 1.08em; }
+  .webui-workspace-launcher-wordmark .is-lower { font-size: 0.76em; font-weight: 600; }
+  .webui-workspace-launcher-wordmark .is-final { transform: rotate(-9deg) translateY(-3px); transform-origin: 50% 70%; }
+  .webui-workspace-launcher-wordmark .is-blue { color: #4285f4; }
+  .webui-workspace-launcher-wordmark .is-red { color: #ea4335; }
+  .webui-workspace-launcher-wordmark .is-yellow { color: #fbbc05; }
+  .webui-workspace-launcher-wordmark .is-green { color: #34a853; }
   /* The address box, in the middle of the page, the way a browser's new tab
    * page is built: a wide rounded field with the url in it, and the mark that
    * says what the field is for at its left. */
-  .webui-workspace-launcher-omnibox { display: flex; width: 100%; max-width: 560px; align-items: center; gap: var(--spacing_8); height: 44px; padding: 0 var(--spacing_8) 0 var(--spacing_12); border: 1px solid var(--border_default); border-radius: 22px; background: var(--bg_default_secondary); }
-  .webui-workspace-launcher-omnibox:focus-within { border-color: var(--border_accent); }
-  .webui-workspace-launcher-omnibox-glyph { color: var(--icon_default_secondary, #5b6473); }
-  .webui-workspace-launcher-omnibox-input { min-width: 0; flex: 1 1 auto; height: 100%; border: 0; outline: 0; background: transparent; padding: 0; color: var(--text_default_primary); font-size: var(--size_14); }
+  .webui-workspace-launcher-omnibox { display: flex; width: 100%; max-width: 936px; align-items: center; gap: var(--spacing_12); height: 60px; flex: 0 0 60px; margin-bottom: 20px; padding: 0 var(--spacing_16); border: 1px solid var(--border_default); border-radius: 30px; background: var(--bg_default_primary); box-shadow: 0 2px 6px rgb(0 0 0 / 10%); }
+  .webui-workspace-launcher-omnibox:focus-within { border-color: var(--border_default); box-shadow: 0 2px 8px rgb(0 0 0 / 14%); }
+  .webui-workspace-launcher-omnibox-glyph { color: var(--icon_default_primary); }
+  .webui-workspace-launcher-omnibox-input { min-width: 0; flex: 1 1 auto; height: 100%; border: 0; outline: 0; background: transparent; padding: 0; color: var(--text_default_primary); font-size: var(--size_16); }
   .webui-workspace-launcher-omnibox-input::placeholder { color: var(--text_default_tertiary); }
-  .webui-workspace-launcher-omnibox-submit { display: inline-flex; width: 28px; height: 28px; flex: 0 0 28px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon_default_secondary, #5b6473); font-size: var(--size_12); }
+  .webui-workspace-launcher-omnibox-submit { display: inline-flex; width: 32px; height: 32px; flex: 0 0 32px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon_default_primary); font-size: var(--size_12); }
   .webui-workspace-launcher-omnibox-submit:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-launcher-omnibox-submit:disabled { opacity: 0.5; }
   /* The shortcuts, under the address box and in a row: a mark in a round
    * plate with its name under it, which is the shape a browser's own
    * shortcuts have. */
-  .webui-workspace-launcher-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--spacing_20); }
-  .webui-workspace-launcher-tile { display: flex; width: 88px; flex-direction: column; align-items: center; gap: var(--spacing_8); border: 0; background: transparent; padding: 0; color: var(--text_default_secondary); }
-  .webui-workspace-launcher-tile-icon { display: inline-flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--border_default); border-radius: 50%; background: var(--bg_default_secondary); }
+  .webui-workspace-launcher-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--spacing_24); }
+  .webui-workspace-launcher-tile { display: flex; width: 112px; flex-direction: column; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8); color: var(--text_default_secondary); }
+  .webui-workspace-launcher-tile-icon { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border: 1px solid var(--border_default); border-radius: 50%; background: var(--bg_default_secondary); color: var(--icon_default_primary); }
+  .webui-workspace-launcher-tile:hover { background: var(--bg_default_secondary); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile:hover .webui-workspace-launcher-tile-icon { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile-label { font-size: var(--size_12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .webui-workspace-launcher-unavailable, .webui-workspace-launcher-error { max-width: 520px; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }

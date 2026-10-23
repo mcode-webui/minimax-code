@@ -75,6 +75,8 @@ export type WebuiWorkspaceTabContent =
       readonly title: string;
       /** The page's url, as the runtime publishes it. */
       readonly url: string;
+      /** The page's declared favicon, when the runtime provides one. */
+      readonly faviconUrl?: string;
     }
   | {
       /**
@@ -520,6 +522,7 @@ export function reduceWorkspacePanelState(state: WorkspacePanelState, command: W
         target: command.target,
         title: command.title,
         url: command.url,
+        ...(command.faviconUrl ? { faviconUrl: command.faviconUrl } : {}),
       };
       // A web tab is bound to its target, and a tab already bound to that
       // target is the same tab: the runtime publishes a snapshot, and applying
@@ -541,6 +544,7 @@ export function reduceWorkspacePanelState(state: WorkspacePanelState, command: W
           current.kind === "web" &&
           current.title === content.title &&
           current.url === content.url &&
+          current.faviconUrl === content.faviconUrl &&
           current.target.generation === content.target.generation
         ) {
           return state;
@@ -619,6 +623,12 @@ export function reduceWorkspacePanelState(state: WorkspacePanelState, command: W
       // ask for another one — without losing the page they just opened.
       const content: WebuiWorkspaceTabContent = { kind: "launcher" };
       return openNewTab(state, content);
+    }
+    case "open-panel": {
+      // Reopening the panel reveals its existing tabs. Only the first open
+      // needs a launcher; creating one on every panel open duplicates tabs.
+      if (state.tabs.length > 0) return { ...state, open: true };
+      return openNewTab(state, { kind: "launcher" });
     }
     case "select-tab":
       return state.tabs.some((tab) => tab.id === command.tabId) ? { ...state, open: true, activeTabId: command.tabId } : state;

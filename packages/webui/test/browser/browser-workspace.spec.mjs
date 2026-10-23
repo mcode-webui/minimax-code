@@ -136,9 +136,10 @@ test("the browser page fills the workspace body and the workspace edge resizes h
   expect(Math.abs(brandBox.x + brandBox.width / 2 - (omniboxBox.x + omniboxBox.width / 2))).toBeLessThanOrEqual(1);
   expect(brandBox.y + brandBox.height).toBeLessThan(omniboxBox.y);
   expect((brandBox.y + tilesBox.y + tilesBox.height) / 2).toBeLessThan(launcherBox.y + launcherBox.height / 2);
-  await expect(brand.locator("img")).toHaveAttribute("src", "/assets/img/minimax-code-agent-icon.png");
-  expect(brandBox.width).toBe(80);
-  expect(brandBox.height).toBe(80);
+  await expect(brand).toHaveAttribute("aria-label", "MiniMax");
+  await expect(brand.locator(".webui-workspace-launcher-wordmark")).toHaveText("MiniMax");
+  expect(brandBox.width).toBeGreaterThan(0);
+  expect(brandBox.height).toBeGreaterThan(0);
   await page.getByTestId("workspace-launcher-url").fill("https://example.test/");
   await page.getByTestId("workspace-launcher-url-submit").click();
   // The panel swaps the launcher for the page, and the swap re-mounts the

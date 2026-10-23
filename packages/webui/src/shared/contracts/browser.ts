@@ -191,6 +191,8 @@ export interface WebuiBrowserTargetState {
   readonly id: WebuiBrowserTargetId;
   readonly title: string;
   readonly url: string;
+  /** The page's declared favicon URL, when one is available. */
+  readonly faviconUrl?: string;
   readonly status: WebuiBrowserTargetStatus;
   /** Whether this target is the one the panel is currently showing. */
   readonly selected: boolean;
@@ -224,6 +226,8 @@ export interface WebuiBrowserWebTab {
   readonly title: string;
   /** The page's url, as the provider reports it. */
   readonly url: string;
+  /** The page's declared favicon URL, when one is available. */
+  readonly faviconUrl?: string;
   /** Whether this web tab is the run's selection. */
   readonly selected: boolean;
 }

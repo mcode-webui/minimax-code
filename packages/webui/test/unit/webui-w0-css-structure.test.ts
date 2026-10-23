@@ -721,9 +721,12 @@ describe("W0 · structural declarations W5 must preserve", () => {
     expect(declaration(panel.body, "flex")).toBe("0 1 50%");
     expect(declaration(panel.body, "width")).toBe("50%");
     expect(declaration(panel.body, "min-width")).toBe("0");
-    const expanded = winning(".webui-workspace-panel.is-expanded");
-    expect(declaration(expanded.body, "position")).toBe("fixed");
-    expect(declaration(expanded.body, "inset")).toBe("0");
+    // The expanded panel is declared together with the covering one, so the
+    // cascade lookup is the one that reads a grouped selector.
+    // The panel covers its own container, which the container already pins to
+    // the viewport — it is no longer pinned to the viewport itself.
+    expect(winningDeclaration(".webui-workspace-panel.is-expanded", "position")).toBe("absolute");
+    expect(winningDeclaration(".webui-workspace-panel.is-expanded", "inset")).toBe("0");
     expect(declaration(winning(".webui-workspace-panel-body").body, "display")).toBe("flex");
     expect(declaration(winning(".webui-workspace-file-tree-panel").body, "border-left")).toBe("1px solid var(--border_default)");
   });
@@ -963,6 +966,11 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       "webui-settings-content-in",
       "webui-signin-claim-spin",
       "webui-user-menu-usage-pulse",
+      // The workspace panel's own reveal: it grows from the right edge, and
+      // the panel that covers it slides the other way.
+      "webui-workspace-panel-collapse",
+      "webui-workspace-panel-exit",
+      "webui-workspace-panel-expand",
     ]);
     expect(transcriptNames).toEqual(["transcript-shimmer"]);
   });

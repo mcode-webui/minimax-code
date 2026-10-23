@@ -58,13 +58,13 @@ function isWorkspaceChangedEvent(event: unknown, workspaceDir: string): boolean 
   return candidate.type === "workspace.git.changed" && candidate.payload?.workspace === workspaceDir;
 }
 
-async function waitForSignal(signal: Promise<void>, label: string): Promise<void> {
+async function waitForSignal(signal: Promise<void>, label: string, timeoutMs = 20_000): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
       signal,
       new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), 20_000);
+        timeout = setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), timeoutMs);
       }),
     ]);
   } finally {
@@ -1173,7 +1173,15 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     // follow-up in the same persisted session to prove it recovered.
     await composer.fill("Stop this turn, then recover.");
     await page.getByRole("button", { name: "发送" }).click();
-    await waitForSignal(stopResponseStartedGate, "held cancellation response");
+    // The gate is the model server seeing the request that a cancelable local
+    // response is streaming. The wait is for that event, not for a fixed
+    // pause; the ceiling only decides how long the case may look for it.
+    // The macOS runner needs more room than the 20 seconds the other waits
+    // use: its whole verification run is about 1.5x the Linux one (197.8s
+    // against 134.3s measured on the same gate set), and this step is the
+    // first one in the case that only runs once the earlier assertions hold,
+    // so on macOS it is also the first to be reached.
+    await waitForSignal(stopResponseStartedGate, "held cancellation response", 60_000);
     await browserExpect(page.getByText("Cancelable local response is active.")).toBeVisible();
     const activeStopButton = page.getByRole("button", { name: "停止" });
     await browserExpect(activeStopButton).toBeVisible();

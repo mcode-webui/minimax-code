@@ -17,9 +17,14 @@ import { WebuiIconDiffFile, WebuiIconDiffSummary } from "../../../shell/icons.js
 import type { WebuiTurnDiffView } from "../../../../shared/contracts/session.js";
 import type { WebuiDiffState } from "../../review/contracts/review-view.js";
 import { useWebuiTurnReview } from "../../review/bindings/use-turn-review.public.js";
+import {
+  projectWebuiDiffFiles,
+  WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE,
+} from "../../../projection/common/diff-workspace-boundary.js";
 
 export function WebuiDiffCard({
   sessionId,
+  workspaceDir,
   assistantMessageId,
   turnId,
   changeSetId,
@@ -28,6 +33,9 @@ export function WebuiDiffCard({
   onReview,
 }: {
   readonly sessionId?: string;
+  /** The session's workspace root. It is what the boundary is judged against;
+   *  without it the entries are shown as they are. */
+  readonly workspaceDir?: string;
   readonly assistantMessageId?: string;
   readonly turnId?: string;
   readonly changeSetId?: string;
@@ -75,7 +83,10 @@ export function WebuiDiffCard({
     );
   if (!view) return null;
   if (!view || (view.fileChanges ?? []).length === 0) return null;
-  const files = view.fileChanges ?? [];
+  // The workspace boundary is applied to the entries themselves, not to the
+  // markup below: a file outside the workspace arrives here without a body, so
+  // there is nothing for the renderer to leak even if it forgets to ask.
+  const files = projectWebuiDiffFiles(view.fileChanges, workspaceDir);
   const shown = expanded ? files : files.slice(0, 3);
   const totalAdded = files.reduce((sum, file) => sum + file.additions, 0);
   const totalDeleted = files.reduce((sum, file) => sum + file.deletions, 0);
@@ -127,9 +138,9 @@ export function WebuiDiffCard({
       </div>
       <ul className="webui-diff-files">
         {shown.map((file) => (
-          <li className="webui-diff-file" key={file.file} data-webui-diff-file="true" data-file-path={file.file}>
+          <li className="webui-diff-file" key={file.file} data-webui-diff-file="true" data-file-path={file.file} data-webui-diff-outside-workspace={file.withinWorkspace ? undefined : "true"}>
             <span className="webui-diff-file-icon" data-testid="turn-diff-file-icon"><WebuiIconDiffFile fileName={basenameOf(file.file)} /></span>
-            <button type="button" className="webui-diff-file-name" data-testid="turn-diff-file-name" title={file.file} onClick={() => { if (view) onReview?.(view, file.file); }}>{basenameOf(file.file)}</button>
+            <button type="button" className="webui-diff-file-name" data-testid="turn-diff-file-name" title={file.file} onClick={() => { if (view) onReview?.({ ...view, fileChanges: files }, file.file); }}>{basenameOf(file.file)}</button>
             <span className="webui-diff-file-stats" data-webui-diff-file-stats="true">
               <span className="webui-diff-add">{`+${file.additions}`}</span>
               {file.deletions > 0 ? <span className="webui-diff-del">{`-${file.deletions}`}</span> : null}
@@ -147,7 +158,9 @@ export function WebuiDiffCard({
           {files.map((file) => (
             <details key={`${file.file}-review`} open>
               <summary>{file.file}</summary>
-              {file.diff ? <pre>{file.diff}</pre> : file.patch ? <pre>{JSON.stringify(file.patch, null, 2)}</pre> : <p>当前运行时没有提供该文件的 patch 预览。</p>}
+              {file.withinWorkspace
+                ? file.diff ? <pre>{file.diff}</pre> : file.patch ? <pre>{JSON.stringify(file.patch, null, 2)}</pre> : <p>当前运行时没有提供该文件的 patch 预览。</p>
+                : <p data-testid="turn-diff-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p>}
             </details>
           ))}
         </div>

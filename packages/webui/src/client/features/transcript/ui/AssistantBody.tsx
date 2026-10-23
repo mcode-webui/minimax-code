@@ -351,6 +351,7 @@ export function WebuiAssistantBody({
        * edited-files summary sits at the end of the message. */}
       <WebuiDiffCard
         sessionId={sessionId}
+        workspaceDir={workspaceDir}
         assistantMessageId={assistantMessageId ?? messageId}
         turnId={turnId}
         changeSetId={changeSetId}

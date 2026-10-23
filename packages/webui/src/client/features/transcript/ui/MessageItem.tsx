@@ -19,6 +19,7 @@ import type {
 } from "../../../../shared/contracts/session.js";
 import type { WebuiTranscriptCommands } from "../contracts/session-read-port.js";
 import type { WebuiMessageFileReference } from "../projection/message-file-reference.js";
+import { projectWebuiDiffFiles } from "../../../projection/common/diff-workspace-boundary.js";
 import type { WorkspacePanelCommand } from "../../workspace/contracts/panel-command.js";
 import type {
   WebuiHistoricalTurnView,
@@ -261,7 +262,7 @@ export function MessageItem({
         onOpenFile={(reference) => { if (sessionId && workspaceDir) onOpenFile?.({ sessionId, workspaceDir, reference }); }}
         onOpenTurnReview={(review, selectedPath) => {
           if (!sessionId || !workspaceDir) return;
-          onOpenTurnReview?.({ type: "open-turn-review", sessionId, workspaceDir, messageId, assistantMessageId: review.sourceMessageId ?? assistantMessageId ?? messageId, ...(turnId ? { turnId } : {}), ...(review.changeSetId ? { changeSetId: review.changeSetId } : {}), files: review.fileChanges, ...(selectedPath ? { selectedPath } : {}) });
+          onOpenTurnReview?.({ type: "open-turn-review", sessionId, workspaceDir, messageId, assistantMessageId: review.sourceMessageId ?? assistantMessageId ?? messageId, ...(turnId ? { turnId } : {}), ...(review.changeSetId ? { changeSetId: review.changeSetId } : {}), files: projectWebuiDiffFiles(review.fileChanges, workspaceDir), ...(selectedPath ? { selectedPath } : {}) });
         }}
         assistantMessageId={assistantMessageId ?? initialDiff?.sourceMessageId ?? messageId}
         turnId={turnId}

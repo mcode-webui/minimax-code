@@ -284,6 +284,7 @@
       "packages/webui/test/unit/conversation-usage-notice.test.ts",
       "packages/webui/test/unit/delivery-disposers.test.ts",
       "packages/webui/test/unit/diff-mutation-error.test.tsx",
+      "packages/webui/test/unit/diff-workspace-boundary.test.tsx",
       "packages/webui/test/unit/dropdown-placement.test.ts",
       "packages/webui/test/unit/event-kinds.test.ts",
       "packages/webui/test/unit/first-party-signature.test.ts",

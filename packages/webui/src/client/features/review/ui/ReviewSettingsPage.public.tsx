@@ -29,6 +29,10 @@ import {
   type WebuiWorktreeSourceSession,
   type WebuiWorktreeWorkspace,
 } from "../../sessions/projection/worktree-state.public.js";
+import {
+  isWebuiDiffPathWithinWorkspace,
+  WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE,
+} from "../../../projection/common/diff-workspace-boundary.js";
 import { selectWebuiCatalogFlatPage } from "../../sessions/application/session-catalog.public.js";
 import { useWebuiSessionStoreContext } from "../../../bindings/application-context.js";
 import {
@@ -164,6 +168,7 @@ export function ReviewSettingsPage({ workspaceDir, onOpenFileLine }: {
     state={state}
     visible={visible}
     filtering={filtering}
+    workspaceDir={effectiveWorkspaceDir}
     onQueryChange={(query) => {
       dispatch({ type: "query-changed", query });
       // Live search: the owner is asked for every keystroke, and the reducer
@@ -174,10 +179,11 @@ export function ReviewSettingsPage({ workspaceDir, onOpenFileLine }: {
     onClearFilters={() => dispatch({ type: "clear-filters" })}
     onToggleFile={(fileId, willExpand, file) => {
       dispatch({ type: "toggle-file", fileId });
-      if (willExpand && !state.diffs[fileId] && !state.diffErrors[fileId] && state.reviewSnapshotId) {
+      /* A file outside the workspace is not asked for its patch at all: the
+       * content is not going to be shown, so it does not have to travel. */
+      if (willExpand && !state.diffs[fileId] && !state.diffErrors[fileId] && state.reviewSnapshotId && isWebuiDiffPathWithinWorkspace(effectiveWorkspaceDir, file.path)) {
         void loadDiffs([fileId], state.reviewSnapshotId);
       }
-      void file;
     }}
     onOpenFileLine={onOpenFileLine}
   />;
@@ -278,10 +284,14 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
       <ul className="webui-review-files">
         {rows.map((file) => {
           const expanded = state.expandedFileIds.includes(file.fileId);
-          const diff = state.diffs[file.fileId];
-          const diffError = state.diffErrors[file.fileId];
-          const pending = state.loadingFileIds.includes(file.fileId);
-          return <li className="webui-review-file" key={file.fileId} data-testid="review-file" data-file-id={file.fileId} data-webui-review-file-status={file.status}>
+          /* The workspace boundary decides whether the file's patch is shown.
+           * The entry stays in the list either way — the name and the counts
+           * are what a person can still act on. */
+          const withinWorkspace = isWebuiDiffPathWithinWorkspace(workspaceDir, file.path);
+          const diff = withinWorkspace ? state.diffs[file.fileId] : undefined;
+          const diffError = withinWorkspace ? state.diffErrors[file.fileId] : undefined;
+          const pending = withinWorkspace && state.loadingFileIds.includes(file.fileId);
+          return <li className="webui-review-file" key={file.fileId} data-testid="review-file" data-file-id={file.fileId} data-webui-review-file-status={file.status} data-webui-review-outside-workspace={withinWorkspace ? undefined : "true"}>
             <button
               type="button"
               className="webui-review-file-heading"
@@ -297,6 +307,7 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
               </span>
             </button>
             {expanded ? <div className="webui-review-file-body" data-testid="review-file-body">
+              {!withinWorkspace ? <p className="webui-review-file-error" role="status" data-testid="review-file-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p> : null}
               {pending ? <p className="webui-review-loading" role="status">正在读取这个文件的补丁…</p> : null}
               {diffError ? <p className="webui-review-file-error" role="status" data-testid="review-file-error">{diffError}</p> : null}
               {diff ? <ol className="webui-review-lines" data-testid="review-lines">

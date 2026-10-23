@@ -134,6 +134,32 @@ cells, while the Mini App gate compares the raw kind string inside its own servi
 change to this client's row can reach. The accepted shape moves the Mini App service into the
 policy as a wiring cell this client's row carries.
 
+## 10. A symlink out of the workspace is not detectable by the diff boundary
+
+**Implemented, with a stated limit.** A turn's diff can name a file outside the workspace, and the
+client now withholds that file's body: the entry keeps its name, its status and its line counts,
+and the surface says the content is not shown. The decision and its reasoning are in
+[ADR 0024](adr/0024-the-client-draws-the-workspace-boundary-for-a-diff-body.md).
+
+What the boundary cannot do is tell a **symlink inside the workspace that points outside it** from
+an ordinary file. The entry's path is a relative one, so it stays contained, and the browser has no
+filesystem to resolve it against. Closing that needs `realpath` on every target, with careful
+handling of files that do not exist yet, on the runtime side — which is also where the reverted
+upstream fix would have had to live. The unit test says so out loud rather than leaving it to be
+discovered.
+
+Two further limits are stated rather than hidden, and both are deliberate:
+
+- The comparison is **lexical**. It reads the path as written; it does not resolve it.
+- A diff entry is only withheld when the client **knows** the workspace root. Without one the
+  entries are shown as they are, because a check that hid everything it could not place would hide
+  ordinary content too.
+
+The upstream half of this is still open: the fix that stopped the runtime from *collecting* an
+out-of-workspace file's content was reverted in PR #240 because it changed a package this fork may
+not change, so the content still travels between the runtime and the browser. The client stops it
+from being shown; only the upstream change stops it from being collected.
+
 ## Reported as missing, and actually correct
 
 - **The thirteen runtime-owner cells are not read by this package.** That is expected: they are

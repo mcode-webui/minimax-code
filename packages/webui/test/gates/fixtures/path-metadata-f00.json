@@ -3100,6 +3100,15 @@
       "home": "current"
     },
     {
+      "path": "client/projection/common/diff-workspace-boundary.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/projection/common/dropdown-placement.ts",
       "layers": [
         "view"

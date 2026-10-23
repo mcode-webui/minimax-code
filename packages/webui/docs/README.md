@@ -87,7 +87,10 @@ a browser tab strip and the two selections it separates, and amends ADR 0019 wit
 them they are the decision record for that feature. ADR 0020 records the accepted Mini App view, the runtime seams it needs, the
 desktop capabilities it deliberately drops, and the contract-baseline question it leaves open; it
 is the sole decision record for Mini App hosting. ADR 0021 records the model picker as one popup
-with two states, and the cascade it replaces. A new decision takes the next free number.
+with two states, and the cascade it replaces. ADR 0024 records the client-side workspace boundary
+for a diff body: a diff entry outside the workspace keeps its name and its counts and loses its
+content, the boundary is lexical, and a diff whose workspace root the client does not know is not
+withheld. A new decision takes the next free number.
 
 | Retired | Was | Why it is not in the log | Where the live facts are |
 | --- | --- | --- | --- |

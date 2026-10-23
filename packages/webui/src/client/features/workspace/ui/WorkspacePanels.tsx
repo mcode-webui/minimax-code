@@ -30,7 +30,6 @@ import { WebuiMarkdown } from "../../transcript/ui/markdown.public.js";
 // port. The strip subscribes to `watchBrowserWebTabs` and, for the active
 // web tab, this file mounts `BrowserPanelHost` with the tab's target.
 import { BrowserPanelHost } from "../../browser/ui/BrowserPanelHost.public.js";
-import type { WebuiFileDiffInfoView } from "../../../../shared/contracts/session.js";
 import type {
   WebuiWorkspaceFile,
   WebuiWorkspaceFileContent,
@@ -75,6 +74,12 @@ import {
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { WebuiWorkspaceLauncher, WebuiWorkspaceTabStrip } from "./WebuiWorkspaceTabStrip.public.js";
 import { webuiFileLanguage, projectWebuiUnifiedDiffLines, isWorkspaceArchivePath, isWorkspaceHtmlPath } from "../projection/panel-projection.js";
+import {
+  projectWebuiDiffFile,
+  projectWebuiDiffFiles,
+  WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE,
+  type WebuiDiffFileEntry,
+} from "../../../projection/common/diff-workspace-boundary.js";
 // `mergeWorkspaceFileChildren`, `chunkWebuiWorkspaceReviewFileIds` and
 // `WEBUI_WORKSPACE_REVIEW_DIFF_BATCH_SIZE` are re-exported below: the panel
 // tests import them from this module, which stays the panel's public surface.
@@ -124,8 +129,8 @@ function highlightFileLine(line: string, language: string | undefined): string |
   }
 }
 
-export function WebuiDiffFileSection({ file, selected, loading = false, error, onSelect }: { readonly file: WebuiFileDiffInfoView; readonly selected: boolean; readonly loading?: boolean; readonly error?: string; readonly onSelect?: () => void }): ReactElement {
-  const diff = typeof file.diff === "string" ? file.diff : "";
+export function WebuiDiffFileSection({ file, selected, loading = false, error, onSelect }: { readonly file: WebuiDiffFileEntry; readonly selected: boolean; readonly loading?: boolean; readonly error?: string; readonly onSelect?: () => void }): ReactElement {
+  const diff = file.withinWorkspace && typeof file.diff === "string" ? file.diff : "";
   const lines = projectWebuiUnifiedDiffLines(diff);
   const language = webuiFileLanguage(file.file);
   return <details className="webui-turn-review-file" open data-testid="turn-review-diff-file">
@@ -136,7 +141,12 @@ export function WebuiDiffFileSection({ file, selected, loading = false, error, o
       <span className="webui-diff-add">+{file.additions}</span>
       {file.deletions > 0 ? <span className="webui-diff-del">-{file.deletions}</span> : null}
     </summary>
-    {loading ? <p className="webui-turn-review-unavailable" role="status">正在加载差异…</p> : error ? <p className="webui-turn-review-unavailable" role="alert">{error}</p> : lines.length ? <pre className="webui-file-code webui-turn-review-code"><code className={language ? `hljs language-${language}` : ""}>{lines.map((line, index) => {
+    {!file.withinWorkspace
+      /* The file is outside the workspace, so its content is not shown. The
+       * entry stays in the list: the file name and the counts are the part a
+       * person can still act on. */
+      ? <p className="webui-turn-review-unavailable" data-testid="turn-review-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p>
+      : loading ? <p className="webui-turn-review-unavailable" role="status">正在加载差异…</p> : error ? <p className="webui-turn-review-unavailable" role="alert">{error}</p> : lines.length ? <pre className="webui-file-code webui-turn-review-code"><code className={language ? `hljs language-${language}` : ""}>{lines.map((line, index) => {
       const highlighted = line.kind === "hunk" || line.kind === "noNewline" ? undefined : highlightFileLine(line.content, language);
       return <span className={`webui-turn-review-line webui-turn-review-line--${line.kind}`} key={`${index}-${line.kind}`}>
         {line.kind === "hunk" ? <span className="webui-turn-review-hunk">{line.content}</span> : line.kind === "noNewline" ? line.content : <>
@@ -362,8 +372,14 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     // review to the workspace's review has to load the summary it now needs.
   }, [activeTab?.id, activeTab?.content, activeTab?.content.kind === "review" && activeTab.content.source === "workspace" ? activeTab.content.workspaceDir : undefined, queries, queryState.reviewRevision]);
   const workspaceReviewSelectedPath = activeTab?.content.kind === "review" && activeTab.content.source === "workspace" ? activeTab.content.selectedPath : undefined;
+  const workspaceReviewWorkspaceDir = activeTab?.content.kind === "review" && activeTab.content.source === "workspace" ? activeTab.content.workspaceDir : undefined;
   const workspaceReviewFiles = reviewSummary !== undefined && reviewSummary.tabId === activeTab?.id ? reviewSummary.summary?.files ?? [] : [];
-  const turnReviewFiles = activeTab?.content.kind === "review" && activeTab.content.source === "turn" ? activeTab.content.files ?? [] : [];
+  // The turn's files are projected through the workspace boundary before they
+  // are rendered: a file outside the workspace keeps its name and its counts,
+  // and loses the body that would have shown its content.
+  const turnReviewFiles = activeTab?.content.kind === "review" && activeTab.content.source === "turn"
+    ? projectWebuiDiffFiles(activeTab.content.files, activeTab.content.workspaceDir)
+    : [];
   const selectedReviewPath = activeTab?.content.kind === "review" && activeTab.content.source === "workspace"
     ? workspaceReviewFiles.some((file) => file.path === workspaceReviewSelectedPath) ? workspaceReviewSelectedPath : workspaceReviewFiles[0]?.path
     : activeTab?.content.kind === "review" && activeTab.content.source === "turn" ? activeTab.content.selectedPath ?? turnReviewFiles[0]?.file : undefined;
@@ -616,7 +632,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
           <div className="webui-turn-review-files">{reviewSummary.summary.files.map((file) => {
             const result = reviewDiffs?.tabId === activeTab.id && reviewDiffs.snapshotId === activeReview?.reviewSnapshotId ? reviewDiffs.diffs[file.fileId] : undefined;
             const loading = !result && (reviewDiffs?.tabId !== activeTab.id || reviewDiffs.snapshotId !== activeReview?.reviewSnapshotId || reviewDiffs.loading);
-            return <WebuiDiffFileSection key={file.fileId} file={{ file: file.path, additions: file.additions, deletions: file.deletions, status: file.status, ...(result?.diff !== undefined ? { diff: result.diff } : {}) }} selected={selectedReviewPath === file.path} loading={loading} error={result?.binary ? "二进制文件无法显示文本差异。" : result?.error} onSelect={() => dispatch({ type: "select-review-file", tabId: activeTab.id, path: file.path })} />;
+            return <WebuiDiffFileSection key={file.fileId} file={projectWebuiDiffFile({ file: file.path, additions: file.additions, deletions: file.deletions, status: file.status, ...(result?.diff !== undefined ? { diff: result.diff } : {}) }, workspaceReviewWorkspaceDir)} selected={selectedReviewPath === file.path} loading={loading} error={result?.binary ? "二进制文件无法显示文本差异。" : result?.error} onSelect={() => dispatch({ type: "select-review-file", tabId: activeTab.id, path: file.path })} />;
           })}</div>
         </> : <p className="webui-turn-review-empty">当前没有变更。</p>}
       </> : null}

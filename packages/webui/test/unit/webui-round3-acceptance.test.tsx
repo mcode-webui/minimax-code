@@ -12,6 +12,7 @@ import { WebuiDiffCard } from "../../src/client/features/transcript/ui/DiffCard.
 import { WebuiGoalBanner } from "../../src/client/features/goal/ui/GoalBanner.public.js";
 import { WebuiInteractionPanel } from "../../src/client/features/interactions/ui/InteractionPanel.public.js";
 import { chunkWebuiWorkspaceReviewFileIds, WebuiDiffFileSection } from "../../src/client/features/workspace/ui/WorkspacePanels.js";
+import { projectWebuiDiffFile } from "../../src/client/projection/common/diff-workspace-boundary.js";
 import { projectWebuiUnifiedDiffLines } from "../../src/client/features/workspace/projection/panel-projection.js";
 import {
   WebuiFeedbackActions,
@@ -212,7 +213,9 @@ describe("turn review unified diff projection", () => {
 
   it("renders workspace review additions and deletions using the shared highlighted diff rows", () => {
     const markup = renderToStaticMarkup(createElement(WebuiDiffFileSection, {
-      file: { file: "src/example.ts", additions: 1, deletions: 1, diff: "@@ -1 +1 @@\n-return false;\n+return true;" },
+      // The section renders what the boundary projection decided, so the entry
+      // reaches it already judged.
+      file: projectWebuiDiffFile({ file: "src/example.ts", additions: 1, deletions: 1, diff: "@@ -1 +1 @@\n-return false;\n+return true;" }, "/work/project"),
       selected: true,
     }));
 

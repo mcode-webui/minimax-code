@@ -135,7 +135,12 @@ test("the browser page fills the workspace body and the workspace edge resizes h
   const tilesBox = await tiles.boundingBox();
   expect(Math.abs(brandBox.x + brandBox.width / 2 - (omniboxBox.x + omniboxBox.width / 2))).toBeLessThanOrEqual(1);
   expect(brandBox.y + brandBox.height).toBeLessThan(omniboxBox.y);
-  expect((brandBox.y + tilesBox.y + tilesBox.height) / 2).toBeLessThan(launcherBox.y + launcherBox.height / 2);
+  // The launcher's content is centred in the panel body. The brand and the
+  // tiles are its first and last children, so the midpoint between them is
+  // the launcher's own vertical centre. The launcher's padding used to be
+  // heavier at the bottom, which put the group a little above the centre;
+  // the new tab page is symmetric, so the group sits on the centre line.
+  expect(Math.abs((brandBox.y + tilesBox.y + tilesBox.height) / 2 - (launcherBox.y + launcherBox.height / 2))).toBeLessThanOrEqual(1);
   await expect(brand).toHaveAttribute("aria-label", "MiniMax");
   await expect(brand.locator(".webui-workspace-launcher-wordmark")).toHaveText("MiniMax");
   expect(brandBox.width).toBeGreaterThan(0);

@@ -10,7 +10,7 @@
 // The shell still decides which source owns the turn (history after done,
 // composer while active), but the DOM for either role is produced here.
 
-import { useState, type ReactElement } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import type {
@@ -116,6 +116,10 @@ export function MessageItem({
   const [forkTitle, setForkTitle] = useState("");
   const [forkOpen, setForkOpen] = useState(false);
   const [forkOptions, setForkOptions] = useState<WebuiGetSessionForkOptionsResult>();
+  // The fork options arrive after the dialog is already open, so the suggested
+  // title is a late reply. Track whether the person has typed a name, so a
+  // late reply cannot overwrite what they wrote.
+  const forkTitleEdited = useRef(false);
   const openRewind = () => {
     setRewindOpen(true);
     setRewindPreview(undefined);
@@ -156,11 +160,13 @@ export function MessageItem({
   const openFork = () => {
     setForkOpen(true);
     setForkOptions(undefined);
+    forkTitleEdited.current = false;
+    setForkTitle("");
     if (!sessionId || !transcriptCommands.getSessionForkOptions) return;
     void transcriptCommands.getSessionForkOptions({ id: sessionId, assistantMessageId: assistantMessageId ?? messageId })
       .then((nextOptions) => {
         setForkOptions(nextOptions);
-        if (nextOptions.suggestedTitle) setForkTitle(nextOptions.suggestedTitle);
+        if (nextOptions.suggestedTitle && !forkTitleEdited.current) setForkTitle(nextOptions.suggestedTitle);
       })
       .catch((error: unknown) => setMutationError(error instanceof Error ? error.message : String(error)));
   };
@@ -179,7 +185,7 @@ export function MessageItem({
       <div className="webui-message-dialog-surface">
         <h3>复制为新会话</h3>
         <p>{forkOptions?.unavailableReason ?? "保留当前上下文，在新会话中继续"}</p>
-        <input aria-label="会话名称" value={forkTitle} onChange={(event) => setForkTitle(event.target.value)} placeholder="使用简短且不同的名称，便于识别" disabled={forkOptions?.canFork === false} />
+        <input aria-label="会话名称" value={forkTitle} onChange={(event) => { forkTitleEdited.current = true; setForkTitle(event.target.value); }} placeholder="使用简短且不同的名称，便于识别" disabled={forkOptions?.canFork === false} />
         <div className="webui-message-dialog-actions">
           <button type="button" onClick={() => setForkOpen(false)} disabled={mutationBusy}>取消</button>
           <button type="button" onClick={confirmFork} disabled={mutationBusy || forkOptions?.canFork === false}>复制并进入</button>

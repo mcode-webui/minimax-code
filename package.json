@@ -28,6 +28,7 @@
     "dev:webui": "pnpm --filter @mavis/webui dev",
     "check:webui-boundary": "node scripts/check-webui-boundary.mjs",
     "check:webui-dependency": "node scripts/check-webui-dependency.mjs",
+    "install:webui-browsers": "playwright install chromium",
     "test:webui": "node scripts/run-vitest-suite.mjs webui",
     "test:webui-package": "node scripts/verify-webui-package.mjs",
     "test:webui-browser": "playwright install --with-deps chromium && playwright test packages/webui/test/browser",

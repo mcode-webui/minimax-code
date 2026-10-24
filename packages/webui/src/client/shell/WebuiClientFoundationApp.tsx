@@ -19,7 +19,7 @@ import { Composer } from "../features/composer/ui/Composer.js";
 import { LeftRail } from "../features/sessions/ui/LeftRail.js";
 import { Transcript } from "../features/transcript/ui/Transcript.js";
 import { UserMenu } from "../features/account/ui/UserMenu.js";
-import { MEMORY_HANDOFF_PROMPT, type MemoryHandoff } from "../features/settings/contracts/memory-handoff.js";
+import { readWebuiMemoryHandoffPrompt, type MemoryHandoff } from "../features/settings/contracts/memory-handoff.js";
 import { WebuiWorkspacePanel } from "../features/workspace/ui/WorkspacePanels.js";
 import { WebuiProgressOverviewPanel } from "../features/workspace/ui/WorkspaceProgressPanel.js";
 import {
@@ -558,15 +558,31 @@ export function WebuiClientFoundationApp(
    * current, so starting from a session would type it somewhere the user never
    * sees. Once no session is selected the key is the home slot, which is the
    * slot on the home surface.
+   *
+   * It is written **once**. The home surface is visited again for every
+   * reason there is — a session, a back, a new task — and a line typed on each
+   * visit replaces what the user has written since. The hand-off's token is
+   * the latch, the same token the attached file is held by.
    */
   const [memoryHandoff, setMemoryHandoff] = useState<MemoryHandoff>();
+  // The token of the hand-off whose line has been typed. A ref, not state: the
+  // latch is a fact about what has been written, not something to render.
+  const handoffPromptToken = useRef<string>();
   const createMemorySession = useCallback((input: MemoryHandoff) => {
     setMemoryHandoff(input);
     startNewTask();
   }, []);
   useEffect(() => {
-    if (!memoryHandoff || selectedSessionId) return;
-    setDraft(MEMORY_HANDOFF_PROMPT);
+    if (selectedSessionId) return;
+    const decision = readWebuiMemoryHandoffPrompt({
+      handoff: memoryHandoff,
+      consumedToken: handoffPromptToken.current,
+    });
+    if (decision.kind === "none") return;
+    // Recorded before the line is typed, so a re-render that runs this effect
+    // again cannot type it a second time.
+    handoffPromptToken.current = decision.token;
+    setDraft(decision.prompt);
   }, [memoryHandoff, selectedSessionId, setDraft]);
 
   const handleWorkspaceSubagentClick = useCallback(

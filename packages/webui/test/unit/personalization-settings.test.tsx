@@ -41,6 +41,7 @@ import {
   MEMORY_HANDOFF_PROMPT,
   formatMemoryTimestamp,
   isMemorySaveable,
+  readWebuiMemoryHandoffPrompt,
 } from "../../src/client/features/settings/contracts/memory-handoff.js";
 import { resolveEditorSeed } from "../../src/client/features/settings/ui/GlobalInstructionsSection.js";
 import { isProfileSaveable } from "../../src/client/features/settings/ui/UserProfileSection.js";
@@ -171,6 +172,55 @@ describe("「在会话中创建」 hand-off", () => {
     // The whole text the user finds waiting, with the attachment chip carrying
     // the file identity.
     expect(MEMORY_HANDOFF_PROMPT).toBe("我想调整下这个记忆文件");
+  });
+
+  it("types the line once, not on every visit to the home surface", () => {
+    const handoff = {
+      token: "t1",
+      fileName: "memory.md",
+      mimeType: "text/markdown",
+      sizeBytes: 12,
+      content: "x",
+    };
+    // The first visit types it.
+    expect(readWebuiMemoryHandoffPrompt({ handoff, consumedToken: undefined })).toEqual({
+      kind: "prompt",
+      token: "t1",
+      prompt: MEMORY_HANDOFF_PROMPT,
+    });
+    // The second visit must not. The home slot holds what the user has
+    // written since, and a line typed again replaces it.
+    expect(readWebuiMemoryHandoffPrompt({ handoff, consumedToken: "t1" })).toEqual({
+      kind: "none",
+    });
+    // A hand-off of its own still types, whatever was typed before.
+    expect(
+      readWebuiMemoryHandoffPrompt({
+        handoff: { ...handoff, token: "t2" },
+        consumedToken: "t1",
+      }),
+    ).toEqual({ kind: "prompt", token: "t2", prompt: MEMORY_HANDOFF_PROMPT });
+    // No hand-off, nothing to type.
+    expect(
+      readWebuiMemoryHandoffPrompt({ handoff: undefined, consumedToken: undefined }),
+    ).toEqual({ kind: "none" });
+  });
+
+  it("keeps the shell from typing the line a second time", () => {
+    // The decision is only half of the fix: the shell has to ask it, and has
+    // to keep the token it typed. An effect cannot be reached by a static
+    // render — this package has no DOM framework — so the wiring is read off
+    // the source, the way the rail's own wiring is.
+    const frame = readFileSync(
+      new URL("../../src/client/shell/WebuiClientFoundationApp.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(frame).toMatch(/readWebuiMemoryHandoffPrompt\(\{/u);
+    expect(frame).toMatch(/consumedToken: handoffPromptToken\.current/u);
+    expect(frame).toMatch(/handoffPromptToken\.current = decision\.token/u);
+    // A direct write of the constant is what put the line back into the slot
+    // on every visit; it must not come back.
+    expect(frame).not.toMatch(/setDraft\(MEMORY_HANDOFF_PROMPT\)/u);
   });
 });
 

@@ -29,6 +29,43 @@ export interface MemoryHandoff {
 }
 
 /**
+ * What the hand-off still owes the composer.
+ *
+ * The hand-off is one-shot, and so is everything it brings: the file it
+ * attaches and the line it types beside it. The file's own latch is the
+ * composer's consumed seed token; this is the same latch for the line, asked
+ * the same way — with the token the caller has already typed.
+ *
+ * It has to be a latch rather than a write. The line is typed when the
+ * hand-off opens the home surface, but the surface is visited again for every
+ * reason there is — a session, a back, a new task — and a line typed on each
+ * visit replaces what the user has written since.
+ */
+export type WebuiMemoryHandoffPrompt =
+  /** Nothing to type: no hand-off, or this token has already been typed. */
+  | { readonly kind: "none" }
+  /** Type this line, and record the token before doing it. */
+  | { readonly kind: "prompt"; readonly token: string; readonly prompt: string };
+
+/**
+ * Read the hand-off's line, as a decision rather than as a write.
+ *
+ * The caller records the token before it types, so the order the invariant
+ * requires is visible at the call site rather than implied by this function's
+ * internals.
+ */
+export function readWebuiMemoryHandoffPrompt(input: {
+  readonly handoff: MemoryHandoff | undefined;
+  /** The token whose line has already been typed, if any. */
+  readonly consumedToken: string | undefined;
+}): WebuiMemoryHandoffPrompt {
+  const { handoff } = input;
+  if (!handoff) return { kind: "none" };
+  if (input.consumedToken === handoff.token) return { kind: "none" };
+  return { kind: "prompt", token: handoff.token, prompt: MEMORY_HANDOFF_PROMPT };
+}
+
+/**
  * The save predicate, as a decision rather than as component state.
  *
  * `!loading && !saving && draft !== baseline && draft.length > 0`. All four

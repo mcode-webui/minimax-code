@@ -283,3 +283,37 @@ describe("stage 4 — the four call sites' handling through the coordinator", ()
     expect(ready).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a local send's response stream ending is not the end of the turn", () => {
+  it("re-attaches to the turn the runtime says is still running", async () => {
+    // The whole shape, end to end: the client's own stream ends, the runtime
+    // still has a turn running, and the client asks the runtime instead of
+    // concluding from its own stream that nothing is running. The answer comes
+    // back with the turn to follow, and the client follows it — so the output
+    // of a turn that outlived its stream still reaches the transcript.
+    const getActiveTurn = vi.fn(async () => ({
+      turnId: "turn-live",
+      busyReason: "turn" as const,
+      locallyOwned: false,
+    }));
+    // A resume that never settles: the attachment stays claimed, which is what
+    // lets the test read which turn the client attached to.
+    const resumeSession = vi.fn(async () => new Promise<never>(() => undefined));
+    const sendMessage = vi.fn(async () => {});
+    const { application } = makeApplication({
+      turnCapabilities: {
+        sendMessage,
+        resumeSession,
+        getActiveTurn,
+      } as never,
+    });
+
+    await application.turnCommandsFor("s1").send({ message: "hello" })?.completion;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getActiveTurn).toHaveBeenCalledWith({ id: "s1" });
+    expect(resumeSession).toHaveBeenCalled();
+    expect(application.store.readSession("s1").stream.subscription?.turnId).toBe("turn-live");
+  });
+});

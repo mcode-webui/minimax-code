@@ -419,6 +419,17 @@ export interface WebuiTurnCommandContext {
   readonly taskSessions?: WebuiTaskSessionSubmitter;
   /** Refresh the mounted queue projection after an attached turn settles. */
   readonly refreshQueue?: () => void;
+  /**
+   * Reconcile a session whose turn may still be running after this client's own
+   * response stream ended.
+   *
+   * The application installs this rather than the command running the probe
+   * itself, because the session to reconcile is not always the one this owner
+   * was built for: a first message creates the session it is sent to, and the
+   * record moves onto it — so the target is named by the completion, not by the
+   * context.
+   */
+  readonly reconcileTurn?: (sessionId: string) => void;
 }
 
 /** What a surface supplies to send: intent and data, never a writer or a sink. */
@@ -440,7 +451,7 @@ export interface WebuiTurnCommandContext {
 export function createWebuiConversationTurnCommands(
   context: WebuiTurnCommandContext,
 ): WebuiConversationTurnCommands {
-  const { store, sessionId, capabilities, taskSessions, refreshQueue } = context;
+  const { store, sessionId, capabilities, taskSessions, refreshQueue, reconcileTurn } = context;
 
   /**
    * The record writer for this turn: the session's, or the home slot's before a
@@ -632,7 +643,28 @@ export function createWebuiConversationTurnCommands(
       // The delivery hold covers the attempt, not the decision: releasing it the
       // moment the ticket exists would let a second submission through while the
       // first is still dispatching.
-      void ticket?.completion.finally(hold.release);
+      void ticket?.completion
+        .then((completion) => {
+          hold.release();
+          // The response stream is over; the turn is not necessarily over.
+          //
+          // A stream that ends says the runtime closed it — not that it finished
+          // the turn. The runtime may have closed the stream early, or the queue
+          // may have moved on to the next turn while this one was ending, and
+          // either way the turn this client was following is not the only
+          // candidate for "still running". Only the runtime's active-turn read
+          // says which is true, so the client asks once its own stream is done
+          // and re-attaches to whatever is still running.
+          //
+          // A queued submission has no stream of its own to end, so there is
+          // nothing here to reconcile: the turn it joined is somebody else's
+          // stream, and the queue's own events say when it starts.
+          if (completion.kind !== "dispatched") return;
+          reconcileTurn?.(completion.sessionId);
+        })
+        .catch(() => {
+          hold.release();
+        });
       return ticket;
     },
     attach: (turnId) => {

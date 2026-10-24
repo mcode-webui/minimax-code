@@ -528,6 +528,12 @@ export function createWebuiApplication(
       refreshQueue: () => {
         if (sessionId) composerController?.refreshQueue(sessionId);
       },
+      // A turn that outlives the client's own response stream is reconciled
+      // through the same owner the event path uses, so a local send and a
+      // missed `session.start` are repaired the same way — and the session to
+      // reconcile is the one the send landed on, which is not always the one
+      // this command set was built for.
+      reconcileTurn: (target) => turnCommandsFor(target).recover(),
       // No draft writer crosses into Turn: the composer consumes the input it
       // captured, on the admission the turn owner returns, and a link installed here
       // would clear a slot without knowing whether it was still the submitted

@@ -366,6 +366,87 @@ describe("recheck and gap recovery are the command set's, not the view's", () =>
   });
 });
 
+describe("a response stream that ends is not the end of the turn", () => {
+  /** A send whose own stream ends immediately: the runtime closed it. */
+  const endTheStream = async (
+    _request: unknown,
+    onFrame: (frame: WebuiStreamFrame) => void,
+  ): Promise<void> => {
+    onFrame({ cursor: "c1", dataJson: "[DONE]" });
+  };
+
+  it("asks the owner to reconcile the session the send landed on", async () => {
+    // The client's own stream ending says the runtime closed it — not that it
+    // finished the turn. The runtime may have closed the stream early, or the
+    // queue may have moved on to the next turn while this one was ending, and
+    // only the runtime's active-turn read says which is true. So the send hands
+    // the session to the owner, which asks that read and re-attaches to
+    // whatever is still running.
+    const store = createWebuiSessionStore();
+    const reconcileTurn = vi.fn();
+    const commands = createWebuiConversationTurnCommands({
+      store,
+      sessionId: "s1",
+      capabilities: { send: endTheStream as never },
+      reconcileTurn,
+    });
+
+    await commands.send({ message: "hello" })?.completion;
+
+    expect(reconcileTurn).toHaveBeenCalledWith("s1");
+  });
+
+  it("reconciles the session a first message created, not the home slot", async () => {
+    // The turn landed on the session the first message created, so that is the
+    // session whose turn may still be running — and the home slot is no longer
+    // where the turn is.
+    const store = createWebuiSessionStore();
+    const reconcileTurn = vi.fn();
+    const commands = createWebuiConversationTurnCommands({
+      store,
+      sessionId: undefined,
+      capabilities: {
+        createSession: (async () => ({ sessionId: "s-created" })) as never,
+        send: endTheStream as never,
+      },
+      taskSessions: {
+        creationPending: () => false,
+        submit: async () => {
+          store.transferSession(WEBUI_HOME_SESSION_KEY, "s-created", {
+            expectSourceIncarnation: store.readHomeIncarnation(),
+          });
+          return { kind: "created" as const, sessionId: "s-created", selected: true };
+        },
+      },
+      reconcileTurn,
+    });
+
+    await commands.send({ message: "hello" })?.completion;
+
+    expect(reconcileTurn).toHaveBeenCalledWith("s-created");
+  });
+
+  it("does not reconcile a queued submission: it had no stream of its own to end", async () => {
+    // A queued submission joined somebody else's turn. Its own stream never
+    // opened, so there is no stream of its own that ended — and the turn it
+    // joined is somebody else's stream, which the queue's own events speak for.
+    const store = createWebuiSessionStore();
+    const reconcileTurn = vi.fn();
+    const enqueueMessage = vi.fn(async () => undefined);
+    store.createSessionWriter({ kind: "session", sessionId: "s1" }).setSending(true);
+    const commands = createWebuiConversationTurnCommands({
+      store,
+      sessionId: "s1",
+      capabilities: { enqueue: enqueueMessage as never },
+      reconcileTurn,
+    });
+
+    await commands.send({ message: "queued" })?.completion;
+
+    expect(reconcileTurn).not.toHaveBeenCalled();
+  });
+});
+
 describe("an accepted attempt leases its session", () => {
   it("keeps the session interesting across a navigation and releases it when the attempt settles", async () => {
     const store = createWebuiSessionStore();

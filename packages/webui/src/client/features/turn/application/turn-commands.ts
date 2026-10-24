@@ -282,8 +282,15 @@ export interface WebuiSendTurnArgs {
   readonly intent: WebuiSubmissionIntent;
   /** Decided by the owner before any work, so the ticket can say it immediately. */
   readonly admission: WebuiSubmissionAdmission;
-  /** Read the live slice. The home→session migration below changes the key. */
-  readonly readStream?: () => WebuiStreamState;
+  /**
+   * Read the live slice of a record, by the key it is filed under.
+   *
+   * The key is passed in rather than remembered because a first message creates
+   * the session it is sent to: the record moves onto that session, and a reader
+   * bound to the key the turn started from answers about a slot the record has
+   * already left.
+   */
+  readonly readStream?: (sessionKey: string) => WebuiStreamState;
   readonly deps: Omit<WebuiDeliveryDeps, "projection" | "streamState">;
   readonly enqueueMessage?: WebuiClientMessageEnqueuer;
   readonly createSessionWorkspaceDir?: string;
@@ -336,12 +343,25 @@ export function sendWebuiTurn(
   // The bundle is woven here, from the writer this command owns: `createSink`
   // reads the *current* writer, so a turn whose first message created the
   // session mints its lease against the migrated key rather than the home slot.
+  const readSessionStream = args.readStream;
   const turnHandlers: WebuiComposerSubmitHandlers = buildWebuiComposerHandlers({
     createSink: () => writer.createSink(),
     resetStreamForTurn: () => writer.resetStreamForTurn(),
     setRefusal: (refusal) => writer.setStreamRefusal(refusal),
     setSending: (sending) => writer.setTurnSending(sending),
-    ...(args.readStream ? { readStream: args.readStream } : {}),
+    // The live slice, read through the key the turn's record lives under. A
+    // first message creates its session and the record moves onto it, so the
+    // key the turn started from is not the key the record is on any more — and
+    // a reader left on the old key would decide the turn no longer owns the
+    // stream, which is what strands its sending flag.
+    ...(readSessionStream
+      ? {
+          readStream: () =>
+            readSessionStream(
+              createdSessionId ?? args.sessionId ?? WEBUI_HOME_SESSION_KEY,
+            ),
+        }
+      : {}),
     // The draft is consumed by the submission, through the link the assembly
     // installed. No caller supplies a writer.
     //
@@ -447,9 +467,12 @@ export function createWebuiConversationTurnCommands(
     setSending: viewWriter.setSending,
   });
 
-  /** The live slice. The home→session migration changes which key this reads. */
+  /** The live slice of a record, read by the key it is filed under. */
+  const readSessionStream = (sessionKey: string): WebuiStreamState =>
+    store.readSession(sessionKey).stream;
+  /** The live slice of this owner's record. */
   const readStream = (): WebuiStreamState =>
-    store.readSession(sessionId ?? WEBUI_HOME_SESSION_KEY).stream;
+    readSessionStream(sessionId ?? WEBUI_HOME_SESSION_KEY);
 
   /**
    * The loop's transports, cut from the slice: an unwired operation is absent,
@@ -595,7 +618,7 @@ export function createWebuiConversationTurnCommands(
         // The UI submits intent only. The execution owner reads the canonical
         // target at invocation time so a stale render cannot choose send vs queue.
         sending: admission.turnLive && decision.kind !== "unsupported" && decision.kind !== "needs-session",
-        readStream,
+        readStream: readSessionStream,
         deps: loopDeps(hold),
         ...(capabilities?.enqueue ? { enqueueMessage: capabilities.enqueue } : {}),
         ...(intent.createSessionWorkspaceDir

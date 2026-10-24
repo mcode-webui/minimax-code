@@ -16,6 +16,7 @@ import { createWebuiSessionStore } from "../../src/client/application/session-st
 import { createWebuiSessionScopeManager } from "../../src/client/conversation/session-scope.js";
 import { createWebuiDeliveryDisposers } from "../../src/client/features/turn/application/delivery-disposers.js";
 import { WEBUI_HOME_SESSION_KEY } from "../../src/client/application/state.js";
+import type { WebuiStreamFrame } from "../../src/shared/contracts/stream.js";
 
 /** A resume that never settles: the attachment's lease stays claimed. */
 const openStream = () => new Promise<never>(() => undefined);
@@ -166,6 +167,113 @@ describe("the conversation turn commands", () => {
       sessionId: "s1",
     });
     expect(() => commands.attach("t-1")).not.toThrow();
+  });
+});
+
+describe("a first message on the home surface", () => {
+  const createSession = async () => ({ sessionId: "s-created" });
+
+  it("clears the sending flag on the session the message created", async () => {
+    // The first message has no session yet, so the turn creates one and its
+    // record moves onto it. The flag the composer renders from lives on that
+    // record, and the turn's own cleanup has to read it there: a reader still
+    // looking at the home slot would decide the turn no longer owns the
+    // stream, skip the cleanup, and leave the send button as a stop button —
+    // which swallows the next message into the queue.
+    const store = createWebuiSessionStore();
+    const commands = createWebuiConversationTurnCommands({
+      store,
+      sessionId: undefined,
+      capabilities: {
+        createSession: createSession as never,
+        send: (async (
+          _request: unknown,
+          onFrame: (frame: WebuiStreamFrame) => void,
+        ) => {
+          onFrame({
+            cursor: "c1",
+            dataJson: JSON.stringify({
+              type: 2,
+              agent_message: { msg_id: "m1", msg_content: "hi" },
+            }),
+          });
+          onFrame({ cursor: "c2", dataJson: "[DONE]" });
+        }) as never,
+      },
+      taskSessions: {
+        creationPending: () => false,
+        submit: async () => {
+          // The creation moves the home record onto the session it created,
+          // so the home slot is empty by the time the turn settles.
+          store.transferSession(WEBUI_HOME_SESSION_KEY, "s-created", {
+            expectSourceIncarnation: store.readHomeIncarnation(),
+          });
+          return {
+            kind: "created" as const,
+            sessionId: "s-created",
+            selected: true,
+          };
+        },
+      },
+    });
+
+    const ticket = commands.send({ message: "hello" });
+    await ticket?.completion;
+
+    expect(store.readSession("s-created").sending).toBe(false);
+    expect(store.readSession("s-created").stream.phase).toBe("done");
+  });
+
+  it("sends the next message instead of queueing it", async () => {
+    // The same defect, seen from the composer: a sending flag left standing
+    // makes the next submission look like a turn that is already live, so it
+    // is queued rather than sent.
+    const store = createWebuiSessionStore();
+    const enqueueMessage = vi.fn(async () => undefined);
+    const sendMessage = vi.fn(
+      async (
+        _request: unknown,
+        onFrame: (frame: WebuiStreamFrame) => void,
+      ) => {
+        onFrame({ cursor: "c1", dataJson: "[DONE]" });
+      },
+    );
+    const capabilities = {
+      createSession: createSession as never,
+      send: sendMessage as never,
+      enqueue: enqueueMessage as never,
+    };
+    const taskSessions = {
+      creationPending: () => false,
+      submit: async () => ({
+        kind: "created" as const,
+        sessionId: "s-created",
+        selected: true,
+      }),
+    };
+    const home = createWebuiConversationTurnCommands({
+      store,
+      sessionId: undefined,
+      capabilities,
+      taskSessions,
+    });
+
+    await home.send({ message: "first" })?.completion;
+
+    // The created session is the one the user is now in, so the next message
+    // is sent from it.
+    const inSession = createWebuiConversationTurnCommands({
+      store,
+      sessionId: "s-created",
+      capabilities,
+      taskSessions,
+    });
+    const second = inSession.send({ message: "second" });
+
+    expect(second?.admission).toEqual({ kind: "dispatching" });
+    await second?.completion;
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(enqueueMessage).not.toHaveBeenCalled();
   });
 });
 

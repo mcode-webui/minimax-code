@@ -45,6 +45,55 @@ import type {
 } from "../../src/shared/contracts/goal.js";
 import { removeRealHostDataDir } from "./remove-real-host-data-dir.js";
 
+/** Whether the Info-ZIP CLI is on PATH (`test/unit/webui-workspace-archive.test.ts` asks the same). */
+const HAS_ZIP = (() => {
+  try {
+    execFileSync("zip", ["--help"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+/**
+ * A one-entry stored zip, byte by byte.
+ *
+ * The `zip` CLI is a fixture builder, not the thing under test — the port's
+ * archive reader reads whatever bytes are in the file — and Windows hosts ship
+ * without Info-ZIP. Rather than lose the fallback assertion on those hosts,
+ * the same archive is written by hand, exactly the way the archive unit suite
+ * substitutes a crafted zip when it cannot call the CLI.
+ */
+function craftSingleEntryZip(name: string, content: string): Buffer {
+  const nameBytes = Buffer.from(name, "utf8");
+  const data = Buffer.from(content, "utf8");
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(0x800, 6); // UTF-8 names
+  local.writeUInt16LE(0, 8); // stored
+  local.writeUInt32LE(data.length, 18);
+  local.writeUInt32LE(data.length, 22);
+  local.writeUInt16LE(nameBytes.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE((3 << 8) | 20, 4); // unix host, spec 2.0
+  central.writeUInt16LE(20, 6);
+  central.writeUInt16LE(0x800, 8);
+  central.writeUInt16LE(0, 10); // stored
+  central.writeUInt32LE(data.length, 20);
+  central.writeUInt32LE(data.length, 24);
+  central.writeUInt16LE(nameBytes.length, 28);
+  central.writeUInt32LE((0o100644 & 0xffff) * 0x10000, 38);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(central.length, 12);
+  end.writeUInt32LE(local.length + nameBytes.length + data.length, 16);
+  return Buffer.concat([local, nameBytes, data, central, nameBytes, end]);
+}
+
 interface Booted {
   readonly dataDir: string;
   readonly workspaceDir: string;
@@ -225,7 +274,12 @@ describe("adapter translations against the real host", () => {
         // The v2 host exposes no archive reader, so this exercises the fallback to
         // `runtime/workspace-archive.ts` through the real port.
         const archivePath = join(workspaceDir, "bundle.zip");
-        execFileSync("zip", ["-q", "-r", archivePath, "tracked.txt"], { cwd: workspaceDir });
+        if (HAS_ZIP) {
+          execFileSync("zip", ["-q", "-r", archivePath, "tracked.txt"], { cwd: workspaceDir });
+        } else {
+          // No Info-ZIP on this host: the same archive, written byte by byte.
+          await writeFile(archivePath, craftSingleEntryZip("tracked.txt", "tracked\n"));
+        }
         const listing = await port.readWorkspaceArchive({ workspaceDir, path: "bundle.zip" });
         expect(listing.archivePath).toBe("bundle.zip");
         expect(listing.entries.map((entry) => entry.name)).toContain("tracked.txt");

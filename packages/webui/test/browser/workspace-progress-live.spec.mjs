@@ -218,6 +218,9 @@ test("a todo update inside a stream message reaches the progress panel live", as
     }),
   });
   await expect.poll(() => panelText(page)).toContain("第一步：调研");
+  // One in-progress todo, nothing completed yet: the header summary tracks the
+  // live list, not the snapshot from session open.
+  await expect.poll(() => panelText(page)).toContain("0/1 已完成 · 0%");
 
   // A `todowrite` call in the same live turn carries the full list too, in the
   // raw wire shape where the name and arguments sit under `function`.
@@ -258,7 +261,11 @@ test("collapsing Todo releases the overview space and moves Subagents upward", a
     }),
   });
 
-  const todoHeading = page.getByRole("button", { name: "进度", exact: true });
+  // The Todo section's accessible name carries the completion summary
+  // ("进度 0/1 已完成 · 0%"), so match on the title prefix rather than the
+  // exact name. The panel toggle control is labelled "环境信息与进度" and does
+  // not start with "进度", so the anchored pattern stays unambiguous.
+  const todoHeading = page.getByRole("button", { name: /^进度/ });
   await expect(todoHeading).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("button", { name: "layout-worker running" })).toBeVisible();
   const expanded = await page.evaluate(() => {

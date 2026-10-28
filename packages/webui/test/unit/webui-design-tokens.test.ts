@@ -114,8 +114,10 @@ function semanticNames(): string[] {
 
 describe("WebUI design tokens", () => {
   it("lives at packages/webui/src/client/styles/tokens.css", () => {
-    // Sanity check that the file is being read from the right path.
-    expect(tokensPath.endsWith("src/client/styles/tokens.css")).toBe(true);
+    // Sanity check that the file is being read from the right path. Spoken in
+    // the `/` dialect because `path` helpers keep the platform separator.
+    const rel = path.relative(packageDir, tokensPath).split(path.sep).join("/");
+    expect(rel).toBe("src/client/styles/tokens.css");
   });
 
   it("carries the 211 semantic tokens that packages/webui/docs/design-language.md names", () => {

@@ -231,7 +231,11 @@ describe("webui boundary rules", () => {
   });
 
   it("script lives at the repo-root scripts directory", () => {
-    expect(path.relative(repoRoot, here)).toMatch(/^packages\/webui\/test/);
+    // `path.relative` speaks the platform separator; the repo's path dialect
+    // is `/`, the same one `rewriteInputs` normalizes to a few cases below.
+    expect(path.relative(repoRoot, here).split(path.sep).join("/")).toMatch(
+      /^packages\/webui\/test/,
+    );
   });
 });
 

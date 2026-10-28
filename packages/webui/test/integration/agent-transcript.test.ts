@@ -603,25 +603,35 @@ it("a real agent turn resumes after refresh and drains a queued message in order
       messages?: { msgId?: string; role?: string; msgContent?: string }[];
     } | undefined)?.messages;
     expect(refreshMessages?.some((message) => message.msgId === persistedSourceUserMessageId)).toBe(false);
-    expect(await persistedSourceUserMessage.count(), JSON.stringify({
-      refreshMessagesRequest: refreshMessagesRequest && {
-        requestId: refreshMessagesRequest.requestId,
-        operation: refreshMessagesRequest.operation,
-        body: refreshMessagesRequest.body,
-      },
-      refreshMessages: refreshMessages?.map((message) => ({
-        id: message.msgId,
-        role: message.role,
-        content: message.msgContent,
-      })),
-      visibleMessageIds: await page.locator("[data-webui-message-role]").evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          role: node.getAttribute("data-webui-message-role"),
-          id: node.getAttribute("data-message-id"),
-          text: node.textContent,
+    // The refreshed history response arriving on the socket (observed above
+    // through `received`) and React committing the row's removal are two
+    // separate steps; poll for the DOM catch-up rather than asserting the
+    // count in the same tick the frame landed, and keep the diagnostic dump
+    // for the case where it never does.
+    try {
+      await browserExpect.poll(() => persistedSourceUserMessage.count(), { timeout: 10_000 })
+        .toBe(0);
+    } catch (error) {
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\n${JSON.stringify({
+        refreshMessagesRequest: refreshMessagesRequest && {
+          requestId: refreshMessagesRequest.requestId,
+          operation: refreshMessagesRequest.operation,
+          body: refreshMessagesRequest.body,
+        },
+        refreshMessages: refreshMessages?.map((message) => ({
+          id: message.msgId,
+          role: message.role,
+          content: message.msgContent,
         })),
-      ),
-    })).toBe(0);
+        visibleMessageIds: await page.locator("[data-webui-message-role]").evaluateAll((nodes) =>
+          nodes.map((node) => ({
+            role: node.getAttribute("data-webui-message-role"),
+            id: node.getAttribute("data-message-id"),
+            text: node.textContent,
+          })),
+        ),
+      })}`);
+    }
     const mountedTranscript = page.locator(`[data-webui-transcript="${sessionId}"]`);
     await browserExpect(mountedTranscript.getByText("Message actions before refresh.", { exact: true }))
       .toBeVisible();
@@ -833,7 +843,12 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await composer.press("Enter");
     await browserExpect(page.getByTestId("progress-overview-card").getByText("Visible task from runtime tool"))
       .toBeVisible({ timeout: 30_000 });
-    const todoPanel = page.getByRole("button", { name: "进度", exact: true });
+    // The Todo section's accessible name carries the completion summary
+    // ("进度 0/1 已完成 · 0%"), so match on the title prefix rather than the
+    // exact name — the same anchored pattern the live browser spec uses. The
+    // panel toggle control is labelled "环境信息与进度" and does not start
+    // with "进度", so the pattern stays unambiguous.
+    const todoPanel = page.getByRole("button", { name: /^进度/ });
     await browserExpect(todoPanel).toBeVisible();
     await browserExpect(page.locator("span.webui-tool-label").filter({ hasText: "todowrite" }))
       .toHaveText("todowrite");
@@ -993,8 +1008,15 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     const referencePrompt = (referencePayload.messages ?? [])
       .map((message) => typeof message.content === "string" ? message.content : JSON.stringify(message.content))
       .join("\n");
-    const runtimeAttachmentPath = /<attachment name=\\?"runtime-note\.txt\\?"[^>]* path=\\?"([^"\\]+)\\?"/u
-      .exec(referencePrompt)?.[1];
+    // The attachment path is read out of the prompt the model stub received.
+    // Non-string message content is JSON.stringify'd above, so on Windows the
+    // path arrives escaped (`path=\"C:\\Users\\…\"`). The opening quote's
+    // escape (if any) is captured and must close the value too, so the JSON
+    // escape before the closing quote never lands in the path on any platform;
+    // the doubled separators then fold back to the real path (a no-op for
+    // POSIX separators and for unescaped string content).
+    const runtimeAttachmentPath = /<attachment name=\\?"runtime-note\.txt\\?"[^>]* path=(\\?)"(.+?)\1"/u
+      .exec(referencePrompt)?.[2]?.replaceAll("\\\\", "\\");
     expect(runtimeAttachmentPath).toBeDefined();
     expect(await readFile(runtimeAttachmentPath!, "utf8")).toBe("Synthetic attachment body.");
     await expect.poll(async () => {

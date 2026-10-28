@@ -167,6 +167,29 @@ describe("WebUI transcript widget wiring", () => {
     expect(html).toContain('data-testid="message-turn-navigator"');
   });
 
+  it("anchors every navigator tick to a rendered message root", () => {
+    // The tick→jump wiring's static half: each tick the strip lists must have
+    // a message root carrying the same `data-message-id`, which is what the
+    // activation handler queries for before scrolling. A tick without an
+    // anchor would be a dead button.
+    const html = sessionShell({
+      messages: [
+        { msgId: "nav-user-1", role: "user", msgContent: "第一问", timestamp: 1 },
+        { msgId: "nav-assistant-1", role: "assistant", msgContent: "第一答", timestamp: 2 },
+        { msgId: "nav-user-2", role: "user", msgContent: "第二问", timestamp: 3 },
+        { msgId: "nav-assistant-2", role: "assistant", msgContent: "第二答", timestamp: 4 },
+      ],
+    });
+    const tickIds = [
+      ...html.matchAll(/data-testid="message-turn-navigator-tick"[^>]*data-turn-id="([^"]+)"/gu),
+    ].map((match) => match[1]);
+    // Only assistant blocks are ticks, in transcript order.
+    expect(tickIds).toEqual(["nav-assistant-1", "nav-assistant-2"]);
+    for (const id of tickIds) {
+      expect(html).toContain(`data-message-id="${id}"`);
+    }
+  });
+
   it("replaces the bare alert with OutputError when the stream refuses", () => {
     const html = sessionShell({
       streamingPhase: "refused",

@@ -306,6 +306,7 @@
     display: inline-flex;
     height: var(--spacing_24);
     align-items: center;
+    gap: var(--spacing_4);
     border: 1px solid var(--border_default);
     border-radius: var(--radius_8);
     background: transparent;
@@ -321,6 +322,14 @@
   .webui-model-panel-context-option.is-active {
     border-color: var(--border_accent);
     color: var(--text_default_primary);
+  }
+  /* The catalog's word for the window that bills as the heavier choice. It is
+   * metadata about the size, not the size itself, so it is quieter than the
+   * number it rides with — and quieter in both themes, being a semantic role
+   * rather than a color. */
+  .webui-model-panel-context-option-hint {
+    color: var(--text_default_tertiary);
+    font-variant-numeric: normal;
   }
   /* ---- the thinking scale ----
    *

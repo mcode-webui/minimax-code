@@ -121,6 +121,13 @@ export function WebuiModelPanel({
             const active =
               typeof recordedContext === "number" &&
               recordedContext === value;
+            // The catalog's word for a window that bills as the heavier
+            // choice. The hint is keyed by the option's own value, so it can
+            // only ever annotate a size the row already shows — and a model
+            // whose catalog states none renders the size alone.
+            const higherUsage =
+              model?.contextWindowOptionHints?.[String(value)] ===
+              "higher_usage";
             return (
               <button
                 key={String(value)}
@@ -130,6 +137,11 @@ export function WebuiModelPanel({
                 onClick={() => onContextLimitChange(value)}
               >
                 {formatContextWindow(value)}
+                {higherUsage ? (
+                  <span className="webui-model-panel-context-option-hint">
+                    较高用量
+                  </span>
+                ) : null}
               </button>
             );
           })}

@@ -125,6 +125,25 @@
     .message-animate-in { animation: none; }
   }
 
+  /* Turn-navigator jump highlight: the message a tick jumped to flashes once
+   * so the destination is findable. The surface token is the accent
+   * focus-highlight the composer's selection already uses, so both themes
+   * rebind it through tokens.css and nothing here is theme-specific. */
+  .webui-turn-jump-flash {
+    border-radius: var(--radius_12);
+    animation: webui-turn-jump-flash 1.2s ease-out both;
+  }
+  @keyframes webui-turn-jump-flash {
+    0% { background-color: var(--bg_interaction_accent_focus_highlight); }
+    100% { background-color: transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .webui-turn-jump-flash {
+      animation: none;
+      background-color: var(--bg_interaction_accent_focus_highlight);
+    }
+  }
+
   /* A session is a two-zone surface: one message viewport owns the scroll
    * position, while the composer stays in the bottom zone. The DOM keeps the
    * composer close to the home surface markup, so the explicit order here is

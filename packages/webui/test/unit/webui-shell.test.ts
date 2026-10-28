@@ -395,6 +395,37 @@ describe("WebUI shell", () => {
     expect(collapsed).toContain('aria-expanded="false"');
     expect(collapsed).toContain('aria-hidden="true"');
   });
+
+  it("summarizes todo completion in the section header and hides the summary for an empty list", () => {
+    // 3 completed of 7 total; `cancelled` still counts towards the total the
+    // roadmap's completion percentage is computed over.
+    const todos = [
+      { content: "已完成步骤 1", status: "completed" as const },
+      { content: "已完成步骤 2", status: "completed" as const },
+      { content: "已完成步骤 3", status: "completed" as const },
+      { content: "已取消步骤", status: "cancelled" as const },
+      { content: "待处理步骤", status: "pending" as const },
+      { content: "当前步骤", status: "in_progress" as const },
+      { content: "另一待处理", status: "pending" as const },
+    ];
+    const markup = renderToStaticMarkup(createElement(WebuiProgressPanel, { todos }));
+    expect(markup).toContain("3/7 已完成 · 43%");
+    // The summary rides in the header button, so collapsing the section hides
+    // the rows while the summary stays readable.
+    const collapsed = renderToStaticMarkup(createElement(WebuiProgressPanel, { todos, collapsed: true }));
+    expect(collapsed).toContain("3/7 已完成 · 43%");
+    expect(collapsed).toContain("webui-progress-section webui-progress-panel is-collapsed");
+    // The 0% and 100% edges stay whole numbers, not fractions or NaN.
+    expect(renderToStaticMarkup(createElement(WebuiProgressPanel, { todos: [{ content: "未开始", status: "pending" }] }))).toContain("0/1 已完成 · 0%");
+    expect(renderToStaticMarkup(createElement(WebuiProgressPanel, { todos: [{ content: "收尾", status: "completed" }] }))).toContain("1/1 已完成 · 100%");
+    // An empty list renders the plain empty state: no summary line appears.
+    const empty = renderToStaticMarkup(createElement(WebuiProgressPanel, { todos: [], showEmptyState: true }));
+    expect(empty).toContain("跟踪较长任务的进度");
+    expect(empty).not.toContain("已完成 ·");
+    // The overview panel carries the same summary through its progress section.
+    const overview = renderToStaticMarkup(createElement(WebuiProgressOverviewPanel, { todos, open: true }));
+    expect(overview).toContain("3/7 已完成 · 43%");
+  });
   it("preserves an explicit empty thinking variant in model selection requests", () => {
     expect(
       buildWebuiModelSelectionRequest(

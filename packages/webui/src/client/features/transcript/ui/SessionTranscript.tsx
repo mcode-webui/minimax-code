@@ -2,11 +2,11 @@
 // flattening, history paging, streaming loader, and the embedded
 // WebuiQuestionnaireResponse renderer for historical questionnaire answers.
 
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, type ReactElement } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { IconChevronUp } from "@tabler/icons-react";
 import { ChatSkeleton } from "./TranscriptSkeletons.js";
 import { ActivityIndicator, MessageAfterQueryStreamingPlaceholder, MessagePassiveLoadingPlaceholder } from "./ActivityIndicator.js";
-import { TurnNavigator, type TurnSummary } from "./TurnNavigator.js";
+import { TurnNavigator, type TurnNavigatorPreview, type TurnSummary } from "./TurnNavigator.js";
 import { MessageItem } from "./MessageItem.js";
 import { formatWebuiMessageTimestamp } from "../projection/message-timestamp.js";
 import type { WebuiMessageActionCapabilities } from "../contracts/transcript-view.js";
@@ -29,6 +29,7 @@ import {
   projectWebuiTranscriptMessages,
   projectWebuiQueryDurations,
   projectWebuiProcessSegments,
+  type WebuiTranscriptGroup,
 } from "../projection/transcript-projection.js";
 import { projectWebuiTranscriptMessage } from "../projection/message-projection.js";
 import { projectWebuiTranscriptView } from "../projection/transcript-view-model.js";
@@ -44,6 +45,107 @@ import {
 } from "../bindings/use-transcript-scroll.js";
 
 const EMPTY_TRANSCRIPT_PAGE: WebuiClientMessagePage = {};
+
+// --- TurnNavigator integration ------------------------------------------------
+//
+// `TurnNavigator` is the presentational seam and defers hover, scroll and jump
+// to this integrator. The helpers below are that integration's pure halves,
+// exported so the node-environment suite can assert them without a DOM: which
+// message a tick anchors to, what one turn's hover preview shows, and what a
+// reveal does to its target. The mouse wiring itself (setState on hover,
+// querySelector on activate) stays in the component and is the boundary SSR
+// cannot reach.
+
+/** Every rendered message root carries `data-message-id` (MessageItem), so a
+ *  tick reuses that attribute as its anchor instead of a second anchor
+ *  system. Quotes and backslashes are escaped so a message id cannot close
+ *  the attribute selector. */
+export function turnNavigatorAnchorSelector(turnId: string): string {
+  return `[data-message-id="${turnId.replace(/["\\]/g, "\\$&")}"]`;
+}
+
+export const TURN_NAVIGATOR_FLASH_CLASS = "webui-turn-jump-flash";
+const TURN_NAVIGATOR_FLASH_MS = 1200;
+
+export interface WebuiTurnRevealTarget {
+  scrollIntoView(options?: ScrollIntoViewOptions): void;
+  readonly classList: { add(token: string): void; remove(token: string): void };
+}
+
+/** Reveal one turn after a tick activation: center it in the transcript
+ *  viewport and flash it so the destination is findable. The class is removed
+ *  after `flashMs` so the highlight stays transient. */
+export function revealTurnNavigatorAnchor(
+  target: WebuiTurnRevealTarget,
+  flashMs = TURN_NAVIGATOR_FLASH_MS,
+): void {
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  target.classList.add(TURN_NAVIGATOR_FLASH_CLASS);
+  setTimeout(() => target.classList.remove(TURN_NAVIGATOR_FLASH_CLASS), flashMs);
+}
+
+const TURN_NAVIGATOR_RESPONSE_MAX_CHARS = 120;
+
+/** The preview's one-line answer summary: the first non-empty line, capped. */
+function firstTurnSummaryLine(text: string): string {
+  const line = text.split("\n").find((candidate) => candidate.trim().length > 0) ?? "";
+  return line.length > TURN_NAVIGATOR_RESPONSE_MAX_CHARS
+    ? `${line.slice(0, TURN_NAVIGATOR_RESPONSE_MAX_CHARS - 1)}…`
+    : line;
+}
+
+function hasAssistantItems(group: WebuiTranscriptGroup): boolean {
+  return group.items.some((item) => item.kind === "assistant");
+}
+
+function turnUserQuery(
+  groups: readonly WebuiTranscriptGroup[],
+  fromIndex: number,
+  step: 1 | -1,
+): string | undefined {
+  for (let index = fromIndex; index >= 0 && index < groups.length; index += step) {
+    const userItem = groups[index]?.items.find(
+      (item): item is Extract<WebuiTranscriptItem, { text: string }> => item.kind === "user",
+    );
+    if (userItem) return userItem.text;
+  }
+  return undefined;
+}
+
+/** The hover preview for one tick: the turn's 1-based number among the
+ *  assistant blocks the strip lists, its first answer line as the summary, the
+ *  group's own timestamp, framed by the user queries on both sides. Returns
+ *  null when the id is not one of the assistant turns the strip lists — the
+ *  numbering and membership mirror `projectTurnRows`. */
+export function projectTurnNavigatorPreview(input: {
+  readonly turnId: string;
+  readonly groups: readonly WebuiTranscriptGroup[];
+}): TurnNavigatorPreview | null {
+  const assistantGroups = input.groups.filter(hasAssistantItems);
+  const tickIndex = assistantGroups.findIndex((group) => group.messageId === input.turnId);
+  if (tickIndex < 0) return null;
+  const group = assistantGroups[tickIndex]!;
+  const groupIndex = input.groups.indexOf(group);
+  const answer = group.items.find(
+    (item): item is Extract<WebuiTranscriptItem, { text: string }> =>
+      item.kind === "assistant" && item.text.trim().length > 0,
+  );
+  const time = formatWebuiMessageTimestamp(
+    group.items.find((item) => typeof item.timestamp === "number")?.timestamp,
+  );
+  const previousQuery = groupIndex > 0 ? turnUserQuery(input.groups, groupIndex - 1, -1) : undefined;
+  const nextQuery =
+    groupIndex >= 0 && groupIndex < input.groups.length - 1
+      ? turnUserQuery(input.groups, groupIndex + 1, 1)
+      : undefined;
+  return {
+    title: `第 ${tickIndex + 1} 轮`,
+    ...(time ? { time } : {}),
+    ...(previousQuery ? { previousQuery } : {}),
+    ...(nextQuery ? { nextQuery } : {}),
+    ...(answer ? { response: firstTurnSummaryLine(answer.text) } : {}),
+  };
+}
 
 export function WebuiSessionTranscript({
   sessionId,
@@ -158,6 +260,27 @@ export function WebuiSessionTranscript({
     turnLive,
     contentKey: items,
   });
+  // The navigator's tick interactions: hover decides which turn the preview
+  // card describes, activation jumps the viewport to that turn's message root.
+  // `TurnNavigator` renders; this integrator owns the state and the DOM.
+  const [hoveredTurnId, setHoveredTurnId] = useState<string>();
+  const navigatorPreview = useMemo(
+    () =>
+      hoveredTurnId
+        ? projectTurnNavigatorPreview({ turnId: hoveredTurnId, groups })
+        : null,
+    [groups, hoveredTurnId],
+  );
+  const activateNavigatorTick = (turnId: string) => {
+    const anchor = transcriptRef.current?.querySelector<HTMLElement>(
+      turnNavigatorAnchorSelector(turnId),
+    );
+    if (!anchor) return;
+    // 跳转是读者主动离开贴底跟随：先交还控制权，否则后续内容增长会把
+    // 视口从落点拽回底部（loadOlder 出于同一原因先释放）。
+    releaseAutoFollow();
+    revealTurnNavigatorAnchor(anchor);
+  };
   const loadOlder = visiblePage.hasMore && visiblePage.nextCursor
     ? () => {
         if (loading) return;
@@ -433,7 +556,15 @@ export function WebuiSessionTranscript({
           </div>
         ) : null}
       </div>
-      <TurnNavigator turns={turns} />
+      <TurnNavigator
+        turns={turns}
+        preview={navigatorPreview}
+        onTickHover={(turnId) => setHoveredTurnId(turnId)}
+        onTickLeave={(turnId) =>
+          setHoveredTurnId((current) => (current === turnId ? undefined : current))
+        }
+        onTickActivate={(turnId) => activateNavigatorTick(turnId)}
+      />
     </section>
   );
 }

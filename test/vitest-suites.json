@@ -330,6 +330,7 @@
       "packages/webui/test/unit/model-picker-effort-options.test.ts",
       "packages/webui/test/unit/model-effort-scale.test.ts",
       "packages/webui/test/unit/model-picker-groups.test.tsx",
+      "packages/webui/test/unit/model-panel-context-hints.test.tsx",
       "packages/webui/test/unit/model-provider-projection.test.ts",
       "packages/webui/test/unit/models-workflows.test.ts",
       "packages/webui/test/unit/output-error.test.tsx",

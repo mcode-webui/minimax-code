@@ -171,30 +171,47 @@ describe("WebUI slash palette — runtime narrowing", () => {
     // These rows carry no composerMode, so the lite filter drops them — but
     // they ARE runnable: `classifyWebuiSlashCommand` returns "runnable" and
     // `resolveWebuiSubmissionIntent` path 3 dispatches them to the host's
-    // `runCommand`. An earlier version of this test asserted `[]` with the
-    // comment "those commands are hidden from this palette" — that pinned the
-    // missing `compact` entry in place and let the palette stay green while
-    // `/compact` was unreachable from the UI.
-    expect(names).toEqual(["compact"]);
+    // `runCommand`. Every name in WEBUI_RUN_COMMAND_NAMES must carry a row
+    // here: a missing row is a command the transport accepts but the user
+    // cannot discover or invoke. An earlier version asserted `["compact"]`
+    // while the other five names had no row — that pinned the gap; this
+    // pins the closure of the list.
+    expect(names).toEqual([...WEBUI_RUN_COMMAND_NAMES].sort());
   });
 
-  it("exposes the run-command the server transport actually routes", () => {
-    // The cross-module contract, stated so that deleting the entry fails it.
+  it("exposes every run-command the server transport actually routes", () => {
+    // The cross-module contract, stated so that deleting any entry fails it.
     //
-    // `runtime/commands/runner.ts` routes `command === "compact"` into
-    // `port.requestCompaction`, and the operation is registered in
-    // `server/operation/operations.ts`. A palette that omits the row leaves
-    // `resolveWebuiSubmissionIntent` unable to find the name, so the
-    // submit-turn path swallows `/compact` and sends it as a plain chat
-    // message. The other names in WEBUI_RUN_COMMAND_NAMES (`help`, `new`,
-    // `status`, `usage`, `model`) have no palette row yet on purpose — they
-    // need their own scope, so this test pins the one command that is wired
-    // end to end rather than asserting the whole whitelist.
+    // `runtime/commands/runner.ts` routes each name in
+    // WEBUI_RUN_COMMAND_NAMES to a port capability — `help` to the
+    // descriptor list, `new` to `createSession`, `compact` to
+    // `requestCompaction`, `status` to `getAccountStatus`/`getSession`,
+    // `usage` to `getSessionUsage`, `model` to `listModels`/`selectModel` —
+    // and the operation is registered in `server/operation/operations.ts`.
+    // A palette that omits a row leaves `resolveWebuiSubmissionIntent`
+    // unable to find the name, so the submit-turn path swallows the slash
+    // and sends it as a plain chat message.
     const palette = buildWebuiSlashPalette({
       skills: Object.values(WEBUI_PLUGIN_REGISTRY),
     });
     const runnableNames = palette.filter(isWebuiRunnableCommand).map((entry) => entry.name);
-    expect(runnableNames).toContain("compact");
+    for (const name of WEBUI_RUN_COMMAND_NAMES) {
+      expect(runnableNames, `palette row for /${name}`).toContain(name);
+    }
+  });
+
+  it("registers every run-command with a non-empty label and description", () => {
+    // Discoverability is the row itself: name aligned with the contract
+    // list, a label the popover shows, a description that states what the
+    // command does, and the capability flag on. The descriptions follow the
+    // runtime's actual behaviour in `runtime/commands/runner.ts`.
+    for (const name of WEBUI_RUN_COMMAND_NAMES) {
+      const row = WEBUI_BUILTIN_COMMANDS.find((entry) => entry.name === name);
+      expect(row, `built-in row for /${name}`).toBeDefined();
+      expect(row?.label.trim(), `label for /${name}`).not.toBe("");
+      expect(row?.description.trim(), `description for /${name}`).not.toBe("");
+      expect(row?.supported, `supported for /${name}`).toBe(true);
+    }
   });
 
   it("does not leave a run-command row marked unsupported", () => {

@@ -96,6 +96,7 @@ import type {
   LocalTokenUsageStore,
   LocalTurnDiffStore,
 } from "../persistence/ports.js";
+import { closeLocalRuntimeDb } from "../persistence/db.js";
 import {
   SqliteLocalCommunicationMessageStore,
   SqliteLocalTokenUsageStore,
@@ -436,6 +437,14 @@ export class LocalRuntimeApiHost {
   private readonly metricsReporter: LocalRuntimeApiHostOptions["metricsReporter"];
   private readonly mavisCronAdapterProvider: LocalRuntimeApiHostOptions["mavisCronAdapterProvider"];
   private readonly deleteAgentCronTasksOverride: LocalRuntimeApiHostOptions["deleteAgentCronTasks"];
+  /**
+   * The data directory this host's stores opened against, captured at
+   * construction. `configGetter()` stays live — a process may boot a second
+   * host (and move `MINIMAX_DATA_DIR`) before the first one closes — but the
+   * cached V1 SQLite connection this host owns is keyed by the construction
+   * time path, so that is the path close must release.
+   */
+  private readonly persistenceDataDir: string;
   private readonly fileGitChangesCoordinator =
     createLocalFileApiGitChangesCoordinator();
   constructor(options: LocalRuntimeApiHostOptions = {}) {
@@ -507,6 +516,7 @@ export class LocalRuntimeApiHost {
       );
     }
     const runtimeDataDir = this.configGetter().dataDir;
+    this.persistenceDataDir = runtimeDataDir;
     try {
       ensureTrashScript(runtimeDataDir);
       // Seeded alongside the trash script: the shim is the execution-layer
@@ -1477,6 +1487,16 @@ export class LocalRuntimeApiHost {
       () => this.globalEvents.close(),
       () => drainBackgroundTasks(this),
       () => this.errorReporter?.close(),
+      // The V1 stores share one process-wide cached connection per data
+      // directory (`withLocalRuntimeDb`), and nothing else owns its lifetime.
+      // Closing it last — after the background tasks that may still write
+      // through it have drained — releases the SQLite file handles; on
+      // Windows an open handle keeps the data directory undeletable
+      // (`EBUSY`), which every isolated-data-dir consumer inherits. The
+      // construction-time path is the key: `configGetter()` reads the live
+      // environment, which a second host in the same process has already
+      // moved.
+      () => closeLocalRuntimeDb(this.persistenceDataDir),
     ];
     for (const close of cleanups) {
       try {

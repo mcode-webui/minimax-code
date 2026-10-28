@@ -10,7 +10,7 @@
 // to any carrier without the document, or a name changed in one place, fails here.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -118,9 +118,13 @@ describe("each action's business is the one the inventory records", () => {
         return listFiles(dir).filter((file) => /pluginManagement/u.test(stripComments(readSafe(file))));
       });
     expect(reach.length).toBeGreaterThan(0);
-    const base = fileURLToPath(CLIENT).replace(/\/$/u, "") + "/";
+    // `fileURLToPath` ends in the platform separator, and `join`-built paths
+    // carry it throughout on Windows, so slicing off a `/`-anchored base both
+    // clips a character and leaves `\` separators that match no allowance.
+    // Compare through `relative` and speak the allowance's `/` dialect.
+    const base = fileURLToPath(CLIENT).replace(/[\\/]+$/u, "");
     for (const file of reach) {
-      const rel = file.slice(base.length);
+      const rel = relative(base, file).split(sep).join("/");
       expect(allowed, `${rel} reaches the plugin port`).toContain(rel);
     }
   });

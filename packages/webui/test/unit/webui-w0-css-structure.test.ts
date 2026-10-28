@@ -863,12 +863,12 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       rule.context.some((entry) => entry.includes("prefers-reduced-motion")),
     );
 
-    // Sixteen rules across the stylesheets the shell imports. Deleting one of
+    // Seventeen rules across the stylesheets the shell imports. Deleting one of
     // these is the failure mode this assertion exists for: the base rule would
     // keep animating for a user who asked for reduced motion. The exact list
     // is the point -- adding an animated rule without registering its override
     // here is the same defect, in the other direction.
-    expect(reducedMotion).toHaveLength(16);
+    expect(reducedMotion).toHaveLength(17);
     for (const rule of reducedMotion)
       expect(rule.body).toMatch(/(?:animation|transition):\s*none/u);
 
@@ -915,6 +915,9 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       // Renamed from `.webui-settings-toggle span` when the toggle became the
       // shared `.webui-toggle-switch` control.
       ".webui-toggle-switch, .webui-toggle-switch > span",
+      // Added with the TurnNavigator jump: the destination message flashes
+      // once, so reduced motion replaces the flash with a steady highlight.
+      ".webui-turn-jump-flash",
       // Added with the account menu's daily check-in fly-out, which now enters
       // with the shared surface's motion. It is rendered through a portal, so
       // the shell-wide override in `index.css` — which is scoped to
@@ -1002,6 +1005,9 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       "webui-progress-skeleton",
       "webui-settings-content-in",
       "webui-signin-claim-spin",
+      // The TurnNavigator jump flash: the message a tick jumped to flashes
+      // once so the destination is findable without following the scroll.
+      "webui-turn-jump-flash",
       "webui-user-menu-usage-pulse",
       // The workspace panel's own reveal: it grows from the right edge, and
       // the panel that covers it slides the other way.

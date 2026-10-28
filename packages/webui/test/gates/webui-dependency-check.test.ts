@@ -75,7 +75,7 @@ describe("V42 frozen pre-refactor metadata and permissions", () => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
         const filename = path.join(directory, entry.name);
         if (entry.isDirectory()) walk(filename);
-        else if (/\.(?:ts|tsx|css)$/u.test(filename)) paths.push(path.relative(sourceRoot, filename));
+        else if (/\.(?:ts|tsx|css)$/u.test(filename)) paths.push(path.relative(sourceRoot, filename).split(path.sep).join("/"));
       }
     };
     walk(sourceRoot);
@@ -570,7 +570,10 @@ describe("direction fixtures", () => {
   });
 
   it("keeps a React host dependency when TypeScript resolves it outside the WebUI source tree", () => {
-    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts");
+    // TypeScript resolves path-mapped targets in the `/` dialect (the graph
+    // records `resolvedFileName` verbatim), so the expectation speaks it too
+    // rather than the host separator `path.join` produced.
+    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts").split(path.sep).join("/");
     expect(readFileSync(reactTypes, "utf8")).toContain("export = React");
     const { graph, result } = evaluateFixture({
       "client/application/app.ts": 'import { useState } from "react";\nexport const use = useState;\n',
@@ -939,7 +942,9 @@ describe("the ambient-member rule", () => {
 // one, even when the specifier it was authored with says nothing of the sort.
 describe("the resolved-host rule", () => {
   it("rejects a React dependency that arrives through a path alias", () => {
-    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts");
+    // Same dialect note as the direction fixture above: `resolvedFileName`
+    // for a path-mapped target arrives with `/` separators.
+    const reactTypes = path.join(repoRoot, "node_modules/@types/react/index.d.ts").split(path.sep).join("/");
     const { graph, result } = evaluateFixture(
       {
         "client/application/app.ts":

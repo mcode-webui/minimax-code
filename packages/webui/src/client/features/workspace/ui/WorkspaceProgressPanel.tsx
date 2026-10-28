@@ -20,10 +20,12 @@ const PROGRESS_COPY = {
   close: "关闭",
 } as const;
 
-function WorkspaceProgressSection({ kind, className, title, collapsed, onToggle, children, busy }: {
+function WorkspaceProgressSection({ kind, className, title, titleMeta, collapsed, onToggle, children, busy }: {
   readonly kind: "environment" | "progress" | "subagents";
   readonly className: string;
   readonly title: string;
+  /** Quiet metadata shown in the header next to the title (completion summary). */
+  readonly titleMeta?: ReactElement;
   readonly collapsed: boolean;
   readonly onToggle?: () => void;
   readonly children: ReactElement | null;
@@ -32,6 +34,7 @@ function WorkspaceProgressSection({ kind, className, title, collapsed, onToggle,
   return <section {...{ [`data-webui-${kind}-panel`]: "true" }} className={`webui-progress-section ${className}${collapsed ? " is-collapsed" : ""}`} data-workspace-section="true" aria-busy={busy || undefined}>
     <button type="button" className="webui-workspace-section-title" onClick={onToggle} aria-expanded={!collapsed}>
       <span data-workspace-section-title="true">{title}</span>
+      {titleMeta}
       <WebuiIconChevronDown className={`webui-progress-section-chevron${collapsed ? " is-collapsed" : ""}`} />
     </button>
     <div className={`webui-expandable-motion${collapsed ? "" : " is-open"}`} aria-hidden={collapsed} ref={(element) => element?.toggleAttribute("inert", collapsed)}>
@@ -48,7 +51,13 @@ export function WebuiProgressPanel({ todos, showProgress = true, showEmptyState 
   readonly onToggle?: () => void;
 }): ReactElement | null {
   if (!showProgress || (todos.length === 0 && !showEmptyState)) return null;
-  return <WorkspaceProgressSection kind="progress" className="webui-progress-panel" title={PROGRESS_COPY.progress} collapsed={collapsed} onToggle={onToggle}>
+  // Completion summary for the section header: completed count over the whole
+  // list. An empty list renders no summary (the empty state explains itself).
+  const completedCount = todos.filter((todo) => todo.status === "completed").length;
+  const completionSummary = todos.length > 0
+    ? `${completedCount}/${todos.length} 已完成 · ${Math.round((completedCount / todos.length) * 100)}%`
+    : null;
+  return <WorkspaceProgressSection kind="progress" className="webui-progress-panel" title={PROGRESS_COPY.progress} titleMeta={completionSummary === null ? undefined : <span className="ml-2 shrink-0 text-caption-base text-text_default_tertiary">{completionSummary}</span>} collapsed={collapsed} onToggle={onToggle}>
         {todos.length === 0 ? <div className="webui-progress-scroll"><p className="webui-progress-empty">{PROGRESS_COPY.progressEmpty}</p></div> : <div className="webui-progress-scroll">
           {todos.map((todo, index) => <div className={`webui-progress-row webui-progress-row--${todo.status}`} key={`${todo.content}-${index}`}>
             <span className="webui-progress-marker">{todo.status === "completed" ? <WebuiIconCheck className="size-3" /> : index + 1}</span>

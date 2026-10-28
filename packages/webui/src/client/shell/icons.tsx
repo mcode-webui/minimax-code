@@ -6,7 +6,7 @@ import {
   IconCalendarEvent, IconCaretRightFilled, IconChartBar, IconCheck, IconChevronDown, IconChevronLeft,
   IconChevronRight, IconClipboard, IconCode, IconCopy, IconDeviceMobile, IconDots,
   IconDownload, IconEdit, IconFile, IconFileCode, IconFolder, IconFolderPlus,
-  IconGitBranch, IconGitCompare, IconGitFork, IconHierarchy, IconHome, IconLayoutDashboard, IconMaximize,
+  IconGitBranch, IconGitCompare, IconGitFork, IconHierarchy, IconHome, IconInfoCircle, IconLayoutDashboard, IconMaximize,
   IconLayoutSidebar, IconMapPin, IconMessage, IconMessageCircle, IconMessageQuestion,
   IconMinimize, IconPaperclip, IconPin, IconPinFilled, IconPuzzle, IconRefresh, IconSearch,
   IconShieldCheck, IconShieldLock, IconShieldX, IconSparkles,
@@ -96,6 +96,8 @@ export function WebuiIconWorkspaceTerminal({ className }: WebuiIconProps): React
 export function WebuiIconWorkspaceCanvas({ className }: WebuiIconProps): ReactElement { return glyph(IconHierarchy, className); }
 export function WebuiIconWorkspaceExpand({ className, expanded = false }: WebuiIconProps & { readonly expanded?: boolean }): ReactElement { return glyph(expanded ? IconMinimize : IconMaximize, className); }
 export function WebuiIconCommandCompact({ className }: WebuiIconProps): ReactElement { return glyph(IconMinimize, className); }
+export function WebuiIconCommandHelp({ className }: WebuiIconProps): ReactElement { return glyph(IconMessageQuestion, className); }
+export function WebuiIconCommandStatus({ className }: WebuiIconProps): ReactElement { return glyph(IconInfoCircle, className); }
 export function WebuiIconCommandUsage({ className }: WebuiIconProps): ReactElement { return glyph(IconChartBar, className); }
 export function WebuiIconCommandGoal({ className }: WebuiIconProps): ReactElement { return glyph(IconTarget, className); }
 export function WebuiIconCommandPlan({ className }: WebuiIconProps): ReactElement { return glyph(IconCalendarEvent, className); }

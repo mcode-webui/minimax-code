@@ -179,15 +179,22 @@ function realZip(
   return artifactPath(name);
 }
 
-/** A real tar, or a gzipped one when the name ends in `.tgz`. */
+/** A real tar, or a gzipped one when the name ends in `.tgz`.
+ *
+ * The archive argument is sibling-relative (`../<name>` from the source
+ * directory), not absolute: GNU tar reads the drive-letter colon in an
+ * absolute Windows path as a `host:file` remote spec, and Windows's bsdtar
+ * does not accept the `--force-local` escape hatch. A relative path carries
+ * no colon, so every tar flavour (GNU and bsdtar, all three platforms) takes
+ * it as a plain local file. */
 function realTar(
   name: string,
   members: Readonly<Record<string, string>>,
 ): string {
   const source = writeTree(`${name}-src`, members);
   const args = name.endsWith(".tgz")
-    ? ["czf", artifactPath(name)]
-    : ["cf", artifactPath(name)];
+    ? ["czf", `../${name}`]
+    : ["cf", `../${name}`];
   execFileSync("tar", [...args, "."], { cwd: source, env: FIXTURE_ENV });
   return artifactPath(name);
 }
@@ -766,7 +773,9 @@ describe("workspace archive extraction", () => {
 
 /** A tar containing a symlink, via the CLI (`tar` records typeflag `2`). */
 function realTarLink(name: string, source: string, member: string): string {
-  execFileSync("tar", ["cf", artifactPath(name), member], {
+  // Sibling-relative for the same reason as `realTar`: no drive-letter colon
+  // for GNU tar to mistake for a host, no flag for bsdtar to reject.
+  execFileSync("tar", ["cf", `../${name}`, member], {
     cwd: source,
     env: FIXTURE_ENV,
   });

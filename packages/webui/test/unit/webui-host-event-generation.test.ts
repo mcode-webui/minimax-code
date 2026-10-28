@@ -93,8 +93,12 @@ describe("host-derived event types", () => {
     const configPath = path.join(root, "packages/webui/tsconfig.client.json");
     const config = ts.readConfigFile(configPath, ts.sys.readFile);
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
-    const generated = path.join(root, "packages/webui/src/shared/contracts/host-event-types.generated.ts");
-    const reader = path.join(root, "packages/webui/src/client/features/turn/application/session-fact.ts");
+    // TypeScript addresses program files in the `/` dialect even on Windows
+    // (`getSourceFiles()` names prove it), so the mutation hook below — which
+    // compares by strict equality — must speak it too, or the rewrite never
+    // lands and the case asserts against an unmutated program.
+    const generated = path.join(root, "packages/webui/src/shared/contracts/host-event-types.generated.ts").split(path.sep).join("/");
+    const reader = path.join(root, "packages/webui/src/client/features/turn/application/session-fact.ts").split(path.sep).join("/");
     function diagnostics(mutate: boolean) {
       const host = ts.createCompilerHost(parsed.options);
       const read = host.readFile.bind(host);

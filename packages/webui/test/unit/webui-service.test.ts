@@ -2679,11 +2679,15 @@ describe("WebUI service", () => {
 
   it("does not accept requests after shutdown has been requested", async () => {
     const { url } = await bootService();
-    const { ws, upgrade } = openClient(url);
+    // `closed` is attached up-front by `openClient`: `service.close()` may
+    // finish the socket teardown while it is being awaited, and a listener
+    // attached afterwards would miss the client's `close` event and hang —
+    // the same race the helper's own comment warns about.
+    const { ws, upgrade, closed } = openClient(url);
     await upgrade;
     // Drive the shutdown and assert the in-flight connection is closed.
     await service.close();
-    const closeEvent = await awaitClose(ws);
+    const closeEvent = await closed;
     expect(closeEvent.code).toBeGreaterThanOrEqual(1000);
     expect(port.closed).toBe(true);
   });

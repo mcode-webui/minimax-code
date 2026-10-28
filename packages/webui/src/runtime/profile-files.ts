@@ -51,7 +51,7 @@
 import { MEMORY_TAIL_INJECTION_CAP_CHARS } from "@mavis/shared/memory-limits";
 import { randomBytes } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import type { WebuiAgentMemoryView, WebuiGlobalInstructionsView, WebuiUserProfileFields, WebuiUserProfileView } from "../shared/contracts/personalization.js";
 
@@ -513,9 +513,12 @@ export async function writeUserProfile(
 
 /** Guards against a path resolving outside the profile root. */
 export function isInsideDataDir(dataDir: string, filePath: string): boolean {
-  const root = resolve(dataDir);
-  const target = resolve(filePath);
-  return target === root || target.startsWith(`${root}/`);
+  // `resolve` keeps the platform separator, so a `${root}/` prefix only works
+  // on POSIX. Compare through `relative` instead: it is separator-agnostic and
+  // still rejects sibling roots such as `<root>-other` (their relative path
+  // climbs out with a leading `..`).
+  const rel = relative(resolve(dataDir), resolve(filePath));
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 /**

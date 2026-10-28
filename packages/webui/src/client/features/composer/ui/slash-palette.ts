@@ -2,8 +2,8 @@
 //
 // Uses three data pools (built-in commands, the plugin
 // registry, and the skills resolver), sectioning, and four-rank filtering.
-// The built-in list is intentionally scoped to the composer modes supported
-// here; behavior fields keep the same record shape.
+// The built-in list covers the composer modes plus every name the harness
+// port's `runCommand` accepts; behavior fields keep the same record shape.
 //
 // See `packages/webui/docs/design-language.md` for the visual language and
 // ADR 0009 for the shared vocabulary.
@@ -19,7 +19,12 @@ import {
 import {
   WebuiIconCommandCompact,
   WebuiIconCommandGoal,
+  WebuiIconCommandHelp,
   WebuiIconCommandPlan,
+  WebuiIconCommandStatus,
+  WebuiIconCommandUsage,
+  WebuiIconModel,
+  WebuiIconNewTask,
   WebuiIconSites,
   WebuiIconSkillAskMatt,
   WebuiIconSkillCodebaseDesign,
@@ -83,17 +88,17 @@ export interface SlashCommandEntry extends WebuiSlashPaletteFields {
  *
  * Capability gating today is the static `supported` flag. Goal is backed by
  * the goal operations, plan entry is backed by the send-message
- * `plan-entry` intent, and compact is backed by the harness port's
- * `runCommand` — `runtime/commands/runner.ts` routes `command === "compact"`
- * into `requestCompaction`, and the operation is registered in
- * `server/operation/operations.ts`. Commands without a WebUI path remain
- * inert until their transport is wired.
+ * `plan-entry` intent, and every name in `WEBUI_RUN_COMMAND_NAMES` is backed
+ * by the harness port's `runCommand` — `runtime/commands/runner.ts` routes
+ * `help` to the descriptor list, `new` to `createSession`, `compact` to
+ * `requestCompaction`, `status` to `getAccountStatus`/`getSession`, `usage`
+ * to `getSessionUsage`, and `model` to `listModels`/`selectModel`; the
+ * operation is registered in `server/operation/operations.ts`. Commands
+ * without a WebUI path remain inert until their transport is wired.
  *
- * `compact` is the one run-command built-in exposed so far. The remaining
- * names in `WEBUI_RUN_COMMAND_NAMES` (`help`, `new`, `status`, `usage`,
- * `model`) are reachable at the transport layer but have no palette row, so
- * a user cannot discover them; they need their own entries before they can
- * be claimed as shipped.
+ * The run-command rows sit after the composer modes and keep the `/help`
+ * order of `WEBUI_RUN_COMMAND_NAMES`, so the palette and `/help` list the
+ * same vocabulary in the same order.
  */
 export const WEBUI_BUILTIN_COMMANDS: readonly SlashCommandEntry[] = [
   {
@@ -117,12 +122,57 @@ export const WEBUI_BUILTIN_COMMANDS: readonly SlashCommandEntry[] = [
     supported: true,
   },
   {
+    name: "help",
+    displayName: "help",
+    label: "帮助",
+    description: "查看可用斜杠命令列表",
+    source_type: -1,
+    icon: WebuiIconCommandHelp,
+    supported: true,
+  },
+  {
+    name: "new",
+    displayName: "new",
+    label: "新会话",
+    description: "在当前工作区新建一个会话",
+    source_type: -1,
+    icon: WebuiIconNewTask,
+    supported: true,
+  },
+  {
     name: "compact",
     displayName: "compact",
     label: "压缩",
     description: "压缩当前会话上下文；可附带说明，如 /compact 保留代码变更",
     source_type: -1,
     icon: WebuiIconCommandCompact,
+    supported: true,
+  },
+  {
+    name: "status",
+    displayName: "status",
+    label: "状态",
+    description: "查看当前会话的账号、模型与工作区状态",
+    source_type: -1,
+    icon: WebuiIconCommandStatus,
+    supported: true,
+  },
+  {
+    name: "usage",
+    displayName: "usage",
+    label: "用量",
+    description: "查看当前会话的用量统计",
+    source_type: -1,
+    icon: WebuiIconCommandUsage,
+    supported: true,
+  },
+  {
+    name: "model",
+    displayName: "model",
+    label: "模型",
+    description: "查看模型列表；可附带名称切换模型，如 /model provider/model",
+    source_type: -1,
+    icon: WebuiIconModel,
     supported: true,
   },
 ];

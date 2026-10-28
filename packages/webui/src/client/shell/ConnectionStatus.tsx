@@ -17,12 +17,18 @@ import type { WebuiStreamState } from "../features/turn/projection/stream-state.
  *   on `close`, and the component merges the two: failed beats reconnecting
  *   beats connected.
  *
- * What the channel signal does **not** cover, so nothing downstream over-trusts
- * it: the client sends no heartbeat on that socket, so detection is
- * close-edge only and a half-open link is invisible; and a watcher that was
- * never accepted stays "unknown" rather than degraded, so a host that is
- * already unreachable at load time reads as connected until something else
- * moves.
+ * What the channel signal covers, and what it still does not. The watcher
+ * socket sends a periodic liveness probe, so a silently dead (half-open) link
+ * — one that would never deliver a close event — is forced to reconnect once
+ * the probe timeout runs out, and reads as reconnecting while it does. A
+ * watcher that was never accepted is degraded by the 30 s startup grace
+ * instead of staying unknown forever, and immediately when the channel goes
+ * fatal. The remaining gap is deliberate: a fatal channel still borrows the
+ * reconnecting copy — 「正在自动恢复」 is not literally true there, since fatal
+ * never retries on its own — and offers no retry button, because that state's
+ * only exits are an explicit `health.reconnect()` (no UI consumer yet) or a
+ * fresh subscription; wiring either into this component would change the
+ * merge semantics below, so it is left out rather than half-added.
  */
 export type WebuiConnectionState = "connected" | "reconnecting" | "failed";
 

@@ -15,17 +15,31 @@
 // backs off with capped exponential delay plus jitter, so a fleet of clients that
 // dropped together does not return in lockstep.
 //
+// A close event is not the only way a link dies, either: a half-open socket (the
+// network dropped the mapping, neither end was told) delivers no close at all, so
+// the channel probes the live socket periodically and a probe timeout forces a
+// reconnect rather than waiting for an event that will never come. That forced
+// reconnect goes through `reconnectNow`, which resets the backoff attempt count —
+// deliberately. A server that accepts sockets but never acknowledges
+// `watchEvents` thereby gets a steady ~25-30 s retry rhythm (the startup grace
+// still degrades the channel during it, and any acknowledgement restores it)
+// instead of an exponential curve that would space the same hopeless attempt
+// further and further apart.
+//
 // Split out of `transport.ts` so the channel's lifecycle is one module: the
 // transport keeps request/response IO and the independent streams (session and
 // terminal), and this file owns the one channel that outlives them.
 
 import {
+  expireWebuiEventWatcherGrace,
   markWebuiEventWatcherDown,
   markWebuiEventWatcherHealthy,
   registerWebuiEventWatcher,
   unregisterWebuiEventWatcher,
+  unrefTimer,
 } from "./connection-health.js";
 import type { WebuiRuntimeEvent } from "../../shared/contracts/stream.js";
+import { VERSION_OPERATION_NAME } from "../../shared/operation-names.js";
 import {
   decodeWebuiServerFrame,
   WebuiErrorCode,
@@ -140,6 +154,29 @@ export const WEBUI_CHANNEL_MAX_RETRY_MS = 30_000;
 const DEFAULT_BASE_RETRY_MS = 250;
 
 /**
+ * How often the liveness probe asks the live `watchEvents` socket for an
+ * answer, and how long a silence on that socket may last before the channel
+ * treats the link as dead and forces a reconnect.
+ *
+ * Every number is anchored to a deadline this repo already keeps:
+ *
+ * - The server pings its sockets every 15 s and terminates after one missed
+ *   pong (`WEBUI_WEBSOCKET_HEARTBEAT_INTERVAL_MS`, `websocket-server.ts`), so
+ *   a 10 s client-side probe discovers a dead link in step with — or ahead of
+ *   — the server's own eviction, rather than after it.
+ * - The 25 s timeout is ~2.5 intervals: one lost probe or lost answer is
+ *   tolerated, and the verdict still lands inside the window the repo treats
+ *   as its anti-half-open budget elsewhere — the 30 s request deadline in
+ *   `wire.ts` (which exists precisely because "a request pending forever on a
+ *   half-open socket" is the failure this probe catches for the channel) and
+ *   the 30 s retry ceiling above. A false kill costs one recoverable
+ *   reconnect; a missed kill costs a permanently lying "connected", so the
+ *   bias is toward the shorter timeout.
+ */
+export const WEBUI_CHANNEL_LIVENESS_PING_INTERVAL_MS = 10_000;
+export const WEBUI_CHANNEL_LIVENESS_TIMEOUT_MS = 25_000;
+
+/**
  * Whether a service refusal means "this will keep failing".
  *
  * Protocol and envelope rejections are this client and that service disagreeing
@@ -233,6 +270,81 @@ export function createWebuiEventChannel(
       if (reconnectTimer !== undefined) clearTimeout(reconnectTimer);
       reconnectTimer = undefined;
     };
+    // ---------------------------------------------------------------------
+    // Liveness watchdog. A half-open link delivers no close event, so health
+    // cannot rest on one: the channel timestamps every inbound frame — any
+    // frame, decoded or not, is proof the peer is alive — and, while a socket
+    // is open, periodically asks the server to produce one. `version` is the
+    // probe payload: the lightest read the surface offers (a synchronous
+    // in-memory answer; its validation refuses a body at all, so the frame
+    // omits `body` entirely), carried on a request id derived from this
+    // connection's. The answer needs no handling of its own — arriving is the
+    // whole point: it refreshes the timestamp, then falls through the
+    // `frame.requestId !== requestId` drop in the message handler exactly like
+    // a frame from anyone else's request. No fork of that filter, no new
+    // frame kind, no server change.
+    // ---------------------------------------------------------------------
+    /** When a frame last arrived on the live socket. Refreshed before
+     *  decoding: even a frame this client cannot read is evidence of life. */
+    let lastInboundAt = 0;
+    /** The request id of the connection the probe currently watches. */
+    let probedRequestId = "";
+    let probeTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearProbe = (): void => {
+      if (probeTimer !== undefined) clearTimeout(probeTimer);
+      probeTimer = undefined;
+    };
+    const scheduleProbe = (): void => {
+      // Terminal shapes do not schedule: the probe's next start is the next
+      // `open` event, not a timer that outlives the socket it watches.
+      if (stopped || fatal || socket === undefined) return;
+      probeTimer = setTimeout(probeTick, WEBUI_CHANNEL_LIVENESS_PING_INTERVAL_MS);
+      unrefTimer(probeTimer);
+    };
+    const probeTick = (): void => {
+      probeTimer = undefined;
+      if (stopped || fatal || socket === undefined) return;
+      // A hidden page's timers are throttled hard (Chromium aligns them to
+      // roughly one wake-up per minute after five minutes hidden), so a tick
+      // here can be arbitrarily late; judging death on a throttled clock
+      // would kill links that were merely quiet while nobody was reading.
+      // Suspend both the probe and the verdict for the hidden window: the
+      // visibilitychange handler forces a reconnect the moment the page is
+      // seen again, and inbound frames keep refreshing the timestamp
+      // meanwhile (message events are not throttled).
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        scheduleProbe();
+        return;
+      }
+      const age = Date.now() - lastInboundAt;
+      if (age >= WEBUI_CHANNEL_LIVENESS_TIMEOUT_MS) {
+        // The verdict: nothing has arrived for longer than the timeout, so
+        // the link is dead even though no close event said so. reconnectNow()
+        // marks the watcher down — the channel degrades through the existing
+        // health rules — and dials a fresh socket, which is why this tick
+        // must return rather than fall through to `send`: `socket` already
+        // points at the CONNECTING replacement, and writing to a connecting
+        // socket throws in a real browser. The new socket's `open` event
+        // restarts the probe.
+        reconnectNow();
+        return;
+      }
+      if (age >= WEBUI_CHANNEL_LIVENESS_PING_INTERVAL_MS) {
+        // Quiet, not yet dead: ask for traffic.
+        socket.send(
+          JSON.stringify({
+            protocolVersion: 1,
+            kind: "request",
+            requestId: `${probedRequestId}:liveness`,
+            operation: VERSION_OPERATION_NAME,
+          }),
+        );
+      }
+      scheduleProbe();
+    };
     const connect = () => {
       if (stopped) return;
       clearTimer();
@@ -240,6 +352,7 @@ export function createWebuiEventChannel(
       const ws = new webSocket(websocketUrl());
       socket = ws;
       const requestId = crypto.randomUUID();
+      probedRequestId = requestId;
       // Fires when the server *accepts* the `watchEvents` request, not when
       // the socket is created and not when the request is written. It is an
       // acceptance signal, **not** proof that the runtime's event bus has
@@ -250,6 +363,11 @@ export function createWebuiEventChannel(
       let acknowledged = false;
       ws.addEventListener("open", () => {
         if (stopped) return;
+        // The probe watches exactly this socket, from its first instant of
+        // life to the close that ends it.
+        lastInboundAt = Date.now();
+        clearProbe();
+        scheduleProbe();
         ws.send(
           JSON.stringify({
             protocolVersion: 1,
@@ -261,6 +379,11 @@ export function createWebuiEventChannel(
         );
       });
       ws.addEventListener("message", (event) => {
+        // First, before any judging: a frame arrived, so the link is alive.
+        // This is the liveness evidence the probe runs on — it counts even a
+        // frame the decoder below will refuse, and it counts the probe's own
+        // answer, which the request-id filter further down then drops.
+        lastInboundAt = Date.now();
         if (stopped) return;
         // Judged by the same decoder the request sockets use. The event channel
         // used to parse and trust whatever arrived, so a frame from a different
@@ -304,6 +427,9 @@ export function createWebuiEventChannel(
       ws.addEventListener("close", () => {
         if (stopped || socket !== ws) return;
         socket = undefined;
+        // The socket the probe watches is gone; the retry loop's next `open`
+        // restarts it.
+        clearProbe();
         markWebuiEventWatcherDown(watcherToken);
         if (fatal) {
           // The fatal verdict already decided not to come back; the socket
@@ -324,7 +450,16 @@ export function createWebuiEventChannel(
     const enterFatal = (code: WebuiWireErrorCode, message: string): void => {
       fatal = true;
       clearTimer();
+      // A fatal verdict is exempt from the probe: it is a decision that
+      // retrying cannot change, and the socket below is about to be closed
+      // anyway.
+      clearProbe();
       markWebuiEventWatcherDown(watcherToken);
+      // The verdict has already answered "will this link ever come up", so an
+      // unaccepted watcher must not sit out the startup grace on top of it —
+      // the grace ends here and the channel degrades immediately instead of
+      // after another silent 30 s.
+      expireWebuiEventWatcherGrace(watcherToken);
       setState({ kind: "fatal", code, message });
       report(
         "[webui] event channel stopped: the service rejected the connection in a way that will not change by retrying",
@@ -338,6 +473,10 @@ export function createWebuiEventChannel(
       if (stopped) return;
       fatal = false;
       attempt = 0;
+      // Stop the probe on the socket being replaced — same reason as the
+      // explicit markDown below: the close handler guards on `socket !== ws`,
+      // so this path cannot rely on the handler's own teardown.
+      clearProbe();
       const previous = socket;
       // The close handler above guards on `socket !== ws`, and this function
       // has already cleared `socket`, so that guard would skip
@@ -375,6 +514,7 @@ export function createWebuiEventChannel(
     return () => {
       stopped = true;
       clearTimer();
+      clearProbe();
       if (typeof document !== "undefined")
         document.removeEventListener("visibilitychange", reconnectWhenAvailable);
       if (typeof window !== "undefined")

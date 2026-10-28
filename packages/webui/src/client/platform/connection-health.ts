@@ -82,8 +82,9 @@ function notifyIfChanged(before: boolean): void {
 
 /** Node's timer exposes `unref`; the DOM lib types `setTimeout` as returning
  *  a plain number, so the capability is read through a narrow cast rather
- *  than assumed on the type. */
-function unrefTimer(timer: ReturnType<typeof setTimeout>): void {
+ *  than assumed on the type. Exported because the event channel's liveness
+ *  probe schedules the same kind of don't-hold-the-process timers. */
+export function unrefTimer(timer: ReturnType<typeof setTimeout>): void {
   (timer as { unref?: () => void }).unref?.();
 }
 
@@ -111,6 +112,28 @@ export function registerWebuiEventWatcher(): number {
   }, STARTUP_GRACE_MS);
   unrefTimer(watcher.graceTimer);
   return nextToken;
+}
+
+/** Ends the startup grace for one watcher now, ahead of the timer.
+ *
+ *  Called by the channel's fatal path: a fatal rejection that arrives while
+ *  the subscription is still unaccepted has already decided the link will
+ *  never come up on its own, so waiting out the grace would only extend the
+ *  silent "connected" window on top of a settled fact. The body mirrors the
+ *  timer's exactly — clear the timer, keep an accepted watcher untouched
+ *  (this is a pure no-op for it, listeners included), flip `startupExpired`
+ *  on the unaccepted one — so the two paths cannot drift apart. */
+export function expireWebuiEventWatcherGrace(token: number): void {
+  const watcher = watchers.get(token);
+  if (!watcher) return;
+  if (watcher.graceTimer !== undefined) {
+    clearTimeout(watcher.graceTimer);
+    watcher.graceTimer = undefined;
+  }
+  if (watcher.healthy) return;
+  const before = degraded();
+  watcher.startupExpired = true;
+  notifyIfChanged(before);
 }
 
 /** The watcher's `watchEvents` request was accepted — its socket is live. */

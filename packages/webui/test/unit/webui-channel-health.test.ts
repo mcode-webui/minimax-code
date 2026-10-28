@@ -7,7 +7,7 @@
 // frame; and a code this build has never seen is transient, because an unfamiliar
 // code is a newer server rather than a malformed one.
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createWebuiEventChannel,
@@ -15,6 +15,7 @@ import {
   WEBUI_CHANNEL_MAX_RETRY_MS,
   webuiChannelRetryDelayMs,
 } from "../../src/client/platform/event-channel.js";
+import { isWebuiEventChannelDegraded } from "../../src/client/platform/connection-health.js";
 import { WebuiErrorCode, WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
 
 /** A socket that records what the channel wrote and lets a test drive it. */
@@ -71,6 +72,216 @@ function channel(options: Partial<Parameters<typeof createWebuiEventChannel>[0]>
   const unsubscribe = created(onEvent, onReconnect);
   return { channel: created, onEvent, onReconnect, unsubscribe };
 }
+
+describe("the liveness probe on an open socket", () => {
+  // This suite must stay FIRST in the file. The health store behind
+  // `connection-health` is module-level, and the older suites below never
+  // call the `unsubscribe` they get — their watchers (some permanently
+  // healthy) stay registered for the rest of this worker's life. Vitest runs
+  // describes in definition order, so running here means the store is clean
+  // and these cases own the only watchers in it; the cases' own afterEach
+  // keeps it that way. The one case that needs a degraded channel to clear
+  // (the fatal one) would read false against a correct implementation if a
+  // leftover healthy watcher from an earlier suite were present.
+  const unsubscribers: Array<() => void> = [];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // The socket double's ledger is file-level; each case counts from zero.
+    FakeSocket.instances.length = 0;
+  });
+
+  afterEach(() => {
+    for (const unsubscribe of unsubscribers.splice(0)) unsubscribe();
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+    vi.useRealTimers();
+  });
+
+  const subscribe = () => {
+    const created = channel();
+    unsubscribers.push(created.unsubscribe);
+    return created;
+  };
+
+  /** Drives the newest socket through open and the `watchEvents` acceptance. */
+  const accept = (socket: FakeSocket): void => {
+    socket.emit("open");
+    socket.emit(
+      "message",
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "response",
+        requestId: socket.requestId,
+        body: { ok: true, source: [] },
+      }),
+    );
+  };
+
+  const sentFrames = (socket: FakeSocket): Array<Record<string, unknown>> =>
+    socket.sent.map((text) => JSON.parse(text) as Record<string, unknown>);
+  const livenessFrames = (socket: FakeSocket): Array<Record<string, unknown>> =>
+    sentFrames(socket).filter((frame) => frame.operation === "version");
+
+  it("N1 · forces a reconnect when an accepted socket goes silent, and recovers on the next acceptance", () => {
+    subscribe();
+    const socket = lastSocket();
+    // The acceptance clears the startup grace, so whatever degrades or dials
+    // from here on can only be the probe's doing.
+    accept(socket);
+
+    vi.advanceTimersByTime(60_000); // and never emits another frame
+
+    // The verdict dialled a replacement and closed the silent one — the test
+    // emitted no "close", so the probe is the only possible cause.
+    expect(FakeSocket.instances).toHaveLength(2);
+    expect(FakeSocket.instances[0]!.closed).toBe(true);
+    // Probes were really sent before the verdict; this is a probe kill, not a
+    // stray close.
+    expect(livenessFrames(FakeSocket.instances[0]!)).not.toHaveLength(0);
+    // reconnectNow marks the watcher down before dialling, so the channel
+    // reads degraded at the moment of the kill.
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+
+    // The round trip starts with the replacement opening — and its first
+    // written frame being its own `watchEvents` request, which is also the
+    // guard that the verdict did not fall through to `send`: a liveness frame
+    // written to the CONNECTING replacement would sit in front of it.
+    const replacement = FakeSocket.instances[1]!;
+    replacement.emit("open");
+    const firstOnReplacement = JSON.parse(replacement.sent[0] ?? "{}") as Record<
+      string,
+      unknown
+    >;
+    expect(firstOnReplacement.operation).toBe("watchEvents");
+    // …and the acceptance restores the channel.
+    replacement.emit(
+      "message",
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "response",
+        requestId: replacement.requestId,
+        body: { ok: true, source: [] },
+      }),
+    );
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("N2 · never probes — and never kills — a socket that keeps delivering events", () => {
+    subscribe();
+    const socket = lastSocket();
+    accept(socket);
+    // An event every 8 s: quieter than the 10 s probe interval, but never
+    // silent. Live traffic is its own liveness evidence.
+    for (let tick = 0; tick < 8; tick += 1) {
+      vi.advanceTimersByTime(8_000);
+      socket.emit(
+        "message",
+        JSON.stringify({
+          protocolVersion: WEBUI_PROTOCOL_VERSION,
+          kind: "event",
+          requestId: socket.requestId,
+          body: { type: "session.updated", payload: {}, timestamp: 0, source: "runtime" },
+        }),
+      );
+    }
+    expect(sentFrames(socket)).toHaveLength(1); // only the watchEvents request
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(socket.closed).toBe(false);
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("N3 · a probe that is answered keeps the channel alive", () => {
+    subscribe();
+    const socket = lastSocket();
+    accept(socket);
+    for (let round = 0; round < 3; round += 1) {
+      vi.advanceTimersByTime(10_000); // the quiet gap fires one probe
+      const probe = JSON.parse(socket.sent.at(-1) ?? "{}") as Record<string, unknown>;
+      expect(probe.operation).toBe("version");
+      // The answer arrives within the tick: like any inbound frame it is the
+      // liveness evidence, and the request-id filter drops it right after the
+      // refresh — the probe's answer is never mistaken for an acceptance.
+      socket.emit(
+        "message",
+        JSON.stringify({
+          protocolVersion: WEBUI_PROTOCOL_VERSION,
+          kind: "response",
+          requestId: String(probe.requestId),
+          body: { version: "probe-answer", protocolVersion: 1 },
+        }),
+      );
+    }
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("N4 · a hidden page suspends both the probe and the verdict until it is seen again", () => {
+    // This node environment has no `document`; the stub supplies the
+    // visibility surface the channel reads, installed before `channel()` so
+    // the subscribe wiring sees it (the precedent is the document stub in
+    // `connection-health.test.ts`).
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const saved = globals.document;
+    const document = {
+      visibilityState: "hidden",
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    globals.document = document;
+    try {
+      subscribe();
+      const socket = lastSocket();
+      // The acceptance clears the startup grace; without it the 30 s grace
+      // would degrade during the 120 s advance below and the case would test
+      // the grace, not the probe.
+      accept(socket);
+      vi.advanceTimersByTime(120_000); // silent AND hidden the whole time
+      // Suspended, not dead: no probe was sent, no verdict fired, the socket
+      // was neither closed nor replaced.
+      expect(sentFrames(socket)).toHaveLength(1);
+      expect(FakeSocket.instances).toHaveLength(1);
+      expect(socket.closed).toBe(false);
+      expect(isWebuiEventChannelDegraded()).toBe(false);
+      // The control: the same silence, once the page is visible again, gets
+      // the verdict it deserved all along.
+      document.visibilityState = "visible";
+      vi.advanceTimersByTime(10_000);
+      expect(FakeSocket.instances).toHaveLength(2);
+      expect(socket.closed).toBe(true);
+      expect(isWebuiEventChannelDegraded()).toBe(true);
+    } finally {
+      globals.document = saved;
+    }
+  });
+
+  it("N5 · a fatal rejection degrades immediately, and neither probes nor retries", () => {
+    subscribe();
+    const socket = lastSocket();
+    socket.emit("open");
+    socket.emit(
+      "message",
+      JSON.stringify({
+        protocolVersion: WEBUI_PROTOCOL_VERSION,
+        kind: "error",
+        requestId: socket.requestId,
+        code: WebuiErrorCode.capabilityNotReady,
+        message: "terminal bridge is not ready",
+      }),
+    );
+    // Immediately — no advancing the 30 s startup grace. The fatal verdict
+    // ended the grace on the spot, so the never-accepted watcher degrades
+    // now; before that behaviour this read false for the first 30 s of a
+    // fatal outage, which the banner projected as connected.
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+
+    vi.advanceTimersByTime(60_000);
+    // Fatal exempts itself from the probe and from retrying: nothing was
+    // written beyond the watchEvents request, and no second socket exists.
+    expect(sentFrames(socket)).toHaveLength(1);
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+  });
+});
 
 describe("V26 · the delay before a retry is bounded and spread", () => {
   it("grows exponentially, jitters, and stops at the ceiling", () => {

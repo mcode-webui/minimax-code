@@ -24,10 +24,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  expireWebuiEventWatcherGrace,
   isWebuiEventChannelDegraded,
   markWebuiEventWatcherDown,
   markWebuiEventWatcherHealthy,
   registerWebuiEventWatcher,
+  subscribeWebuiConnectionHealth,
   unregisterWebuiEventWatcher,
 } from "../../src/client/platform/connection-health.js";
 import { createWebuiTransport } from "../../src/client/platform/transport.js";
@@ -226,6 +228,50 @@ describe("the startup grace on a never-accepted watcher", () => {
     markWebuiEventWatcherHealthy(panel);
     markWebuiEventWatcherDown(panel);
     expect(isWebuiEventChannelDegraded()).toBe(true);
+  });
+});
+
+describe("ending the grace ahead of the timer", () => {
+  // `expireWebuiEventWatcherGrace` is the channel's fatal path: a fatal
+  // rejection that arrives before the first acceptance has already decided
+  // the link will never come up, so the 30 s of silence the grace would add
+  // on top is not caution, it is a lie of omission. The three cases pin the
+  // exact, unchanged aggregation semantics: immediate for the unaccepted
+  // lone watcher, silent while any live link exists, and a true no-op for a
+  // watcher that was already accepted.
+
+  it("degrades an unaccepted watcher at once, without waiting out the timer", () => {
+    const token = register();
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+    expireWebuiEventWatcherGrace(token);
+    expect(isWebuiEventChannelDegraded()).toBe(true);
+  });
+
+  it("does not degrade a channel that still holds a live link", () => {
+    const shell = register();
+    const panel = register();
+    markWebuiEventWatcherHealthy(shell);
+    expireWebuiEventWatcherGrace(panel);
+    // Rule 2 only speaks when no watcher is healthy: a healthy shell with a
+    // panel that will never come up is a channel with a live link.
+    expect(isWebuiEventChannelDegraded()).toBe(false);
+  });
+
+  it("is a pure no-op for a watcher that was already accepted", () => {
+    const token = register();
+    markWebuiEventWatcherHealthy(token);
+    const listener = vi.fn();
+    const detach = subscribeWebuiConnectionHealth(listener);
+    try {
+      expireWebuiEventWatcherGrace(token);
+      expect(isWebuiEventChannelDegraded()).toBe(false);
+      // No-op means no-op: not one listener fires.
+      expect(listener).not.toHaveBeenCalled();
+    } finally {
+      // The listener set is module-level like the store; leave nothing
+      // behind for later suites in this worker.
+      detach();
+    }
   });
 });
 

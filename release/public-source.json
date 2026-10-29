@@ -4463,6 +4463,8 @@
     "packages/webui/test/browser/responsive-baselines.spec.mjs-snapshots/workspace-panel-at-768-linux.png",
     "packages/webui/test/browser/responsive-layout.spec.mjs",
     "packages/webui/test/browser/review-consumers.spec.mjs",
+    "packages/webui/test/browser/scheduling-panel.spec.mjs",
+    "packages/webui/test/browser/scheduling-panel.spec.mjs-snapshots/scheduling-panel-linux.png",
     "packages/webui/test/browser/server.mjs",
     "packages/webui/test/browser/settings-account-tab.spec.mjs",
     "packages/webui/test/browser/settings-shortcuts.spec.mjs",

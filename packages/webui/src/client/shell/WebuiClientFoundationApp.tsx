@@ -1072,8 +1072,7 @@ export function WebuiClientFoundationApp(
                   onClose={() => dispatchShellSurface({ type: "show-conversation" })}
                 />
               </WebuiZoneBoundary>
-              : null}
-            {pluginManagementArea ? <WebuiZoneBoundary zone="plugins"><PluginCatalogue initialArea={pluginManagementArea} selectedSessionId={selectedSessionId} onChatWithAgent={async (name) => {
+              : pluginManagementArea ? <WebuiZoneBoundary zone="plugins"><PluginCatalogue initialArea={pluginManagementArea} selectedSessionId={selectedSessionId} onChatWithAgent={async (name) => {
               // Plugin-chat creation is the same completion policy as the composer's
               // and the goal path's: it goes through the task use case, so the
               // admission reservation, the guarded transfer and the catalogue

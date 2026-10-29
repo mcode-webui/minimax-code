@@ -26,6 +26,7 @@ import type { ModelsPort } from "../features/models/contracts/provider-port.js";
 import type { TranscriptPort } from "../features/transcript/contracts/session-read-port.js";
 import type { AccountPort } from "../features/account/contracts/account-port.js";
 import type { PluginPort } from "../features/plugins/contracts/plugin-port.js";
+import type { SchedulingPort } from "../features/scheduling/contracts/scheduling-port.js";
 import type { TerminalPort } from "../features/terminal/contracts/terminal-port.js";
 import type { BrowserPort } from "../features/browser/contracts/browser-port.js";
 import type { MiniAppPort } from "../features/miniapp/contracts/miniapp-port.js";
@@ -43,6 +44,7 @@ export interface WebuiTransport
     ModelsPort,
     AccountPort,
     PluginPort,
+    SchedulingPort,
     TerminalPort,
     BrowserPort,
     MiniAppPort {}

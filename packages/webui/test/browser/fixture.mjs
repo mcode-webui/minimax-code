@@ -298,6 +298,60 @@ export function installFixtureTransport() {
     }
     if (operation === "version") return { version: "browser-fixture", protocolVersion: 1 };
     if (operation === "listSkills") return { skills: [] };
+    // ADR 0027: the scheduled-task panel reads one page. Three rows on purpose — one this client
+    // holds, one it does not, one paused — so the panel's three labels are all visible in the
+    // baseline instead of a single row that would render the same whatever the labels said.
+    if (operation === "listCronTasks") {
+      return {
+        items: [
+          {
+            cronId: "cron-fixture-held",
+            name: "队列摘要",
+            agentName: "synthetic-A",
+            prompt: "Summarize the queue.",
+            enabled: true,
+            heldByThisClient: true,
+            schedule: { kind: "recurring", expression: "0 9 * * *" },
+            sessionTarget: { mode: "new" },
+            project: null,
+            model: null,
+            nextRunAtMs: 1_700_003_600_000,
+            createdAtMs: 1_700_000_000_000,
+            updatedAtMs: 1_700_000_000_000,
+          },
+          {
+            cronId: "cron-fixture-unheld",
+            name: "工作区周报",
+            agentName: "synthetic-A",
+            prompt: "Write the weekly report.",
+            enabled: true,
+            heldByThisClient: false,
+            schedule: { kind: "recurring", expression: "*/30 * * * *" },
+            sessionTarget: { mode: "new" },
+            project: null,
+            model: null,
+            nextRunAtMs: 1_700_001_800_000,
+            createdAtMs: 1_700_000_000_000,
+            updatedAtMs: 1_700_000_000_000,
+          },
+          {
+            cronId: "cron-fixture-paused",
+            name: "队列周报",
+            agentName: "synthetic-A",
+            prompt: "Sync overnight.",
+            enabled: false,
+            heldByThisClient: false,
+            schedule: { kind: "recurring", expression: "0 2 * * *" },
+            sessionTarget: { mode: "new" },
+            project: null,
+            model: null,
+            createdAtMs: 1_700_000_000_000,
+            updatedAtMs: 1_700_000_000_000,
+          },
+        ],
+        hasMore: false,
+      };
+    }
     if (operation === "listPendingPermissions") return { requests: [] };
     if (operation === "getActiveTurn") return activeTurn;
     if (operation === "getTurnDiff") return clone(turnDiff);

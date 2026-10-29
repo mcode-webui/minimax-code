@@ -617,6 +617,8 @@ export interface WebuiRuntimeCliService {
   panelClosedMiniAppAgentSession?: CliService["panelClosedMiniAppAgentSession"];
   listMiniAppAgentModels?: CliService["listMiniAppAgentModels"];
   listMiniAppAgentAgents?: CliService["listMiniAppAgentAgents"];
+  listMiniAppAgentSessions?: CliService["listMiniAppAgentSessions"];
+  readMiniAppAgentSession?: CliService["readMiniAppAgentSession"];
   createMiniAppAgentSession?: CliService["createMiniAppAgentSession"];
 }
 

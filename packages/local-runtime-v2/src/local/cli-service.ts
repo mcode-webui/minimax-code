@@ -260,6 +260,14 @@ export class CliService {
     return this.miniAppAgent().agents(input);
   }
 
+  listMiniAppAgentSessions(input: Parameters<MiniAppAgentCapability["sessions"]>[0]) {
+    return this.miniAppAgent().sessions(input);
+  }
+
+  readMiniAppAgentSession(input: Parameters<MiniAppAgentCapability["session"]>[0]) {
+    return this.miniAppAgent().session(input);
+  }
+
   /** A session without a turn; `runMiniAppAgentTurn({ sessionId })` continues it. */
   createMiniAppAgentSession(input: Parameters<MiniAppAgentCapability["create"]>[0]) {
     return this.miniAppAgent().create(input);

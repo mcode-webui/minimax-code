@@ -1596,6 +1596,61 @@ describe('createMiniAppAgentGateway models / agents / create', () => {
     await expect(gateway.agents(PAGE)).resolves.toEqual({ agents: AGENT_OPTIONS });
   });
 
+  it('reads the host chat only with session.read', async () => {
+    const { gateway, ports } = setup();
+    const session = {
+      sessionId: 'chat-1',
+      agent: 'mavis',
+      workspaceDir: '/work/project',
+      isDefaultWorkspace: false,
+      createdAtMs: 10,
+      updatedAtMs: 20,
+      status: 'idle' as const,
+    };
+    ports.readUserSession.mockResolvedValue(session);
+    gateway.registerArena({
+      ...ARENA,
+      policy: { kind: 'allowlist', capabilities: ['session.read'], maxConcurrent: 1 },
+    });
+
+    await expect(gateway.session(PAGE)).resolves.toEqual(session);
+    expect(ports.readUserSession).toHaveBeenCalledWith('chat-1');
+  });
+
+  it('lists user sessions only with session.read', async () => {
+    const { gateway, ports } = setup();
+    const sessions = { sessions: [{ sessionId: 'chat-2' }] } as never;
+    ports.listUserSessions.mockResolvedValue(sessions);
+    gateway.registerArena({
+      ...ARENA,
+      policy: { kind: 'allowlist', capabilities: ['session.read'], maxConcurrent: 1 },
+    });
+
+    await expect(gateway.sessions(PAGE)).resolves.toEqual(sessions);
+    expect(ports.listUserSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets session.run read only its own Mini App session', async () => {
+    const { gateway, ports } = setup();
+    const session = { sessionId: 'mini-session', agent: 'mavis' } as never;
+    ports.getOwner.mockResolvedValue('demo board');
+    ports.readMiniAppSession.mockResolvedValue(session);
+    gateway.registerArena(ARENA);
+
+    await expect(gateway.session({ ...PAGE, source: 'process' }, { sessionId: 'mini-session' }))
+      .resolves.toEqual(session);
+    expect(ports.readMiniAppSession).toHaveBeenCalledWith('mini-session');
+    expect(ports.readUserSession).not.toHaveBeenCalled();
+  });
+
+  it('does not treat session.run as permission to read the host chat', async () => {
+    const { gateway, ports } = setup();
+    gateway.registerArena(ARENA);
+
+    await expect(gateway.session(PAGE)).rejects.toMatchObject({ code: 'NOT_PERMITTED' });
+    expect(ports.readUserSession).not.toHaveBeenCalled();
+  });
+
   it.each(['models', 'agents', 'create'] as const)(
     '%s refuses a deny-all policy and a stale caller like run',
     async (method) => {
@@ -1808,6 +1863,9 @@ function setup(options: { readonly bind?: boolean } = {}) {
     ),
     listModels: vi.fn<MiniAppAgentSessionPorts['listModels']>(async () => MODEL_OPTIONS),
     listAgents: vi.fn<MiniAppAgentSessionPorts['listAgents']>(async () => AGENT_OPTIONS),
+    listUserSessions: vi.fn<MiniAppAgentSessionPorts['listUserSessions']>(async () => ({ sessions: [] })),
+    readUserSession: vi.fn<MiniAppAgentSessionPorts['readUserSession']>(async () => undefined),
+    readMiniAppSession: vi.fn<MiniAppAgentSessionPorts['readMiniAppSession']>(async () => undefined),
     readSessionModel: vi.fn<MiniAppAgentSessionPorts['readSessionModel']>(async () => undefined),
     setSessionModel: vi.fn<MiniAppAgentSessionPorts['setSessionModel']>(async () => undefined),
     resolveHostSession: vi.fn<MiniAppAgentSessionPorts['resolveHostSession']>(

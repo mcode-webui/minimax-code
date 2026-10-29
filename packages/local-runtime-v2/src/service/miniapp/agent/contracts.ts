@@ -98,6 +98,25 @@ export interface MiniAppAgentAgents {
   readonly agents: readonly MiniAppAgentAgentOption[];
 }
 
+/** Read-only, renderer-safe summary of the chat hosting a Mini App page. */
+export interface MiniAppAgentSessionContext {
+  readonly sessionId: string;
+  readonly agent: string;
+  readonly workspaceDir: string;
+  readonly isDefaultWorkspace: boolean;
+  readonly createdAtMs: number;
+  readonly updatedAtMs: number;
+  readonly title?: string;
+  readonly status: 'idle' | 'running' | 'error' | 'aborted';
+  readonly model?: MiniAppAgentModelSelection;
+  readonly error?: { readonly message: string };
+  readonly lastAssistantText?: string;
+}
+
+export interface MiniAppAgentSessions {
+  readonly sessions: readonly MiniAppAgentSessionContext[];
+}
+
 export interface MiniAppAgentRunResult {
   readonly sessionId: string;
   /** Absent when no turn ran: an `answer` the runtime accepted without starting a continuation. */
@@ -288,6 +307,13 @@ export interface MiniAppAgentGateway {
   models(caller: MiniAppAgentCaller): Promise<MiniAppAgentModels>;
   /** The agents a new session may be created for. */
   agents(caller: MiniAppAgentCaller): Promise<MiniAppAgentAgents>;
+  /** List the most recently updated visible user conversations. */
+  sessions(caller: MiniAppAgentCaller): Promise<MiniAppAgentSessions>;
+  /** Read a session; an omitted id reads the host chat for a page caller. */
+  session(
+    caller: MiniAppAgentCaller,
+    input?: { readonly sessionId?: string },
+  ): Promise<MiniAppAgentSessionContext | undefined>;
   /**
    * Creates a session bound like a first `run` would (agent, directory, model snapshot) without
    * running a turn. Takes no run slot. INVALID_ARGUMENTS when `agent` is not one of `agents()`.
@@ -400,6 +426,11 @@ export interface MiniAppAgentSessionPorts {
   listModels(): Promise<readonly MiniAppAgentModelOption[]>;
   /** `AgentApplication.list({ includeAliases: false })` projected; aliases collapsed on canonicalViewName. */
   listAgents(): Promise<readonly MiniAppAgentAgentOption[]>;
+  /** Read a normal user conversation; hidden, Mini App, task, cron and child sessions are omitted. */
+  listUserSessions(): Promise<MiniAppAgentSessions>;
+  readUserSession(sessionId: string): Promise<MiniAppAgentSessionContext | undefined>;
+  /** Read a Mini App session owned by the caller, including its latest assistant reply. */
+  readMiniAppSession(sessionId: string): Promise<MiniAppAgentSessionContext | undefined>;
   /** The session record's current model; undefined only for records predating this feature. */
   readSessionModel(sessionId: string): Promise<MiniAppAgentModelSelection | undefined>;
   /**

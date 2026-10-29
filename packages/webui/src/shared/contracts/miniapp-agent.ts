@@ -32,6 +32,8 @@ import type {
   MiniAppAgentFailureCode,
   MiniAppAgentModelSelection,
   MiniAppAgentModels,
+  MiniAppAgentSessionContext,
+  MiniAppAgentSessions,
   MiniAppAgentPermissionDecision,
   MiniAppAgentRunEvent,
   MiniAppAgentRunResult,
@@ -76,6 +78,8 @@ export const WEBUI_MINIAPP_AGENT_METHODS = [
   "reply",
   "models",
   "agents",
+  "sessions",
+  "session",
   "create",
   "open",
   "cancel",
@@ -212,6 +216,8 @@ export type WebuiMiniAppAgentTurnFrame =
 export const WEBUI_MINIAPP_AGENT_CALL_METHODS = [
   "models",
   "agents",
+  "sessions",
+  "session",
   "create",
   "reply",
   "open",
@@ -245,6 +251,12 @@ export interface WebuiMiniAppAgentCallRequest extends WebuiMiniAppAgentCaller {
 export type WebuiMiniAppAgentCallResponse =
   | { readonly ok: true; readonly method: "models"; readonly models: MiniAppAgentModels }
   | { readonly ok: true; readonly method: "agents"; readonly agents: MiniAppAgentAgents }
+  | { readonly ok: true; readonly method: "sessions"; readonly sessions: MiniAppAgentSessions }
+  | {
+      readonly ok: true;
+      readonly method: "session";
+      readonly session: MiniAppAgentSessionContext | undefined;
+    }
   | { readonly ok: true; readonly method: "create"; readonly sessionId: string }
   | {
       readonly ok: true;
@@ -360,6 +372,15 @@ export function readWebuiMiniAppAgentCallRequest(
     case "agents":
     case "cancel":
       return { ...base, method };
+    case "sessions":
+      return { ...base, method };
+    case "session":
+      if (record.sessionId !== undefined && !isBoundedId(record.sessionId)) return undefined;
+      return {
+        ...base,
+        method: "session",
+        ...(typeof record.sessionId === "string" ? { targetSessionId: record.sessionId } : {}),
+      };
     case "create":
       if (record.agent !== undefined && typeof record.agent !== "string") return undefined;
       return {

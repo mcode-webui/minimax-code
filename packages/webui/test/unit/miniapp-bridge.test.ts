@@ -10,6 +10,7 @@
 // that a view URL which cannot be parsed answers nothing at all.
 
 import { describe, expect, it, vi } from "vitest";
+import { runInNewContext } from "node:vm";
 
 import {
   webuiMiniAppBridgeAppend,
@@ -21,6 +22,7 @@ import {
   WEBUI_MINIAPP_BRIDGE_APPEND_REQUEST,
   WEBUI_MINIAPP_COMPOSER_MAX_TEXT_LENGTH,
 } from "../../src/shared/contracts/miniapp.js";
+import { miniAppPageBridge } from "../../src/server/miniapp/bridge.js";
 
 const VIEW_URL = "http://127.0.0.1:49152";
 
@@ -38,6 +40,22 @@ describe("reading a bridge request", () => {
     expect(webuiMiniAppBridgeRequest({ type: WEBUI_MINIAPP_BRIDGE_APPEND_REQUEST, requestId: "r", text: 7 })).toBeUndefined();
     expect(webuiMiniAppBridgeRequest(null)).toBeUndefined();
     expect(webuiMiniAppBridgeRequest("text")).toBeUndefined();
+  });
+});
+
+describe("the injected page capability list", () => {
+  it("reports implemented methods and leaves unsupported native APIs unavailable", () => {
+    const window = { mcode: {}, parent: {}, addEventListener: vi.fn() };
+    runInNewContext(miniAppPageBridge().script, { window, Map, Math, Date, Promise, Error });
+    const has = (window.mcode as { miniapp: { capabilities: { has(name: string): boolean } } })
+      .miniapp.capabilities.has;
+
+    expect(has("message.append")).toBe(true);
+    expect(has("agent.sessions")).toBe(true);
+    expect(has("agent.session")).toBe(true);
+    expect(has("agent.observe")).toBe(false);
+    expect(has("speech.transcribe")).toBe(false);
+    expect(has("window")).toBe(false);
   });
 });
 

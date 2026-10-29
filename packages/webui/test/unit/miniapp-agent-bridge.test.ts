@@ -214,6 +214,8 @@ function agentPort(overrides: Partial<Record<string, unknown>> = {}): WebuiHarne
       default: { providerId: "p", modelId: "m" } satisfies MiniAppAgentModelSelection,
     }),
     listMiniAppAgentAgents: async () => ({ agents: [] }),
+    listMiniAppAgentSessions: async () => ({ sessions: [] }),
+    readMiniAppAgentSession: async () => undefined,
     createMiniAppAgentSession: async () => ({ sessionId: MINI_SESSION }),
     ...overrides,
   } as unknown as WebuiHarnessPort;

@@ -245,6 +245,26 @@ export interface MiniAppAgentAgents {
   readonly agents: readonly MiniAppAgentAgentOption[];
 }
 
+/** Read-only, renderer-safe projection of the chat hosting a Mini App page. */
+export interface MiniAppAgentSessionContext {
+  readonly sessionId: string;
+  readonly agent: string;
+  readonly workspaceDir: string;
+  readonly isDefaultWorkspace: boolean;
+  readonly createdAtMs: number;
+  readonly updatedAtMs: number;
+  readonly title?: string;
+  readonly status: 'idle' | 'running' | 'error' | 'aborted';
+  readonly model?: MiniAppAgentModelSelection;
+  readonly error?: { readonly message: string };
+  /** Final text from the latest assistant message, present only on `agent.session(id)`. */
+  readonly lastAssistantText?: string;
+}
+
+export interface MiniAppAgentSessions {
+  readonly sessions: readonly MiniAppAgentSessionContext[];
+}
+
 /** Page payload. Plugin and run identity are resolved by Main from the sending tab. */
 export interface MiniAppAgentRunRequest {
   readonly text: string;

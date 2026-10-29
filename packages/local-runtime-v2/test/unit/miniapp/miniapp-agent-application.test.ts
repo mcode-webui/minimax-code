@@ -3,7 +3,7 @@
  * withholds.
  *
  * The gateway owns admission, run slots and the session ports. The facade is the only thing a client
- * sees, so it must carry the nine operations and none of the gateway's own surface — no `bind`, no
+ * sees, so it must carry the eleven operations and none of the gateway's own surface — no `bind`, no
  * `registerArena`, no ports.
  */
 import { describe, expect, it, vi } from 'vitest';
@@ -22,6 +22,8 @@ function gatewayDouble() {
     })),
     models: vi.fn(async () => ({ models: [], default: { providerId: 'p', modelId: 'm' } })),
     agents: vi.fn(async () => ({ agents: [] })),
+    sessions: vi.fn(async () => ({ sessions: [] })),
+    session: vi.fn(async () => undefined),
     create: vi.fn(async () => ({ sessionId: 'session-2' })),
     reply: vi.fn(async () => undefined),
     answer: vi.fn(async () => ({ sessionId: 'session-1', status: 'finished' as const })),
@@ -47,6 +49,8 @@ describe('createProcessLocalMiniAppAgentApplication', () => {
       'panelOpened',
       'reply',
       'run',
+      'session',
+      'sessions',
     ]);
     expect(facade).not.toHaveProperty('bind');
     expect(facade).not.toHaveProperty('registerArena');

@@ -79,6 +79,8 @@ type MiniAppAgentFacade = Required<
     | "panelClosedMiniAppAgentSession"
     | "listMiniAppAgentModels"
     | "listMiniAppAgentAgents"
+    | "listMiniAppAgentSessions"
+    | "readMiniAppAgentSession"
     | "createMiniAppAgentSession"
   >
 >;
@@ -94,6 +96,8 @@ function requireMiniAppAgent(port: WebuiOperationPort): MiniAppAgentFacade {
     "panelClosedMiniAppAgentSession",
     "listMiniAppAgentModels",
     "listMiniAppAgentAgents",
+    "listMiniAppAgentSessions",
+    "readMiniAppAgentSession",
     "createMiniAppAgentSession",
   ] as const) {
     if (typeof facade[name] !== "function") {
@@ -340,6 +344,16 @@ export function createMiniAppAgentHandlerEntries(
           return { body: { ok: true, method: "models", models: await facade.listMiniAppAgentModels({ caller }) } };
         case "agents":
           return { body: { ok: true, method: "agents", agents: await facade.listMiniAppAgentAgents({ caller }) } };
+        case "sessions":
+          return { body: { ok: true, method: "sessions", sessions: await facade.listMiniAppAgentSessions({ caller }) } };
+        case "session":
+          return {
+            body: {
+              ok: true,
+              method: "session",
+              session: await facade.readMiniAppAgentSession({ caller, ...(body.targetSessionId ? { sessionId: body.targetSessionId } : {}) }),
+            },
+          };
         case "create": {
           const created = await facade.createMiniAppAgentSession({
             caller,

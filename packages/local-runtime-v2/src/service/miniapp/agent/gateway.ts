@@ -17,6 +17,7 @@ import {
   type MiniAppAgentAgents,
   type MiniAppAgentCaller,
   type MiniAppAgentModels,
+  type MiniAppAgentSessionContext,
   type MiniAppAgentModelSelection,
   type MiniAppAgentReplyInput,
   type MiniAppAgentRunEvent,
@@ -177,6 +178,8 @@ export function createMiniAppAgentGateway(
     },
     models: (caller) => listModelOptions(state, caller),
     agents: (caller) => listAgentOptions(state, caller),
+    sessions: (caller) => readUserSessions(state, caller),
+    session: (caller, input) => readHostSession(state, caller, input),
     create: (caller, input = {}) => createBoundSession(state, caller, input.agent),
     reply: (caller, input) => replyPermission(state, caller, input),
     open: (caller, input) => openSession(state, caller, input),
@@ -302,6 +305,85 @@ function authorize(state: GatewayState, caller: MiniAppAgentCaller): Admitted {
     );
   }
   return { bound: state.ports, arena };
+}
+
+/** Session context is a read-only capability and is admitted independently from `session.run`. */
+async function readHostSession(
+  state: GatewayState,
+  caller: MiniAppAgentCaller,
+  input: { readonly sessionId?: string } = {},
+): Promise<MiniAppAgentSessionContext | undefined> {
+  if (!state.ports) {
+    throw new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent is not available');
+  }
+  const arena = state.arenas.get(caller.pluginId);
+  if (!arena || arena.processGeneration !== caller.processGeneration) {
+    throw new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent caller is out of date', true);
+  }
+  const sessionId = input.sessionId ?? caller.hostSessionId;
+  let ownSession = false;
+  if (sessionId) {
+    try {
+      ownSession = (await state.ports.getOwner(sessionId)) === caller.pluginId;
+    } catch (error) {
+      throw reject(
+        state,
+        caller,
+        new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent session is unavailable', true),
+        { operation: 'session.read.owner', errorName: errorName(error) },
+      );
+    }
+  }
+  requireSessionRead(state, caller, arena, ownSession ? 'session.run' : 'session.read');
+  if (!sessionId) return undefined;
+  try {
+    return ownSession
+      ? await state.ports.readMiniAppSession(sessionId)
+      : await state.ports.readUserSession(sessionId);
+  } catch (error) {
+    throw reject(
+      state,
+      caller,
+      new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent session is unavailable', true),
+      { operation: 'session.read', errorName: errorName(error) },
+    );
+  }
+}
+
+async function readUserSessions(state: GatewayState, caller: MiniAppAgentCaller) {
+  if (!state.ports) {
+    throw new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent is not available');
+  }
+  const arena = state.arenas.get(caller.pluginId);
+  if (!arena || arena.processGeneration !== caller.processGeneration) {
+    throw new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent caller is out of date', true);
+  }
+  requireSessionRead(state, caller, arena, 'session.read');
+  try {
+    return await state.ports.listUserSessions();
+  } catch (error) {
+    throw reject(
+      state,
+      caller,
+      new MiniAppAgentError('AGENT_UNAVAILABLE', 'Mini App Agent sessions are unavailable', true),
+      { operation: 'session.read.list', errorName: errorName(error) },
+    );
+  }
+}
+
+function requireSessionRead(
+  state: GatewayState,
+  caller: MiniAppAgentCaller,
+  arena: ArenaEntry,
+  capability: 'session.run' | 'session.read',
+): void {
+  if (arena.policy.kind === 'allowlist' && arena.policy.capabilities.includes(capability)) return;
+  throw reject(
+    state,
+    caller,
+    new MiniAppAgentError('NOT_PERMITTED', 'Mini App is not permitted to read sessions'),
+    { reason: 'session-read-policy', required: capability },
+  );
 }
 
 function admit(state: GatewayState, call: TurnCall, invalid: string | undefined): Admitted {

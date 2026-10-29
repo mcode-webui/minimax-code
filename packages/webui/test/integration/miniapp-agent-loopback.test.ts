@@ -104,6 +104,8 @@ function scriptedPort(): { port: WebuiHarnessPort; recorded: Recorded } {
       default: { providerId: "p", modelId: "m" },
     }),
     listMiniAppAgentAgents: async () => ({ agents: [] }),
+    listMiniAppAgentSessions: async () => ({ sessions: [] }),
+    readMiniAppAgentSession: async () => undefined,
     createMiniAppAgentSession: async () => ({ sessionId: MINI_SESSION }),
     runMiniAppAgentTurn: (input: {
       caller: unknown;

@@ -45,6 +45,8 @@ type AgentMembers = Required<
     | "panelClosedMiniAppAgentSession"
     | "listMiniAppAgentModels"
     | "listMiniAppAgentAgents"
+    | "listMiniAppAgentSessions"
+    | "readMiniAppAgentSession"
     | "createMiniAppAgentSession"
   >
 >;
@@ -58,6 +60,8 @@ const AGENT_MEMBER_NAMES = [
   "panelClosedMiniAppAgentSession",
   "listMiniAppAgentModels",
   "listMiniAppAgentAgents",
+  "listMiniAppAgentSessions",
+  "readMiniAppAgentSession",
   "createMiniAppAgentSession",
 ] as const;
 
@@ -94,6 +98,8 @@ export function createMiniAppAgentAdapter(host: WebuiRuntimeHostHandle): Pick<
   | "panelClosedMiniAppAgentSession"
   | "listMiniAppAgentModels"
   | "listMiniAppAgentAgents"
+  | "listMiniAppAgentSessions"
+  | "readMiniAppAgentSession"
   | "createMiniAppAgentSession"
 > {
   return {
@@ -181,6 +187,17 @@ export function createMiniAppAgentAdapter(host: WebuiRuntimeHostHandle): Pick<
       readonly caller: WebuiMiniAppAgentCaller;
     }): Promise<MiniAppAgentAgents> {
       return requireMiniAppAgent(host).listMiniAppAgentAgents(input);
+    },
+
+    async listMiniAppAgentSessions(input: { readonly caller: WebuiMiniAppAgentCaller }) {
+      return requireMiniAppAgent(host).listMiniAppAgentSessions(input);
+    },
+
+    async readMiniAppAgentSession(input: {
+      readonly caller: WebuiMiniAppAgentCaller;
+      readonly sessionId?: string;
+    }) {
+      return requireMiniAppAgent(host).readMiniAppAgentSession(input);
     },
 
     async createMiniAppAgentSession(input: {

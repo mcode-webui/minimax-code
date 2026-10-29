@@ -30,6 +30,8 @@ import {
   type MiniAppAgentPermissionDecision,
   type MiniAppAgentRunEvent,
   type MiniAppAgentRunResult,
+  type MiniAppAgentSessionContext,
+  type MiniAppAgentSessions,
   type MiniAppAgentSessionPorts,
   type MiniAppPermissionAsk,
 } from './contracts.js';
@@ -50,7 +52,17 @@ export interface MiniAppAgentSessionPortsOptions {
     ): Promise<
       | Pick<
           SessionRecord,
+          | 'sessionId'
           | 'purpose'
+          | 'sessionType'
+          | 'sessionKind'
+          | 'visibility'
+          | 'archived'
+          | 'status'
+          | 'errorMessage'
+          | 'title'
+          | 'createdAtMs'
+          | 'updatedAtMs'
           | 'agentName'
           | 'parentSessionId'
           | 'workspaceDir'
@@ -61,6 +73,20 @@ export interface MiniAppAgentSessionPortsOptions {
         >
       | undefined
     >;
+    listPage(input: {
+      readonly sessionType: 'root';
+      readonly archived: false;
+      readonly includeHidden: false;
+      readonly excludeInternalDefaultRoots: true;
+      readonly includeSessionKinds: readonly ['conversation'];
+      readonly excludePurposePrefix: string;
+      readonly limit: 50;
+    }): Promise<{ readonly sessions: readonly Pick<SessionRecord,
+      | 'sessionId' | 'purpose' | 'sessionType' | 'sessionKind' | 'visibility' | 'archived'
+      | 'status' | 'errorMessage' | 'title' | 'createdAtMs' | 'updatedAtMs' | 'agentName'
+      | 'parentSessionId' | 'workspaceDir' | 'isDefaultWorkspace' | 'effectiveModel'
+      | 'effectiveModelVariant' | 'effectiveModelThinking'
+    >[] }>;
   };
   readonly turns: Pick<TurnService, 'steer' | 'abort'>;
   readonly stream: {
@@ -68,6 +94,7 @@ export interface MiniAppAgentSessionPortsOptions {
   };
   readonly messages: {
     listTurn(sessionId: string, turnId: string): Promise<readonly DisplayMessageRecord[]>;
+    listRecent(sessionId: string, options: { readonly limit: number; readonly role?: string }): Promise<readonly DisplayMessageRecord[]>;
   };
   /** Settling a questionnaire also starts its continuation turn. */
   readonly questionnaires: {
@@ -158,6 +185,58 @@ export function createMiniAppAgentSessionPorts(
     },
     listModels: () => listModelOptions(options),
     listAgents: () => listAgentOptions(options),
+    listUserSessions: async (): Promise<MiniAppAgentSessions> => {
+      const page = await beforeDispatch(options, { stage: 'list-user-sessions', sessionId: 'user-sessions' }, () =>
+        options.repository.listPage({
+          sessionType: 'root',
+          archived: false,
+          includeHidden: false,
+          excludeInternalDefaultRoots: true,
+          includeSessionKinds: ['conversation'],
+          excludePurposePrefix: MINIAPP_AGENT_PURPOSE_PREFIX,
+          limit: 50,
+        }),
+      );
+      return {
+        sessions: page.sessions
+          .filter((session) => session.sessionKind === 'conversation' && !session.purpose?.startsWith(MINIAPP_AGENT_PURPOSE_PREFIX))
+          .map((session) => projectSessionContext(session)),
+      };
+    },
+    readUserSession: async (sessionId) => {
+      const session = await beforeDispatch(
+        options,
+        { stage: 'read-user-session', sessionId },
+        () => options.repository.get(sessionId),
+      );
+      if (
+        !session ||
+        session.sessionType !== 'root' ||
+        session.sessionKind !== 'conversation' ||
+        session.visibility === 'hidden' ||
+        session.archived ||
+        session.purpose?.startsWith(MINIAPP_AGENT_PURPOSE_PREFIX)
+      ) {
+        return undefined;
+      }
+      const [latest] = await beforeDispatch(options, { stage: 'read-user-session-message', sessionId }, () =>
+        options.messages.listRecent(sessionId, { limit: 1, role: 'assistant' }),
+      );
+      const lastAssistantText = latest ? assistantMessageText(latest) : undefined;
+      return projectSessionContext(session, lastAssistantText);
+    },
+    readMiniAppSession: async (sessionId) => {
+      const session = await beforeDispatch(
+        options,
+        { stage: 'read-miniapp-session', sessionId },
+        () => options.repository.get(sessionId),
+      );
+      if (!session || !session.purpose?.startsWith(MINIAPP_AGENT_PURPOSE_PREFIX)) return undefined;
+      const [latest] = await beforeDispatch(options, { stage: 'read-miniapp-session-message', sessionId }, () =>
+        options.messages.listRecent(sessionId, { limit: 1, role: 'assistant' }),
+      );
+      return projectSessionContext(session, latest ? assistantMessageText(latest) : undefined);
+    },
     defaultSessionModel: () => resolveDefaultSessionModel(options),
     resolveModel: async (requested) =>
       requested
@@ -200,6 +279,51 @@ export function createMiniAppAgentSessionPorts(
         },
       }),
   };
+}
+
+function projectSessionContext(
+  session: Pick<SessionRecord,
+    | 'sessionId' | 'status' | 'errorMessage' | 'title' | 'createdAtMs' | 'updatedAtMs'
+    | 'agentName' | 'workspaceDir' | 'isDefaultWorkspace' | 'effectiveModel'
+    | 'effectiveModelVariant' | 'effectiveModelThinking'
+  >,
+  lastAssistantText?: string,
+): MiniAppAgentSessionContext {
+  const model = modelSelectionFromRecord(session);
+  return {
+    sessionId: session.sessionId,
+    agent: session.agentName,
+    workspaceDir: session.workspaceDir,
+    isDefaultWorkspace: session.isDefaultWorkspace === true,
+    createdAtMs: session.createdAtMs,
+    updatedAtMs: session.updatedAtMs,
+    ...(session.title ? { title: session.title } : {}),
+    status:
+      session.status === 'started'
+        ? 'running'
+        : session.status === 'error'
+          ? 'error'
+          : session.status === 'aborted' || session.status === 'interrupted'
+            ? 'aborted'
+            : 'idle',
+    ...(session.status === 'error' && session.errorMessage
+      ? { error: { message: session.errorMessage } }
+      : {}),
+    ...(model ? { model } : {}),
+    ...(lastAssistantText ? { lastAssistantText } : {}),
+  };
+}
+
+function assistantMessageText(message: DisplayMessageRecord): string | undefined {
+  const content = message.msg_content ?? message.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return undefined;
+  const text = content.flatMap((part) => {
+    if (!part || typeof part !== 'object' || Array.isArray(part)) return [];
+    const value = (part as Record<string, unknown>).text;
+    return typeof value === 'string' ? [value] : [];
+  }).join('');
+  return text || undefined;
 }
 
 type RunTurnInput = Parameters<MiniAppAgentSessionPorts['runTurn']>[0];

@@ -31,6 +31,7 @@ import {
   encodeAgentCreateParams,
   encodeAgentReplyParams,
   encodeAgentRunParams,
+  encodeAgentSessionParams,
   type MiniAppAgentClient,
 } from './host-connector-agent.js';
 import {
@@ -303,6 +304,12 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
     },
     async agents() {
       return (await send('agent.agents', {})) as Awaited<ReturnType<MiniAppAgentClient['agents']>>;
+    },
+    async sessions() {
+      return (await send('agent.sessions', {})) as Awaited<ReturnType<MiniAppAgentClient['sessions']>>;
+    },
+    async session(sessionId: string) {
+      return (await send('agent.session', encodeAgentSessionParams(sessionId))) as Awaited<ReturnType<MiniAppAgentClient['session']>>;
     },
     async create(input?: Parameters<MiniAppAgentClient['create']>[0]) {
       return (await send('agent.create', encodeAgentCreateParams(input))) as Awaited<

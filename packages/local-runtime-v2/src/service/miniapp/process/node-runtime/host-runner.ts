@@ -549,7 +549,7 @@ function isAgentPolicy(value: unknown): value is MiniAppAgentPolicy {
     : value.kind === 'allowlist' &&
         hasExactKeys(value, ['kind', 'capabilities', 'maxConcurrent']) &&
         Array.isArray(value.capabilities) &&
-        value.capabilities.every((capability) => capability === 'session.run') &&
+        value.capabilities.every((capability) => capability === 'session.run' || capability === 'session.read') &&
         isAgentConcurrency(value.maxConcurrent);
 }
 

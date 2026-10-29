@@ -5,6 +5,8 @@ import type {
   MiniAppAgentPermissionDecision,
   MiniAppAgentRunEvent,
   MiniAppAgentRunResult,
+  MiniAppAgentSessionContext,
+  MiniAppAgentSessions,
 } from "@mavis/shared/miniapp-surface";
 import type { AskQuestionnaireReplyAnswer } from "@mavis/shared/questionnaire";
 import type { WebuiPluginManagementRequest } from "../shared/plugin-management.js";
@@ -683,6 +685,15 @@ export interface WebuiHarnessPort {
   listMiniAppAgentAgents?(input: {
     readonly caller: WebuiMiniAppAgentCaller;
   }): Promise<MiniAppAgentAgents>;
+  /** The read-only host conversation bound to this page. */
+  readMiniAppAgentSession?(input: {
+    readonly caller: WebuiMiniAppAgentCaller;
+    readonly sessionId?: string;
+  }): Promise<MiniAppAgentSessionContext | undefined>;
+  /** The visible user conversations a Mini App may read. */
+  listMiniAppAgentSessions?(input: {
+    readonly caller: WebuiMiniAppAgentCaller;
+  }): Promise<MiniAppAgentSessions>;
   /** A session without a turn; a `run` naming it continues it. */
   createMiniAppAgentSession?(input: {
     readonly caller: WebuiMiniAppAgentCaller;

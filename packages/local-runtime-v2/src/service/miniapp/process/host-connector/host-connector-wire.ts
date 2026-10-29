@@ -26,6 +26,8 @@ export type ChildRequestMethod =
   | 'agent.answer'
   | 'agent.models'
   | 'agent.agents'
+  | 'agent.sessions'
+  | 'agent.session'
   | 'agent.create';
 
 export type AgentRequestMethod = Extract<ChildRequestMethod, `agent.${string}`>;
@@ -56,6 +58,8 @@ export function isAgentShortMethod(
     method === 'agent.reply' ||
     method === 'agent.models' ||
     method === 'agent.agents' ||
+    method === 'agent.sessions' ||
+    method === 'agent.session' ||
     method === 'agent.create'
   );
 }

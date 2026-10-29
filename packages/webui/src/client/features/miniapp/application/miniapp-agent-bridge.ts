@@ -266,7 +266,19 @@ export function createWebuiMiniAppAgentBridge(
     switch (request.method) {
       case "models":
       case "agents":
+      case "sessions":
         return { ...base(request.requestId), method: request.method };
+      case "session": {
+        if (payload.sessionId !== undefined &&
+            (typeof payload.sessionId !== "string" || payload.sessionId.length === 0 || payload.sessionId.length > WEBUI_MINIAPP_AGENT_MAX_ID_LENGTH)) {
+          return undefined;
+        }
+        return {
+          ...base(request.requestId),
+          method: "session",
+          ...(typeof payload.sessionId === "string" ? { targetSessionId: payload.sessionId } : {}),
+        };
+      }
       case "cancel":
         return { ...base(request.requestId), method: "cancel" };
       case "create": {
@@ -436,6 +448,10 @@ function pageValueOf(
       return response.models;
     case "agents":
       return response.agents;
+    case "sessions":
+      return response.sessions;
+    case "session":
+      return response.session;
     case "create":
       return { sessionId: response.sessionId };
     default:

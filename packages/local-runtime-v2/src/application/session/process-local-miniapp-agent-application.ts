@@ -25,6 +25,8 @@ export function createProcessLocalMiniAppAgentApplication(
     | 'panelClosed'
     | 'models'
     | 'agents'
+    | 'sessions'
+    | 'session'
     | 'create'
   >,
 ): ProcessLocalMiniAppAgentApplication {
@@ -42,6 +44,8 @@ export function createProcessLocalMiniAppAgentApplication(
       ),
     models: ({ caller }) => gateway.models(toGatewayCaller(caller)),
     agents: ({ caller }) => gateway.agents(toGatewayCaller(caller)),
+    sessions: ({ caller }) => gateway.sessions(toGatewayCaller(caller)),
+    session: ({ caller, sessionId }) => gateway.session(toGatewayCaller(caller), { sessionId }),
     create: ({ caller, agent }) =>
       gateway.create(toGatewayCaller(caller), agent === undefined ? undefined : { agent }),
     reply: ({ caller, sessionId, requestId, decision }) =>

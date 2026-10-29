@@ -207,12 +207,15 @@ function readHostConnectorAccess(value: unknown): { providers: string[] } | unde
   return { providers };
 }
 
-function readAgentAccess(value: unknown): 'session.run'[] | undefined {
+function readAgentAccess(value: unknown): ('session.run' | 'session.read')[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.some((capability) => capability !== 'session.run')) {
-    miniAppFail('AGENT_ACCESS_INVALID', 'agentAccess may only contain session.run');
+  if (
+    !Array.isArray(value) ||
+    value.some((capability) => capability !== 'session.run' && capability !== 'session.read')
+  ) {
+    miniAppFail('AGENT_ACCESS_INVALID', 'agentAccess may only contain session.run and session.read');
   }
-  return [...new Set(value as 'session.run'[])];
+  return [...new Set(value as ('session.run' | 'session.read')[])];
 }
 
 /** Allowed without `agentAccess`, where it has no effect. */

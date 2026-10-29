@@ -13,7 +13,7 @@ export const MINIAPP_AGENT_PURPOSE_PREFIX = 'miniapp:';
 /** Runs of one plugin at once when its manifest omits `agentConcurrency`. */
 export const MINIAPP_AGENT_DEFAULT_CONCURRENCY = 4;
 
-type MiniAppAgentCapability = 'session.run';
+type MiniAppAgentCapability = 'session.run' | 'session.read';
 
 /**
  * Derived from the parsed manifest's `agentAccess`; absent or empty means deny-all.

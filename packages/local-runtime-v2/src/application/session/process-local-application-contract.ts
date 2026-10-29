@@ -31,6 +31,8 @@ import type {
   MiniAppAgentPermissionDecision,
   MiniAppAgentRunEvent,
   MiniAppAgentRunResult,
+  MiniAppAgentSessionContext,
+  MiniAppAgentSessions,
 } from "../../service/miniapp/index.js";
 import type { SessionReportManifest } from "../../service/session-system/index.js";
 import type { WorkspaceReviewFileContent, WorkspaceReviewFileDiff, WorkspaceReviewSearchResult, WorkspaceReviewSummary } from "../../service/workspace/contracts.js";
@@ -190,6 +192,11 @@ export interface LocalRuntimeApplication {
     }): Promise<MiniAppAgentRunResult>;
     models(input: { readonly caller: ProcessLocalMiniAppAgentCaller }): Promise<MiniAppAgentModels>;
     agents(input: { readonly caller: ProcessLocalMiniAppAgentCaller }): Promise<MiniAppAgentAgents>;
+    sessions(input: { readonly caller: ProcessLocalMiniAppAgentCaller }): Promise<MiniAppAgentSessions>;
+    session(input: {
+      readonly caller: ProcessLocalMiniAppAgentCaller;
+      readonly sessionId?: string;
+    }): Promise<MiniAppAgentSessionContext | undefined>;
     /** Creates a session bound like a first `run` would, without running a turn. */
     create(input: {
       readonly caller: ProcessLocalMiniAppAgentCaller;

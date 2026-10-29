@@ -80,6 +80,20 @@ const SCRIPT = `(function () {
   }
   var mcode = (window.mcode = window.mcode || {});
   mcode.miniapp = mcode.miniapp || {};
+  var capabilities = [
+    "message.append",
+    "agent.run",
+    "agent.open",
+    "agent.models",
+    "agent.agents",
+    "agent.create",
+    "agent.sessions",
+    "agent.session"
+  ];
+  mcode.miniapp.capabilities = mcode.miniapp.capabilities || {};
+  mcode.miniapp.capabilities.has = function (name) {
+    return typeof name === "string" && capabilities.indexOf(name) !== -1;
+  };
   mcode.miniapp.message = mcode.miniapp.message || {};
   mcode.miniapp.message.append = append;
   // ---------------------------------------------------------------------
@@ -188,6 +202,12 @@ const SCRIPT = `(function () {
     },
     agents: function () {
       return agentRequest("agents", {});
+    },
+    sessions: function () {
+      return agentRequest("sessions", {});
+    },
+    session: function (sessionId) {
+      return agentRequest("session", sessionId === undefined ? {} : { sessionId: sessionId });
     },
     create: function (input) {
       return agentRequest("create", input);

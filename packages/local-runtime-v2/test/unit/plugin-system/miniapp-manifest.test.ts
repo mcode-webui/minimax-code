@@ -47,13 +47,13 @@ describe('Mini App manifest compatibility with the shipped generation', () => {
   it('reads a manifest written for the shipped client', async () => {
     const contribution = await readManifest({
       surface: { path: '/dashboard', window: { width: 800, height: 600, alwaysOnTop: true } },
-      agentAccess: ['session.run'],
+      agentAccess: ['session.run', 'session.read'],
       agentConcurrency: 4,
     });
 
     expect(contribution).toMatchObject({
       surface: { path: '/dashboard' },
-      agentAccess: ['session.run'],
+      agentAccess: ['session.run', 'session.read'],
       agentConcurrency: 4,
     });
   });
@@ -89,6 +89,12 @@ describe('Mini App manifest compatibility with the shipped generation', () => {
       });
     },
   );
+
+  it('accepts session.read as a declared Agent capability', async () => {
+    const contribution = await readManifest({ agentAccess: ['session.read'] });
+
+    expect(contribution?.agentAccess).toEqual(['session.read']);
+  });
 
   it.each([[1], [32], [4]])(
     'accepts agentConcurrency %j without agentAccess, where it has no effect',

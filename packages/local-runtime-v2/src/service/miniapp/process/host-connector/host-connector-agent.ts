@@ -22,6 +22,8 @@ import {
   type MiniAppAgentRunInput,
   type MiniAppAgentRunOptions,
   type MiniAppAgentRunResult,
+  type MiniAppAgentSessionContext,
+  type MiniAppAgentSessions,
 } from '../../agent/contracts.js';
 import { readMiniAppAgentModelSelection } from '../../agent/model-selection.js';
 import type { MiniAppAgentPolicy } from '../../contracts.js';
@@ -46,6 +48,8 @@ export interface MiniAppAgentClient {
   ): Promise<MiniAppAgentRunResult>;
   models(): Promise<MiniAppAgentModels>;
   agents(): Promise<MiniAppAgentAgents>;
+  sessions(): Promise<MiniAppAgentSessions>;
+  session(sessionId: string): Promise<MiniAppAgentSessionContext | undefined>;
   create(input?: { readonly agent?: string }): Promise<{ readonly sessionId: string }>;
 }
 
@@ -126,6 +130,11 @@ export function encodeAgentCreateParams(input: unknown): Record<string, unknown>
     throw agentClientError('INVALID_ARGUMENTS');
   }
   return input.agent === undefined ? {} : { agent: input.agent };
+}
+
+export function encodeAgentSessionParams(sessionId: unknown): Record<string, unknown> {
+  if (!isBoundedIdentifier(sessionId)) throw agentClientError('INVALID_ARGUMENTS');
+  return { sessionId };
 }
 
 function decodeAgentCreateParams(params: Record<string, unknown> | undefined): {
@@ -271,6 +280,11 @@ const AGENT_RESULT_DECODERS: Readonly<Record<AgentRequestMethod, AgentResultDeco
   'agent.reply': (value) => (value === null ? { value: undefined } : undefined),
   'agent.models': (value) => (isAgentModels(value) ? { value } : undefined),
   'agent.agents': (value) => (isAgentAgents(value) ? { value } : undefined),
+  'agent.sessions': (value) => (isAgentSessions(value) ? { value } : undefined),
+  'agent.session': (value) =>
+    value === null || value === undefined || isAgentSession(value)
+      ? { value: value ?? undefined }
+      : undefined,
   'agent.create': (value) =>
     isRecord(value) && hasExactKeys(value, ['sessionId']) && isBoundedIdentifier(value.sessionId)
       ? { value: { sessionId: value.sessionId } }
@@ -337,6 +351,19 @@ function isAgentAgents(value: unknown): value is MiniAppAgentAgents {
         isBoolean(agent.primary),
     )
   );
+}
+
+function isAgentSessions(value: unknown): value is MiniAppAgentSessions {
+  return isRecord(value) && hasExactKeys(value, ['sessions']) && Array.isArray(value.sessions) &&
+    value.sessions.every(isAgentSession);
+}
+
+function isAgentSession(value: unknown): value is MiniAppAgentSessionContext {
+  return isRecord(value) && isBoundedIdentifier(value.sessionId) &&
+    typeof value.agent === 'string' && typeof value.workspaceDir === 'string' &&
+    typeof value.isDefaultWorkspace === 'boolean' && typeof value.createdAtMs === 'number' &&
+    typeof value.updatedAtMs === 'number' &&
+    (value.status === 'idle' || value.status === 'running' || value.status === 'error' || value.status === 'aborted');
 }
 
 /**
@@ -500,7 +527,8 @@ interface HostAgentSessionInput {
 
 type AgentShortRequest =
   | { readonly method: 'agent.reply'; readonly params: MiniAppAgentReplyInput }
-  | { readonly method: 'agent.models' | 'agent.agents' }
+  | { readonly method: 'agent.models' | 'agent.agents' | 'agent.sessions' }
+  | { readonly method: 'agent.session'; readonly params: { readonly sessionId: string } }
   | { readonly method: 'agent.create'; readonly params: { readonly agent?: string } };
 
 type AgentRequest = AgentTurnRequest | AgentShortRequest;
@@ -512,11 +540,17 @@ function decodeAgentRequest(
 ): AgentRequest {
   if (method === 'agent.reply') return { method, params: decodeAgentReplyParams(params) };
   if (method === 'agent.create') return { method, params: decodeAgentCreateParams(params) };
-  if (method === 'agent.models' || method === 'agent.agents') {
+  if (method === 'agent.models' || method === 'agent.agents' || method === 'agent.sessions') {
     if (!params || !hasExactKeys(params, [])) {
       throw new HostConnectorProtocolError('Host Connector request is invalid');
     }
     return { method };
+  }
+  if (method === 'agent.session') {
+    if (!params || !hasExactKeys(params, ['sessionId']) || !isBoundedIdentifier(params.sessionId)) {
+      throw new HostConnectorProtocolError('Host Connector request is invalid');
+    }
+    return { method, params: { sessionId: params.sessionId } };
   }
   if (method === 'agent.answer') return { method, ...decodeAgentAnswerParams(params) };
   return { method, ...decodeAgentRunParams(params) };
@@ -618,6 +652,10 @@ async function startShortAgentOperation(
       return projectAgentModels(await gateway.models(caller));
     case 'agent.agents':
       return projectAgentAgents(await gateway.agents(caller));
+    case 'agent.sessions':
+      return gateway.sessions(caller);
+    case 'agent.session':
+      return gateway.session(caller, request.params);
     case 'agent.create':
       return projectAgentCreate(await gateway.create(caller, request.params));
   }

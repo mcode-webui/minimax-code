@@ -234,13 +234,12 @@ find a method missing, because the visible result is a dead panel rather than a 
 That is why the composer alone is not a smaller first version of this decision — it is a different,
 insufficient one.
 
-The shipped client's agent path is a runtime capability this repository does not have: a Mini App
-gateway that owns per-plugin arenas, queues and turn lineage; a session-ports layer through which a
-plugin creates and drives host sessions; a projection that decides what a plugin may see of them; the
-application facade that fronts all of it; and the child-side client that the plugin's own process
-calls. None of those files exist here, and the plugin manifest fields that gate them —
-`agentAccess` (only `session.run` today) and `agentConcurrency` — are rejected by this repository's
-reader as unknown keys.
+This repository now has the Agent gateway, session ports, application facade and child-side
+`context.agent` client. The manifest accepts independent `session.run` and `session.read` grants.
+`session.read` currently lists visible user conversations and reads a session summary (including its
+latest assistant text); the published observer API is still not implemented. `surface.window` is
+accepted for package compatibility but remains ignored because a browser page cannot move the same
+live document into a native Mini App window.
 
 The connector's wire has to move with it, and the reason is not a preference. In this repository the
 host connector *is* the child's stdout: the child's stdout is the request stream and its stdin the
@@ -515,10 +514,8 @@ retry. The shared contract and runtime Agent contract define the accepted failur
   (`packages/local-runtime-v2/src/application/session/process-local-application-contract.ts`).
 - The application exposes only `list`, `open` and `stop` here; the shipped generation adds a
   read-only `credential` and returns the credential with `open`.
-- The shipped runtime's agent path is a whole absent directory here —
-  `.../service/miniapp/agent/` (contracts, gateway, session ports, projection, model selection,
-  roughly 2900 lines without tests) — plus `process-local-miniapp-agent-application.ts`, and the
-  plugin manifest fields that gate it.
+- The Agent gateway and process-local application now exist here. Their current user-session read
+  surface is `sessions()` and `session(id)`; the shipped `observe()` subscription is still absent.
 - Every Mini App is a separate child process: the node runtime spawns one with a fourth IPC file
   descriptor, and at most three run at once. In this repository that descriptor carries lifecycle
   messages only (`miniapp:ready`, `miniapp:error`, `miniapp:stopped`, stop and parent-loss
@@ -528,8 +525,9 @@ retry. The shared contract and runtime Agent contract define the accepted failur
   (`packages/local-runtime-v2/src/service/miniapp/process/node-runtime/host-runner.ts`,
   `node-runtime.ts`). The shipped runtime uses the same descriptor for both, distinguished by
   message type, drops the child's stdin, and logs stdout and stderr instead.
-- The shipped manifest reader allows `agentAccess`, `agentConcurrency` and `surface.window`; this
-  repository's allows none of the three and fails unknown keys as `MANIFEST_SCHEMA_INVALID`
+- The manifest reader accepts `agentAccess` (`session.run` and `session.read`),
+  `agentConcurrency` and `surface.window`; `surface.window` has no browser implementation. The
+  current reader still rejects `toolAccess` and `deviceAccess` as unknown fields
   (`packages/local-runtime-v2/src/service/plugin-system/plugin/package/miniapp/validation.ts`).
 - A runtime can be built with explicit Mini App options and no declared owner kind, and the supervisor
   is expected to exist, so the explicit-options override survives the wiring-cell change

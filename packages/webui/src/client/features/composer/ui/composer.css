@@ -263,6 +263,14 @@
     color: var(--text_status_warning);
   }
 
+  .webui-composer-permission-button--warning .webui-composer-permission-label {
+    color: var(--text_status_warning);
+  }
+
+  .webui-composer-permission-button--warning .webui-composer-permission-icon {
+    color: var(--icon_status_warning);
+  }
+
   .webui-composer-permission-button.webui-composer-permission-button--warning:hover:not(:disabled) {
     color: var(--text_status_warning);
   }

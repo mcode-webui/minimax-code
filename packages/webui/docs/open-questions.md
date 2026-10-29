@@ -49,14 +49,14 @@ loopback-reachable browser page can call every App the user has connected on thi
 
 ## 4. Is `titleSafetyBypass: true` the WebUI's permanent value?
 
-**Status:** open, carried as today's effective value so that declaring the `webui` identity row did
-not silently change title generation (`packages/local-runtime/src/runtime/runtime-owner-policy.ts`,
-`webui` row, with the reasoning in the code comment).
+**Status:** closed on 2026-10-29 — the answer was no. The `webui` row was aligned with Desktop's
+`electron` row, and `execution.titleSafetyBypass` is now `false`, the value every non-terminal
+client already had (`packages/local-runtime/src/runtime/runtime-owner-policy.ts`, `webui` row).
 
-- **What a decision would change:** whether WebUI sessions get the title-safety bypass the terminal
-  client gets, or fall back to the policy's default. A change here moves user-visible session titles.
-- **How to decide:** needs a title-generation comparison across both settings on real sessions; no
-  such run is recorded.
+- **What the decision changed:** WebUI session titles go through the safety filter again instead of
+  bypassing it. The cell is no longer a provisional value carried by the identity row.
+- **What was not measured:** a title-generation comparison across both settings on real sessions was
+  never run, so the user-visible delta of the flip is not quantified here.
 
 ## 5. What does a tab show when the page behind it is closed?
 

@@ -313,7 +313,7 @@ describe('resolveRuntimeOwnerPolicy', () => {
     expect(policy.execution.mavisFeatureBundle).toBe(true);
   });
 
-  it("'webui' resolves to its own row, which differs from tui in seven cells", () => {
+  it("'webui' resolves to its own row, which differs from tui in twelve cells", () => {
     // Read as "where WebUI differs from tui": the remaining cells are inherited so an
     // identity change does not silently move turn-execution semantics.
     //
@@ -345,7 +345,12 @@ describe('resolveRuntimeOwnerPolicy', () => {
         'execution.executesTerminalControl',
         'execution.mavisFeatureBundle',
         'execution.memoryFeature',
+        'execution.promptProfile',
+        'execution.promptSurfaceDefault',
         'execution.restricted',
+        'execution.reviewPolicy',
+        'execution.titleSafetyBypass',
+        'wiring.browserActivation',
         'wiring.cronService',
         'wiring.miniAppService',
         'wiring.schedulerHost',
@@ -356,16 +361,45 @@ describe('resolveRuntimeOwnerPolicy', () => {
     expect(webui.wiring.schedulerHost).toBe(true);
     expect(webui.wiring.cronService).toBe(true);
     expect(webui.wiring.miniAppService).toBe(true);
+    // The one cell that still differs from Desktop's row: the WebUI has no channel
+    // surface to bind an IM channel with.
     expect(webui.wiring.channelService).toBe(false);
-    expect(webui.wiring.browserActivation).toBe('explicit-config');
+    expect(webui.wiring.browserActivation).toBe('desktop-plugin');
     expect(webui.execution.restricted).toBe(false);
     expect(webui.execution.memoryFeature).toBe(true);
     expect(webui.execution.mavisFeatureBundle).toBe(true);
-    expect(webui.execution.reviewPolicy).toBe('tui');
-    // WebUI inherits the TUI review policy but is told it cannot run terminal control.
-    expect(webui.execution.promptProfile).toBe('tui');
-    expect(webui.execution.promptSurfaceDefault).toBe('cli');
-    expect(webui.execution.titleSafetyBypass).toBe(true);
+    expect(webui.execution.reviewPolicy).toBe('neither');
+    // The WebUI takes neither the command-line nor the terminal review bundle, and
+    // it is told it cannot run terminal control.
+    expect(webui.execution.executesTerminalControl).toBe(false);
+    expect(webui.execution.promptProfile).toBe('desktop');
+    expect(webui.execution.promptSurfaceDefault).toBe('interactive');
+    expect(webui.execution.titleSafetyBypass).toBe(false);
+  });
+
+  it('the webui row matches the Desktop row on every cell except channelService', () => {
+    // The alignment this change makes: the WebUI is a desktop-class client, so its
+    // row carries Desktop's values cell by cell. `channelService` stays off because
+    // the runtime would assemble an IM channel service the browser client has no
+    // surface for.
+    const webui = policyFor({
+      kind: 'webui',
+      cliEmbedded: true,
+      electronHost: true,
+      capabilityProfile: undefined,
+    });
+    const electron = policyFor({
+      kind: 'electron',
+      cliEmbedded: true,
+      electronHost: true,
+      capabilityProfile: undefined,
+    });
+    const differing = (['wiring', 'execution'] as const).flatMap((group) =>
+      Object.keys(electron[group])
+        .filter((cell) => electron[group][cell] !== webui[group][cell])
+        .map((cell) => `${group}.${cell}`),
+    );
+    expect(differing).toEqual(['wiring.channelService']);
   });
 
   it('no longer routes webui through the unknown-owner guard', () => {
@@ -433,10 +467,14 @@ describe('review-found defects', () => {
     // Without the cell the helper's fallback recognises only cli/tui, so webui would
     // silently become `interactive` — the exact divergence the review found.
     expect(resolveAgentPromptSurface(session, 'webui')).toBe('interactive');
+    // The cell is threaded, so a value that differs from the fallback proves the
+    // cell is read rather than coinciding with it. The row's own value is asserted
+    // separately, because the row now says `interactive` like the fallback.
+    expect(resolveAgentPromptSurface(session, 'webui', 'cli')).toBe('cli');
     expect(
       resolveAgentPromptSurface(session, 'webui', policy.execution.promptSurfaceDefault),
     ).toBe(policy.execution.promptSurfaceDefault);
-    expect(policy.execution.promptSurfaceDefault).toBe('cli');
+    expect(policy.execution.promptSurfaceDefault).toBe('interactive');
   });
 
   it('the policy denies memory and cron to an unrecognised owner', () => {

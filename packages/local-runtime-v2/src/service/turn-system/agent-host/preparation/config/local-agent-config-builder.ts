@@ -12,6 +12,7 @@ import {
   RETRY_CONTINUATION_PROMPT_KEY,
 } from './prompt-templates.js';
 import { resolveAgentCapabilities, type ResolvedAgentCapabilities } from '@mavis/config';
+import { isMiniAppCapabilitySurface } from '@mavis/agent-extension';
 import type { SessionRecord, TaskSessionBinding } from '../../../../session-system/index.js';
 import type {
   AgentExecutionSnapshot,
@@ -490,7 +491,7 @@ async function loadPromptLayers(parameters: {
     input.session,
     runtimeFacts,
     profile,
-    options.miniappAvailable === true,
+    resolveMiniAppTurnAvailable(options.miniappAvailable === true, profile?.surface),
   );
   const capabilityOptions = createPromptCapabilityOptions(input.agent, runtimeFacts, profile);
   const memoryBlocks = loadMemoryBlocks({
@@ -568,7 +569,7 @@ function createExecutionScope(
     workspaceDir: session.workspaceDir,
     ...builtinSkillScope(session, runtimeFacts),
     ...profileSelectionScope(profile),
-    ...runtimeFeatureScope(runtimeFacts, profile, miniappAvailable),
+    ...runtimeFeatureScope(runtimeFacts, miniappAvailable),
   };
 }
 
@@ -619,13 +620,25 @@ function profileSelectionScope(profile: LocalAgentExecutionProfile | undefined) 
 
 function runtimeFeatureScope(
   runtimeFacts: AgentRuntimeFacts,
-  profile: LocalAgentExecutionProfile | undefined,
   miniappAvailable: boolean,
 ) {
   return {
     ...(runtimeFacts.exposeCuModeActive ? { cuModeActive: runtimeFacts.cuModeActive } : {}),
-    ...(miniappAvailable && profile?.surface === 'interactive' ? { miniappAvailable: true } : {}),
+    ...(miniappAvailable ? { miniappAvailable: true } : {}),
   };
+}
+
+/**
+ * A turn may drive Mini Apps when the host declared the Mini App service and
+ * the turn's surface is one that may drive them. The host declaration is the
+ * owner policy cell (`wiring.miniAppService`); the surface rule belongs to the
+ * capability and lives with it.
+ */
+export function resolveMiniAppTurnAvailable(
+  hostDeclaredMiniAppService: boolean,
+  surface: LocalAgentExecutionProfile['surface'] | undefined,
+): boolean {
+  return hostDeclaredMiniAppService && isMiniAppCapabilitySurface(surface);
 }
 
 function createPromptCapabilityOptions(

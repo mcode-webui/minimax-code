@@ -18,7 +18,7 @@ const tokensPath = path.join(
   "src/client/styles/tokens.css",
 );
 
-const ROLE_PREFIXES = ["bg_", "text_", "icon_", "border_", "utility_", "terminal_", "shadow_", "screen_"];
+const ROLE_PREFIXES = ["bg_", "text_", "icon_", "border_", "utility_", "terminal_", "shadow_"];
 
 interface TokenBlocks {
   readonly root: string;
@@ -120,7 +120,7 @@ describe("WebUI design tokens", () => {
     expect(rel).toBe("src/client/styles/tokens.css");
   });
 
-  it("carries the 211 semantic tokens that packages/webui/docs/design-language.md names", () => {
+  it("carries the 211 semantic tokens that packages/webui/docs/design/design-language.md names", () => {
     // 211 is the count `packages/webui/docs/design/design-language.md` records.
     // If our count drifts, the test fails loudly rather than silently adjusting.
     expect(semanticNames().length).toBe(211);

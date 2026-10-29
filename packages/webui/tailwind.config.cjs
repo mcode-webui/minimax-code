@@ -1,7 +1,8 @@
-// Tailwind v3 config for the WebUI shell (ADR 0009, ADR 0010).
+// Tailwind v3 config for the WebUI shell (ADR 0010).
 //
 // Token names map 1:1 onto the tokens declared in tokens.css
-// (see packages/webui/docs/design-language.md and packages/webui/src/client/styles/tokens.css).
+// (see packages/webui/docs/design/design-language.md
+// and packages/webui/src/client/styles/tokens.css).
 // Every utility whose name starts with a token family — bg_*, text_*, border_*,
 // shadow_*, radius_*, spacing_*, size_*, line_height_* — is generated from the
 // corresponding CSS variable so the utilities and the token table share
@@ -89,7 +90,7 @@ const tailwindConfig = {
       "utility_popover": "var(--utility_popover)",
       "utility_scrim": "var(--utility_scrim)",
       "utility_scrollbar": "var(--utility_scrollbar)",
-      "utility_tootip": "var(--utility_tootip)",
+      "utility_tooltip": "var(--utility_tooltip)",
     },
     textColor: {
       transparent: "transparent",

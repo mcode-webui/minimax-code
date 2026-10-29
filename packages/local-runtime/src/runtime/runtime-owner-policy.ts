@@ -364,10 +364,17 @@ export function resolveRuntimeOwnerPolicy(
         },
       };
     case 'webui':
-      // The maintainer-decided row. Read as "where WebUI differs from tui": it is the
-      // tui row with six cells changed. The inherited cells are the default and the
-      // six differences are the proposal, because an identity change must not silently
-      // move turn-execution semantics.
+      // The maintainer-decided row, aligned with the Desktop (`electron`) row.
+      // Read as "where WebUI differs from Desktop": every cell carries Desktop's
+      // value except `wiring.channelService`, which stays off until the browser
+      // client has a surface to bind and manage an IM channel (tracked in
+      // `.temp/desktop-webui-capability-gaps.md`).
+      //
+      // The WebUI is a desktop-class client, not a command-line one, so the cells
+      // that used to carry the `tui` row's values now carry Desktop's. Four of the
+      // five also restore this package's own pre-rewiring answers for an owner that
+      // is neither `cli` nor `tui` (see `runtime-owner-policy-identity.test.ts`),
+      // so the row stops carrying a divergence that only the terminal client had.
       return {
         kind: reportedKind,
         wiring: {
@@ -382,22 +389,42 @@ export function resolveRuntimeOwnerPolicy(
           // earlier, the agent could start a Mini App that nothing can display.
           miniAppService: true,
           cronService: true,
+          // The one cell that still differs from Desktop: the runtime assembles the
+          // IM channel service for a desktop owner, but the WebUI has no screen to
+          // bind a channel with, so turning it on would start a service nobody can
+          // configure. Deferred, not forgotten.
           channelService: false,
-          browserActivation: 'explicit-config',
+          // Desktop's browser activation: the `browser.use` host binding comes from
+          // the installed `browser-use` plugin, and the built-in `browser` tool is
+          // then exposed under the `mcp_browser` alias. Desktop gates browser control
+          // on that plugin; the WebUI does the same instead of running its own
+          // `explicit-config` path.
+          browserActivation: 'desktop-plugin',
         },
         execution: {
           restricted: false,
           memoryFeature: true,
           mavisFeatureBundle: true,
-          reviewPolicy: 'tui',
+          // Desktop's value. The `tui` policy also enabled `cliProductPolicy` and,
+          // in the CN region, `contentReviewEnabled`; a browser client is neither a
+          // command-line client nor the terminal client, so it takes neither bundle.
+          reviewPolicy: 'neither',
           // Changed at the flip: WebUI inherits 'tui' today and is therefore told it
           // executes terminal control sequences, which a browser client cannot run.
           executesTerminalControl: false,
-          promptProfile: 'tui',
-          promptSurfaceDefault: 'cli',
-          // Provisional, carried as today's effective value so the refactor does not
-          // silently change title generation. See AgentExecutionPolicy.
-          titleSafetyBypass: true,
+          // Desktop's value. The `desktop` profile resolves the shared
+          // `_v2/<appMode>/SYSTEM.md.hbs` asset and reads the workspace prompt
+          // context; the `tui` profile resolved the terminal-only asset instead.
+          promptProfile: 'desktop',
+          // Desktop's value. The `interactive` surface is what the browser client
+          // actually is: it has a browser panel, a workspace panel and a Mini App
+          // presenter. `cli` told the agent it had no interactive surface, which is
+          // what made it conclude that nobody could open a Mini App on its behalf.
+          promptSurfaceDefault: 'interactive',
+          // Desktop's value, and this package's pre-rewiring answer for every owner
+          // that is not `tui` or `cli`: generated titles go through the safety
+          // filter again.
+          titleSafetyBypass: false,
         },
       };
     case 'unknown':

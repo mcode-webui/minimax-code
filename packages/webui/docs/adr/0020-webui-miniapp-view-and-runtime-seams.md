@@ -222,6 +222,20 @@ new domain behaviour; they expose what the runtime already owns.
   presenter exists would therefore ship a half-live capability: the agent could publish and start a
   Mini App that nothing can display. The presenter, the view it opens and the cell belong to one
   change.
+- **The agent's Mini App tool follows the cell and the surface, not the profile name.** The service
+  cell says the host owns the capability; it does not by itself put the tool in a model's tool
+  table. The tool is contributed by the host extension
+  (`packages/agent-extension/src/miniapp.ts`), which the host registers only when the service
+  exists, and its per-turn predicate decides whether the tool appears. That predicate used to
+  accept the `interactive` surface alone, which read the Agent profile's surface as if it named
+  what the host can show. It names who is talking instead: WebUI sessions run on the `cli` surface,
+  so the tool never reached this client's agent even though the cell was on and the presenter was
+  there. The predicate now accepts a surface that may drive a Mini App — `interactive` or `cli` — and
+  excludes the delegated child surface, which must not open a panel on the person's behalf. The rule
+  lives with the capability (`isMiniAppCapabilitySurface`); the tool gate reads it, and the Mini App
+  skill scope reads it together with the host declaration, so a host without the cell offers
+  neither. `packages/local-runtime-v2/test/unit/miniapp/miniapp-agent-capability.test.ts` pins the
+  two facts together.
 
 ## The agent capability is in scope
 

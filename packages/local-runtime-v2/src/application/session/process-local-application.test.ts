@@ -97,6 +97,7 @@ describe("composeProcessLocalApplication Mini App agent exposure", () => {
       models: vi.fn(async () => ({ models: [], default: { providerId: "p", modelId: "m" } })),
       agents: vi.fn(async () => ({ agents: [] })),
       session: vi.fn(async () => undefined),
+      sessions: vi.fn(async () => ({ sessions: [] })),
       create: vi.fn(async () => ({ sessionId: "s" })),
       reply: vi.fn(async () => undefined),
       answer: vi.fn(async () => ({ sessionId: "s", status: "finished" as const })),
@@ -118,6 +119,7 @@ describe("composeProcessLocalApplication Mini App agent exposure", () => {
       "reply",
       "run",
       "session",
+      "sessions",
     ]);
     for (const internal of ["bind", "registerArena", "ports", "subscribePermissionAsks"]) {
       expect(application.miniAppAgent).not.toHaveProperty(internal);

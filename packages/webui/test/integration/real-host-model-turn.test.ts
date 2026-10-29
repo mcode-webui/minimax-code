@@ -34,6 +34,17 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { removeRealHostDataDir } from "./remove-real-host-data-dir.js";
 
+/**
+ * The content-review gateway answers on both API versions the runtime uses:
+ * V1 (`/mavis/api/v1/content`) and V2 (`/mavis/api/v2/content`).
+ */
+function isContentReviewRequest(url: string | undefined): boolean {
+  return (
+    (url ?? "").startsWith("/mavis/api/v1/content") ||
+    (url ?? "").startsWith("/mavis/api/v2/content")
+  );
+}
+
 const MODEL_ID = "stub-model";
 const PROVIDER_NAME = "stub";
 const PROVIDER_ID = `custom_provider:${PROVIDER_NAME}`;
@@ -52,6 +63,15 @@ async function startStubServer(responseGate?: Promise<void>): Promise<Stub> {
     let body = "";
     req.on("data", (chunk: Buffer) => (body += chunk.toString("utf8")));
     req.on("end", async () => {
+      if (isContentReviewRequest(req.url)) {
+        // The content-review gateway: the owner row requires a verdict before the
+        // turn reaches the model, so the stub answers the real review contract.
+        // The body carries both shapes: the V1 verdict (pass/safe) and the V2
+        // verdict (action).
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end("{\"pass\":true,\"safe\":true,\"action\":1,\"errorCode\":0}");
+        return;
+      }
       requests.push({ url: req.url ?? "", authorization: req.headers.authorization, body });
       await responseGate;
       res.writeHead(200, {
@@ -94,12 +114,15 @@ interface Booted {
 const booted: Booted[] = [];
 const stubs: Stub[] = [];
 const previousDataDir = process.env.MINIMAX_DATA_DIR;
+const previousBuildEnv = process.env.MAVIS_BUILD_ENV;
 
 afterEach(async () => {
   for (const entry of booted.splice(0)) await entry.close();
   for (const stub of stubs.splice(0)) await stub.close();
   if (previousDataDir === undefined) delete process.env.MINIMAX_DATA_DIR;
   else process.env.MINIMAX_DATA_DIR = previousDataDir;
+  if (previousBuildEnv === undefined) delete process.env.MAVIS_BUILD_ENV;
+  else process.env.MAVIS_BUILD_ENV = previousBuildEnv;
 });
 
 describe("real host, one turn against a controlled model service", () => {
@@ -195,6 +218,10 @@ describe("real host, one turn against a controlled model service", () => {
       const responseGate = new Promise<void>((resolve) => { releaseModel = resolve; });
       const stub = await startStubServer(responseGate);
       stubs.push(stub);
+      // A test build honours a loopback content-review base URL, so the turn can
+      // reach a real review endpoint instead of the placeholder host.
+      process.env.MAVIS_BUILD_ENV = "test";
+      const reviewBaseUrl = stub.url.replace(/\/v1$/u, "");
 
       const dataDir = await mkdtemp(join(tmpdir(), "webui-real-host-turn-"));
       const workspaceDir = join(dataDir, "workspace");
@@ -205,6 +232,10 @@ describe("real host, one turn against a controlled model service", () => {
         join(dataDir, "config.yaml"),
         [
           `defaultModel: ${PROVIDER_ID}/${MODEL_ID}`,
+          // The owner row requires a content-review verdict before the turn reaches
+          // the model.
+          "contentReview:",
+          `  testBaseURL: ${reviewBaseUrl}`,
           "custom_provider:",
           `  ${PROVIDER_NAME}:`,
           "    name: Stub",

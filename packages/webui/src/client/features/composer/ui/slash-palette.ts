@@ -5,8 +5,8 @@
 // The built-in list covers the composer modes plus every name the harness
 // port's `runCommand` accepts; behavior fields keep the same record shape.
 //
-// See `packages/webui/docs/design-language.md` for the visual language and
-// ADR 0009 for the shared vocabulary.
+// See `packages/webui/docs/design/design-language.md` for the visual language.
+// The shared vocabulary lives in `../contracts/slash-command.ts`.
 
 import type { ReactElement } from "react";
 import {

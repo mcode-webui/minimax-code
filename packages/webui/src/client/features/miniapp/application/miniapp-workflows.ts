@@ -17,7 +17,9 @@
 //     under the plugin id it was about, so the catalogue's apps area and the
 //     launcher's picker — two surfaces, one listing — both show it.
 //   * A stopped runtime clears the view and says why, and nothing starts again
-//     on its own. Only `open` starts a Mini App, and only a person calls it.
+//     on its own. Only `open` starts a Mini App: a person acts on the catalogue
+//     or on the picker, and the Agent acts through the runtime's `miniapp`
+//     tool, whose `open` reaches this client through the host presenter.
 
 import { webuiPluginFailureText } from "../../../projection/common/plugin-failure-text.js";
 import type { PluginPort } from "../../plugins/contracts/plugin-port.js";

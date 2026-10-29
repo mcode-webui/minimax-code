@@ -45,10 +45,13 @@ are not written to logs and are never replaced by the per-start WebUI connection
 browser switch off revokes the server credential, closes active sockets and rejects every copy of the
 old credential; turning it on creates a fresh credential and pairs automatically. If the operating
 system secure store is unavailable, report an explicit pairing failure rather than writing the
-credential in plaintext. The current runtime already has a provider adoption seam, but neither the
-development server entry (`scripts/run-webui-server.mjs`) nor the
-packaged entry (`release/webui-npm/bin/mcode-webui.mjs`) provides a browser provider; this ADR records
-the target direction, not shipped behavior. Both currently run with `dev: true`. The dedicated
+credential in plaintext. The runtime has a provider adoption seam, and both the
+development server entry (`scripts/run-webui-server.mjs`) and the
+packaged entry (`release/webui-npm/bin/mcode-webui.mjs`) now adopt a browser provider: the one
+binding carries both the browser session the panel shows and the Agent's browser tools, so the two
+cannot end up on different browsers. The Agent's control of that session arrives through the Browser
+Use Plugin's host binding rather than through either entry. Both entries still run with `dev: true`.
+The dedicated
 extension pairing/admission path must validate its pairing credential and browser authorization
 independently of generic development-mode checks; a development-mode bypass must not bypass extension
 admission.

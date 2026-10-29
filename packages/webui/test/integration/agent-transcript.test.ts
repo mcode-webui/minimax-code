@@ -8,7 +8,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { chromium, expect as browserExpect, type Browser } from "@playwright/test";
-import { expect, it } from "vitest";
+import { afterAll, expect, it } from "vitest";
 import type { WebuiBrowserAdapterBinding } from "../../src/runtime/harness/browser.js";
 
 const MODEL_ID = "stub-model";
@@ -123,6 +123,27 @@ async function launchBrowser(): Promise<Browser> {
   }
 }
 
+/**
+ * The content-review gateway answers on both API versions the runtime uses:
+ * V1 (`/mavis/api/v1/content`) and V2 (`/mavis/api/v2/content`).
+ */
+function isContentReviewRequest(url: string | undefined): boolean {
+  return (
+    (url ?? "").startsWith("/mavis/api/v1/content") ||
+    (url ?? "").startsWith("/mavis/api/v2/content")
+  );
+}
+
+// A test build honours a loopback content-review base URL, so the turn can reach a
+// real review endpoint instead of the placeholder host.
+const previousBuildEnv = process.env.MAVIS_BUILD_ENV;
+process.env.MAVIS_BUILD_ENV = "test";
+
+afterAll(() => {
+  if (previousBuildEnv === undefined) delete process.env.MAVIS_BUILD_ENV;
+  else process.env.MAVIS_BUILD_ENV = previousBuildEnv;
+});
+
 it("a real agent turn resumes after refresh and drains a queued message in order", async () => {
   let releaseAnswer: () => void = () => undefined;
   const answerGate = new Promise<void>((resolve) => { releaseAnswer = resolve; });
@@ -144,6 +165,15 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     let body = "";
     request.on("data", (chunk) => { body += chunk.toString("utf8"); });
     request.on("end", async () => {
+      if (isContentReviewRequest(request.url)) {
+        // The content-review gateway: the owner row requires a verdict before the
+        // turn reaches the model, so the stub answers the real review contract.
+        // The body carries both shapes: the V1 verdict (pass/safe) and the V2
+        // verdict (action).
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end("{\"pass\":true,\"safe\":true,\"action\":1,\"errorCode\":0}");
+        return;
+      }
       modelRequests.push({ url: request.url, authorization: request.headers.authorization, body });
       const parsed = JSON.parse(body) as { messages?: { role?: string; content?: unknown; toolCallId?: string; tool_call_id?: string }[] };
       const latestUserMessage = [...(parsed.messages ?? [])].reverse().find((message) => message.role === "user");
@@ -211,7 +241,15 @@ it("a real agent turn resumes after refresh and drains a queued message in order
         response.write(frame({ role: "assistant", content: "Synthetic goal progress acknowledged." }));
       } else if (latestUserContent.includes("Stop this turn, then recover.")) {
         completedWithToolCall = true;
-        response.write(frame({ role: "assistant", reasoning_content: "Cancelable local response is active." }));
+        // Longer than the runtime's 80-character output-safety window threshold, so
+        // the reviewed streaming path releases this thinking window as one chunk.
+        response.write(
+          frame({
+            role: "assistant",
+            reasoning_content:
+              "Cancelable local response is active. This synthetic reasoning passage is deliberately longer than the runtime's output-safety window threshold so the reviewed streaming path releases it as one chunk.",
+          }),
+        );
         stopResponseStarted();
         await stoppedAnswerGate;
         if (!response.destroyed && !response.writableEnded)
@@ -269,7 +307,16 @@ it("a real agent turn resumes after refresh and drains a queued message in order
           }, "tool_calls"));
         }
       } else if (latestUserContent.includes("Please reason, then answer.")) {
-        response.write(frame({ role: "assistant", reasoning_content: "Reasoning before refresh." }));
+        // Longer than the runtime's 80-character output-safety window threshold: the
+        // owner row requires a reviewed stream, and a reviewed stream releases short
+        // thinking windows only at the threshold or a phase boundary.
+        response.write(
+          frame({
+            role: "assistant",
+            reasoning_content:
+              "Reasoning before refresh. This synthetic reasoning passage is deliberately longer than the runtime's output-safety window threshold so the reviewed streaming path releases it as one chunk.",
+          }),
+        );
         reasoningSent();
         await answerGate;
         response.write(frame({ content: "Final answer after refresh." }));
@@ -298,6 +345,10 @@ it("a real agent turn resumes after refresh and drains a queued message in order
   await writeFile(path.join(dataDir, "config.yaml"), [
     `defaultModel: ${PROVIDER_ID}/${MODEL_ID}`,
     "permissionMode: acceptEdits",
+    // The owner row requires a content-review verdict before the turn reaches the
+    // model.
+    "contentReview:",
+    `  testBaseURL: http://127.0.0.1:${modelAddress.port}`,
     "custom_provider:",
     `  ${PROVIDER_NAME}:`,
     "    name: Transcript E2E Stub",

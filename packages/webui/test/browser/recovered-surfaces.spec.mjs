@@ -95,3 +95,34 @@ test("choosing a permission mode survives the write-then-read-back check", async
   await expect(boundary(page)).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
+
+test("full-access permission trigger colors its label and icon as warning", async ({ page }) => {
+  await openApp(page, "#session=A");
+
+  const trigger = page.locator('[data-testid="composer-permission-mode"]');
+  await trigger.click();
+  await page.locator(".webui-composer-permission-option", { hasText: "完全访问权限" }).click();
+  await expect(trigger).toContainText("完全访问权限");
+
+  const colors = await trigger.evaluate((button) => {
+    const label = button.querySelector(".webui-composer-permission-label");
+    const icon = button.querySelector(".webui-composer-permission-icon");
+    return {
+      button: getComputedStyle(button).color,
+      label: getComputedStyle(label).color,
+      icon: getComputedStyle(icon).color,
+      warning: (() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--text_status_warning)";
+        document.body.append(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      })(),
+    };
+  });
+
+  expect(colors.button).toBe(colors.warning);
+  expect(colors.label).toBe(colors.button);
+  expect(colors.icon).toBe(colors.button);
+});

@@ -1,7 +1,7 @@
 /*
  * WebUI design tokens. The values are read from the conversation surface's
  * compiled stylesheet and layout.
- * See packages/webui/docs/design-language.md.
+ * See packages/webui/docs/design/design-language.md.
  *
  * Three layers:
  *   1. Primitive ramps + opacity scales.
@@ -412,7 +412,7 @@
   --utility_popover: var(--opacity_black_1_90);
   --utility_scrim: #ffffff80;
   --utility_scrollbar: var(--opacity_black_1_15);
-  --utility_tootip: var(--opacity_black_1_95);
+  --utility_tooltip: var(--opacity_black_1_95);
 }
 
 /* .light reaffirms the light values for explicit opt-in theme switching. */
@@ -627,7 +627,7 @@
   --utility_popover: var(--opacity_black_1_90);
   --utility_scrim: #ffffff80;
   --utility_scrollbar: var(--opacity_black_1_15);
-  --utility_tootip: var(--opacity_black_1_95);
+  --utility_tooltip: var(--opacity_black_1_95);
 }
 
 /* .dark rebinds every semantic token for the dark theme. */
@@ -842,5 +842,5 @@
   --utility_popover: var(--opacity_white_0_95);
   --utility_scrim: #00000080;
   --utility_scrollbar: var(--opacity_white_0_15);
-  --utility_tootip: var(--opacity_black_1_95);
+  --utility_tooltip: var(--opacity_black_1_95);
 }

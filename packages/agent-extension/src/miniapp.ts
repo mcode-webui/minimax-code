@@ -427,10 +427,25 @@ function readMiniAppAction(input: unknown): MiniAppReportedAction {
     : 'unknown';
 }
 
+/**
+ * Surfaces whose turns may drive Mini Apps.
+ *
+ * The Agent profile surface names who is talking, not what the host can show:
+ * WebUI sessions run on the `cli` surface while the WebUI panel shows the Mini
+ * App. A delegated child turn is the one surface that never qualifies, because
+ * a sub-agent must not open a Mini App panel on the person's behalf.
+ */
+export function isMiniAppCapabilitySurface(surface: unknown): boolean {
+  return surface === 'interactive' || surface === 'cli';
+}
+
 function isMiniAppTurn(context: ModelContextAssemblyCtx): boolean {
   const config = readRecord(context.agentConfig);
   const profile = readRecord(config.agent_profile);
-  return profile.surface === 'interactive';
+  // The host registers this extension only when it declared the Mini App
+  // service (`wiring.miniAppService`), so the host capability is already proven
+  // by the extension existing. What is left is the surface rule above.
+  return isMiniAppCapabilitySurface(profile.surface);
 }
 
 function isKnownLifecycleError(error: unknown): error is {

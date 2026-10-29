@@ -1,4 +1,4 @@
-// Compile the WebUI stylesheet (ADR 0009, ADR 0010).
+// Compile the WebUI stylesheet (ADR 0010).
 //
 // Tailwind v3 reads `packages/webui/tailwind.config.cjs` and processes
 // `packages/webui/src/client/styles/index.css` into a single stylesheet under

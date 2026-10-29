@@ -75,6 +75,7 @@ export {
 export {
   MiniAppLifecycleError,
   createMiniAppControlExtension,
+  isMiniAppCapabilitySurface,
   type MiniAppActionContext,
   type MiniAppTargetResult,
   type MiniAppBusyReason,

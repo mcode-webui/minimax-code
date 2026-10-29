@@ -8,6 +8,7 @@
       "packages/local-runtime-v2/test/integration/compaction-openai-transport.integration.test.ts",
       "packages/local-runtime-v2/test/integration/cron-two-hosts-slot.integration.test.ts",
       "packages/local-runtime-v2/test/integration/cli-service-cron.integration.test.ts",
+      "packages/local-runtime-v2/test/integration/cron-claim-recovery.integration.test.ts",
       "packages/local-runtime/test/unit/seed-builtin-shared-dir.test.ts",
       "packages/local-runtime/test/unit/skill-directory-symlinks.test.ts",
       "packages/agent-core/test/unit/bash-subprocess-env.test.ts",

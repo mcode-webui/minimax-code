@@ -1270,7 +1270,21 @@ function initializeRuntimeCron(
         ),
     },
     nowMs: input.nowMs,
-    recoverPendingRuns: input.options.recoverPersistedState !== false,
+    // ADR 0027 R4. A claim is recorded under this host's runtime-owner identity, and recovery may
+    // take a claimed run back only when that identity is proven dead. `reclaimUnattributedRuns`
+    // keeps the Desktop's global sweep exactly as it was, while a peer that cannot attribute a
+    // claimed run leaves it alone rather than killing a live one.
+    recovery: {
+      claimOwnerId: input.runtimeOwnerIdentity.createOwnerId("cron-run"),
+      isClaimantAlive: input.runtimeOwnerIdentity.isOwnerAlive,
+      reclaimUnattributedRuns: input.options.runtimeOwnerKind === "electron",
+    },
+    // Recovery runs for every scheduler host. Its scope, not its presence, is what keeps it safe:
+    // a WebUI that never swept would leave its own crashed run pending forever, and the definition
+    // could never be deleted.
+    recoverPendingRuns:
+      input.options.ownerPolicy.wiring.schedulerHost ||
+      input.options.recoverPersistedState !== false,
   });
 }
 async function initializeSessionApplications(

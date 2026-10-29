@@ -40,6 +40,7 @@ export class SqliteCronRunRepository implements CronRunRepository {
         status: sql<'pending'>`'pending'`.as('status'),
         createdAtMs: sql<number>`${createdAtMs}`.as('created_at_ms'),
         executionClaimedAtMs: sql<null>`NULL`.as('execution_claimed_at_ms'),
+        ownerInstanceId: sql<null>`NULL`.as('owner_instance_id'),
         deliveredAtMs: sql<null>`NULL`.as('delivered_at_ms'),
         failedAtMs: sql<null>`NULL`.as('failed_at_ms'),
         errorCode: sql<null>`NULL`.as('error_code'),
@@ -157,12 +158,20 @@ export class SqliteCronRunRepository implements CronRunRepository {
     );
   }
 
-  claimExecution(runId: string, claimedAtMs: number): CronRun | undefined {
+  claimExecution(
+    runId: string,
+    claimedAtMs: number,
+    claimOwnerId?: string,
+  ): CronRun | undefined {
     text(runId, 'runId');
     timestamp(claimedAtMs, 'claimedAtMs');
+    if (claimOwnerId !== undefined) text(claimOwnerId, 'claimOwnerId');
     const result = this.db
       .update(cronRuns)
-      .set({ executionClaimedAtMs: claimedAtMs })
+      .set({
+        executionClaimedAtMs: claimedAtMs,
+        ...(claimOwnerId === undefined ? {} : { ownerInstanceId: claimOwnerId }),
+      })
       .where(
         and(
           eq(cronRuns.runId, runId),
@@ -310,6 +319,7 @@ interface OptionalRunFields {
   requestId?: string;
   sessionId?: string;
   executionClaimedAtMs?: number;
+  ownerInstanceId?: string;
   deliveredAtMs?: number;
   failedAtMs?: number;
   errorCode?: string;
@@ -340,6 +350,9 @@ function optionalRunClaimFields(row: typeof cronRuns.$inferSelect): OptionalRunF
   const fields: OptionalRunFields = {};
   if (row.executionClaimedAtMs !== null) {
     fields.executionClaimedAtMs = storedTimestamp(row.executionClaimedAtMs, 'executionClaimedAtMs');
+  }
+  if (row.ownerInstanceId !== null) {
+    fields.ownerInstanceId = storedText(row.ownerInstanceId, 'ownerInstanceId');
   }
   return fields;
 }

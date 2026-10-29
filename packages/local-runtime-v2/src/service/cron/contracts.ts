@@ -347,6 +347,8 @@ export interface CronRun {
   readonly status: CronRunStatus;
   readonly createdAtMs: number;
   readonly executionClaimedAtMs?: number;
+  /** ADR 0027 R4: who claimed this run. Absent when no host recorded one. */
+  readonly ownerInstanceId?: string;
   readonly deliveredAtMs?: number;
   readonly failedAtMs?: number;
   readonly errorCode?: string;
@@ -370,7 +372,15 @@ export interface CronRunRepository {
   listPage(query: CronRunPageQuery): CronRun[];
   listPending(): CronRun[];
   hasPendingForCronId(cronId: string): boolean;
-  claimExecution(runId: string, claimedAtMs: number): CronRun | undefined;
+  /**
+   * Atomically claims an unclaimed pending run. `claimOwnerId` is the runtime-owner identity of the
+   * claiming host (ADR 0027 R4); a host that passes none leaves the column null.
+   */
+  claimExecution(
+    runId: string,
+    claimedAtMs: number,
+    claimOwnerId?: string,
+  ): CronRun | undefined;
   attachSession(runId: string, sessionId: string): boolean;
   markDelivered(runId: string, deliveredAtMs: number): boolean;
   markFailed(input: MarkCronRunFailedInput): boolean;

@@ -1874,6 +1874,13 @@ async function assertRuntimeServicesComposition() {
     sessionPorts: expect.any(Object),
     modelSelection: { resolve: expect.any(Function) },
     nowMs,
+    // ADR 0027 R4: the claim is attributed to this host's runtime-owner identity, recovery asks
+    // that identity whether a claimant is alive, and the sweep scope follows the owner kind.
+    recovery: {
+      claimOwnerId: expect.stringMatching(/^cron-run:\d+:/u),
+      isClaimantAlive: expect.any(Function),
+      reclaimUnattributedRuns: false,
+    },
     recoverPendingRuns: true,
   });
   expect(mocked.sessionOptions).toMatchObject({

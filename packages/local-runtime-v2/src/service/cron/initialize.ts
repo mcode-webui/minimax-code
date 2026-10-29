@@ -1,7 +1,11 @@
 import type { AppDb } from '../../infra/db/client.js';
 import type { SchedulerClient } from '../../infra/scheduler/index.js';
 import { createCronMetrics } from './adapters/metrics.client.js';
-import { composeCronService, type CronComposition } from './composition.js';
+import {
+  composeCronService,
+  type CronClaimRecoveryOptions,
+  type CronComposition,
+} from './composition.js';
 import type {
   CronMetrics,
   CronMetricsClient,
@@ -17,6 +21,7 @@ export interface InitializeCronServiceOptions {
   readonly nowMs?: () => number;
   readonly metrics?: CronMetricsClient;
   readonly modelSelection?: CronModelSelectionPort;
+  readonly recovery?: CronClaimRecoveryOptions;
   readonly recoverPendingRuns?: boolean;
 }
 
@@ -42,6 +47,7 @@ export function initializeCronService(
     ...(options.sessionPorts ? { sessionPorts: options.sessionPorts } : {}),
     ...(options.nowMs ? { nowMs: options.nowMs } : {}),
     ...(options.modelSelection ? { modelSelection: options.modelSelection } : {}),
+    ...(options.recovery ? { recovery: options.recovery } : {}),
     metrics,
   });
   let readyPromise: Promise<void> | undefined;

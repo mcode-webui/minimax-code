@@ -15,9 +15,15 @@ const OWNER_KINDS = new Set<RuntimeOwnerKind>([
   'session-delete',
   'queue-claim',
   'background-task',
+  'cron-run',
 ]);
 
-type RuntimeOwnerKind = 'turn-lease' | 'session-delete' | 'queue-claim' | 'background-task';
+type RuntimeOwnerKind =
+  | 'turn-lease'
+  | 'session-delete'
+  | 'queue-claim'
+  | 'background-task'
+  | 'cron-run';
 
 export interface RuntimeOwnerIdentity {
   readonly instanceId: string;

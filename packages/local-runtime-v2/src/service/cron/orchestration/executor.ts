@@ -56,6 +56,24 @@ export interface CronExecutorDependencies {
   readonly nowMs: () => number;
   readonly logger: CronExecutionLogger;
   readonly metrics: CronMetrics;
+  /**
+   * ADR 0027 R4: the runtime-owner identity a claim is recorded under. Absent on a host that has no
+   * identity, which leaves the column null and the run unattributed.
+   */
+  readonly claimOwnerId?: string;
+  /**
+   * ADR 0027 R4: whether a claimant is still alive. Unknown (`undefined`) is treated as alive —
+   * only proven death reclaims a run, because the peer may be mid-execution.
+   */
+  readonly isClaimantAlive?: (claimOwnerId: string) => boolean | undefined;
+  /**
+   * Whether recovery reclaims claimed runs that record no claimant.
+   *
+   * True reproduces the historical global sweep, which is what the Desktop still does and what its
+   * own runs rely on. A host that cannot prove an unattributed claimant dead must set this false:
+   * sweeping those would kill a live peer's run, which is the failure R4 exists to prevent.
+   */
+  readonly reclaimUnattributedRuns?: boolean;
 }
 
 export interface ManualCronRunRequest {
@@ -252,9 +270,10 @@ export class CronExecutor {
   }
 
   /**
-   * Recover runs left by the previous process at startup:
+   * Recover runs left by a previous process at startup:
    * - Requeue unclaimed pending runs.
-   * - Mark claimed pending runs failed(PROCESS_RESTARTED), without redelivery.
+   * - Mark claimed pending runs failed(PROCESS_RESTARTED), without redelivery — but only the ones
+   *   this host may reclaim (ADR 0027 R4): a run whose claimant is still alive is left alone.
    */
   async recoverPendingRuns(): Promise<CronRun[]> {
     const pending = this.listPendingRuns();
@@ -264,6 +283,7 @@ export class CronExecutor {
         this.enqueue(run.runId);
         continue;
       }
+      if (!this.mayReclaim(run)) continue;
       const failedAtMs = this.deps.nowMs();
       const marked = this.deps.runs.markFailed({
         runId: run.runId,
@@ -279,6 +299,19 @@ export class CronExecutor {
     }
     const drained = await this.drainAll();
     return [...outcomes, ...drained];
+  }
+
+  /**
+   * Whether this host may take a claimed run away from its claimant.
+   *
+   * An attributed run is reclaimed only when the claimant is proven dead. An unattributed one
+   * follows the host's sweep scope: the Desktop keeps its global sweep, a peer leaves it.
+   */
+  private mayReclaim(run: CronRun): boolean {
+    if (run.ownerInstanceId === undefined) {
+      return this.deps.reclaimUnattributedRuns !== false;
+    }
+    return this.deps.isClaimantAlive?.(run.ownerInstanceId) === false;
   }
 
   private enqueue(runId: string, triggerMetric?: CronTriggerMetricContext): void {
@@ -451,7 +484,11 @@ export class CronExecutor {
     triggerMetric?: CronTriggerMetricContext,
   ): Promise<CronRun> {
     if (pending.status !== 'pending') return settlePrepared(settleReady, pending);
-    const claimed = this.deps.runs.claimExecution(pending.runId, this.deps.nowMs());
+    const claimed = this.deps.runs.claimExecution(
+      pending.runId,
+      this.deps.nowMs(),
+      this.deps.claimOwnerId,
+    );
     if (!claimed) {
       if (triggerMetric) {
         this.deps.metrics.taskTriggered(triggerMetric.task, triggerMetric.source, 'skipped');

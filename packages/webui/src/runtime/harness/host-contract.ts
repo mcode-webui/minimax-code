@@ -620,6 +620,25 @@ export interface WebuiRuntimeCliService {
   listMiniAppAgentSessions?: CliService["listMiniAppAgentSessions"];
   readMiniAppAgentSession?: CliService["readMiniAppAgentSession"];
   createMiniAppAgentSession?: CliService["createMiniAppAgentSession"];
+  /**
+   * The six scheduled-task members (ADR 0027, "The WebUI surface").
+   *
+   * Optional: a host composed without an owned Scheduler has no Cron service, and its
+   * `CliService` would answer `Runtime does not expose the Cron service.` if called. Declaring
+   * them optional is what lets such a host satisfy this shape at all, and the adapter turns the
+   * absence into one `capability_unavailable` refusal.
+   *
+   * The signatures are the runtime's own (`CliService`), and the requests and results here are
+   * the runtime's cron types — this interface mirrors what the WebUI forwards to, so a copy of
+   * the shapes here would be a copy that drifts. The WebUI's own DTOs live in
+   * `shared/contracts/cron.ts` and the conversion is in `harness/cron.ts`.
+   */
+  listCronTasks?: CliService["listCronTasks"];
+  createCronTask?: CliService["createCronTask"];
+  updateCronTask?: CliService["updateCronTask"];
+  deleteCronTask?: CliService["deleteCronTask"];
+  runCronTaskNow?: CliService["runCronTaskNow"];
+  listCronTaskRuns?: CliService["listCronTaskRuns"];
 }
 
 export interface WebuiRuntimeHostHandle {

@@ -11,6 +11,18 @@ import type {
 import type { AskQuestionnaireReplyAnswer } from "@mavis/shared/questionnaire";
 import type { WebuiPluginManagementRequest } from "../shared/plugin-management.js";
 import type {
+  WebuiCronRun,
+  WebuiCronRunListRequest,
+  WebuiCronRunPage,
+  WebuiCronTask,
+  WebuiCronTaskCreateRequest,
+  WebuiCronTaskDeleteRequest,
+  WebuiCronTaskListRequest,
+  WebuiCronTaskPage,
+  WebuiCronTaskRunRequest,
+  WebuiCronTaskUpdateRequest,
+} from "../shared/contracts/cron.js";
+import type {
   WebuiRunCommandRequest,
   WebuiRunCommandResult,
 } from "../shared/contracts/terminal.js";
@@ -700,6 +712,23 @@ export interface WebuiHarnessPort {
     readonly agent?: string;
   }): Promise<{ readonly sessionId: string }>;
   /**
+   * The six scheduled-task members (ADR 0027, "The WebUI surface").
+   *
+   * Required on the port and optional on the host, the same split `requestCompaction` uses: the
+   * adapter resolves the host's optional member once and fails closed, so a caller never has to
+   * ask whether this host could reach a Cron service.
+   *
+   * Every result is the WebUI's own DTO. The runtime's cron view types stop at
+   * `harness/cron.ts`, because `shared/contracts/` — which the browser imports — may not name
+   * them.
+   */
+  listCronTasks(request?: WebuiCronTaskListRequest): Promise<WebuiCronTaskPage>;
+  createCronTask(request: WebuiCronTaskCreateRequest): Promise<WebuiCronTask>;
+  updateCronTask(request: WebuiCronTaskUpdateRequest): Promise<WebuiCronTask>;
+  deleteCronTask(request: WebuiCronTaskDeleteRequest): Promise<void>;
+  runCronTaskNow(request: WebuiCronTaskRunRequest): Promise<WebuiCronRun>;
+  listCronTaskRuns(request: WebuiCronRunListRequest): Promise<WebuiCronRunPage>;
+  /**
    * Release anything the port owns. The service calls this after closing
    * every transport-side resource so the harness can tear itself down in
    * the required order.
@@ -718,6 +747,15 @@ export interface WebuiHarnessPort {
  */
 export const MINIAPP_CAPABILITY_ABSENT =
   "runtime host does not expose the Mini App capability";
+
+/**
+ * The refusal a host with no Cron service gives, everywhere it is given.
+ *
+ * One message, declared beside the capability: a host composed without an owned Scheduler has no
+ * Cron service, and the six scheduled-task members are all missing together. Saying so once is
+ * what lets a client tell "this host cannot schedule anything" apart from "that task is gone".
+ */
+export const CRON_CAPABILITY_ABSENT = "runtime host does not expose scheduled tasks";
 
 /**
  * The identity one Mini App page's call runs as.

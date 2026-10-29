@@ -75,6 +75,26 @@ class FullPort implements WebuiHarnessPort {
   runCommand() {
     return Promise.resolve({ handled: true as const, output: "invariant-test" });
   }
+  // ADR 0027: scheduled tasks. The port requires the six members, so a fake that claims the
+  // whole port has to answer them; none of these suites registers a cron operation.
+  async listCronTasks() {
+    return { items: [], hasMore: false };
+  }
+  async createCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async updateCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async deleteCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async runCronTaskNow(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async listCronTaskRuns() {
+    return { items: [], hasMore: false };
+  }
   // Added with the F-zone archive contract. This class exists to make a
   // forgotten port member a compile error, so the members land here rather
   // than being left optional.

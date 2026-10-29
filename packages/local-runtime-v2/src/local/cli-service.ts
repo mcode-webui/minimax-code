@@ -106,6 +106,17 @@ import type {
   SessionTransferFile,
 } from "../application/session/transfer-application.js";
 import type { LocalRuntimeApplication } from "../application/session/process-local-application-contract.js";
+import type {
+  CreateCronDefinitionCommand,
+  CronDefinitionView,
+  CronPage,
+  CronRunView,
+  CronService,
+  DeleteCronDefinitionCommand,
+  ListCronDefinitionsQuery,
+  ListCronRunsQuery,
+  UpdateCronDefinitionCommand,
+} from "../service/cron/index.js";
 import type { CliManagementApplication } from "../application/cli-management-application.js";
 
 export interface CliServiceOptions {
@@ -113,6 +124,14 @@ export interface CliServiceOptions {
   readonly application: LocalRuntimeApplication;
   readonly conversation: ConversationApplication;
   readonly management: CliManagementApplication;
+  /**
+   * The v2 Cron service.
+   *
+   * Absent on a host composed without an owned Scheduler, which is why every cron member below
+   * fails closed with one message instead of assuming it. The WebUI reaches scheduled tasks
+   * through this member and never through cron orchestration.
+   */
+  readonly cron?: CronService;
 }
 
 export type CliSendMessageReq = ConversationSendMessageRequest;
@@ -1245,6 +1264,45 @@ export class CliService {
     return mcp.listMcpCapabilities
       ? mcp.listMcpCapabilities({ keyword: input.keyword, context })
       : mcp.listLocalMcpServers(input);
+  }
+
+  /**
+   * The six scheduled-task members.
+   *
+   * Each one forwards to the v2 Cron service and does nothing else: the service already owns
+   * definition storage, the scheduler arming and the run queue, and a second layer of decisions
+   * here would be a second authority over them. A host composed without a Scheduler has no Cron
+   * service, and every member then fails with the same sentence rather than acting on an
+   * undefined.
+   */
+  listCronTasks(query: ListCronDefinitionsQuery = {}): CronPage<CronDefinitionView> {
+    return this.requireCron().listDefinitions(query);
+  }
+
+  createCronTask(command: CreateCronDefinitionCommand): Promise<CronDefinitionView> {
+    return this.requireCron().createDefinition(command);
+  }
+
+  updateCronTask(command: UpdateCronDefinitionCommand): Promise<CronDefinitionView> {
+    return this.requireCron().updateDefinition(command);
+  }
+
+  async deleteCronTask(command: DeleteCronDefinitionCommand): Promise<void> {
+    await this.requireCron().deleteDefinition(command);
+  }
+
+  runCronTaskNow(cronId: string): Promise<CronRunView> {
+    return this.requireCron().triggerManualRun(cronId);
+  }
+
+  listCronTaskRuns(query: ListCronRunsQuery): CronPage<CronRunView> {
+    return this.requireCron().listRuns(query);
+  }
+
+  private requireCron(): CronService {
+    const cron = this.options.cron;
+    if (!cron) throw new Error("Runtime does not expose the Cron service.");
+    return cron;
   }
 
   private requireQuestionnaires(): NonNullable<

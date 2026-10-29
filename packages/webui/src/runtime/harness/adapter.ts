@@ -24,6 +24,7 @@ import { createModelsPluginsAdapter } from "./models-plugins.js";
 import { createMiniAppAdapter } from "./miniapp.js";
 import { createMiniAppAgentAdapter } from "./miniapp-agent.js";
 import { createAccountAdapter } from "./account.js";
+import { createCronAdapter } from "./cron.js";
 import { runWebuiCommand } from "../commands/runner.js";
 import { importWebuiSessionTransfer } from "../session-transfer.js";
 
@@ -75,6 +76,7 @@ export function createHarnessPortFromHost(
     ...createMiniAppAdapter(host),
     ...createMiniAppAgentAdapter(host),
     ...createAccountAdapter(host),
+    ...createCronAdapter(host),
     async close() {
       if (closed) return;
       closed = true;

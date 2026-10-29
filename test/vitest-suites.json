@@ -7,6 +7,7 @@
     "capability": [
       "packages/local-runtime-v2/test/integration/compaction-openai-transport.integration.test.ts",
       "packages/local-runtime-v2/test/integration/cron-two-hosts-slot.integration.test.ts",
+      "packages/local-runtime-v2/test/integration/cli-service-cron.integration.test.ts",
       "packages/local-runtime/test/unit/seed-builtin-shared-dir.test.ts",
       "packages/local-runtime/test/unit/skill-directory-symlinks.test.ts",
       "packages/agent-core/test/unit/bash-subprocess-env.test.ts",
@@ -423,6 +424,7 @@
       "packages/webui/test/unit/webui-event-coordinator.test.ts",
       "packages/webui/test/unit/webui-event-corpus.test.ts",
       "packages/webui/test/unit/webui-host-contract-derivation.test.ts",
+      "packages/webui/test/unit/cron-harness-adapter.test.ts",
       "packages/webui/test/unit/webui-host-shape-invariant.test.ts",
       "packages/webui/test/unit/webui-identity-epoch-wiring.test.ts",
       "packages/webui/test/unit/webui-operation-binding.test.ts",

@@ -106,6 +106,41 @@ interface WorkspaceFileTree {
   readonly outside: string;
 }
 
+
+/**
+ * ADR 0027: the harness port requires the six scheduled-task members, and no suite in this file
+ * registers a cron operation. A fake that spells the port out by hand spreads this rather than
+ * repeating six no-ops, and the one that does throw cannot be mistaken for a working scheduler.
+ */
+const NO_SCHEDULED_TASKS: Pick<
+  WebuiHarnessPort,
+  | "listCronTasks"
+  | "createCronTask"
+  | "updateCronTask"
+  | "deleteCronTask"
+  | "runCronTaskNow"
+  | "listCronTaskRuns"
+> = {
+  async listCronTasks() {
+    return { items: [], hasMore: false };
+  },
+  async createCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  },
+  async updateCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  },
+  async deleteCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  },
+  async runCronTaskNow(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  },
+  async listCronTaskRuns() {
+    return { items: [], hasMore: false };
+  },
+};
+
 class ScriptedHarnessPort implements WebuiHarnessPort {
   /**
    * The host services this scripted harness holds. Answered as a fact rather than inferred
@@ -120,6 +155,27 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     canvasDocuments: true,
     canvasWrites: true,
   });
+
+  // ADR 0027: scheduled tasks. The port requires the six members, so a fake that claims the
+  // whole port has to answer them; none of these suites registers a cron operation.
+  async listCronTasks() {
+    return { items: [], hasMore: false };
+  }
+  async createCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async updateCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async deleteCronTask(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async runCronTaskNow(): Promise<never> {
+    throw new Error("this port has no scheduled tasks");
+  }
+  async listCronTaskRuns() {
+    return { items: [], hasMore: false };
+  }
 
   /** Recorded so a test can assert the command reached the port, not a runner. */
   readonly commandsRun: Array<{ readonly command: string; readonly input?: string }> = [];
@@ -3690,6 +3746,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
       resolveConnectionClosed = resolve;
     });
     const recordingPort: WebuiHarnessPort = {
+      ...NO_SCHEDULED_TASKS,
       version() {
         return { version: "0.4.2-shutdown-test", protocolVersion: 1 };
       },
@@ -4099,6 +4156,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
     });
     let versionCalls = 0;
     const recordingPort: WebuiHarnessPort = {
+      ...NO_SCHEDULED_TASKS,
       version() {
         versionCalls += 1;
         return { version: "0.4.2-shutdown-gate", protocolVersion: 1 };

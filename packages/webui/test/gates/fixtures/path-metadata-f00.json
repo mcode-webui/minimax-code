@@ -3631,6 +3631,15 @@
       "home": "outside"
     },
     {
+      "path": "runtime/harness/cron.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/harness/execution.ts",
       "layers": [
         "runtime"
@@ -4496,6 +4505,15 @@
     },
     {
       "path": "shared/contracts/canvas.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/cron.ts",
       "layers": [
         "shared"
       ],

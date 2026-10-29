@@ -38,7 +38,14 @@ Load the branches the task needs. Repository documents linked there provide deta
 - For UI work, apply the component design system: semantic color roles, shared type/spacing/radius scales, existing control recipes, the Tabler icon library and complete interaction states. Reuse an existing primitive when available; do not draw interface icons yourself. Keep business-private styles with their business. Inspect the result in both themes; screenshots assist verification, while source tokens and component contracts define the design.
 - Keep file movement deliberate: this is a public source projection with an explicit inventory and upstream synchronization costs. Prefer a cohesive change in its current home over layout churn.
 
-Run verification proportional to the change and applicable repository requirements. Report behavior and seam tested, results, and remaining boundaries. Activation never authorizes publication, Git pushes, production changes or paid/live-provider calls by itself.
+## Run only relevant verification
+
+Follow the current `packages/webui/AGENTS.md` gate map and select the smallest checks that cover the
+changed files and affected behavior. Do not run aggregate gates or full WebUI suites by default. The
+latest direct user instruction overrides older repository or skill wording that asks for broader
+verification; run a full gate only when the user explicitly requests it. Report the checks run and
+the coverage that remains. Activation never authorizes publication, Git pushes, production changes
+or paid/live-provider calls by itself.
 
 ## Verify complete business flows and usability
 

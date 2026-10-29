@@ -2,20 +2,24 @@
 
 Read current `packages/webui/AGENTS.md`, `docs/verification/gates.md`, `docs/verification/browser-suite.md`, root `CONTRIBUTING.md`, `scripts/verify.mjs` and applicable `.agents/skills/testing-workflow/SKILL.md`. The tables below route work; current commands and required gates remain repository authority.
 
-## Select checks
+## Select the narrowest relevant checks
 
 Reuse passing gate evidence: before starting a check, inspect results for the same commit, gate and
 platform. Run each applicable check once for unchanged inputs; after a passing `pnpm verify`, do not
 repeat its constituent checks for reassurance. Rerun when relevant source, configuration or generated
-inputs change, a result failed or did not finish, the required platform is uncovered, or CI requires
-the newer commit. If one gate needs a rerun, target that gate instead of repeating the full suite.
+inputs change, a result failed or did not finish, or the required platform is uncovered. Select only
+the smallest gates that cover the files and behavior changed in this task. The latest direct user
+instruction overrides older repository or skill wording that asks for broader verification. Do not
+run aggregate gates or full suites by default; run a full gate only when the user explicitly asks.
 
 | Change | Focused verification, followed by applicable delivery gates |
 | --- | --- |
-| TypeScript source/tests | `pnpm typecheck:webui` (client, server and tests) |
-| Business behavior | Relevant declared Vitest file, then `pnpm test:webui` |
+| Client TypeScript | `pnpm --filter @mavis/webui typecheck:client` |
+| Server/runtime TypeScript | `pnpm --filter @mavis/webui typecheck:server` |
+| Changed TypeScript tests | `pnpm --filter @mavis/webui typecheck:test` |
+| Business behavior | Relevant declared Vitest file |
 | Imports, roles, publication, file movement | `pnpm check:webui-dependency` |
-| Rendered UI, CSS, theme or browser behavior | `pnpm build:webui`, relevant browser scenario, `pnpm test:webui-browser`; inspect actual screenshots for visual claims |
+| Rendered UI, CSS, theme or browser behavior | `pnpm build:webui` when the built artifact is affected, then only the relevant browser scenario; inspect actual screenshots for visual claims |
 | Bundle/entries | `pnpm build:webui` then `pnpm check:webui-boundary` |
 | npm package/launcher | `pnpm test:webui-package`; do not confuse local packaging with publishing |
 | New/removed/renamed repo files | Review paths, `node scripts/source-inventory.mjs --write`, `pnpm check:source` |
@@ -24,7 +28,12 @@ the newer commit. If one gate needs a rerun, target that gate instead of repeati
 
 For a focused Vitest run use the root config, e.g. `pnpm exec vitest run --config vitest.oss.config.mjs packages/webui/test/unit/webui-design-tokens.test.ts`. Every new Vitest file goes in the `webui` group of `test/vitest-suites.json`; otherwise it never joins the declared suite.
 
-Before claiming repository code work done, follow the package's `pnpm verify` requirement. Before a PR the testing workflow requires the reviewed commit with clean tracked files; source export reads committed HEAD. Do not discard another task's dirty work to satisfy this. Report any blocked full verification and complete independent checks. An external personal skill with no repository source changes does not warrant inventing a repository code change just to run its full delivery pipeline.
+`pnpm verify`, `pnpm test:webui`, and the full `pnpm test:webui-browser` suite are aggregate gates; do
+not run them by default for a local change. Before a PR, follow the separate delivery workflow for
+reviewed-commit and source-export requirements, but do not expand local verification beyond the
+user's requested scope. Preserve unrelated dirty work. Report any requested check that could not run
+and the exact coverage that remains. An external personal skill with no repository source changes
+does not warrant inventing a repository code change just to run its full delivery pipeline.
 
 `pnpm verify --list` shows current platform gates. `pnpm lint`/TUI lint is not a WebUI ESLint gate. Build artifact checks require a current build; Vite development behavior is not the shipped esbuild artifact.
 

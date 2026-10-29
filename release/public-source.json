@@ -1676,6 +1676,7 @@
     "packages/local-runtime-v2/test/helpers/plugin-database.ts",
     "packages/local-runtime-v2/test/integration/btw-settled-history.integration.test.ts",
     "packages/local-runtime-v2/test/integration/compaction-openai-transport.integration.test.ts",
+    "packages/local-runtime-v2/test/integration/cron-two-hosts-slot.integration.test.ts",
     "packages/local-runtime-v2/test/integration/mcp/local-mcp-public-facade.integration.test.ts",
     "packages/local-runtime-v2/test/integration/mcp/project-mcp.integration.test.ts",
     "packages/local-runtime-v2/test/integration/miniapp-purpose-reservation.integration.test.ts",

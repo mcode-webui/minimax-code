@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Cron } from 'croner';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import type { AppDb } from '../db/client.js';
 import {
@@ -69,6 +69,11 @@ interface StoredJobRow {
   readonly createdAtMs: number;
   readonly updatedAtMs: number;
 }
+
+type PersistedJobState =
+  | { readonly kind: 'present'; readonly record: JobRecord }
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'unreadable' };
 
 class ScheduleHasNoFutureRunError extends Error {
   readonly code = 'SCHEDULER_INVALID';
@@ -389,6 +394,10 @@ export class Scheduler {
   private async trigger(schedulerId: string, timer: Cron): Promise<void> {
     const active = this.getActiveTrigger(schedulerId, timer);
     if (!active) return;
+    // ADR 0027 R3. Another scheduler host may have moved the durable row since this host armed.
+    // The row wins: adopt it, re-arm to its schedule and let the host that did not drift own
+    // this slot.
+    if (this.adoptPersistedTriggerState(active.record, timer)) return;
     const next = this.advanceJob(active.record, timer);
     this.persistTriggeredJob(next, timer);
 
@@ -400,6 +409,83 @@ export class Scheduler {
     this.reportActiveJobs();
 
     await this.invokeHandler(next);
+  }
+
+  /**
+   * Pre-fire adopt-or-abort. Returns true when this host adopted the persisted row and must not
+   * fire, false when the row and this host's record agree on every fact a fire depends on.
+   *
+   * The trigger id stays `${schedulerId}:${scheduleGeneration}:${runCount}`; this rule makes its
+   * precondition true instead of assumed, because a host whose counter drifted adopts the row and
+   * defers the slot to the host that did not.
+   */
+  private adoptPersistedTriggerState(record: JobRecord, timer: Cron): boolean {
+    const persisted = readPersistedJobRecord(this.requireStarted(), record.schedulerId, this.nowMs());
+    if (persisted.kind === 'missing') {
+      // The definition was deleted in another host: adopt the absence and stop.
+      this.forgetJob(record.schedulerId, timer, 'definition_removed');
+      return true;
+    }
+    if (persisted.kind === 'unreadable') {
+      // A row this host cannot parse is not a row it may fire on.
+      this.forgetJob(record.schedulerId, timer, 'invalid_record');
+      return true;
+    }
+    if (agreesOnTrigger(persisted.record, record)) return false;
+    this.adoptPersistedJob(persisted.record, timer);
+    return true;
+  }
+
+  private adoptPersistedJob(persisted: JobRecord, timer: Cron): void {
+    timer.stop();
+    this.timers.delete(persisted.schedulerId);
+    this.jobs.set(persisted.schedulerId, persisted);
+    this.reportConsistencyMismatch('diverged');
+    this.reportSkipped('adopted_persisted_row');
+    if (persisted.state === 'active' && !hasReachedMaxRuns(persisted)) {
+      this.rearmAdoptedJob(persisted);
+    }
+    this.reportActiveJobs();
+  }
+
+  /**
+   * Arms the adopted row's schedule without writing the row back. The only write is the next fire
+   * time this host computed, conditional on the row still holding the counter it was read at, so a
+   * peer that advanced meanwhile keeps its own value.
+   */
+  private rearmAdoptedJob(record: JobRecord): void {
+    if (!this.handlers.has(record.handlerKey)) {
+      this.reportSkipped('missing_handler');
+      return;
+    }
+    let timer: Cron;
+    let nextRunAtMs: number;
+    try {
+      ({ timer, nextRunAtMs } = this.createTimer(record));
+    } catch {
+      this.reportSkipped('invalid_schedule');
+      return;
+    }
+    const expected = {
+      runCount: record.runCount,
+      scheduleGeneration: record.scheduleGeneration,
+    };
+    record.nextRunAtMs = nextRunAtMs;
+    record.updatedAtMs = this.nowMs();
+    if (!persistAdoptedNextRun(this.options.db, record, expected)) {
+      // The row moved again while this host was re-arming; the next fire adopts it once more.
+      this.reportConsistencyMismatch('diverged');
+    }
+    this.timers.set(record.schedulerId, timer);
+    timer.resume();
+  }
+
+  private forgetJob(schedulerId: string, timer: Cron, reason: string): void {
+    timer.stop();
+    this.timers.delete(schedulerId);
+    this.jobs.delete(schedulerId);
+    this.reportSkipped(reason);
+    this.reportActiveJobs();
   }
 
   private getActiveTrigger(schedulerId: string, timer: Cron): ActiveTrigger | undefined {
@@ -605,6 +691,55 @@ function readStoredJobRow(db: AppDb, schedulerId: string): StoredJobRow | undefi
     .from(schedulerJobs)
     .where(eq(schedulerJobs.schedulerId, schedulerId))
     .get();
+}
+
+/** Reads the durable row a fire depends on, distinguishing absent from unreadable. */
+function readPersistedJobRecord(
+  db: AppDb,
+  schedulerId: string,
+  nowMs: number,
+): PersistedJobState {
+  const row = readStoredJobRow(db, schedulerId);
+  if (!row) return { kind: 'missing' };
+  const record = parseStoredJobRow(row, nowMs);
+  return record ? { kind: 'present', record } : { kind: 'unreadable' };
+}
+
+/** The five facts ADR 0027 R3 compares before a host may fire a slot. */
+function agreesOnTrigger(persisted: JobRecord, memory: JobRecord): boolean {
+  return (
+    persisted.runCount === memory.runCount &&
+    persisted.scheduleGeneration === memory.scheduleGeneration &&
+    persisted.state === memory.state &&
+    sameSchedule(persisted.schedule, memory.schedule) &&
+    persisted.nextRunAtMs === memory.nextRunAtMs
+  );
+}
+
+/**
+ * Stores the next fire time an adopting host computed, but only while the row still holds the
+ * counter it was adopted at. A zero-change result means a peer moved the row first.
+ */
+function persistAdoptedNextRun(
+  db: AppDb,
+  record: JobRecord,
+  expected: { runCount: number; scheduleGeneration: number },
+): boolean {
+  const result = db
+    .update(schedulerJobs)
+    .set({
+      nextRunAtMs: record.nextRunAtMs ?? null,
+      updatedAtMs: record.updatedAtMs,
+    })
+    .where(
+      and(
+        eq(schedulerJobs.schedulerId, record.schedulerId),
+        eq(schedulerJobs.runCount, expected.runCount),
+        eq(schedulerJobs.scheduleGeneration, expected.scheduleGeneration),
+      ),
+    )
+    .run();
+  return readChanges(result) > 0;
 }
 
 function sameJob(left: JobRecord, right: JobRecord): boolean {

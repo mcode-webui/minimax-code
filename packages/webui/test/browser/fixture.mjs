@@ -108,7 +108,19 @@ export function installFixtureTransport() {
   let cronTaskSeq = 0;
   // Run history for the scheduled-task fixture. The manual trigger below appends to it, so the
   // browser test can assert what the panel shows after asking for a run.
-  let cronRuns = [];
+  // One run that the schedule produced, so the journey shows a 定时 row beside the 手动 one the
+  // run-now action creates. A timer is not what this fixture is for; the label is.
+  let cronRuns = [
+    {
+      runId: "run-fixture-scheduled",
+      cronId: "cron-fixture-held",
+      triggerSource: "scheduled",
+      status: "delivered",
+      sessionId: "A",
+      createdAtMs: 1_700_002_400_000,
+      deliveredAtMs: 1_700_002_400_400,
+    },
+  ];
   let cronRunSeq = 0;
   const pending = [];
   const delayed = [];

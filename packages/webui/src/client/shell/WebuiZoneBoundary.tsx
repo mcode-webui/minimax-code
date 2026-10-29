@@ -16,7 +16,8 @@ export type WebuiErrorZone =
   | "workspace"
   | "plugins"
   | "settings"
-  | "review";
+  | "review"
+  | "scheduling";
 
 const COPY: Readonly<Record<WebuiErrorZone, { readonly title: string; readonly detail: string }>> = {
   composer: {
@@ -42,6 +43,10 @@ const COPY: Readonly<Record<WebuiErrorZone, { readonly title: string; readonly d
   review: {
     title: "审查模式出现错误",
     detail: "审查模式未能正常显示。应用已保留其余状态，可以重试恢复。",
+  },
+  scheduling: {
+    title: "定时任务出现错误",
+    detail: "定时任务面板未能正常显示。其他状态已保留，可以重试恢复。",
   },
 };
 

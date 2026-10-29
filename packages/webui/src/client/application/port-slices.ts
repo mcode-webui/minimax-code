@@ -25,6 +25,7 @@
 // | `settings` | `WebuiSettingsSlice` | `SettingsPort` | the seventeen instruction / memory / profile / permission / source members |
 // | `account` | `WebuiAccountSlice` | `AccountPort` | the eight login, signin and quota members |
 // | `shell` | `WebuiShellSlice` | `ShellEventPort` | `watchEvents` |
+// | `scheduling` | `WebuiSchedulingSlice` | `SchedulingPort` | `listCronTasks` |
 // | `turn` | `WebuiTurnCapabilitySlice` | `TurnExecutionPort` (+ the queue write, the message loader and the session creator its send path needs) | the published capability slice |
 //
 // **`turn` is not a `Pick` of one port.** It reads the execution slice *and* the
@@ -48,6 +49,7 @@ import type { PluginPort } from "../features/plugins/contracts/plugin-port.js";
 import type { SessionPort } from "../features/sessions/contracts/session-port.js";
 import type { SettingsPort } from "../features/settings/contracts/settings-port.js";
 import type { ShellEventPort } from "../features/shell/contracts/watch-port.js";
+import type { SchedulingPort } from "../features/scheduling/contracts/scheduling-port.js";
 import type { TranscriptPort } from "../features/transcript/contracts/session-read-port.js";
 import type { TurnExecutionPort } from "../features/turn/contracts/execution-port.js";
 import type { TerminalPort } from "../features/terminal/contracts/terminal-port.js";
@@ -71,6 +73,7 @@ export interface WebuiPortSliceSource
     TurnExecutionPort,
     ComposerPort,
     ShellEventPort,
+    SchedulingPort,
     InteractionPort,
     GoalPort,
     WorkspacePort,
@@ -237,6 +240,8 @@ const ACCOUNT_KEYS = [
 
 const SHELL_KEYS = ["watchEvents"] as const satisfies readonly (keyof ShellEventPort)[];
 
+const SCHEDULING_KEYS = ["listCronTasks"] as const satisfies readonly (keyof SchedulingPort)[];
+
 const MINIAPP_KEYS = [
   "watchMiniAppPresenter",
   "listMiniApps",
@@ -262,6 +267,7 @@ export type WebuiPluginsSlice = Pick<PluginPort, (typeof PLUGINS_KEYS)[number]>;
 export type WebuiSettingsSlice = Pick<SettingsPort, (typeof SETTINGS_KEYS)[number]>;
 export type WebuiAccountSlice = Pick<AccountPort, (typeof ACCOUNT_KEYS)[number]>;
 export type WebuiShellSlice = Pick<ShellEventPort, (typeof SHELL_KEYS)[number]>;
+export type WebuiSchedulingSlice = Pick<SchedulingPort, (typeof SCHEDULING_KEYS)[number]>;
 export type WebuiBrowserSlice = Pick<BrowserPort, (typeof BROWSER_KEYS)[number]>;
 export type WebuiMiniAppSlice = WebuiMiniAppPortSlice;
 export type WebuiTurnSlice = WebuiTurnCapabilitySlice;
@@ -279,6 +285,7 @@ export interface WebuiPortSlices {
   readonly settings: WebuiSettingsSlice;
   readonly account: WebuiAccountSlice;
   readonly shell: WebuiShellSlice;
+  readonly scheduling: WebuiSchedulingSlice;
   readonly browser: WebuiBrowserSlice;
   readonly miniapp: WebuiMiniAppSlice;
   readonly turn: WebuiTurnSlice;
@@ -319,6 +326,7 @@ export function createWebuiPortSlices(
     settings: cut(source, SETTINGS_KEYS),
     account: cut(source, ACCOUNT_KEYS),
     shell: cut(source, SHELL_KEYS),
+    scheduling: cut(source, SCHEDULING_KEYS),
     browser: cut(source, BROWSER_KEYS),
     miniapp: cut(source, MINIAPP_KEYS),
     // `turn`'s published slice, built by its own factory so there is exactly one

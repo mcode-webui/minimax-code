@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import {
   initialWebuiShellSurface,
   isPluginManagementSurface,
+  isSchedulingSurface,
   reduceWebuiShellSurface,
   webuiPluginManagementArea,
   type WebuiShellSurface,
@@ -100,9 +101,25 @@ describe("shell surface wiring", () => {
     // One root boundary meant a throw in the workspace panel unmounted the
     // composer, the transcript and the rail — losing an unsent draft because a
     // file tree failed to render. Each zone holds its own throw now.
-    for (const zone of ["composer", "transcript", "workspace", "plugins"]) {
+    for (const zone of ["composer", "transcript", "workspace", "plugins", "scheduling"]) {
       expect(shell).toMatch(new RegExp(`<WebuiZoneBoundary\\s+zone="${zone}"`));
     }
+  });
+
+  it("opens the scheduled-task panel as a surface of its own, and keeps it idempotent", () => {
+    // ADR 0027: scheduled tasks are not session-scoped, so this is a surface rather than a tab of
+    // the workspace panel or a section of the settings modal — and the rail is the only way back.
+    const scheduling = reduceWebuiShellSurface(initialWebuiShellSurface, { type: "open-scheduling" });
+    expect(scheduling).toEqual({ kind: "scheduling" });
+    expect(isSchedulingSurface(scheduling)).toBe(true);
+    expect(isPluginManagementSurface(scheduling)).toBe(false);
+    // Re-opening keeps the state object, so React bails out of the re-render.
+    expect(reduceWebuiShellSurface(scheduling, { type: "open-scheduling" })).toBe(scheduling);
+    // Closing, and any conversation navigation, collapse to the conversation.
+    expect(reduceWebuiShellSurface(scheduling, { type: "show-conversation" })).toEqual({
+      kind: "conversation",
+    });
+    expect(isSchedulingSurface(initialWebuiShellSurface)).toBe(false);
   });
 
   it("gates the marketplace on the surface rather than a separate boolean", () => {

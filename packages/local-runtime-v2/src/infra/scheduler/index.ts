@@ -85,7 +85,14 @@ class ScheduleHasNoFutureRunError extends Error {
  */
 export type SchedulerClient = Pick<
   Scheduler,
-  'registerHandler' | 'schedule' | 'reschedule' | 'cancel' | 'get' | 'inspect' | 'remove'
+  | 'registerHandler'
+  | 'schedule'
+  | 'reschedule'
+  | 'cancel'
+  | 'get'
+  | 'inspect'
+  | 'isArmed'
+  | 'remove'
 >;
 
 export class Scheduler {
@@ -212,6 +219,18 @@ export class Scheduler {
     this.timers.delete(schedulerId);
     this.jobs.set(schedulerId, cancelled);
     this.reportActiveJobs();
+  }
+
+  /**
+   * Whether *this* process holds the armed timer for a job.
+   *
+   * Read-only on purpose: `get()` refreshes inspection state and can write, and a caller that only
+   * wants to report "this client has the task armed" must not change the row to find out. A second
+   * scheduler host on the same data directory answers false here for a job it never armed, which is
+   * the truth the panel is allowed to say.
+   */
+  isArmed(schedulerId: string): boolean {
+    return this.timers.has(schedulerId) && this.jobs.has(schedulerId);
   }
 
   get(schedulerId: string): ScheduledJob | undefined {

@@ -33,6 +33,7 @@ import {
 import {
   initialWebuiShellSurface,
   isPluginManagementSurface,
+  isSchedulingSurface,
   reduceWebuiShellSurface,
   webuiPluginManagementArea,
   type WebuiPluginManagementArea,
@@ -111,6 +112,7 @@ import { useSelectedSessionId } from "./use-selected-session.js";
 import { useWorkspacePanelSession } from "./use-workspace-panel-session.js";
 import { useNewTaskWorkspace } from "./use-new-task-workspace.js";
 import { useShellActivityWiring } from "./use-shell-activity-wiring.js";
+import { SchedulingPanel } from "../features/scheduling/ui/SchedulingPanel.public.js";
 import { useSessionRailActions } from "./use-session-rail-actions.js";
 import { WebuiZoneBoundary } from "./WebuiZoneBoundary.js";
 
@@ -660,6 +662,15 @@ export function WebuiClientFoundationApp(
   });
   const pluginManagementArea = webuiPluginManagementArea(shellSurface);
   const pluginManagementOpen = isPluginManagementSurface(shellSurface);
+  /**
+   * The scheduled-task panel (ADR 0027). A surface of its own: scheduled tasks are not
+   * session-scoped, so the rail is the way in and out, exactly as it is for plugin management.
+   */
+  const schedulingOpen = isSchedulingSurface(shellSurface);
+  const openScheduling = useCallback(
+    () => dispatchShellSurface({ type: "open-scheduling" }),
+    [dispatchShellSurface],
+  );
   const openPluginManagement = useCallback((area: WebuiPluginManagementArea) => {
     dispatchShellSurface({ type: "open-plugin-management", area });
   }, [dispatchShellSurface]);
@@ -1007,6 +1018,8 @@ export function WebuiClientFoundationApp(
               setSearchQuery={setRailSearchQuery}
               closeSearch={closeRailSearch}
               openPlugins={() => openPluginManagement("plugins")}
+              schedulingOpen={schedulingOpen}
+              openScheduling={openScheduling}
               hasSearchResults={railPage.sessions.length > 0}
               projectList={{
                 teamModeLabel: props.teamModeLabel, page: railPage, treePage: railTreePage,
@@ -1051,6 +1064,15 @@ export function WebuiClientFoundationApp(
             data-webui-shell-region="surface"
             className="relative flex min-h-0 min-w-0 flex-1 flex-row"
           >
+            {schedulingOpen
+              ? <WebuiZoneBoundary zone="scheduling">
+                <SchedulingPanel
+                  owner={application.schedulingOwner}
+                  nowMs={activityNow}
+                  onClose={() => dispatchShellSurface({ type: "show-conversation" })}
+                />
+              </WebuiZoneBoundary>
+              : null}
             {pluginManagementArea ? <WebuiZoneBoundary zone="plugins"><PluginCatalogue initialArea={pluginManagementArea} selectedSessionId={selectedSessionId} onChatWithAgent={async (name) => {
               // Plugin-chat creation is the same completion policy as the composer's
               // and the goal path's: it goes through the task use case, so the

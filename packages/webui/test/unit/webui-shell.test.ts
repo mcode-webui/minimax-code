@@ -1224,6 +1224,8 @@ describe("WebUI shell — desktop anatomy", () => {
     // the 置顶 and 项目 headers each toggle their own section, so they are
     // bound rather than labels dressed as buttons, and the count moved from 8
     // to 10, and the model chip to 11 when the picker became one panel. The
+    // scheduled-tasks row joined them with ADR 0027 — it opens the panel that
+    // lists the cron definitions — so the count moved from 11 to 12. The
     // retired rail view tabs and session-favourites control are absent; the
     // remaining controls are backed by their current actions.
     const html = renderShell();
@@ -1245,7 +1247,7 @@ describe("WebUI shell — desktop anatomy", () => {
     // used to go INERT whenever the catalogue was momentarily empty, which is
     // what left a user staring at a chip that would not open -- and a reload
     // was the only thing that brought it back.
-    expect(operable).toHaveLength(11);
+    expect(operable).toHaveLength(12);
     expect(html).toMatch(/data-webui-model-selector="true"/u);
     expect(html).not.toMatch(/data-webui-model-selector="true"[^>]*\sdisabled/u);
     expect(html).toMatch(/data-testid="composer-add-menu"/u);
@@ -1264,6 +1266,10 @@ describe("WebUI shell — desktop anatomy", () => {
     // The two section headers are controls, not labels: each one reports the
     // state it toggles, so a header that lost its action could not hide.
     expect(html).toMatch(/data-webui-rail-section-id="pinned"/u);
+    // The scheduled-tasks entry must open its panel rather than sit as a label: the
+    // surface is only reachable from the rail, so an unbound row is an unreachable feature.
+    expect(html).toMatch(/data-webui-nav-item="定时任务"/u);
+    expect(html).not.toMatch(/data-webui-nav-item="定时任务"[^>]*\sdisabled/u);
     expect(html).toMatch(/data-webui-rail-section-id="projects"/u);
   });
 

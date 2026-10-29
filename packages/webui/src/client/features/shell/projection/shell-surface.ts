@@ -21,11 +21,18 @@ export type WebuiPluginManagementArea = "plugins" | "skills";
 
 export type WebuiShellSurface =
   | { readonly kind: "conversation" }
-  | { readonly kind: "plugin-management"; readonly area: WebuiPluginManagementArea };
+  | { readonly kind: "plugin-management"; readonly area: WebuiPluginManagementArea }
+  /**
+   * The scheduled-task panel (ADR 0027). A surface of its own because scheduled tasks are not
+   * session-scoped: it cannot be a tab of the workspace panel or a section of the settings modal,
+   * and the rail has to stay live beside it so a session click is the way back out.
+   */
+  | { readonly kind: "scheduling" };
 
 export type WebuiShellSurfaceCommand =
   | { readonly type: "open-plugin-management"; readonly area: WebuiPluginManagementArea }
   | { readonly type: "close-plugin-management" }
+  | { readonly type: "open-scheduling" }
   | { readonly type: "show-conversation" };
 
 export const initialWebuiShellSurface: WebuiShellSurface = { kind: "conversation" };
@@ -42,6 +49,8 @@ export function reduceWebuiShellSurface(
       // identity and React can bail out of the re-render.
       if (state.kind === "plugin-management" && state.area === command.area) return state;
       return { kind: "plugin-management", area: command.area };
+    case "open-scheduling":
+      return state.kind === "scheduling" ? state : { kind: "scheduling" };
     case "close-plugin-management":
     case "show-conversation":
       // Both collapse to the conversation: closing from the page's × and
@@ -50,6 +59,10 @@ export function reduceWebuiShellSurface(
       // stable when the surface was already the conversation.
       return state.kind === "conversation" ? state : conversation;
   }
+}
+
+export function isSchedulingSurface(surface: WebuiShellSurface): boolean {
+  return surface.kind === "scheduling";
 }
 
 export function isPluginManagementSurface(surface: WebuiShellSurface): boolean {

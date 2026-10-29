@@ -1,7 +1,7 @@
 import type { ChangeEvent, ComponentProps, ReactElement, ReactNode, RefObject } from "react";
 import { WebuiProjectList } from "./SessionRail.js";
 import { RailRow } from "./RailRow.js";
-import { WebuiIconBrand, WebuiIconContextExport, WebuiIconNewTask, WebuiIconPlugins, WebuiIconRemote, WebuiIconSessionImport, WebuiIconSites } from "../../../shell/icons.js";
+import { WebuiIconBrand, WebuiIconContextExport, WebuiIconNewTask, WebuiIconPlugins, WebuiIconRemote, WebuiIconSchedule, WebuiIconSessionImport, WebuiIconSites } from "../../../shell/icons.js";
 
 type ProjectListProps = ComponentProps<typeof WebuiProjectList>;
 
@@ -10,6 +10,8 @@ export function SessionRailRegion(props: {
   readonly collapsed: boolean;
   readonly homeMode: boolean;
   readonly pluginManagementOpen: boolean;
+  /** The scheduled-task panel is the surface (ADR 0027). */
+  readonly schedulingOpen: boolean;
   readonly startNewTask: () => void;
   readonly importInputRef: RefObject<HTMLInputElement>;
   readonly openImportPicker: () => void;
@@ -21,6 +23,7 @@ export function SessionRailRegion(props: {
   readonly setSearchQuery: (query: string) => void;
   readonly closeSearch: () => void;
   readonly openPlugins: () => void;
+  readonly openScheduling: () => void;
   readonly projectList: ProjectListProps;
   readonly hasSearchResults: boolean;
   readonly footer?: ReactNode;
@@ -64,6 +67,7 @@ export function SessionRailRegion(props: {
               <input ref={props.importInputRef} type="file" accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" className="webui-composer-hidden-file-input" onChange={props.onImportPicked} />
               <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
               <RailRow label="插件" icon={<WebuiIconPlugins />} active={props.pluginManagementOpen} onSelect={props.openPlugins} />
+              <RailRow label="定时任务" icon={<WebuiIconSchedule />} active={props.schedulingOpen} onSelect={props.openScheduling} />
               <RailRow label="网站" icon={<WebuiIconSites />} inert />
               <RailRow label="远程" icon={<WebuiIconRemote />} inert />
             </div>

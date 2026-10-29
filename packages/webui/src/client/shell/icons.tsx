@@ -45,6 +45,7 @@ export function WebuiIconAgent({ className }: WebuiIconProps): ReactElement {
 }
 export function WebuiIconNewTask({ className }: WebuiIconProps): ReactElement { return glyph(IconCirclePlus, className); }
 export function WebuiIconPlugins({ className }: WebuiIconProps): ReactElement { return glyph(IconPuzzle, className); }
+export function WebuiIconSchedule({ className }: WebuiIconProps): ReactElement { return glyph(IconCalendarEvent, className); }
 export function WebuiIconSites({ className }: WebuiIconProps): ReactElement { return glyph(IconLayoutDashboard, className); }
 export function WebuiIconRemote({ className }: WebuiIconProps): ReactElement { return glyph(IconDeviceMobile, className); }
 export function WebuiIconBell({ className }: WebuiIconProps): ReactElement { return glyph(IconBell, className, 20); }

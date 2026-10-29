@@ -5024,6 +5024,51 @@
       "role": "feature-bindings",
       "business": "miniapp",
       "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/application/scheduling-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/contracts/scheduling-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/projection/scheduling-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "server/operation/scheduling.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
     }
   ],
   "directions": [

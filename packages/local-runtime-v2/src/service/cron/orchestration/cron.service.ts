@@ -224,16 +224,25 @@ class SchedulerBackedCronService implements CronService {
 
   private toDefinitionView(definition: CronDefinitionRecord): CronDefinitionView {
     const job = requireSchedulerJob(this.deps.scheduler.inspect(definition.schedulerId));
-    return this.composeView(definition, job);
+    return this.composeView(
+      definition,
+      job,
+      this.deps.scheduler.isArmed(definition.schedulerId),
+    );
   }
 
-  private composeView(definition: CronDefinitionRecord, job: ScheduledJob): CronDefinitionView {
+  private composeView(
+    definition: CronDefinitionRecord,
+    job: ScheduledJob,
+    armed: boolean,
+  ): CronDefinitionView {
     return {
       cronId: definition.cronId,
       name: definition.name,
       agentName: definition.agentName,
       schedule: toCronSchedule(job.schedule),
       enabled: job.state === 'active',
+      armed,
       prompt: definition.prompt,
       sessionTarget: definition.sessionTarget,
       project: definition.project,

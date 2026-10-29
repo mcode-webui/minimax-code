@@ -150,6 +150,7 @@ function toTask(task: RuntimeTask): WebuiCronTask {
     agentName: requiredText(task.agentName, "agentName"),
     prompt: requiredText(task.prompt, "prompt"),
     enabled: requiredBoolean(task.enabled, "enabled"),
+    heldByThisClient: requiredBoolean(task.armed, "armed"),
     schedule: toSchedule(task.schedule),
     sessionTarget: toSessionTarget(task.sessionTarget),
     project: task.project ?? null,

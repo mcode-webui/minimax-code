@@ -62,6 +62,13 @@ describe("plugin marketplace catalogue", () => {
     }));
     expect(html).toContain('aria-pressed="true">Mini App</button>');
   });
+  it("renders Mini App with the fixed categories before market metadata loads", () => {
+    const html = marketplace("plugins");
+    const categoryNav = html.match(/<nav[^>]*aria-label="市场分类"[^>]*>(.*?)<\/nav>/u)?.[1] ?? "";
+    expect(categoryNav).toContain('aria-pressed="false">Mini App</button>');
+    expect(categoryNav.indexOf("Mini App")).toBeGreaterThan(categoryNav.indexOf("全部"));
+    expect(categoryNav.indexOf("Mini App")).toBeLessThan(categoryNav.indexOf("办公"));
+  });
   it("offers 插件 and 技能 instead of 市场 and 个人", () => {
     const html = marketplace("plugins");
     expect(html).toContain('aria-pressed="true">插件</button>');

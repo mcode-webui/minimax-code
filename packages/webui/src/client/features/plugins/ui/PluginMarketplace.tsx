@@ -5,6 +5,7 @@ import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { readWebuiPluginRow as read } from "../contracts/plugin-rows.js";
 
 const MARKET_PREVIEW_COUNT = 8;
+const MINIAPP_CATEGORY = { id: "tag:miniapp", label: "Mini App" } as const;
 const categories: readonly { id: string; label: string }[] = [
   { id: "", label: "全部" },
   { id: "office", label: "办公" },
@@ -39,7 +40,14 @@ export function PluginMarketplaceFilters({
     <div className="webui-plugin-market-discovery">
       {area === "plugins" ? (
         <nav className="webui-plugin-category-filter" aria-label="市场分类">
-          {[categories[0], ...tagDefinitions.map((tag) => ({ id: `tag:${tag.key}`, label: tag.displayName })), ...categories.slice(1)].map((item) => (
+          {[
+            categories[0],
+            MINIAPP_CATEGORY,
+            ...tagDefinitions
+              .filter((tag) => tag.key !== "miniapp")
+              .map((tag) => ({ id: `tag:${tag.key}`, label: tag.displayName })),
+            ...categories.slice(1),
+          ].map((item) => (
             <button
               key={item.id}
               aria-pressed={category === item.id}

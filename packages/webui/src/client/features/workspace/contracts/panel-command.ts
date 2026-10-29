@@ -81,14 +81,16 @@ export type WorkspacePanelCommand =
   | { readonly type: "toggle-expanded" };
 
 /**
- * The kinds an `open-tab` command may name: exactly those whose launcher tile
- * is an `open-tab`. Derived, so a kind that gains or loses a tile moves this
- * union with it.
+ * The kinds an `open-tab` command may name.
+ *
+ * The launcher's tiles name the kinds they open, and a kind that loses its
+ * tile leaves this union with it — derived, so the two cannot drift apart. The
+ * Mini App's own page is the one kind no tile opens: it is opened by the
+ * choice made in the Mini App tool page, which is a content like any other.
  */
-export type WebuiWorkspaceOpenTabKind = Extract<
-  WebuiWorkspaceTileOpen,
-  { readonly type: "open-tab" }
->["kind"];
+export type WebuiWorkspaceOpenTabKind =
+  | Extract<WebuiWorkspaceTileOpen, { readonly type: "open-tab" }>["kind"]
+  | "miniapp";
 
 /**
  * How a launcher tile opens its view. Data, so the component only dispatches it.
@@ -99,4 +101,4 @@ export type WebuiWorkspaceOpenTabKind = Extract<
  */
 export type WebuiWorkspaceTileOpen =
   | { readonly type: "open-workspace-review" }
-  | { readonly type: "open-tab"; readonly kind: "files" | "canvas" | "terminal" | "miniapp" };
+  | { readonly type: "open-tab"; readonly kind: "files" | "canvas" | "terminal" | "miniapp-picker" };

@@ -16,6 +16,14 @@ import { fileURLToPath } from "node:url";
 
 export const WEBUI_PACKAGE_DIRECTORY = "packages/webui";
 export const WEBUI_DIST_DIRECTORY = "dist-webui";
+/**
+ * The packaged npm artifact's build output.
+ *
+ * It is a build output in the same sense as `dist-webui`: machine-local, produced
+ * by `scripts/package-webui-npm.mjs`, and never committed. The published package
+ * is `release/webui-npm/`, which is a different directory.
+ */
+export const WEBUI_PACKAGE_DIST_DIRECTORY = "dist-webui-npm";
 export const WEBUI_METAFILE_BASENAME = "metafile.json";
 
 // Forbidden text patterns shared by `check:webui-boundary` and `check:source`.

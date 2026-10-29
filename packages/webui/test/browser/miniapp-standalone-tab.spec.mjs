@@ -78,7 +78,7 @@ test("the inline tab moves the Mini App into its own tab, which shows only the M
   await configureDocuments(page);
   await openApp(page);
   await openWorkspacePanel(page);
-  await page.getByTestId("workspace-launcher-tile-miniapp").click();
+  await page.getByTestId("workspace-launcher-tile-miniapp-picker").click();
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
   await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
 
@@ -114,7 +114,7 @@ test("the inline view reports the live standalone tab, switches to it, and stops
   await configureDocuments(page);
   await openApp(page);
   await openWorkspacePanel(page);
-  await page.getByTestId("workspace-launcher-tile-miniapp").click();
+  await page.getByTestId("workspace-launcher-tile-miniapp-picker").click();
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
   await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
   const [popup] = await Promise.all([

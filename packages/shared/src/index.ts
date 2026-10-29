@@ -24,6 +24,7 @@ export type {
   ResolveProductBuildIdentityOptions,
 } from './product-build-identity.js';
 export { buildPluginSkillRuntimeName } from './plugin-skill-name.js';
+export { MARKETPLACE_VISIBILITY_DESKTOP_VERSION } from './marketplace-visibility.js';
 export { toNavigationPlainText } from './navigation-text.js';
 export { collectFetchedWebSources } from './fetched-web-sources.js';
 export { collectUsedWebEvidenceIds } from './web-source-evidence.js';

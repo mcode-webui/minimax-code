@@ -27,6 +27,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PluginCatalogue } from "../../src/client/features/plugins/ui/PluginCatalogue.js";
+import { PluginMarketplaceFilters } from "../../src/client/features/plugins/ui/PluginMarketplace.js";
 import { projectWebuiPluginCatalogue } from "../../src/client/features/plugins/projection/catalogue-view.js";
 import type { WebuiPluginRow } from "../../src/client/features/plugins/contracts/plugin-rows.js";
 const marketplace = (initialArea: "plugins" | "skills"): string =>
@@ -53,6 +54,14 @@ const owner = squashWhitespace(
 );
 
 describe("plugin marketplace catalogue", () => {
+  it("renders the server-provided Mini App category as a selectable market filter", () => {
+    const html = renderToStaticMarkup(createElement(PluginMarketplaceFilters, {
+      area: "plugins", query: "", category: "tag:miniapp",
+      tagDefinitions: [{ key: "miniapp", displayName: "Mini App" }],
+      onQueryChange: () => {}, onCategoryChange: () => {},
+    }));
+    expect(html).toContain('aria-pressed="true">Mini App</button>');
+  });
   it("offers 插件 and 技能 instead of 市场 and 个人", () => {
     const html = marketplace("plugins");
     expect(html).toContain('aria-pressed="true">插件</button>');

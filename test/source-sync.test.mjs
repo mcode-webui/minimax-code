@@ -1315,3 +1315,39 @@ test('TUI lint failure stops full and platform verification before compilation o
     assert.equal(report.gates.find(gate => gate.name === 'build').status, 'NOT_RUN');
   }
 });
+
+// The desktop version the cloud filters the marketplace by is declared in one
+// place: the shared module. A second copy would let what the client declares
+// and what the cloud was told drift apart, which is the one failure this
+// declaration is prone to.
+function filesWritingVersion(repositoryRoot, version) {
+  const offenders = [];
+  const skipped = ['node_modules', 'dist', 'dist-webui', 'coverage', 'out'];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.') || skipped.includes(entry.name)) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(?:ts|tsx|mts|mjs|cjs|js|jsx)$/u.test(entry.name) && readFileSync(full, 'utf8').includes(version)) {
+        offenders.push(path.relative(repositoryRoot, full));
+      }
+    }
+  };
+  for (const directory of ['packages', 'scripts', 'test']) {
+    walk(path.join(repositoryRoot, directory));
+  }
+  return offenders;
+}
+
+test('the desktop version the marketplace is filtered by is declared in exactly one file', () => {
+  const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+  const sharedModule = path.join(repositoryRoot, 'packages/shared/src/marketplace-visibility.ts');
+  const declared = readFileSync(sharedModule, 'utf8')
+    .match(/MARKETPLACE_VISIBILITY_DESKTOP_VERSION = '([^']+)'/u)?.[1];
+  assert.ok(declared, 'the shared module declares the desktop version');
+  assert.match(declared, /^\d+\.\d+\.\d+$/u, 'the declared version is a plain release version');
+  const offenders = filesWritingVersion(repositoryRoot, declared).filter(
+    (file) => file !== 'packages/shared/src/marketplace-visibility.ts',
+  );
+  assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
+});

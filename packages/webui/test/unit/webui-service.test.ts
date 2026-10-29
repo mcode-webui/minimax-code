@@ -12,6 +12,7 @@ import { once } from "node:events";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MARKETPLACE_VISIBILITY_DESKTOP_VERSION } from "@mavis/shared/marketplace-visibility";
 import type { RawData } from "ws";
 import { WebSocket } from "ws";
 
@@ -3155,6 +3156,12 @@ describe("WebUI runtime host assembly", () => {
       expect(lastOptions?.startupExecutionPolicy).toBe("quarantined");
       expect(lastOptions?.dataDir).toBe(dataDir);
       expect(lastOptions?.appVersion).toBe("0.4.2-assembly-test");
+      // The WebUI declares the desktop version the cloud filters the
+      // marketplace by, and the shared constant is the only place that
+      // version is written. The runtime only carries the declaration.
+      expect(lastOptions?.marketplaceVisibilityVersion).toBe(
+        MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      );
       const capabilities = lastOptions?.capabilities as Record<string, unknown>;
       expect(capabilities.cliEmbedded).toBe(true);
     } finally {

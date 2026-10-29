@@ -131,7 +131,9 @@ describe("the plugin catalogue's apps area", () => {
     const markup = render(createElement(MiniAppAppsList, {}), workflows);
     expect(markup).toContain("dashboard 应用");
     expect(markup).toContain("运行中");
-    expect(markup).toContain("启动失败（RUNNER_START_FAILED）");
+    // The failure is said in words: the code names the failure for other
+    // programs, and the person needs what it means.
+    expect(markup).toContain("启动失败（进程启动失败）");
     // stop, uninstall and disable are all reachable from the row.
     expect(markup).toContain("停止");
     expect(markup).toContain("卸载");

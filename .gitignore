@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-webui/
+dist-webui-npm/
 .turbo/
 .cache/
 .pnpm-store/

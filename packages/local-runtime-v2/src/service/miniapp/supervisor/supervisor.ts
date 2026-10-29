@@ -183,8 +183,21 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
       const failure = await cleanup.selectFailureAfterCleanup(primary, () =>
         this.cleanupOrQuarantine(candidate.pluginId, ownsRuntime ? runtime : undefined),
       );
-      if (crossedPonr && !errors.isMiniAppExpectedCancellation(errors.miniAppErrorCode(failure))) {
-        this.recordFailure(candidate.pluginId, errors.miniAppErrorCode(failure));
+      const failureCode = errors.miniAppErrorCode(failure);
+      if (crossedPonr && !errors.isMiniAppExpectedCancellation(failureCode)) {
+        this.recordFailure(candidate.pluginId, failureCode);
+      } else if (
+        options.forceStart === true &&
+        failureCode !== 'OWNED_ELSEWHERE' &&
+        !errors.isMiniAppExpectedCancellation(failureCode)
+      ) {
+        // A forced start that failed before the point of no return: nothing took
+        // ownership, so the generation is simply gone — but the start did fail,
+        // and the person has to see that it failed and why. Another client's
+        // ownership is not a failure here: the row reports that through the
+        // owner instead. The failure is kept in memory only, because the
+        // persisted state belongs to the generation that was never accepted.
+        this.recordFailure(candidate.pluginId, failureCode, false);
       }
       throw failure;
     }

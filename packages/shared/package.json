@@ -11,6 +11,10 @@
       "types": "./src/mavis-tags.ts",
       "import": "./dist/mavis-tags.js"
     },
+    "./marketplace-visibility": {
+      "types": "./src/marketplace-visibility.ts",
+      "import": "./dist/marketplace-visibility.js"
+    },
     "./llm-error-classifier": {
       "types": "./src/llm-error-classifier.ts",
       "import": "./dist/llm-error-classifier.js"

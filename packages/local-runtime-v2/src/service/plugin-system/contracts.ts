@@ -272,6 +272,12 @@ export interface PluginServiceCompatibility {
   readonly authContextGetter: () => PluginSystemAuthContext | undefined;
   readonly fetchImpl: typeof fetch;
   readonly appVersion?: string;
+  /**
+   * The desktop version declared for marketplace visibility, when the host
+   * declares one. The runtime carries the declaration; the host owns the
+   * value, because the runtime does not know which client it runs for.
+   */
+  readonly marketplaceVisibilityVersion?: string;
   readonly metrics: CreatedLocalRuntimeHost["metricsClient"];
   readonly mcp: LocalMcpService;
   readonly skill: LocalSkillService;

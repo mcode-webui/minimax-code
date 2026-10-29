@@ -84,6 +84,7 @@ export function toWebuiMiniAppSummary(
 ): WebuiMiniAppSummary {
   return {
     pluginId: summary.pluginId,
+    ...(summary.source !== undefined ? { source: summary.source } : {}),
     ...(summary.enabled !== undefined ? { enabled: summary.enabled } : {}),
     ...(summary.displayName !== undefined ? { displayName: summary.displayName } : {}),
     ...(summary.description !== undefined ? { description: summary.description } : {}),

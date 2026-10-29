@@ -7,6 +7,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
+import { MARKETPLACE_VISIBILITY_DESKTOP_VERSION } from "@mavis/shared/marketplace-visibility";
+
 import {
   createWebuiPluginWorkflows,
   initialWebuiPluginSelection,
@@ -58,6 +60,36 @@ describe("the plugin listing has one owner", () => {
     expect(rows.find((row) => row.name === "installed")?.installed).toBe(true);
     expect(workflows.getSnapshot().listing.pluginTotal).toBe(2);
   });
+
+  it("keeps market tag definitions and filters Mini Apps without sending a category enum", async () => {
+    const requests: { action: string; input?: Record<string, unknown> }[] = [];
+    const workflows = createWebuiPluginWorkflows({ port: { pluginManagement: async (request) => {
+      requests.push(request);
+      return request.action === "listMarketplacePlugins"
+        ? { plugins: [{ name: "board", tags: [{ key: "miniapp", displayName: "Mini App" }] }, { name: "other" }],
+            tagDefinitions: [{ key: "miniapp", displayName: "Mini App" }], pluginTotal: 2 }
+        : { plugins: [] };
+    } } });
+    await workflows.loadListing({ ...initialWebuiPluginSelection, category: "tag:miniapp" });
+    expect(workflows.getSnapshot().listing.tagDefinitions).toEqual([{ key: "miniapp", displayName: "Mini App" }]);
+    expect(workflows.getSnapshot().listing.rows.map((row) => row.name)).toEqual(["board"]);
+    expect(requests.find((request) => request.action === "listMarketplacePlugins")?.input?.category).toBeUndefined();
+  });
+
+  it("loads later marketplace pages before filtering by tag", async () => {
+    const cursors: unknown[] = [];
+    const workflows = createWebuiPluginWorkflows({ port: { pluginManagement: async (request) => {
+      if (request.action !== "listMarketplacePlugins") return { plugins: [] };
+      cursors.push(request.input?.cursor);
+      return request.input?.cursor
+        ? { plugins: [{ name: "second", tags: [{ key: "miniapp", displayName: "Mini App" }] }], hasMore: false }
+        : { plugins: [{ name: "first" }], hasMore: true, nextCursor: "page-2", pluginTotal: 2,
+            tagDefinitions: [{ key: "miniapp", displayName: "Mini App" }] };
+    } } });
+    await workflows.loadListing({ ...initialWebuiPluginSelection, category: "tag:miniapp" });
+    expect(cursors).toEqual([undefined, "page-2"]);
+    expect(workflows.getSnapshot().listing.rows.map((row) => row.name)).toEqual(["second"]);
+  });
 });
 
 function createWebuiPluginFold() {
@@ -101,6 +133,32 @@ describe("a plugin mutation invalidates exactly what it affects", () => {
     expect(workflows.getSnapshot().revision).toBe(before + 1);
     expect(workflows.getSnapshot().listing.rows).toHaveLength(1);
     expect(reloads.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("says what the cloud refused when it refuses the declared client version", async () => {
+    const workflows = createWebuiPluginWorkflows({
+      port: {
+        pluginManagement: () =>
+          Promise.reject(
+            Object.assign(new Error("Plugin System Cloud rejected the declared client version"), {
+              code: "CLIENT_VERSION_REJECTED",
+            }),
+          ),
+      },
+    });
+
+    await workflows.loadListing({ ...initialWebuiPluginSelection, view: "market" });
+    await expect(workflows.installPlugin({ pluginName: "p" })).rejects.toThrow();
+
+    // The refusal is said in words, and it names the version the cloud
+    // answered for: that is the one a person can act on.
+    for (const error of [
+      workflows.getSnapshot().listing.error,
+      workflows.getSnapshot().mutationError,
+    ]) {
+      expect(error).toContain("市场拒绝了当前声明的客户端版本");
+      expect(error).toContain(MARKETPLACE_VISIBILITY_DESKTOP_VERSION);
+    }
   });
 
   it("sends the named action for a named command", async () => {

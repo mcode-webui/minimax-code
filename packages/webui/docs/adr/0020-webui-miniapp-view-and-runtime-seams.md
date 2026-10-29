@@ -295,6 +295,12 @@ branch, the tab strip's glyph, and the tile on the launcher page. That last one 
 this client's "add a tab" surface already is a page of tiles, which is the counterpart of the desktop
 client's File Panel "+", and the tile leads to the plugin's picker.
 
+The tile opens a page of its own, `{kind: 'miniapp-picker', sessionId}`, and the choice made in it
+replaces that page with the view. So the tile is an ordinary tool tile — it turns the tab it is on
+into the tool page, the way every other tile turns it into its view — and the Mini App's entry is
+two members of the union rather than one. Which Mini App a tab shows is still the runtime's listing
+to answer, and the tab that shows it is still the tab the person asked in.
+
 Two properties of that picker are worth stating. Its rows and the plugin catalogue's apps area are the
 same rows: the existing `listApps` action already resolves to the runtime's Mini App listing, phases
 included, and answers an empty list today only because the service is gated off. So the catalogue is

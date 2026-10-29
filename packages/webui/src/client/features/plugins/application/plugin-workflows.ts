@@ -22,6 +22,7 @@
 // This module is framework-free — no React, no DOM — so it can be unit-tested
 // against a scripted port.
 
+import { webuiPluginFailureTextFrom } from "../../../projection/common/plugin-failure-text.js";
 import type { PluginPort } from "../contracts/plugin-port.js";
 import {
   createWebuiPluginActions,
@@ -54,6 +55,7 @@ export interface WebuiPluginListingState {
   readonly rows: readonly Record<string, unknown>[];
   /** The marketplace's own total, when the response carries one. */
   readonly pluginTotal?: number;
+  readonly tagDefinitions?: readonly { key: string; displayName: string }[];
   /** `null` means "not knowable from this response" (the skill hub pages). */
   readonly skillTotal?: number | null;
   readonly loading: boolean;
@@ -114,7 +116,7 @@ const MARKETPLACE_CATEGORY: Readonly<Record<string, number>> = {
 };
 
 function message(reason: unknown): string {
-  return reason instanceof Error ? reason.message : String(reason);
+  return webuiPluginFailureTextFrom(reason);
 }
 
 /** The typed row helpers the component used, kept here so the owner owns them. */
@@ -373,6 +375,7 @@ export function createWebuiPluginWorkflows(deps: {
           rows: composed.rows,
           loading: false,
           ...(composed.pluginTotal !== undefined ? { pluginTotal: composed.pluginTotal } : {}),
+          ...(composed.tagDefinitions !== undefined ? { tagDefinitions: composed.tagDefinitions } : {}),
           ...(composed.skillTotal !== undefined ? { skillTotal: composed.skillTotal } : {}),
         },
       }));
@@ -391,17 +394,42 @@ export function createWebuiPluginWorkflows(deps: {
   ): Promise<{
     readonly rows: readonly Record<string, unknown>[];
     readonly pluginTotal?: number;
+    readonly tagDefinitions?: readonly { key: string; displayName: string }[];
     readonly skillTotal?: number | null;
   }> => {
     const { area, view, query, category } = selection;
     if (area === "plugins" && view === "market") {
       const [market, installed] = await Promise.all([
-        call("listMarketplacePlugins", {
-          source: InstalledPluginSource.OFFICIAL,
-          limit: 100,
-          keyword: query || undefined,
-          category: category ? MARKETPLACE_CATEGORY[category] : undefined,
-        }),
+        (async () => {
+          const plugins: Record<string, unknown>[] = [];
+          let cursor: string | undefined;
+          let tagDefinitions: unknown;
+          let pluginTotal: unknown;
+          const seen = new Set<string>();
+          for (;;) {
+            const page = await call("listMarketplacePlugins", {
+              source: InstalledPluginSource.OFFICIAL,
+              limit: 100,
+              keyword: query || undefined,
+              category: category ? MARKETPLACE_CATEGORY[category] : undefined,
+              cursor,
+            }) as Record<string, unknown>;
+            plugins.push(...webuiPluginRows(page, "plugins"));
+            tagDefinitions = page.tagDefinitions ?? tagDefinitions;
+            pluginTotal = page.pluginTotal ?? pluginTotal;
+            if (page.cursorResetRequired === true) {
+              throw new Error("Plugin marketplace cursor expired; refresh the catalogue");
+            }
+            if (page.hasMore !== true) break;
+            const next = page.nextCursor;
+            if (typeof next !== "string" || !next || seen.has(next)) {
+              throw new Error("Plugin marketplace returned an invalid cursor");
+            }
+            seen.add(next);
+            cursor = next;
+          }
+          return { plugins, tagDefinitions, pluginTotal };
+        })(),
         call("listInstalledPlugins", { limit: 200 }),
       ]);
       const installedNames = new Set(
@@ -409,17 +437,28 @@ export function createWebuiPluginWorkflows(deps: {
           .filter((item) => item.source === InstalledPluginSource.OFFICIAL)
           .map((item) => rowValue(item, "name", "pluginName", "plugin_name", "pluginId").toLowerCase()),
       );
-      const rows = webuiPluginRows(market, "plugins").map((item) => ({
+      const rows: Record<string, unknown>[] = webuiPluginRows(market, "plugins").map((item) => ({
         ...item,
         installed:
           item.installed === true ||
+          item.installExists === true ||
           installedNames.has(rowValue(item, "name", "pluginName", "plugin_name", "pluginId").toLowerCase()),
       }));
       const total =
         typeof (market as Record<string, unknown> | undefined)?.pluginTotal === "number"
           ? ((market as Record<string, unknown>).pluginTotal as number)
           : rows.length;
-      return { rows, pluginTotal: total };
+      const definitions = (market as { tagDefinitions?: unknown } | undefined)?.tagDefinitions;
+      const tagDefinitions = Array.isArray(definitions)
+        ? definitions.filter((tag): tag is { key: string; displayName: string } =>
+            !!tag && typeof tag.key === "string" && typeof tag.displayName === "string")
+        : [];
+      const selectedTag = category.startsWith("tag:") ? category.slice(4) : undefined;
+      const visibleRows = selectedTag
+        ? rows.filter((item) => Array.isArray(item.tags) && item.tags.some((tag: unknown) =>
+            !!tag && typeof tag === "object" && (tag as { key?: unknown }).key === selectedTag))
+        : rows;
+      return { rows: visibleRows, pluginTotal: selectedTag ? visibleRows.length : total, tagDefinitions };
     }
     if (area === "plugins" && view === "personal") {
       const [installed, marketplace] = await Promise.all([

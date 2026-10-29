@@ -577,6 +577,11 @@ export function createV1RuntimeCompatibility(
           authContextGetter: options.authContextGetter ?? (() => undefined),
           fetchImpl: options.fetchImpl ?? globalThis.fetch,
           ...(options.appVersion ? { appVersion: options.appVersion } : {}),
+          // The host declares which desktop version the marketplace is filtered
+          // by; the runtime carries that declaration and never decides it.
+          ...(options.marketplaceVisibilityVersion
+            ? { marketplaceVisibilityVersion: options.marketplaceVisibilityVersion }
+            : {}),
           metrics: host.metricsClient,
           skill: host.apiHost.skillService,
           standaloneSkillIdentities: () =>

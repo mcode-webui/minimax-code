@@ -48,6 +48,15 @@ export interface WebuiMiniAppSummary {
    * open.
    */
   readonly enabled?: boolean;
+  /**
+   * Where the package came from.
+   *
+   * A local package and an official one are not changed by the same path: the
+   * official one through the marketplace account, the local one on disk. The
+   * row's own buttons need the source to choose, so the runtime publishes it
+   * rather than leaving the surface to guess.
+   */
+  readonly source?: "official" | "local";
   readonly runtime: {
     readonly kind: "process";
     readonly status: WebuiMiniAppRuntimeStatus;

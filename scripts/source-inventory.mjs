@@ -6,7 +6,12 @@ import { createHash } from "node:crypto";
 import { inventoryPath, readExtraction } from "./lib/release-metadata.mjs";
 import { retiredSourceRoots } from "./lib/retired-sources.mjs";
 import { readSuites, suiteInventoryViolations } from "./lib/vitest-suites.mjs";
-import { INTERNAL_HOST_RE, CREDENTIAL_RE, WEBUI_DIST_DIRECTORY } from "./lib/webui-boundary-constants.mjs";
+import {
+  INTERNAL_HOST_RE,
+  CREDENTIAL_RE,
+  WEBUI_DIST_DIRECTORY,
+  WEBUI_PACKAGE_DIST_DIRECTORY,
+} from "./lib/webui-boundary-constants.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const skipped = new Set([
@@ -14,6 +19,7 @@ const skipped = new Set([
   "node_modules",
   "dist",
   WEBUI_DIST_DIRECTORY,
+  WEBUI_PACKAGE_DIST_DIRECTORY,
   ".cache",
   // The development plans are tracked: a ticket has to be readable from a
   // worktree, and a worktree only carries tracked files. Their content is

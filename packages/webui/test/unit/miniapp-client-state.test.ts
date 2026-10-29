@@ -173,10 +173,47 @@ describe("the workspace panel's miniapp tab kind", () => {
   });
 
   it("is a registry kind with a launcher tile, which is what makes it reachable", () => {
-    expect(WEBUI_WORKSPACE_TAB_KINDS.miniapp.tile).toEqual({ type: "open-tab", kind: "miniapp" });
-    expect(WEBUI_WORKSPACE_LAUNCHER_TILE_ORDER).toContain("miniapp");
-    const tile = webuiWorkspaceLauncherTiles().find((entry) => entry.kind === "miniapp");
+    // The Mini App's own page is opened by the choice made in the Mini App tool
+    // page, so it has no tile of its own; the tile belongs to the tool page.
+    expect(WEBUI_WORKSPACE_TAB_KINDS.miniapp.tile).toBeNull();
+    expect(WEBUI_WORKSPACE_TAB_KINDS["miniapp-picker"].tile).toEqual({
+      type: "open-tab",
+      kind: "miniapp-picker",
+    });
+    expect(WEBUI_WORKSPACE_LAUNCHER_TILE_ORDER).toContain("miniapp-picker");
+    const tile = webuiWorkspaceLauncherTiles().find((entry) => entry.kind === "miniapp-picker");
     expect(tile?.label).toBe("应用");
+  });
+
+  it("turns the tab the tile is on into the Mini App tool page, and the choice into the page", () => {
+    const launcher = reduceWorkspacePanelState(initialWorkspacePanelState, { type: "open-new-tab" });
+    const tabId = launcher.tabs[0]!.id;
+    const picking = reduceWorkspacePanelState(launcher, {
+      type: "open-tab",
+      kind: "miniapp-picker",
+      sessionId: SESSION,
+      tabId,
+    });
+    // The tab is the tool page now — one tab, and it is not the launcher any
+    // more, the way every other tile turns its tab into its own view.
+    expect(picking.tabs).toHaveLength(1);
+    expect(picking.tabs[0]!.id).toBe(tabId);
+    expect(picking.tabs[0]!.content).toEqual({ kind: "miniapp-picker", sessionId: SESSION });
+
+    const chosen = reduceWorkspacePanelState(picking, {
+      type: "open-tab",
+      kind: "miniapp",
+      sessionId: SESSION,
+      pluginId: "a",
+      tabId,
+    });
+    expect(chosen.tabs).toHaveLength(1);
+    expect(chosen.tabs[0]!.id).toBe(tabId);
+    expect(chosen.tabs[0]!.content).toEqual({
+      kind: "miniapp",
+      sessionId: SESSION,
+      pluginId: "a",
+    });
   });
 });
 
@@ -241,7 +278,7 @@ describe("the Mini App business", () => {
     await workflows.syncPresentations();
     expect(workflows.getSnapshot().presentations.app).toEqual({
       kind: "stopped",
-      reason: "运行失败（RUNNER_START_FAILED）。",
+      reason: "运行失败（进程启动失败）。",
     });
   });
 

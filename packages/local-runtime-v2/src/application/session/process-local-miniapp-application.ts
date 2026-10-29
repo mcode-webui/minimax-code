@@ -136,6 +136,7 @@ function summary(
   const runtimeStatus = mapRuntimeStatus(status?.phase);
   return {
     pluginId: miniApp.pluginId,
+    source: miniApp.source,
     ...(miniApp.enabled !== undefined ? { enabled: miniApp.enabled } : {}),
     ...(miniApp.displayName ? { displayName: miniApp.displayName } : {}),
     ...(miniApp.description ? { description: miniApp.description } : {}),

@@ -3181,6 +3181,15 @@
       "home": "current"
     },
     {
+      "path": "client/projection/common/plugin-failure-text.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/projection/common/router.ts",
       "layers": [
         "view"

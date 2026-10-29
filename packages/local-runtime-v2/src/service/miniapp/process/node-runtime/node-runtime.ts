@@ -20,6 +20,10 @@ import { MiniAppCleanupUnprovenError, markMiniAppRootTerminationProven } from '.
 import { sanitizeMiniAppRuntimeLogEvent } from '../../runtime-log.js';
 import type { MiniAppRunnerInitMessage } from './host-runner.js';
 import { waitForLoopbackReadiness } from './loopback-readiness.js';
+import {
+  resolveMiniAppRunnerLaunch,
+  type MiniAppRunnerLaunch,
+} from './runner-entry.js';
 import { probeMiniAppPortOwnership } from './loopback-ownership.js';
 import {
   acquireMiniAppOwner,
@@ -77,6 +81,8 @@ interface NodeRuntimeOptions {
   readonly hostConnectorSessionFactory?: MiniAppHostConnectorSessionFactory;
   readonly execPath?: string;
   readonly runnerPath?: string;
+  /** Resolves the runner child's argument vector; injectable for tests. */
+  readonly resolveRunnerLaunch?: () => MiniAppRunnerLaunch;
   readonly platform?: NodeJS.Platform;
   readonly env?: NodeJS.ProcessEnv;
   readonly spawn?: SpawnLike;
@@ -110,7 +116,7 @@ type ResolvedOptions = Required<
     | 'materializePackage'
     | 'isPortReserved'
     | 'execPath'
-    | 'runnerPath'
+    | 'resolveRunnerLaunch'
     | 'platform'
     | 'env'
     | 'spawn'
@@ -132,7 +138,7 @@ type ResolvedOptions = Required<
     | 'maxPortAttempts'
   >
 > &
-  Pick<NodeRuntimeOptions, 'reservePort' | 'hostConnectorSessionFactory'>;
+  Pick<NodeRuntimeOptions, 'reservePort' | 'hostConnectorSessionFactory' | 'runnerPath'>;
 
 interface Attempt {
   readonly child: ChildProcess;
@@ -412,7 +418,8 @@ async function spawnAttempt(
   const physicalRoot = input.physicalRoots.acquire(input.candidate.pluginId);
   let child: ChildProcess;
   try {
-    child = input.options.spawn(input.options.execPath, [input.options.runnerPath], {
+    const launch = await input.options.resolveRunnerLaunch();
+    child = input.options.spawn(input.options.execPath, [...launch.args], {
       cwd: input.candidate.packageRoot,
       detached: false,
       windowsHide: true,
@@ -842,7 +849,14 @@ async function stopAttempt(
 function resolveOptions(options: NodeRuntimeOptions): ResolvedOptions {
   const defaults = {
     execPath: process.execPath,
-    runnerPath: fileURLToPath(new URL('./host-runner.js', import.meta.url)),
+    // The runner entry sits beside this module, and its shape depends on how the Host was
+    // built: a built Host has a JavaScript entry, a source checkout has a TypeScript one that
+    // the child can only start through the repository's loader.
+    resolveRunnerLaunch: () =>
+      resolveMiniAppRunnerLaunch({
+        moduleDir: path.dirname(fileURLToPath(import.meta.url)),
+        ...(options.runnerPath !== undefined ? { runnerPath: options.runnerPath } : {}),
+      }),
     platform: process.platform,
     env: process.env,
     spawn: nodeSpawn,

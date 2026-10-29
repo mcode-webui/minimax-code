@@ -8,6 +8,8 @@
 // The runtime names five states and the row offers a different action for each,
 // so the decision lives here rather than being re-derived in two components.
 
+import { InstalledPluginSource } from "@mavis/protocol/local";
+
 import type {
   WebuiMiniAppCatalogueRow,
   WebuiMiniAppRuntimeStatus,
@@ -43,6 +45,14 @@ export interface WebuiMiniAppRow {
    * fails.
    */
   readonly enabled: boolean;
+  /**
+   * Where the package came from, as the runtime says it.
+   *
+   * A local package and an official one are changed by different paths, so the
+   * row's own buttons need this to choose: the runtime is the only party that
+   * knows which one a package is.
+   */
+  readonly source?: "official" | "local";
   /** The runtime guard confirms another client owns this plugin's process. */
   readonly ownedElsewhere: boolean;
   /** Owner's client label, when the live process lease exposes it. */
@@ -89,6 +99,7 @@ export function webuiMiniAppRows(
       ...(miniApp.iconUrl !== undefined ? { iconUrl: miniApp.iconUrl } : {}),
       status: miniApp.runtime.status,
       ...(miniApp.runtime.errorCode !== undefined ? { errorCode: miniApp.runtime.errorCode } : {}),
+      ...(miniApp.source !== undefined ? { source: miniApp.source } : {}),
       statusLabel: !enabled
         ? "已停用"
         : miniApp.runtime.ownership === "other-client"
@@ -159,11 +170,73 @@ export function webuiMiniAppRefusalText(input: {
   return input.message;
 }
 
+/**
+ * The wire source a row's package is changed through.
+ *
+ * The runtime reads the source to pick the path: a local package is changed on
+ * disk and an official one through the marketplace account. A row the runtime
+ * did not give a source to keeps the old behaviour, which is the official
+ * path — the runtime's own default, unchanged here.
+ */
+export function webuiMiniAppPluginSource(row: WebuiMiniAppRow | undefined): number | undefined {
+  if (row?.source === "local") return InstalledPluginSource.LOCAL;
+  if (row?.source === "official") return InstalledPluginSource.OFFICIAL;
+  return undefined;
+}
+
+/**
+ * What a runtime failure code says, in words.
+ *
+ * The runtime's codes name the failure for other programs; a person needs the
+ * consequence. A code this client does not know keeps its own text, because a
+ * code is still more useful than nothing.
+ */
+export function webuiMiniAppFailureCodeText(code: string): string {
+  switch (code) {
+    case "RUNNER_START_FAILED":
+      return "进程启动失败";
+    case "RUNTIME_START_FAILED":
+      return "启动失败";
+    case "RUNTIME_EXITED":
+      return "进程已退出";
+    case "READINESS_TIMEOUT":
+      return "就绪检查超时";
+    case "READINESS_PROBE_TIMEOUT":
+      return "就绪探测超时";
+    case "READINESS_PROBE_REJECTED":
+      return "就绪探测被拒绝";
+    case "TCP_CONNECT_TIMEOUT":
+      return "连接超时";
+    case "NO_CANDIDATE_PORT":
+      return "没有可用端口";
+    case "START_EXPORT_MISSING":
+      return "入口没有导出启动函数";
+    case "ENTRY_OUTSIDE_ARTIFACT":
+      return "入口不在产物内";
+    case "HOST_CONNECTOR_UNAVAILABLE":
+      return "宿主连接不可用";
+    case "HOST_CONNECTOR_PROTOCOL_VIOLATION":
+      return "宿主连接协议不符";
+    case "RUNNER_LIFECYCLE_INVALID":
+      return "运行进程生命周期异常";
+    case "OWNED_ELSEWHERE":
+      return "已在其他客户端运行";
+    case "CANDIDATE_CHANGED":
+      return "候选产物已变更";
+    case "ACTIVATION_FAILED":
+      return "激活失败";
+    case "QUARANTINED":
+      return "清理未完成，已隔离";
+    default:
+      return code;
+  }
+}
+
 /** Why a view was cleared, in words. `undefined` means "still up". */
 export function webuiMiniAppStopReason(row: WebuiMiniAppRow | undefined): string | undefined {
   if (!row) return "该应用已不在应用列表中。";
   if (row.status === "failed") {
-    return row.errorCode ? `运行失败（${row.errorCode}）。` : "运行失败。";
+    return row.errorCode ? `运行失败（${webuiMiniAppFailureCodeText(row.errorCode)}）。` : "运行失败。";
   }
   if (row.status === "stopped") return "运行已停止。";
   return undefined;

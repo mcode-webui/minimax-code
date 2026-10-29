@@ -36,6 +36,7 @@
 import { getDefaultLocalRuntimeConfig } from "@mavis/local-runtime-v2";
 import type { CreateLocalRuntimeHostOptions } from "@mavis/local-runtime-v2/process-local";
 import { MCODE_OAUTH_SCOPES } from "@mavis/oauth-core";
+import { MARKETPLACE_VISIBILITY_DESKTOP_VERSION } from "@mavis/shared/marketplace-visibility";
 
 import { type WebuiAuthContext } from "./auth-context.js";
 import { createWebuiAuthSession } from "./auth-session.js";
@@ -143,6 +144,7 @@ export type WebuiForwardedRuntimeHostOptions = Pick<
   CreateLocalRuntimeHostOptions,
   | "dataDir"
   | "appVersion"
+  | "marketplaceVisibilityVersion"
   | "runtimeOwnerKind"
   | "runtimeMode"
   | "startupExecutionPolicy"
@@ -315,6 +317,11 @@ export async function createWebuiRuntimeHost(
     ...(options.appVersion !== undefined
       ? { appVersion: options.appVersion }
       : {}),
+    // The cloud filters the marketplace by the desktop version a client
+    // declares. The WebUI is not the desktop, so it declares the desktop
+    // version the shared constant names — and the runtime only carries the
+    // declaration.
+    marketplaceVisibilityVersion: MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
     runtimeOwnerKind: "webui",
     runtimeMode: "clean",
     startupExecutionPolicy: "quarantined",

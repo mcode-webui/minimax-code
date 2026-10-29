@@ -40,7 +40,20 @@ never proves a higher one.
 | 2 | Assembled application behaviour | `test/unit/*application*`, `*workflows*`, `*commands*`, creation/adoption and lifecycle suites, with injected capabilities, storage and channel |
 | 3 | Real boundary behaviour | `test/integration/loopback-harness-path.test.ts`: a real service, real loopback socket, real envelope, dispatcher and registry, a real `watchEvents` delivery, drop-and-reconnect, and a close that refuses further connections |
 | 4 | Built-browser behaviour | `pnpm test:webui-browser`: rendered built client, navigation, multi-page interaction and recoverable zone failures. Fixture-backed specs use a deterministic in-page transport and do not prove the production service/runtime path. |
-| 5 | Real local product boundary | `agent-transcript.test.ts`, `real-host-loopback.test.ts`, `real-host-model-turn.test.ts`, the real Chromium navigation integrations, `browser-core-agent-actions.test.ts`, explicit real-browser bridge specs, and `native-runtime.spec.mjs` on the executing host. These prove only the named local boundary and platform; they do not prove cloud accounts, live external providers or other platforms. |
+| 5 | Real local product boundary | `agent-transcript.test.ts`, `real-host-loopback.test.ts`, `real-host-model-turn.test.ts`, `miniapp-real-flow.test.ts`, `miniapp-ui-flow.test.ts`, the real Chromium navigation integrations, `browser-core-agent-actions.test.ts`, explicit real-browser bridge specs, and `native-runtime.spec.mjs` on the executing host. These prove only the named local boundary and platform; they do not prove cloud accounts, live external providers or other platforms. |
+
+### The Mini App suites
+
+Two suites cover the Mini App business flow, and they are at **different** levels — the difference
+matters when a claim is written about them.
+
+| Suite | Level | What it proves |
+| --- | --- | --- |
+| `test/integration/miniapp-real-flow.test.ts` | 5 — the real host | a Mini App package becomes installed in an isolated data directory, appears in the catalogue, starts a real runner child process, serves its own page through the real proxy, stops, refuses to start when it cannot, is disabled and enabled, and is uninstalled. The publication of the package is the file move the real importer performs; the network fetch that precedes it in the product is out of scope for a hermetic gate |
+| `test/integration/miniapp-ui-flow.test.ts` | 5 — the real host and a **real** browser | the management surface's buttons against the built client: 打开 starts the Mini App, 查看 opens the standalone tab and the Mini App's page renders in it, 停止 stops it, 停用 takes a **local** package out of the startable set, 启用 puts it back, and 卸载 drops it from the catalogue — the mutation path a local package takes, with the plugin source the runtime needs to choose it |
+
+**Not covered:** the catalogue's 应用 area has no row for a Mini App owned by another client, so the
+"another client is running this" presentation and the 停止 button beside it are unpinned.
 
 ### The browser's own suites
 

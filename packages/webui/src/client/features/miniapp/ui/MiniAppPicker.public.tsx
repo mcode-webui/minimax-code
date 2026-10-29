@@ -18,6 +18,7 @@ import {
 } from "../bindings/use-miniapp-workflows.js";
 import {
   webuiMiniAppCapacityText,
+  webuiMiniAppFailureCodeText,
   webuiMiniAppRefusalText,
   webuiMiniAppRunningRows,
 } from "../projection/miniapp-view.js";
@@ -109,7 +110,7 @@ export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerPro
               </div>
               <span className="text-text_default_tertiary" data-status={row.status}>
                 {row.statusLabel}
-                {row.errorCode ? `（${row.errorCode}）` : ""}
+                {row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
               </span>
               <div className="webui-plugin-actions">
                 <button

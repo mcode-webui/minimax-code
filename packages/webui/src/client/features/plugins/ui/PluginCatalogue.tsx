@@ -126,6 +126,10 @@ export function PluginCatalogue({
    * listing came back complete. `null` means "the total is not knowable from
    * this response" and the label falls back to a bare 「查看全部技能」. */
   const marketSkillTotal = listing.skillTotal ?? null;
+  const tagDefinitions = listing.tagDefinitions ?? [];
+  const selectedTag = category.startsWith("tag:")
+    ? tagDefinitions.find((tag) => `tag:${tag.key}` === category)
+    : undefined;
   const busy = area === "apps" ? false : listing.loading || snapshot.mutating;
   const error = area === "apps" ? "" : localError || snapshot.mutationError || listing.error || "";
   const reload = async (): Promise<void> => {
@@ -412,6 +416,7 @@ export function PluginCatalogue({
             area={area}
             query={query}
             category={category}
+            tagDefinitions={tagDefinitions}
             onQueryChange={setQuery}
             onCategoryChange={setCategory}
           />
@@ -431,7 +436,7 @@ export function PluginCatalogue({
         ) : null}
       </header>
       {isMarketCatalogue ? (
-        <h2 className="webui-plugin-market-heading">{marketNoun}</h2>
+        <h2 className="webui-plugin-market-heading">{selectedTag?.displayName ?? marketNoun}</h2>
       ) : null}
       {area === "plugins" && view === "personal" && !managementOpen ? (
         <h2 className="webui-plugin-market-heading">插件</h2>
@@ -581,15 +586,37 @@ export function PluginCatalogue({
           </div>
         </div>
       ) : isMarketCatalogue && (area === "plugins" || area === "skills") ? (
-        <PluginMarketplace
-          area={area}
-          rows={catalogueView.rows}
-          marketTotal={marketTotal}
-          visibleMarketTotal={visibleMarketTotal}
-          showAll={showAllCatalogue}
-          onToggleAll={() => setShowAllCatalogue((value) => !value)}
-          onIntent={(intent) => void mutate(intent)}
-        />
+        <>
+          <PluginMarketplace
+            area={area}
+            rows={catalogueView.rows}
+            marketTotal={marketTotal}
+            visibleMarketTotal={visibleMarketTotal}
+            showAll={showAllCatalogue}
+            onToggleAll={() => setShowAllCatalogue((value) => !value)}
+            onIntent={(intent) => void mutate(intent)}
+          />
+          {area === "plugins" && !category && tagDefinitions.map((tag) => {
+            const taggedRows = catalogueView.rows.filter((row) =>
+              Array.isArray(row.source.tags) && row.source.tags.some((entry: unknown) =>
+                !!entry && typeof entry === "object" && (entry as { key?: unknown }).key === tag.key));
+            return taggedRows.length ? (
+              <section key={tag.key} aria-label={tag.displayName}>
+                <h2 className="webui-plugin-market-heading">{tag.displayName}</h2>
+                <PluginMarketplace
+                  area="plugins"
+                  rows={taggedRows}
+                  marketTotal={taggedRows.length}
+                  visibleMarketTotal={taggedRows.length}
+                  showAll
+                  onToggleAll={() => {}}
+                  hideToggle
+                  onIntent={(intent) => void mutate(intent)}
+                />
+              </section>
+            ) : null;
+          })}
+        </>
       ) : area === "apps" ? (
         /* The apps area belongs to the Mini App business: it renders that
            business's published list, and this page holds none of its state. */

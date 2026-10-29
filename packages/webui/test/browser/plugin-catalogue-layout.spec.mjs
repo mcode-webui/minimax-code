@@ -4,6 +4,34 @@ import { expect } from "@playwright/test";
 
 import { openApp, screenshotOptions, test } from "./harness.mjs";
 
+test("marketplace groups and filters Mini Apps from the returned tags", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__WEBUI_FIXTURE_SETUP__ ??= [];
+    window.__WEBUI_FIXTURE_SETUP__.push(() => {
+      window.__fixture.setPluginManagementResult("listMarketplacePlugins", {
+        pluginTotal: 2,
+        tagDefinitions: [{ key: "miniapp", displayName: "Mini App" }],
+        plugins: [
+          { name: "board", displayName: "Board", tags: [{ key: "miniapp", displayName: "Mini App" }] },
+          { name: "other", displayName: "Other" },
+        ],
+      });
+      window.__fixture.setPluginManagementResult("listInstalledPlugins", { plugins: [] });
+    });
+  });
+  await openApp(page, "#session=A");
+  await page.getByRole("button", { name: "插件" }).first().click();
+  const group = page.getByRole("region", { name: "Mini App" });
+  await expect(group).toContainText("Board");
+  await expect(group).not.toContainText("Other");
+  await page.getByRole("navigation", { name: "市场分类" }).getByRole("button", { name: "Mini App" }).click();
+  await expect(page.locator(".webui-plugin-grid")).toContainText("Board");
+  await expect(page.locator(".webui-plugin-grid")).not.toContainText("Other");
+  await page.locator(".webui-plugin-grid").getByRole("button", { name: "安装" }).click();
+  await expect.poll(() => page.evaluate(() => window.__fixture.requests.some((entry) =>
+    entry.operation === "pluginManagement" && entry.body.action === "installPlugin" && entry.body.input?.pluginName === "board"))).toBe(true);
+});
+
 async function openManagement(page) {
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();

@@ -61,6 +61,13 @@ const server = await build({
     server: "src/server/index.ts",
     runtime: "src/runtime/index.ts",
     "mcode-tools": "src/runtime/mcode-tools-entry.ts",
+    // The Mini App runner starts as its own child process, and the bundled server
+    // resolves it beside itself. Without this entry the packaged artifact carries
+    // no runner, so every Mini App launch fails with RUNNER_EXITED.
+    "host-runner": path.join(
+      root,
+      "packages/local-runtime-v2/src/service/miniapp/process/node-runtime/host-runner.ts",
+    ),
   },
   bundle: true,
   format: "esm",

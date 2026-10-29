@@ -72,6 +72,7 @@ export interface WebuiPluginActionInputs {
   listApps: undefined;
   listMarketplacePlugins: {
     readonly limit?: number;
+    readonly cursor?: string;
     readonly offset?: number;
     readonly keyword?: string;
     readonly source?: number;

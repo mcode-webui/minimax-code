@@ -306,6 +306,9 @@
       "@mavis/shared/logging": [
         "./packages/shared/src/logging/index.ts"
       ],
+      "@mavis/shared/marketplace-visibility": [
+        "./packages/shared/src/marketplace-visibility.ts"
+      ],
       "@mavis/shared/mavis-tags": [
         "./packages/shared/src/mavis-tags.ts"
       ],

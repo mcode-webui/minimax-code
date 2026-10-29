@@ -13,6 +13,15 @@ export interface MiniAppSurfaceSummary {
   readonly description?: string;
   readonly iconUrl?: string;
   /**
+   * Where the package came from.
+   *
+   * A local package and an official one are not changed by the same path: the
+   * official one through the marketplace account, the local one on disk. A
+   * management surface needs the source to pick the path, and the runtime is
+   * the only party that knows which one a package is.
+   */
+  readonly source?: 'official' | 'local';
+  /**
    * Whether the runtime may start this package.
    *
    * Absent for a producer that lists only startable packages — which is what the

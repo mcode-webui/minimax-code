@@ -111,7 +111,7 @@ describe("the registry answers for the whole closed set", () => {
       "review",
       "terminal",
       "canvas",
-      "miniapp",
+      "miniapp-picker",
       "files",
     ]);
     expect(tiles.map((tile) => tile.label)).toEqual([
@@ -125,9 +125,10 @@ describe("the registry answers for the whole closed set", () => {
       { type: "open-workspace-review" },
       { type: "open-tab", kind: "terminal" },
       { type: "open-tab", kind: "canvas" },
-      // The Mini App tile opens its picker: which Mini App a tab shows is chosen
-      // from the runtime's listing, so this tile carries no plugin id.
-      { type: "open-tab", kind: "miniapp" },
+      // The Mini App tile opens the Mini App tool page: which Mini App a tab
+      // shows is chosen from the runtime's listing, so this tile carries no
+      // plugin id and the page it opens is the one the choice is made in.
+      { type: "open-tab", kind: "miniapp-picker" },
       { type: "open-tab", kind: "files" },
     ]);
     // Every tile names a declared kind, and the order names each one once.

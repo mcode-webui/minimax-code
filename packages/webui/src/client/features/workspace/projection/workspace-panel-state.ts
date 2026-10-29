@@ -76,6 +76,19 @@ export type WebuiWorkspaceTabContent =
       readonly pluginId: string;
     }
   | {
+      /**
+       * The Mini App tool page: the Mini Apps a person can open.
+       *
+       * Which Mini App a tab shows is chosen here, so the tile that opens this
+       * page carries no plugin — and the choice replaces this content with the
+       * Mini App's own page, in this tab. It is a content like any other: the
+       * tab that showed the launcher and the tab that shows the Mini App are
+       * one tab.
+       */
+      readonly kind: "miniapp-picker";
+      readonly sessionId: string;
+    }
+  | {
       readonly kind: "web";
       /**
        * The target the web tab is bound to.
@@ -176,6 +189,8 @@ export function webuiWorkspaceTabContentKey(content: WebuiWorkspaceTabContent): 
       return `web:${content.target.browserId}:${content.target.targetId}`;
     case "miniapp":
       return `miniapp:${content.sessionId}:${content.pluginId}`;
+    case "miniapp-picker":
+      return `miniapp-picker:${content.sessionId}`;
     case "launcher":
       return "launcher";
     default:
@@ -219,12 +234,19 @@ export const WEBUI_WORKSPACE_TAB_KINDS: Readonly<
   /**
    * A Mini App's page.
    *
-   * The tile opens the picker rather than a view: which Mini App a tab shows is
-   * chosen from the runtime's own listing, so the tile's command carries no
-   * `pluginId` and the reducer opens nothing for it. The picker dispatches the
-   * same `open-tab` with the plugin filled in.
+   * It has no tile of its own: which Mini App a tab shows is chosen from the
+   * runtime's own listing, so the tile opens the Mini App tool page and the
+   * choice opens this.
    */
-  miniapp: { label: "应用", tile: { type: "open-tab", kind: "miniapp" } },
+  miniapp: { label: "应用", tile: null },
+  /**
+   * The Mini App tool page.
+   *
+   * The tile opens this page in the tab the tile is on, like every other tile:
+   * the new tab page becomes the tool page rather than keeping the tiles and
+   * showing the picker underneath them.
+   */
+  "miniapp-picker": { label: "应用", tile: { type: "open-tab", kind: "miniapp-picker" } },
   /**
    * The new tab page.
    *
@@ -242,7 +264,7 @@ export const WEBUI_WORKSPACE_LAUNCHER_TILE_ORDER: readonly WebuiWorkspaceTabKind
   "review",
   "terminal",
   "canvas",
-  "miniapp",
+  "miniapp-picker",
   "files",
 ];
 
@@ -644,12 +666,30 @@ export function reduceWorkspacePanelState(state: WorkspacePanelState, command: W
       return openNewTab(state, content);
     }
     case "open-tab": {
+      const kind = command.kind;
+      if (kind === "miniapp-picker") {
+        // The Mini App tool page. The tile opens it in the tab the tile is on,
+        // the way every other tile opens its view, and the choice made in it
+        // replaces that tab's content with the Mini App's own page.
+        const pickerSessionId = command.sessionId;
+        if (!pickerSessionId) return state;
+        const pickerContent: WebuiWorkspaceTabContent = {
+          kind: "miniapp-picker",
+          sessionId: pickerSessionId,
+        };
+        if (command.tabId) return replaceTabContent(state, command.tabId, pickerContent);
+        const existingPicker = tabShowing(
+          state,
+          (candidate) =>
+            candidate.kind === "miniapp-picker" &&
+            candidate.sessionId === pickerSessionId,
+        );
+        if (existingPicker) return activate(state, { ...existingPicker, content: pickerContent });
+        return openNewTab(state, pickerContent);
+      }
       // A Mini App tab names the plugin it shows and the session it belongs to,
       // so it is not the generic "kind + scope" content the other tiles produce:
-      // a command carrying neither opens nothing rather than an empty frame —
-      // which is exactly what the launcher's own tile sends before a Mini App is
-      // chosen, since the tile opens the picker instead of a view.
-      const kind = command.kind;
+      // a command carrying neither opens nothing rather than an empty frame.
       if (kind === "miniapp") {
         const { pluginId, sessionId: miniAppSessionId } = command;
         if (!pluginId || !miniAppSessionId) return state;

@@ -75,7 +75,11 @@ export function initializePluginService(
     previewSecret: process.env.PREVIEW_SECRET,
     lane: process.env.MAVIS_PLUGIN_CLOUD_LANE,
   });
-  const registryClient = new PluginRegistryClient(cloudTransport);
+  const registryClient = new PluginRegistryClient(
+    cloudTransport,
+    compatibility.marketplaceVisibilityVersion,
+    metricTags,
+  );
   const githubImporter = new GithubPluginImporter({
     dataDir: compatibility.dataDir,
     fetchImpl: compatibility.fetchImpl,

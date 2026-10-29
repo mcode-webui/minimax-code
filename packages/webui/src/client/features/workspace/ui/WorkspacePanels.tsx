@@ -31,6 +31,7 @@ import { WebuiMarkdown } from "../../transcript/ui/markdown.public.js";
 // port. The strip subscribes to `watchBrowserWebTabs` and, for the active
 // web tab, this file mounts `BrowserPanelHost` with the tab's target.
 import { BrowserPanelHost, WebuiBrowserToolbar } from "../../browser/ui/BrowserPanelHost.public.js";
+import { MiniAppPicker } from "../../miniapp/ui/MiniAppPicker.public.js";
 import { MiniAppView } from "../../miniapp/ui/MiniAppView.public.js";
 import type {
   WebuiWorkspaceFile,
@@ -114,6 +115,21 @@ const FILE_CODE_LANGUAGES = {
 } as const;
 for (const [name, language] of Object.entries(FILE_CODE_LANGUAGES)) {
   if (!hljs.getLanguage(name)) hljs.registerLanguage(name, language);
+}
+
+/**
+ * The tab, when it is showing the Mini App tool page.
+ *
+ * The check is on the content's own discriminant, so the tab that comes back
+ * carries the picker's session — which is what the page needs to open a Mini
+ * App into.
+ */
+function isMiniAppPickerTab(
+  tab: WorkspacePanelTab | undefined,
+): tab is WorkspacePanelTab & {
+  readonly content: Extract<WorkspacePanelTab["content"], { readonly kind: "miniapp-picker" }>;
+} {
+  return tab?.content.kind === "miniapp-picker";
 }
 
 function highlightFileLine(line: string, language: string | undefined): string | undefined {
@@ -804,6 +820,29 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       />
       <WebuiWorkspaceLauncher tab={activeTab} dispatch={panelDispatch} sessionId={sessionId} workspaceDir={workspaceDir} />
     </div> : null}
+    {/* The Mini App tool page. It is the tab's content like any other: the
+        tile on the new tab page replaces that tab's content with it, and the
+        choice made in it replaces the page with the Mini App's own. */}
+    {tab === "miniapp-picker" && isMiniAppPickerTab(activeTab) ? (
+      <div
+        className="webui-workspace-miniapp-tab"
+        data-testid="workspace-miniapp-picker-tab"
+        data-tab-id={activeTab.id}
+      >
+        <MiniAppPicker
+          sessionId={activeTab.content.sessionId}
+          onOpened={(pluginId) =>
+            panelDispatch({
+              type: "open-tab",
+              kind: "miniapp",
+              sessionId: activeTab.content.sessionId,
+              pluginId,
+              tabId: activeTab.id,
+            })
+          }
+        />
+      </div>
+    ) : null}
     {/* A Mini App's page. The mounted component belongs to the Mini App
         business, which owns the view URL, the runtime state and the page
         bridge; this panel decides only that the tab is where it goes. */}

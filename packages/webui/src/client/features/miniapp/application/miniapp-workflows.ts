@@ -19,6 +19,7 @@
 //   * A stopped runtime clears the view and says why, and nothing starts again
 //     on its own. Only `open` starts a Mini App, and only a person calls it.
 
+import { webuiPluginFailureText } from "../../../projection/common/plugin-failure-text.js";
 import type { PluginPort } from "../../plugins/contracts/plugin-port.js";
 import { createWebuiPluginActions } from "../../plugins/contracts/plugin-actions.js";
 import type {
@@ -34,6 +35,7 @@ import type {
 } from "../../../../shared/contracts/miniapp-agent.js";
 import type { MiniAppPort } from "../contracts/miniapp-port.js";
 import {
+  webuiMiniAppPluginSource,
   webuiMiniAppRows,
   webuiMiniAppStopReason,
   type WebuiMiniAppRow,
@@ -880,9 +882,29 @@ export function createWebuiMiniAppWorkflows(deps: {
   ): Promise<void> => {
     if (!port.pluginManagement) return;
     try {
-      await pluginActions.invoke(action, { pluginName: pluginId });
+      // The source decides the path the runtime takes: a local package is
+      // changed on disk and an official one through the marketplace account.
+      // Without it every mutation is read as an official one, and a local
+      // package is refused with an authentication error nobody can fix.
+      const source = webuiMiniAppPluginSource(
+        state.listing.rows.find((row) => row.pluginId === pluginId),
+      );
+      await pluginActions.invoke(action, {
+        pluginName: pluginId,
+        ...(source === undefined ? {} : { source }),
+      });
     } catch (error) {
-      set((current) => ({ ...current, listing: { ...current.listing, error: refusalOf(error).message } }));
+      const refusal = refusalOf(error);
+      set((current) => ({
+        ...current,
+        listing: {
+          ...current.listing,
+          error: webuiPluginFailureText({
+            code: refusal.code,
+            message: refusal.message,
+          }),
+        },
+      }));
       return;
     }
     await loadListing();

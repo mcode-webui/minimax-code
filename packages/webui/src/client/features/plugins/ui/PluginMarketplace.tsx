@@ -23,12 +23,14 @@ export function PluginMarketplaceFilters({
   area,
   query,
   category,
+  tagDefinitions,
   onQueryChange,
   onCategoryChange,
 }: {
   readonly area: "plugins" | "skills";
   readonly query: string;
   readonly category: string;
+  readonly tagDefinitions: readonly { key: string; displayName: string }[];
   readonly onQueryChange: (query: string) => void;
   readonly onCategoryChange: (category: string) => void;
 }): ReactElement {
@@ -37,7 +39,7 @@ export function PluginMarketplaceFilters({
     <div className="webui-plugin-market-discovery">
       {area === "plugins" ? (
         <nav className="webui-plugin-category-filter" aria-label="市场分类">
-          {categories.map((item) => (
+          {[categories[0], ...tagDefinitions.map((tag) => ({ id: `tag:${tag.key}`, label: tag.displayName })), ...categories.slice(1)].map((item) => (
             <button
               key={item.id}
               aria-pressed={category === item.id}
@@ -68,6 +70,7 @@ export function PluginMarketplace({
   showAll,
   onToggleAll,
   onIntent,
+  hideToggle = false,
 }: {
   readonly area: "plugins" | "skills";
   readonly rows: readonly WebuiPluginCatalogueRow[];
@@ -76,6 +79,7 @@ export function PluginMarketplace({
   readonly showAll: boolean;
   readonly onToggleAll: () => void;
   readonly onIntent: (intent: WebuiPluginIntent) => void;
+  readonly hideToggle?: boolean;
 }): ReactElement {
   const noun = area === "skills" ? "技能" : "插件";
   return (
@@ -184,7 +188,7 @@ export function PluginMarketplace({
           )}
         </div>
       )}
-      {visibleMarketTotal > MARKET_PREVIEW_COUNT ? (
+      {!hideToggle && visibleMarketTotal > MARKET_PREVIEW_COUNT ? (
         <button
           type="button"
           className="webui-plugin-show-all"

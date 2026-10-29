@@ -57,6 +57,7 @@ const INPUT_SHAPES: Readonly<Record<WebuiPluginManagementAction, InputShape>> =
     listMarketplacePlugins: {
       optional: {
         ...queryFields,
+        cursor: "string",
         source: "number",
         category: "number",
         skillLimit: "number",

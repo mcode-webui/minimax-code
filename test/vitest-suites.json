@@ -51,6 +51,8 @@
       "packages/local-runtime-v2/test/unit/miniapp/node-runtime-startup-error.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/loopback-guard.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/node-runtime-credential.test.ts",
+      "packages/local-runtime-v2/test/unit/miniapp/node-runtime-runner-startup.test.ts",
+      "packages/local-runtime-v2/test/unit/miniapp/runner-entry.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/owner-lease.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/runtime-miniapp-options.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/installed-miniapp-inventory.test.ts",
@@ -502,7 +504,9 @@
       "packages/webui/test/unit/miniapp-standalone-route.test.ts",
       "packages/webui/test/unit/miniapp-surfaces.test.tsx",
       "packages/webui/test/unit/miniapp-agent-bridge.test.ts",
-      "packages/webui/test/integration/miniapp-agent-loopback.test.ts"
+      "packages/webui/test/integration/miniapp-agent-loopback.test.ts",
+      "packages/webui/test/integration/miniapp-real-flow.test.ts",
+      "packages/webui/test/integration/miniapp-ui-flow.test.ts"
     ]
   }
 }

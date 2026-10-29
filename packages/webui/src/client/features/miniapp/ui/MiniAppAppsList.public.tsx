@@ -19,7 +19,11 @@ import {
   useWebuiMiniAppWorkflows,
   useWebuiMiniAppWorkflowsState,
 } from "../bindings/use-miniapp-workflows.js";
-import { webuiMiniAppRefusalText, webuiMiniAppWindowName } from "../projection/miniapp-view.js";
+import {
+  webuiMiniAppFailureCodeText,
+  webuiMiniAppRefusalText,
+  webuiMiniAppWindowName,
+} from "../projection/miniapp-view.js";
 
 export interface MiniAppAppsListProps {
   /** Offered when the catalogue can switch to the plugin marketplace. */
@@ -106,7 +110,7 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
                 data-status={row.status}
               >
                 {row.statusLabel}
-                {row.errorCode ? `（${row.errorCode}）` : ""}
+                {row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
               </span>
               <div className="webui-plugin-actions">
                 {row.enabled ? (<>

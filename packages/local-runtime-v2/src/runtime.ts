@@ -854,7 +854,11 @@ async function initializeOwnerRuntime(input: {
       logger,
       metrics: v1.metricsClient,
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
-      restorePersistedJobExecution: startupExecutionEnabled,
+      // ADR 0027 R1: arming persisted scheduled tasks follows the owner policy's scheduler-host
+      // cell, not the cold-start execution policy. The quarantined cold start keeps governing
+      // session and turn recovery (`recoverPersistedState` below), which is ADR 0002's guarantee;
+      // it no longer decides whether cron jobs are armed.
+      restorePersistedJobExecution: ownerPolicy.wiring.schedulerHost,
       enableScheduler: ownerPolicy.wiring.schedulerHost,
     });
     services = await createRuntimeServices({

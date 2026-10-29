@@ -317,7 +317,7 @@ export class Scheduler {
       record.state = 'completed';
       record.nextRunAtMs = undefined;
       record.updatedAtMs = this.nowMs();
-      updateJob(this.options.db, record);
+      if (!this.writeRestoredJob(record)) this.adoptPeerRow(record.schedulerId);
       return;
     }
     if (!this.handlers.has(record.handlerKey)) {
@@ -342,14 +342,60 @@ export class Scheduler {
     }
     record.nextRunAtMs = nextRunAtMs;
     record.updatedAtMs = this.nowMs();
+    let written: boolean;
     try {
-      updateJob(this.options.db, record);
+      written = this.writeRestoredJob(record);
     } catch (error) {
       timer.stop();
       throw error;
     }
+    if (!written) {
+      // The row moved while this host was arming it. The peer wins: adopt its row and arm from
+      // that, instead of writing a counter this host only thought it had.
+      timer.stop();
+      this.adoptPeerRow(record.schedulerId);
+      return;
+    }
     this.timers.set(record.schedulerId, timer);
     timer.resume();
+  }
+
+  /**
+   * ADR 0027 R2. A restore writes only while the durable row still carries the run count and the
+   * schedule generation this host read. A zero-change result means a peer advanced the row in
+   * between, and a boot may never move a counter backwards.
+   *
+   * The fields written are the ones a restore legitimately decides — the state it infers, the next
+   * fire time it computed, and its timestamp. The identity columns are in the WHERE clause, not in
+   * the SET list, which is what makes the guard impossible to lose by accident.
+   */
+  private writeRestoredJob(record: JobRecord): boolean {
+    return updateRestoredJob(this.options.db, record, {
+      runCount: record.runCount,
+      scheduleGeneration: record.scheduleGeneration,
+    });
+  }
+
+  /**
+   * Takes the peer's row after a restore lost the race. Nothing is written: this host re-reads what
+   * the peer persisted and arms from that.
+   */
+  private adoptPeerRow(schedulerId: string): void {
+    this.timers.get(schedulerId)?.stop();
+    this.timers.delete(schedulerId);
+    const persisted = readPersistedJobRecord(this.requireStarted(), schedulerId, this.nowMs());
+    if (persisted.kind !== 'present') {
+      this.jobs.delete(schedulerId);
+      this.reportSkipped(persisted.kind === 'missing' ? 'definition_removed' : 'invalid_record');
+      return;
+    }
+    const adopted = persisted.record;
+    this.jobs.set(schedulerId, adopted);
+    this.reportConsistencyMismatch('diverged');
+    this.reportSkipped('adopted_persisted_row');
+    if (adopted.state === 'active' && !hasReachedMaxRuns(adopted)) {
+      this.rearmAdoptedJob(adopted);
+    }
   }
 
   private createTimer(
@@ -387,7 +433,7 @@ export class Scheduler {
     record.state = 'expired';
     record.nextRunAtMs = undefined;
     record.updatedAtMs = this.nowMs();
-    updateJob(this.options.db, record);
+    if (!this.writeRestoredJob(record)) this.adoptPeerRow(record.schedulerId);
     this.reportSkipped('expired_once');
   }
 
@@ -714,6 +760,38 @@ function agreesOnTrigger(persisted: JobRecord, memory: JobRecord): boolean {
     sameSchedule(persisted.schedule, memory.schedule) &&
     persisted.nextRunAtMs === memory.nextRunAtMs
   );
+}
+
+/**
+ * ADR 0027 R2. Writes the fields a restore decides — the state it inferred, the next fire time it
+ * computed, its timestamp — guarded by the identity the restoring host read. False means the row
+ * moved in between, and the caller adopts the peer's row instead of writing.
+ *
+ * The identity columns stay out of the SET list on purpose: a restore that could write `run_count`
+ * is a restore that can roll a peer back, and keeping them in the WHERE clause makes that
+ * impossible rather than remembering not to.
+ */
+function updateRestoredJob(
+  db: AppDb,
+  record: JobRecord,
+  expected: { runCount: number; scheduleGeneration: number },
+): boolean {
+  const result = db
+    .update(schedulerJobs)
+    .set({
+      state: record.state,
+      nextRunAtMs: record.nextRunAtMs ?? null,
+      updatedAtMs: record.updatedAtMs,
+    })
+    .where(
+      and(
+        eq(schedulerJobs.schedulerId, record.schedulerId),
+        eq(schedulerJobs.runCount, expected.runCount),
+        eq(schedulerJobs.scheduleGeneration, expected.scheduleGeneration),
+      ),
+    )
+    .run();
+  return readChanges(result) > 0;
 }
 
 /**

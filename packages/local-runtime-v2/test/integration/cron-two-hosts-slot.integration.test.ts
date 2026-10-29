@@ -247,8 +247,91 @@ describe('a host whose counter was moved underneath it', () => {
   }, 40_000);
 });
 
+
+describe('a booting host against a peer that advanced the row', () => {
+  it('adopts the peer row instead of writing its own counter back', async () => {
+    const dataDir = await temporaryDataDir();
+    const first = await bootHost(dataDir);
+    await first.cron.service.createDefinition({
+      name: 'every second',
+      agentName: 'agent-one',
+      schedule: { kind: 'recurring', expression: '* * * * * *' },
+      prompt: 'Poll the queue.',
+      sessionTarget: { mode: 'new' },
+    });
+    const schedulerId = onlySchedulerId(first);
+    await waitFor(() => scheduledRuns(first).length >= 1, 8_000, 'the first scheduled run');
+    const before = readJobRow(first.client.db, schedulerId);
+    if (!before) throw new Error('expected a persisted job row');
+
+    // The first host leaves without firing again, so the only writes below are the second host's.
+    first.scheduler.stop();
+    await first.cron.close();
+    const runsBeforeBoot = scheduledRuns(first).length;
+
+    const peer = new DatabaseClient({ dataDir });
+    disposers.push(() => peer.close());
+    const peerRunCount = before.runCount + 3;
+    const racing = databaseThatRacesAPeer(peer.db, () => {
+      peer.db
+        .update(schedulerJobs)
+        .set({ runCount: peerRunCount, updatedAtMs: Date.now() })
+        .where(eq(schedulerJobs.schedulerId, schedulerId))
+        .run();
+    });
+
+    const second = new Scheduler({ db: racing });
+    disposers.push(() => second.stop());
+    // The handler has to be registered before start(): a job whose handler is missing is skipped,
+    // which would never reach the restore write this test is about.
+    composeCronService({ db: racing, scheduler: second });
+    second.start({ restorePersistedJobExecution: true });
+
+    const persisted = readJobRow(peer.db, schedulerId);
+    // The peer's counter survives the boot, and the booting host adopted it rather than its own.
+    expect(persisted?.runCount).toBe(peerRunCount);
+    const adopted = second.get(schedulerId);
+    expect(adopted?.runCount).toBe(peerRunCount);
+    expect(adopted?.state).toBe('active');
+    expect(typeof adopted?.nextRunAtMs).toBe('number');
+    // A restore arms a job; it does not fire one.
+    expect(scheduledRuns(first).length).toBe(runsBeforeBoot);
+  }, 40_000);
+});
+
 function onlySchedulerId(host: TestHost): string {
   const rows = host.client.db.select().from(schedulerJobs).all();
   expect(rows).toHaveLength(1);
   return rows[0]!.schedulerId;
+}
+
+function readJobRow(
+  db: DatabaseClient["db"],
+  schedulerId: string,
+): typeof schedulerJobs.$inferSelect | undefined {
+  return db.select().from(schedulerJobs).where(eq(schedulerJobs.schedulerId, schedulerId)).get();
+}
+
+/**
+ * A connection whose first write is preceded by a peer's write.
+ *
+ * This is the restore race made deterministic: the restoring host reads the row, a peer advances it,
+ * and only then does the restore try to write. Without the conditional guard the restore would put
+ * the counter it read back on top of the peer's, which is the rollback ADR 0027 R2 forbids.
+ */
+function databaseThatRacesAPeer(db: DatabaseClient["db"], onFirstWrite: () => void) {
+  let fired = false;
+  return new Proxy(db, {
+    get(target, property, receiver) {
+      if (property === "update" && !fired) {
+        fired = true;
+        return (table: Parameters<typeof target.update>[0]) => {
+          onFirstWrite();
+          return target.update(table);
+        };
+      }
+      const value = Reflect.get(target, property, receiver) as unknown;
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as DatabaseClient["db"];
 }

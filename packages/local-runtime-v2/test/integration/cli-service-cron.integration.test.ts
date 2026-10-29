@@ -38,14 +38,17 @@ afterEach(async () => {
   for (const dir of dataDirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 
-async function bootWebuiHost(): Promise<HostWithCliService> {
-  const dataDir = await mkdtemp(join(tmpdir(), "cli-service-cron-"));
-  dataDirs.push(dataDir);
+async function bootWebuiHost(existingDataDir?: string): Promise<HostWithCliService> {
+  const dataDir = existingDataDir ?? (await mkdtemp(join(tmpdir(), "cli-service-cron-")));
+  if (!existingDataDir) dataDirs.push(dataDir);
   await mkdir(join(dataDir, "workspace"), { recursive: true });
   const config: LocalRuntimeConfig = { dataDir };
   const host = await createLocalRuntimeHostV2ForTest({
     dataDir,
     runtimeOwnerKind: "webui",
+    // The WebUI's own assembly passes exactly this (`packages/webui/src/runtime/assembly.ts`).
+    // Without it the host is not the WebUI host, and R1 would never be exercised.
+    startupExecutionPolicy: "quarantined",
     capabilities: { cliEmbedded: true },
     configGetter: () => config,
     defaultWorkspaceDir: join(dataDir, "workspace"),
@@ -110,5 +113,48 @@ describe("a webui host's CLI service and its Cron service", () => {
       expect(runs.items.map((item) => item.runId)).toContain(run.runId);
     },
     180_000,
+  );
+
+  it(
+    "restores a persisted scheduled task on a quarantined-cold-start host and fires it",
+    async () => {
+      // One data directory for both boots: the second host must find what the first persisted.
+      const dataDir = await mkdtemp(join(tmpdir(), "cli-service-cron-restore-"));
+      dataDirs.push(dataDir);
+      const first = await bootWebuiHost(dataDir);
+      const firstCli = first.cliService;
+      if (!firstCli) throw new Error("the webui host built no CLI service");
+
+      // Far enough out that the second host has booted before the slot arrives.
+      const created = await firstCli.createCronTask({
+        name: "survives a restart",
+        agentName: "agent-one",
+        schedule: { kind: "once", runAtMs: Date.now() + 8_000 },
+        prompt: "Say something after the restart.",
+        sessionTarget: { mode: "new" },
+      });
+      expect(typeof created.nextRunAtMs).toBe("number");
+      await first.apiHost.close();
+
+      // A second host on the same data directory. Its cold start is quarantined, so session and
+      // turn recovery stay off; arming persisted scheduled tasks is what ADR 0027 R1 separates.
+      const second = await bootWebuiHost(dataDir);
+      const secondCli = second.cliService;
+      if (!secondCli) throw new Error("the rebooted webui host built no CLI service");
+
+      const restored = secondCli.listCronTasks().items.find((item) => item.cronId === created.cronId);
+      expect(restored).toBeDefined();
+      expect(restored?.enabled).toBe(true);
+
+      const deadline = Date.now() + 20_000;
+      let runs = secondCli.listCronTaskRuns({ cronId: created.cronId }).items;
+      while (runs.length === 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        runs = secondCli.listCronTaskRuns({ cronId: created.cronId }).items;
+      }
+      expect(runs).toHaveLength(1);
+      expect(runs[0]?.triggerSource).toBe("scheduled");
+    },
+    240_000,
   );
 });

@@ -1,16 +1,6 @@
-// The plugin catalogue's apps area, as the Mini App business publishes it.
-//
-// ADR 0020 gives this surface the list and the lifecycle and gives the Mini App
-// business the state: the catalogue mounts this component and holds nothing of
-// its own. That is why the component takes no rows, no loading flag and no error
-// — it reads them from its own owner, and a row's runtime state is the same read
-// the launcher's picker makes.
-//
-// "Install" is the one action a row cannot carry: a Mini App *is* a plugin, and
-// installing one is installing its package from the marketplace. The area keeps
-// the affordance and hands it to the catalogue, which owns switching to that
-// view; what this component does not do is invent an install that installs
-// something already installed.
+// The apps area combines the installed plugin catalogue with Mini App runtime
+// state. Plugin metadata owns identity and icon projection; Mini App workflows
+// own lifecycle state and actions, the same runtime rows the launcher reads.
 
 import { useEffect, type ReactElement } from "react";
 
@@ -23,16 +13,28 @@ import {
   webuiMiniAppFailureCodeText,
   webuiMiniAppRefusalText,
   webuiMiniAppWindowName,
+  type WebuiMiniAppRow,
 } from "../projection/miniapp-view.js";
+import { readWebuiPluginRow } from "../../plugins/contracts/plugin-rows.js";
+
+export interface MiniAppInstalledPluginRow {
+  readonly source: Record<string, unknown>;
+  readonly name: string;
+  readonly description: string;
+  readonly iconUrl: string;
+  readonly enabled: boolean;
+}
 
 export interface MiniAppAppsListProps {
-  /** Offered when the catalogue can switch to the plugin marketplace. */
-  readonly onInstallRequest?: () => void;
+  /** Installed plugin rows carrying the marketplace's category and icon metadata. */
+  readonly installedPlugins?: readonly MiniAppInstalledPluginRow[];
+  /** The catalogue query, also applied to runtime-only local Mini Apps. */
+  readonly query?: string;
   /** The session the standalone Mini App page should present. */
   readonly selectedSessionId?: string;
 }
 
-export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniAppAppsListProps): ReactElement {
+export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSessionId }: MiniAppAppsListProps): ReactElement {
   const workflows = useWebuiMiniAppWorkflows();
   const state = useWebuiMiniAppWorkflowsState();
   const { rows, loading, error } = state.listing;
@@ -54,8 +56,7 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
     };
   }, [workflows, dom]);
 
-  if (state.unavailable) return <p className="webui-plugin-empty">{state.unavailable}</p>;
-  if (loading && rows.length === 0) {
+  if (loading && rows.length === 0 && installedPlugins.length === 0) {
     return (
       <p className="webui-plugin-empty" role="status">
         加载中…
@@ -63,39 +64,80 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
     );
   }
 
+  const items = new Map<string, {
+    readonly pluginId: string;
+    readonly name: string;
+    readonly description: string;
+    readonly iconUrl?: string;
+    readonly enabled: boolean;
+    readonly runtime?: WebuiMiniAppRow;
+  }>();
+  for (const plugin of installedPlugins) {
+    const item = plugin.source;
+    const pluginId = readWebuiPluginRow(item, "name", "pluginName", "plugin_name", "pluginId");
+    if (!pluginId) continue;
+    const key = pluginId.toLocaleLowerCase();
+    const runtime = rows.find((row) => row.pluginId.toLocaleLowerCase() === key);
+    items.set(key, {
+      pluginId,
+      name: readWebuiPluginRow(item, "displayName", "display_name") || plugin.name || pluginId,
+      description: plugin.description,
+      enabled: plugin.enabled,
+      ...(plugin.iconUrl || runtime?.iconUrl ? { iconUrl: plugin.iconUrl || runtime?.iconUrl } : {}),
+      ...(runtime ? { runtime } : {}),
+    });
+  }
+  for (const runtime of rows) {
+    const key = runtime.pluginId.toLocaleLowerCase();
+    if (!items.has(key) && (!query || `${runtime.name} ${runtime.description} ${runtime.pluginId}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))) {
+      items.set(key, {
+        pluginId: runtime.pluginId,
+        name: runtime.name,
+        description: runtime.description,
+        enabled: runtime.enabled,
+        ...(runtime.iconUrl ? { iconUrl: runtime.iconUrl } : {}),
+        runtime,
+      });
+    }
+  }
+  const listingRows = [...items.values()];
+
   return (
     <div className="webui-miniapp-apps" data-testid="miniapp-apps">
-      {onInstallRequest ? (
-        <div className="webui-miniapp-apps-toolbar">
-          <button type="button" onClick={onInstallRequest}>
-            安装 Mini App
-          </button>
-        </div>
-      ) : null}
       {error ? (
         <p className="webui-plugin-error" role="alert">
           {error}
         </p>
       ) : null}
-      {rows.length === 0 ? <p className="webui-plugin-empty">暂无已安装的 Mini App</p> : null}
+      {state.unavailable ? <p className="webui-plugin-error" role="alert">{state.unavailable}</p> : null}
+      {listingRows.length === 0 ? <p className="webui-plugin-empty">暂无已安装的 Mini App</p> : null}
       <div className="webui-plugin-list">
-        {rows.map((row) => {
-          const refusal = state.refusals[row.pluginId];
-          const opened = state.presentations[row.pluginId];
+        {listingRows.map((item) => {
+          const row = item.runtime;
+          const refusal = row ? state.refusals[row.pluginId] : undefined;
+          const opened = row ? state.presentations[row.pluginId] : undefined;
           const standaloneHref =
-            opened?.kind === "open" && selectedSessionId
+            row && opened?.kind === "open" && selectedSessionId
               ? workflows?.standaloneUrl({ pluginId: row.pluginId, sessionId: selectedSessionId })
               : undefined;
           return (
-            <article className="webui-plugin-row" key={`apps-${row.pluginId}`} data-testid={`miniapp-app-${row.pluginId}`}>
+            <article className="webui-plugin-row" key={`apps-${item.pluginId}`} data-testid={`miniapp-app-${item.pluginId}`}>
               <div className="webui-plugin-icon" aria-hidden="true">
-                {row.iconUrl ? <img src={row.iconUrl} alt="" loading="lazy" /> : "◇"}
+                {item.iconUrl ? (
+                  <>
+                    <img src={item.iconUrl} alt="" loading="lazy" onError={(event) => {
+                      event.currentTarget.hidden = true;
+                      event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                    }} />
+                    <span hidden>◇</span>
+                  </>
+                ) : "◇"}
               </div>
               <div className="webui-plugin-copy">
-                <h2>{row.name}</h2>
-                <p>{row.description || row.pluginId}</p>
+                <h2>{item.name}</h2>
+                <p>{item.description || item.pluginId}</p>
                 {refusal ? (
-                  <p className="webui-plugin-error" role="alert" data-testid={`miniapp-app-refusal-${row.pluginId}`}>
+                  <p className="webui-plugin-error" role="alert" data-testid={`miniapp-app-refusal-${item.pluginId}`}>
                     {webuiMiniAppRefusalText({
                       code: refusal.code,
                       message: refusal.message,
@@ -106,14 +148,14 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
               </div>
               <span
                 className="text-text_default_tertiary"
-                data-testid={`miniapp-app-status-${row.pluginId}`}
-                data-status={row.status}
+                data-testid={`miniapp-app-status-${item.pluginId}`}
+                data-status={row?.status ?? (item.enabled ? "unavailable" : "disabled")}
               >
-                {row.statusLabel}
-                {row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
+                {row?.statusLabel ?? (!item.enabled ? "已停用" : loading ? "加载中…" : "运行时不可用")}
+                {row?.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
               </span>
               <div className="webui-plugin-actions">
-                {row.enabled ? (<>
+                {row?.enabled ? (<>
                 <button
                   type="button"
                   data-testid={`miniapp-app-open-${row.pluginId}`}
@@ -145,7 +187,7 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`确定卸载 ${row.name}？`)) void workflows?.uninstall(row.pluginId);
+                    if (window.confirm(`确定卸载 ${item.name}？`)) void workflows?.uninstall(row.pluginId);
                   }}
                 >
                   卸载
@@ -153,13 +195,17 @@ export function MiniAppAppsList({ onInstallRequest, selectedSessionId }: MiniApp
                 <button type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, false)}>
                   停用
                 </button>
-                </>) : (
+                </>) : !item.enabled ? (
+                  <button type="button" onClick={() => void workflows?.setPluginEnabled(item.pluginId, true)}>
+                    启用
+                  </button>
+                ) : row ? (
                   // A disabled package has nothing to start or stop; the one
                   // action it has is the one that makes it startable again.
                   <button type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, true)}>
                     启用
                   </button>
-                )}
+                ) : null}
               </div>
             </article>
           );

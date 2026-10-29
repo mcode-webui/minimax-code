@@ -446,7 +446,7 @@ test("a Mini App the runtime already reports as running can be shown in the pane
   ).toBe(0);
 });
 
-test("the apps area hands installation to the plugin marketplace", async ({ page }) => {
+test("the apps area uses installed plugin metadata and has no separate install button", async ({ page }) => {
   await configureFixture(page, () => {
     window.__WEBUI_FIXTURE_SETUP__ ??= [];
     window.__WEBUI_FIXTURE_SETUP__.push(() => {
@@ -457,13 +457,24 @@ test("the apps area hands installation to the plugin marketplace", async ({ page
         runtime: { kind: "process", status: "stopped" },
       }] });
       window.__fixture.setPluginManagementResult("listMarketplacePlugins", {
-        pluginTotal: 2,
+        pluginTotal: 4,
         plugins: [
-          { name: "market-one", displayName: "Market one", description: "Marketplace card" },
-          { name: "market-two", displayName: "Market two", description: "Marketplace card" },
+          { name: "demo.miniapp", displayName: "演示应用", description: "一个用于浏览器验收的 Mini App", icon_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2'%3E%3C/svg%3E", tags: [{ key: "miniapp" }] },
+          { name: "minimax-stocks", displayName: "股市", description: "股市插件", tags: [{ key: "miniapp" }] },
+          { name: "market-two", displayName: "Market two", description: "Marketplace card", tags: [{ key: "miniapp" }] },
+          { name: "market-three", displayName: "Market three", description: "Marketplace card", tags: [{ key: "miniapp" }] },
+          { name: "market-disabled", displayName: "Disabled Mini App", description: "Disabled Mini App", tags: [{ key: "miniapp" }] },
         ],
       });
-      window.__fixture.setPluginManagementResult("listInstalledPlugins", { plugins: [] });
+      window.__fixture.setPluginManagementResult("listInstalledPlugins", {
+        plugins: [
+          { name: "demo.miniapp", displayName: "演示应用", description: "一个用于浏览器验收的 Mini App", source: 0, enabled: true },
+          { name: "minimax-stocks", description: "股市插件", source: 0, enabled: true },
+          { name: "market-two", displayName: "Market two", description: "Installed Mini App", source: 0, enabled: true },
+          { name: "market-three", displayName: "Market three", description: "Installed Mini App", source: 0, enabled: true },
+          { name: "market-disabled", displayName: "Disabled Mini App", description: "Disabled Mini App", source: 0, enabled: false },
+        ],
+      });
     });
   });
   await openApp(page);
@@ -474,13 +485,14 @@ test("the apps area hands installation to the plugin marketplace", async ({ page
   const apps = page.getByTestId("miniapp-apps");
   await expect(apps).toBeVisible();
   await expect(apps.getByTestId("miniapp-app-demo.miniapp")).toContainText("演示应用");
-
-  // A Mini App is a plugin, so installation is the marketplace's — the apps area
-  // switches the catalogue there rather than growing a second way to install.
-  await apps.getByRole("button", { name: "安装 Mini App" }).click();
-  await expect(page.getByTestId("miniapp-apps")).toHaveCount(0);
-  await expect(
-    page.locator(".webui-plugin-header-tabs").getByRole("button", { name: "插件" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".webui-plugin-grid .webui-plugin-row")).toHaveCount(2);
+  await expect(apps.locator(".webui-plugin-row")).toHaveCount(5);
+  const icon = apps.getByTestId("miniapp-app-demo.miniapp").locator("img");
+  await expect(icon).toHaveAttribute("src", /^data:image\/svg\+xml,/);
+  await expect.poll(() => icon.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+  await expect(apps.getByTestId("miniapp-app-minimax-stocks").locator("h2")).toHaveText("股市");
+  await expect(apps.getByTestId("miniapp-app-status-minimax-stocks")).toHaveAttribute("data-status", "unavailable");
+  await expect(apps.getByTestId("miniapp-app-status-market-disabled")).toHaveAttribute("data-status", "disabled");
+  await expect(apps.getByTestId("miniapp-app-market-disabled")).toContainText("已停用");
+  await expect(apps.getByTestId("miniapp-app-market-disabled").getByRole("button", { name: "启用" })).toBeVisible();
+  await expect(apps.getByRole("button", { name: "安装 Mini App" })).toHaveCount(0);
 });

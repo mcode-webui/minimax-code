@@ -465,23 +465,30 @@ export function createWebuiPluginWorkflows(deps: {
         call("listInstalledPlugins", { limit: 100, keyword: query || undefined }),
         call("listMarketplacePlugins", { limit: 100 }),
       ]);
-      const icons = new Map<string, string>();
+      const metadata = new Map<string, { iconUrl: string; tags: unknown; displayName: string }>();
       for (const item of webuiPluginRows(marketplace, "plugins")) {
         const icon = rowValue(item, "iconUrl", "icon_url");
+        const tags = item.tags;
+        const displayName = rowValue(item, "displayName", "display_name");
+        const value = { iconUrl: icon, tags, displayName };
         for (const name of [
           rowValue(item, "name", "pluginName", "plugin_name", "pluginId").toLocaleLowerCase(),
           rowValue(item, "displayName", "display_name").toLocaleLowerCase(),
         ]) {
-          if (name) icons.set(name, icon);
+          if (name) metadata.set(name, value);
         }
       }
-      const rows = webuiPluginRows(installed, "plugins").map((item) => ({
-        ...item,
-        iconUrl:
-          icons.get(rowValue(item, "name", "pluginName", "plugin_name", "pluginId").toLocaleLowerCase()) ||
-          icons.get(rowValue(item, "displayName", "display_name").toLocaleLowerCase()) ||
-          rowValue(item, "iconUrl", "icon_url"),
-      }));
+      const rows = webuiPluginRows(installed, "plugins").map((item) => {
+        const match =
+          metadata.get(rowValue(item, "name", "pluginName", "plugin_name", "pluginId").toLocaleLowerCase()) ||
+          metadata.get(rowValue(item, "displayName", "display_name").toLocaleLowerCase());
+        return {
+          ...item,
+          iconUrl: match?.iconUrl || rowValue(item, "iconUrl", "icon_url"),
+          ...(match?.displayName ? { displayName: match.displayName } : {}),
+          ...(match?.tags !== undefined ? { tags: match.tags } : {}),
+        };
+      });
       return { rows };
     }
     if (area === "plugins") {

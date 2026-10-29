@@ -130,14 +130,21 @@ export function PluginCatalogue({
   const selectedTag = category.startsWith("tag:")
     ? tagDefinitions.find((tag) => `tag:${tag.key}` === category)
     : undefined;
-  const busy = area === "apps" ? false : listing.loading || snapshot.mutating;
-  const error = area === "apps" ? "" : localError || snapshot.mutationError || listing.error || "";
+  const busy = listing.loading || (area !== "apps" && snapshot.mutating);
+  const error = localError || snapshot.mutationError || listing.error || "";
   const reload = async (): Promise<void> => {
-    if (area === "apps") await miniAppCatalogue.refresh();
-    else await workflows?.loadListing({ area, view, query, category });
+    if (area === "apps") {
+      await Promise.all([
+        workflows?.loadListing({ area: "plugins", view: "personal", query, category: "" }),
+        miniAppCatalogue.refresh(),
+      ]);
+    } else await workflows?.loadListing({ area, view, query, category });
   };
   useEffect(() => {
-    if (area === "apps") return;
+    if (area === "apps") {
+      void workflows?.loadListing({ area: "plugins", view: "personal", query, category: "" });
+      return;
+    }
     void workflows?.loadListing({ area, view, query, category });
   }, [area, view, query, category, workflows]);
   const catalogueView = useMemo(
@@ -154,6 +161,12 @@ export function PluginCatalogue({
   );
   const filtered = useMemo(
     () => catalogueView.rows.map((row) => row.source),
+    [catalogueView.rows],
+  );
+  const installedMiniApps = useMemo(
+    () => catalogueView.rows.filter((row) =>
+      Array.isArray(row.source.tags) && row.source.tags.some((tag: unknown) =>
+        !!tag && typeof tag === "object" && (tag as { key?: unknown }).key === "miniapp")),
     [catalogueView.rows],
   );
   /* Plugins and skills are two catalogues rendered by one page, so they share
@@ -425,7 +438,7 @@ export function PluginCatalogue({
           <PluginManagementFilters
             area={area}
             query={query}
-            rowCount={area === "apps" ? miniAppCatalogue.rowCount : data.length}
+            rowCount={area === "apps" ? installedMiniApps.length : data.length}
             onAreaChange={(nextArea) => {
               setLocalError("");
               setArea(nextArea);
@@ -618,15 +631,12 @@ export function PluginCatalogue({
           })}
         </>
       ) : area === "apps" ? (
-        /* The apps area belongs to the Mini App business: it renders that
-           business's published list, and this page holds none of its state. */
+        /* The installed plugin catalogue supplies Mini App identity and icons;
+           the Mini App business supplies runtime state and lifecycle actions. */
         <MiniAppAppsList
           selectedSessionId={selectedSessionId}
-          onInstallRequest={() => {
-            setManagementOpen(false);
-            setArea("plugins");
-            setView("market");
-          }}
+          installedPlugins={installedMiniApps}
+          query={query}
         />
       ) : (
         <PluginManagementList

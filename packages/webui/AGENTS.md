@@ -93,8 +93,10 @@ does not make it publishable.
 
 ## Verification
 
-Run the gates that bear on the change; name them when you report. `docs/verification/gates.md` states
-what each gate proves and what it cannot.
+Run only the smallest gates that directly cover the changed files and behavior; name them when you
+report. Do not run aggregate or full WebUI gates by default. The latest direct user instruction
+overrides older repository or skill wording that asks for broader verification. Run a full gate only
+when the user explicitly requests it.
 
 **Reuse passing gate evidence.** Before starting a gate, check whether it has already passed for the
 same commit, gate and platform. Run each applicable gate once for unchanged inputs; after a passing
@@ -105,13 +107,15 @@ needs a rerun, run that gate instead of repeating the full suite.
 
 | Change | Run |
 | --- | --- |
-| Any TypeScript change | `pnpm typecheck:webui` — it covers every source and every test file, so a test fixture that no longer matches its signature fails here |
-| Client behaviour | the focused Vitest file, then `pnpm test:webui` |
-| The built client | `pnpm build:webui`, then `pnpm test:webui-browser` |
+| Client TypeScript | `pnpm --filter @mavis/webui typecheck:client` |
+| Server/runtime TypeScript | `pnpm --filter @mavis/webui typecheck:server` |
+| Changed TypeScript tests | `pnpm --filter @mavis/webui typecheck:test` |
+| Client behaviour | the focused Vitest file: `pnpm exec vitest run --config vitest.oss.config.mjs <test-file>` |
+| Built-client interaction | `pnpm build:webui`, then only the relevant Playwright spec |
 | Imports, roles, moves | `pnpm check:webui-dependency` |
-| Entries, bundling, packaging | `pnpm build:webui` then `pnpm check:webui-boundary`; `pnpm test:webui-package` for the published artefact |
+| Entries, bundling, packaging | `pnpm build:webui` then `pnpm check:webui-boundary`; `pnpm test:webui-package` only when packaging is in scope |
 | Anything file-level | `node scripts/source-inventory.mjs --write`, then `pnpm check:source` |
-| Before claiming done | `pnpm verify` — the same list CI runs, in the same order |
+| Full aggregate verification | `pnpm verify` only when the user explicitly asks for it |
 
 Most deterministic suites use a scripted leaf behind the harness port (evidence level 3).
 The native browser scenario additionally runs the production runtime host, loopback service and

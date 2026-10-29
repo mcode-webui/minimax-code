@@ -87,6 +87,12 @@ export type WebuiOperationPort = Pick<
   | "listModels"
   | "selectModel"
   | "listSkills"
+  | "listCronTasks"
+  | "createCronTask"
+  | "updateCronTask"
+  | "deleteCronTask"
+  | "runCronTaskNow"
+  | "listCronTaskRuns"
   | "pluginManagement"
   | "getPermissionMode"
   | "setPermissionMode"
@@ -221,6 +227,19 @@ export interface RuntimeGroups {
     | "dismissQuestionnaire"
   >;
   readonly models: Pick<WebuiHarnessPort, "listModels" | "selectModel" | "listSkills">;
+  /**
+   * Scheduled tasks (ADR 0027). One group for the six members the panel needs, so the tickets that
+   * add the mutations extend a group that already exists rather than inventing a second seam.
+   */
+  readonly scheduling: Pick<
+    WebuiHarnessPort,
+    | "listCronTasks"
+    | "createCronTask"
+    | "updateCronTask"
+    | "deleteCronTask"
+    | "runCronTaskNow"
+    | "listCronTaskRuns"
+  >;
   readonly plugins: Pick<WebuiHarnessPort, "pluginManagement">;
   readonly settings: Pick<
     WebuiHarnessPort,

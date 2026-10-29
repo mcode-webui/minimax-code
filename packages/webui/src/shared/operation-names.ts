@@ -197,6 +197,7 @@ export const WATCH_MINI_APP_AGENT_TURN_OPERATION_NAME = "watchMiniAppAgentTurn" 
  * being dropped.
  */
 export const MINI_APP_AGENT_CALL_OPERATION_NAME = "miniAppAgentCall" as const;
+export const LIST_CRON_TASKS_OPERATION_NAME = "listCronTasks" as const;
 
 import type {
   WebuiActiveTurnResult,
@@ -285,6 +286,7 @@ import type {
   WebuiTestUserModelCandidateRequest,
   WebuiUpdateUserModelProviderRequest,
 } from "./contracts/models.js";
+import type { WebuiCronTaskListRequest, WebuiCronTaskPage } from "./contracts/cron.js";
 import type { WebuiVersionInfo } from "./contracts/version.js";
 import type {
   WebuiBrowserAuthorization,
@@ -857,6 +859,17 @@ export interface OperationSpec {
   miniAppAgentCall: {
     request: WebuiMiniAppAgentCallRequest;
     response: WebuiMiniAppAgentCallResponse;
+  };
+  /**
+   * The scheduled tasks this host knows about (ADR 0027).
+   *
+   * The request is a paging cursor and an optional agent filter; the response is the WebUI's own
+   * task page, not the runtime's cron view — the adapter converts, and `shared/contracts/cron.ts`
+   * is the only shape the browser can name.
+   */
+  listCronTasks: {
+    request: WebuiCronTaskListRequest;
+    response: WebuiCronTaskPage;
   };
 }
 

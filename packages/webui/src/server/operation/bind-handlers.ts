@@ -76,6 +76,7 @@ import {
   selectModelOperation,
   getSessionUsageOperation,
 } from "./queue.js";
+import { listCronTasksOperation } from "./scheduling.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import {
   getPermissionModeOperation,
@@ -429,6 +430,15 @@ export const WEBUI_OPERATION_BINDINGS = {
   }),
   listSkills: bind("models")("listSkills")("listSkills")({
     operation: listSkillsOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+
+  // scheduling (ADR 0027). The list is the first slice; the mutations join this group in their own
+  // tickets. A host without a Cron service still has the port member — the adapter refuses with one
+  // `capability_unavailable`, so no `missing:` policy is needed here.
+  listCronTasks: bind("scheduling")("listCronTasks")("listCronTasks")({
+    operation: listCronTasksOperation,
     args: (body) => [body],
     result: identity,
   }),

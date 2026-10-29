@@ -17,7 +17,27 @@ import {
 
 export interface WebuiMcodeToolsReadiness {
   readonly requested: boolean;
+  /**
+   * Whether the host environment is live: an auth-lease broker is serving and
+   * the host-only keys are installed, so a mcode-tools CLI the Agent runs can
+   * authenticate against this client.
+   */
   readonly ready: boolean;
+  /**
+   * The state of the integration.
+   *
+   * `ready` -- the host environment is live and this client also ships the
+   * mcode-tools CLI it would host.
+   * `resource_unavailable` -- the host environment is live, but this client
+   * ships no usable mcode-tools CLI of its own: a client running from source
+   * has no bundled CLI, and a build whose environment does not match the
+   * bundled artifact has none either. The Agent can still drive a mcode-tools
+   * CLI installed elsewhere on the machine, because the broker -- not the
+   * bundled binary -- is what authenticates it.
+   * `broker_unavailable` / `host_unavailable` -- the host environment could
+   * not be established, so no mcode-tools CLI can authenticate.
+   * `disabled` -- the capability switch is off.
+   */
   readonly category:
     | "disabled"
     | "ready"
@@ -65,10 +85,28 @@ export async function prepareWebuiMcodeToolsIntegration(
   let broker: McodeToolsAuthLeaseBroker | undefined;
   let activation: WebuiMcodeToolsEnvironmentActivation | undefined;
   try {
-    const resource = (dependencies.validateResource ?? validateMcodeToolsResource)({
-      resourceDir: resolveBundledResourceDir(options.entryUrl),
-      expectedBuildEnv: buildEnv,
-    });
+    // The bundled CLI and the host environment are two independent facts.
+    //
+    // The Agent runs whatever `mcode-tools` resolves to on PATH: the CLI
+    // bundled next to this entry in a packaged client, the CLI installed
+    // elsewhere on the machine in a client running from source. What
+    // authenticates it is the broker and the host keys -- never the bundled
+    // binary -- so a missing or mismatched bundle must not decide whether the
+    // host environment starts. Gating the broker on the bundle is what left
+    // the Agent hunting for another host's broker under the data directory to
+    // get a token at all.
+    let bundledCliAvailable = true;
+    try {
+      (dependencies.validateResource ?? validateMcodeToolsResource)({
+        resourceDir: resolveBundledResourceDir(options.entryUrl),
+        expectedBuildEnv: buildEnv,
+      });
+    } catch (error) {
+      bundledCliAvailable = false;
+      logger.warn(
+        `mcode-tools bundled CLI unavailable: ${errorMessage(error)}`,
+      );
+    }
     runtimeDir = await (
       dependencies.createRuntimeDir ?? createWebuiMcodeToolsRuntimeDir
     )();
@@ -95,10 +133,14 @@ export async function prepareWebuiMcodeToolsIntegration(
       region: options.region,
       commandBinDir: resolveCommandBinDir(options.entryUrl),
     });
+    const category = bundledCliAvailable ? "ready" : "resource_unavailable";
+    logger.info(
+      `mcode-tools readiness category=${category} buildEnv=${buildEnv} region=${options.region}`,
+    );
     return {
       requested: true,
       ready: true,
-      category: "ready",
+      category,
       ensureCommandPath: activation.ensureCommandPath,
       async dispose(): Promise<void> {
         activation?.restore();
@@ -188,14 +230,42 @@ function inactiveReadiness(
   requested: boolean,
   category: Exclude<WebuiMcodeToolsReadiness["category"], "ready">,
 ): WebuiMcodeToolsReadiness {
-  return { requested, ready: false, category, ensureCommandPath: NOOP, dispose: NOOP_DISPOSE };
+  return {
+    requested,
+    ready: false,
+    category,
+    ensureCommandPath: NOOP,
+    dispose: NOOP_DISPOSE,
+  };
 }
 
 function classifyFailure(error: unknown): Exclude<WebuiMcodeToolsReadiness["category"], "disabled" | "ready"> {
+  if (
+    error &&
+    typeof error === "object" &&
+    (error as NodeJS.ErrnoException).code === "EADDRINUSE"
+  )
+    return "broker_unavailable";
   const message = errorMessage(error).toLowerCase();
-  if (message.includes("manifest") || message.includes("resource") || message.includes("sha256"))
+  // The same needles the CLI host uses, so a bundle that fails for a reason
+  // other than a missing file is still reported as a resource problem.
+  if (
+    [
+      "manifest",
+      "resource",
+      "sha256",
+      "build environment",
+      "package mismatch",
+      "embedded cli",
+    ].some((needle) => message.includes(needle))
+  )
     return "resource_unavailable";
-  if (message.includes("broker") || message.includes("socket") || message.includes("address"))
+  if (
+    message.includes("broker") ||
+    message.includes("socket") ||
+    message.includes("named pipe") ||
+    message.includes("address")
+  )
     return "broker_unavailable";
   return "host_unavailable";
 }

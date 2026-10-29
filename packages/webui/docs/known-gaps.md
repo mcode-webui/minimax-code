@@ -11,14 +11,26 @@ decisions are in [`open-questions.md`](open-questions.md).
 ## 1. Connector and App tools depend on a beta feature, and on the model finding them
 
 **Implemented, not reachable by default.** The chain is complete and self-contained: the assembly
-prepares the integration (`runtime/mcode-tools.ts`), which validates the bundled resource, creates a
-runtime directory and **starts its own auth-lease broker**, then
-`activateWebuiMcodeToolsEnvironment` installs the host-only keys. The child launcher
-(`server/internal-bin/mcode-tools`, copied by `scripts/build-webui.mjs`) execs
-`server/mcode-tools.js`, which runs `configureWebuiMcodeToolsChildEnvironment` and imports the
-embedded CLI — at which point the child sees `MCODE_AUTH_PROVIDER=shared-broker`. No external
-launcher has to provide the broker variables any more; the earlier finding that nothing set them is
-resolved by this path.
+prepares the integration (`runtime/mcode-tools.ts`), which creates a runtime directory, **starts its
+own auth-lease broker** and then installs the host-only keys through
+`activateWebuiMcodeToolsEnvironment`. The child launcher (`server/internal-bin/mcode-tools`, copied
+by `scripts/build-webui.mjs`) execs `server/mcode-tools.js`, which runs
+`configureWebuiMcodeToolsChildEnvironment` and imports the embedded CLI — at which point the child
+sees `MCODE_AUTH_PROVIDER=shared-broker`. No external launcher has to provide the broker variables
+any more; the earlier finding that nothing sets them is resolved by this path.
+
+**The bundled CLI and the host environment are independent.** What authenticates a mcode-tools run
+is the broker, never the bundled binary: the Agent runs whatever `mcode-tools` resolves to on
+PATH, and the host keys (`__MAVIS_MCODE_TOOLS_BROKER_ENDPOINT`,
+`__MAVIS_MCODE_TOOLS_BROKER_CAPABILITY_FILE`, `__MAVIS_MCODE_TOOLS_RUNTIME_EXECUTABLE`,
+`__MAVIS_MCODE_TOOLS_CONFIG_DIR`, `__MAVIS_MCODE_TOOLS_REGION`) are what let that run
+authenticate. The integration therefore starts the broker even when the bundled resource is missing
+or does not match the build environment, and the readiness reports the two facts apart: `ready`
+(host environment live, and this client also ships the CLI it would host) and
+`resource_unavailable` (host environment live, no usable bundled CLI). The Agent in a client
+without a bundled CLI drives the mcode-tools CLI installed elsewhere on the machine, and it
+authenticates against *this* client's broker instead of scavenging another host's broker out of the
+data directory.
 
 Two different facts are involved, and the assembly keeps them apart. The **capability switch**
 `beta.mcodeTools` is the configured intent, and it stays at its resolved value
@@ -33,11 +45,24 @@ in an isolated data directory, runs one turn against a stub model, and asserts t
 `<available_skills>` catalogue carries `mcode-tools-master` while the integration reports
 `ready: false` — and drops it when the capability switch is off.
 
-**Still open:** the dev environment cannot satisfy the mcode-tools resource check at all
+Verified: `packages/webui/test/integration/webui-mcode-tools-host-environment.test.ts` starts the
+real broker in an isolated data directory with no bundled CLI next to the entry, and runs the lease
+client as a **separate process** that inherits only the installed host keys. The child projects them
+into the public contract and leases a token from this client's broker; the same child without the
+keys refuses, which is the control that shows the keys are load-bearing.
+
+Verified: `packages/webui/test/integration/real-host-mcode-tools-bash-environment.test.ts` boots the
+real host with the real integration — no stubbed preparation — drives one turn in which the Agent's
+Bash reads the host keys back, and asserts that the **Bash subprocess** carries the broker
+endpoint and the capability file. That is the half a host-environment test alone cannot prove: the
+keys have to survive the runtime's environment build and the Bash tool's two-layer sanitizer.
+
+**Still open:** the dev environment still ships no bundled mcode-tools CLI of its own
 (`packages/webui/src/runtime/mcode-tools.ts` maps every non-prod build env to `test`, while the
-only obtainable artifact is a prod build, and only the packaged build copies the embedded host
-that the dev server lacks). The skill is back in the catalogue, but the WebUI still has no
-working broker and auth proxy in dev, so the commands behind the skill cannot run there.
+only obtainable artifact is a prod build, and only the packaged build copies the embedded host that
+the dev server lacks). The skill is back in the catalogue and the broker is up, so the commands
+behind the skill run against the mcode-tools CLI installed elsewhere on the machine — but a dev
+client on a machine without one has no CLI to drive.
 
 Two things about this remain **unverified**:
 

@@ -26,6 +26,7 @@
 import {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   type FormEvent,
@@ -52,6 +53,7 @@ import {
   WebuiIconDiffFile,
   WebuiIconFile,
   WebuiIconGlobe,
+  WebuiIconMore,
   WebuiIconSearch,
   WebuiIconSend,
   WebuiIconSites,
@@ -59,6 +61,7 @@ import {
   WebuiIconWorkspaceReview,
   WebuiIconWorkspaceTerminal,
 } from "../../../shell/icons.js";
+import { WebuiDropdown, type WebuiDropdownTriggerProps } from "../../../ui/Dropdown.js";
 
 const STRIP_COPY = {
   addTab: "新建标签页",
@@ -388,8 +391,10 @@ export function WebuiWorkspaceLauncher({
   const slice = useWebuiPortSlice("browser");
   const openBrowserWebTab = slice?.openBrowserWebTab;
   const [typed, setTyped] = useState("");
-  if (tab.content.kind !== "launcher") return null;
-
+  const [visibleTileCount, setVisibleTileCount] = useState(Number.MAX_SAFE_INTEGER);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const tilesRef = useRef<HTMLDivElement | null>(null);
+  const firstTileRef = useRef<HTMLButtonElement | null>(null);
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const url = webuiWorkspaceLauncherUrl(typed);
@@ -409,15 +414,61 @@ export function WebuiWorkspaceLauncher({
     });
   };
 
-  const tiles = webuiWorkspaceLauncherTiles()
+  const tiles = tab.content.kind === "launcher" ? webuiWorkspaceLauncherTiles()
     .map((tile) => ({
       tile,
       command: webuiWorkspaceLauncherTileCommand(tile, tab.id, { sessionId, workspaceDir }),
     }))
-    .filter((entry) => entry.command !== undefined);
+    .filter((entry) => entry.command !== undefined) : [];
+
+  useLayoutEffect(() => {
+    const container = tilesRef.current;
+    const firstTile = firstTileRef.current;
+    if (!container || !firstTile) return;
+    const updateVisibleCount = (): void => {
+      const tileWidth = firstTile.getBoundingClientRect().width;
+      const styles = window.getComputedStyle(container);
+      const gap = Number.parseFloat(styles.columnGap) || 0;
+      const availableWidth = container.clientWidth;
+      if (tileWidth <= 0 || availableWidth <= 0) return;
+      const capacity = Math.floor((availableWidth + gap) / (tileWidth + gap));
+      const nextCount = capacity >= tiles.length
+        ? tiles.length
+        : Math.max(0, Math.floor((availableWidth - tileWidth) / (tileWidth + gap)));
+      setVisibleTileCount((current) => current === nextCount ? current : nextCount);
+    };
+    updateVisibleCount();
+    const observer = new ResizeObserver(updateVisibleCount);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [tiles.length]);
+
+  if (tab.content.kind !== "launcher") return null;
+
+  const visibleTiles = tiles.slice(0, visibleTileCount);
+  const overflowTiles = tiles.slice(visibleTileCount);
+
+  const renderTile = ({ tile, command }: typeof tiles[number], index: number) => (
+    <button
+      key={tile.kind}
+      ref={index === 0 ? firstTileRef : undefined}
+      type="button"
+      className="webui-workspace-launcher-tile"
+      data-testid={`workspace-launcher-tile-${tile.kind}`}
+      onClick={() => {
+        if (command) dispatch(command);
+      }}
+    >
+      <span className="webui-workspace-launcher-tile-icon" aria-hidden="true">
+        {launcherTileGlyph(tile.kind)}
+      </span>
+      <span className="webui-workspace-launcher-tile-label">{tile.label}</span>
+    </button>
+  );
 
   return (
     <div className="webui-workspace-launcher" data-testid="workspace-launcher">
+      <div className="webui-workspace-launcher-content">
       {/*
         The address box comes first and sits in the middle of the page, the way
         a browser's new tab page is built: the one thing a person came here to
@@ -457,26 +508,51 @@ export function WebuiWorkspaceLauncher({
           )}
         </button>
       </form>
-      <div className="webui-workspace-launcher-tiles">
-        {tiles.map(({ tile, command }) => (
-          <button
-            key={tile.kind}
-            type="button"
-            className="webui-workspace-launcher-tile"
-            data-testid={`workspace-launcher-tile-${tile.kind}`}
-            onClick={() => {
-              // Every tile opens its view in the tab the tile is on, the Mini App
-              // tool page included: the new tab page becomes the tool page
-              // rather than keeping the tiles and showing the picker under them.
-              if (command) dispatch(command);
-            }}
+      <div className="webui-workspace-launcher-tiles" ref={tilesRef} data-testid="workspace-launcher-tiles">
+        {visibleTiles.map(renderTile)}
+        {overflowTiles.length > 0 ? (
+          <WebuiDropdown
+            open={overflowOpen}
+            onOpen={() => setOverflowOpen(true)}
+            onClose={() => setOverflowOpen(false)}
+            trigger={(triggerProps: WebuiDropdownTriggerProps) => (
+              <button
+                {...triggerProps}
+                type="button"
+                className="webui-workspace-launcher-tile"
+                data-testid="workspace-launcher-tile-more"
+                aria-label="其他工具"
+              >
+                <span className="webui-workspace-launcher-tile-icon" aria-hidden="true">
+                  <WebuiIconMore className="size-6" />
+                </span>
+                <span className="webui-workspace-launcher-tile-label">其他</span>
+              </button>
+            )}
+            wrapperClassName="webui-workspace-launcher-more"
+            className="webui-workspace-launcher-overflow-menu"
+            ariaLabel="其他工具"
           >
-            <span className="webui-workspace-launcher-tile-icon" aria-hidden="true">
-              {launcherTileGlyph(tile.kind)}
-            </span>
-            <span className="webui-workspace-launcher-tile-label">{tile.label}</span>
-          </button>
-        ))}
+            {overflowTiles.map(({ tile, command }) => (
+              <button
+                key={tile.kind}
+                type="button"
+                className="webui-workspace-launcher-overflow-item"
+                role="menuitem"
+                data-testid={`workspace-launcher-overflow-${tile.kind}`}
+                onClick={() => {
+                  setOverflowOpen(false);
+                  if (command) dispatch(command);
+                }}
+              >
+                <span className="webui-workspace-launcher-overflow-icon" aria-hidden="true">
+                  {launcherTileGlyph(tile.kind)}
+                </span>
+                <span>{tile.label}</span>
+              </button>
+            ))}
+          </WebuiDropdown>
+        ) : null}
       </div>
       {openBrowserWebTab ? null : (
         <p className="webui-workspace-launcher-unavailable">{STRIP_COPY.launcherUnavailable}</p>
@@ -486,6 +562,7 @@ export function WebuiWorkspaceLauncher({
           {request.error}
         </p>
       ) : null}
+      </div>
     </div>
   );
 }

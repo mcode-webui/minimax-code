@@ -20,10 +20,24 @@ embedded CLI — at which point the child sees `MCODE_AUTH_PROVIDER=shared-broke
 launcher has to provide the broker variables any more; the earlier finding that nothing set them is
 resolved by this path.
 
-The remaining gate is the feature switch: `requestedMcodeTools` comes from
-`beta.mcodeTools`, whose default visibility is `"none"` (`packages/config/src/config.ts`), with a
-dev-build exception when `mcodeToolsDevMode` is `"published"`. Read the readiness category the
-integration reports (`disabled` / `ready` / a failure class) rather than the beta flag alone.
+Two different facts are involved, and the assembly keeps them apart. The **capability switch**
+`beta.mcodeTools` is the configured intent, and it stays at its resolved value
+(`packages/webui/src/runtime/assembly.ts`): the WebUI no longer overwrites it with the readiness,
+which is what used to drop the `mcode-tools-master` skill from the catalog and leave the Agent
+without any entry point for multimodal generation. The **readiness** category the integration
+reports (`disabled` / `ready` / a failure class) says whether *this* client can host the
+integration right now; read it separately when diagnosing the broker.
+
+Verified: `packages/webui/test/integration/real-host-skill-catalog.test.ts` boots the real host
+in an isolated data directory, runs one turn against a stub model, and asserts that the rendered
+`<available_skills>` catalogue carries `mcode-tools-master` while the integration reports
+`ready: false` — and drops it when the capability switch is off.
+
+**Still open:** the dev environment cannot satisfy the mcode-tools resource check at all
+(`packages/webui/src/runtime/mcode-tools.ts` maps every non-prod build env to `test`, while the
+only obtainable artifact is a prod build, and only the packaged build copies the embedded host
+that the dev server lacks). The skill is back in the catalogue, but the WebUI still has no
+working broker and auth proxy in dev, so the commands behind the skill cannot run there.
 
 Two things about this remain **unverified**:
 

@@ -12,6 +12,7 @@ import {
   buildLocalTurnToolSources,
 } from '../../src/api/local-native-tools.js';
 import { withoutLocalMavisCronGuidance } from '../../src/api/local-mavis-cron-guidance.js';
+import { isNativeWebSearchOwnerKind } from '../../src/api/host-turn-tools.js';
 import { LocalEventSink } from '../../src/events/sink.js';
 import { LocalMcpService } from '../../../local-runtime-v2/src/service/mcp/index.js';
 import { LocalMemoryFacade } from '../../src/memory/local-memory-facade.js';
@@ -1268,6 +1269,19 @@ describe('local native turn tools', () => {
     } finally {
       await rm(dataDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('native web_search owner kinds', () => {
+  it('gives the native search tool to every managed client kind', () => {
+    // The native tool is the managed client's own search tool. The WebUI is a
+    // managed client like the terminal one, so it gets the native tool rather
+    // than the Matrix MCP fallback. Leaving the browser client out of this list
+    // is what kept `web_search` out of the WebUI agent's tool table.
+    for (const kind of ['electron', 'tui', 'cli', 'webui']) {
+      expect(isNativeWebSearchOwnerKind(kind)).toBe(true);
+    }
+    expect(isNativeWebSearchOwnerKind('task-child')).toBe(false);
   });
 });
 

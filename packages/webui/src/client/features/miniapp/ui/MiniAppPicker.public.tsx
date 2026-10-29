@@ -22,6 +22,7 @@ import {
   webuiMiniAppRefusalText,
   webuiMiniAppRunningRows,
 } from "../projection/miniapp-view.js";
+import { WebuiIconChevronRight, WebuiIconSites } from "../../../shell/icons.js";
 
 export interface MiniAppPickerProps {
   /** The session the chosen Mini App's view belongs to. */
@@ -29,9 +30,10 @@ export interface MiniAppPickerProps {
   /** Called once a Mini App is started, with the plugin the tab is for. */
   readonly onOpened: (pluginId: string) => void;
   readonly onClose?: () => void;
+  readonly onManage?: () => void;
 }
 
-export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerProps): ReactElement {
+export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAppPickerProps): ReactElement {
   const workflows = useWebuiMiniAppWorkflows();
   const state = useWebuiMiniAppWorkflowsState();
   const { loading } = state.listing;
@@ -63,7 +65,10 @@ export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerPro
   return (
     <div className="webui-miniapp-picker" data-testid="miniapp-picker">
       <div className="webui-miniapp-picker-heading">
-        <span>选择一个 Mini App</span>
+        <h1>我的 Mini App</h1>
+        <button type="button" onClick={onManage} disabled={!onManage}>
+          管理 <WebuiIconChevronRight />
+        </button>
         {onClose ? (
           <button type="button" onClick={onClose}>
             取消
@@ -90,10 +95,33 @@ export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerPro
         {rows.map((row) => {
           const refusal = state.refusals[row.pluginId];
           return (
-            <article className="webui-plugin-row" key={`picker-${row.pluginId}`} data-testid={`miniapp-picker-row-${row.pluginId}`}>
+            <article className="webui-plugin-row webui-miniapp-picker-row" key={`picker-${row.pluginId}`} data-testid={`miniapp-picker-row-${row.pluginId}`}>
+              <div className="webui-plugin-icon webui-miniapp-picker-icon" aria-hidden="true">
+                {row.iconUrl ? (
+                  <>
+                    <img
+                      src={row.iconUrl}
+                      alt=""
+                      loading="lazy"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                        event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                      }}
+                    />
+                    <span hidden>
+                      <WebuiIconSites />
+                    </span>
+                  </>
+                ) : (
+                  <WebuiIconSites />
+                )}
+              </div>
               <div className="webui-plugin-copy">
                 <h2>{row.name}</h2>
                 <p>{row.description || row.pluginId}</p>
+                <span className="webui-miniapp-picker-status" data-status={row.status}>
+                  {row.statusLabel}{row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
+                </span>
                 {refusal ? (
                   <p
                     className="webui-plugin-error"
@@ -108,14 +136,11 @@ export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerPro
                   </p>
                 ) : null}
               </div>
-              <span className="text-text_default_tertiary" data-status={row.status}>
-                {row.statusLabel}
-                {row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
-              </span>
               <div className="webui-plugin-actions">
                 <button
                   type="button"
                   data-testid={`miniapp-picker-open-${row.pluginId}`}
+                  aria-label="打开"
                   disabled={state.opening === row.pluginId || row.ownedElsewhere}
                   title={row.ownedElsewhere ? `另一个客户端${row.ownerClient ? `（${row.ownerClient}）` : ""}正在运行此 Mini App` : undefined}
                   onClick={() => {
@@ -124,20 +149,24 @@ export function MiniAppPicker({ sessionId, onOpened, onClose }: MiniAppPickerPro
                     });
                   }}
                 >
-                  {row.ownedElsewhere ? `其他客户端运行中${row.ownerClient ? `（${row.ownerClient}）` : ""}` : "打开"}
+                  {row.ownedElsewhere ? `其他客户端运行中${row.ownerClient ? `（${row.ownerClient}）` : ""}` : "使用"}
                 </button>
-                <button
-                  type="button"
-                  disabled={!row.running && row.status !== "starting"}
-                  onClick={() => void workflows?.stop(row.pluginId)}
-                >
-                  停止
-                </button>
+                {row.running || row.status === "starting" ? (
+                  <button
+                    type="button"
+                    onClick={() => void workflows?.stop(row.pluginId)}
+                  >
+                    停止
+                  </button>
+                ) : null}
               </div>
             </article>
           );
         })}
       </div>
+      <button className="webui-miniapp-picker-create" type="button" onClick={onManage} disabled={!onManage}>
+        创建 Mini App
+      </button>
       {sessionId ? null : (
         <p className="webui-plugin-empty">当前没有会话，Mini App 会打开在第一个标签页里。</p>
       )}

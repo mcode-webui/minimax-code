@@ -74,6 +74,15 @@ export interface RuntimeWiring {
    */
   readonly channelService: boolean;
   readonly browserActivation: 'desktop-plugin' | 'explicit-config';
+  /**
+   * Whether the skill hub reaches the remote catalogue.
+   *
+   * Replaces the inline `runtimeOwnerKind === 'electron'` disjunct at
+   * `host-factory.ts`. A desktop-class client reads the catalogue; a
+   * command-line client only reads it when the runtime is managed. The browser
+   * client is desktop-class, so it reads it the way the Desktop does.
+   */
+  readonly remoteSkillHub: boolean;
 }
 
 /** How agent execution behaves. */
@@ -210,6 +219,7 @@ const UNKNOWN_OWNER_POLICY: Omit<RuntimeOwnerPolicy, 'kind'> = {
     cronService: false,
     channelService: false,
     browserActivation: 'explicit-config',
+    remoteSkillHub: false,
   },
   execution: {
     restricted: true,
@@ -268,6 +278,8 @@ export function resolveRuntimeOwnerPolicy(
           browserActivation: ownsElectronRuntimeCapabilities(kind)
             ? 'desktop-plugin'
             : 'explicit-config',
+          // The Desktop reads the remote catalogue unconditionally.
+          remoteSkillHub: true,
         },
         execution: {
           restricted: isCliRestrictedRuntime(kind, cliEmbedded),
@@ -294,6 +306,9 @@ export function resolveRuntimeOwnerPolicy(
           browserActivation: ownsElectronRuntimeCapabilities(kind)
             ? 'desktop-plugin'
             : 'explicit-config',
+          // A command-line client reads the catalogue only when the runtime is
+          // managed; that stays a runtime fact, not an owner fact.
+          remoteSkillHub: false,
         },
         execution: {
           restricted: isCliRestrictedRuntime(kind, cliEmbedded),
@@ -323,6 +338,9 @@ export function resolveRuntimeOwnerPolicy(
           browserActivation: ownsElectronRuntimeCapabilities(kind)
             ? 'desktop-plugin'
             : 'explicit-config',
+          // No declared owner, so no owner-granted catalogue; the managed-runtime
+          // path still reaches it.
+          remoteSkillHub: false,
         },
         execution: {
           restricted: isCliRestrictedRuntime(kind, cliEmbedded),
@@ -351,6 +369,8 @@ export function resolveRuntimeOwnerPolicy(
           browserActivation: ownsElectronRuntimeCapabilities(kind)
             ? 'desktop-plugin'
             : 'explicit-config',
+          // ...while these read the raw undefined and answer true.
+          remoteSkillHub: false,
         },
         execution: {
           restricted: isCliRestrictedRuntime(kind, cliEmbedded),
@@ -400,6 +420,11 @@ export function resolveRuntimeOwnerPolicy(
           // on that plugin; the WebUI does the same instead of running its own
           // `explicit-config` path.
           browserActivation: 'desktop-plugin',
+          // Desktop's value. The catalogue is a cloud service the browser client
+          // can read exactly like the Desktop does; the earlier gate answered
+          // false for every browser client, so the market view fell back to the
+          // local install ledger and showed no catalogue at all.
+          remoteSkillHub: true,
         },
         execution: {
           restricted: false,

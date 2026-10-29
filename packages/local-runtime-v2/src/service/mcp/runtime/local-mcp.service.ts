@@ -69,6 +69,41 @@ import type {
 } from '../contracts.js';
 import { LocalMcpSettingsError } from '../errors.js';
 
+/**
+ * The turn's tool-discovery budget for a remote (non-stdio) server.
+ */
+export const TURN_DISCOVERY_TIMEOUT_MS = 2_000;
+
+/**
+ * The turn's tool-discovery budget for a stdio server.
+ *
+ * A stdio server has to start its process before it can answer, and the servers
+ * with the largest tool lists take the longest to get there. The Desktop allows
+ * 30 seconds here; a shorter budget turns a slow server into a failed connection,
+ * and the server then shows up as unavailable instead of merely slow.
+ */
+export const TURN_STDIO_DISCOVERY_TIMEOUT_MS = 30_000;
+
+/**
+ * The discovery budget a turn gives one server.
+ *
+ * A configured budget wins over the defaults, and a stdio server's own budget wins
+ * over the shared one, because starting a process is the slow part.
+ */
+export function resolveTurnDiscoveryTimeoutMs(input: {
+  readonly transportType: 'stdio' | 'sse' | 'http';
+  readonly turnStdioDiscoveryTimeoutMs?: number;
+  readonly turnDiscoveryTimeoutMs?: number;
+}): number {
+  const turnDiscoveryTimeoutMs = input.turnDiscoveryTimeoutMs ?? TURN_DISCOVERY_TIMEOUT_MS;
+  if (input.transportType !== 'stdio') return turnDiscoveryTimeoutMs;
+  return (
+    input.turnStdioDiscoveryTimeoutMs ??
+    input.turnDiscoveryTimeoutMs ??
+    TURN_STDIO_DISCOVERY_TIMEOUT_MS
+  );
+}
+
 interface LocalMcpFile extends Record<string, unknown> {
   mcpServers: Record<string, LocalMcpServerConfig>;
 }
@@ -747,13 +782,11 @@ export class LocalMcpService {
     const pool = this.options.connectionPool;
     const transport = configToTransportConfig(config);
     if (!pool || !transport) return [];
-    const turnDiscoveryTimeoutMs = this.options.turnDiscoveryTimeoutMs ?? 2_000;
-    const discoveryTimeoutMs =
-      transport.type === 'stdio'
-        ? (this.options.turnStdioDiscoveryTimeoutMs ??
-          this.options.turnDiscoveryTimeoutMs ??
-          15_000)
-        : turnDiscoveryTimeoutMs;
+    const discoveryTimeoutMs = resolveTurnDiscoveryTimeoutMs({
+      transportType: transport.type,
+      turnStdioDiscoveryTimeoutMs: this.options.turnStdioDiscoveryTimeoutMs,
+      turnDiscoveryTimeoutMs: this.options.turnDiscoveryTimeoutMs,
+    });
     const timeoutMs = Math.min(configuredTimeout(config), discoveryTimeoutMs);
     const controller = new AbortController();
     try {

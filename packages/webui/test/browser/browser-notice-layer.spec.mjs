@@ -57,3 +57,38 @@ test("the browser panel's notice is drawn over the page, not under it", async ({
   expect(onTop).not.toBeNull();
   expect(onTop.className).toContain("webui-browser-notice");
 });
+
+test("the new tab launcher keeps shortcuts on one row and moves overflow into 其他", async ({
+  page,
+}) => {
+  await configureFixture(page, () => undefined);
+  await page.setViewportSize({ width: 520, height: 800 });
+  await openApp(page);
+  await page
+    .getByTestId("workspace-panel-controls")
+    .getByRole("button", { name: "浏览器" })
+    .click();
+  await expect(page.getByTestId("workspace-launcher")).toBeVisible();
+
+  const tiles = page.getByTestId("workspace-launcher-tiles");
+  const more = page.getByTestId("workspace-launcher-tile-more");
+  await expect(more).toBeVisible();
+
+  const rows = await tiles.locator(":scope > button, :scope > .webui-workspace-launcher-more").evaluateAll((nodes) =>
+    nodes.map((node) => Math.round(node.getBoundingClientRect().top)),
+  );
+  expect(new Set(rows).size).toBe(1);
+
+  await more.click();
+  const overflowItems = page.locator("[data-testid^='workspace-launcher-overflow-']");
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(overflowItems.first()).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "展开面板" }).click();
+  await expect(more).toHaveCount(0);
+  for (const kind of ["review", "terminal", "canvas", "miniapp-picker", "files"]) {
+    await expect(page.getByTestId(`workspace-launcher-tile-${kind}`)).toBeVisible();
+  }
+});

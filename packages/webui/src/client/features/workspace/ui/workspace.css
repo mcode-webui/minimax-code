@@ -322,6 +322,32 @@
   .webui-workspace-file-document { min-width: 0; min-height: 0; flex: 1 1 auto; overflow: auto; }
   .webui-workspace-file-document > p { margin: var(--spacing_16); color: var(--text_default_tertiary); }
   .webui-workspace-file-document > .webui-markdown { max-width: 960px; margin: 0 auto; padding: 32px clamp(24px, 7vw, 64px); }
+  .webui-workspace-miniapp-tab { box-sizing: border-box; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: auto; padding: 24px clamp(16px, 3cqi, 32px); }
+  .webui-workspace-miniapp-tab.webui-workspace-miniapp-tab--view { display: flex; min-height: 0; flex-direction: column; overflow: hidden; padding: 0; }
+  .webui-workspace-miniapp-tab--view > .webui-miniapp-view { width: 100%; height: auto; }
+  .webui-workspace-miniapp-tab:not(.webui-workspace-miniapp-tab--view) { display: flex; flex-direction: column; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker { width: min(100%, 480px); margin: auto; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: var(--spacing_12); margin: 0 0 16px; color: var(--text_default_primary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading h1 { margin: 0; font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading > button { display: inline-flex; align-items: center; gap: var(--spacing_2); border: 0; background: transparent; padding: 0; color: var(--text_default_accent); font-size: var(--size_14); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading > button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 3px; }
+  .webui-workspace-miniapp-tab .webui-plugin-list { width: 100%; max-width: none; margin: 0; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-row { display: grid; min-width: 0; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--spacing_12); padding: var(--spacing_12) 0; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon { display: flex; width: 48px; height: 48px; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: var(--radius_12); background: var(--bg_default_primary); color: var(--icon_default_primary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon > svg { width: 22px; height: 22px; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy { min-width: 0; grid-area: auto; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy h2 { overflow: hidden; margin: 0 0 var(--spacing_2); color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_20); text-overflow: ellipsis; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-status { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions { display: flex; flex: 0 0 auto; grid-area: auto; align-items: center; gap: var(--spacing_8); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button { min-height: 36px; border-radius: var(--radius_12); padding: 0 var(--spacing_12); font-size: var(--size_14); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:first-child { min-width: 80px; border: 0; background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:first-child:not(:disabled):hover { background: var(--bg_interaction_tertiary_press); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:last-child:not(:first-child) { border: 0; background: transparent; color: var(--text_default_tertiary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-create { width: 100%; min-height: 44px; margin-top: var(--spacing_8); border: 0; border-radius: var(--radius_12); background: var(--bg_interaction_primary_default); color: var(--text_label_primary_default); font-size: var(--size_14); font-weight: var(--weight_medium); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-create:not(:disabled):hover { background: var(--bg_interaction_primary_hover); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-create:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
   .webui-workspace-image-preview { display: block; max-width: 100%; max-height: calc(100vh - 180px); margin: 24px auto; object-fit: contain; }
   .webui-file-code { min-width: max-content; min-height: 100%; margin: 0; overflow: auto; background: var(--bg_default_primary); padding: 20px 0; color: var(--text_default_primary); font-family: Hack, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre; }
   .webui-file-code code { display: block; min-width: 100%; }
@@ -339,6 +365,7 @@
    * opens a page. It is a tab's content, so it fills the body of the panel
    * rather than sitting in the strip. */
   .webui-workspace-launcher { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; padding: var(--spacing_24); background: var(--bg_default_primary); color: var(--text_default_primary); }
+  .webui-workspace-launcher-content { display: flex; width: 100%; flex-direction: column; align-items: center; transform: translateY(-24px); }
   .webui-workspace-launcher-brand { display: flex; min-height: clamp(72px, 10vw, 112px); flex: 0 0 auto; align-items: center; justify-content: center; margin-bottom: clamp(24px, 4vw, 48px); }
   .webui-workspace-launcher-wordmark { font-family: "Century Gothic", "Arial Rounded MT Bold", "Segoe UI", sans-serif; font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
   .webui-workspace-launcher-wordmark span { display: inline-block; }
@@ -364,12 +391,19 @@
   /* The shortcuts, under the address box and in a row: a mark in a round
    * plate with its name under it, which is the shape a browser's own
    * shortcuts have. */
-  .webui-workspace-launcher-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--spacing_24); }
+  .webui-workspace-launcher-tiles { display: flex; width: 100%; min-width: 0; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: var(--spacing_24); overflow: hidden; }
   .webui-workspace-launcher-tile { display: flex; width: 112px; flex-direction: column; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8); color: var(--text_default_secondary); }
+  .webui-workspace-launcher-tile { flex: 0 0 112px; }
   .webui-workspace-launcher-tile-icon { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border: 1px solid var(--border_default); border-radius: 50%; background: var(--bg_default_secondary); color: var(--icon_default_primary); }
   .webui-workspace-launcher-tile:hover { background: var(--bg_default_secondary); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile:hover .webui-workspace-launcher-tile-icon { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile-label { font-size: var(--size_12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .webui-workspace-launcher-more { flex: 0 0 112px; }
+  .webui-workspace-launcher-overflow-menu { min-width: 176px; padding: var(--spacing_6); }
+  .webui-workspace-launcher-overflow-item { display: flex; width: 100%; min-height: 36px; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_8); background: transparent; padding: 0 var(--spacing_8); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
+  .webui-workspace-launcher-overflow-item:hover { background: var(--bg_interaction_tertiary_hover); }
+  .webui-workspace-launcher-overflow-item:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -2px; }
+  .webui-workspace-launcher-overflow-icon { display: flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; }
   .webui-workspace-launcher-unavailable, .webui-workspace-launcher-error { max-width: 520px; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }
 
   .webui-turn-review { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; overflow: auto; }
@@ -461,5 +495,14 @@
       width: 180px;
       flex-basis: 180px;
     }
+  }
+
+  @container webui-workspace-panel (max-width: 860px) {
+    .webui-workspace-miniapp-tab { padding: var(--spacing_16); }
+    .webui-workspace-miniapp-tab .webui-plugin-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "copy copy" "status actions"; gap: var(--spacing_8) var(--spacing_12); padding: var(--spacing_16) var(--spacing_8); }
+    .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-row { grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: none; gap: var(--spacing_12); padding: var(--spacing_12) 0; }
+    .webui-workspace-miniapp-tab .webui-plugin-copy { grid-area: copy; }
+    .webui-workspace-miniapp-tab .webui-plugin-row > span { grid-area: status; align-self: center; }
+    .webui-workspace-miniapp-tab .webui-plugin-actions { grid-area: actions; }
   }
 }

@@ -346,7 +346,14 @@ export async function createWebuiRuntimeHost(
         ...currentConfig,
         beta: {
           ...currentConfig.beta,
-          mcodeTools: mcodeTools.ready,
+          // The capability switch stays the configured value. The Desktop client
+          // keeps `beta.mcodeTools` as the resolved config value too, so the
+          // `mcode-tools-master` skill stays in the catalog even when this
+          // client's host integration is not ready. Overriding it with the
+          // readiness dropped that skill from the catalog, and the Agent then
+          // had no entry point for multimodal generation at all.
+          // `browserUseTooling` is still readiness-gated: the browser tool is
+          // only usable when this client actually adopted a browser provider.
           browserUseTooling: browser.browserUseTooling,
         },
       };

@@ -1178,6 +1178,7 @@ export function WebuiClientFoundationApp(
                 state={workspacePanel} dispatch={dispatchWorkspacePanel} sessionId={selectedSessionId}
                 workspaceDir={selectedSession?.workspaceDir} workspaceFileUrl={workspacePort.workspaceFileUrl}
                 terminal={terminalOwner} onClose={() => dispatchWorkspacePanel({ type: "close-panel" })}
+                onManageMiniApps={() => openPluginManagement("plugins")}
               /></WebuiZoneBoundary> : undefined}
             />
             </>}

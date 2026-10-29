@@ -20,6 +20,7 @@ exactly that one cell.
 | `execution.mavisFeatureBundle` | false | true | Same class of feature bundle as the terminal client |
 | `execution.executesTerminalControl` | true | false | A browser client cannot run terminal control sequences |
 | `wiring.browserActivation` | explicit-config | desktop-plugin | Browser control comes from the installed `browser-use` plugin's `browser.use` host binding, and the built-in `browser` tool is exposed under the `mcp_browser` alias |
+| `wiring.remoteSkillHub` | false | true | The skill market reads the remote catalogue the way Desktop does. The gate used to compare owner kinds inline, so every browser client fell back to the local install ledger and showed no browsable skills |
 | `execution.promptProfile` | tui | desktop | The WebUI loads the shared `_v2/<appMode>/SYSTEM.md.hbs` asset and the workspace prompt context, like Desktop |
 | `execution.promptSurfaceDefault` | cli | interactive | The WebUI has a browser panel, a workspace panel and a Mini App presenter; `cli` told the agent it had no interactive surface |
 | `execution.reviewPolicy` | tui | neither | A browser client takes neither the command-line nor the terminal review bundle |

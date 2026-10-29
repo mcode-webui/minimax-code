@@ -53,6 +53,7 @@ import {
 import { buildLocalRuntimeMetricsClient } from "./host-metrics.js";
 import { managedBackendRoutingHeaders } from "./routing-headers.js";
 import { LocalBashCompletionCorrelation } from "./bash-completion-correlation.js";
+import { resolveRuntimeOwnerPolicy } from "./runtime-owner-policy.js";
 import {
   composeTelemetrySinks,
   createLocalRuntimeMetricsReporter,
@@ -314,14 +315,27 @@ function assertConversationUnavailable(operation: string): never {
   throw new Error(`Local Runtime V1 Conversation is unavailable: ${operation}`);
 }
 
-function shouldUseRemoteSkillHub(
+/**
+ * Whether the skill hub reads the remote catalogue.
+ *
+ * Exported for the gate test: the decision is a function of the owner row and the
+ * runtime posture, and the browser client lost the catalogue here.
+ */
+export function shouldUseRemoteSkillHub(
   options: CreateLocalRuntimeHostOptions,
 ): boolean {
   if (options.configGetter?.().skillHub?.enabled === false) return false;
   if (process.env.__MAVIS_RUNTIME_MANAGED === "0") return false;
-  return (
-    options.runtimeOwnerKind === "electron" ||
-    options.capabilities?.electronHost === true ||
-    isManagedRuntime()
-  );
+  // The owner row decides for the owner's kind. The browser client is a
+  // desktop-class client and reads the catalogue the way the Desktop does.
+  const ownerPolicy = resolveRuntimeOwnerPolicy({
+    kind: options.runtimeOwnerKind,
+    cliEmbedded: options.capabilities?.cliEmbedded === true,
+    electronHost: options.capabilities?.electronHost === true,
+    capabilityProfile: options.capabilityProfile,
+  });
+  if (ownerPolicy.wiring.remoteSkillHub) return true;
+  // The remaining disjuncts are runtime facts rather than owner facts: an
+  // Electron host capability, and a managed runtime for any owner.
+  return options.capabilities?.electronHost === true || isManagedRuntime();
 }

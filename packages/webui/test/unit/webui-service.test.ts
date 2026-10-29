@@ -3169,6 +3169,61 @@ describe("WebUI runtime host assembly", () => {
     }
   });
 
+  it("keeps the configured mcode-tools capability switch when the host integration is not ready", async () => {
+    // The Desktop client keeps `beta.mcodeTools` as the configured value, so
+    // the `mcode-tools-master` skill stays in the agent's catalog even when
+    // this client's host integration could not start. Overwriting the
+    // configured value with the readiness dropped that skill from the catalog,
+    // and the agent then had no entry point for multimodal generation at all.
+    const { createWebuiRuntimeHost } =
+      await import("../../src/runtime/index.js");
+    const { resolveBetaFeature } = await import("@mavis/config");
+    const dataDir = await mkdtemp(
+      path.join(os.tmpdir(), "webui-assembly-mcode-tools-"),
+    );
+    let lastOptions: Record<string, unknown> | undefined;
+    try {
+      const assembled = await createWebuiRuntimeHost({
+        dataDir,
+        appVersion: "0.4.2-assembly-test",
+        mcodeTools: {
+          prepare: async () => ({
+            requested: true,
+            ready: false,
+            category: "resource_unavailable" as const,
+            ensureCommandPath: () => undefined,
+            dispose: async () => undefined,
+          }),
+        },
+        factory: async (options) => {
+          lastOptions = { ...options };
+          return {
+            apiHost: { close: async () => undefined },
+            dataDir: options.dataDir,
+            appVersion: "0.4.2-assembly-test",
+          };
+        },
+      });
+      await assembled.harnessPort.close();
+      // The integration was not ready ...
+      expect(assembled.mcodeTools.ready).toBe(false);
+      // ... and the runtime still carries the configured capability switch,
+      // which the build defaults turn on for every managed client.
+      expect(
+        resolveBetaFeature("mcodeTools", undefined, { buildEnv: "dev" }),
+      ).toBe(true);
+      const configGetter = lastOptions?.configGetter as
+        | (() => { beta?: Record<string, boolean | undefined> })
+        | undefined;
+      const configured = (
+        await import("@mavis/local-runtime-v2")
+      ).getDefaultLocalRuntimeConfig().beta?.mcodeTools;
+      expect(configGetter?.().beta?.mcodeTools).toBe(configured);
+    } finally {
+      await removeDataDir(dataDir);
+    }
+  });
+
   it("exposes the usage quota client on both the host and the harness port", async () => {
     // `scripts/run-webui-server.mjs` builds the service port from
     // `assembled.host`, not from `assembled.harnessPort` — if the quota

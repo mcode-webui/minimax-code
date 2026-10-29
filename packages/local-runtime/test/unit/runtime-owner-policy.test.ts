@@ -145,6 +145,7 @@ describe('resolveRuntimeOwnerPolicy', () => {
         'cronService',
         'miniAppService',
         'ownsV2Runtime',
+        'remoteSkillHub',
         'schedulerHost',
       ]);
       expect(Object.keys(policy.execution).sort()).toEqual([
@@ -313,7 +314,7 @@ describe('resolveRuntimeOwnerPolicy', () => {
     expect(policy.execution.mavisFeatureBundle).toBe(true);
   });
 
-  it("'webui' resolves to its own row, which differs from tui in twelve cells", () => {
+  it("'webui' resolves to its own row, which differs from tui in thirteen cells", () => {
     // Read as "where WebUI differs from tui": the remaining cells are inherited so an
     // identity change does not silently move turn-execution semantics.
     //
@@ -353,6 +354,7 @@ describe('resolveRuntimeOwnerPolicy', () => {
         'wiring.browserActivation',
         'wiring.cronService',
         'wiring.miniAppService',
+        'wiring.remoteSkillHub',
         'wiring.schedulerHost',
       ].sort(),
     );
@@ -365,6 +367,9 @@ describe('resolveRuntimeOwnerPolicy', () => {
     // surface to bind an IM channel with.
     expect(webui.wiring.channelService).toBe(false);
     expect(webui.wiring.browserActivation).toBe('desktop-plugin');
+    // The skill hub catalogue: the browser client reads it the way the Desktop
+    // does, so the market view is not limited to the local install ledger.
+    expect(webui.wiring.remoteSkillHub).toBe(true);
     expect(webui.execution.restricted).toBe(false);
     expect(webui.execution.memoryFeature).toBe(true);
     expect(webui.execution.mavisFeatureBundle).toBe(true);

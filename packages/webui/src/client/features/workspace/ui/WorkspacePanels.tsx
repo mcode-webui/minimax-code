@@ -213,7 +213,7 @@ export function WebuiFilePreview({ tabId, content, result, codeMode, workspaceFi
   </div>;
 }
 
-export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, workspaceFileUrl, terminal: terminalOwner, onClose }: {
+export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, workspaceFileUrl, terminal: terminalOwner, onClose, onManageMiniApps }: {
   readonly state: WorkspacePanelState;
   readonly dispatch: (command: WorkspacePanelCommand) => void;
   readonly sessionId?: string; readonly workspaceDir?: string;
@@ -226,6 +226,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
    */
   readonly terminal?: WebuiTerminalOwner;
   readonly onClose?: () => void;
+  readonly onManageMiniApps?: () => void;
 }): ReactElement {
   const browserPort = useWebuiPortSlice("browser");
   const [panelWidth, setPanelWidth] = useState<number>();
@@ -831,6 +832,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       >
         <MiniAppPicker
           sessionId={activeTab.content.sessionId}
+          onManage={onManageMiniApps}
           onOpened={(pluginId) =>
             panelDispatch({
               type: "open-tab",
@@ -848,7 +850,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
         bridge; this panel decides only that the tab is where it goes. */}
     {tab === "miniapp" && activeTab?.content.kind === "miniapp" ? (
       <div
-        className="webui-workspace-miniapp-tab"
+        className="webui-workspace-miniapp-tab webui-workspace-miniapp-tab--view"
         data-testid="workspace-miniapp-tab"
         data-tab-id={activeTab.id}
         data-plugin-id={activeTab.content.pluginId}

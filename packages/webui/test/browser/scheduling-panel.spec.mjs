@@ -50,4 +50,39 @@ test.describe("the scheduled-task panel", () => {
     await expect(panel).toHaveCount(0);
     await expect(page.locator('[data-webui-component="composer"]')).toHaveCount(1);
   });
+
+  test("creates a task from a preset, turns one off, and deletes one", async ({ page }) => {
+    await openApp(page);
+    await page.locator('[data-webui-nav-item="定时任务"]').click();
+    const panel = page.locator('[data-webui-component="scheduling-panel"]');
+    await expect(panel).toBeVisible();
+
+    // Create, from the daily preset the form opens on.
+    await panel.locator('[data-webui-scheduling-new="true"]').click();
+    const editor = panel.locator('[data-webui-component="scheduling-editor"]');
+    await expect(editor).toBeVisible();
+    await editor.locator('[data-webui-scheduling-field="name"]').fill("每日摘要");
+    await editor.locator('[data-webui-scheduling-field="prompt"]').fill("Summarize the day.");
+    await expect(editor).toHaveScreenshot("scheduling-editor.png", screenshotOptions);
+    await editor.locator('[data-webui-scheduling-submit="true"]').click();
+    await expect(editor).toHaveCount(0);
+    const created = panel.locator('[data-webui-scheduling-task="cron-fixture-new-1"]');
+    await expect(created).toContainText("每日摘要");
+    // What the preset means reached the runtime: daily at 09:00 is `0 9 * * *`.
+    await expect(created).toContainText("每天 09:00");
+
+    // Turn one off: the row's own switch, and the label follows the runtime's answer.
+    const heldRow = panel.locator('[data-webui-scheduling-task="cron-fixture-held"]');
+    await heldRow.locator('[data-webui-scheduling-toggle="cron-fixture-held"]').click();
+    await expect(heldRow.locator('[data-webui-scheduling-enabled="false"]')).toContainText("已停用");
+    // And back on again.
+    await heldRow.locator('[data-webui-scheduling-toggle="cron-fixture-held"]').click();
+    await expect(heldRow.locator('[data-webui-scheduling-enabled="true"]')).toContainText("已启用");
+
+    // Delete takes two clicks, and the row goes.
+    const doomed = panel.locator('[data-webui-scheduling-task="cron-fixture-paused"]');
+    await doomed.locator('[data-webui-scheduling-delete="cron-fixture-paused"]').click();
+    await doomed.locator('[data-webui-scheduling-delete-confirm="cron-fixture-paused"]').click();
+    await expect(doomed).toHaveCount(0);
+  });
 });

@@ -55,6 +55,57 @@ export function installFixtureTransport() {
     A: { messages: [{ msgId: "history-A", role: "user", msgContent: "History A synthetic", timestamp: 1_700_000_000_001 }], hasMore: false },
     B: { messages: [{ msgId: "history-B", role: "user", msgContent: "History B synthetic", timestamp: 1_700_000_000_002 }], hasMore: false },
   };
+  // ADR 0027: the scheduled-task fixture. Three rows on purpose — one this client holds, one it
+  // does not, one paused — so the panel's three labels are all visible instead of one row that would
+  // render the same whatever the labels said. The mutations below change this list, which is why it
+  // is `let`: the panel re-reads after every write, and the browser test asserts the new state.
+  let cronTasks = [
+    {
+      cronId: "cron-fixture-held",
+      name: "队列摘要",
+      agentName: "synthetic-A",
+      prompt: "Summarize the queue.",
+      enabled: true,
+      heldByThisClient: true,
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+      sessionTarget: { mode: "new" },
+      project: null,
+      model: null,
+      nextRunAtMs: 1_700_003_600_000,
+      createdAtMs: 1_700_000_000_000,
+      updatedAtMs: 1_700_000_000_000,
+    },
+    {
+      cronId: "cron-fixture-unheld",
+      name: "工作区周报",
+      agentName: "synthetic-A",
+      prompt: "Write the weekly report.",
+      enabled: true,
+      heldByThisClient: false,
+      schedule: { kind: "recurring", expression: "*/30 * * * *" },
+      sessionTarget: { mode: "new" },
+      project: null,
+      model: null,
+      nextRunAtMs: 1_700_001_800_000,
+      createdAtMs: 1_700_000_000_000,
+      updatedAtMs: 1_700_000_000_000,
+    },
+    {
+      cronId: "cron-fixture-paused",
+      name: "队列周报",
+      agentName: "synthetic-A",
+      prompt: "Sync overnight.",
+      enabled: false,
+      heldByThisClient: false,
+      schedule: { kind: "recurring", expression: "0 2 * * *" },
+      sessionTarget: { mode: "new" },
+      project: null,
+      model: null,
+      createdAtMs: 1_700_000_000_000,
+      updatedAtMs: 1_700_000_000_000,
+    },
+  ];
+  let cronTaskSeq = 0;
   const pending = [];
   const delayed = [];
   const held = [];
@@ -298,6 +349,52 @@ export function installFixtureTransport() {
     }
     if (operation === "version") return { version: "browser-fixture", protocolVersion: 1 };
     if (operation === "listSkills") return { skills: [] };
+    if (operation === "listCronTasks") return { items: clone(cronTasks), hasMore: false };
+    if (operation === "createCronTask") {
+      cronTaskSeq += 1;
+      const created = {
+        cronId: `cron-fixture-new-${String(cronTaskSeq)}`,
+        name: String(body?.name ?? ""),
+        agentName: String(body?.agentName ?? ""),
+        prompt: String(body?.prompt ?? ""),
+        enabled: body?.enabled !== false,
+        heldByThisClient: true,
+        schedule: clone(body?.schedule ?? { kind: "recurring", expression: "0 9 * * *" }),
+        sessionTarget: clone(body?.sessionTarget ?? { mode: "new" }),
+        project: body?.project ?? null,
+        model: body?.model ?? null,
+        nextRunAtMs: 1_700_005_400_000,
+        createdAtMs: 1_700_004_000_000,
+        updatedAtMs: 1_700_004_000_000,
+      };
+      cronTasks = [...cronTasks, created];
+      return clone(created);
+    }
+    if (operation === "updateCronTask") {
+      const index = cronTasks.findIndex((task) => task.cronId === String(body?.cronId ?? ""));
+      if (index < 0) throw new Error("unknown cron task");
+      const patch = body ?? {};
+      const current = cronTasks[index];
+      const next = {
+        ...current,
+        ...(patch.name === undefined ? {} : { name: String(patch.name) }),
+        ...(patch.prompt === undefined ? {} : { prompt: String(patch.prompt) }),
+        ...(patch.schedule === undefined ? {} : { schedule: clone(patch.schedule) }),
+        ...(patch.sessionTarget === undefined ? {} : { sessionTarget: clone(patch.sessionTarget) }),
+        ...(patch.model === undefined ? {} : { model: patch.model }),
+        ...(patch.project === undefined ? {} : { project: patch.project }),
+        ...(patch.enabled === undefined ? {} : { enabled: patch.enabled === true }),
+      };
+      // A disabled task is not armed; that absence is what the panel renders as 未安排下一次执行.
+      if (next.enabled === false) delete next.nextRunAtMs;
+      else next.nextRunAtMs = current.nextRunAtMs ?? 1_700_005_400_000;
+      cronTasks = cronTasks.map((task, at) => (at === index ? next : task));
+      return clone(next);
+    }
+    if (operation === "deleteCronTask") {
+      cronTasks = cronTasks.filter((task) => task.cronId !== String(body?.cronId ?? ""));
+      return { success: true };
+    }
     // ADR 0027: the scheduled-task panel reads one page. Three rows on purpose — one this client
     // holds, one it does not, one paused — so the panel's three labels are all visible in the
     // baseline instead of a single row that would render the same whatever the labels said.

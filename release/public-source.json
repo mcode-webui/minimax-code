@@ -4465,6 +4465,7 @@
     "packages/webui/test/browser/responsive-layout.spec.mjs",
     "packages/webui/test/browser/review-consumers.spec.mjs",
     "packages/webui/test/browser/scheduling-panel.spec.mjs",
+    "packages/webui/test/browser/scheduling-panel.spec.mjs-snapshots/scheduling-editor-linux.png",
     "packages/webui/test/browser/scheduling-panel.spec.mjs-snapshots/scheduling-panel-linux.png",
     "packages/webui/test/browser/server.mjs",
     "packages/webui/test/browser/settings-account-tab.spec.mjs",

@@ -106,6 +106,10 @@ export function installFixtureTransport() {
     },
   ];
   let cronTaskSeq = 0;
+  // Run history for the scheduled-task fixture. The manual trigger below appends to it, so the
+  // browser test can assert what the panel shows after asking for a run.
+  let cronRuns = [];
+  let cronRunSeq = 0;
   const pending = [];
   const delayed = [];
   const held = [];
@@ -390,6 +394,24 @@ export function installFixtureTransport() {
       else next.nextRunAtMs = current.nextRunAtMs ?? 1_700_005_400_000;
       cronTasks = cronTasks.map((task, at) => (at === index ? next : task));
       return clone(next);
+    }
+    if (operation === "runCronTaskNow") {
+      cronRunSeq += 1;
+      const run = {
+        runId: `run-fixture-${String(cronRunSeq)}`,
+        cronId: String(body?.cronId ?? ""),
+        triggerSource: "manual",
+        status: "delivered",
+        sessionId: "A",
+        createdAtMs: 1_700_006_000_000 + cronRunSeq,
+        deliveredAtMs: 1_700_006_000_500 + cronRunSeq,
+      };
+      cronRuns = [run, ...cronRuns];
+      return clone(run);
+    }
+    if (operation === "listCronTaskRuns") {
+      const cronId = String(body?.cronId ?? "");
+      return { items: clone(cronRuns.filter((run) => run.cronId === cronId)), hasMore: false };
     }
     if (operation === "deleteCronTask") {
       cronTasks = cronTasks.filter((task) => task.cronId !== String(body?.cronId ?? ""));

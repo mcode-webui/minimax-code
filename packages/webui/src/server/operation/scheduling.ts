@@ -8,6 +8,9 @@
 // the runtime's cron view converts to a `WebuiCronTask` behind the harness port, so this layer
 // checks the shape a browser may send and never learns the runtime's model.
 import type {
+  WebuiCronRun,
+  WebuiCronRunListRequest,
+  WebuiCronRunPage,
   WebuiCronSchedule,
   WebuiCronSessionTarget,
   WebuiCronTask,
@@ -15,13 +18,16 @@ import type {
   WebuiCronTaskDeleteRequest,
   WebuiCronTaskListRequest,
   WebuiCronTaskPage,
+  WebuiCronTaskRunRequest,
   WebuiCronTaskUpdateRequest,
 } from "../../shared/contracts/cron.js";
 import { WebuiErrorCode } from "../../shared/envelope.js";
 import {
   CREATE_CRON_TASK_OPERATION_NAME,
   DELETE_CRON_TASK_OPERATION_NAME,
+  LIST_CRON_TASK_RUNS_OPERATION_NAME,
   LIST_CRON_TASKS_OPERATION_NAME,
+  RUN_CRON_TASK_NOW_OPERATION_NAME,
   UPDATE_CRON_TASK_OPERATION_NAME,
 } from "../../shared/operation-names.js";
 import type { WebuiOperation } from "./operation-contract.js";
@@ -266,5 +272,51 @@ export const deleteCronTaskOperation: WebuiOperation<
     const cronId = readText((body as Record<string, unknown>).cronId, "cronId");
     if (typeof cronId !== "string") return invalid(cronId.error);
     return { ok: true, body: { cronId } };
+  },
+};
+
+export const runCronTaskNowOperation: WebuiOperation<WebuiCronTaskRunRequest, WebuiCronRun> = {
+  name: RUN_CRON_TASK_NOW_OPERATION_NAME,
+  validate: (body) => {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return invalid("runCronTaskNow需要对象请求体。");
+    }
+    const cronId = readText((body as Record<string, unknown>).cronId, "cronId");
+    if (typeof cronId !== "string") return invalid(cronId.error);
+    return { ok: true, body: { cronId } };
+  },
+};
+
+export const listCronTaskRunsOperation: WebuiOperation<
+  WebuiCronRunListRequest,
+  WebuiCronRunPage
+> = {
+  name: LIST_CRON_TASK_RUNS_OPERATION_NAME,
+  validate: (body) => {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return invalid("listCronTaskRuns需要对象请求体。");
+    }
+    const value = body as Record<string, unknown>;
+    const cronId = readText(value.cronId, "cronId");
+    if (typeof cronId !== "string") return invalid(cronId.error);
+    const cursor = value.cursor;
+    if (cursor !== undefined && (typeof cursor !== "string" || cursor.trim() === "")) {
+      return invalid("cursor must be a non-empty string");
+    }
+    const limit = value.limit;
+    if (
+      limit !== undefined &&
+      (typeof limit !== "number" || !Number.isInteger(limit) || limit <= 0 || limit > MAX_LIST_LIMIT)
+    ) {
+      return invalid(`limit must be an integer between 1 and ${String(MAX_LIST_LIMIT)}`);
+    }
+    return {
+      ok: true,
+      body: {
+        cronId,
+        ...(cursor === undefined ? {} : { cursor: cursor as string }),
+        ...(limit === undefined ? {} : { limit: limit as number }),
+      },
+    };
   },
 };

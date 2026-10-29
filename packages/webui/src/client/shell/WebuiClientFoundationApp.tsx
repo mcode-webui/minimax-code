@@ -1070,6 +1070,12 @@ export function WebuiClientFoundationApp(
                   owner={application.schedulingOwner}
                   nowMs={activityNow}
                   onClose={() => dispatchShellSurface({ type: "show-conversation" })}
+                  onOpenSession={(sessionId) => {
+                    // Opening the session a run produced is an ordinary rail navigation: it also
+                    // leaves the panel, which is what a person expects after asking to see it.
+                    application.select(sessionId);
+                    dispatchShellSurface({ type: "show-conversation" });
+                  }}
                 />
               </WebuiZoneBoundary>
               : pluginManagementArea ? <WebuiZoneBoundary zone="plugins"><PluginCatalogue initialArea={pluginManagementArea} selectedSessionId={selectedSessionId} onChatWithAgent={async (name) => {

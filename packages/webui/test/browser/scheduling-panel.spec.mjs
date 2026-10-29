@@ -85,4 +85,32 @@ test.describe("the scheduled-task panel", () => {
     await doomed.locator('[data-webui-scheduling-delete-confirm="cron-fixture-paused"]').click();
     await expect(doomed).toHaveCount(0);
   });
+
+  test("runs a task now and shows the run, with a way into its session", async ({ page }) => {
+    await openApp(page);
+    await page.locator('[data-webui-nav-item="定时任务"]').click();
+    const panel = page.locator('[data-webui-component="scheduling-panel"]');
+    await expect(panel).toBeVisible();
+
+    // An empty history says so rather than showing nothing at all.
+    const heldRow = panel.locator('[data-webui-scheduling-task="cron-fixture-held"]');
+    await heldRow.locator('[data-webui-scheduling-history="cron-fixture-held"]').click();
+    await expect(heldRow.locator('[data-webui-scheduling-runs="cron-fixture-held"]')).toContainText(
+      "还没有运行记录。",
+    );
+
+    // Run now: the run appears in the history with its source, its outcome and its session.
+    await heldRow.locator('[data-webui-scheduling-run="cron-fixture-held"]').click();
+    const runs = heldRow.locator('[data-webui-scheduling-runs="cron-fixture-held"]');
+    await expect(runs).toContainText("手动");
+    await expect(runs).toContainText("已完成");
+    await expect(runs.locator('[data-webui-scheduling-run-session="A"]')).toContainText("打开会话");
+
+    await expect(panel).toHaveScreenshot("scheduling-panel-runs.png", screenshotOptions);
+
+    // Opening the session a run produced leaves the panel and lands on that session.
+    await runs.locator('[data-webui-scheduling-run-session="A"]').click();
+    await expect(panel).toHaveCount(0);
+    await expect(page).toHaveURL(/#session=A/u);
+  });
 });

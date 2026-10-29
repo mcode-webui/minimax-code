@@ -646,7 +646,7 @@ describe("WebUI host-shape invariant (batch C seam)", () => {
     // The bindings materialise from the operation descriptors; we only need
     // to verify the port is accepted and every binding is registered.
     const entries = createBindingEntries(port);
-    expect(entries.size).toBe(97);
+    expect(entries.size).toBe(99);
   });
 
   // --------------------------------------------------------------------

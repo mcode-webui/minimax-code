@@ -8,11 +8,15 @@
 // views — `shared/contracts/cron.ts` is what the browser is allowed to know, and the adapter behind
 // the harness is where the conversion happens.
 import type {
+  WebuiCronRun,
+  WebuiCronRunListRequest,
+  WebuiCronRunPage,
   WebuiCronTask,
   WebuiCronTaskCreateRequest,
   WebuiCronTaskDeleteRequest,
   WebuiCronTaskListRequest,
   WebuiCronTaskPage,
+  WebuiCronTaskRunRequest,
   WebuiCronTaskUpdateRequest,
 } from "../../../../shared/contracts/cron.js";
 
@@ -21,4 +25,6 @@ export interface SchedulingPort {
   readonly createCronTask?: (request: WebuiCronTaskCreateRequest) => Promise<WebuiCronTask>;
   readonly updateCronTask?: (request: WebuiCronTaskUpdateRequest) => Promise<WebuiCronTask>;
   readonly deleteCronTask?: (request: WebuiCronTaskDeleteRequest) => Promise<{ readonly success?: boolean }>;
+  readonly runCronTaskNow?: (request: WebuiCronTaskRunRequest) => Promise<WebuiCronRun>;
+  readonly listCronTaskRuns?: (request: WebuiCronRunListRequest) => Promise<WebuiCronRunPage>;
 }

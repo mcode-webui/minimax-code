@@ -245,6 +245,8 @@ const SCHEDULING_KEYS = [
   "createCronTask",
   "updateCronTask",
   "deleteCronTask",
+  "runCronTaskNow",
+  "listCronTaskRuns",
 ] as const satisfies readonly (keyof SchedulingPort)[];
 
 const MINIAPP_KEYS = [

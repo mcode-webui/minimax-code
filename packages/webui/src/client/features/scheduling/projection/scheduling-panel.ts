@@ -11,7 +11,11 @@
 //   * **An unknown schedule is shown as it is.** A cron expression this module cannot humanize is
 //     printed verbatim rather than guessed at, because a wrong "every day at 09:00" is worse than
 //     the expression the person actually typed.
-import type { WebuiCronSchedule, WebuiCronTask } from "../../../../shared/contracts/cron.js";
+import type {
+  WebuiCronRun,
+  WebuiCronSchedule,
+  WebuiCronTask,
+} from "../../../../shared/contracts/cron.js";
 
 export const WEBUI_SCHEDULING_EMPTY_TEXT = "还没有任何定时任务。";
 export const WEBUI_SCHEDULING_LOADING_TEXT = "正在读取定时任务…";
@@ -262,4 +266,42 @@ export function webuiCronDraftFromTask(task: WebuiCronTask): WebuiCronDraft {
     };
   }
   return { ...draft, preset: "custom", expression: task.schedule.expression };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Run history rows.
+//
+// A run says three things the panel must not blur: where it came from, how it ended, and which
+// session it produced. A failed run shows its code, because "failed" without the reason is a row a
+// person cannot act on.
+// ---------------------------------------------------------------------------------------------
+
+export const WEBUI_CRON_RUN_SOURCE_LABELS = { manual: "手动", scheduled: "定时" } as const;
+export const WEBUI_CRON_RUN_STATUS_LABELS = {
+  pending: "执行中",
+  delivered: "已完成",
+  failed: "失败",
+} as const;
+
+export interface WebuiCronRunRow {
+  readonly runId: string;
+  readonly sourceLabel: string;
+  readonly statusLabel: string;
+  readonly whenLabel: string;
+  readonly sessionId?: string;
+  /** The failure code, when the run failed. */
+  readonly failureLabel?: string;
+  readonly run: WebuiCronRun;
+}
+
+export function webuiCronRunRows(runs: readonly WebuiCronRun[]): readonly WebuiCronRunRow[] {
+  return runs.map((run) => ({
+    runId: run.runId,
+    sourceLabel: WEBUI_CRON_RUN_SOURCE_LABELS[run.triggerSource],
+    statusLabel: WEBUI_CRON_RUN_STATUS_LABELS[run.status],
+    whenLabel: webuiTimestampLabel(run.createdAtMs),
+    ...(run.sessionId === undefined ? {} : { sessionId: run.sessionId }),
+    ...(run.errorCode === undefined ? {} : { failureLabel: run.errorCode }),
+    run,
+  }));
 }

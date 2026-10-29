@@ -14,6 +14,7 @@ import {
   WEBUI_SCHEDULING_UNAVAILABLE,
 } from "../../src/client/features/scheduling/application/scheduling-owner.js";
 import {
+  webuiCronRunRows,
   WEBUI_CRON_EMPTY_DRAFT,
   webuiCronDraftFromTask,
   webuiCronScheduleFromDraft,
@@ -118,6 +119,9 @@ describe("the rendered panel", () => {
         onDelete: () => undefined,
         onRequestDelete: () => undefined,
         onCancelDelete: () => undefined,
+        onRunNow: () => undefined,
+        onToggleRuns: () => undefined,
+        onOpenSession: () => undefined,
       }),
     );
 
@@ -342,5 +346,61 @@ describe("the rendered editor", () => {
     );
     expect(markup).toContain('data-webui-scheduling-editor-error="true"');
     expect(markup).toContain("schedule.expression必须是五段的 cron 表达式。");
+  });
+});
+
+describe("the run history", () => {
+  const run = (overrides: Record<string, unknown> = {}) => ({
+    runId: "run-1",
+    cronId: "cron-1",
+    triggerSource: "manual" as const,
+    status: "delivered" as const,
+    sessionId: "session-1",
+    createdAtMs: Date.UTC(2026, 9, 30, 1, 0),
+    deliveredAtMs: Date.UTC(2026, 9, 30, 1, 1),
+    ...overrides,
+  });
+
+  it("says where a run came from, how it ended and when", () => {
+    const rows = webuiCronRunRows([
+      run(),
+      run({ runId: "run-2", triggerSource: "scheduled", status: "failed", errorCode: "PROCESS_RESTARTED", sessionId: undefined }),
+      run({ runId: "run-3", status: "pending", sessionId: undefined }),
+    ]);
+    expect(rows[0]).toMatchObject({ sourceLabel: "手动", statusLabel: "已完成", sessionId: "session-1" });
+    // A failed run carries the code: "failed" without the reason is a row nobody can act on.
+    expect(rows[1]).toMatchObject({ sourceLabel: "定时", statusLabel: "失败", failureLabel: "PROCESS_RESTARTED" });
+    expect(rows[2]).toMatchObject({ statusLabel: "执行中" });
+    expect("sessionId" in rows[2]!).toBe(false);
+  });
+
+  it("renders the open history with a way into the session it produced", () => {
+    const runs = new Map([["cron-1", [run()]]]);
+    const markup = renderToStaticMarkup(
+      SchedulingPanelView({
+        snapshot: { status: "ready", tasks: [task()], loadedAtMs: 1 },
+        nowMs: 0,
+        onClose: () => undefined,
+        onRefresh: () => undefined,
+        onCreate: () => undefined,
+        onEdit: () => undefined,
+        onToggle: () => undefined,
+        onDelete: () => undefined,
+        onRequestDelete: () => undefined,
+        onCancelDelete: () => undefined,
+        onRunNow: () => undefined,
+        onOpenSession: () => undefined,
+        onToggleRuns: () => undefined,
+        expandedRuns: "cron-1",
+        runs,
+      }),
+    );
+    expect(markup).toContain('data-webui-scheduling-runs="cron-1"');
+    expect(markup).toContain("手动");
+    expect(markup).toContain("已完成");
+    expect(markup).toContain('data-webui-scheduling-run-session="session-1"');
+    // The row actions the ticket promises are on the row, not hidden in a menu.
+    expect(markup).toContain('data-webui-scheduling-run="cron-1"');
+    expect(markup).toContain('data-webui-scheduling-history="cron-1"');
   });
 });

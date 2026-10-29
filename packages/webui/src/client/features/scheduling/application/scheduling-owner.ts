@@ -12,6 +12,7 @@
 //     "there are no scheduled tasks" are different answers, and only the second one belongs in the
 //     empty state.
 import type {
+  WebuiCronRun,
   WebuiCronTask,
   WebuiCronTaskCreateRequest,
   WebuiCronTaskPage,
@@ -37,7 +38,17 @@ export interface WebuiSchedulingSnapshot {
  * 的 cron 表达式。"), and a thrown error would land in a generic error boundary that cannot.
  */
 export type WebuiSchedulingMutation =
-  | { readonly ok: true; readonly task?: WebuiCronTask }
+  | {
+      readonly ok: true;
+      readonly task?: WebuiCronTask;
+      /** The run a `runNow` created, so the panel can say what it started. */
+      readonly run?: WebuiCronRun;
+    }
+  | { readonly ok: false; readonly message: string };
+
+/** What a history read answered. */
+export type WebuiSchedulingRuns =
+  | { readonly ok: true; readonly runs: readonly WebuiCronRun[] }
   | { readonly ok: false; readonly message: string };
 
 export interface WebuiSchedulingOwner {
@@ -51,6 +62,10 @@ export interface WebuiSchedulingOwner {
   readonly updateTask: (request: WebuiCronTaskUpdateRequest) => Promise<WebuiSchedulingMutation>;
   readonly setEnabled: (cronId: string, enabled: boolean) => Promise<WebuiSchedulingMutation>;
   readonly deleteTask: (cronId: string) => Promise<WebuiSchedulingMutation>;
+  /** Runs one task immediately. Exactly one host executes the run it creates. */
+  readonly runNow: (cronId: string) => Promise<WebuiSchedulingMutation>;
+  /** Reads one task's run history, newest first as the runtime orders it. */
+  readonly loadRuns: (cronId: string) => Promise<WebuiSchedulingRuns>;
 }
 
 export const WEBUI_SCHEDULING_UNAVAILABLE =
@@ -113,23 +128,26 @@ export function createWebuiSchedulingOwner(
   };
 
   /** Runs one mutation, then re-reads the list so the panel shows what the runtime stored. */
+  const failureMessage = (error: unknown): string =>
+    error instanceof Error && error.message ? error.message : WEBUI_SCHEDULING_FAILED;
+
   const mutate = async (
-    run: (() => Promise<WebuiCronTask | { readonly success?: boolean }>) | undefined,
+    run:
+      | (() => Promise<WebuiCronTask | WebuiCronRun | { readonly success?: boolean }>)
+      | undefined,
   ): Promise<WebuiSchedulingMutation> => {
     if (!run) return { ok: false, message: WEBUI_SCHEDULING_UNAVAILABLE };
     try {
       const answer = await run();
       await load();
-      // A delete answers `{ success }`; a create or an edit answers the stored definition.
-      return "success" in (answer as object)
-        ? { ok: true }
-        : { ok: true, task: answer as WebuiCronTask };
+      const record = answer as Record<string, unknown>;
+      // A delete answers `{ success }`, a run answers a row with `runId`, a definition answers one
+      // with `cronId`. Reading the discriminator is how one helper serves all three.
+      if ("success" in record) return { ok: true };
+      if ("runId" in record) return { ok: true, run: answer as WebuiCronRun };
+      return { ok: true, task: answer as WebuiCronTask };
     } catch (error) {
-      return {
-        ok: false,
-        message:
-          error instanceof Error && error.message ? error.message : WEBUI_SCHEDULING_FAILED,
-      };
+      return { ok: false, message: failureMessage(error) };
     }
   };
 
@@ -158,6 +176,20 @@ export function createWebuiSchedulingOwner(
       mutate(
         options.port.deleteCronTask ? () => options.port.deleteCronTask!({ cronId }) : undefined,
       ),
+    runNow: (cronId) =>
+      mutate(
+        options.port.runCronTaskNow ? () => options.port.runCronTaskNow!({ cronId }) : undefined,
+      ),
+    loadRuns: async (cronId) => {
+      const read = options.port.listCronTaskRuns;
+      if (!read) return { ok: false, message: WEBUI_SCHEDULING_UNAVAILABLE };
+      try {
+        const page = await read({ cronId });
+        return { ok: true, runs: page.items };
+      } catch (error) {
+        return { ok: false, message: failureMessage(error) };
+      }
+    },
     startRefreshing: () => {
       const handle = setIntervalFn(() => void load(), refreshMs);
       return () => clearIntervalFn(handle);

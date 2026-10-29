@@ -79,7 +79,9 @@ import {
 import {
   createCronTaskOperation,
   deleteCronTaskOperation,
+  listCronTaskRunsOperation,
   listCronTasksOperation,
+  runCronTaskNowOperation,
   updateCronTaskOperation,
 } from "./scheduling.js";
 import { pluginManagementOperation } from "./plugin-management.js";
@@ -462,6 +464,16 @@ export const WEBUI_OPERATION_BINDINGS = {
     args: (body) => [body],
     // The runtime answers with nothing; the wire says what happened.
     result: () => ({ success: true as const }),
+  }),
+  runCronTaskNow: bind("scheduling")("runCronTaskNow")("runCronTaskNow")({
+    operation: runCronTaskNowOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  listCronTaskRuns: bind("scheduling")("listCronTaskRuns")("listCronTaskRuns")({
+    operation: listCronTaskRunsOperation,
+    args: (body) => [body],
+    result: identity,
   }),
 
   // plugins

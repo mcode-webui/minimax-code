@@ -12,7 +12,9 @@ export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOpera
 export {
   createCronTaskOperation,
   deleteCronTaskOperation,
+  listCronTaskRunsOperation,
   listCronTasksOperation,
+  runCronTaskNowOperation,
   updateCronTaskOperation,
 } from "./scheduling.js";
 export { pluginManagementOperation } from "./plugin-management.js";
@@ -331,6 +333,8 @@ export function createOperationRegistry(
   registerOperation(registry, entry("createCronTask"));
   registerOperation(registry, entry("updateCronTask"));
   registerOperation(registry, entry("deleteCronTask"));
+  registerOperation(registry, entry("runCronTaskNow"));
+  registerOperation(registry, entry("listCronTaskRuns"));
   return registry;
 }
 

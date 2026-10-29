@@ -201,6 +201,8 @@ export const LIST_CRON_TASKS_OPERATION_NAME = "listCronTasks" as const;
 export const CREATE_CRON_TASK_OPERATION_NAME = "createCronTask" as const;
 export const UPDATE_CRON_TASK_OPERATION_NAME = "updateCronTask" as const;
 export const DELETE_CRON_TASK_OPERATION_NAME = "deleteCronTask" as const;
+export const RUN_CRON_TASK_NOW_OPERATION_NAME = "runCronTaskNow" as const;
+export const LIST_CRON_TASK_RUNS_OPERATION_NAME = "listCronTaskRuns" as const;
 
 import type {
   WebuiActiveTurnResult,
@@ -290,8 +292,12 @@ import type {
   WebuiUpdateUserModelProviderRequest,
 } from "./contracts/models.js";
 import type {
+  WebuiCronRun,
+  WebuiCronRunListRequest,
+  WebuiCronRunPage,
   WebuiCronTaskCreateRequest,
   WebuiCronTaskDeleteRequest,
+  WebuiCronTaskRunRequest,
   WebuiCronTaskListRequest,
   WebuiCronTaskPage,
   WebuiCronTask,
@@ -892,6 +898,15 @@ export interface OperationSpec {
   updateCronTask: { request: WebuiCronTaskUpdateRequest; response: WebuiCronTask };
   /** Deletion is a tombstone: the definition leaves the list, its runs stay for history. */
   deleteCronTask: { request: WebuiCronTaskDeleteRequest; response: { readonly success?: boolean } };
+  /**
+   * Run one task now, and read what happened on earlier runs.
+   *
+   * `runCronTaskNow` answers with the run it created. It executes in the host that was asked —
+   * `claimExecution` is atomic and delivery is idempotent per run id, so a second host on the same
+   * data directory cannot execute the same run twice.
+   */
+  runCronTaskNow: { request: WebuiCronTaskRunRequest; response: WebuiCronRun };
+  listCronTaskRuns: { request: WebuiCronRunListRequest; response: WebuiCronRunPage };
 }
 
 /**

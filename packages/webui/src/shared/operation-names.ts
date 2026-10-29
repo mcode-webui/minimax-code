@@ -198,6 +198,9 @@ export const WATCH_MINI_APP_AGENT_TURN_OPERATION_NAME = "watchMiniAppAgentTurn" 
  */
 export const MINI_APP_AGENT_CALL_OPERATION_NAME = "miniAppAgentCall" as const;
 export const LIST_CRON_TASKS_OPERATION_NAME = "listCronTasks" as const;
+export const CREATE_CRON_TASK_OPERATION_NAME = "createCronTask" as const;
+export const UPDATE_CRON_TASK_OPERATION_NAME = "updateCronTask" as const;
+export const DELETE_CRON_TASK_OPERATION_NAME = "deleteCronTask" as const;
 
 import type {
   WebuiActiveTurnResult,
@@ -286,7 +289,14 @@ import type {
   WebuiTestUserModelCandidateRequest,
   WebuiUpdateUserModelProviderRequest,
 } from "./contracts/models.js";
-import type { WebuiCronTaskListRequest, WebuiCronTaskPage } from "./contracts/cron.js";
+import type {
+  WebuiCronTaskCreateRequest,
+  WebuiCronTaskDeleteRequest,
+  WebuiCronTaskListRequest,
+  WebuiCronTaskPage,
+  WebuiCronTask,
+  WebuiCronTaskUpdateRequest,
+} from "./contracts/cron.js";
 import type { WebuiVersionInfo } from "./contracts/version.js";
 import type {
   WebuiBrowserAuthorization,
@@ -871,6 +881,17 @@ export interface OperationSpec {
     request: WebuiCronTaskListRequest;
     response: WebuiCronTaskPage;
   };
+  /**
+   * Creating, editing and deleting a scheduled task (ADR 0027).
+   *
+   * The response is the definition as the runtime stored it, not the request echoed back: the next
+   * fire time and the schedule generation belong to the shared row, and a panel that predicted them
+   * would disagree with the host that actually arms the task.
+   */
+  createCronTask: { request: WebuiCronTaskCreateRequest; response: WebuiCronTask };
+  updateCronTask: { request: WebuiCronTaskUpdateRequest; response: WebuiCronTask };
+  /** Deletion is a tombstone: the definition leaves the list, its runs stay for history. */
+  deleteCronTask: { request: WebuiCronTaskDeleteRequest; response: { readonly success?: boolean } };
 }
 
 /**

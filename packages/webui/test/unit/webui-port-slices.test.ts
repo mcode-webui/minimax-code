@@ -99,7 +99,7 @@ const EXPECTED: Record<
     "beginAccountLogin", "getAccountLoginStatus", "cancelAccountLogin",
     "getAccountStatus", "signOut",
   ],
-  scheduling: ["listCronTasks"],
+  scheduling: ["listCronTasks", "createCronTask", "updateCronTask", "deleteCronTask"],
   shell: ["watchEvents"],
 };
 

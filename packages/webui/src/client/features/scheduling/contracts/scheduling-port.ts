@@ -7,8 +7,18 @@
 // The request and response types are the shared wire DTOs. This file may not name the runtime's cron
 // views — `shared/contracts/cron.ts` is what the browser is allowed to know, and the adapter behind
 // the harness is where the conversion happens.
-import type { WebuiCronTaskListRequest, WebuiCronTaskPage } from "../../../../shared/contracts/cron.js";
+import type {
+  WebuiCronTask,
+  WebuiCronTaskCreateRequest,
+  WebuiCronTaskDeleteRequest,
+  WebuiCronTaskListRequest,
+  WebuiCronTaskPage,
+  WebuiCronTaskUpdateRequest,
+} from "../../../../shared/contracts/cron.js";
 
 export interface SchedulingPort {
   readonly listCronTasks?: (request: WebuiCronTaskListRequest) => Promise<WebuiCronTaskPage>;
+  readonly createCronTask?: (request: WebuiCronTaskCreateRequest) => Promise<WebuiCronTask>;
+  readonly updateCronTask?: (request: WebuiCronTaskUpdateRequest) => Promise<WebuiCronTask>;
+  readonly deleteCronTask?: (request: WebuiCronTaskDeleteRequest) => Promise<{ readonly success?: boolean }>;
 }

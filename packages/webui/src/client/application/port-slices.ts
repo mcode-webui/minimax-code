@@ -240,7 +240,12 @@ const ACCOUNT_KEYS = [
 
 const SHELL_KEYS = ["watchEvents"] as const satisfies readonly (keyof ShellEventPort)[];
 
-const SCHEDULING_KEYS = ["listCronTasks"] as const satisfies readonly (keyof SchedulingPort)[];
+const SCHEDULING_KEYS = [
+  "listCronTasks",
+  "createCronTask",
+  "updateCronTask",
+  "deleteCronTask",
+] as const satisfies readonly (keyof SchedulingPort)[];
 
 const MINIAPP_KEYS = [
   "watchMiniAppPresenter",

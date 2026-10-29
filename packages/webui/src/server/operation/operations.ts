@@ -9,7 +9,12 @@ export { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoa
 export { sendMessageOperation, enqueueMessageOperation, resumeSessionOperation } from "./interaction.js";
 export { watchEventsOperation, listPendingPermissionsOperation, getPendingQuestionnaireOperation, replyPermissionOperation, replyQuestionnaireOperation, dismissQuestionnaireOperation } from "./questionnaire.js";
 export { abortSessionOperation, listQueueMessagesOperation, deleteQueueItemOperation, listModelsOperation, listSkillsOperation, selectModelOperation, getSessionUsageOperation } from "./queue.js";
-export { listCronTasksOperation } from "./scheduling.js";
+export {
+  createCronTaskOperation,
+  deleteCronTaskOperation,
+  listCronTasksOperation,
+  updateCronTaskOperation,
+} from "./scheduling.js";
 export { pluginManagementOperation } from "./plugin-management.js";
 export {
   listMiniAppsOperation,
@@ -323,6 +328,9 @@ export function createOperationRegistry(
   // Appended: ADR 0027 scheduled tasks. The registry order is the wire order, so a new operation
   // lands at the end rather than in the domain it reads like.
   registerOperation(registry, entry("listCronTasks"));
+  registerOperation(registry, entry("createCronTask"));
+  registerOperation(registry, entry("updateCronTask"));
+  registerOperation(registry, entry("deleteCronTask"));
   return registry;
 }
 

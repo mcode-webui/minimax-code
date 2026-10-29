@@ -300,6 +300,7 @@
       "packages/webui/test/integration/agent-transcript.test.ts",
       "packages/webui/test/integration/real-host-loopback.test.ts",
       "packages/webui/test/integration/real-host-list-cron-tasks.test.ts",
+      "packages/webui/test/integration/real-host-cron-task-mutations.test.ts",
       "packages/webui/test/unit/account-login.test.ts",
       "packages/webui/test/unit/account-menu-panels.test.ts",
       "packages/webui/test/unit/account-workflows.test.ts",

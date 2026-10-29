@@ -4509,6 +4509,7 @@
     "packages/webui/test/integration/miniapp-real-flow.test.ts",
     "packages/webui/test/integration/miniapp-ui-flow.test.ts",
     "packages/webui/test/integration/real-host-capability-surface.test.ts",
+    "packages/webui/test/integration/real-host-cron-task-mutations.test.ts",
     "packages/webui/test/integration/real-host-list-cron-tasks.test.ts",
     "packages/webui/test/integration/real-host-loopback.test.ts",
     "packages/webui/test/integration/real-host-mcode-tools-bash-environment.test.ts",

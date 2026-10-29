@@ -76,7 +76,12 @@ import {
   selectModelOperation,
   getSessionUsageOperation,
 } from "./queue.js";
-import { listCronTasksOperation } from "./scheduling.js";
+import {
+  createCronTaskOperation,
+  deleteCronTaskOperation,
+  listCronTasksOperation,
+  updateCronTaskOperation,
+} from "./scheduling.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import {
   getPermissionModeOperation,
@@ -441,6 +446,22 @@ export const WEBUI_OPERATION_BINDINGS = {
     operation: listCronTasksOperation,
     args: (body) => [body],
     result: identity,
+  }),
+  createCronTask: bind("scheduling")("createCronTask")("createCronTask")({
+    operation: createCronTaskOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  updateCronTask: bind("scheduling")("updateCronTask")("updateCronTask")({
+    operation: updateCronTaskOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  deleteCronTask: bind("scheduling")("deleteCronTask")("deleteCronTask")({
+    operation: deleteCronTaskOperation,
+    args: (body) => [body],
+    // The runtime answers with nothing; the wire says what happened.
+    result: () => ({ success: true as const }),
   }),
 
   // plugins

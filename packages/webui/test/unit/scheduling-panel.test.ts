@@ -14,6 +14,12 @@ import {
   WEBUI_SCHEDULING_UNAVAILABLE,
 } from "../../src/client/features/scheduling/application/scheduling-owner.js";
 import {
+  WEBUI_CRON_EMPTY_DRAFT,
+  webuiCronDraftFromTask,
+  webuiCronScheduleFromDraft,
+} from "../../src/client/features/scheduling/projection/scheduling-panel.js";
+import { SchedulingEditorView } from "../../src/client/features/scheduling/ui/scheduling-editor.js";
+import {
   describeWebuiCronNextRun,
   describeWebuiCronSchedule,
   WEBUI_SCHEDULING_EMPTY_TEXT,
@@ -101,7 +107,18 @@ describe("the panel's rows", () => {
 describe("the rendered panel", () => {
   const render = (snapshot: Parameters<typeof SchedulingPanelView>[0]["snapshot"]) =>
     renderToStaticMarkup(
-      SchedulingPanelView({ snapshot, nowMs: 0, onClose: () => undefined, onRefresh: () => undefined }),
+      SchedulingPanelView({
+        snapshot,
+        nowMs: 0,
+        onClose: () => undefined,
+        onRefresh: () => undefined,
+        onCreate: () => undefined,
+        onEdit: () => undefined,
+        onToggle: () => undefined,
+        onDelete: () => undefined,
+        onRequestDelete: () => undefined,
+        onCancelDelete: () => undefined,
+      }),
     );
 
   it("renders one row per task and never names another host", () => {
@@ -210,5 +227,120 @@ describe("the list owner", () => {
     resolveRead?.();
     await Promise.all([first, second]);
     expect(owner.getSnapshot().status).toBe("ready");
+  });
+});
+
+describe("the editor's presets", () => {
+  const draft = { ...WEBUI_CRON_EMPTY_DRAFT };
+
+  it("converts each preset into the schedule the task stores", () => {
+    expect(webuiCronScheduleFromDraft({ ...draft, preset: "daily", time: "09:00" }, 0)).toEqual({
+      ok: true,
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+    });
+    expect(
+      webuiCronScheduleFromDraft({ ...draft, preset: "weekly", time: "18:30", weekday: "5" }, 0),
+    ).toEqual({ ok: true, schedule: { kind: "recurring", expression: "30 18 * * 5" } });
+    expect(webuiCronScheduleFromDraft({ ...draft, preset: "hourly", minute: "15" }, 0)).toEqual({
+      ok: true,
+      schedule: { kind: "recurring", expression: "15 * * * *" },
+    });
+    const once = webuiCronScheduleFromDraft(
+      { ...draft, preset: "once", onceAt: "2026-10-30T09:00" },
+      Date.UTC(2026, 9, 29),
+    );
+    expect(once.ok).toBe(true);
+    expect(webuiCronScheduleFromDraft(
+      { ...draft, preset: "custom", expression: "0 9 1 * *" },
+      0,
+    )).toEqual({ ok: true, schedule: { kind: "recurring", expression: "0 9 1 * *" } });
+  });
+
+  it("names the field that stopped it", () => {
+    expect(webuiCronScheduleFromDraft({ ...draft, preset: "daily", time: "9am" }, 0)).toMatchObject({
+      ok: false,
+      field: "time",
+    });
+    expect(
+      webuiCronScheduleFromDraft({ ...draft, preset: "weekly", time: "09:00", weekday: "9" }, 0),
+    ).toMatchObject({ ok: false, field: "weekday" });
+    expect(webuiCronScheduleFromDraft({ ...draft, preset: "once", onceAt: "" }, 0)).toMatchObject({
+      ok: false,
+      field: "onceAt",
+    });
+    expect(
+      webuiCronScheduleFromDraft({ ...draft, preset: "custom", expression: "0 9 *" }, 0),
+    ).toMatchObject({ ok: false, field: "expression" });
+    expect(
+      webuiCronScheduleFromDraft(
+        { ...draft, preset: "once", onceAt: "2026-10-29T09:00" },
+        Date.UTC(2026, 9, 30),
+      ),
+    ).toMatchObject({ ok: false, field: "onceAt" });
+  });
+
+  it("opens an existing task in the preset it was written with", () => {
+    expect(webuiCronDraftFromTask(task())).toMatchObject({
+      preset: "daily",
+      time: "09:00",
+      name: "queue digest",
+    });
+    expect(
+      webuiCronDraftFromTask(task({ schedule: { kind: "recurring", expression: "30 18 * * 5" } })),
+    ).toMatchObject({ preset: "weekly", weekday: "5", time: "18:30" });
+    expect(
+      webuiCronDraftFromTask(task({ schedule: { kind: "recurring", expression: "15 * * * *" } })),
+    ).toMatchObject({ preset: "hourly", minute: "15" });
+    expect(
+      webuiCronDraftFromTask(task({ schedule: { kind: "recurring", expression: "0 9 1 * *" } })),
+    ).toMatchObject({ preset: "custom", expression: "0 9 1 * *" });
+  });
+});
+
+describe("the rendered editor", () => {
+  const render = (draft: Parameters<typeof SchedulingEditorView>[0]["draft"]) =>
+    renderToStaticMarkup(
+      SchedulingEditorView({
+        mode: "create",
+        draft,
+        busy: false,
+        onChange: () => undefined,
+        onCancel: () => undefined,
+        onSubmit: () => undefined,
+      }),
+    );
+
+  it("shows only the fields the chosen preset needs", () => {
+    expect(render({ ...WEBUI_CRON_EMPTY_DRAFT, preset: "daily" })).toContain(
+      'data-webui-scheduling-field="time"',
+    );
+    expect(render({ ...WEBUI_CRON_EMPTY_DRAFT, preset: "weekly" })).toContain(
+      'data-webui-scheduling-field="weekday"',
+    );
+    const hourly = render({ ...WEBUI_CRON_EMPTY_DRAFT, preset: "hourly" });
+    expect(hourly).toContain('data-webui-scheduling-field="minute"');
+    expect(hourly).not.toContain('data-webui-scheduling-field="time"');
+    expect(render({ ...WEBUI_CRON_EMPTY_DRAFT, preset: "once" })).toContain(
+      'data-webui-scheduling-field="onceAt"',
+    );
+    expect(render({ ...WEBUI_CRON_EMPTY_DRAFT, preset: "custom" })).toContain(
+      'data-webui-scheduling-field="expression"',
+    );
+  });
+
+  it("shows the rejection message beside the form", () => {
+    const markup = renderToStaticMarkup(
+      SchedulingEditorView({
+        mode: "create",
+        draft: WEBUI_CRON_EMPTY_DRAFT,
+        busy: false,
+        error: "schedule.expression必须是五段的 cron 表达式。",
+        onChange: () => undefined,
+        onCancel: () => undefined,
+        onSubmit: () => undefined,
+      }),
+    );
+    expect(markup).toContain('data-webui-scheduling-editor-error="true"');
+    expect(markup).toContain("schedule.expression必须是五段的 cron 表达式。");
   });
 });

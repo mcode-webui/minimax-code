@@ -120,3 +120,146 @@ export function webuiSchedulingRows(
 ): readonly WebuiSchedulingRow[] {
   return tasks.map((task) => webuiSchedulingRow(task, nowMs));
 }
+
+// ---------------------------------------------------------------------------------------------
+// The editor's draft, and the schedule a draft stands for.
+//
+// The presets exist so a person never has to type cron for the four schedules they actually want.
+// What they choose is converted here, once, into the schedule the task stores — so the panel and the
+// runtime never disagree about what "每天 09:00" means.
+// ---------------------------------------------------------------------------------------------
+
+export type WebuiCronSchedulePreset = "daily" | "weekly" | "hourly" | "once" | "custom";
+
+export interface WebuiCronDraft {
+  readonly name: string;
+  readonly prompt: string;
+  readonly preset: WebuiCronSchedulePreset;
+  /** `HH:MM`, for the daily and weekly presets. */
+  readonly time: string;
+  /** `0`–`6`, Sunday first, for the weekly preset. */
+  readonly weekday: string;
+  /** `0`–`59`, for the hourly preset. */
+  readonly minute: string;
+  /** A `datetime-local` value, for the once preset. */
+  readonly onceAt: string;
+  /** The expression the custom preset stores verbatim. */
+  readonly expression: string;
+  readonly model: string;
+  readonly project: string;
+  /** A fresh session per run, or a fixed one the person names. */
+  readonly sessionId: string;
+}
+
+export const WEBUI_CRON_PRESET_LABELS: Readonly<Record<WebuiCronSchedulePreset, string>> = {
+  daily: "每天",
+  weekly: "每周",
+  hourly: "每小时",
+  once: "仅一次",
+  custom: "自定义",
+};
+
+export const WEBUI_CRON_EMPTY_DRAFT: WebuiCronDraft = {
+  name: "",
+  prompt: "",
+  preset: "daily",
+  time: "09:00",
+  weekday: "1",
+  minute: "0",
+  onceAt: "",
+  expression: "",
+  model: "",
+  project: "",
+  sessionId: "",
+};
+
+export type WebuiCronScheduleFromDraft =
+  | { readonly ok: true; readonly schedule: WebuiCronSchedule }
+  | { readonly ok: false; readonly field: "time" | "weekday" | "onceAt" | "expression"; readonly message: string };
+
+const TIME_PATTERN = /^([01]?\d|2[0-3]):([0-5]\d)$/u;
+
+/** The schedule a draft stands for, or the field that stopped it. */
+export function webuiCronScheduleFromDraft(
+  draft: WebuiCronDraft,
+  nowMs: number,
+): WebuiCronScheduleFromDraft {
+  if (draft.preset === "custom") {
+    const expression = draft.expression.trim();
+    if (expression.split(/\s+/u).filter(Boolean).length !== 5) {
+      return { ok: false, field: "expression", message: "自定义表达式需要五段。" };
+    }
+    return { ok: true, schedule: { kind: "recurring", expression } };
+  }
+  if (draft.preset === "once") {
+    const runAtMs = Date.parse(draft.onceAt);
+    if (!Number.isFinite(runAtMs)) {
+      return { ok: false, field: "onceAt", message: "请选择执行时间。" };
+    }
+    if (runAtMs <= nowMs) {
+      return { ok: false, field: "onceAt", message: "执行时间需要晚于现在。" };
+    }
+    return { ok: true, schedule: { kind: "once", runAtMs } };
+  }
+  if (draft.preset === "hourly") {
+    const minute = Number(draft.minute);
+    if (!Number.isInteger(minute) || minute < 0 || minute > 59) {
+      return { ok: false, field: "time", message: "分钟需要在 0 到 59 之间。" };
+    }
+    return { ok: true, schedule: { kind: "recurring", expression: `${String(minute)} * * * *` } };
+  }
+  const match = TIME_PATTERN.exec(draft.time.trim());
+  if (!match) return { ok: false, field: "time", message: "时间格式需要是 HH:MM。" };
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (draft.preset === "daily") {
+    return {
+      ok: true,
+      schedule: { kind: "recurring", expression: `${String(minute)} ${String(hour)} * * *` },
+    };
+  }
+  const weekday = Number(draft.weekday);
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+    return { ok: false, field: "weekday", message: "星期需要在周日到周六之间。" };
+  }
+  return {
+    ok: true,
+    schedule: {
+      kind: "recurring",
+      expression: `${String(minute)} ${String(hour)} * * ${String(weekday)}`,
+    },
+  };
+}
+
+/** The draft an existing task opens in, so editing does not start from a blank form. */
+export function webuiCronDraftFromTask(task: WebuiCronTask): WebuiCronDraft {
+  const draft: WebuiCronDraft = {
+    ...WEBUI_CRON_EMPTY_DRAFT,
+    name: task.name,
+    prompt: task.prompt,
+    model: task.model ?? "",
+    project: task.project ?? "",
+    sessionId: task.sessionTarget.mode === "sessionId" ? (task.sessionTarget.sessionId ?? "") : "",
+  };
+  if (task.schedule.kind === "once") {
+    const date = new Date(task.schedule.runAtMs);
+    const local = `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return { ...draft, preset: "once", onceAt: local };
+  }
+  const fields = task.schedule.expression.trim().split(/\s+/u);
+  if (fields.length !== 5) return { ...draft, preset: "custom", expression: task.schedule.expression };
+  const [minute = "", hour = "", dom = "", month = "", dow = ""] = fields;
+  if (dom === "*" && month === "*" && dow === "*") {
+    if (hour === "*") return { ...draft, preset: "hourly", minute };
+    return { ...draft, preset: "daily", time: `${pad(Number(hour))}:${pad(Number(minute))}` };
+  }
+  if (dom === "*" && month === "*" && /^[0-6]$/u.test(dow)) {
+    return {
+      ...draft,
+      preset: "weekly",
+      weekday: dow,
+      time: `${pad(Number(hour))}:${pad(Number(minute))}`,
+    };
+  }
+  return { ...draft, preset: "custom", expression: task.schedule.expression };
+}

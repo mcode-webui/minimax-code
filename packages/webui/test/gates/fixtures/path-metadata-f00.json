@@ -5069,6 +5069,15 @@
       "role": "outside",
       "business": null,
       "home": "outside"
+    },
+    {
+      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
+      "home": "target"
     }
   ],
   "directions": [

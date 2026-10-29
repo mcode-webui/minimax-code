@@ -96,7 +96,11 @@ reserves layout width it is not using, every shape change answers to one thresho
 by the stylesheet and the resize logic, and the zones degrade differently. ADR 0026 records the
 composer's keyboard bindings as the settings page stores them: one canonical notation, the
 settings page owns the change, the composer reads the stored binding when a key is pressed, and only
-the actions that already have keyboard meaning are bindable. A new decision takes the next free
+the actions that already have keyboard meaning are bindable. ADR 0027 records the WebUI's
+scheduled-task surface: the WebUI is a scheduler host. It reaches the v2 runtime's Cron
+service, arms the persisted scheduled tasks and fires them, and when the Desktop runs at the
+same time the shared database decides which host acts on a given slot — the Desktop needs no
+change. A new decision takes the next free
 number.
 
 | Retired | Was | Why it is not in the log | Where the live facts are |

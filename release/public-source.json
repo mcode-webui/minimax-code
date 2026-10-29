@@ -3743,6 +3743,7 @@
     "packages/webui/docs/adr/0024-the-client-draws-the-workspace-boundary-for-a-diff-body.md",
     "packages/webui/docs/adr/0025-the-layout-adapts-to-available-width.md",
     "packages/webui/docs/adr/0026-the-composer-follows-the-bindings-the-settings-page-stores.md",
+    "packages/webui/docs/adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md",
     "packages/webui/docs/adr/observation-architecture.md",
     "packages/webui/docs/agents/domain.md",
     "packages/webui/docs/agents/issue-tracker.md",

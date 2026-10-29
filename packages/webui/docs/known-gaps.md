@@ -127,8 +127,10 @@ stop being written, is undecided.
 The WebUI-owned scheduler was removed in full on 2026-10-09: the panel, its operations, the port, the
 in-process tick loop and its `<dataDir>/webui/scheduled-tasks.sqlite` store are gone, along with the
 `better-sqlite3` dependency they introduced. The runtime-owner row enables `schedulerHost` and
-`cronService` for this client, but nothing in the browser surfaces them, and no plan exists to
-restore the removed surface (the retirement decision is in the branch history).
+`cronService` for this client, but nothing in the browser surfaces them. The plan to restore a
+scheduled-task surface is [ADR 0027](adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md);
+it restores the surface on the v2 runtime's own scheduler rather than on a WebUI-owned one, and it
+has not been implemented (the retirement decision is in the branch history).
 
 ## 8. A web tab can name only the isolated Chromium
 

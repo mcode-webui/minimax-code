@@ -590,6 +590,39 @@ _Avoid_: client type, mode, channel — and do not use it for a pane of the inte
 **harness port**). The word is overloaded in this codebase; this is the only
 meaning it carries.
 
+### Scheduled tasks
+
+**Scheduled task**:
+A unit of work a person asks to happen on a schedule: the rule that decides when, the
+request it makes, and where the result goes.
+_Avoid_: timer, job, alarm
+
+**Schedule**:
+The rule that decides when a scheduled task fires.
+_Avoid_: cron expression (the syntax of one kind of schedule), plan, timetable
+
+**Cron definition**:
+The durable record of one scheduled task: its schedule, its request, whether it is
+enabled, and how many times it has fired.
+_Avoid_: scheduled task (the concept the person holds), cron job (that names the armed
+timer), config
+
+**Cron run**:
+One attempt at a cron definition, with its trigger source, its outcome, and the session
+it produced.
+_Avoid_: execution, invocation, job, attempt
+
+**Scheduler host**:
+A runtime owner that arms a data directory's scheduled tasks and fires them. More than one
+scheduler host can serve one data directory; a slot is claimed once, so only one of them
+acts on it.
+_Avoid_: executor, worker, daemon — those name a role this does not have
+
+**Slot**:
+One scheduled firing time of one cron definition. Two scheduler hosts that reach the same
+slot produce one cron run.
+_Avoid_: tick, occurrence, window
+
 ### Storage and repository
 
 **Data directory**:

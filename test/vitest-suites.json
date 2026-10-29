@@ -289,6 +289,7 @@
       "packages/webui/test/integration/loopback-harness-path.test.ts",
       "packages/webui/test/integration/real-host-miniapp-tool.test.ts",
       "packages/webui/test/integration/real-host-model-turn.test.ts",
+      "packages/webui/test/integration/real-host-capability-surface.test.ts",
       "packages/webui/test/integration/real-host-mcode-tools-bash-environment.test.ts",
       "packages/webui/test/integration/real-host-skill-catalog.test.ts",
       "packages/webui/test/integration/webui-mcode-tools-host-environment.test.ts",

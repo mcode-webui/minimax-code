@@ -222,6 +222,32 @@ panel back at the cost of 312px of reading space on every narrow window. The con
 thing the client is for, so the panel gives way instead. [ADR 0025](adr/0025-the-layout-adapts-to-available-width.md)
 records the decision.
 
+## The capability surface is pinned by a gate
+
+Built-in capabilities have gone missing three ways, and every one of them was invisible until a
+turn failed: a skill dropped out of the rendered catalog, a native tool missing from the tool
+table, an MCP server's tools never reaching the model. Each of those happened here, and each was
+found by hand.
+
+`packages/webui/test/integration/real-host-capability-surface.test.ts` watches the surface a real
+turn offers the model — the rendered `<available_skills>` catalog and the tool table of the model
+request — and pins it to a reviewed baseline
+(`packages/webui/test/integration/capability-surface-baseline.ts`). The host is the production one,
+booted in an isolated data directory, and the MCP part of the surface is earned through a real
+stdio server (`mcp-capability-fixture-server.mjs`), so a server that fails to connect cannot pass.
+
+The baseline is a frozen snapshot rather than a derived expectation. Deriving it from the
+implementation would make the gate tautological: dropping a registration would drop the
+expectation with it. A capability that disappears fails the gate, and so does one that appears —
+until the baseline is updated on purpose, which shows up as a reviewable diff.
+
+The snapshot is taken under a pinned configuration — region, build environment, the beta switches,
+and the external skill roots switched off — because the catalog otherwise depends on the machine:
+the external roots scan the user's home, and the region decides which built-in skills are offered.
+Three built-in skills are deliberately outside the snapshot, each behind a gate this configuration
+does not meet (`cu-desktop`, `control-in-app-browser`, `resume-codex`); if a later change turns
+one of them on for this client, the gate fails on the extra entry, which is the point.
+
 ## Reported as missing, and actually correct
 
 - **The thirteen runtime-owner cells are not read by this package.** That is expected: they are

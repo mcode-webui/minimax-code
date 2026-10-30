@@ -216,6 +216,12 @@ contract.
   outside the primitive with the reason recorded.
 - **Each adopted control publishes its contract here**: what the primitive owns, what a caller
   states, and which differences are named variants.
+- **A control is adopted by rendering its component, never by spelling its classes.** A class name
+  carries no variant, no size default, no `type="button"` and no required accessible name, and it lets
+  a caller re-derive the recipe the contract owns. `client/ui/` owns the class strings; a caller
+  outside it that names one fails a gate. A caller that cannot use the component records why, at the
+  call site and in the inventory. A control's base class states structure only — geometry belongs to a
+  named size, because a floor in the base becomes a silent hazard the day a caller has to remember it.
 - **The pilot starts with three surfaces**: the Models provider form, the Settings usage page and the
   Plugin MCP server form. Each is preceded by a control inventory, and that inventory is a
   deliverable, not an afterthought. Later surfaces are candidates, not authorized replacements, and

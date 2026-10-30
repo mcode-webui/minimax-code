@@ -79,6 +79,14 @@ admission criterion. Focus treatment needs a package-wide contract and rendered 
 verification: a rule that suppresses an outline does not by itself prove that focus is invisible, and
 an idle-state screenshot cannot see a missing indicator.
 
+**Adoption.** A contract is adopted by rendering its component, never by spelling its classes. A class name
+carries no variant, no size default, no `type="button"` and no required accessible name, and it lets a caller
+re-derive the recipe the contract owns; the classes remain an implementation detail of `client/ui/`. A migration
+that renames classes is not a migration of the caller, and a gate fails when a `.tsx` file outside the shared home
+names a shared control's class. A caller that cannot use the component records why, at the call site and in the
+inventory. The base class of a control states structure only: geometry belongs to a named size, because a floor in
+the base is a hazard once the caller has to remember it.
+
 ## Overlay coordination
 
 Here *overlay* means a floating layer above the page — a popup, a menu, a dialog or a

@@ -87,6 +87,13 @@ serve. `webui-design-tokens.test.ts` hard-asserts the semantic tokens and named 
 a removed token fails the suite rather than silently restyling. Rules:
 `docs/design/design-language.md`.
 
+**Adopting a shared control.** Render the component — `WebuiButton`, `WebuiIconButton`,
+`SettingsButton`, `IconButton` — never its class string. The classes are `client/ui/`'s detail; a
+`.tsx` file outside that directory that names one fails a gate, and a caller that cannot use the
+component records the reason at the call site and in the presentation inventory. Renaming a
+stylesheet selector to a named class so the stylesheet stops addressing raw elements is a separate
+job: it makes the ratchet possible, and it does not count as adopting the component.
+
 **Adding a client UI module.** A new file under `features/*/ui/`, `shell/` or the shared `ui/` must
 be classified in `scripts/lib/webui-presentation-inventory.json`: one entry with its label, whether
 it is a surface or a concern, at least one of the eight families, and one of the four dispositions.

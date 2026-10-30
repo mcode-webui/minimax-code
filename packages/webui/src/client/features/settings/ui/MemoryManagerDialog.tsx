@@ -21,6 +21,7 @@ import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilit
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { SettingsButton } from "./settings-atoms.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   formatMemoryTimestamp,
   isMemorySaveable,
@@ -400,9 +401,7 @@ export function MemoryManagerDialog({
           </div>
         )}
         {error ? (
-          <p role="alert" data-testid="agent-memory-error" className="webui-settings-error">
-            {error}
-          </p>
+          <FeedbackError message=<>error</> className="webui-settings-error" testId="agent-memory-error" />
         ) : null}
         {error && draft === undefined && getAgentMemory ? (
           <SettingsButton

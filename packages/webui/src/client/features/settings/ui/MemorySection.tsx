@@ -12,6 +12,7 @@ import { SettingsRow, SettingsSection } from "../../../ui/settings-layout.js";
 import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
 import { MemoryManagerDialog } from "./MemoryManagerDialog.js";
 import { formatMemoryTimestamp, isMemorySaveable, type MemoryHandoff } from "../contracts/memory-handoff.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 interface MemorySectionProps {
   readonly getAgentMemory?: (request?: {
@@ -168,9 +169,7 @@ export function MemorySection({
         </p>
       ) : null}
       {error ? (
-        <p role="alert" data-testid="memory-error" className="webui-settings-error">
-          {error}
-        </p>
+        <FeedbackError message=<>error</> className="webui-settings-error" testId="memory-error" />
       ) : null}
       {managing ? (
         <MemoryManagerDialog

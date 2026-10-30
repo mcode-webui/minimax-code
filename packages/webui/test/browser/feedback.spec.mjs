@@ -54,6 +54,36 @@ test("a dynamic field error is announced once and stays associated with its cont
   await expect(endpoint).toHaveAttribute("aria-invalid", "true");
 });
 
+test("a determinate bar carries a value while a busy indicator carries none", async ({ page }) => {
+  // The client's one determinate progress surface: the composer's context usage
+  // bar. It reports a share of a known window, so it wears `progressbar` with a
+  // value; a busy indicator has no share to report and must not wear the role.
+  const usage = page.getByTestId("composer-context-usage");
+  // The indicator only renders when the runtime reports a context window; with no
+  // usage in the fixture there is no bar to measure and the test says so.
+  test.skip((await usage.count()) === 0, "the runtime reports no context usage in this fixture");
+  await expect(usage).toBeVisible();
+  await usage.click();
+
+  const bar = usage.locator('[role="progressbar"]');
+  await expect(bar).toHaveCount(1);
+  // With a known window the bar reports the share; with none it drops the value
+  // rather than reporting zero, which is the indeterminate form of the same bar.
+  const value = await bar.getAttribute("aria-valuenow");
+  const label = await bar.getAttribute("aria-label");
+  expect(label, "the bar is named").toBeTruthy();
+  if (value !== null) {
+    const numeric = Number(value);
+    expect(Number.isFinite(numeric), "a value is a number").toBe(true);
+    expect(numeric).toBeGreaterThanOrEqual(0);
+    expect(numeric).toBeLessThanOrEqual(100);
+    await expect(bar).toHaveAttribute("aria-valuemax", "100");
+  }
+
+  // And nothing in the composer claims to be loading a share of anything.
+  await expect(page.locator('[role="status"][aria-valuenow]')).toHaveCount(0);
+});
+
 test("the plugin panel reports activity as a status, never as a progressbar", async ({ page }) => {
   // The plugin area is a rail surface, not a settings page.
   await page.getByRole("button", { name: /^插件$/u }).first().click();

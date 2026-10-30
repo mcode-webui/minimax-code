@@ -23,6 +23,7 @@ import {
 } from "../projection/rail-groups.js";
 import { ProjectExpansion } from "./project-expansion.js";
 import { SessionActivityMeta } from "./session-activity-meta.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 /** Project rows consume rail-owned display state and return named view actions. */
 export function ProjectList({
@@ -303,14 +304,10 @@ export function ProjectList({
       >
         <div className="webui-project-section-content-inner" data-webui-projects-section="true">
           {error ? (
-            <p role="alert" className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16">
-              Unable to load projects: {error}
-            </p>
+            <FeedbackError message="Unable to load projects: {error}" className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16" />
           ) : null}
           {projectLoadError ? (
-            <p role="alert" className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16">
-              Unable to load project list: {projectLoadError}
-            </p>
+            <FeedbackError message="Unable to load project list: {projectLoadError}" className="px-1 pb-1 text-text_default_secondary text-size_12 leading-line_height_16" />
           ) : null}
           {!error && projects.length === 0 ? (
             <p className="webui-project-empty">

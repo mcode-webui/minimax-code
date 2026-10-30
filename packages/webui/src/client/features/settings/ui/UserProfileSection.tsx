@@ -15,6 +15,7 @@ import type {
 } from "../../../../shared/contracts/personalization.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
 import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
 
@@ -240,19 +241,13 @@ export function UserProfileSection({
         </span>
       </div>
       {overLimit ? (
-        <p role="alert" data-testid="user-profile-over-limit" className="webui-settings-error">
-          超过 {maxChars} 字符后，超出部分不会注入提示，请精简后再保存。
-        </p>
+        <FeedbackError message="超过 {maxChars} 字符后，超出部分不会注入提示，请精简后再保存。" className="webui-settings-error" testId="user-profile-over-limit" />
       ) : null}
       {malformed ? (
-        <p role="alert" data-testid="user-profile-malformed" className="webui-settings-error">
-          user.md 的标记不完整，为避免覆盖记忆中已收集的内容，这里不做写入。
-        </p>
+        <FeedbackError message="user.md 的标记不完整，为避免覆盖记忆中已收集的内容，这里不做写入。" className="webui-settings-error" testId="user-profile-malformed" />
       ) : null}
       {error ? (
-        <p role="alert" data-testid="user-profile-error" className="webui-settings-error">
-          {error}
-        </p>
+        <FeedbackError message=<>error</> className="webui-settings-error" testId="user-profile-error" />
       ) : null}
       {saved && !saving ? (
         <p data-testid="user-profile-saved" className="webui-personalization-saved">

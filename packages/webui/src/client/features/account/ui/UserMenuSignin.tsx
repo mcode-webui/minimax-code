@@ -14,6 +14,7 @@ import {
   isSigninPanelClaimedToday,
 } from "@mavis/shared/daily-signin";
 import type { WebuiSigninPanelView } from "../../../../shared/contracts/account.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface SigninState {
   readonly loading: boolean;
@@ -362,9 +363,7 @@ export function SigninCard({
               </div>
             </div>
             {error ? (
-              <p role="alert" className="mb-0 mt-2 text-xs text-text_default_secondary">
-                {error}
-              </p>
+              <FeedbackError message=<>error</> className="mb-0 mt-2 text-xs text-text_default_secondary" />
             ) : null}
           </>
         ) : (

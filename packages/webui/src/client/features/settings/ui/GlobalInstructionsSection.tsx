@@ -12,6 +12,7 @@ import type { WebuiGlobalInstructionsView } from "../../../../shared/contracts/p
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
 import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 const INSTRUCTIONS_PLACEHOLDER = [
   "# Agents 全局设定",
@@ -176,14 +177,10 @@ export function GlobalInstructionsSection({
         </span>
       </div>
       {overLimit ? (
-        <p role="alert" data-testid="global-instructions-over-limit" className="webui-settings-error">
-          内容超出 {maxBytes} 字节上限，请精简后再保存。
-        </p>
+        <FeedbackError message="内容超出 {maxBytes} 字节上限，请精简后再保存。" className="webui-settings-error" testId="global-instructions-over-limit" />
       ) : null}
       {error ? (
-        <p role="alert" data-testid="global-instructions-error" className="webui-settings-error">
-          {error}
-        </p>
+        <FeedbackError message=<>error</> className="webui-settings-error" testId="global-instructions-error" />
       ) : null}
       {saved && !dirty ? (
         <p data-testid="global-instructions-saved" className="webui-personalization-saved">

@@ -13,6 +13,7 @@ import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilit
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
 import { WebuiButton } from "../../../ui/button.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface PluginImportDialogProps {
   readonly url: string;
@@ -117,9 +118,7 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
           ) : null}
         </div>
         {error ? (
-          <p role="alert" className="webui-plugin-error">
-            {error}
-          </p>
+          <FeedbackError message=<>error</> className="webui-plugin-error" />
         ) : null}
         <footer>
           <WebuiButton variant="surface" size="dialog" onClick={() => onClose()}>

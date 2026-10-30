@@ -10,6 +10,7 @@ import {
   toggleWebuiQuestionnaireOption,
 } from "../projection/questionnaire-state.js";
 import { WebuiPlanSurface } from "./PlanModeCards.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import type {
   WebuiPendingPermission,
   WebuiQuestionnaireAnswer,
@@ -454,9 +455,7 @@ export function WebuiInteractionPanel({
         </article>
       ) : null}
           {interactionError ? (
-        <p role="alert" data-testid="questionnaire-error" className="text-text_default_secondary text-size_12">
-          Unable to answer interaction: {interactionError}
-        </p>
+        <FeedbackError message="Unable to answer interaction: {interactionError}" className="text-text_default_secondary text-size_12" testId="questionnaire-error" />
       ) : null}
     </div>
   );

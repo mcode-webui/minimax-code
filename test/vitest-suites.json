@@ -434,6 +434,7 @@
       "packages/webui/test/unit/webui-creation-origins.test.ts",
       "packages/webui/test/gates/webui-dependency-check.test.ts",
       "packages/webui/test/gates/webui-presentation-coverage.test.ts",
+      "packages/webui/test/gates/webui-raw-control-ratchet.test.ts",
       "packages/webui/test/unit/webui-design-tokens.test.ts",
       "packages/webui/test/unit/webui-dropdown.test.tsx",
       "packages/webui/test/unit/webui-error-boundary.test.tsx",

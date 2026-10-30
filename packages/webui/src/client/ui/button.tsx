@@ -16,7 +16,7 @@
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
 
 /** The variants the client's callers need today. */
-export type WebuiButtonVariant = "secondary" | "primary" | "danger";
+export type WebuiButtonVariant = "secondary" | "primary" | "danger" | "plain";
 
 /**
  * The sizes the client's callers need today.
@@ -32,6 +32,9 @@ const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   secondary: "webui-mavis-button-gray",
   primary: "webui-mavis-button-black",
   danger: "webui-mavis-button-danger",
+  // `plain` is the button a surface already styles as "a button, no fill" — the
+  // contract owns its states (focus, disabled) and the caller owns the rest.
+  plain: "webui-mavis-button-plain",
 };
 
 const SIZE_CLASS: Record<WebuiButtonSize, string> = {
@@ -77,6 +80,11 @@ export interface WebuiIconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children"> {
   /** The accessible name. An icon-only control has no text of its own. */
   readonly label: string;
+  /**
+   * Which surface the glyph sits on: `surface` is the filled box a header uses,
+   * `bare` the no-fill control a field row uses. Both are this contract's.
+   */
+  readonly tone?: "surface" | "bare";
   readonly className?: string;
   readonly children?: ReactNode;
 }
@@ -90,12 +98,19 @@ export interface WebuiIconButtonProps
  */
 export function WebuiIconButton({
   label,
+  tone = "surface",
   className,
   children,
   type = "button",
   ...rest
 }: WebuiIconButtonProps): ReactElement {
-  const classes = ["webui-icon-button", className].filter(Boolean).join(" ");
+  const classes = [
+    "webui-icon-button",
+    tone === "bare" ? "webui-icon-button--bare" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button type={type} className={classes} aria-label={label} {...rest}>
       {children}

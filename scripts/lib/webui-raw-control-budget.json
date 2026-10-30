@@ -1,0 +1,24 @@
+{
+  "comment": "Raw form-control selectors still present in a feature stylesheet, per file. `pnpm check:webui-presentation`-style ratchet: a new selector fails, and an entry that no longer exists fails too, so this list only shrinks. The shared button family moved to client/styles/button.css, which is why the settings stylesheet no longer declares it.",
+  "files": {
+    "packages/webui/src/client/features/settings/ui/settings.css": [
+      ".webui-account-login-header button",
+      ".webui-ant-select select",
+      ".webui-ant-select select:disabled",
+      ".webui-archived-search input",
+      ".webui-archived-search input::placeholder",
+      ".webui-memory-manager-menu button",
+      ".webui-memory-manager-menu button.is-danger",
+      ".webui-memory-manager-menu button:disabled",
+      ".webui-memory-manager-menu button:hover:not(:disabled)",
+      ".webui-review-search input",
+      ".webui-segmented button",
+      ".webui-segmented button.is-selected",
+      ".webui-settings-dialog-header button",
+      ".webui-settings-dialog-header button:focus-visible",
+      ".webui-settings-dialog-header button:hover",
+      ".webui-settings-search button",
+      ".webui-settings-search input"
+    ]
+  }
+}

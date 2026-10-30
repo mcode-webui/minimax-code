@@ -41,6 +41,18 @@
   color: var(--text_label_danger_primary_default);
 }
 
+/* A button with no fill of its own: the caller's surface paints it, the shared
+ * layer still owns what happens when it is focused or disabled. */
+.webui-mavis-button-plain {
+  min-width: 0;
+  height: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+}
+
 .webui-mavis-button-danger:hover:not(:disabled) {
   background: var(--bg_interaction_danger_primary_hover);
 }
@@ -83,6 +95,23 @@
 .webui-icon-button:focus-visible {
   outline: 2px solid var(--border_accent);
   outline-offset: 1px;
+}
+
+/* The bare tone: an icon-only control with no surface of its own, used inside a
+ * field row or a toolbar. It is a named variant of the same contract rather than
+ * a class string each caller writes, which is what the caller in
+ * `client/ui/form-atoms.tsx` used to do. */
+.webui-icon-button--bare {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--icon_default_tertiary);
+  transition: color 120ms ease;
+}
+
+.webui-icon-button--bare:hover:not(:disabled) {
+  background: transparent;
+  color: var(--icon_default_secondary);
 }
 
 .webui-icon-button:disabled {

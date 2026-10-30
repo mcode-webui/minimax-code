@@ -19,6 +19,7 @@
 // than which feature happens to use it.
 
 import type { ReactElement, ReactNode } from "react";
+import { WebuiButton } from "../../../ui/button.js";
 
 export const PERSONALIZATION_SECTION_HINTS = {
   globalInstructions:
@@ -40,10 +41,17 @@ export const PERSONALIZATION_SECTION_HINTS = {
  * class name that only ever appears inside a template literal is a class the
  * build drops.
  */
-const SETTINGS_BUTTON_VARIANT_CLASSES = {
-  gray: "webui-mavis-button-gray",
-  black: "webui-mavis-button-black",
-  danger: "webui-mavis-button-danger",
+/**
+ * The settings callers' variant names, mapped onto the shared contract's.
+ *
+ * The names stay because they are what the settings pages say; the appearance,
+ * the states and the class string belong to `client/ui/button.tsx` now, and this
+ * module adapts rather than copies.
+ */
+const SETTINGS_BUTTON_VARIANT = {
+  gray: "secondary",
+  black: "primary",
+  danger: "danger",
 } as const;
 
 export function SettingsButton({
@@ -57,7 +65,7 @@ export function SettingsButton({
   className,
 }: {
   readonly children: ReactNode;
-  readonly variant?: keyof typeof SETTINGS_BUTTON_VARIANT_CLASSES;
+  readonly variant?: keyof typeof SETTINGS_BUTTON_VARIANT;
   readonly size?: "regular" | "compact" | "header";
   readonly disabled?: boolean;
   readonly onClick?: () => void;
@@ -66,15 +74,17 @@ export function SettingsButton({
   readonly className?: string;
 }): ReactElement {
   return (
-    <button
+    <WebuiButton
       type={type}
       disabled={disabled}
       onClick={onClick}
       data-testid={testId}
-      className={`webui-mavis-button ${SETTINGS_BUTTON_VARIANT_CLASSES[variant]}${size === "compact" ? " webui-mavis-button-compact" : ""}${size === "header" ? " webui-mavis-button-header" : ""}${className ? ` ${className}` : ""}`}
+      variant={SETTINGS_BUTTON_VARIANT[variant]}
+      size={size}
+      className={className}
     >
       {children}
-    </button>
+    </WebuiButton>
   );
 }
 

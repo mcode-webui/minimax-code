@@ -4,8 +4,7 @@
 
 Accepted. It supersedes the premise of the retired 0012 record ("the WebUI runs its own
 scheduled tasks until the runtime offers one", listed in the
-[Decisions table](../README.md), with its live facts in
-[known-gaps.md](../known-gaps.md) §7). The WebUI gets a scheduled-task surface back and it
+[Decisions table](../README.md)). The WebUI gets a scheduled-task surface back and it
 executes scheduled tasks. It does not get a scheduler of its own: it uses the v2 runtime's
 one scheduler, the same one the Desktop uses, and the two of them are kept correct by the
 shared database rather than by an agreement between the applications.
@@ -139,8 +138,14 @@ backwards. Restore writes become conditional:
 
 ```
 SET next_run_at_ms = ?, updated_at_ms = ?
-WHERE scheduler_id = ? AND run_count = ? AND schedule_generation = ?
+WHERE scheduler_id = ? AND run_count = ? AND schedule_generation = ? AND state = ?
 ```
+
+`state` is in the predicate because a pause changes only the state and leaves both counters intact.
+Without it, a pause landing between the read and the write passes the guard and the restore writes
+`active` back, resurrecting the task the pause just stopped. No test reproduces that interleaving —
+it needs a hook between the read and the write — so the extra column is a defence rather than a
+measured one.
 
 A zero-change result means the peer moved the row. The restoring host adopts the peer's
 row instead of writing over it. A boot can never move a counter backwards.

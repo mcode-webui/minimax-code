@@ -8,6 +8,11 @@ Last verified: 2026-10-27, against `webui` at `d9593276` with the Mini App hosti
 from `origin/webui` at `ba946c06`. This list covers capabilities; open
 decisions are in [`open-questions.md`](open-questions.md).
 
+The numbering has a hole where an entry stopped being true: §7 ("there is no scheduled-task
+surface") closed when the `scheduling` business shipped, and the decision that replaced it is
+[ADR 0027](adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md). A closed gap is deleted
+rather than kept as a gap, so the numbers are not contiguous.
+
 ## 1. Connector and App tools depend on a beta feature, and on the model finding them
 
 **Implemented, not reachable by default.** The chain is complete and self-contained: the assembly

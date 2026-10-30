@@ -3,7 +3,7 @@
  *
  * The owner-derived string comparisons were replaced with reads of a resolved policy cell, so the
  * `webui` row is a declared identity rather than a borrowed one (see
- * `packages/webui/docs/runtime.md`). The guarantee is that, for every
+ * `packages/webui/docs/runtime/owner-identity.md`). The guarantee is that, for every
  * owner declaration in use today, the observable result is unchanged.
  *
  * This file is what makes that claim checkable rather than aspirational: every cell is

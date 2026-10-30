@@ -79,6 +79,6 @@ For host-event changes, run `pnpm --filter @mavis/webui gen:host-events`. `share
 
 ## Scope and dependencies
 
-Read `docs/known-gaps.md` and `open-questions.md` when behavior seems absent. Disabled tabs, beta tools, optional providers and temporarily failed calls differ. Historical schedulers/navigation generators are not current requirements.
+Read `docs/known-gaps.md` and `open-questions.md` when behavior seems absent. Disabled tabs, beta tools, optional providers and temporarily failed calls differ. The retired WebUI-owned scheduler and the retired navigation generators are not current requirements; the scheduled-task surface that exists uses the v2 runtime's Cron service (`docs/adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md`), and a second scheduler in this client is still refused.
 
 Reuse existing dependencies: React/React DOM; marked + KaTeX + selectively registered highlight.js core; xterm/fit for terminal UI; node-pty for processes; ws for loopback; archive adapters' existing libraries. Recheck manifest versions. New browser dependencies need a reviewable reason and bundle assessment; Node dependencies do not become browser-safe through reuse.

@@ -19,14 +19,14 @@ rather than by an assertion:
 
 Drop a port member without dropping its binding, or add one without reaching the registry, and
 `pnpm typecheck:webui` stops compiling. The current roster is pinned in
-`test/unit/webui-operation-binding.test.ts`: **93** bindings, **16** dedicated handlers, **109**
-operations. A new operation breaks all three counts, so bump them in the same change — after
-checking that the roster really grew.
+`test/unit/webui-operation-binding.test.ts`: **99** bindings and **18** dedicated handlers, covering
+**117** operation names. A new operation breaks all three counts, so bump them in the same change —
+after checking that the roster really grew.
 
-The sixteen operations that keep a hand-written handler live in `server/operation/handlers/`
-(`account`, `commands`, `messages`, `miniapp`, `stream`, `terminal`, `workspace`). They are the ones
-that cannot be expressed as a single capability call — a shaped response, a second runtime surface
-of their own, or a capability the host may not have.
+The eighteen operations that keep a hand-written handler live in `server/operation/handlers/`
+(`account`, `browser`, `commands`, `messages`, `miniapp`, `miniapp-agent`, `stream`, `terminal`,
+`workspace`). They are the ones that cannot be expressed as a single capability call — a shaped
+response, a second runtime surface of their own, or a capability the host may not have.
 
 ## Host types and wire projections
 

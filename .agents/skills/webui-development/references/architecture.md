@@ -71,6 +71,9 @@ This is a starting map, not a frozen registry. Rediscover files with `rg --files
 | `workspace` | Files/environment/archives/canvas, panel choices | `application/workspace-queries.ts`, `workspace-*-owner.ts`, `ui/WorkspacePanels.tsx` |
 | `review` | Turn changesets and working-tree snapshot resources | `application/turn-review-owner.ts`, `workspace-review-owner.public.ts` |
 | `terminal` | Browser terminal catalogue, commands, watches | `application/terminal-owner.ts`; service owns processes |
+| `scheduling` | Scheduled tasks: list, create, edit, enable/disable, delete, run now, run history; whether this client holds a task | `application/scheduling-owner.ts`, `projection/scheduling-panel.ts`, `ui/SchedulingPanel.public.tsx`, `ui/scheduling-editor.tsx`; decision: `docs/adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md` |
+| `browser` | Per-target browser state, authorization switches, the panel host | `application/browser-commands.ts`, `application/browser-authorization.ts`, `projection/browser-state.ts`, `ui/BrowserPanelHost.public.tsx`; semantics are `@mavis/browser-core` |
+| `miniapp` | Mini App catalogue, open/stop, the standalone tab and the agent bridge | `application/miniapp-workflows.ts`, `application/miniapp-bridge.ts`, `projection/miniapp-view.ts`, `ui/MiniAppView.public.tsx` |
 | `shell` | Boundary errors and surface shaping | `application/boundary-error.ts`, `projection/shell-surface.ts` |
 
 Settings hosting an editor does not transfer Models ownership. Workspace rendering a PTY does not own its process. Transcript rendering an interaction does not own reply policy. A named use case may coordinate multiple owners, as `client/application/task-session-workflows.ts` does.

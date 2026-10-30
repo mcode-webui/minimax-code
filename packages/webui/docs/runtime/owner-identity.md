@@ -13,8 +13,8 @@ exactly that one cell.
 
 | Cell | `tui` | `webui` (= Desktop) | Why |
 | --- | --- | --- | --- |
-| `wiring.schedulerHost` | false | true | The runtime host exposes scheduler capability; the WebUI currently has no scheduled-task surface |
-| `wiring.cronService` | false | true | The runtime host exposes cron capability without the Electron owner |
+| `wiring.schedulerHost` | false | true | The runtime host exposes scheduler capability, and the WebUI's `scheduling` business is the surface that uses it ([ADR 0027](../adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md)) |
+| `wiring.cronService` | false | true | The runtime host exposes cron capability without the Electron owner, and the WebUI reaches it through the six `*CronTask*` operations |
 | `execution.restricted` | true | false | The WebUI is not a restricted runtime |
 | `execution.memoryFeature` | false | true | The memory collection opens for this client |
 | `execution.mavisFeatureBundle` | false | true | Same class of feature bundle as the terminal client |

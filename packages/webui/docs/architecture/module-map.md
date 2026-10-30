@@ -28,9 +28,9 @@ pure derivations), `bindings/` (its React subscriptions), `ui/` (its presentatio
 business populates every role — a business with no screen has no `ui/`, and empty directories are
 not created. `ls packages/webui/src/client/features` is the list.
 
-The current businesses are `account`, `composer`, `goal`, `interactions`, `models`, `plugins`,
-`review`, `sessions`, `settings`, `shell`, `terminal`, `transcript`, `turn` and `workspace`. What a
-business is — and what it is not — is in `../client/ownership.md`.
+The current businesses are `account`, `browser`, `composer`, `goal`, `interactions`, `miniapp`,
+`models`, `plugins`, `review`, `scheduling`, `sessions`, `settings`, `shell`, `terminal`, `transcript`,
+`turn` and `workspace`. What a business is — and what it is not — is in `../client/ownership.md`.
 
 ## Runtime
 
@@ -40,7 +40,7 @@ business is — and what it is not — is in `../client/ownership.md`.
 | `runtime/assembly.ts` | The composition root. Creates and wires the process resources, forwards the runtime-owner options, and enriches the host handle with the credential-backed slots. Creates no OAuth state machine, no close ordering. |
 | `runtime/lifecycle.ts` | Resource registration, close ordering and startup-failure recovery. Wraps `apiHost.close` so runtime and capability owners close exactly once. |
 | `runtime/port.ts` | `WebuiHarnessPort` — the boundary to the harness: the callable, `AsyncIterable` and cancellation types plus one method per operation. It declares no wire DTO; those live in `shared/contracts/<domain>.ts`. |
-| `runtime/harness/` | The per-domain adapters that implement the port by delegating to the host handle: `host-contract.ts` (`WebuiRuntimeHostHandle`, `WebuiRuntimeCliService`), `adapter.ts` (`createHarnessPortFromHost`), plus `account`, `execution`, `interactions`, `miniapp`, `models-plugins`, `requirements`, `sessions`, `settings`, `workspace`. |
+| `runtime/harness/` | The per-domain adapters that implement the port by delegating to the host handle: `host-contract.ts` (`WebuiRuntimeHostHandle`, `WebuiRuntimeCliService`), `adapter.ts` (`createHarnessPortFromHost`), `result-conversion.ts` (host result → WebUI DTO), plus `account`, `browser`, `canvas-input`, `cron`, `execution`, `interactions`, `miniapp`, `miniapp-agent`, `models-plugins`, `provider-input`, `requirements`, `sessions`, `settings`, `workspace`. |
 | `runtime/auth-session.ts`, `runtime/auth-context.ts` | The one OAuth core with its lease and refresh timer, and the per-request auth context. |
 | `runtime/account-login.ts`, `runtime/check-in.ts`, `runtime/usage-quota.ts`, `runtime/usage-quota-projection.ts`, `runtime/reset-card-projection.ts`, `runtime/signing.ts` | Account login, daily check-in, the account-billing client (the quota, the credit fallback and the reset cards) and its two pure projections, request signing. |
 | `runtime/terminal.ts` | The terminal process manager. One per WebUI service, not a host-wide singleton. |
@@ -80,7 +80,7 @@ business is — and what it is not — is in `../client/ownership.md`.
 | `server/operation/<domain>.ts` | The operation descriptors (name + `validate`) grouped by domain. |
 | `server/operation/bind-handlers.ts` | `WEBUI_OPERATION_BINDINGS` — the statically declared operation→capability mapping — plus `createBindingEntries` and `DEDICATED_OPERATION_NAMES`. |
 | `server/operation/binding-mechanism.ts` | The binding machinery around `OperationSpec`. |
-| `server/operation/handlers/` | The sixteen operations that keep a hand-written handler: `account`, `commands`, `messages`, `miniapp`, `stream`, `terminal`, `workspace`. |
+| `server/operation/handlers/` | The eighteen operations that keep a hand-written handler: `account`, `browser`, `commands`, `messages`, `miniapp`, `miniapp-agent`, `stream`, `terminal`, `workspace`. |
 | `server/operation/operation-dispatch.ts` | `dispatchWebuiFrame` — one inbound frame → validate → look up → handle → response, stream or error frame. |
 | `server/operation/operations.ts` | `createOperationRegistry`, the single `registerOperation` call site, and the registry order. |
 
@@ -91,7 +91,7 @@ The binding roster and the compiler enforcement that keeps it in step with the p
 
 | Module | Role |
 | --- | --- |
-| `shared/contracts/<domain>.ts` | The request/result DTOs both sides of the boundary share — account, account-billing (the credit fallback and the reset cards), canvas, commands, goal, interactions, messages, miniapp, models, personalization, queue, review, session, stream, terminal, usage-quota, version, workspace. |
+| `shared/contracts/<domain>.ts` | The request/result DTOs both sides of the boundary share — account, account-billing (the credit fallback and the reset cards), account-usage, browser, browser-bridge, canvas, commands, cron (a scheduled task, its schedule and its runs), delivery, goal, interactions, messages, miniapp, miniapp-agent, models, observations, personalization, queue, review, session, session-facts, stream, terminal, usage-quota, version, workspace. `host-event-types.generated.ts` is generated by `gen:host-events`. |
 | `shared/envelope.ts` | Frame shape, protocol version, error codes. |
 | `shared/operation-names.ts` | Every `*_OPERATION_NAME` constant and the `OperationSpec` map that unary request types are derived from. |
 | `shared/plugin-management.ts` | `WebuiPluginManagementAction` and the plugin wire shapes. |

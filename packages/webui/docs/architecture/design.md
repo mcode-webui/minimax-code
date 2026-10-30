@@ -191,15 +191,15 @@ One declaration, three consumers, and a compiler that keeps them agreeing:
    can choose a member: group, method and operation name are fixed in the declaration, and the argument
    tuple and the result mapper are checked against that method's parameters and the operation's
    response type. No `any`, no assertion, no non-null assertion — a wrong group, method, tuple or
-   mapper fails to compile. The sixteen operations that shape a response, degrade when a capability is
-   absent, or carry a stream, terminal or command shape keep hand-written handlers in
+   mapper fails to compile. The eighteen operations that shape a response, degrade when a capability
+   is absent, or carry a stream, terminal or command shape keep hand-written handlers in
    `src/server/operation/handlers/`.
 4. **`src/runtime/port.ts`** declares `WebuiHarnessPort`: one method per operation, typed with the
    `shared/contracts/<domain>.ts` DTOs, and implemented under `src/runtime/harness/` by
    `createHarnessPortFromHost`. `bind-handlers.ts` derives its `Pick` from the port, so the roster and
-   the registry cannot drift: the counts are pinned by tests (93 bindings, 16 handlers, 109 operations),
-   and a change that adds or drops one stops `pnpm typecheck:webui` compiling until the roster
-   moves as a unit.
+   the registry cannot drift: the counts are pinned by tests (99 bindings and 18 dedicated handlers,
+   covering 117 operation names), and a change that adds or drops one stops `pnpm typecheck:webui`
+   compiling until the roster moves as a unit.
 
 **Optionality is the capability model.** Every port method is optional and `undefined` means "this
 operation is not wired" — a host that offers no terminal, no quota or no plugin surface is a supported
@@ -229,12 +229,17 @@ requires zero request or result assignability mismatches. See
 [`../runtime/harness-boundary.md`](../runtime/harness-boundary.md).
 
 The WebUI declares its own harness identity: `runtimeOwnerKind: "webui"` resolves a dedicated policy
-row in the harness, six cells different from the terminal client's. The row enables scheduler-host and
-cron capabilities, marks the runtime unrestricted, enables the memory feature and feature bundle, and
-disables terminal control sequences. The WebUI does not currently provide its own scheduled-task
-surface (see [`../known-gaps.md`](../known-gaps.md)). Identity is not access control: enabling memory,
-cron or Computer Use for a browser client gives an agent in that browser the ability to act on this
-machine, which is why the service binds loopback and admits by host, origin and credential (ADR 0004).
+row in the harness, thirteen cells different from the terminal client's. The row enables scheduler-host
+and cron capabilities, marks the runtime unrestricted, enables the memory feature and feature bundle,
+and disables terminal control sequences. The WebUI is a scheduler host for those capabilities: the
+`scheduling` business lists, creates, edits and deletes scheduled tasks, runs one on demand and reads
+its run history, and the runtime's Cron service is what arms and fires them. When the Desktop is
+running at the same time, the shared database decides which host acts on a given slot; the panel
+reports whether this client holds a task rather than naming the other host
+([ADR 0027](../adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md)). Identity is not
+access control: enabling memory, cron or Computer Use for a browser client gives an agent in that
+browser the ability to act on this machine, which is why the service binds loopback and admits by
+host, origin and credential (ADR 0004).
 
 ## 8. The browser application
 
@@ -262,9 +267,9 @@ naming every operation through the canonical constants rather than string litera
 settles the call instead of failing it, because the host accepted the request long ago and a deliberate
 detach must not look like a dropped connection.
 
-**The seam is narrowed, not just re-filed.** `client/application/port-slices.ts` cuts twelve slices from
-the thirteen business ports, each from an explicit key list, so a business receives the members it may
-use and cannot see out of its slice. Optionality is carried verbatim: an unwired operation stays
+**The seam is narrowed, not just re-filed.** `client/application/port-slices.ts` cuts fifteen slices
+from the sixteen business ports, each from an explicit key list, so a business receives the members it
+may use and cannot see out of its slice. Optionality is carried verbatim: an unwired operation stays
 `undefined` in the slice exactly as it was on the composed transport. `WebuiClientFoundationApp` composes
 screens and constructs no owners; the shell forwards no transport member.
 

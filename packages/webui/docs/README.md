@@ -107,7 +107,7 @@ number.
 | --- | --- | --- | --- |
 | 0008 | The first version assembles the full tool capability set | Its claim that the first version ships the same tool capabilities as the terminal client is no longer true: the mcode-tools integration sits behind a beta feature and Browser Use is optional | [`runtime/boot.md`](runtime/boot.md), [`known-gaps.md`](known-gaps.md) |
 | 0009 | A decision that the WebUI's design language is taken from another application | The design language is the WebUI's own and is documented as such | [`design/design-language.md`](design/design-language.md) |
-| 0012 | The WebUI runs its own scheduled tasks until the runtime offers one | Reversed: the whole WebUI-owned scheduler was deleted on 2026-10-09 | [`known-gaps.md`](known-gaps.md) §7 |
+| 0012 | The WebUI runs its own scheduled tasks until the runtime offers one | Superseded: the WebUI-owned scheduler was deleted on 2026-10-09 and stays deleted. The surface that exists now uses the v2 runtime's Cron service and the shared database, not a second scheduler | [ADR 0027](adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md) |
 | 0015 | The WebUI client is organized by business within its existing layers | Superseded by ADR 0016's business-first homes; the layer-first paths it describes did not survive | [`architecture/module-map.md`](architecture/module-map.md) |
 
 A retired record stays in git history rather than in the log: a decision that is no longer in force

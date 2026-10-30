@@ -71,6 +71,24 @@ asserts the bridge's refusal, so that capability difference is unpinned.
 
 See [`../browser-use/10-browser-core-integration.md`](../browser-use/10-browser-core-integration.md).
 
+### The scheduled-task suites
+
+Seven test files cover the surface at three levels, and the level decides what a claim about it may
+say.
+
+| Suite | Level | What it proves |
+| --- | --- | --- |
+| `test/unit/scheduling-panel.test.ts` | 1 — pure behaviour | the row labels including `本客户端已接管` / `本客户端未接管`, the humanized schedule and next-fire text, the draft↔schedule conversion, and the rule that an edit resends the schedule only when it changed — an unconditional resend bumps the generation, resets the run counter, and makes a `once` task that already fired uneditable |
+| `test/unit/scheduling-validators.test.ts` | 1 — pure behaviour | the six operation validators' rejection messages, pinned by value |
+| `test/integration/real-host-list-cron-tasks.test.ts`, `real-host-cron-task-mutations.test.ts`, `real-host-cron-runs.test.ts` | 5 — the real host, no browser | the production assembly with the `webui` owner kind and its quarantined cold start, the harness adapter and its conversions, the validators, the bindings and the registry. A mutation is asserted against the runtime's row (schedule generation, next fire time), not against what the operation echoed back |
+| `test/browser/scheduling-panel.spec.mjs` | 4 — built client, fixture transport | the rail row is visible and opens the panel, the rows render with their three distinct states, and the panel replaces the conversation instead of stacking on it. The screenshot baseline is what makes a label change reviewable |
+| `packages/local-runtime-v2/test/integration/cron-two-hosts-slot.integration.test.ts` | 5 — two real scheduler hosts over one SQLite file | [ADR 0027](../adr/0027-the-webui-is-a-scheduler-host-for-scheduled-tasks.md) R3: one slot produces one run row and one delivery, a pause in one host stops the other's timer, and a host whose counter moved underneath it defers that slot and converges on the next |
+
+**Not covered:** the two-host suite uses scripted delivery ports, so it proves scheduling and
+claiming, not external provider execution. It also does not prove that the WebUI declares the
+scheduler-host policy; `runtime-owner-policy.test.ts` does. R2's restore predicate gained `state`
+without a test that reproduces the interleaving it defends against (ADR 0027 R2).
+
 Deterministic loopback tests replace the leaf host, and deterministic browser tests replace the
 server transport. Their levels do not imply native execution. `real-host-loopback.test.ts` and
 `real-host-model-turn.test.ts` additionally use the production host; the latter controls only its

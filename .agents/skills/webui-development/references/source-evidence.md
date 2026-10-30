@@ -52,6 +52,32 @@ evidence.
 
 One capability difference is recorded but **not** pinned by a test: the bridge refuses `upload_files`.
 
+### Refresh of 2026-10-30 — the scheduled-task surface and stale rosters
+
+A documentation pass brought the WebUI documents and this skill in line with the scheduled-task
+surface (`c4082a66`…`16678b05`) and with rosters that had been stale for several features. Read from
+`webui` at `786ad138`, working tree checked before and after:
+
+| Claim | Evidence |
+| --- | --- |
+| The WebUI is a scheduler host: the `scheduling` business lists, creates, edits, enables, deletes, runs now and reads run history of scheduled tasks | `src/client/features/scheduling/**`; the rail row in `client/features/sessions/ui/SessionRailRegion.tsx`; six operations registered at `server/operation/operations.ts:332-337` |
+| The client reaches the v2 runtime's Cron service through the harness port, and its DTOs are the WebUI's own | `src/runtime/port.ts:725-730`; `src/runtime/harness/cron.ts`; `src/shared/contracts/cron.ts` |
+| The `webui` row differs from `tui` in **thirteen** cells | `packages/local-runtime/test/unit/runtime-owner-policy.test.ts:317` — the assertion enumerates all thirteen |
+| The roster is **99** bindings and **18** dedicated handlers covering **117** operation names | `packages/webui/test/unit/webui-operation-binding.test.ts:47-50` |
+| Sixteen business ports cut **fifteen** slices (terminal folds into workspace, `turn` builds its own) | `src/client/application/port-slices.ts` (`WebuiPortSliceSource`, `createWebuiPortSlices`) |
+| R2's restore write is guarded by `state` as well as both counters | `packages/local-runtime-v2/src/infra/scheduler/index.ts` — `updateRestoredJob` (`:794`), the `state` guard at `:814` |
+| The scheduled-task evidence is seven test files at levels 1, 4 and 5 | `docs/verification/gates.md`, "The scheduled-task suites" |
+
+**One counting trap worth keeping.** `operations.ts` has 131 `registerOperation` calls, while the
+roster test pins 99 + 18 = 117. The gap is handler-entry factories (browser, Mini App, Mini App agent)
+registering operations the bindings-plus-dedicated list does not name. Take the numbers from the test
+and describe them in its words — "N bindings and M dedicated handlers covering K operation names" —
+and do not call K "operations", because the registry is larger than K.
+
+**Not re-verified by this pass:** every entry of `docs/known-gaps.md` (its dated record stays
+2026-10-27 / `d9593276`; this pass added a note for the closed §7 and changed no entry), and the
+runtime behaviour of any surface — this was a static read of source and tests.
+
 ## Refresh workflow
 
 When using this skill, re-read current operating instructions and touched source. Refresh a reference only when changed source or an actual task reveals it is stale. Check callers, tests and decision rationale together; repository documents are navigation, not implementation proof. Never restore retired plans/generated navigation tables merely because a past memory mentions them.

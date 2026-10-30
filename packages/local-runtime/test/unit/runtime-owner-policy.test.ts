@@ -2,7 +2,8 @@
  * Characterisation tests for the runtime owner policy.
  *
  * The predicates were extracted into one module and `resolveRuntimeOwnerPolicy` added; the WebUI
- * declares its own `webui` identity row, documented in `packages/webui/docs/runtime.md`. This file
+ * declares its own `webui` identity row, documented in
+ * `packages/webui/docs/runtime/owner-identity.md`. This file
  * has two jobs, and the split matters:
  *
  *   - `describe('today's predicates')` pins the CURRENT behaviour of every predicate

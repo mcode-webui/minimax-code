@@ -29,6 +29,7 @@ import type {
 } from "../../account/bindings/use-account-workflows.public.js";
 import { useWebuiAccountWorkflowsState } from "../../account/bindings/use-account-workflows.public.js";
 import { SettingsButton, SettingsDialog } from "./settings-atoms.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 /**
  * The reset-card state and its phase, read off the account owner's published
@@ -183,12 +184,15 @@ export function UsageResetCards({ account, state }: UsageResetCardsProps): React
       {cards.loading && cards.items.length === 0 ? (
         <p className="px-3 py-2 text-[13px] leading-5 text-text_default_secondary">加载中…</p>
       ) : cards.error && cards.items.length === 0 ? (
-        <div role="alert" className="flex items-center gap-3 px-3 py-2 text-[13px] leading-5 text-text_default_secondary">
-          <span>{cards.error}</span>
-          <SettingsButton size="compact" onClick={() => void account?.loadResetCards()}>
-            {WEBUI_RESET_CARD_COPY.retry}
-          </SettingsButton>
-        </div>
+        <FeedbackError
+          message={cards.error}
+          className="flex items-center gap-3 px-3 py-2 text-[13px] leading-5 text-text_default_secondary"
+          action={
+            <SettingsButton size="compact" onClick={() => void account?.loadResetCards()}>
+              {WEBUI_RESET_CARD_COPY.retry}
+            </SettingsButton>
+          }
+        />
       ) : cards.items.length === 0 ? (
         <p
           data-testid="settings-usage-reset-card-empty"
@@ -337,12 +341,15 @@ function ResetCardHistoryDialog({
         {history.loading && history.items.length === 0 ? (
           <p className="py-2 text-[13px] leading-5 text-text_default_secondary">加载中…</p>
         ) : history.error && history.items.length === 0 ? (
-          <div role="alert" className="flex items-center gap-3 py-2 text-[13px] leading-5 text-text_default_secondary">
-            <span>{WEBUI_RESET_CARD_COPY.historyLoadError}</span>
-            <SettingsButton size="compact" onClick={onLoadMore}>
-              {WEBUI_RESET_CARD_COPY.retry}
-            </SettingsButton>
-          </div>
+          <FeedbackError
+            message={WEBUI_RESET_CARD_COPY.historyLoadError}
+            className="flex items-center gap-3 py-2 text-[13px] leading-5 text-text_default_secondary"
+            action={
+              <SettingsButton size="compact" onClick={onLoadMore}>
+                {WEBUI_RESET_CARD_COPY.retry}
+              </SettingsButton>
+            }
+          />
         ) : history.items.length === 0 ? (
           <p
             data-testid="settings-usage-reset-card-history-empty"

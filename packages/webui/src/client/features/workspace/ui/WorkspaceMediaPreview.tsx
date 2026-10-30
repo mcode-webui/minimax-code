@@ -41,17 +41,17 @@ function mediaName(path: string): string {
 export function WorkspaceMediaNotice({
   name,
   reason,
-  role = "status",
+  failure = false,
 }: {
   readonly name: string;
   readonly reason: string;
-  /** `alert` for a failure, `status` for a state that was never available. */
-  readonly role?: "status" | "alert";
+  /** A failure is announced; a state that was never available is not. */
+  readonly failure?: boolean;
 }): ReactElement {
   // A failure is announced, an unavailable state is not: one component that
   // renders both roles is exactly the conflation the family separates.
   const message = `${name} 预览不可用：${reason}`;
-  return role === "alert" ? (
+  return failure ? (
     <FeedbackError message={message} />
   ) : (
     <p role="status" style={{ margin: "var(--spacing_16)", color: "var(--text_default_tertiary)" }}>
@@ -85,7 +85,7 @@ export function WorkspaceImagePreview({ path, content, fileUrl }: WorkspaceMedia
   const source = fileUrl || content.previewDataUrl;
   if (!source) return null;
   const name = mediaName(path);
-  if (failed) return <WorkspaceMediaNotice name={name} role="alert" reason="图片加载失败。" />;
+  if (failed) return <WorkspaceMediaNotice name={name} failure reason="图片加载失败。" />;
   return (
     <img
       className="webui-workspace-image-preview"
@@ -108,7 +108,7 @@ export function WorkspaceVideoPreview({ path, fileUrl }: WorkspaceMediaPreviewPr
   const [failed, setFailed] = useState(false);
   const name = mediaName(path);
   if (!fileUrl) return <WorkspaceMediaNotice name={name} reason={NO_RANGEABLE_SOURCE} />;
-  if (failed) return <WorkspaceMediaNotice name={name} role="alert" reason="视频加载失败。" />;
+  if (failed) return <WorkspaceMediaNotice name={name} failure reason="视频加载失败。" />;
   return (
     <video
       // The one existing media rule in the stylesheet is sized and centred for
@@ -133,7 +133,7 @@ export function WorkspaceAudioPreview({ path, fileUrl }: WorkspaceMediaPreviewPr
   const [failed, setFailed] = useState(false);
   const name = mediaName(path);
   if (!fileUrl) return <WorkspaceMediaNotice name={name} reason={NO_RANGEABLE_SOURCE} />;
-  if (failed) return <WorkspaceMediaNotice name={name} role="alert" reason="音频加载失败。" />;
+  if (failed) return <WorkspaceMediaNotice name={name} failure reason="音频加载失败。" />;
   return (
     <audio
       style={{ width: "100%" }}

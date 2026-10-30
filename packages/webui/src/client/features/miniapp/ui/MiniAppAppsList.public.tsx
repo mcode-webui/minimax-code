@@ -134,13 +134,15 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
                 <h2>{item.name}</h2>
                 <p>{item.description || item.pluginId}</p>
                 {refusal ? (
-                  <p className="webui-plugin-error" role="alert" data-testid={`miniapp-app-refusal-${item.pluginId}`}>
-                    {webuiMiniAppRefusalText({
+                  <FeedbackError
+                    className="webui-plugin-error"
+                    testId={`miniapp-app-refusal-${item.pluginId}`}
+                    message={webuiMiniAppRefusalText({
                       code: refusal.code,
                       message: refusal.message,
                       rows,
                     })}
-                  </p>
+                  />
                 ) : null}
               </div>
               <span

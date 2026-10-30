@@ -122,17 +122,15 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
                   {row.statusLabel}{row.errorCode ? `（${webuiMiniAppFailureCodeText(row.errorCode)}）` : ""}
                 </span>
                 {refusal ? (
-                  <p
+                  <FeedbackError
                     className="webui-plugin-error"
-                    role="alert"
-                    data-testid={`miniapp-picker-refusal-${row.pluginId}`}
-                  >
-                    {webuiMiniAppRefusalText({
+                    testId={`miniapp-picker-refusal-${row.pluginId}`}
+                    message={webuiMiniAppRefusalText({
                       code: refusal.code,
                       message: refusal.message,
                       rows,
                     })}
-                  </p>
+                  />
                 ) : null}
               </div>
               <div className="webui-plugin-actions">

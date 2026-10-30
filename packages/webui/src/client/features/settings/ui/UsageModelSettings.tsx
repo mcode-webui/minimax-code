@@ -223,7 +223,7 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
     </div>
 
     {sourceTab === "token-plan" ? <section className="flex w-full flex-col gap-4" data-testid="settings-usage-token-plan">
-      {quotaLoading ? <p>加载中…</p> : quotaError ? <div role="alert" className="flex items-center gap-3"><span>加载失败</span><button type="button" onClick={() => void loadQuota()}>重试</button></div> : !quotaView ? <p>登录后查看用量</p> : <>
+      {quotaLoading ? <p>加载中…</p> : quotaError ? <FeedbackError message="加载失败" className="flex items-center gap-3" action={<button type="button" onClick={() => void loadQuota()}>重试</button>} /> : !quotaView ? <p>登录后查看用量</p> : <>
         <SettingsSection title="当前套餐" testId="settings-usage-plan">
             <div className="flex min-h-[64px] w-full items-center gap-6 overflow-hidden rounded-[12px] py-2 pl-3 pr-2"><div className="min-w-0"><span className="block text-[14px] leading-5" data-testid="settings-usage-plan-name">{planFacts ? formatPlanName(planFacts) : ""}</span>{quotaView.tokenPlanExpiresAt ? <span className="mt-1 block text-[12px] leading-4 text-text_default_secondary">{new Date(quotaView.tokenPlanExpiresAt < 1e12 ? quotaView.tokenPlanExpiresAt * 1000 : quotaView.tokenPlanExpiresAt).toLocaleDateString("sv-SE").replaceAll("-", ".")}{quotaView.willRenewal ? " 自动续费" : " 到期"}</span> : planFacts && !hasWebuiPlan(planFacts) ? <span className="mt-1 block text-[12px] leading-4 text-text_default_secondary" data-testid="settings-usage-plan-state">未订阅 M Plan</span> : null}</div></div>
             <div className="h-[0.5px] bg-border_default" />
@@ -237,14 +237,14 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
 
     {sourceTab === "minimax-api" ? <section className="flex w-full flex-col gap-2 pt-1" data-testid="settings-minimax-api-panel">
       <div className="flex items-center gap-2"><label className="text-[14px] font-medium leading-5 text-text_default_primary">API Key</label><span className={`rounded-[6px] px-1 py-0.5 text-[12px] leading-4 ${apiValid ? "bg-bg_status_positive text-icon_status_success" : "bg-[rgba(10,10,10,0.04)] text-[#666]"}`}>{apiValid ? "使用中" : "未启用"}</span></div>
-      {apiLoading ? <p>加载中…</p> : apiError ? <div role="alert" className="flex items-center gap-3"><span>{apiError}</span><button type="button" onClick={() => void loadApiStatus()}>重试</button></div> : <>
+      {apiLoading ? <p>加载中…</p> : apiError ? <FeedbackError message={apiError} className="flex items-center gap-3" action={<button type="button" onClick={() => void loadApiStatus()}>重试</button>} /> : <>
         <div className="flex items-center gap-3"><input aria-label="API Key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={apiValid ? textOf(apiStatus?.maskedApiKey) : "请输入API Key"} className="min-w-0 flex-[1_0_0] rounded-[8px] border border-border_default bg-bg_default_primary px-3 py-2 text-[14px]" /><IconButton label="测试连通性" disabled={testingKey || (!apiKey.trim() && !apiValid)} onClick={() => void testKey()}><RefreshIcon /></IconButton></div>
         {keyResult ? <p role="status">{keyResult}</p> : null}<button type="button" disabled={!apiKey.trim() || savingKey} className="mt-1 h-9 w-[116px] rounded-[8px] bg-bg_interaction_tertiary_hover px-3 text-[14px] disabled:opacity-60" onClick={() => void saveKey()}>{savingKey ? "保存中…" : "保存并使用"}</button>
       </>}
     </section> : null}
 
     {sourceTab === "custom" ? <section className="flex min-h-0 flex-1 flex-col gap-3" data-testid="settings-custom-models-panel">
-      {providerLoading ? <p>模型加载中...</p> : providerError ? <div role="alert"><span>{providerError}</span><button type="button" onClick={() => void loadProviders()}>重试</button></div> : <>
+      {providerLoading ? <p>模型加载中...</p> : providerError ? <FeedbackError message={providerError} action={<button type="button" onClick={() => void loadProviders()}>重试</button>} /> : <>
         <ProviderFormPanel
           providers={providers}
           presets={presets}

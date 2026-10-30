@@ -57,6 +57,7 @@ export function FeedbackError({
   id,
   testId,
   className,
+  dataAttributes,
 }: {
   readonly message: ReactNode;
   readonly action?: ReactNode;
@@ -65,6 +66,8 @@ export function FeedbackError({
   readonly testId?: string;
   /** The surface's own classes, for a place whose error has its own chrome. */
   readonly className?: string;
+  /** The surface's own markers, passed through untouched. */
+  readonly dataAttributes?: Readonly<Record<string, string>>;
 }): ReactElement {
   return (
     <div
@@ -72,6 +75,7 @@ export function FeedbackError({
       role="alert"
       id={id}
       data-testid={testId}
+      {...(dataAttributes ?? {})}
     >
       <p className="webui-feedback-title">{message}</p>
       {action === undefined ? null : <div className="webui-feedback-action">{action}</div>}

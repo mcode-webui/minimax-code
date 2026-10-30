@@ -363,26 +363,24 @@ export function SigninCard({
               </div>
             </div>
             {error ? (
-              <FeedbackError message=<>error</> className="mb-0 mt-2 text-xs text-text_default_secondary" />
+              <FeedbackError message="error" className="mb-0 mt-2 text-xs text-text_default_secondary" />
             ) : null}
           </>
         ) : (
-          <div
-            data-testid="signin-card-error"
-            role="alert"
+          <FeedbackError
+            testId="signin-card-error"
             className="relative mt-8 flex min-h-[104px] flex-col items-center justify-center gap-2 px-4 text-center"
-          >
-            <p className="m-0 text-xs leading-4 text-text_default_secondary">
-              {error ?? SIGNIN.error}
-            </p>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="border-0 bg-transparent p-0 text-xs font-medium text-text_default_accent hover:underline"
-            >
-              {SIGNIN.retry}
-            </button>
-          </div>
+            message={<span className="m-0 text-xs leading-4 text-text_default_secondary">{error ?? SIGNIN.error}</span>}
+            action={
+              <button
+                type="button"
+                onClick={onRetry}
+                className="border-0 bg-transparent p-0 text-xs font-medium text-text_default_accent hover:underline"
+              >
+                {SIGNIN.retry}
+              </button>
+            }
+          />
         )}
       </div>
     </section>

@@ -175,13 +175,13 @@ function ArchiveExtractControls({
 /** Shown for every state that is not a listing: unavailable, loading, failed. */
 export function WorkspaceArchiveNotice({
   reason,
-  role = "status",
+  failure = false,
 }: {
   readonly reason: string;
-  /** `alert` for a failure, `status` for a state that was never available. */
-  readonly role?: "status" | "alert";
+  /** A failure is announced; a state that was never available is not. */
+  readonly failure?: boolean;
 }): ReactElement {
-  return role === "alert" ? (
+  return failure ? (
     <FeedbackError message={reason} testId="workspace-archive-notice" />
   ) : (
     <p role="status" data-testid="workspace-archive-notice">{reason}</p>
@@ -244,7 +244,7 @@ export function WorkspaceArchiveView(props: WorkspaceArchiveViewProps): ReactEle
     return <WorkspaceArchiveNotice reason="当前服务没有提供压缩包浏览能力。" />;
   }
   if (load.status === "loading") return <WorkspaceArchiveNotice reason="正在读取压缩包…" />;
-  if (load.status === "error") return <WorkspaceArchiveNotice reason={load.error} role="alert" />;
+  if (load.status === "error") return <WorkspaceArchiveNotice reason={load.error} failure />;
   return (
     <WorkspaceArchiveListing
       archivePath={load.listing.archivePath}

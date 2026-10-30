@@ -17,6 +17,7 @@ import { WebuiIconDiffFile, WebuiIconDiffSummary } from "../../../shell/icons.js
 import type { WebuiTurnDiffView } from "../../../../shared/contracts/session.js";
 import type { WebuiDiffState } from "../../review/contracts/review-view.js";
 import { useWebuiTurnReview } from "../../review/bindings/use-turn-review.public.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   projectWebuiDiffFiles,
   WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE,
@@ -169,15 +170,22 @@ export function WebuiDiffCard({
         /* `role="alert"` because this replaces what used to be no feedback at
          * all: the operation did nothing, and the file list above is now known
          * to be out of date. The controls stay live so the user can retry. */
-        <div className="webui-diff-error" role="alert" data-webui-diff-error="true" data-testid="turn-diff-mutation-error">
-          <span className="webui-diff-error-copy">
-            <span className="webui-diff-error-title">这轮文件改动没有生效</span>
-            <span className="webui-diff-error-reason" data-testid="turn-diff-mutation-error-reason">{mutationError}</span>
-          </span>
-          <button type="button" className="webui-diff-error-dismiss" data-testid="turn-diff-mutation-error-dismiss" onClick={dismissError}>
-            知道了
-          </button>
-        </div>
+        <FeedbackError
+          className="webui-diff-error"
+          dataAttributes={{ "data-webui-diff-error": "true" }}
+          testId="turn-diff-mutation-error"
+          message={
+            <span className="webui-diff-error-copy">
+              <span className="webui-diff-error-title">这轮文件改动没有生效</span>
+              <span className="webui-diff-error-reason" data-testid="turn-diff-mutation-error-reason">{mutationError}</span>
+            </span>
+          }
+          action={
+            <button type="button" className="webui-diff-error-dismiss" data-testid="turn-diff-mutation-error-dismiss" onClick={dismissError}>
+              知道了
+            </button>
+          }
+        />
       ) : null}
     </div>
   );

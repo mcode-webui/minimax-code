@@ -4527,6 +4527,7 @@
     "packages/webui/test/browser/miniapp-panel.spec.mjs",
     "packages/webui/test/browser/miniapp-standalone-tab.spec.mjs",
     "packages/webui/test/browser/model-picker-interactions.spec.mjs",
+    "packages/webui/test/browser/motion.spec.mjs",
     "packages/webui/test/browser/native-runtime.spec.mjs",
     "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs",
     "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs-snapshots/Agent-add-form-is-centered-fields-are-aligned-and-backdrop-dismissal-works-1-linux.png",

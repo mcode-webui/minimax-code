@@ -132,3 +132,23 @@ export function requestCount(page, operation) {
     operation,
   );
 }
+
+/**
+ * A launcher shortcut for a kind, opened wherever it currently is.
+ *
+ * The shortcut row holds as many shortcuts as it fits and moves the rest into
+ * the overflow menu, so a shortcut that is top-level at one width is behind
+ * the overflow at another. A test that names the shortcut it wants opens it
+ * through whichever door it is behind, rather than pinning a width and
+ * hoping the row still fits: the row capacity is a function of the panel
+ * width, not of the shortcut.
+ */
+export async function openLauncherTile(page, kind) {
+  const shortcut = page.getByTestId(`workspace-launcher-tile-${kind}`);
+  if (await shortcut.isVisible()) {
+    await shortcut.click();
+    return;
+  }
+  await page.getByTestId("workspace-launcher-tile-more").click();
+  await page.getByTestId(`workspace-launcher-overflow-${kind}`).click();
+}

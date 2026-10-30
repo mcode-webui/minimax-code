@@ -14,7 +14,7 @@
 
 import { expect } from "@playwright/test";
 
-import { configureFixture, openApp, switchSession, test } from "./harness.mjs";
+import { configureFixture, openApp, openLauncherTile, switchSession, test } from "./harness.mjs";
 
 /** Open the browser panel, choose 查看文件, and wait for the tree it loads. */
 async function openFilePanel(page) {
@@ -23,7 +23,7 @@ async function openFilePanel(page) {
     .getByRole("button", { name: "浏览器" })
     .click();
   await expect(page.getByTestId("workspace-panel")).toBeVisible();
-  await page.getByTestId("workspace-launcher-tile-files").click();
+  await openLauncherTile(page, "files");
   const tree = page.getByRole("complementary", { name: "工作区文件树" });
   await expect(tree).toBeVisible();
   return tree;

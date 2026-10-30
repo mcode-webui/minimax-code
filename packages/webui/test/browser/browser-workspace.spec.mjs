@@ -137,12 +137,22 @@ test("the browser page fills the workspace body and the workspace edge resizes h
   const tilesBox = await tiles.boundingBox();
   expect(Math.abs(brandBox.x + brandBox.width / 2 - (omniboxBox.x + omniboxBox.width / 2))).toBeLessThanOrEqual(1);
   expect(brandBox.y + brandBox.height).toBeLessThan(omniboxBox.y);
-  // The launcher's content is centred in the panel body. The brand and the
-  // tiles are its first and last children, so the midpoint between them is
-  // the launcher's own vertical centre. The launcher's padding used to be
-  // heavier at the bottom, which put the group a little above the centre;
-  // the new tab page is symmetric, so the group sits on the centre line.
-  expect(Math.abs((brandBox.y + tilesBox.y + tilesBox.height) / 2 - (launcherBox.y + launcherBox.height / 2))).toBeLessThanOrEqual(1);
+  // The launcher's content is centred in the panel body and then nudged up by
+  // one spacing step: the brand is a large wordmark above the address box and
+  // the tiles are a row of shortcuts below it, and the nudge keeps the heavier
+  // top from reading as bottom-heavy. The brand and the tiles are the content's
+  // first and last children, so the midpoint between them is the content's own
+  // centre -- and the nudge is the content's own transform, so the group is
+  // measured against the line the layout put it on rather than a copy of it.
+  const contentOffset = await page
+    .locator(".webui-workspace-launcher-content")
+    .evaluate((element) => {
+      const transform = getComputedStyle(element).transform;
+      return transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
+    });
+  const groupCentre = (brandBox.y + tilesBox.y + tilesBox.height) / 2;
+  const launcherCentre = launcherBox.y + launcherBox.height / 2;
+  expect(Math.abs(groupCentre - (launcherCentre + contentOffset))).toBeLessThanOrEqual(1);
   await expect(brand).toHaveAttribute("aria-label", "MiniMax");
   await expect(brand.locator(".webui-workspace-launcher-wordmark")).toHaveText("MiniMax");
   expect(brandBox.width).toBeGreaterThan(0);

@@ -21,7 +21,7 @@
 
 import { expect } from "@playwright/test";
 
-import { configureFixture, openApp, test } from "./harness.mjs";
+import { configureFixture, openApp, openLauncherTile, test } from "./harness.mjs";
 
 /** The catalogue row the fixture answers with. */
 const MINI_APP = {
@@ -38,16 +38,6 @@ async function openWorkspacePanel(page) {
     .getByRole("button", { name: "浏览器" })
     .click();
   await expect(page.getByTestId("workspace-panel")).toBeVisible();
-}
-
-async function openMiniAppPickerFromLauncher(page) {
-  const tile = page.getByTestId("workspace-launcher-tile-miniapp-picker");
-  if (await tile.isVisible()) {
-    await tile.click();
-    return;
-  }
-  await page.getByTestId("workspace-launcher-tile-more").click();
-  await page.getByTestId("workspace-launcher-overflow-miniapp-picker").click();
 }
 
 /**
@@ -115,7 +105,7 @@ test("the launcher's 应用 tile turns the tab into the Mini App tool page, and 
   await openWorkspacePanel(page);
 
   // The shortcut is available directly or from 其他 when the panel is narrow.
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
 
   // The tile turns this tab into the tool page, the way every other tile turns
   // it into its view: the new tab page is gone rather than keeping its tiles
@@ -201,7 +191,7 @@ test("the running Mini App offers its refresh, its stop and the runtime's state,
   await page.setViewportSize({ width: 800, height: 816 });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
   await page.getByRole("button", { name: "展开面板" }).click();
   const picker = page.getByTestId("miniapp-picker");
   await expect(picker).toBeVisible();
@@ -249,7 +239,7 @@ test("the Mini App picker follows the centered app-list layout in a narrow works
   await page.setViewportSize({ width: 960, height: 850 });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
   await page.getByRole("button", { name: "展开面板" }).click();
 
   const panel = page.getByTestId("workspace-panel");
@@ -309,7 +299,7 @@ test("the Mini App picker shows its default icon when an app icon fails to load"
   );
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
 
   const icon = page.getByTestId("miniapp-picker-row-demo.miniapp").locator(".webui-miniapp-picker-icon");
   const failedImage = icon.locator("img");
@@ -327,7 +317,7 @@ test("the Mini App management shortcut opens the existing plugin manager", async
   });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
 
   const picker = page.getByTestId("miniapp-picker");
   await picker.getByRole("button", { name: "管理" }).click();
@@ -389,7 +379,7 @@ test("a Mini App owned by another client reports the refusal and stays unopened 
   });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
 
   await expect(page.getByTestId("miniapp-picker")).toContainText(
@@ -420,7 +410,7 @@ test("a stopped Mini App clears its view and reopens only when the person asks",
   });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
   await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
 
@@ -471,7 +461,7 @@ test("a framed Mini App appends to the composer only after the person confirms",
   const composer = page.getByPlaceholder("输入消息…（输入 / 唤起命令）");
   await composer.fill("我自己的草稿");
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
 
   const frame = await loadedMiniAppFrame(page);
@@ -551,7 +541,7 @@ test("a refused fourth start names the running Mini Apps and frees a slot from t
   });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
 
   const picker = page.getByTestId("miniapp-picker");
   await expect(picker.getByTestId("miniapp-picker-running")).toContainText("看板、笔记、画板");
@@ -608,7 +598,7 @@ test("a Mini App the runtime already reports as running can be shown in the pane
   });
   await openApp(page);
   await openWorkspacePanel(page);
-  await openMiniAppPickerFromLauncher(page);
+  await openLauncherTile(page, "miniapp-picker");
 
   const picker = page.getByTestId("miniapp-picker");
   const row = picker.getByTestId("miniapp-picker-row-demo.agentstarted");

@@ -9,7 +9,7 @@
 
 import { expect } from "@playwright/test";
 
-import { configureFixture, openApp, test } from "./harness.mjs";
+import { configureFixture, openApp, openLauncherTile, test } from "./harness.mjs";
 
 test("the panel reports an unexpected tree answer instead of crashing", async ({
   page,
@@ -25,7 +25,7 @@ test("the panel reports an unexpected tree answer instead of crashing", async ({
     .getByTestId("workspace-panel-controls")
     .getByRole("button", { name: "浏览器" })
     .click();
-  await page.getByTestId("workspace-launcher-tile-files").click();
+  await openLauncherTile(page, "files");
 
   // The panel is there, and the application never fell into its error boundary.
   await expect(page.getByTestId("workspace-panel")).toBeVisible();

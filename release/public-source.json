@@ -4086,7 +4086,7 @@
     "packages/webui/src/client/features/sessions/application/session-commands.ts",
     "packages/webui/src/client/features/sessions/application/session-workflows.ts",
     "packages/webui/src/client/features/sessions/bindings/use-rail-context-menu.ts",
-    "packages/webui/src/client/features/sessions/bindings/use-session-rail-overlays.ts",
+    "packages/webui/src/client/features/sessions/bindings/use-session-rail-pins.ts",
     "packages/webui/src/client/features/sessions/bindings/use-session-rail-state.ts",
     "packages/webui/src/client/features/sessions/bindings/use-session-team-mode.ts",
     "packages/webui/src/client/features/sessions/contracts/session-port.ts",

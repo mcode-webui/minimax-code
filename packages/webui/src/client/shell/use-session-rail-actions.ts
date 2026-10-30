@@ -27,9 +27,9 @@ import type {
 import type { selectWebuiCatalogTreePage } from "../features/sessions/application/session-catalog.public.js";
 import { sessionHash } from "../projection/common/router.js";
 import {
-  useSessionRailOverlays,
-  type WebuiRailOverlayStorage,
-} from "../features/sessions/bindings/use-session-rail-overlays.js";
+  useSessionRailPins,
+  type WebuiRailPinStorage,
+} from "../features/sessions/bindings/use-session-rail-pins.js";
 
 /** The tree page's shape, taken from the selector that builds it. */
 export type WebuiRailTreePage = ReturnType<typeof selectWebuiCatalogTreePage>;
@@ -64,7 +64,7 @@ export interface UseSessionRailActionsOptions {
   readonly page: WebuiClientSessionPage;
   readonly treePage: WebuiRailTreePage;
   /** The browser storage the overlays are read through, injected. */
-  readonly storage: WebuiRailOverlayStorage;
+  readonly storage: WebuiRailPinStorage;
   readonly workflows: WebuiRailWorkflows;
   readonly selectedSessionId: string | undefined;
   readonly selectedSession: WebuiClientSession | undefined;
@@ -114,7 +114,7 @@ export function useSessionRailActions({
 }: UseSessionRailActionsOptions): SessionRailActions {
   // The overlay state itself belongs to Sessions and is read through that
   // feature's own binding; this hook keeps the rail's UI state and actions.
-  const overlays = useSessionRailOverlays(storage);
+  const overlays = useSessionRailPins(storage);
   const { pinnedSessions, pinnedProjects, projectNames } = overlays;
   const [railCollapsed, setRailCollapsed] = useState(false);
   // Rail session search. `railSearchOpen` mirrors whether the input is
@@ -182,7 +182,7 @@ export function useSessionRailActions({
       .catch(fail);
   };
   const handleToggleSessionPin = (session: WebuiClientSession) => {
-    overlays.toggleSessionOverlay("pins", session.sessionId);
+    overlays.toggleSessionPins("pins", session.sessionId);
   };
   const handleArchiveSession = (session: WebuiClientSession) => {
     void workflows.archive(session.sessionId).catch(fail);

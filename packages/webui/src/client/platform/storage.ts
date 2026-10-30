@@ -40,12 +40,12 @@ export interface WebuiBrowserStorage {
   /**
    * The rail's browser-local overlays. Declared here as part of the adapter's
    * own surface; the sessions feature states the subset it needs in
-   * `features/sessions/bindings/use-session-rail-overlays.ts` and this adapter
+   * `features/sessions/bindings/use-session-rail-pins.ts` and this adapter
    * satisfies it structurally, so a feature binding holds a contract rather
    * than this module.
    */
-  readonly readSessionOverlay: (kind: WebuiSessionOverlay) => Record<string, boolean>;
-  readonly toggleSessionOverlay: (
+  readonly readSessionPins: (kind: WebuiSessionOverlay) => Record<string, boolean>;
+  readonly toggleSessionPins: (
     kind: WebuiSessionOverlay,
     sessionId: string,
   ) => Record<string, boolean>;
@@ -115,11 +115,11 @@ export function createWebuiBrowserStorage(
     },
     // The rail's overlays. The keys and the stored format stay in this module,
     // while the rail's binding reads them through the interface in
-    // `features/sessions/bindings/use-session-rail-overlays.ts`, which this
+    // `features/sessions/bindings/use-session-rail-pins.ts`, which this
     // adapter satisfies. Self-reference is safe: these run after construction.
-    readSessionOverlay: (kind) => readSessionOverlay(kind, browserStorage),
-    toggleSessionOverlay: (kind, sessionId) =>
-      toggleSessionOverlay(kind, sessionId, browserStorage),
+    readSessionPins: (kind) => readSessionPins(kind, browserStorage),
+    toggleSessionPins: (kind, sessionId) =>
+      toggleSessionPins(kind, sessionId, browserStorage),
     readProjectPins: () => readProjectPins(browserStorage),
     toggleProjectPin: (projectKey) => toggleProjectPin(projectKey, browserStorage),
     readProjectNames: () => readProjectNames(browserStorage),
@@ -148,7 +148,7 @@ export const WEBUI_PROJECT_OVERLAY_KEYS = {
 
 export type WebuiSessionOverlay = "pins" | "archives";
 
-export function readSessionOverlay(kind: WebuiSessionOverlay, storage: WebuiBrowserStorage): Record<string, boolean> {
+export function readSessionPins(kind: WebuiSessionOverlay, storage: WebuiBrowserStorage): Record<string, boolean> {
   try {
     const value = JSON.parse(storage.getItem(WEBUI_SESSION_OVERLAY_KEYS[kind]) ?? "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -157,8 +157,8 @@ export function readSessionOverlay(kind: WebuiSessionOverlay, storage: WebuiBrow
   }
 }
 
-export function toggleSessionOverlay(kind: WebuiSessionOverlay, sessionId: string, storage: WebuiBrowserStorage): Record<string, boolean> {
-  const next = readSessionOverlay(kind, storage);
+export function toggleSessionPins(kind: WebuiSessionOverlay, sessionId: string, storage: WebuiBrowserStorage): Record<string, boolean> {
+  const next = readSessionPins(kind, storage);
   if (next[sessionId]) delete next[sessionId]; else next[sessionId] = true;
   storage.setItem(WEBUI_SESSION_OVERLAY_KEYS[kind], JSON.stringify(next));
   return next;

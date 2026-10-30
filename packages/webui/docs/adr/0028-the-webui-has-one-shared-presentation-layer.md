@@ -89,9 +89,10 @@ the base is a hazard once the caller has to remember it.
 
 ## Overlay coordination
 
-Here *overlay* means a floating layer above the page — a popup, a menu, a dialog or a
-tooltip. The glossary gives the word a second meaning, the durable pin the browser stores;
-that is a different thing and is not what this section coordinates.
+**Here *overlay* means a floating layer above the page** — a popup, a menu, a dialog or a
+tooltip, and nothing else. The word used to carry a second meaning, the durable pin the
+browser stores for a session or a project; that sense is now **pin** everywhere (see
+§ Further Notes · One word, one thing).
 
 The client's overlays are not one topology — some portal into `document.body`, some render inline
 inside the app tree, and some files render both — and several features run independent Escape
@@ -246,3 +247,33 @@ rendering integrity rules above are checked separately.
   reads it.
 - Moving motion timing is a deliberate and visible change, accepted on its own evidence, separately
   from the rule that static appearance is preserved.
+
+## One word, one thing
+
+*Overlay* means a floating layer above the page, and nothing else. The word used to
+carry a second meaning — the durable pin the browser stores for a session or a
+project — and the two senses lived in the same code: the rail's pin state was
+called `use-session-rail-overlays`, while every popup in the client is an overlay in
+the sense this record uses.
+
+**The decision: the floating-layer sense keeps the word, and the pinned sense is
+called a pin.**
+
+The evidence for the choice is in the client, not in taste:
+
+- the floating-layer sense is carried by the geometry and placement modules every
+  popup uses (`dropdown-placement.ts`, `overlay-order.ts`, `overlay-coordinator.tsx`);
+- the pinned sense was already called a pin wherever it was *named* rather than
+  *typed*: `rail-menu.ts` reads `pinned`, `session-workflows.ts` emits
+  `{ kind: "pinned" }`, and the UI says 置顶;
+- so the word "overlay" was the outlier for pins, not the rule.
+
+The rename is carried through the code: `use-session-rail-pins.ts` and its types and
+methods (`WebuiSessionPinKind`, `WebuiRailPinStorage`, `readSessionPins`,
+`toggleSessionPins`), the shell hook that calls them and the platform storage adapter
+that satisfies them. The persisted keys are unchanged — they are the contract with
+earlier builds, not this record's to rename.
+
+**Avoided synonyms** for the pinned sense: overlay, bookmark, favourite, star, dock.
+"Pinned" is the word in the rail, the menu and the workflow event, and a second word
+for it would put the collision back.

@@ -1,8 +1,13 @@
-// The rail's overlay state: the pins of sessions, and the pins
-// and names of projects.
+// The rail's pins: the pinned sessions, and the pins and names of projects.
+//
+// "Pin" is the word for this everywhere now (ADR 0028 § Further Notes): an
+// *overlay* in this client is a floating layer above the page, and a pinned
+// session is not one. The module was called `use-session-rail-overlays` while the
+// glossary still used the word for both, which is exactly the collision the
+// decision record resolves.
 //
 // It used to live in the shell's rail hook, which read the platform storage
-// adapter for it. The state belongs to Sessions — the overlays are part of the
+// adapter for it. The state belongs to Sessions — the pins are part of the
 // catalogue the rail presents — and the read belongs behind the feature's own
 // surface, so both moved here; the adapter arrives as the injected capability
 // the composition root supplies.
@@ -16,15 +21,15 @@
 import { useCallback, useState } from "react";
 
 /** The per-session overlay retained by the rail. */
-export type WebuiSessionOverlayKind = "pins";
+export type WebuiSessionPinKind = "pins";
 
 /** What the overlays need from browser storage, satisfied by that adapter. */
-export interface WebuiRailOverlayStorage {
-  readonly readSessionOverlay: (
-    kind: WebuiSessionOverlayKind,
+export interface WebuiRailPinStorage {
+  readonly readSessionPins: (
+    kind: WebuiSessionPinKind,
   ) => Record<string, boolean>;
-  readonly toggleSessionOverlay: (
-    kind: WebuiSessionOverlayKind,
+  readonly toggleSessionPins: (
+    kind: WebuiSessionPinKind,
     sessionId: string,
   ) => Record<string, boolean>;
   readonly readProjectPins: () => Record<string, boolean>;
@@ -36,13 +41,13 @@ export interface WebuiRailOverlayStorage {
   ) => Record<string, string>;
 }
 
-export interface SessionRailOverlays {
+export interface SessionRailPins {
   readonly pinnedSessions: Record<string, boolean>;
   readonly pinnedProjects: Record<string, boolean>;
   readonly projectNames: Record<string, string>;
   /** Toggle one session's pin and take the persisted map as truth. */
-  readonly toggleSessionOverlay: (
-    kind: WebuiSessionOverlayKind,
+  readonly toggleSessionPins: (
+    kind: WebuiSessionPinKind,
     sessionId: string,
   ) => void;
   readonly toggleProjectPin: (projectKey: string) => void;
@@ -50,11 +55,11 @@ export interface SessionRailOverlays {
   readonly renameProject: (projectKey: string, name: string) => void;
 }
 
-export function useSessionRailOverlays(
-  storage: WebuiRailOverlayStorage,
-): SessionRailOverlays {
+export function useSessionRailPins(
+  storage: WebuiRailPinStorage,
+): SessionRailPins {
   const [pinnedSessions, setPinnedSessions] = useState<Record<string, boolean>>(
-    () => storage.readSessionOverlay("pins"),
+    () => storage.readSessionPins("pins"),
   );
   const [pinnedProjects, setPinnedProjects] = useState<Record<string, boolean>>(
     () => storage.readProjectPins(),
@@ -62,9 +67,9 @@ export function useSessionRailOverlays(
   const [projectNames, setProjectNames] = useState<Record<string, string>>(
     () => storage.readProjectNames(),
   );
-  const toggleSessionOverlay = useCallback(
-    (kind: WebuiSessionOverlayKind, sessionId: string) => {
-      const toggled = storage.toggleSessionOverlay(kind, sessionId);
+  const toggleSessionPins = useCallback(
+    (kind: WebuiSessionPinKind, sessionId: string) => {
+      const toggled = storage.toggleSessionPins(kind, sessionId);
       setPinnedSessions(toggled);
     },
     [storage],
@@ -85,7 +90,7 @@ export function useSessionRailOverlays(
     pinnedSessions,
     pinnedProjects,
     projectNames,
-    toggleSessionOverlay,
+    toggleSessionPins,
     toggleProjectPin,
     renameProject,
   };

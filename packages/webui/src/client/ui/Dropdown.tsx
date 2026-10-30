@@ -147,6 +147,29 @@ export interface WebuiDropdownProps {
   readonly managed?: boolean;
   /** The layer id a managed popup registers under. */
   readonly managedLayerId?: string;
+  /**
+   * How a managed popup answers a dismissal aimed at it.
+   *
+   * `dismissible` closes on the coordinator's `request-close`. `deferred` asks
+   * for `handle` instead, which is how a popup keeps a ladder of its own — the
+   * model picker steps from its list back to its panel before it closes.
+   */
+  readonly managedDismissal?: "dismissible" | "blocked" | "deferred";
+  /**
+   * What a managed popup does with the route it is given.
+   *
+   * Supplied by a popup with its own semantics; when absent the popup closes on
+   * `request-close` and returns focus to its trigger, which is what every plain
+   * dropdown wants.
+   */
+  readonly onManagedRoute?: (
+    route: "handle" | "request-close" | "block" | "ignore",
+    event?: {
+      readonly kind: "escape" | "pointerdown";
+      /** The layers the press landed inside, innermost first; empty when outside. */
+      readonly insideLayerIds: readonly string[];
+    },
+  ) => void;
   /** A test hook on the wrapper. */
   readonly testId?: string;
   /**
@@ -266,6 +289,8 @@ export function WebuiDropdown({
   dismissRegionRef,
   managed = false,
   managedLayerId,
+  managedDismissal = "dismissible",
+  onManagedRoute,
 }: WebuiDropdownProps): ReactElement {
   const { dom } = useWebuiBrowserCapabilities();  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -328,13 +353,19 @@ export function WebuiDropdown({
   const managedId = useId();
   const layerId = managedLayerId ?? `webui-dropdown-${managedId}`;
   const parentLayerId = useParentLayerId();
+  const onManagedRouteRef = useRef(onManagedRoute);
+  onManagedRouteRef.current = onManagedRoute;
   useOverlayLayer({
     id: layerId,
     parentId: parentLayerId,
     order: 10,
     active: managed && open,
-    dismissal: "dismissible",
-    onRoute: (route) => {
+    dismissal: managedDismissal,
+    onRoute: (route, event) => {
+      if (onManagedRouteRef.current) {
+        onManagedRouteRef.current(route, event);
+        return;
+      }
       if (route !== "request-close") return;
       onCloseRef.current();
       // Escape returns the focus to the control that opened the popup.

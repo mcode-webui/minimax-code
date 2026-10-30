@@ -37,7 +37,7 @@ import {
 /** What a layer hands the coordinator when it registers. */
 export interface OverlayRegistration extends OverlayLayer {
   /** Resolve the route the coordinator decided on for this layer. */
-  readonly onRoute: (route: OverlayDecision["route"]) => void;
+  readonly onRoute: (route: OverlayDecision["route"], event?: OverlayEvent) => void;
 }
 
 /**
@@ -83,7 +83,7 @@ export function createOverlayRegistry(): OverlayRegistry {
         registration.onRoute,
       ]),
     );
-    resolveOverlayDecision(decision, callbacks);
+    resolveOverlayDecision(decision, callbacks, event);
     return decision;
   };
 

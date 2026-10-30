@@ -164,11 +164,15 @@ export function decideOverlayAction(
  */
 export function resolveOverlayDecision(
   decision: OverlayDecision,
-  callbacks: ReadonlyMap<string, (route: OverlayDecision["route"]) => void>,
+  callbacks: ReadonlyMap<string, (route: OverlayDecision["route"], event?: OverlayEvent) => void>,
+  event?: OverlayEvent,
 ): boolean {
   if (decision.layerId === null) return false;
   const callback = callbacks.get(decision.layerId);
   if (!callback) return false;
-  callback(decision.route);
+  // The event travels with the route: a layer that asks to `handle` a key and a
+  // press answers them differently, and the decision alone cannot say which one
+  // it is looking at.
+  callback(decision.route, event);
   return true;
 }

@@ -255,6 +255,59 @@ export function openDispositions(dispositions) {
   return dispositions.filter((disposition) => disposition.status !== "resolved");
 }
 
+/**
+ * Resolve a node's contrast against the background it is actually drawn on.
+ *
+ * axe reports `color-contrast` as *incomplete* when it cannot resolve the
+ * background — a gradient, a background image, a composited layer. The answer is
+ * not "assume it is fine": it is to resolve the background here, the way the
+ * browser composites it (walking up for the first non-transparent colour), and
+ * compute the WCAG ratio against the element's own text colour.
+ *
+ * Returns null when no ancestor states a colour, which stays a review item.
+ */
+export function contrastOf(element) {
+  const style = getComputedStyle(element);
+  const parse = (value) => {
+    const match = /rgba?\(([^)]+)\)/u.exec(value);
+    if (!match) return null;
+    const parts = match[1].split(/[,\s/]+/u).filter(Boolean).map(Number);
+    const [r, g, b] = parts;
+    const alpha = parts.length > 3 ? parts[3] : 1;
+    return { r, g, b, alpha };
+  };
+  const luminance = ({ r, g, b }) => {
+    const channel = (value) => {
+      const scaled = value / 255;
+      return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  };
+  const foreground = parse(style.color);
+  let node = element.parentElement;
+  let background = null;
+  while (node) {
+    const candidate = parse(getComputedStyle(node).backgroundColor);
+    if (candidate && candidate.alpha > 0.95) {
+      background = candidate;
+      break;
+    }
+    node = node.parentElement;
+  }
+  if (!foreground || !background) return null;
+  const lighter = Math.max(luminance(foreground), luminance(background));
+  const darker = Math.min(luminance(foreground), luminance(background));
+  const size = Number.parseFloat(style.fontSize);
+  const weight = Number.parseInt(style.fontWeight, 10) || 400;
+  const large = size >= 24 || (size >= 18.66 && weight >= 700);
+  return {
+    ratio: (lighter + 0.05) / (darker + 0.05),
+    threshold: large ? 3 : 4.5,
+    color: style.color,
+    background: `rgb(${background.r}, ${background.g}, ${background.b})`,
+  };
+}
+
 /** The report every run prints, including the limits of what it proved. */
 export function formatReport({ scanned, findings, unexcepted, stale, incomplete, review }) {
   const lines = ["WebUI accessibility scan (axe-core, pinned rule set)"];

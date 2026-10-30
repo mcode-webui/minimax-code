@@ -98,7 +98,8 @@ export interface WebuiDropdownTriggerProps {
   readonly onKeyDown: (event: KeyboardEvent) => void;
   readonly "aria-expanded": boolean;
   readonly "aria-haspopup": "menu" | "listbox" | "dialog";
-  readonly "aria-controls": string;
+  /** Present only while the popup is mounted: it names an element that exists. */
+  readonly "aria-controls"?: string;
   readonly id: string;
   /**
    * A callback ref for the trigger element itself: the skeleton focuses it
@@ -488,7 +489,10 @@ export function WebuiDropdown({
     "aria-expanded": open,
     "aria-haspopup":
       triggerHasPopup ?? (role === "dialog" ? "dialog" : role === "presentation" ? "menu" : role),
-    "aria-controls": popupId,
+    // Only while the popup is mounted: `aria-controls` naming an id that is not in
+    // the document is an invalid value, and a reader told about a control it cannot
+    // find is worse than one not told at all.
+    ...(open ? { "aria-controls": popupId } : {}),
     id: triggerId,
     ref: (node) => {
       triggerRef.current = node;

@@ -27,6 +27,7 @@ import { openApp, openLauncherTile, test } from "./harness.mjs";
 import {
   classifyFindings,
   compareBaseline,
+  contrastOf,
   loadReview,
   staleExceptions,
   undispositionedRules,
@@ -698,6 +699,38 @@ test.describe("rendering integrity of the migrated surfaces", () => {
           }
           for (const entry of scan.incomplete) {
             incomplete.push({ ...entry, surface: surface.id, state: state.id, theme });
+            // A manual review needs the nodes, not the count. This prints them on
+            // demand so the review is written from what the engine saw.
+            if (process.env.DUMP_INCOMPLETE) {
+              for (const node of entry.nodes) {
+                console.log(`INCOMPLETE\t${entry.rule}\t${surface.id}/${state.id}/${theme}\t${node.html ?? node.stable}`);
+              }
+            }
+            // A contrast finding axe could not decide is resolved the way the
+            // browser composites it: the element's colour against the first
+            // ancestor that states one. The ratio is logged so the manual review
+            // is written from a measurement.
+            if (process.env.DUMP_INCOMPLETE && entry.rule === "color-contrast") {
+              const measured = await page.evaluate(
+                ([selectors, source]) => {
+                  // The measurement runs in the page, so the function travels as
+                  // source: it is pure DOM and this keeps one implementation.
+                  const measure = new Function(`return (${source})`)();
+                  const element = selectors
+                    .map((selector) => {
+                      try {
+                        return document.querySelector(selector);
+                      } catch {
+                        return null;
+                      }
+                    })
+                    .find(Boolean);
+                  return element ? measure(element) : null;
+                },
+                [entry.nodes.flatMap((node) => node.selectors ?? []), contrastOf.toString()],
+              );
+              console.log(`CONTRAST\t${surface.id}/${state.id}/${theme}\t${JSON.stringify(measured)}`);
+            }
           }
           scannedStates.add(key);
 

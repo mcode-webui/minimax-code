@@ -754,7 +754,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       </div>
     </div>
     {hasFileWorkspace ? <div className="webui-workspace-file-toolbar">
-      <div className="webui-workspace-file-breadcrumb" aria-label="文件路径">
+      <div className="webui-workspace-file-breadcrumb" role="navigation" aria-label="文件路径">
         {activeFilePath ? activeFilePath.split("/").map((part, index) => <span key={`${part}-${index}`} className={index === activeFilePath.split("/").length - 1 ? "is-current" : ""}>{index ? <WebuiIconChevronRight className="size-3" /> : null}{part}</span>) : <span className="is-current">{basenamePath(workspaceDir ?? "") || "工作区"}</span>}
       </div>
       {activeTab?.content.kind === "file-preview" && /\.md$/iu.test(activeTab.content.path) ? <div className="webui-workspace-file-mode" role="group" aria-label="文件显示模式">

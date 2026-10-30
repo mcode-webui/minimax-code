@@ -16,6 +16,7 @@ import {
   type WebuiMiniAppRow,
 } from "../projection/miniapp-view.js";
 import { readWebuiPluginRow } from "../../plugins/contracts/plugin-rows.js";
+import { FeedbackBusy } from "../../../ui/feedback.js";
 
 export interface MiniAppInstalledPluginRow {
   readonly source: Record<string, unknown>;
@@ -58,9 +59,7 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
 
   if (loading && rows.length === 0 && installedPlugins.length === 0) {
     return (
-      <p className="webui-plugin-empty" role="status">
-        加载中…
-      </p>
+      <FeedbackBusy label="加载中…" />
     );
   }
 

@@ -22,6 +22,9 @@
 /* The field contract's arrangement (ADR 0028 § Shared contracts): a label, a
  * description, an error and a control, stacked or in a row. */
 @import "./field.css";
+/* The feedback family's arrangement (ADR 0028 § Shared contracts): empty, error,
+ * skeleton, progress, busy and announcement. */
+@import "./feedback.css";
 @import "./shell.css";
 /* The layout threshold contract (ADR 0025): the widths the client adapts at,
  * and the shell skeleton's own rules — the conversation column's floor and the

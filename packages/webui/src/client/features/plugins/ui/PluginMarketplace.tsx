@@ -3,6 +3,7 @@ import { IconFileCode, IconSearch } from "@tabler/icons-react";
 import type { WebuiPluginCatalogueRow } from "../projection/catalogue-view.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { readWebuiPluginRow as read } from "../contracts/plugin-rows.js";
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 
 const MARKET_PREVIEW_COUNT = 8;
 const MINIAPP_CATEGORY = { id: "tag:miniapp", label: "Mini App" } as const;
@@ -93,7 +94,7 @@ export function PluginMarketplace({
   return (
     <>
       {rows.length === 0 ? (
-        <p className="webui-plugin-empty">暂无内容</p>
+        <FeedbackEmpty title="暂无内容" />
       ) : (
         <div className="webui-plugin-list webui-plugin-grid">
           {(showAll ? rows : rows.slice(0, MARKET_PREVIEW_COUNT)).map(

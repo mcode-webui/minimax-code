@@ -28,6 +28,7 @@ import type {
 } from "../contracts/plugin-actions.js";
 import { MiniAppAppsList } from "../../miniapp/ui/MiniAppAppsList.public.js";
 import { useWebuiMiniAppCatalogueSummary } from "../../miniapp/bindings/use-miniapp-catalogue.public.js";
+import { FeedbackBusy } from "../../../ui/feedback.js";
 
 type Area = "plugins" | "skills" | "apps" | "mcp" | "agents";
 type PluginCatalogueSelection = {
@@ -462,9 +463,7 @@ export function PluginCatalogue({
         </p>
       ) : null}
       {busy ? (
-        <p className="webui-plugin-empty" role="status">
-          加载中…
-        </p>
+        <FeedbackBusy label="加载中…" />
       ) : area === "agents" ? (
         <div className="webui-agent-editor">
           <div className="webui-agent-list">

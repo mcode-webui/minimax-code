@@ -4,6 +4,7 @@ import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { readWebuiPluginRow as read } from "../contracts/plugin-rows.js";
 import type { WebuiPluginCatalogueRow } from "../projection/catalogue-view.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 
 export type PluginManagementArea =
   | "plugins"
@@ -89,7 +90,7 @@ export function PluginManagementList({
   readonly onPrepareMcp: (row: WebuiPluginCatalogueRow["source"]) => void;
 }): ReactElement {
   return rows.length === 0 ? (
-    <p className="webui-plugin-empty">暂无内容</p>
+    <FeedbackEmpty title="暂无内容" />
   ) : (
     <div className="webui-plugin-list">
       {rows.map((row, index) => {

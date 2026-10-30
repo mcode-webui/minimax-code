@@ -1,0 +1,114 @@
+/*
+ * The feedback family's own arrangement (#292, ADR 0028 § Shared contracts).
+ *
+ * A state's layout and the one thing only CSS can say: a live announcement has no
+ * visual form. Colour stays with the surface, except where a state's meaning is
+ * the colour's job — an error is an error in every business.
+ */
+
+.webui-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.webui-feedback-title {
+  margin: 0;
+  color: inherit;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.webui-feedback-description {
+  margin: 0;
+  color: var(--text_default_secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.webui-feedback--error .webui-feedback-title {
+  color: var(--text_status_error);
+}
+
+.webui-feedback--empty {
+  align-items: flex-start;
+  padding: 16px 0;
+}
+
+/* Only an announcement is invisible: it exists to be heard. */
+.webui-feedback-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.webui-feedback-skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.webui-feedback-skeleton-row {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--bg_grouped_secondary);
+}
+
+.webui-feedback-skeleton-row:last-child {
+  width: 60%;
+}
+
+.webui-feedback--busy {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.webui-feedback-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border_default);
+  border-top-color: var(--text_default_primary);
+  border-radius: 50%;
+  animation-name: webui-feedback-spin;
+  /* The family's loading timing, so reduced motion collapses it with everything
+   * else instead of this file inventing a duration. */
+  animation-duration: var(--webui-motion-duration-loading);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes webui-feedback-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.webui-feedback-busy-label {
+  color: var(--text_default_secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.webui-feedback-progress-track {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--bg_grouped_secondary);
+}
+
+.webui-feedback-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--text_default_primary);
+  transition: width var(--webui-motion-duration-surface) var(--webui-motion-ease-standard);
+}

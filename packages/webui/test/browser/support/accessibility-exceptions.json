@@ -167,15 +167,6 @@
       "rule": "color-contrast",
       "surface": "*",
       "state": "*",
-      "target": ".webui-plugin-empty",
-      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change",
-      "owner": "design-language (foundations, contrast)",
-      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
-    },
-    {
-      "rule": "color-contrast",
-      "surface": "*",
-      "state": "*",
       "target": ".webui-plugin-dialog-header",
       "reason": "a control wears the shared tokens of its family; the reason recorded for the family applies here",
       "owner": "design-language (foundations)",

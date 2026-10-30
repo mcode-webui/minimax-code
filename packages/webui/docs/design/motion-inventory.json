@@ -431,6 +431,15 @@
           "family": "feedback"
         }
       ]
+    },
+    "styles/feedback.css": {
+      "durations": [],
+      "keyframes": [
+        {
+          "name": "webui-feedback-spin",
+          "family": "loading"
+        }
+      ]
     }
   }
 }

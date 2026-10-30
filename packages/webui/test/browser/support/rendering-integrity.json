@@ -1,6 +1,182 @@
 {
   "version": 1,
   "states": {
+    "application-shell/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 14,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "application-shell/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 14,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "application-shell/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 18,
+        "clipped": 1,
+        "empty": 0
+      }
+    },
+    "application-shell/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 18,
+        "clipped": 1,
+        "empty": 0
+      }
+    },
+    "application-shell/maximum/dark": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 43,
+        "clipped": 6,
+        "empty": 0
+      }
+    },
+    "application-shell/maximum/light": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 43,
+        "clipped": 6,
+        "empty": 0
+      }
+    },
+    "application-shell/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 18,
+        "clipped": 1,
+        "empty": 0
+      }
+    },
+    "application-shell/one/light": {
+      "missing": false,
+      "root": {
+        "width": 240,
+        "height": 766,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 18,
+        "clipped": 1,
+        "empty": 0
+      }
+    },
     "models-provider-form/empty/dark": {
       "missing": false,
       "root": {
@@ -351,6 +527,182 @@
         "count": 5,
         "clipped": 0,
         "empty": 0
+      }
+    },
+    "workspace-panel/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 1
+      }
+    },
+    "workspace-panel/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 1
+      }
+    },
+    "workspace-panel/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 6,
+        "clipped": 1,
+        "empty": 1
+      }
+    },
+    "workspace-panel/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 6,
+        "clipped": 1,
+        "empty": 1
+      }
+    },
+    "workspace-panel/maximum/dark": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 64,
+        "clipped": 30,
+        "empty": 1
+      }
+    },
+    "workspace-panel/maximum/light": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 64,
+        "clipped": 30,
+        "empty": 1
+      }
+    },
+    "workspace-panel/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 6,
+        "clipped": 1,
+        "empty": 1
+      }
+    },
+    "workspace-panel/one/light": {
+      "missing": false,
+      "root": {
+        "width": 594,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 6,
+        "clipped": 1,
+        "empty": 1
       }
     }
   }

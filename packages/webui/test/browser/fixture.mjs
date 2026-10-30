@@ -150,6 +150,14 @@ export function installFixtureTransport() {
   // block (`{}` — the default — has no signedIn field and reads as signed
   // in but quota-less, not as signed out).
   let usageQuotaResult = {};
+  // The workspace panel renders its tree on open, so an unanswered read is not
+  // an option. Settable because a surface's layout has to be measured with the
+  // content extremes it can actually show — an empty tree, one file, the most it
+  // lists, and the longest name — not only with a representative pair of rows.
+  let workspaceFileTree = [
+    { path: "a.ts", name: "a.ts", type: "file", size: 120, modifiedAt: 1_700_000_000_000 },
+    { path: "src", name: "src", type: "directory", children: [] },
+  ];
   // The composer's permission-mode write is verified by reading it back
   // (`setPermissionMode` then `getPermissionMode`, compared in
   // `SessionComposer.changePermissionMode`). With the old pair — a no-op
@@ -634,10 +642,7 @@ export function installFixtureTransport() {
     // The workspace file tree. The panel renders it on open, so an unanswered
     // read is not an option: the runtime answers an array of nodes.
     if (operation === "listWorkspaceFileTree")
-      return [
-        { path: "a.ts", name: "a.ts", type: "file", size: 120, modifiedAt: 1_700_000_000_000 },
-        { path: "src", name: "src", type: "directory", children: [] },
-      ];
+      return clone(workspaceFileTree);
     // The bytes behind a tree row. Same reason as the tree above: the panel
     // renders this on open, and a preview that can only ever say the read is
     // unavailable cannot tell a working file panel from a broken one.
@@ -999,6 +1004,7 @@ export function installFixtureTransport() {
     setQuestionnaire(request) { questionnaire = request ? clone(request) : undefined; },
     setAccountLoginState(state) { accountLoginState = clone(state); },
     setUsageQuotaResult(result) { usageQuotaResult = clone(result); },
+    setWorkspaceFileTree(nodes) { workspaceFileTree = clone(nodes); },
     setModelProviders(providers) { modelProviders = clone(providers); },
     setProviderPresets(presets) { providerPresets = clone(presets); },
     setCandidateTestResult(result) { candidateTestResult = clone(result); },

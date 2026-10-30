@@ -104,6 +104,24 @@ machines without a system Chrome executable. This runtime integration complement
 `browser-workspace.spec.mjs` client-panel fixture; neither by itself proves a packaged desktop
 application or a user's logged-in Edge/Chrome session.
 
+## Rendering integrity of a migrated surface
+
+`rendering-integrity.spec.mjs` measures each surface ADR 0028 migrates instead of trusting a pixmap:
+an element is present, is sized, lies inside its container and does not escape the viewport
+sideways, no item rendered with no size outside its surface, and the surface does not clip its own
+content. Each surface declares the content extremes it can reach — empty, one, the maximum it lists,
+and the longest label it can show — and every state is measured in both themes.
+
+The measurement is compared with `support/rendering-integrity.json`, recorded before the migrations
+started. Re-record with `RECORD_RENDERING_INTEGRITY=1 pnpm test:webui-browser rendering-integrity`,
+deliberately and in the same commit as the change: the recording is the before-and-after evidence, and
+re-recording it by habit turns the comparison into a description of the current state. Text extent is
+recorded rather than required to be perfect on the first recording, because a rail row ellipsizes a
+long title by design; what the comparison catches is one more clipped label after a migration.
+
+A surface whose declared extremes are not enumerated is reported as **unverified**, and the report is
+printed on every run. It is not a pass.
+
 ## Determinism
 
 Playwright uses one pinned Linux viewport (1440×900, DPR 1, `zh-CN`, `Asia/Shanghai`, light colour

@@ -23,7 +23,7 @@
 
 import { expect } from "@playwright/test";
 
-import { openApp, test } from "./harness.mjs";
+import { openApp, openLauncherTile, test } from "./harness.mjs";
 import {
   EXTREMES,
   THEMES,
@@ -95,6 +95,72 @@ async function openCustomModels(page) {
   await page.locator('.webui-settings-nav [data-menu-key="usage"]').click();
   await page.getByRole("button", { name: "自定义模型" }).click();
   await expect(customPanel(page)).toBeVisible();
+}
+
+const RAIL_MAXIMUM_SESSIONS = 10;
+const TREE_MAXIMUM_FILES = 30;
+const LONGEST_SESSION_TITLE =
+  "Longest session title this rail can be given — a name with no useful break in it whatsoever";
+const LONGEST_FILENAME = `${"longest-file-name-".repeat(6)}component.tsx`;
+
+/** Apply whichever fixture setters a state needs, before the client script runs. */
+async function seedFixture(page, data) {
+  await page.addInitScript({
+    content: `
+      window.__WEBUI_FIXTURE_SETUP__ ??= [];
+      window.__WEBUI_FIXTURE_SETUP__.push(function () {
+        const data = ${JSON.stringify(data)};
+        if (data.sessions) window.__fixture.setSessions(data.sessions);
+        if (data.projects) window.__fixture.setProjects(data.projects);
+        if (data.tree) window.__fixture.setTree(data.tree);
+        if (data.workspaceTree) window.__fixture.setWorkspaceFileTree(data.workspaceTree);
+        for (const [operation, value] of Object.entries(data.responses ?? {})) {
+          window.__fixture.setResponse(operation, value);
+        }
+      });
+    `,
+  });
+}
+
+const railSession = (id, title, index) => ({
+  sessionId: id,
+  agentName: `synthetic-${id}`,
+  title,
+  createdAt: 1_700_000_000_000 + index,
+  updatedAt: 1_700_000_000_000 + index,
+  workspaceDir: "/synthetic/workspace",
+});
+
+const railProject = (projectId, sessionCount) => ({
+  projectId,
+  projectKind: "workspace",
+  workspaceDir: "/synthetic/workspace",
+  pinned: false,
+  hidden: false,
+  orderIndex: 0,
+  recentAtMs: 1_700_000_000_001,
+  latestActivityAtMs: 1_700_000_000_001,
+  sessionCount,
+});
+
+const treeFile = (name) => ({
+  path: name,
+  name,
+  type: "file",
+  size: 120,
+  modifiedAt: 1_700_000_000_000,
+});
+
+/** The workspace panel with its file tree open, the way a user opens it. */
+async function openWorkspaceTree(page) {
+  await openApp(page, "#session=A");
+  await page
+    .getByTestId("workspace-panel-controls")
+    .getByRole("button", { name: "浏览器" })
+    .click();
+  await expect(page.getByTestId("workspace-panel")).toBeVisible();
+  await openLauncherTile(page, "files");
+  await expect(page.getByRole("complementary", { name: "工作区文件树" })).toBeVisible();
 }
 
 const S = "settings-custom-models-panel";
@@ -240,6 +306,119 @@ const SURFACES = [
         open: async (page) => {
           await openApp(page, "#session=A");
           await expect(transcriptScroll(page)).toContainText(LONGEST_MESSAGE.slice(0, 40));
+        },
+      },
+    ],
+  },
+  {
+    id: "application-shell",
+    // The rail builds its rows from the session tree, not from the session list,
+    // so a state that only replaces `sessions` measures the fixture's default
+    // rail while claiming to measure its own content.
+    seed: (page, state) =>
+      seedFixture(page, {
+        sessions: state.sessions,
+        projects: state.projects,
+        tree: {
+          sessions: state.sessions.map((session) => ({ session, childSessions: [] })),
+          hasMore: false,
+        },
+      }),
+    label: "The application shell — the session rail",
+    families: ["structure", "navigation-and-selection"],
+    extremes: ["empty", "one", "maximum", "longest"],
+    root: (page) => page.locator(".webui-rail-scroll"),
+    texts: "span, label, p",
+    states: [
+      {
+        id: "empty",
+        extreme: "empty",
+        sessions: [],
+        projects: [],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(page.locator(".webui-rail-scroll")).toBeVisible();
+        },
+      },
+      {
+        id: "one",
+        extreme: "one",
+        sessions: [railSession("A", "Synthetic session A", 0)],
+        projects: [railProject(1, 1)],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(page.locator(".webui-rail-scroll")).toContainText("Synthetic session A");
+        },
+      },
+      {
+        id: "maximum",
+        extreme: "maximum",
+        sessions: Array.from({ length: RAIL_MAXIMUM_SESSIONS }, (_, index) =>
+          railSession(`session-${index + 1}`, `Synthetic session ${index + 1}`, index),
+        ),
+        projects: [railProject(1, RAIL_MAXIMUM_SESSIONS)],
+        open: async (page) => {
+          await openApp(page, "#session=session-1");
+          const rail = page.locator(".webui-rail-scroll");
+          await expect(rail).toContainText("Synthetic session 1");
+          await expect(rail.getByText(`Synthetic session ${RAIL_MAXIMUM_SESSIONS}`)).toHaveCount(1);
+        },
+      },
+      {
+        id: "longest",
+        extreme: "longest",
+        sessions: [railSession("A", LONGEST_SESSION_TITLE, 0)],
+        projects: [railProject(1, 1)],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(page.locator(".webui-rail-scroll")).toContainText("Longest session title");
+        },
+      },
+    ],
+  },
+  {
+    id: "workspace-panel",
+    seed: (page, state) => seedFixture(page, { workspaceTree: state.tree }),
+    label: "The workspace panel — its file tree",
+    families: ["structure", "surfaces-and-content"],
+    extremes: ["empty", "one", "maximum", "longest"],
+    root: (page) => page.getByTestId("workspace-panel"),
+    texts: "span, label, p",
+    states: [
+      {
+        id: "empty",
+        extreme: "empty",
+        tree: [],
+        open: (page) => openWorkspaceTree(page),
+      },
+      {
+        id: "one",
+        extreme: "one",
+        tree: [treeFile("a.ts")],
+        open: async (page) => {
+          await openWorkspaceTree(page);
+          await expect(page.getByRole("complementary", { name: "工作区文件树" })).toContainText("a.ts");
+        },
+      },
+      {
+        id: "maximum",
+        extreme: "maximum",
+        tree: Array.from({ length: TREE_MAXIMUM_FILES }, (_, index) => treeFile(`file-${index + 1}.ts`)),
+        open: async (page) => {
+          await openWorkspaceTree(page);
+          const tree = page.getByRole("complementary", { name: "工作区文件树" });
+          await expect(tree).toContainText(`file-${TREE_MAXIMUM_FILES}.ts`);
+        },
+      },
+      {
+        id: "longest",
+        extreme: "longest",
+        tree: [treeFile(LONGEST_FILENAME)],
+        open: async (page) => {
+          await openWorkspaceTree(page);
+          await expect(page.getByRole("complementary", { name: "工作区文件树" })).toContainText(
+            LONGEST_FILENAME.slice(0, 30),
+          );
         },
       },
     ],

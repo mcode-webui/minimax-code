@@ -40,6 +40,8 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayLayer } from "./overlay-coordinator.js";
+import { useParentLayerId } from "./overlay-listeners.js";
 
 import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import {
@@ -132,6 +134,19 @@ export interface WebuiDropdownProps {
   readonly className?: string;
   /** The wrapper's classes: the trigger's own layout. */
   readonly wrapperClassName?: string;
+  /**
+   * Hand this popup's dismissal to the overlay coordinator (ADR 0028 § Overlay
+   * coordination).
+   *
+   * A managed popup registers as one layer and attaches no listener of its own,
+   * so inside a managed subtree one Escape closes exactly the topmost layer
+   * instead of every open surface answering the same key. A legacy instance —
+   * `managed` unset — keeps its own Escape and outside-press handling, which is
+   * what the surfaces that have not migrated still rely on.
+   */
+  readonly managed?: boolean;
+  /** The layer id a managed popup registers under. */
+  readonly managedLayerId?: string;
   /** A test hook on the wrapper. */
   readonly testId?: string;
   /**
@@ -249,9 +264,10 @@ export function WebuiDropdown({
   placement,
   collision = "none",
   dismissRegionRef,
+  managed = false,
+  managedLayerId,
 }: WebuiDropdownProps): ReactElement {
-  const { dom } = useWebuiBrowserCapabilities();
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const { dom } = useWebuiBrowserCapabilities();  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
   const popupId = useId();
@@ -306,8 +322,31 @@ export function WebuiDropdown({
     return () => clearTimeout(timer);
   }, [open, mounted]);
 
+  // A managed popup is one layer in the coordinator's order. It is registered
+  // even while closed so the layer it belongs to stays known, but an inactive
+  // layer casts no vote.
+  const managedId = useId();
+  const layerId = managedLayerId ?? `webui-dropdown-${managedId}`;
+  const parentLayerId = useParentLayerId();
+  useOverlayLayer({
+    id: layerId,
+    parentId: parentLayerId,
+    order: 10,
+    active: managed && open,
+    dismissal: "dismissible",
+    onRoute: (route) => {
+      if (route !== "request-close") return;
+      onCloseRef.current();
+      // Escape returns the focus to the control that opened the popup.
+      triggerRef.current?.focus?.();
+    },
+  });
+
   useEffect(() => {
-    if (!open) return;
+    // A managed popup answers through the coordinator, which owns the single
+    // document listener; attaching its own here would make two listeners answer
+    // the same Escape.
+    if (!open || managed) return;
     const stopPointerDown = dom.listenForPointerDown((event) => {
       const target = event.target as Node | null;
       if (!target) return;
@@ -329,7 +368,7 @@ export function WebuiDropdown({
       stopPointerDown();
       stopKeyDown();
     };
-  }, [dom, open]);
+  }, [dom, open, managed]);
 
   /**
    * The anchor, asked for now.
@@ -452,6 +491,7 @@ export function WebuiDropdown({
     <div
       id={popupId}
       ref={popupRef}
+      {...(managed ? { "data-overlay-layer": layerId } : {})}
       role={role}
       {...(ariaLabel === undefined ? {} : { "aria-label": ariaLabel })}
       {...(labelledBy === undefined ? {} : { "aria-labelledby": labelledBy })}

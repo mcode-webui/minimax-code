@@ -258,11 +258,11 @@ export function MemoryManagerDialog({
     id: "memory-manager",
     order: 0,
     active: true,
-    // While the menu or the confirmation is open this layer consumes a dismissal
-    // rather than closing: closing the editor behind an open child is not what
-    // pressing Escape once means. This is a mixed path until the menu migrates
-    // to the managed dropdown, so the single-listener invariant is not claimed.
-    dismissal: menuOpen || confirmingDelete ? "blocked" : "dismissible",
+    // While the menu is open this layer consumes a dismissal: the menu has not
+    // migrated to the managed dropdown yet, so it still answers its own Escape and
+    // closing the editor behind it is not what one press means. Mixed path — the
+    // single-listener invariant is not claimed for it.
+    dismissal: menuOpen ? "blocked" : "dismissible",
     onRoute: (route) => {
       if (route === "request-close") onClose();
     },

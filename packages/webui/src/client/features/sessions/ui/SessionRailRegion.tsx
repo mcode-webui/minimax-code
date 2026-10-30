@@ -38,22 +38,34 @@ export function SessionRailRegion(props: {
       data-webui-rail-width={props.collapsed ? "64" : "240"}
       className={`webui-rail relative flex h-full select-none flex-col overflow-visible ${props.collapsed ? "bg-transparent" : "bg-bg_default_scrim"}`}
     >
-      {/*
-       * The rail's brand.
-       *
-       * The rail's top used to hold nothing but the shadow of the toolbar that
-       * floated over the window. It is the rail's own header now, and the
-       * one place that says which product this is (ADR 0025).
-       */}
+      {/* Keep the compact rail aligned with the shell toolbar; the expanded
+          rail's product mark is integrated into its create-task control. */}
       {props.collapsed
         ? <div className="h-[50px] flex-shrink-0" aria-hidden="true" />
-        : <div className="webui-rail-brand" data-webui-rail-brand="true">
-          <WebuiIconBrand className="size-5 flex-shrink-0" />
-          <span className="webui-rail-brand-name">MiniMax Code</span>
-        </div>}
+        : null}
       {!props.collapsed ? <>
-        <div className="flex-shrink-0 px-4 pb-px" data-webui-rail-fixed-row="true">
-          <RailRow label="新建任务" icon={<WebuiIconNewTask className="flex-shrink-0" />} active={props.homeMode && !props.pluginManagementOpen} onSelect={props.startNewTask} />
+        <div data-webui-rail-brand="true">
+          <div className="webui-rail-primary-action flex-shrink-0 px-4 pb-2" data-webui-rail-fixed-row="true">
+            <img className="webui-brand-create-mascot" src="/assets/img/minimax-octopus-rail.png" alt="" aria-hidden="true" />
+            <button
+              type="button"
+              aria-label="新建任务"
+              title="新建任务"
+              onClick={() => props.startNewTask()}
+              className="webui-nav-item webui-brand-create-button"
+              data-webui-nav-item="新建任务"
+              data-webui-nav-active={props.homeMode && !props.pluginManagementOpen ? "true" : "false"}
+            >
+              <WebuiIconBrand className="webui-brand-create-mark" />
+              <span className="webui-brand-create-wordmark">
+                <span>MiniMax</span><span>Code</span>
+              </span>
+              <span className="webui-brand-create-action">
+                <WebuiIconNewTask />
+                <span>新建</span>
+              </span>
+            </button>
+          </div>
         </div>
         {props.searchOpen ? <div className="flex-shrink-0 px-4 pb-px pt-1" data-webui-rail-fixed-row="true">
           <input
@@ -66,13 +78,18 @@ export function SessionRailRegion(props: {
         </div> : null}
         <div className="relative min-h-0 flex-1">
           <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
-            <div className="space-y-px pb-2">
+            <div className="space-y-px pb-3">
               <input ref={props.importInputRef} type="file" accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" className="webui-composer-hidden-file-input" onChange={props.onImportPicked} />
-              <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
-              <RailRow label="插件" icon={<WebuiIconPlugins />} active={props.pluginManagementOpen} onSelect={props.openPlugins} />
-              <RailRow label="定时任务" icon={<WebuiIconSchedule />} active={props.schedulingOpen} onSelect={props.openScheduling} />
-              <RailRow label="网站" icon={<WebuiIconSites />} inert />
-              <RailRow label="远程" icon={<WebuiIconRemote />} active={props.remoteOpen} onSelect={props.openRemote} />
+              <div className="webui-rail-command-group">
+                <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
+              </div>
+              <div className="webui-rail-navigation-group">
+                <div className="webui-rail-group-label">工作区</div>
+                <RailRow label="插件" icon={<WebuiIconPlugins />} active={props.pluginManagementOpen} onSelect={props.openPlugins} />
+                <RailRow label="定时任务" icon={<WebuiIconSchedule />} active={props.schedulingOpen} onSelect={props.openScheduling} />
+                <RailRow label="网站" icon={<WebuiIconSites />} inert />
+                <RailRow label="远程" icon={<WebuiIconRemote />} active={props.remoteOpen} onSelect={props.openRemote} />
+              </div>
             </div>
             <WebuiProjectList {...props.projectList} />
             {props.searchQuery.trim() && !props.hasSearchResults ? <p data-webui-rail-search-empty="true" className="px-2 py-3 text-sm text-text_default_tertiary">没有匹配的会话</p> : null}

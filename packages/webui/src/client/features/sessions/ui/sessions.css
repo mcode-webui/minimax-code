@@ -14,6 +14,87 @@
     background-color: var(--bg_interaction_tertiary_hover);
     color: var(--text_default_primary);
   }
+  .webui-brand-create-button {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: 48px;
+    align-items: center;
+    gap: var(--spacing_8);
+    border: 1px solid var(--border_status_blue);
+    border-radius: var(--radius_full);
+    background: var(--bg_status_blue);
+    padding: 0 var(--spacing_12);
+    text-align: left;
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .webui-brand-create-button:hover {
+    border-color: var(--border_accent);
+    background: var(--bg_interaction_accent_hover);
+  }
+  .webui-nav-item.webui-brand-create-button[data-webui-nav-active="true"] {
+    background: var(--bg_status_blue);
+  }
+  .webui-nav-item.webui-brand-create-button[data-webui-nav-active="true"]:hover {
+    background: var(--bg_interaction_accent_hover);
+  }
+  .webui-brand-create-button:active { background: var(--bg_interaction_accent_press); }
+  .webui-brand-create-button:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 1px;
+  }
+  .webui-brand-create-mascot {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: var(--spacing_8);
+    width: 56px;
+    height: 39px;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .webui-brand-create-mark { width: 20px; height: 20px; flex: 0 0 20px; }
+  .webui-brand-create-wordmark {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: baseline;
+    gap: 4px;
+    overflow: hidden;
+    color: var(--text_default_primary);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .webui-brand-create-wordmark > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .webui-brand-create-wordmark > span:last-child { color: var(--text_label_accent_default); }
+  .webui-brand-create-action {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--spacing_4);
+    color: var(--text_label_accent_default);
+    font-size: var(--size_12);
+    font-weight: 500;
+    line-height: var(--line_height_16);
+  }
+  .webui-brand-create-action > svg { width: 16px; height: 16px; }
+  .webui-rail-primary-action {
+    position: relative;
+    padding-top: var(--spacing_24);
+  }
+  .webui-rail-command-group { padding-bottom: var(--spacing_8); }
+  .webui-rail-navigation-group {
+    border-top: 1px solid var(--border_light);
+    padding-top: var(--spacing_8);
+  }
+  .webui-rail-group-label {
+    padding: 0 var(--spacing_8) var(--spacing_4);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
 
   /* The right-hand end of a rail row: how long ago the session last did
    * something, and a spinner while a turn holds it. The runtime runs sessions
@@ -143,6 +224,11 @@
   .webui-project-section-toggle > svg.is-expanded { transform: rotate(90deg); }
   .webui-project-section-toggle[data-webui-rail-section-id="projects"] {
     margin-top: var(--spacing_8);
+  }
+  .webui-project-sections {
+    margin-top: var(--spacing_4);
+    border-top: 1px solid var(--border_light);
+    padding-top: var(--spacing_8);
   }
   .webui-project-section-toggle:focus-visible {
     color: var(--text_default_primary);

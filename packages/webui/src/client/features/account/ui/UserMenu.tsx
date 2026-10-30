@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { IconCalendarEvent, IconChevronRight, IconSettings, IconUserCircle } from "@tabler/icons-react";
-import { WebuiIconBell, WebuiIconBrand, WebuiIconCommandUsage } from "../../../shell/icons.js";
+import { WebuiIconBell, WebuiIconCommandUsage } from "../../../shell/icons.js";
 import { SigninClaimResult } from "@mavis/shared/daily-signin";
 import { SettingsModal } from "../../settings/ui/SettingsModal.public.js";
 import { AccountLoginDialog } from "./AccountLoginDialog.js";
@@ -71,6 +71,30 @@ function SigninGlyph(): ReactElement {
 
 function AccountGlyph(): ReactElement {
   return <IconUserCircle aria-hidden="true" size={18} stroke={1.7} />;
+}
+
+function UserMenuAvatar({
+  avatarUrl,
+  displayName,
+  compact = false,
+}: {
+  readonly avatarUrl?: string;
+  readonly displayName: string;
+  readonly compact?: boolean;
+}): ReactElement {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [avatarUrl]);
+  const initial = Array.from(displayName.trim())[0]?.toUpperCase() || "M";
+  return (
+    <span
+      className={`webui-user-menu-avatar ${compact ? "webui-user-menu-avatar-compact" : ""}`}
+      aria-hidden="true"
+    >
+      {avatarUrl && !failed
+        ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        : <span>{initial}</span>}
+    </span>
+  );
 }
 
 function Chevron(): ReactElement {
@@ -181,6 +205,11 @@ export function UserMenu({
     void accountWorkflows?.loadAccount(sessionId);
   }, [accountWorkflows, open, sessionId]);
 
+  useEffect(() => {
+    if (accountSnapshot.profile.status !== "idle") return;
+    void accountWorkflows?.loadAccountProfile();
+  }, [accountWorkflows, accountSnapshot.profile.status]);
+
   const loadUsage = (forceRefresh = false) => {
     setUsageOpen(true);
     setSigninOpen(false);
@@ -197,7 +226,14 @@ export function UserMenu({
     void accountWorkflows?.claimSignin();
   };
 
-  const nickname = accountString(account, "nickname") ?? accountString(account, "name") ?? "MiniMax Code";
+  const profile = accountSnapshot.profile.profile;
+  const nickname =
+    profile?.userName?.trim() ||
+    accountString(account, "userName")?.trim() ||
+    accountString(account, "nickname")?.trim() ||
+    accountString(account, "name")?.trim() ||
+    "MiniMax Code";
+  const avatarUrl = profile?.avatarUrl?.trim() || profile?.defaultAvatarUrl?.trim();
   const plan = accountString(account, "plan") ?? accountString(account, "planName") ?? (hostLabel ? `本地 · ${hostLabel}` : "本地");
   const identity = objectValue(account?.identity);
   const auth = objectValue(account?.auth);
@@ -226,12 +262,14 @@ export function UserMenu({
           // the menu.
           const buttonProps = triggerProps;
           return collapsed
-            ? <button type="button" {...buttonProps} className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单"><WebuiIconBrand /></button>
+            ? <button type="button" {...buttonProps} className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单">
+                <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} compact />
+              </button>
             : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger" aria-label="打开用户菜单">
-              <span className="webui-user-menu-avatar"><WebuiIconBrand /></span>
-              <span className="webui-user-menu-identity"><span>{nickname}</span><small>{plan}</small></span>
-              <span className="webui-user-menu-bell" aria-hidden="true"><WebuiIconBell /></span>
-            </button>;
+                <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} />
+                <span className="webui-user-menu-identity"><span>{nickname}</span><small>{plan}</small></span>
+                <span className="webui-user-menu-bell" aria-hidden="true"><WebuiIconBell /></span>
+              </button>;
         }}
       >
         <div className="webui-user-menu-uid" aria-label="用户 ID">UID : {uid ?? "—"}</div>
@@ -271,6 +309,7 @@ export function UserMenu({
       onClose={() => setLoginOpen(false)}
       onAuthenticated={() => {
         loadUsage(true);
+        void accountWorkflows?.loadAccountProfile();
       }}
     />
     {portalTarget ? createPortal(<SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />, portalTarget) : <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} dataDir={dataDir} version={version} sessionId={sessionId} workspaceDir={workspaceDir} onOpenFileLine={onOpenFileLine} {...(onCreateMemorySession ? { onCreateMemorySession: handleCreateMemorySession } : {})} />}

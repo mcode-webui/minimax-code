@@ -28,6 +28,7 @@ import {
   classifyFindings,
   compareBaseline,
   loadReview,
+  staleExceptions,
   undispositionedRules,
   formatReport,
   loadBaseline,
@@ -735,7 +736,6 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     const exceptions = loadExceptions().exceptions ?? [];
     const dispositions = loadReview().dispositions ?? [];
     const unexcepted = [];
-    const stale = [];
     for (const surface of SURFACES) {
       for (const state of surface.states) {
         for (const theme of THEMES) {
@@ -755,7 +755,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
               state: `${state.id}/${theme}`,
             })),
           );
-          stale.push(...classified.stale);
+          void classified;
         }
       }
     }
@@ -769,7 +769,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
         (exception) =>
           exception.rule === finding.rule &&
           (exception.surface === "*" || exception.surface === finding.surface) &&
-          node.selectors.some((selector) => selector.includes(exception.target)),
+          [node.stable, ...node.selectors].some((value) => value.includes(exception.target)),
       );
     const unreviewed = findings
       .map((finding) => ({
@@ -793,7 +793,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       scanned: scannedStates.size,
       findings,
       unexcepted,
-      stale,
+      stale: staleExceptions(findings, exceptions),
       incomplete,
       review: dispositions,
     });
@@ -804,7 +804,12 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     // know fails, and a recorded finding that has gone fails. The reviewed
     // exceptions are the narrower mechanism and are counted above.
     void unexcepted;
-    expect(stale, "exceptions whose finding has gone").toEqual([]);
+    // Decided over the whole run: an exception scoped to every state matches in
+    // the state that renders its node and nowhere else.
+    expect(
+      staleExceptions(findings, exceptions).map((exception) => `${exception.rule} ${exception.target}`),
+      "exceptions whose finding has gone",
+    ).toEqual([]);
     // An undecided finding is not allowed to sit in the report unowned.
     expect(
       undispositionedRules(incomplete, dispositions),

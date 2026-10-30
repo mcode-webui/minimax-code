@@ -265,9 +265,12 @@ export function UserMenu({
             ? <button type="button" {...buttonProps} className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单">
                 <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} compact />
               </button>
-            : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger" aria-label={`打开用户菜单 ${nickname} ${plan}`}>
-                {/* The avatar's initials repeat the name beside them; hiding it
-                  * keeps the trigger's visible text to what the name states. */}
+            : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger">
+                {/* The row's own text names the trigger. An `aria-label` that
+                  * restates the nickname and the plan joins two adjacent spans
+                  * with a space the markup does not have, and the rule compares
+                  * the visible text as a substring of the name — so the content
+                  * is the name, and the decorative parts are hidden. */}
                 <span aria-hidden="true"><UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} /></span>
                 <span className="webui-user-menu-identity"><span>{nickname}</span><small>{plan}</small></span>
                 <span className="webui-user-menu-bell" aria-hidden="true"><WebuiIconBell /></span>

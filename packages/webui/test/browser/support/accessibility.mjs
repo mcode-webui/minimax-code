@@ -190,7 +190,11 @@ function exceptionMatchesNode(exception, { surface, state }, violation, node) {
   if (exception.rule !== violation.rule) return false;
   if (exception.surface !== surface && exception.surface !== "*") return false;
   if (exception.state !== state && exception.state !== "*") return false;
-  return node.selectors.some((selector) => selector.includes(exception.target));
+  // The recording keys a node on its stable identity, so matching must consider
+  // that identity as well as the selectors: an element whose only selector is a
+  // generated id is keyed by the class the identity falls back to, and an
+  // exception that names that class has to reach it.
+  return [node.stable, ...node.selectors].some((value) => value.includes(exception.target));
 }
 
 /**
@@ -219,6 +223,28 @@ export function classifyFindings({ surface, state, findings, exceptions }) {
       : !findings.some((finding) => finding.nodes.some((node) => exceptionMatchesNode(exception, { surface, state }, finding, node))),
   );
   return { unexcepted, stale };
+}
+
+/**
+ * The exceptions no finding anywhere in the run matched.
+ *
+ * This has to be decided over the whole run: an exception scoped to every state
+ * matches in the one state that renders its node and in no other, so judging it
+ * inside a single state's findings would call it stale 47 times out of 48.
+ */
+export function staleExceptions(findings, exceptions) {
+  const matched = new Set();
+  for (const finding of findings) {
+    for (const exception of exceptions) {
+      if (finding.rule !== exception.rule) continue;
+      if (exception.surface !== "*" && exception.surface !== finding.surface) continue;
+      if (exception.state !== "*" && exception.state !== finding.state) continue;
+      if (finding.nodes.some((node) => [node.stable, ...node.selectors].some((value) => value.includes(exception.target)))) {
+        matched.add(exception);
+      }
+    }
+  }
+  return exceptions.filter((exception) => !matched.has(exception));
 }
 
 /** The dispositions that are still open: their states' review is not complete. */

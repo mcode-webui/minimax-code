@@ -51,6 +51,10 @@ export function compareBaseline(
   recorded: readonly Record<string, string>[],
   findings: readonly AccessibilityFinding[],
 ): { newFindings: Record<string, string>[]; staleEntries: Record<string, string>[] };
+export function staleExceptions(
+  findings: readonly AccessibilityFinding[],
+  exceptions: readonly AccessibilityException[],
+): AccessibilityException[];
 export function undispositionedRules(
   incomplete: readonly { readonly rule: string }[],
   dispositions: readonly AccessibilityDisposition[],

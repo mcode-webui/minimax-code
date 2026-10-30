@@ -20,6 +20,7 @@ import {
   compareBaseline,
   formatReport,
   openDispositions,
+  staleExceptions,
   undispositionedRules,
   type AccessibilityFinding,
 } from "../browser/support/accessibility.mjs";
@@ -106,6 +107,16 @@ describe("exceptions", () => {
       exceptions: [exception("webui-rail-group-label")],
     });
     expect(unexcepted.map((entry) => entry.nodes.map((each) => each.stable))).toEqual([[".webui-diff-add"]]);
+  });
+
+  it("is judged over the whole run, not one state at a time", () => {
+    // An exception scoped to every state matches in the state that renders its
+    // node and in no other; judging it per state would call it stale 47 times.
+    const scoped = { ...exception("webui-rail-group-label"), surface: "*", state: "*" };
+    expect(
+      staleExceptions([finding("color-contrast", [node(".webui-rail-group-label")])], [scoped]),
+    ).toEqual([]);
+    expect(staleExceptions([], [scoped]).map((entry) => entry.target)).toEqual(["webui-rail-group-label"]);
   });
 
   it("is rejected once its finding is gone", () => {

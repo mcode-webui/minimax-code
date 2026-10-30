@@ -362,6 +362,7 @@
       "packages/webui/test/unit/output-error.test.tsx",
       "packages/webui/test/unit/outside-close.test.ts",
       "packages/webui/test/unit/overlay-geometry.test.ts",
+      "packages/webui/test/unit/overlay-order.test.ts",
       "packages/webui/test/unit/paths.test.ts",
       "packages/webui/test/unit/personalization-sections.test.ts",
       "packages/webui/test/unit/personalization-settings.test.tsx",

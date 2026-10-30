@@ -553,7 +553,8 @@
       "packages/webui/test/unit/ssh-harness-adapter.test.ts",
       "packages/webui/test/unit/ssh-host-discovery.test.ts",
       "packages/webui/test/unit/ssh-owner.test.ts",
-      "packages/webui/test/unit/ssh-panel-projection.test.ts"
+      "packages/webui/test/unit/ssh-panel-projection.test.ts",
+      "packages/webui/test/unit/webui-field.test.tsx"
     ]
   }
 }

@@ -1,0 +1,70 @@
+/*
+ * The field contract's own arrangement (#288, ADR 0028 § Shared contracts).
+ *
+ * A field is a label, an optional description, an optional error and a control.
+ * These rules lay the four out and nothing more: the colour of an error, the
+ * shape of an input and the geometry of a form belong to the surface that uses
+ * the field, which is why nothing here sets a border or a font.
+ */
+
+.webui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.webui-field-label {
+  color: var(--text_default_secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.webui-field-required {
+  color: var(--text_status_error);
+}
+
+.webui-field-description {
+  color: var(--text_default_tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.webui-field-error {
+  color: var(--text_status_error);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.webui-field-control {
+  display: flex;
+  min-width: 0;
+}
+
+/* A settings row: the text on the left, the control on the right. */
+.webui-field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.webui-field--row .webui-field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.webui-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.webui-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

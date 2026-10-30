@@ -756,12 +756,31 @@ test.describe("rendering integrity of the migrated surfaces", () => {
         }
       }
     }
+    // An excepted finding is a reviewed decision, so it does not belong in the
+    // recorded debt: the debt is what nobody has looked at yet.
+    // Exemption is per target, not per finding: an exception covers the nodes it
+    // names, and the other nodes of the same rule in the same state stay in the
+    // debt. Dropping the whole finding would let one reviewed node hide the rest.
+    const exceptedTarget = (finding, target) =>
+      exceptions.some(
+        (exception) =>
+          exception.rule === finding.rule &&
+          (exception.surface === "*" || exception.surface === finding.surface) &&
+          target.includes(exception.target),
+      );
+    const unreviewed = findings
+      .map((finding) => ({
+        ...finding,
+        targets: finding.targets.filter((target) => !exceptedTarget(finding, target)),
+      }))
+      .filter((finding) => finding.targets.length > 0);
+
     if (RECORD_A11Y) {
-      const count = saveBaseline(findings);
+      const count = saveBaseline(unreviewed);
       console.log(`accessibility baseline recorded: ${count} findings across ${scannedStates.size} states`);
       return;
     }
-    const baseline = compareBaseline(loadBaseline().findings ?? [], findings);
+    const baseline = compareBaseline(loadBaseline().findings ?? [], unreviewed);
     expect(
       baseline.newFindings,
       "accessibility findings that are not in the recorded debt",

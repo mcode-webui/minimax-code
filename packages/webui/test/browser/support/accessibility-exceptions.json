@@ -1,4 +1,239 @@
 {
   "version": 1,
-  "exceptions": []
+  "exceptions": [
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-settings-group",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "data-webui-rail-section-id",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-file-tree-meta",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "small",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-user-text",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-progress-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-workspace-files-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-workspace-tree-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-plugin-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-plugin-dialog-header",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-diff-file-stats",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-diff-header-stats",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-project-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": ".webui-project-session-more",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-rail-group-label",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "data-webui-session-age",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-brand-create",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-provider-form-hint",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-provider-form-discover",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "color-contrast",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-provider-form-models-empty",
+      "reason": "secondary and tertiary text tokens measure below 4.5:1 on the surface they are drawn on; the fix is a token change, which is a design decision this programme does not take inside a migration ticket",
+      "owner": "design-language (foundations, contrast)",
+      "removalCondition": "removed when the token meets 4.5:1 in both themes and the scan finds it clean"
+    },
+    {
+      "rule": "label-content-name-mismatch",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-brand-create-button",
+      "reason": "the control's accessible name does not contain its visible text, so a speech-input user cannot say what they see",
+      "owner": "components (settings, sessions, plugins)",
+      "removalCondition": "removed when the accessible name includes the visible text"
+    },
+    {
+      "rule": "label-content-name-mismatch",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-settings-back",
+      "reason": "the control's accessible name does not contain its visible text, so a speech-input user cannot say what they see",
+      "owner": "components (settings, sessions, plugins)",
+      "removalCondition": "removed when the accessible name includes the visible text"
+    },
+    {
+      "rule": "label-content-name-mismatch",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-plugin-management-back",
+      "reason": "the control's accessible name does not contain its visible text, so a speech-input user cannot say what they see",
+      "owner": "components (settings, sessions, plugins)",
+      "removalCondition": "removed when the accessible name includes the visible text"
+    },
+    {
+      "rule": "target-size",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-session-disclosure",
+      "reason": "the target measures below 24x24px; enlarging it changes the row geometry the recorded layouts pin",
+      "owner": "sessions / workspace (row geometry)",
+      "removalCondition": "removed when the row geometry allows a 24px target"
+    },
+    {
+      "rule": "target-size",
+      "surface": "*",
+      "state": "*",
+      "target": "\u67e5\u770b\u6587\u4ef6 \u5173\u95ed",
+      "reason": "the target measures below 24x24px; enlarging it changes the row geometry the recorded layouts pin",
+      "owner": "sessions / workspace (row geometry)",
+      "removalCondition": "removed when the row geometry allows a 24px target"
+    },
+    {
+      "rule": "aria-required-children",
+      "surface": "*",
+      "state": "*",
+      "target": "webui-workspace-tabs",
+      "reason": "the workspace tab strip declares role=tablist without tab children; it is a container, and the roles it declares do not match what it holds",
+      "owner": "workspace (panel)",
+      "removalCondition": "removed when the strip's role matches its children or its children carry tab roles"
+    }
+  ]
 }

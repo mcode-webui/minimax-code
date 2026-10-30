@@ -1,0 +1,103 @@
+/*
+ * Motion foundations (ADR 0028 § Shared contracts).
+ *
+ * The client's motion speaks one vocabulary. Four named families cover every
+ * effect in the product, and a surface that moves says which family it belongs
+ * to instead of choosing a number:
+ *
+ *   feedback     a control answers a pointer, hover, focus or press
+ *   surface      a floating surface enters or leaves
+ *   disclosure   a region opens, closes or resizes
+ *   loading      something indicates that work is in progress
+ *
+ * The tokens are the only place a duration or an easing is written. A rule that
+ * needs a value the families do not carry is a distinct effect, and it is
+ * recorded in `docs/design/motion-inventory.json` with the reason it is not one
+ * of the four — `check:webui-motion` fails on a raw duration that is neither.
+ *
+ * Reduced motion is a policy, not a per-rule accident: the tokens collapse to
+ * the shortest duration a browser will still run an animation for, so every
+ * surface that reads a token stops moving at once.
+ */
+
+:root {
+  /* Durations. */
+  --webui-motion-duration-feedback: 120ms;
+  --webui-motion-duration-surface: 180ms;
+  --webui-motion-duration-disclosure: 160ms;
+  --webui-motion-duration-loading: 1.2s;
+
+  /* The shared popup's exit. The skeleton keeps the surface mounted for exactly
+   * this long, so the number lives in one place: `WEBUI_DROPDOWN_EXIT_MS` in
+   * `ui/Dropdown.tsx` writes it as an inline custom property, and this token is
+   * the fallback for a stylesheet that renders the class without the skeleton.
+   * `webui-motion-single-source.test.ts` fails when the two disagree. */
+  --webui-motion-duration-popup-exit: 120ms;
+
+  /* Easings. */
+  --webui-motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --webui-motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --webui-motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* The distance a surface travels while it enters. */
+  --webui-motion-distance-surface: 8px;
+}
+
+/* feedback — a control answers input. */
+.webui-motion-feedback {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: var(--webui-motion-duration-feedback);
+  transition-timing-function: var(--webui-motion-ease-standard);
+}
+
+/* surface — a floating surface arrives. The caller names the keyframes, which
+ * carry the direction; the family carries the timing so every surface in the
+ * client arrives at the same speed. */
+.webui-motion-surface-enter {
+  animation-duration: var(--webui-motion-duration-surface);
+  animation-timing-function: var(--webui-motion-ease-enter);
+  animation-fill-mode: both;
+}
+
+.webui-motion-surface-exit {
+  animation-duration: var(--webui-motion-duration-popup-exit);
+  animation-timing-function: var(--webui-motion-ease-exit);
+  animation-fill-mode: forwards;
+}
+
+/* disclosure — a region opens or closes. */
+.webui-motion-disclosure {
+  transition-property: height, max-height, opacity, transform;
+  transition-duration: var(--webui-motion-duration-disclosure);
+  transition-timing-function: var(--webui-motion-ease-standard);
+}
+
+/* loading — work is in progress. */
+.webui-motion-loading {
+  animation-duration: var(--webui-motion-duration-loading);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/*
+ * The reduced-motion policy.
+ *
+ * Every duration collapses to the shortest value a browser still animates, and
+ * iteration stops, so a surface that reads a token stops moving without every
+ * rule needing its own media query. A rule that hard-codes a duration instead of
+ * reading a token escapes this block — which is one of the reasons the inventory
+ * gate exists.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --webui-motion-duration-feedback: 0.01ms;
+    --webui-motion-duration-surface: 0.01ms;
+    --webui-motion-duration-disclosure: 0.01ms;
+    --webui-motion-duration-loading: 0.01ms;
+    --webui-motion-duration-popup-exit: 0.01ms;
+  }
+
+  .webui-motion-loading {
+    animation-iteration-count: 1;
+  }
+}

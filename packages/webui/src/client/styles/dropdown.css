@@ -41,7 +41,7 @@
     font-size: 14px;
     line-height: 20px;
     box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-    animation: webui-dropdown-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation: webui-dropdown-in var(--webui-motion-duration-surface) var(--webui-motion-ease-enter);
   }
 
   /*
@@ -59,7 +59,7 @@
     background: var(--bg_default_primary);
     color: var(--text_default_primary);
     box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-    animation: webui-dropdown-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation: webui-dropdown-in var(--webui-motion-duration-surface) var(--webui-motion-ease-enter);
   }
 
   /*
@@ -73,7 +73,8 @@
    */
   .webui-dropdown-popup.is-leaving {
     pointer-events: none;
-    animation: webui-dropdown-out var(--webui-dropdown-exit-duration, 120ms) cubic-bezier(0.4, 0, 1, 1) forwards;
+    animation: webui-dropdown-out var(--webui-dropdown-exit-duration, var(--webui-motion-duration-popup-exit))
+      var(--webui-motion-ease-exit) forwards;
   }
 
   /*

@@ -15,6 +15,10 @@
  */
 
 @import "./tokens.css";
+/* Motion foundations (ADR 0028 § Shared contracts): the four named families and
+ * the reduced-motion policy. It comes right after the tokens, because every
+ * surface below it moves by reading one of these values. */
+@import "./motion.css";
 @import "./shell.css";
 /* The layout threshold contract (ADR 0025): the widths the client adapts at,
  * and the shell skeleton's own rules — the conversation column's floor and the

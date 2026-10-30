@@ -265,8 +265,10 @@ export function UserMenu({
             ? <button type="button" {...buttonProps} className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单">
                 <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} compact />
               </button>
-            : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger" aria-label="打开用户菜单">
-                <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} />
+            : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger" aria-label={`打开用户菜单 ${nickname} ${plan}`}>
+                {/* The avatar's initials repeat the name beside them; hiding it
+                  * keeps the trigger's visible text to what the name states. */}
+                <span aria-hidden="true"><UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} /></span>
                 <span className="webui-user-menu-identity"><span>{nickname}</span><small>{plan}</small></span>
                 <span className="webui-user-menu-bell" aria-hidden="true"><WebuiIconBell /></span>
               </button>;

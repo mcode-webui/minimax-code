@@ -131,12 +131,19 @@ export async function scanSurface(page) {
   const nodesOf = (entry) =>
     entry.nodes.map((node) => {
       const selectors = (node.target ?? []).map((target) => String(target));
+      const html = String(node.html ?? "");
+      const stripped = selectors
+        .map((selector) => selector.replace(/#\\:[a-z0-9]+\\:/giu, "").trim())
+        .filter((selector) => selector.length > 0)
+        .join(" ");
+      // An element whose only selector was a generated id needs an identity from
+      // somewhere else, or the recording would key every such defect on the empty
+      // string and one entry could hide the next.
+      const marker = /class="([^"]+)"/u.exec(html)?.[1]?.split(/\s+/u)[0];
       return {
         selectors,
-        // The id is regenerated every render, so it cannot be part of an identity
-        // that outlives the run. Everything else in the path is stable.
-        stable: selectors.map((selector) => selector.replace(/#\\:[a-z0-9]+\\:/giu, "")).join(" "),
-        html: String(node.html ?? "").slice(0, 160),
+        stable: stripped.length > 0 ? stripped : (marker ? `.${marker}` : "id-only"),
+        html: html.slice(0, 160),
       };
     });
   return {

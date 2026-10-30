@@ -1,0 +1,95 @@
+{
+  "$comment": "Every client source that produces a floating layer, with the decision the coordinator migration took for it. `pnpm check:webui-overlays` fails on a surface that is not listed, on a `managed` entry whose source never registers, and on an exception without its interaction boundary. `--strict` fails while any entry is pending.",
+  "dispositions": {
+    "managed": "registers with the coordinator and attaches no listener",
+    "borrows-role": "renders role=\"dialog\" for labelling, is not a layer",
+    "exception": "cannot join; its interaction boundary is stated",
+    "pending": "not migrated yet; the reason is recorded"
+  },
+  "files": {
+    "features/account/ui/AccountLoginDialog.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/account/ui/UserMenu.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/account/ui/UserMenuUsage.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/composer/ui/ComposerEditorStaging.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/composer/ui/ComposerPermissionControl.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/composer/ui/ComposerProjectRow.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/composer/ui/ContextUsageIndicator.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/composer/ui/WebuiComposer.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/models/ui/ModelPicker.public.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/models/ui/ProviderFormPanel.public.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/plugins/ui/PluginCatalogue.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/plugins/ui/PluginImportDialog.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/plugins/ui/PluginItemDialog.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/settings/ui/MemoryManagerDialog.tsx": {
+      "disposition": "managed",
+      "note": "dialog, menu and confirmation register as one nested path"
+    },
+    "features/settings/ui/SettingsModal.public.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/settings/ui/settings-atoms.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/transcript/ui/MessageActions.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/transcript/ui/MessageItem.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "features/workspace/ui/WorkspaceProgressPanel.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    },
+    "ui/ContextMenu.tsx": {
+      "disposition": "pending",
+      "reason": "still answers its own Escape and outside press; the migration is #290"
+    }
+  }
+}

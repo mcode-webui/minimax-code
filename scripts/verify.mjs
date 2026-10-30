@@ -73,6 +73,7 @@ const steps = [
   // been classified against the shared layer (ADR 0028).
   { name: "check:webui-presentation", script: "check:webui-presentation" },
   { name: "check:webui-motion", script: "check:webui-motion" },
+  { name: "check:webui-overlays", script: "check:webui-overlays" },
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui-package", script: "test:webui-package", platforms: ["linux", "darwin"] },

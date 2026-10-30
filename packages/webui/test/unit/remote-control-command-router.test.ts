@@ -709,14 +709,42 @@ describe("本地运行时入口", () => {
 
     expect(response.status).toBe(200);
     expect(await json(response)).toEqual({ processed: [], skipped: ["req-1", "req-2"] });
-    expect(calls[0]).toEqual({
+    const replies = calls.filter((call) => call.method === "replyPermission");
+    expect(replies[0]).toEqual({
       method: "replyPermission",
       args: { name: "main", requestId: "req-1", reply: 0 },
     });
   });
 
+  it("批量回复权限时把每个请求派回它真正的 owner", async () => {
+    const { invoke, calls } = harness({
+      listPendingPermissions: async () => ({
+        requests: [
+          { requestId: "req-worker", sessionId: "s-1", agentName: "worker", toolName: "bash", ruleContents: [], reason: "r", allowAlwaysSupported: true, createdAt: 1 },
+          { requestId: "req-mavis", sessionId: "s-2", agentName: "mavis", toolName: "bash", ruleContents: [], reason: "r", allowAlwaysSupported: true, createdAt: 2 },
+        ],
+      }),
+    });
+
+    const response = await invoke(
+      request("POST", "/permission/batch-reply", {
+        request_ids: ["req-worker", "req-mavis", "req-unknown"],
+        decision: "allow",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const replies = calls.filter((call) => call.method === "replyPermission");
+    expect(replies).toEqual([
+      { method: "replyPermission", args: { name: "worker", requestId: "req-worker", reply: 0 } },
+      { method: "replyPermission", args: { name: "mavis", requestId: "req-mavis", reply: 0 } },
+      // 清单里查不到的 id 退回默认 agent，而不是让整批失败。
+      { method: "replyPermission", args: { name: "main", requestId: "req-unknown", reply: 0 } },
+    ]);
+  });
+
   it("批量回复权限时吃得下手机侧的原始形状", async () => {
-    const { invoke, calls } = harness();
+    const { invoke, calls } = harness({});
 
     const response = await invoke(
       request("POST", "/permission/batch-reply", {
@@ -727,7 +755,8 @@ describe("本地运行时入口", () => {
 
     expect(response.status).toBe(200);
     expect(await json(response)).toEqual({ processed: ["req-1"], skipped: [] });
-    expect(calls[0]).toEqual({
+    const replies = calls.filter((call) => call.method === "replyPermission");
+    expect(replies[0]).toEqual({
       method: "replyPermission",
       args: { name: "main", requestId: "req-1", reply: 1 },
     });
@@ -760,7 +789,6 @@ describe("本地运行时入口", () => {
     expect(calls[0]).toEqual({
       method: "listProjectGroups",
       args: {
-        agentName: "main",
         sessionFilter: {
           archived: false,
           includeHidden: true,
@@ -769,6 +797,22 @@ describe("本地运行时入口", () => {
         includeHiddenProjects: false,
       },
     });
+  });
+
+  it("列项目时没带 agent 就不加 agent 过滤，带了就按它过滤", async () => {
+    const withoutAgent = harness();
+    const all = await withoutAgent.invoke(request("GET", "/projects"));
+    expect(all.status).toBe(200);
+    const unfiltered = withoutAgent.calls[0] as { args: Record<string, unknown> };
+    // Desktop 的 ListProjectsReq：省略 agent_name = 跨 agent 全量。默认 agent 兜底
+    // 会把子 agent 的会话从手机「最近」里剔掉。
+    expect("agentName" in unfiltered.args).toBe(false);
+
+    const withAgent = harness();
+    const scoped = await withAgent.invoke(request("GET", "/projects?agent_name=worker"));
+    expect(scoped.status).toBe(200);
+    const filtered = withAgent.calls[0] as { args: Record<string, unknown> };
+    expect(filtered.args.agentName).toBe("worker");
   });
 
   it("列项目时把手机带来的分页与过滤参数带给运行时", async () => {
@@ -966,6 +1010,99 @@ describe("本地运行时入口", () => {
     expect(await legacy.json()).toEqual(["a.txt"]);
     const unsupported = await invoke(request("GET", "/file/tree?workspace=%2Fwork&cursor=next"));
     expect(unsupported.status).toBe(501);
+  });
+
+  it("读文件内容时给出 Desktop 的文件体和字节数", async () => {
+    const { invoke, calls } = harness({
+      readWorkspaceFile: async (input: unknown) => {
+        calls.push({ method: "readWorkspaceFile", args: input });
+        return { type: "text", content: "hello" };
+      },
+    });
+
+    const response = await invoke(
+      request("GET", "/file/content?workspace=%2Fwork&path=notes%2Fa.txt"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await json(response)).toEqual({ type: "text", content: "hello", sizeBytes: 5 });
+    expect(calls[0]).toEqual({
+      method: "readWorkspaceFile",
+      args: { workspaceDir: "/work", path: "notes/a.txt" },
+    });
+  });
+
+  it("读图片时把 data URL 拆回 Desktop 的 base64 正文", async () => {
+    const { invoke } = harness({
+      readWorkspaceFile: async () => ({
+        type: "binary",
+        content: "",
+        mimeType: "image/png",
+        previewDataUrl: "data:image/png;base64,aGVsbG8=",
+      }),
+    });
+
+    const response = await invoke(
+      request("GET", "/file/content?workspace=%2Fwork&path=shot.png"),
+    );
+
+    expect(response.status).toBe(200);
+    // Desktop 的旧路径把图片字节放在 content 里带 encoding，不是 data URL。
+    expect(await json(response)).toEqual({
+      type: "binary",
+      content: "aGVsbG8=",
+      encoding: "base64",
+      mimeType: "image/png",
+      sizeBytes: 5,
+    });
+  });
+
+  it("手机读超大文件时按内联上限回 413，形状同 Desktop", async () => {
+    const { invoke } = harness({
+      readWorkspaceFile: async () => ({ type: "text", content: "0123456789" }),
+    });
+
+    const response = await invoke(
+      new Request("http://localhost/mavis/api/file/content?workspace=%2Fwork&path=big.log", {
+        headers: {
+          "X-MCode-Request-Source": "remote-control",
+          "X-MCode-Remote-Control-File-Content-Max-Bytes": "4",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(413);
+    expect(await json(response)).toEqual({
+      error: "File content is too large for remote-control inline response",
+      code: "REMOTE_CONTROL_FILE_CONTENT_TOO_LARGE",
+      sizeBytes: 10,
+      maxBytes: 4,
+    });
+  });
+
+  it("没有手机来源头的读不受内联上限约束", async () => {
+    const { invoke } = harness({
+      readWorkspaceFile: async () => ({ type: "text", content: "0123456789" }),
+    });
+
+    const response = await invoke(
+      request("GET", "/file/content?workspace=%2Fwork&path=big.log"),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("读文件缺少参数或运行时没有这个能力时如实报错", async () => {
+    const { invoke } = harness();
+
+    expect((await invoke(request("GET", "/file/content?path=a.txt"))).status).toBe(400);
+    expect((await invoke(request("GET", "/file/content?workspace=%2Fwork"))).status).toBe(400);
+    expect(
+      (await invoke(request("GET", "/file/content?workspace=%2Fwork&path=a.txt&offset=3"))).status,
+    ).toBe(501);
+    expect(
+      (await invoke(request("GET", "/file/content?workspace=%2Fwork&path=a.txt"))).status,
+    ).toBe(501);
   });
 
   it("未知路径回 404 如实错误，并把方法与路径打进日志", async () => {

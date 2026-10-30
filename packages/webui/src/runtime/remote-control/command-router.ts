@@ -44,6 +44,13 @@ const NOT_IMPLEMENTED = "NOT_IMPLEMENTED";
 /** 本机唯一的 agent 名。 */
 const DEFAULT_AGENT_NAME = "main";
 
+/** 桥盖在本地请求上的来源标记与内联文件内容上限头（同 Desktop `files/api.ts`）。 */
+const RC_REQUEST_SOURCE_HEADER = "x-mcode-request-source";
+const RC_REQUEST_SOURCE_VALUE = "remote-control";
+const RC_FILE_CONTENT_MAX_BYTES_HEADER = "x-mcode-remote-control-file-content-max-bytes";
+/** Desktop 的默认内联上限：10 MiB。 */
+const DEFAULT_RC_FILE_CONTENT_MAX_BYTES = 10 * 1024 * 1024;
+
 /** 运行时的权限回复编号。 */
 type RuntimePermissionReply = Parameters<
   WebuiRuntimeCliService["replyPermission"]
@@ -93,6 +100,12 @@ interface RouteContext {
   readonly path: string;
   readonly url: URL;
   readonly body: RouteBody;
+  /**
+   * 请求头。桥打到本入口上的 `Request` 带 `X-MCode-Request-Source: remote-control`
+   * 与内联文件内容上限（`bridge/command-router.ts` 的 RC 头），`/file/content` 靠它
+   * 判断要不要按手机口径限流。
+   */
+  readonly headers: Headers;
 }
 
 type RouteHandler = (ctx: RouteContext, match: RegExpExecArray) => Promise<Response>;
@@ -415,13 +428,17 @@ export function createRemoteControlLocalRuntimeInvoke(
         "request_ids and a decision are required",
       );
     }
+    // 请求本身不带 agent，而一条 pending 请求属于发起它的那个 agent。批量回复因此先取
+    // 一次挂起清单，把 requestId 对回真正的 owner，再用默认 agent 兜底没查到的 id ——
+    // 拿默认 agent 覆盖全部 id 会在多 agent 场景下把别人的请求记到错误的 owner 上。
+    const owners = await pendingPermissionOwners();
     const processed: string[] = [];
     const skipped: string[] = [];
     for (const [reply, requestIds] of groups) {
       for (const requestId of requestIds) {
         try {
           const result = await cliService.replyPermission({
-            name: agentName,
+            name: owners.get(requestId) ?? agentName,
             requestId,
             reply,
           });
@@ -436,6 +453,27 @@ export function createRemoteControlLocalRuntimeInvoke(
       }
     }
     return jsonResponse(200, { processed, skipped });
+  };
+
+  /**
+   * requestId → 拥有它的 agent。
+   *
+   * 读清单失败不该让回复整批失败：真正的回复由运行时按 requestId 解析，清单只用来把
+   * 名字填准，所以这里吞掉错误并退回空表（调用方再落到默认 agent）。
+   */
+  const pendingPermissionOwners = async (): Promise<Map<string, string>> => {
+    try {
+      const result = await cliService.listPendingPermissions({});
+      const owners = new Map<string, string>();
+      for (const request of result?.requests ?? []) {
+        if (typeof request.requestId === "string" && typeof request.agentName === "string") {
+          owners.set(request.requestId, request.agentName);
+        }
+      }
+      return owners;
+    } catch {
+      return new Map();
+    }
   };
 
   const questionnairePending = async (ctx: RouteContext, match: RegExpExecArray): Promise<Response> => {
@@ -555,6 +593,14 @@ export function createRemoteControlLocalRuntimeInvoke(
         "this runtime cannot list projects with their sessions",
       );
     }
+    // Desktop 的 `ListProjectsReq.agentName` 是可选过滤：给了就只算这个 owner，没给
+    // 就是跨 agent 的全量（`project/service.ts` 的 `resolveOwnerFilter`）。所以这里
+    // 不能拿默认 agent 兜底 —— 那会把子 agent（verifier/worker/explore）的会话从手机
+    // 的「最近」里剔掉，而 Desktop 会带上。运行时的 `ProjectListInput.agentName` 同样是
+    // 可选，未给即不过滤。
+    const requestedAgent = readString(
+      ctx.url.searchParams.get("agent_name") ?? ctx.url.searchParams.get("agentName"),
+    );
     const limit = readQueryNumber(ctx.url.searchParams.get("limit"));
     const cursor = readString(ctx.url.searchParams.get("cursor"));
     const sessionLimit = readQueryNumber(
@@ -569,7 +615,7 @@ export function createRemoteControlLocalRuntimeInvoke(
     const includeHidden = readQueryBoolean(ctx.url.searchParams.get("include_hidden"));
     const includeArchived = readQueryBoolean(ctx.url.searchParams.get("include_archived"));
     const result = await listProjectGroups.call(cliService, {
-      agentName,
+      ...(requestedAgent === undefined ? {} : { agentName: requestedAgent }),
       // Desktop 的项目列表口径：会话含隐藏项、排除内部树会话、归档只在请求
       // 显式要求时带上；隐藏的项目本身不返回。
       sessionFilter: {
@@ -864,6 +910,56 @@ export function createRemoteControlLocalRuntimeInvoke(
     return ctx.pathname.startsWith(LEGACY_API_PREFIX) ? jsonResponse(200, paths) : desktopViewResponse({ paths });
   };
 
+  /**
+   * `GET /file/content` —— 一个文件的内容（手机打开文件时走这条）。
+   *
+   * Desktop 的 `ReadWorkspaceFile` 与旧版 `/mavis/api/file/content` 回同一个体的
+   * JSON：`{type, content, encoding?, mimeType?, sizeBytes?, error?, code?}`，图片把
+   * base64 放进 `content` 并带 `encoding: "base64"`。运行时回的是
+   * `{type, content, mimeType?, previewDataUrl?, error?}` —— 图片走 data URL 而不是
+   * base64 正文，所以这里把 data URL 拆回 `content` + `encoding`。
+   *
+   * 手机这条读还受内联上限约束：桥在请求上盖 `X-MCode-Request-Source` 与
+   * `X-MCode-Remote-Control-File-Content-Max-Bytes`，Desktop 的旧路径据此回 413。
+   * 运行时的读入本身不带上限，因此这里读完之后按内容字节数复核一次，413 体与 Desktop
+   * 逐字段一致（`error` / `code` / `sizeBytes` / `maxBytes`）。
+   */
+  const workspaceFileContent = async (ctx: RouteContext): Promise<Response> => {
+    const workspaceDir = readString(ctx.url.searchParams.get("workspace"));
+    const filePath = readString(ctx.url.searchParams.get("path"));
+    if (!workspaceDir || !filePath) {
+      return errorResponse(400, "INVALID_ARGUMENT", "workspace and path are required");
+    }
+    // Desktop 的旧路径不支持字节区间（`offset`/`length`/`maxBytes`/`raw` 只在
+    // Runtime V2 的 typed 路由上存在），这里如实拒绝而不是悄悄忽略。
+    if (["offset", "length", "maxBytes", "raw"].some((key) => ctx.url.searchParams.has(key))) {
+      return errorResponse(501, NOT_IMPLEMENTED, "workspace file byte ranges are not supported");
+    }
+    const readWorkspaceFile = cliService.readWorkspaceFile;
+    if (!readWorkspaceFile) {
+      return errorResponse(501, NOT_IMPLEMENTED, "this runtime cannot read workspace files");
+    }
+    const result = await readWorkspaceFile.call(cliService, {
+      workspaceDir,
+      path: filePath,
+    });
+    const body = toDesktopFileContent(result);
+    const maxBytes = remoteControlFileContentMaxBytes(ctx.headers);
+    if (
+      maxBytes !== undefined &&
+      body.sizeBytes !== undefined &&
+      body.sizeBytes > maxBytes
+    ) {
+      return jsonResponse(413, {
+        error: "File content is too large for remote-control inline response",
+        code: "REMOTE_CONTROL_FILE_CONTENT_TOO_LARGE",
+        sizeBytes: body.sizeBytes,
+        maxBytes,
+      });
+    }
+    return jsonResponse(200, body);
+  };
+
   const routes: RouteEntry[] = [
     { method: "GET", pattern: /^\/agent\/([^/]+)\/session\/tree$/, handle: sessionTree },
     { method: "GET", pattern: /^\/session\/search$/, handle: sessionSearch },
@@ -905,6 +1001,7 @@ export function createRemoteControlLocalRuntimeInvoke(
     { method: "GET", pattern: /^\/config\/permission-mode-options$/, handle: configPermissionModeOptions },
     { method: "GET", pattern: /^\/file\/tree$/, handle: workspaceFileTree },
     { method: "GET", pattern: /^\/file\/search$/, handle: workspaceFileSearch },
+    { method: "GET", pattern: /^\/file\/content$/, handle: workspaceFileContent },
     { method: "GET", pattern: /^\/file\/git\/branches$/, handle: gitBranches },
     { method: "GET", pattern: /^\/file\/git\/branch-picker$/, handle: gitBranchPicker },
     { method: "POST", pattern: /^\/file\/git\/checkout$/, handle: gitCheckout },
@@ -928,6 +1025,7 @@ export function createRemoteControlLocalRuntimeInvoke(
         path: path ?? "",
         url,
         body: await readBody(request),
+        headers: request.headers,
       };
       const matched = path === undefined ? undefined : matchRoute(routes, method, path);
       response = matched
@@ -1067,6 +1165,85 @@ function readQueryBoolean(value: string | null): boolean | undefined {
   if (normalized === "true" || normalized === "1") return true;
   if (normalized === "false" || normalized === "0") return false;
   return undefined;
+}
+
+/** 运行时 `readWorkspaceFile` 交出来的形状。 */
+type RuntimeFileContent = Awaited<
+  ReturnType<NonNullable<WebuiRuntimeCliService["readWorkspaceFile"]>>
+>;
+
+/** Desktop 旧版 `/mavis/api/file/content` 的响应体字段。 */
+interface DesktopFileContentBody {
+  readonly type: "text" | "binary";
+  readonly content: string;
+  readonly encoding?: "base64";
+  readonly mimeType?: string;
+  readonly sizeBytes?: number;
+  readonly error?: string;
+}
+
+/**
+ * 运行时的文件内容 → Desktop 的文件内容体。
+ *
+ * 两边的差别只有一处：图片在运行时里是 `previewDataUrl`（`data:image/png;base64,...`），
+ * 在 Desktop 里是 `content` + `encoding: "base64"` + `mimeType`。文本两边一致。错误
+ * 也照 Desktop 放在 200 的响应体里（`Path traversal denied` 之类），不升级成 HTTP 错误。
+ */
+function toDesktopFileContent(value: RuntimeFileContent): DesktopFileContentBody {
+  const inline =
+    typeof value.previewDataUrl === "string"
+      ? parseInlineDataUrl(value.previewDataUrl)
+      : undefined;
+  const base64 = inline?.base64 ? inline.payload : undefined;
+  const content = base64 ?? (typeof value.content === "string" ? value.content : "");
+  const mimeType = value.mimeType ?? inline?.mimeType;
+  const sizeBytes =
+    base64 !== undefined ? base64DecodedByteLength(base64) : utf8ByteLength(content);
+  return {
+    type: value.type === "binary" ? "binary" : "text",
+    content,
+    ...(base64 !== undefined ? { encoding: "base64" as const } : {}),
+    ...(mimeType !== undefined ? { mimeType } : {}),
+    ...(sizeBytes > 0 ? { sizeBytes } : {}),
+    ...(value.error !== undefined ? { error: value.error } : {}),
+  };
+}
+
+function parseInlineDataUrl(
+  value: string,
+): { readonly mimeType?: string; readonly payload: string; readonly base64: boolean } | undefined {
+  const match = /^data:([^;,]*)(;base64)?,(.*)$/su.exec(value);
+  if (!match) return undefined;
+  return {
+    ...(match[1] ? { mimeType: match[1] } : {}),
+    payload: match[3] ?? "",
+    base64: match[2] !== undefined,
+  };
+}
+
+function base64DecodedByteLength(payload: string): number {
+  const trimmed = payload.replace(/\s+/gu, "");
+  if (trimmed.length === 0) return 0;
+  const padding = trimmed.endsWith("==") ? 2 : trimmed.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((trimmed.length * 3) / 4) - padding);
+}
+
+function utf8ByteLength(text: string): number {
+  return new TextEncoder().encode(text).byteLength;
+}
+
+/**
+ * 这条读是不是手机发来的，以及它的内联上限。
+ *
+ * 只有桥盖了 `X-MCode-Request-Source: remote-control` 的请求才受限；上限取请求头，
+ * 没有头时用 Desktop 的 10 MiB 默认值。非手机来源（或没有上限头也没有来源头）返回
+ * `undefined`，即不限流。
+ */
+function remoteControlFileContentMaxBytes(headers: Headers): number | undefined {
+  if (headers.get(RC_REQUEST_SOURCE_HEADER) !== RC_REQUEST_SOURCE_VALUE) return undefined;
+  const raw = headers.get(RC_FILE_CONTENT_MAX_BYTES_HEADER);
+  const parsed = raw === null ? Number.NaN : Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_RC_FILE_CONTENT_MAX_BYTES;
 }
 
 function toGoalAttachments(value: unknown): { ok: true; items?: NonNullable<WebuiHostRequest<"createGoal">["kickoffAttachments"]> } | { ok: false } {

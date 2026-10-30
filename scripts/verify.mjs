@@ -68,6 +68,10 @@ const steps = [
   // Source-level direction check: it must surface before the build and the
   // metafile check, because `import type` edges never reach build output.
   { name: "check:webui-dependency", script: "check:webui-dependency" },
+  // Coverage of the presentation layer: the source-level check above proves
+  // where a module may sit, this one proves that every client UI module has
+  // been classified against the shared layer (ADR 0028).
+  { name: "check:webui-presentation", script: "check:webui-presentation" },
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui-package", script: "test:webui-package", platforms: ["linux", "darwin"] },

@@ -12,6 +12,7 @@ document: [`browser-suite.md`](browser-suite.md).
 | --- | --- | --- |
 | `pnpm typecheck:webui` | Every source file and every test file compiles under `strict`: the server/runtime/shared config, the client config, and one test program whose `include` is the whole `test/` and `src/` tree | A port member without its stub, a missing binding, a wrong DTO, a test fixture that no longer matches the signature it calls |
 | `pnpm check:webui-dependency` | Import direction and role ownership over the resolved source graph, including `import type` edges | A forbidden direction, a role violation, a business holding one role in two homes, a private cross-business import, or an unclassified source |
+| `pnpm check:webui-presentation` | Every client UI source module (`features/*/ui/`, `shell/`, the shared `ui/`) is classified in `scripts/lib/webui-presentation-inventory.json`, and the inventory agrees with the modules on disk | An unclassified module, an entry whose module is gone, an undefined disposition, kind or family, a business exception without a reason |
 | `pnpm build:webui` | The client and server bundles build, and prints input counts | A module that is written but not wired (counts do not move) |
 | `pnpm check:webui-boundary` | The combined client/server build graph contains required entries and inputs within declared package roots; direct WebUI workspace imports use exported subpaths; the artifact integrity record matches current inputs and outputs | A retired source path, the terminal renderer, a private direct workspace import, a forbidden internal reference, or a stale/modified build artifact |
 | `pnpm test:webui-package` | The packaged artefact runs as published | Packaging drift |
@@ -28,6 +29,34 @@ and stale baseline entries; the current direction baseline is empty. Its separat
 allowance records the non-literal runtime import described in
 [`../architecture/boundaries.md`](../architecture/boundaries.md). That document states the rules these
 gates enforce.
+
+## What the presentation-coverage check proves
+
+`pnpm check:webui-presentation` reads `scripts/lib/webui-presentation-inventory.json` and discovers
+the client UI modules on disk — a file under a feature's `ui/`, a file under `shell/`, and a file
+under the shared `ui/`. Every discovered module must appear in the inventory with **one of four
+dispositions** — `existing-shared-contract`, `newly-adopted-contract`, `business-exception`,
+`pending-contract-decision` — and **at least one of the eight families** ADR 0028 names. A
+`business-exception` also carries the reason it is one.
+
+It fails on an unclassified module, on an entry whose module no longer exists, and on a disposition,
+kind or family the ADR does not define. Negative fixtures for each of those three failures live in
+`packages/webui/test/gates/webui-presentation-coverage.test.ts`; the fixtures are built in a
+temporary directory, so they never enter the source inventory.
+
+**It proves the inventory, not the unification.** Two limits are deliberate:
+
+- A module may gain a surface without gaining a module, and the check cannot see it. So each entry
+  records a *surface signature* — the module's exported names, the JSX element names it renders and
+  its `role` attribute values. When that signature moves, the check reports the module as
+  **review required** and still exits zero; `--accept-review` records the signatures of the reported
+  modules after the change has been looked at. It rewrites nothing but those signatures.
+- A `pending-contract-decision` is a valid classification. The check prints the pending count and
+  says the unification is incomplete; a zero pending count is necessary and not sufficient, and the
+  coverage review confirms the rest.
+
+Stylesheets under those three homes are out of scope here: they are covered by the compiled-stylesheet
+assertions in `webui-design-tokens.test.ts` and by the per-surface ratchets the migration tickets add.
 
 ## Evidence levels
 

@@ -87,6 +87,13 @@ serve. `webui-design-tokens.test.ts` hard-asserts the semantic tokens and named 
 a removed token fails the suite rather than silently restyling. Rules:
 `docs/design/design-language.md`.
 
+**Adding a client UI module.** A new file under `features/*/ui/`, `shell/` or the shared `ui/` must
+be classified in `scripts/lib/webui-presentation-inventory.json`: one entry with its label, whether
+it is a surface or a concern, at least one of the eight families, and one of the four dispositions.
+`pnpm check:webui-presentation` fails until it is there, and reports a module whose rendered
+vocabulary changed since it was classified; record that with `--accept-review` after looking at the
+change. ADR 0028 states the obligation and its two limits.
+
 **Moving, adding or deleting a file.** Run `node scripts/source-inventory.mjs --write`, then
 `pnpm check:source`. Review the added, removed and renamed paths before regenerating: recording a file
 does not make it publishable.
@@ -113,6 +120,7 @@ needs a rerun, run that gate instead of repeating the full suite.
 | Client behaviour | the focused Vitest file: `pnpm exec vitest run --config vitest.oss.config.mjs <test-file>` |
 | Built-client interaction | `pnpm build:webui`, then only the relevant Playwright spec |
 | Imports, roles, moves | `pnpm check:webui-dependency` |
+| A client UI module added, moved or reclassified | `pnpm check:webui-presentation` |
 | Entries, bundling, packaging | `pnpm build:webui` then `pnpm check:webui-boundary`; `pnpm test:webui-package` only when packaging is in scope |
 | Anything file-level | `node scripts/source-inventory.mjs --write`, then `pnpm check:source` |
 | Full aggregate verification | `pnpm verify` only when the user explicitly asks for it |

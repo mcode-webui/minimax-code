@@ -25,6 +25,15 @@ import { expect } from "@playwright/test";
 
 import { openApp, openLauncherTile, test } from "./harness.mjs";
 import {
+  classifyFindings,
+  compareBaseline,
+  formatReport,
+  loadBaseline,
+  loadExceptions,
+  saveBaseline,
+  scanSurface,
+} from "./support/accessibility.mjs";
+import {
   EXTREMES,
   THEMES,
   appliedTheme,
@@ -38,6 +47,9 @@ import {
 } from "./support/rendering-integrity.mjs";
 
 const RECORDING = process.env.RECORD_RENDERING_INTEGRITY === "1";
+// `RECORD_ACCESSIBILITY_BASELINE=1` re-records the known debt. Re-record
+// deliberately, in the same commit as the change that moved it.
+const RECORD_A11Y = process.env.RECORD_ACCESSIBILITY_BASELINE === "1";
 
 const PROVIDER = (index, name, baseUrl) => ({
   providerId: `provider-${index}`,
@@ -658,6 +670,11 @@ const SURFACES = [
 test.describe("rendering integrity of the migrated surfaces", () => {
   const manifest = loadManifest();
   const recorded = {};
+  // The same enumeration drives the accessibility scan: the states a surface
+  // enumerates for its geometry are the states it is scanned in.
+  const findings = [];
+  const incomplete = [];
+  const scannedStates = new Set();
 
   for (const surface of SURFACES) {
     for (const state of surface.states) {
@@ -671,6 +688,15 @@ test.describe("rendering integrity of the migrated surfaces", () => {
           const facts = await captureSurface(page, surface, state);
           const key = manifestKey(surface.id, state.id, theme);
           recorded[key] = facts;
+
+          const scan = await scanSurface(page);
+          for (const violation of scan.violations) {
+            findings.push({ ...violation, surface: surface.id, state: state.id, theme });
+          }
+          for (const entry of scan.incomplete) {
+            incomplete.push({ ...entry, surface: surface.id, state: state.id, theme });
+          }
+          scannedStates.add(key);
 
           if (RECORDING) return;
           const before = manifest.states[key];
@@ -702,5 +728,59 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     // suite does not have, not a surface that passed.
     console.log(JSON.stringify({ surfaces: report, extremes: EXTREMES }, null, 2));
     expect(unverified.map((surface) => [surface.surface, surface.missing])).toEqual([]);
+
+    // The accessibility half of the same enumeration (ADR 0028 § Accessibility).
+    const exceptions = loadExceptions().exceptions ?? [];
+    const unexcepted = [];
+    const stale = [];
+    for (const surface of SURFACES) {
+      for (const state of surface.states) {
+        for (const theme of THEMES) {
+          const stateFindings = findings.filter(
+            (finding) =>
+              finding.surface === surface.id && finding.state === state.id && finding.theme === theme,
+          );
+          const classified = classifyFindings({
+            surface: surface.id,
+            state: `${state.id}/${theme}`,
+            findings: stateFindings,
+            exceptions,
+          });
+          unexcepted.push(
+            ...classified.unexcepted.map((finding) => ({
+              ...finding,
+              state: `${state.id}/${theme}`,
+            })),
+          );
+          stale.push(...classified.stale);
+        }
+      }
+    }
+    if (RECORD_A11Y) {
+      const count = saveBaseline(findings);
+      console.log(`accessibility baseline recorded: ${count} findings across ${scannedStates.size} states`);
+      return;
+    }
+    const baseline = compareBaseline(loadBaseline().findings ?? [], findings);
+    expect(
+      baseline.newFindings,
+      "accessibility findings that are not in the recorded debt",
+    ).toEqual([]);
+    expect(baseline.staleEntries, "recorded findings that have gone; delete them").toEqual([]);
+    const report_ = formatReport({
+      scanned: scannedStates.size,
+      findings,
+      unexcepted,
+      stale,
+      incomplete,
+    });
+    // The report states what the scan cannot decide; it is printed on every run,
+    // pass or fail, because a clean scan is not a finding of accessibility.
+    console.log(report_);
+    // The gate is the recorded debt, not the report: what the recording does not
+    // know fails, and a recorded finding that has gone fails. The reviewed
+    // exceptions are the narrower mechanism and are counted above.
+    void unexcepted;
+    expect(stale, "exceptions whose finding has gone").toEqual([]);
   });
 });

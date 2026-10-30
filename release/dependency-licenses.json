@@ -219,6 +219,14 @@
       "homepage": "https://github.com/awslabs/aws-lambda-invoke-store"
     },
     {
+      "name": "@axe-core/playwright",
+      "versions": [
+        "4.14.0"
+      ],
+      "license": "MPL-2.0",
+      "homepage": "https://github.com/dequelabs/axe-core-npm#readme"
+    },
+    {
       "name": "@babel/helper-string-parser",
       "versions": [
         "7.29.7"
@@ -1390,6 +1398,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/inspect-js/available-typed-arrays#readme"
+    },
+    {
+      "name": "axe-core",
+      "versions": [
+        "4.14.0"
+      ],
+      "license": "MPL-2.0",
+      "homepage": "https://github.com/dequelabs/axe-core#readme"
     },
     {
       "name": "axios",
@@ -5042,15 +5058,6 @@
       "homepage": "https://github.com/ljharb/stop-iteration-iterator#readme"
     },
     {
-      "name": "string_decoder",
-      "versions": [
-        "1.1.1",
-        "1.3.0"
-      ],
-      "license": "MIT",
-      "homepage": "https://github.com/nodejs/string_decoder"
-    },
-    {
       "name": "string-width",
       "versions": [
         "4.2.3"
@@ -5081,6 +5088,15 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/es-shims/String.prototype.trimStart#readme"
+    },
+    {
+      "name": "string_decoder",
+      "versions": [
+        "1.1.1",
+        "1.3.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/nodejs/string_decoder"
     },
     {
       "name": "strip-ansi",

@@ -761,19 +761,19 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     // Exemption is per target, not per finding: an exception covers the nodes it
     // names, and the other nodes of the same rule in the same state stay in the
     // debt. Dropping the whole finding would let one reviewed node hide the rest.
-    const exceptedTarget = (finding, target) =>
+    const exceptedNode = (finding, node) =>
       exceptions.some(
         (exception) =>
           exception.rule === finding.rule &&
           (exception.surface === "*" || exception.surface === finding.surface) &&
-          target.includes(exception.target),
+          node.selectors.some((selector) => selector.includes(exception.target)),
       );
     const unreviewed = findings
       .map((finding) => ({
         ...finding,
-        targets: finding.targets.filter((target) => !exceptedTarget(finding, target)),
+        nodes: finding.nodes.filter((node) => !exceptedNode(finding, node)),
       }))
-      .filter((finding) => finding.targets.length > 0);
+      .filter((finding) => finding.nodes.length > 0);
 
     if (RECORD_A11Y) {
       const count = saveBaseline(unreviewed);

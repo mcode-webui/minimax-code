@@ -49,7 +49,7 @@ export function SessionRailRegion(props: {
             <img className="webui-brand-create-mascot" src="/assets/img/minimax-octopus-rail.png" alt="" aria-hidden="true" />
             <button
               type="button"
-              aria-label="新建任务"
+              aria-label="新建任务 MiniMax Code 新建"
               title="新建任务"
               onClick={() => props.startNewTask()}
               className="webui-nav-item webui-brand-create-button"

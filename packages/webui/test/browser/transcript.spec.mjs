@@ -224,7 +224,7 @@ test("New Task fences a pending home creation without stealing the new draft or 
     window.__fixture.delayNext("createSession", { name: "main" });
   });
   await openApp(page, "");
-  await page.getByRole("button", { name: "新建任务", exact: true }).click();
+  await page.locator(".webui-brand-create-button").click();
   await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
   const input = page.getByPlaceholder("输入消息…（输入 / 唤起命令）");
   await input.fill("Pending home submission");
@@ -234,7 +234,7 @@ test("New Task fences a pending home creation without stealing the new draft or 
     (request) => request.operation === "createSession" && request.body.name === "main",
   ))).toBe(true);
 
-  await page.getByRole("button", { name: "新建任务", exact: true }).click();
+  await page.locator(".webui-brand-create-button").click();
   await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
   await input.fill("Draft for the replacement home");
 

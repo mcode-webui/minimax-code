@@ -63,14 +63,14 @@ export function loadBaseline() {
 export function saveBaseline(findings) {
   const deduped = new Map();
   for (const finding of findings) {
-    for (const target of finding.targets) {
-      const key = `${finding.rule}|${finding.surface}|${finding.state}|${finding.theme}|${target}`;
+    for (const node of finding.nodes) {
+      const key = `${finding.rule}|${finding.surface}|${finding.state}|${finding.theme}|${node.stable}`;
       deduped.set(key, {
         rule: finding.rule,
         surface: finding.surface,
         state: finding.state,
         theme: finding.theme,
-        target,
+        target: node.stable,
       });
     }
   }
@@ -90,13 +90,13 @@ export function compareBaseline(recorded, findings) {
   const recordedKeys = new Set(recorded.map(key));
   const measured = [];
   for (const finding of findings) {
-    for (const target of finding.targets) {
+    for (const node of finding.nodes) {
       measured.push({
         rule: finding.rule,
         surface: finding.surface,
         state: finding.state,
         theme: finding.theme,
-        target,
+        target: node.stable,
       });
     }
   }
@@ -124,27 +124,42 @@ export function loadExceptions() {
  */
 export async function scanSurface(page) {
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  // One entry per *node*, carrying every selector axe produced for it. A node is
+  // reported under both its class and, when it has one, a generated id; splitting
+  // those into separate findings would let an exception cover the class and leave
+  // the id behind as a second, unreviewable finding.
+  const nodesOf = (entry) =>
+    entry.nodes.map((node) => {
+      const selectors = (node.target ?? []).map((target) => String(target));
+      return {
+        selectors,
+        // The id is regenerated every render, so it cannot be part of an identity
+        // that outlives the run. Everything else in the path is stable.
+        stable: selectors.map((selector) => selector.replace(/#\\:[a-z0-9]+\\:/giu, "")).join(" "),
+        html: String(node.html ?? "").slice(0, 160),
+      };
+    });
   return {
     violations: results.violations.map((violation) => ({
       rule: violation.id,
       impact: violation.impact ?? "unknown",
       help: violation.help,
-      targets: violation.nodes.map((node) => (node.target ?? []).join(" ")),
+      nodes: nodesOf(violation),
     })),
     incomplete: results.incomplete.map((entry) => ({
       rule: entry.id,
       help: entry.help,
-      targets: entry.nodes.map((node) => (node.target ?? []).join(" ")),
+      nodes: nodesOf(entry),
     })),
     passes: results.passes.length,
   };
 }
 
-function exceptionMatches(exception, { surface, state }, violation) {
+function exceptionMatchesNode(exception, { surface, state }, violation, node) {
   if (exception.rule !== violation.rule) return false;
-  if (exception.surface !== surface) return false;
+  if (exception.surface !== surface && exception.surface !== "*") return false;
   if (exception.state !== state && exception.state !== "*") return false;
-  return violation.targets.some((target) => target.includes(exception.target));
+  return node.selectors.some((selector) => selector.includes(exception.target));
 }
 
 /**
@@ -157,11 +172,18 @@ export function classifyFindings({ surface, state, findings, exceptions }) {
   const applicable = exceptions.filter(
     (exception) => exception.surface === surface && (exception.state === state || exception.state === "*"),
   );
-  const unexcepted = findings.filter(
-    (violation) => !applicable.some((exception) => exceptionMatches(exception, { surface, state }, violation)),
-  );
+  const unexcepted = findings
+    .map((finding) => ({
+      ...finding,
+      nodes: finding.nodes.filter(
+        (node) => !applicable.some((exception) => exceptionMatchesNode(exception, { surface, state }, finding, node)),
+      ),
+    }))
+    .filter((finding) => finding.nodes.length > 0);
   const stale = applicable.filter((exception) =>
-    exception.rule === "*" ? false : !findings.some((violation) => exceptionMatches(exception, { surface, state }, violation)),
+    exception.rule === "*"
+      ? false
+      : !findings.some((finding) => finding.nodes.some((node) => exceptionMatchesNode(exception, { surface, state }, finding, node))),
   );
   return { unexcepted, stale };
 }
@@ -178,7 +200,10 @@ export function formatReport({ scanned, findings, unexcepted, stale, incomplete 
     lines.push("UNEXCEPTED VIOLATIONS:");
     for (const finding of unexcepted) {
       lines.push(`  [${finding.impact}] ${finding.rule} at ${finding.surface}/${finding.state}: ${finding.help}`);
-      for (const target of finding.targets.slice(0, 3)) lines.push(`    ${target}`);
+      for (const node of finding.nodes.slice(0, 3)) {
+        lines.push(`    ${node.selectors.join(", ")}`);
+        if (node.html) lines.push(`      ${node.html}`);
+      }
     }
   }
   if (stale.length > 0) {

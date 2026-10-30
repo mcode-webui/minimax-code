@@ -34,392 +34,336 @@
       "surface": "application-shell",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "maximum",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "maximum",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "application-shell",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "empty",
-      "theme": "dark",
-      "target": "#\\:rd\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "empty",
-      "theme": "light",
-      "target": "#\\:rd\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "longest",
-      "theme": "dark",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "longest",
-      "theme": "light",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "maximum",
       "theme": "dark",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "maximum",
-      "theme": "dark",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "maximum",
       "theme": "light",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "maximum",
-      "theme": "light",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "one",
-      "theme": "dark",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "models-provider-form",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
-    },
-    {
-      "rule": "label-content-name-mismatch",
-      "surface": "models-provider-form",
-      "state": "one",
-      "theme": "light",
-      "target": "#\\:rb\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "plugins-mcp-form",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "maximum",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "maximum",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "settings-usage-page",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "maximum",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "maximum",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "turn-diff",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "transcript",
       "state": "turn-diff",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "empty",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "empty",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "longest",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "longest",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "maximum",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "maximum",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "one",
       "theme": "dark",
-      "target": "#\\:r1\\:"
+      "target": ""
     },
     {
       "rule": "label-content-name-mismatch",
       "surface": "workspace-panel",
       "state": "one",
       "theme": "light",
-      "target": "#\\:r1\\:"
+      "target": ""
     }
   ]
 }

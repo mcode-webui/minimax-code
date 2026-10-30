@@ -34,6 +34,7 @@ import {
   type WebuiRemoteOwner,
   type WebuiRemoteSnapshot,
 } from "../application/remote-owner.js";
+import { PanelFrame } from "../../../ui/content-page.js";
 
 export interface RemotePageViewProps {
   readonly activeTab: WebuiRemoteTabValue;
@@ -54,16 +55,16 @@ export function RemotePageView({
   children,
 }: RemotePageViewProps): ReactElement {
   return (
-    <section
-      aria-label="远程"
-      data-webui-component="remote-page"
-      data-testid="remote-page"
-      className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg_default_primary"
-    >
-      <header
-        data-testid="desktop-mobile-page-tabs"
-        className="flex h-[46px] min-w-0 shrink-0 items-center justify-between gap-3 py-2 pr-2 pl-2 transition-[padding] duration-200 ease-in-out"
-      >
+    <PanelFrame
+      ariaLabel="远程"
+      testId="remote-page"
+      dataAttributes={{ "data-webui-component": "remote-page" }}
+      className="min-w-0 flex-1"
+      scroll={false}
+      bodyClassName="min-h-0 flex-1"
+      headerClassName="flex h-[46px] min-w-0 shrink-0 items-center justify-between gap-3 py-2 pr-2 pl-2 transition-[padding] duration-200 ease-in-out"
+      header={
+        <>
         {/*
           The Desktop's strip is a radiogroup, not a tablist: the segmented control's items are
           radio inputs, so `role="radiogroup"` with `aria-checked` is the faithful shape and the
@@ -100,9 +101,11 @@ export function RemotePageView({
             );
           })}
         </div>
-      </header>
-      <div className="min-h-0 flex-1">{children}</div>
-    </section>
+        </>
+      }
+    >
+      {children}
+    </PanelFrame>
   );
 }
 

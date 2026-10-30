@@ -13,8 +13,8 @@
 //
 // The button and the dialog frame are here for the same reason: they are the
 // settings pages' own controls, and a control that each page re-authors is a
-// control that drifts. The button keeps the `webui-mavis-button` classes the
-// stylesheet already owns; the dialog keeps the scrim-and-surface treatment
+// control that drifts. The button renders the shared button contract rather than
+// naming its classes; the dialog keeps the scrim-and-surface treatment
 // the memory manager established, under a name that says what it is rather
 // than which feature happens to use it.
 

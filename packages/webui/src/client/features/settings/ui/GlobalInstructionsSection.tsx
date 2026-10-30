@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from "re
 import type { WebuiGlobalInstructionsView } from "../../../../shared/contracts/personalization.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
-import { PERSONALIZATION_SECTION_HINTS } from "./settings-atoms.js";
+import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
 
 const INSTRUCTIONS_PLACEHOLDER = [
   "# Agents 全局设定",
@@ -144,15 +144,15 @@ export function GlobalInstructionsSection({
       hint={PERSONALIZATION_SECTION_HINTS.globalInstructions}
       hintTestId="global-instructions-hint"
       actions={
-        <button
-          type="button"
-          data-testid="global-instructions-save"
-          className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-black webui-section-save-button"
+        <SettingsButton
+          variant="black"
+          className="webui-section-save-button"
+          testId="global-instructions-save"
           disabled={!dirty || saving || overLimit || !setGlobalInstructions}
           onClick={() => void save()}
         >
           保存
-        </button>
+        </SettingsButton>
       }
     >
       <textarea

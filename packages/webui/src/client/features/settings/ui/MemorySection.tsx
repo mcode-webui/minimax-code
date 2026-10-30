@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import type { WebuiAgentMemoryView, WebuiMemorySettingsView } from "../../../../shared/contracts/personalization.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { SettingsRow, SettingsSection } from "../../../ui/settings-layout.js";
-import { PERSONALIZATION_SECTION_HINTS } from "./settings-atoms.js";
+import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
 import { MemoryManagerDialog } from "./MemoryManagerDialog.js";
 import { formatMemoryTimestamp, isMemorySaveable, type MemoryHandoff } from "../contracts/memory-handoff.js";
 
@@ -149,15 +149,13 @@ export function MemorySection({
         description="查看、编辑或删除 MiniMax 已整理的长期记忆。"
         testId="memory-summary-row"
       >
-        <button
-          type="button"
-          data-testid="agent-memory-load"
-          className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
+        <SettingsButton
+          testId="agent-memory-load"
           disabled={!getAgentMemory || !setAgentMemory}
           onClick={() => setManaging((open) => !open)}
         >
           管理
-        </button>
+        </SettingsButton>
       </SettingsRow>
       {!getMemorySettings || !setMemorySettings ? (
         <p data-testid="memory-settings-unavailable" className="webui-settings-error">

@@ -13,7 +13,7 @@
 // variant — `danger` and `primary` are the two the client actually needed —
 // rather than a per-caller class string.
 
-import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from "react";
 
 /** The variants the client's callers need today. */
 export type WebuiButtonVariant = "secondary" | "primary" | "danger" | "plain";
@@ -58,23 +58,21 @@ export interface WebuiButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
  * form's submit button because a caller forgot to say so, and a caller that wants
  * submission says `type="submit"` explicitly.
  */
-export function WebuiButton({
-  variant,
-  size = "regular",
-  className,
-  children,
-  type = "button",
-  ...rest
-}: WebuiButtonProps): ReactElement {
+// Forwarded refs are part of the contract, not an extra: a button that opens a
+// dropdown is a trigger, and a trigger has to hand its element to the popup.
+export const WebuiButton = forwardRef<HTMLButtonElement, WebuiButtonProps>(function WebuiButton(
+  { variant, size = "regular", className, children, type = "button", ...rest },
+  ref,
+): ReactElement {
   const classes = ["webui-mavis-button", VARIANT_CLASS[variant], SIZE_CLASS[size], className]
     .filter((entry) => Boolean(entry && entry.length > 0))
     .join(" ");
   return (
-    <button type={type} className={classes} {...rest}>
+    <button ref={ref} type={type} className={classes} {...rest}>
       {children}
     </button>
   );
-}
+});
 
 export interface WebuiIconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children"> {
@@ -96,24 +94,22 @@ export interface WebuiIconButtonProps
  * The accessible name is required rather than optional, because an icon-only
  * control without one is exactly the case the accessibility obligations name.
  */
-export function WebuiIconButton({
-  label,
-  tone = "surface",
-  className,
-  children,
-  type = "button",
-  ...rest
-}: WebuiIconButtonProps): ReactElement {
-  const classes = [
-    "webui-icon-button",
-    tone === "bare" ? "webui-icon-button--bare" : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <button type={type} className={classes} aria-label={label} {...rest}>
-      {children}
-    </button>
-  );
-}
+export const WebuiIconButton = forwardRef<HTMLButtonElement, WebuiIconButtonProps>(
+  function WebuiIconButton(
+    { label, tone = "surface", className, children, type = "button", ...rest },
+    ref,
+  ): ReactElement {
+    const classes = [
+      "webui-icon-button",
+      tone === "bare" ? "webui-icon-button--bare" : "",
+      className,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return (
+      <button ref={ref} type={type} className={classes} aria-label={label} {...rest}>
+        {children}
+      </button>
+    );
+  },
+);

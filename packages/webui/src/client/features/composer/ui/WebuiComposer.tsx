@@ -125,6 +125,7 @@ import {
 import { OutputError } from "../../../features/transcript/ui/OutputError.public.js";
 import { isTurnLive } from "../../turn/contracts/stream-state.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { WebuiIconButton } from "../../../ui/button.js";
 import {
 } from "../../../features/sessions/projection/action-requests.public.js";
 import { buildWebuiModelSelectionRequest } from "../../../features/models/contracts/model-selection.js";
@@ -1259,15 +1260,14 @@ export function WebuiComposer({
                   wrapperClassName="webui-composer-add-wrap"
                   className="webui-composer-menu-stack"
                   trigger={(triggerProps) => (
-                    <button
-                      type="button"
+                    <WebuiIconButton
                       {...triggerProps}
-                      aria-label="添加附件或技能"
+                      label="添加附件或技能"
                       data-testid="composer-add-menu"
-                      className="webui-icon-button text-icon_default_tertiary"
+                      className="text-icon_default_tertiary"
                     >
                       <WebuiIconAttach />
-                    </button>
+                    </WebuiIconButton>
                   )}
                 >
         <WebuiComposerMenus

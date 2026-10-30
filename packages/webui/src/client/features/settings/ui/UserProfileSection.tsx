@@ -14,7 +14,7 @@ import type {
   WebuiUserProfileView,
 } from "../../../../shared/contracts/personalization.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
-import { PERSONALIZATION_SECTION_HINTS } from "./settings-atoms.js";
+import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
 
 const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
 
@@ -199,15 +199,15 @@ export function UserProfileSection({
       hint={PERSONALIZATION_SECTION_HINTS.userProfile}
       hintTestId="user-profile-hint"
       actions={
-        <button
-          type="button"
-          data-testid="user-profile-save"
-          className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-black webui-section-save-button"
+        <SettingsButton
+          variant="black"
+          className="webui-section-save-button"
+          testId="user-profile-save"
           disabled={!saveable || saving}
           onClick={() => void save()}
         >
           保存
-        </button>
+        </SettingsButton>
       }
     >
       <div className="webui-user-profile-fields">

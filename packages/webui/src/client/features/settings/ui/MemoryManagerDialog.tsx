@@ -19,6 +19,7 @@ import type { WebuiAgentMemoryView, WebuiMemorySettingsView } from "../../../../
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { SettingsButton } from "./settings-atoms.js";
 import {
   formatMemoryTimestamp,
   isMemorySaveable,
@@ -389,15 +390,13 @@ export function MemoryManagerDialog({
           </p>
         ) : null}
         {error && draft === undefined && getAgentMemory ? (
-          <button
-            type="button"
-            data-testid="agent-memory-retry"
-            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
+          <SettingsButton
+            testId="agent-memory-retry"
             disabled={loading}
             onClick={() => void load(getAgentMemory)}
           >
             重试
-          </button>
+          </SettingsButton>
         ) : null}
         {saved && !saving ? (
           <p data-testid="agent-memory-saved" className="webui-personalization-saved">
@@ -409,18 +408,15 @@ export function MemoryManagerDialog({
             {formatMemoryTimestamp(updatedAt)}
           </span>
           <div className="webui-memory-manager-actions">
-            <button type="button" className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray" onClick={onClose}>
-              取消
-            </button>
-            <button
-              type="button"
-              data-testid="agent-memory-save"
-              className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-black"
+            <SettingsButton onClick={onClose}>取消</SettingsButton>
+            <SettingsButton
+              variant="black"
+              testId="agent-memory-save"
               disabled={!saveable || !setAgentMemory}
               onClick={() => void save()}
             >
               {saving ? "保存中…" : "保存"}
-            </button>
+            </SettingsButton>
           </div>
         </footer>
       </section>
@@ -484,23 +480,20 @@ export function MemoryManagerDialog({
         </button>
         <p className="webui-memory-confirm-body">{MEMORY_DELETE_CONFIRM.body}</p>
         <div className="webui-memory-confirm-actions">
-          <button
-            type="button"
-            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
-            data-testid="agent-memory-delete-cancel"
+          <SettingsButton
+            testId="agent-memory-delete-cancel"
             onClick={() => setConfirmingDelete(false)}
           >
             {MEMORY_DELETE_CONFIRM.cancel}
-          </button>
-          <button
-            type="button"
-            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-danger"
-            data-testid="agent-memory-delete-confirm-button"
+          </SettingsButton>
+          <SettingsButton
+            variant="danger"
+            testId="agent-memory-delete-confirm-button"
             disabled={saving}
             onClick={() => void remove()}
           >
             {saving ? "删除中…" : MEMORY_DELETE_CONFIRM.confirm}
-          </button>
+          </SettingsButton>
         </div>
       </div>
     </div>

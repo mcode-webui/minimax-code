@@ -248,6 +248,24 @@ rendering integrity rules above are checked separately.
 - Moving motion timing is a deliberate and visible change, accepted on its own evidence, separately
   from the rule that static appearance is preserved.
 
+## What a disposition means
+
+Every client UI module carries exactly one disposition, and the vocabulary has five
+because four forced a lie:
+
+- **existing-shared-contract** — a module in the shared home that was there before this
+  programme and is the home of a contract;
+- **newly-adopted-contract** — a contract this programme created (`content-page`,
+  `feedback`, `field`, `overlay-listeners`) or a business module that now renders one;
+- **composition** — a module that renders no presentation surface of its own: a hook, a
+  pure projection, a scaffold that only arranges other modules. Its obligation is
+  discharged by what it mounts. Calling it a business exception would be wrong in the
+  other direction — it is not declining a contract, it has nothing to decline;
+- **business-exception** — a module that keeps its own implementation of a family
+  contract, with the reason it does;
+- **pending-contract-decision** — classified, not decided. The programme cannot close
+  while any of these remain.
+
 ## One word, one thing
 
 *Overlay* means a floating layer above the page, and nothing else. The word used to

@@ -1,136 +1,1235 @@
 {
   "version": 1,
   "entries": [
-    {"path":"features/account/ui/AccountLoginDialog.tsx","label":"AccountLoginDialog","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/account/ui/ConversationUsageBanner.tsx","label":"ConversationUsageBanner","kind":"surface","families":["surfaces-and-content","feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"features/account/ui/UserMenu.tsx","label":"UserMenu","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/account/ui/UserMenuSignin.tsx","label":"UserMenuSignin","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/account/ui/UserMenuUsage.tsx","label":"UserMenuUsage","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/browser/ui/BrowserAuthorizationSwitches.public.tsx","label":"BrowserAuthorizationSwitches","kind":"surface","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/browser/ui/BrowserPanel.public.tsx","label":"BrowserPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/browser/ui/BrowserPanelHost.public.tsx","label":"BrowserPanelHost","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/browser/ui/BrowserSettingsPage.public.tsx","label":"BrowserSettingsPage","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/channel/ui/ChannelConnectPanel.public.tsx","label":"ChannelConnectPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/Composer.tsx","label":"Composer","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ComposerEditorStaging.tsx","label":"ComposerEditorStaging","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ComposerMenus.tsx","label":"ComposerMenus","kind":"surface","families":["overlays","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ComposerPermissionControl.tsx","label":"ComposerPermissionControl","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ComposerProjectRow.tsx","label":"ComposerProjectRow","kind":"surface","families":["navigation-and-selection","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ComposerSubmissionControls.tsx","label":"ComposerSubmissionControls","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/ContextUsageIndicator.tsx","label":"ContextUsageIndicator","kind":"surface","families":["surfaces-and-content","feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/QueuePanel.tsx","label":"QueuePanel","kind":"surface","families":["structure","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/WebuiComposer.tsx","label":"WebuiComposer","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/composer/ui/slash-palette.ts","label":"slash-palette","kind":"concern","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/goal/ui/GoalBanner.public.tsx","label":"GoalBanner","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/interactions/ui/InteractionPanel.public.tsx","label":"InteractionPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/interactions/ui/PlanModeCards.public.tsx","label":"PlanModeCards","kind":"surface","families":["surfaces-and-content","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/interactions/ui/PlanModeCards.tsx","label":"PlanModeCards","kind":"surface","families":["surfaces-and-content","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/miniapp/ui/MiniAppAppsList.public.tsx","label":"MiniAppAppsList","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/miniapp/ui/MiniAppPicker.public.tsx","label":"MiniAppPicker","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/miniapp/ui/MiniAppStandalone.public.tsx","label":"MiniAppStandalone","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/miniapp/ui/MiniAppView.public.tsx","label":"MiniAppView","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/models/ui/ModelEffortSlider.tsx","label":"ModelEffortSlider","kind":"surface","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/models/ui/ModelListPanel.tsx","label":"ModelListPanel","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/models/ui/ModelPanel.tsx","label":"ModelPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/models/ui/ModelPicker.public.tsx","label":"ModelPicker","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/models/ui/ProviderFormPanel.public.tsx","label":"ProviderFormPanel","kind":"surface","families":["controls-and-form-composition","structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/AgentForm.tsx","label":"AgentForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/McpServerForm.tsx","label":"McpServerForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/PluginCatalogue.tsx","label":"PluginCatalogue","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/PluginImportDialog.tsx","label":"PluginImportDialog","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/PluginItemDialog.tsx","label":"PluginItemDialog","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/PluginManagementList.tsx","label":"PluginManagementList","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/PluginMarketplace.tsx","label":"PluginMarketplace","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/plugins/ui/SkillForm.tsx","label":"SkillForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/remote-control/ui/RemoteControlPanel.public.tsx","label":"RemoteControlPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/remote/ui/RemotePage.public.tsx","label":"RemotePage","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/remote/ui/remote-tabs.tsx","label":"remote-tabs","kind":"concern","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/review/ui/ReviewSettingsPage.public.tsx","label":"ReviewSettingsPage","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/scheduling/ui/SchedulingPanel.public.tsx","label":"SchedulingPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/scheduling/ui/scheduling-editor.tsx","label":"scheduling-editor","kind":"concern","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/ExternalDeletionDraftNotice.public.tsx","label":"ExternalDeletionDraftNotice","kind":"surface","families":["feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/LeftRail.tsx","label":"LeftRail","kind":"surface","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/ProjectList.tsx","label":"ProjectList","kind":"surface","families":["navigation-and-selection","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/RailRow.tsx","label":"RailRow","kind":"surface","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/SessionRail.tsx","label":"SessionRail","kind":"surface","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/SessionRailRegion.tsx","label":"SessionRailRegion","kind":"surface","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/project-expansion.tsx","label":"project-expansion","kind":"concern","families":["navigation-and-selection","structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/rail-context-menu.tsx","label":"rail-context-menu","kind":"concern","families":["navigation-and-selection","overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/sessions/ui/session-activity-meta.tsx","label":"session-activity-meta","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/AccountUsageSettings.tsx","label":"AccountUsageSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/GlobalInstructionsSection.tsx","label":"GlobalInstructionsSection","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/MemoryManagerDialog.tsx","label":"MemoryManagerDialog","kind":"surface","families":["overlays"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/MemorySection.tsx","label":"MemorySection","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/PersonalizationSettings.tsx","label":"PersonalizationSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/SettingsModal.public.tsx","label":"SettingsModal","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/SettingsModal.tsx","label":"SettingsModal","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/ShortcutsSettings.tsx","label":"ShortcutsSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/UsageHeatmap.tsx","label":"UsageHeatmap","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/UsageModelSettings.tsx","label":"UsageModelSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/UsageResetCards.tsx","label":"UsageResetCards","kind":"surface","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/UserProfileSection.tsx","label":"UserProfileSection","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/account-usage-glyphs.tsx","label":"account-usage-glyphs","kind":"concern","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/account-usage-share-image.ts","label":"account-usage-share-image","kind":"concern","families":["surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/settings/ui/settings-atoms.tsx","label":"settings-atoms","kind":"concern","families":["controls-and-form-composition","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/ssh/ui/SshPanel.public.tsx","label":"SshPanel","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/ssh/ui/ssh-host-form.tsx","label":"ssh-host-form","kind":"concern","families":["controls-and-form-composition","structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/ssh/ui/ssh-project-form.tsx","label":"ssh-project-form","kind":"concern","families":["controls-and-form-composition"],"disposition":"pending-contract-decision"},
-    {"path":"features/ssh/ui/ssh-terminal-view.tsx","label":"ssh-terminal-view","kind":"concern","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/ActivityIndicator.tsx","label":"ActivityIndicator","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/AssistantBody.tsx","label":"AssistantBody","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/DiffCard.tsx","label":"DiffCard","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/MessageActions.tsx","label":"MessageActions","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/MessageAttachments.tsx","label":"MessageAttachments","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/MessageItem.tsx","label":"MessageItem","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/OutputError.public.tsx","label":"OutputError","kind":"surface","families":["feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/PlanDelivery.tsx","label":"PlanDelivery","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/QuestionnaireResponse.tsx","label":"QuestionnaireResponse","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/SessionTranscript.tsx","label":"SessionTranscript","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/Transcript.tsx","label":"Transcript","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/TranscriptPrimitives.tsx","label":"TranscriptPrimitives","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/TranscriptSkeletons.tsx","label":"TranscriptSkeletons","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/TurnNavigator.tsx","label":"TurnNavigator","kind":"surface","families":["navigation-and-selection","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/markdown.public.tsx","label":"markdown","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/transcript/ui/webui-mermaid.tsx","label":"webui-mermaid","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx","label":"WebuiWorkspaceDirectoryBrowser","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx","label":"WebuiWorkspaceTabStrip","kind":"surface","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceArchiveView.tsx","label":"WorkspaceArchiveView","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceCanvas.tsx","label":"WorkspaceCanvas","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceFileTree.tsx","label":"WorkspaceFileTree","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceHtmlPreview.tsx","label":"WorkspaceHtmlPreview","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceMediaPreview.tsx","label":"WorkspaceMediaPreview","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspacePanelControls.tsx","label":"WorkspacePanelControls","kind":"surface","families":["controls-and-form-composition","structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspacePanels.tsx","label":"WorkspacePanels","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"features/workspace/ui/WorkspaceProgressPanel.tsx","label":"WorkspaceProgressPanel","kind":"surface","families":["structure","feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"shell/ArchonPage.tsx","label":"ArchonPage","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/ArchonShell.tsx","label":"ArchonShell","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/ConnectionStatus.tsx","label":"ConnectionStatus","kind":"surface","families":["feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"shell/ConversationSurface.tsx","label":"ConversationSurface","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/NotFound.tsx","label":"NotFound","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/StartupFallback.tsx","label":"StartupFallback","kind":"surface","families":["feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"shell/WebuiClientFoundationApp.tsx","label":"WebuiClientFoundationApp","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/WebuiErrorBoundary.tsx","label":"WebuiErrorBoundary","kind":"surface","families":["feedback-and-recovery"],"disposition":"pending-contract-decision"},
-    {"path":"shell/WebuiZoneBoundary.tsx","label":"WebuiZoneBoundary","kind":"surface","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/icons.tsx","label":"icons","kind":"concern","families":["foundations"],"disposition":"pending-contract-decision"},
-    {"path":"shell/use-new-task-workspace.ts","label":"use-new-task-workspace","kind":"concern","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/use-selected-session.ts","label":"use-selected-session","kind":"concern","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"shell/use-session-rail-actions.ts","label":"use-session-rail-actions","kind":"concern","families":["navigation-and-selection"],"disposition":"pending-contract-decision"},
-    {"path":"shell/use-shell-activity-wiring.ts","label":"use-shell-activity-wiring","kind":"concern","families":["structure","conversation-and-workspace-interaction"],"disposition":"pending-contract-decision"},
-    {"path":"shell/use-workspace-panel-session.ts","label":"use-workspace-panel-session","kind":"concern","families":["structure"],"disposition":"pending-contract-decision"},
-    {"path":"ui/ContextMenu.tsx","label":"ContextMenu","kind":"surface","families":["overlays"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/Dropdown.tsx","label":"Dropdown","kind":"surface","families":["overlays"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/ToggleSwitch.tsx","label":"ToggleSwitch","kind":"surface","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/activity-phrase.ts","label":"activity-phrase","kind":"concern","families":["foundations","conversation-and-workspace-interaction"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/button.tsx","label":"button","kind":"concern","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract","reason":"the shared button and icon-button contract (ADR 0028 § Shared contracts): it owns the applicable states and their appearance, and a caller owns layout, meaning and lifetime"},
-    {"path":"ui/content-page.tsx","label":"ContentPage / PanelFrame","kind":"concern","families":["structure"],"disposition":"newly-adopted-contract"},
-    {"path":"ui/feedback.tsx","label":"Feedback family","kind":"concern","families":["feedback-and-recovery"],"disposition":"newly-adopted-contract"},
-    {"path":"ui/field.tsx","label":"WebuiField","kind":"concern","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
-    {"path":"ui/form-atoms.tsx","label":"form-atoms","kind":"concern","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/layout-thresholds.ts","label":"layout-thresholds","kind":"concern","families":["structure"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/overlay-coordinator.tsx","label":"overlay-coordinator","kind":"concern","families":["overlays"],"disposition":"newly-adopted-contract","reason":"the coordinator the shared presentation layer adopts for managed overlays (ADR 0028 § Overlay coordination); it owns registration and routing, and no business state"},
-    {"path":"ui/overlay-listeners.tsx","label":"Overlay listener host","kind":"concern","families":["overlays"],"disposition":"newly-adopted-contract"},
-    {"path":"ui/settings-glyphs.tsx","label":"settings-glyphs","kind":"concern","families":["foundations"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
-    {"path":"ui/settings-layout.tsx","label":"settings-layout","kind":"concern","families":["structure","surfaces-and-content"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"}
+    {
+      "path": "features/account/ui/AccountLoginDialog.tsx",
+      "label": "AccountLoginDialog",
+      "kind": "surface",
+      "families": [
+        "overlays",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract",
+      "_hit": [
+        "overlay-listeners"
+      ]
+    },
+    {
+      "path": "features/account/ui/ConversationUsageBanner.tsx",
+      "label": "ConversationUsageBanner",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content",
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/account/ui/UserMenu.tsx",
+      "label": "UserMenu",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/account/ui/UserMenuSignin.tsx",
+      "label": "UserMenuSignin",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/account/ui/UserMenuUsage.tsx",
+      "label": "UserMenuUsage",
+      "kind": "surface",
+      "families": [
+        "overlays",
+        "surfaces-and-content"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/browser/ui/BrowserAuthorizationSwitches.public.tsx",
+      "label": "BrowserAuthorizationSwitches",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/browser/ui/BrowserPanel.public.tsx",
+      "label": "BrowserPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/browser/ui/BrowserPanelHost.public.tsx",
+      "label": "BrowserPanelHost",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/browser/ui/BrowserSettingsPage.public.tsx",
+      "label": "BrowserSettingsPage",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/channel/ui/ChannelConnectPanel.public.tsx",
+      "label": "ChannelConnectPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/composer/ui/Composer.tsx",
+      "label": "Composer",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/composer/ui/ComposerEditorStaging.tsx",
+      "label": "ComposerEditorStaging",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/ComposerMenus.tsx",
+      "label": "ComposerMenus",
+      "kind": "surface",
+      "families": [
+        "overlays",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/ComposerPermissionControl.tsx",
+      "label": "ComposerPermissionControl",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/ComposerProjectRow.tsx",
+      "label": "ComposerProjectRow",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/ComposerSubmissionControls.tsx",
+      "label": "ComposerSubmissionControls",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/composer/ui/ContextUsageIndicator.tsx",
+      "label": "ContextUsageIndicator",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content",
+        "feedback-and-recovery"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/QueuePanel.tsx",
+      "label": "QueuePanel",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/composer/ui/WebuiComposer.tsx",
+      "label": "WebuiComposer",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/composer/ui/slash-palette.ts",
+      "label": "slash-palette",
+      "kind": "concern",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "features/goal/ui/GoalBanner.public.tsx",
+      "label": "GoalBanner",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/interactions/ui/InteractionPanel.public.tsx",
+      "label": "InteractionPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/interactions/ui/PlanModeCards.public.tsx",
+      "label": "PlanModeCards",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/interactions/ui/PlanModeCards.tsx",
+      "label": "PlanModeCards",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/miniapp/ui/MiniAppAppsList.public.tsx",
+      "label": "MiniAppAppsList",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/miniapp/ui/MiniAppPicker.public.tsx",
+      "label": "MiniAppPicker",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/miniapp/ui/MiniAppStandalone.public.tsx",
+      "label": "MiniAppStandalone",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/miniapp/ui/MiniAppView.public.tsx",
+      "label": "MiniAppView",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/models/ui/ModelEffortSlider.tsx",
+      "label": "ModelEffortSlider",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/models/ui/ModelListPanel.tsx",
+      "label": "ModelListPanel",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/models/ui/ModelPanel.tsx",
+      "label": "ModelPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/models/ui/ModelPicker.public.tsx",
+      "label": "ModelPicker",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/models/ui/ProviderFormPanel.public.tsx",
+      "label": "ProviderFormPanel",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition",
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/AgentForm.tsx",
+      "label": "AgentForm",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/McpServerForm.tsx",
+      "label": "McpServerForm",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/PluginCatalogue.tsx",
+      "label": "PluginCatalogue",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/PluginImportDialog.tsx",
+      "label": "PluginImportDialog",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/PluginItemDialog.tsx",
+      "label": "PluginItemDialog",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract",
+      "_hit": [
+        "overlay-listeners"
+      ]
+    },
+    {
+      "path": "features/plugins/ui/PluginManagementList.tsx",
+      "label": "PluginManagementList",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/PluginMarketplace.tsx",
+      "label": "PluginMarketplace",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/plugins/ui/SkillForm.tsx",
+      "label": "SkillForm",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/remote-control/ui/RemoteControlPanel.public.tsx",
+      "label": "RemoteControlPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/remote/ui/RemotePage.public.tsx",
+      "label": "RemotePage",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/remote/ui/remote-tabs.tsx",
+      "label": "remote-tabs",
+      "kind": "concern",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/review/ui/ReviewSettingsPage.public.tsx",
+      "label": "ReviewSettingsPage",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/scheduling/ui/SchedulingPanel.public.tsx",
+      "label": "SchedulingPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/scheduling/ui/scheduling-editor.tsx",
+      "label": "scheduling-editor",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/ExternalDeletionDraftNotice.public.tsx",
+      "label": "ExternalDeletionDraftNotice",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/LeftRail.tsx",
+      "label": "LeftRail",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/ProjectList.tsx",
+      "label": "ProjectList",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/sessions/ui/RailRow.tsx",
+      "label": "RailRow",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/SessionRail.tsx",
+      "label": "SessionRail",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "newly-adopted-contract",
+      "_hit": [
+        "ContextMenu"
+      ]
+    },
+    {
+      "path": "features/sessions/ui/SessionRailRegion.tsx",
+      "label": "SessionRailRegion",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/project-expansion.tsx",
+      "label": "project-expansion",
+      "kind": "concern",
+      "families": [
+        "navigation-and-selection",
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/sessions/ui/rail-context-menu.tsx",
+      "label": "rail-context-menu",
+      "kind": "concern",
+      "families": [
+        "navigation-and-selection",
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract",
+      "_hit": [
+        "ContextMenu"
+      ]
+    },
+    {
+      "path": "features/sessions/ui/session-activity-meta.tsx",
+      "label": "session-activity-meta",
+      "kind": "concern",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/settings/ui/AccountUsageSettings.tsx",
+      "label": "AccountUsageSettings",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/GlobalInstructionsSection.tsx",
+      "label": "GlobalInstructionsSection",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/MemoryManagerDialog.tsx",
+      "label": "MemoryManagerDialog",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/MemorySection.tsx",
+      "label": "MemorySection",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/PersonalizationSettings.tsx",
+      "label": "PersonalizationSettings",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/SettingsModal.public.tsx",
+      "label": "SettingsModal",
+      "kind": "surface",
+      "families": [
+        "overlays",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/SettingsModal.tsx",
+      "label": "SettingsModal",
+      "kind": "surface",
+      "families": [
+        "overlays",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/ShortcutsSettings.tsx",
+      "label": "ShortcutsSettings",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/UsageHeatmap.tsx",
+      "label": "UsageHeatmap",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/settings/ui/UsageModelSettings.tsx",
+      "label": "UsageModelSettings",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/UsageResetCards.tsx",
+      "label": "UsageResetCards",
+      "kind": "surface",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/UserProfileSection.tsx",
+      "label": "UserProfileSection",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/settings/ui/account-usage-glyphs.tsx",
+      "label": "account-usage-glyphs",
+      "kind": "concern",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/settings/ui/account-usage-share-image.ts",
+      "label": "account-usage-share-image",
+      "kind": "concern",
+      "families": [
+        "surfaces-and-content"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "features/settings/ui/settings-atoms.tsx",
+      "label": "settings-atoms",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/ssh/ui/SshPanel.public.tsx",
+      "label": "SshPanel",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/ssh/ui/ssh-host-form.tsx",
+      "label": "ssh-host-form",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition",
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/ssh/ui/ssh-project-form.tsx",
+      "label": "ssh-project-form",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/ssh/ui/ssh-terminal-view.tsx",
+      "label": "ssh-terminal-view",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/ActivityIndicator.tsx",
+      "label": "ActivityIndicator",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/AssistantBody.tsx",
+      "label": "AssistantBody",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/DiffCard.tsx",
+      "label": "DiffCard",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/transcript/ui/MessageActions.tsx",
+      "label": "MessageActions",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/transcript/ui/MessageAttachments.tsx",
+      "label": "MessageAttachments",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/MessageItem.tsx",
+      "label": "MessageItem",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/transcript/ui/OutputError.public.tsx",
+      "label": "OutputError",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/PlanDelivery.tsx",
+      "label": "PlanDelivery",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/QuestionnaireResponse.tsx",
+      "label": "QuestionnaireResponse",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/SessionTranscript.tsx",
+      "label": "SessionTranscript",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/transcript/ui/Transcript.tsx",
+      "label": "Transcript",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/TranscriptPrimitives.tsx",
+      "label": "TranscriptPrimitives",
+      "kind": "surface",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/TranscriptSkeletons.tsx",
+      "label": "TranscriptSkeletons",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/TurnNavigator.tsx",
+      "label": "TurnNavigator",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/markdown.public.tsx",
+      "label": "markdown",
+      "kind": "concern",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/transcript/ui/webui-mermaid.tsx",
+      "label": "webui-mermaid",
+      "kind": "concern",
+      "families": [
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx",
+      "label": "WebuiWorkspaceDirectoryBrowser",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx",
+      "label": "WebuiWorkspaceTabStrip",
+      "kind": "surface",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceArchiveView.tsx",
+      "label": "WorkspaceArchiveView",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceCanvas.tsx",
+      "label": "WorkspaceCanvas",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceFileTree.tsx",
+      "label": "WorkspaceFileTree",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceHtmlPreview.tsx",
+      "label": "WorkspaceHtmlPreview",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceMediaPreview.tsx",
+      "label": "WorkspaceMediaPreview",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspacePanelControls.tsx",
+      "label": "WorkspacePanelControls",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition",
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "features/workspace/ui/WorkspacePanels.tsx",
+      "label": "WorkspacePanels",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "features/workspace/ui/WorkspaceProgressPanel.tsx",
+      "label": "WorkspaceProgressPanel",
+      "kind": "surface",
+      "families": [
+        "structure",
+        "feedback-and-recovery"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "shell/ArchonPage.tsx",
+      "label": "ArchonPage",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/ArchonShell.tsx",
+      "label": "ArchonShell",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/ConnectionStatus.tsx",
+      "label": "ConnectionStatus",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/ConversationSurface.tsx",
+      "label": "ConversationSurface",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/NotFound.tsx",
+      "label": "NotFound",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/StartupFallback.tsx",
+      "label": "StartupFallback",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/WebuiClientFoundationApp.tsx",
+      "label": "WebuiClientFoundationApp",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/WebuiErrorBoundary.tsx",
+      "label": "WebuiErrorBoundary",
+      "kind": "surface",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/WebuiZoneBoundary.tsx",
+      "label": "WebuiZoneBoundary",
+      "kind": "surface",
+      "families": [
+        "structure"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/icons.tsx",
+      "label": "icons",
+      "kind": "concern",
+      "families": [
+        "foundations"
+      ],
+      "disposition": "pending-contract-decision"
+    },
+    {
+      "path": "shell/use-new-task-workspace.ts",
+      "label": "use-new-task-workspace",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "shell/use-selected-session.ts",
+      "label": "use-selected-session",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "shell/use-session-rail-actions.ts",
+      "label": "use-session-rail-actions",
+      "kind": "concern",
+      "families": [
+        "navigation-and-selection"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "shell/use-shell-activity-wiring.ts",
+      "label": "use-shell-activity-wiring",
+      "kind": "concern",
+      "families": [
+        "structure",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "shell/use-workspace-panel-session.ts",
+      "label": "use-workspace-panel-session",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "composition"
+    },
+    {
+      "path": "ui/ContextMenu.tsx",
+      "label": "ContextMenu",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/Dropdown.tsx",
+      "label": "Dropdown",
+      "kind": "surface",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/ToggleSwitch.tsx",
+      "label": "ToggleSwitch",
+      "kind": "surface",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/activity-phrase.ts",
+      "label": "activity-phrase",
+      "kind": "concern",
+      "families": [
+        "foundations",
+        "conversation-and-workspace-interaction"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/button.tsx",
+      "label": "button",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared button and icon-button contract (ADR 0028 \u00a7 Shared contracts): it owns the applicable states and their appearance, and a caller owns layout, meaning and lifetime"
+    },
+    {
+      "path": "ui/content-page.tsx",
+      "label": "ContentPage / PanelFrame",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "ui/feedback.tsx",
+      "label": "Feedback family",
+      "kind": "concern",
+      "families": [
+        "feedback-and-recovery"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "ui/field.tsx",
+      "label": "WebuiField",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "ui/form-atoms.tsx",
+      "label": "form-atoms",
+      "kind": "concern",
+      "families": [
+        "controls-and-form-composition"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/layout-thresholds.ts",
+      "label": "layout-thresholds",
+      "kind": "concern",
+      "families": [
+        "structure"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/overlay-coordinator.tsx",
+      "label": "overlay-coordinator",
+      "kind": "concern",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract",
+      "reason": "the coordinator the shared presentation layer adopts for managed overlays (ADR 0028 \u00a7 Overlay coordination); it owns registration and routing, and no business state"
+    },
+    {
+      "path": "ui/overlay-listeners.tsx",
+      "label": "Overlay listener host",
+      "kind": "concern",
+      "families": [
+        "overlays"
+      ],
+      "disposition": "newly-adopted-contract"
+    },
+    {
+      "path": "ui/settings-glyphs.tsx",
+      "label": "settings-glyphs",
+      "kind": "concern",
+      "families": [
+        "foundations"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    },
+    {
+      "path": "ui/settings-layout.tsx",
+      "label": "settings-layout",
+      "kind": "concern",
+      "families": [
+        "structure",
+        "surfaces-and-content"
+      ],
+      "disposition": "existing-shared-contract",
+      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
+    }
   ],
   "reviewed": {
     "features/account/ui/AccountLoginDialog.tsx": "acee4bda441eb71d",

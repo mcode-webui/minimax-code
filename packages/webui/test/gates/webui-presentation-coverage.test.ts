@@ -248,6 +248,7 @@ describe("the classification", () => {
     expect([...DISPOSITIONS]).toEqual([
       "existing-shared-contract",
       "newly-adopted-contract",
+      "composition",
       "business-exception",
       "pending-contract-decision",
     ]);
@@ -419,7 +420,10 @@ describe("the repository's own inventory", () => {
     );
     expect(shared.length).toBeGreaterThan(0);
     for (const entry of shared) {
-      expect(entry.disposition, entry.path).toBe("existing-shared-contract");
+      // The shared home holds contracts, and only contracts: the ones that were
+      // there before the programme are existing, the ones it created are newly
+      // adopted. Neither is a business exception and neither is pending.
+      expect(["existing-shared-contract", "newly-adopted-contract"], entry.path).toContain(entry.disposition);
       expect(FAMILIES).toContain(entry.families[0]);
     }
   });

@@ -6,7 +6,7 @@ not claim. A number in this document is a number some gate produced.
 **Verdict: the programme is NOT complete.**
 
 It is not complete because:
-- 116 module(s) still carry a pending contract decision;
+- 47 module(s) still carry a pending contract decision;
 - 4 manual accessibility review(s) are still open;
 
 ## What the review found
@@ -14,7 +14,7 @@ It is not complete because:
 | Question | Count |
 | --- | --- |
 | Client UI modules classified | 130 |
-| Modules with a pending contract decision | 116 |
+| Modules with a pending contract decision | 47 |
 | Floating layers inventoried | 21 |
 | Floating layers managed by the coordinator | 20 |
 | Business-authored alerts left (all exempt) | 2 |
@@ -25,122 +25,58 @@ It is not complete because:
 
 ## Every entry still pending, and why
 
-All 116 carry the same reason: the module was classified in #281 and its contract
+All 47 carry the same reason: the module was classified in #281 and its contract
 decision has not been taken yet. They are listed here in full so that nothing is left to
 "and some others".
 
-- **surfaces-and-content** — 30 pending
-- **structure** — 41 pending
-- **overlays** — 13 pending
-- **navigation-and-selection** — 13 pending
+- **surfaces-and-content** — 5 pending
+- **structure** — 16 pending
+- **overlays** — 1 pending
+- **navigation-and-selection** — 6 pending
 - **foundations** — 1 pending
-- **feedback-and-recovery** — 11 pending
-- **conversation-and-workspace-interaction** — 28 pending
-- **controls-and-form-composition** — 14 pending
+- **feedback-and-recovery** — 8 pending
+- **conversation-and-workspace-interaction** — 15 pending
+- **controls-and-form-composition** — 6 pending
 
-<details><summary>The 116 entries</summary>
+<details><summary>The 47 entries</summary>
 
-- `features/account/ui/AccountLoginDialog.tsx` (overlays, surfaces-and-content)
 - `features/account/ui/ConversationUsageBanner.tsx` (surfaces-and-content, feedback-and-recovery)
-- `features/account/ui/UserMenu.tsx` (overlays)
-- `features/account/ui/UserMenuSignin.tsx` (overlays)
 - `features/account/ui/UserMenuUsage.tsx` (overlays, surfaces-and-content)
-- `features/browser/ui/BrowserAuthorizationSwitches.public.tsx` (controls-and-form-composition)
-- `features/browser/ui/BrowserPanel.public.tsx` (structure)
 - `features/browser/ui/BrowserPanelHost.public.tsx` (structure)
-- `features/browser/ui/BrowserSettingsPage.public.tsx` (structure, surfaces-and-content)
 - `features/channel/ui/ChannelConnectPanel.public.tsx` (structure)
 - `features/composer/ui/Composer.tsx` (conversation-and-workspace-interaction)
-- `features/composer/ui/ComposerEditorStaging.tsx` (controls-and-form-composition, conversation-and-workspace-interaction)
-- `features/composer/ui/ComposerMenus.tsx` (overlays, conversation-and-workspace-interaction)
-- `features/composer/ui/ComposerPermissionControl.tsx` (controls-and-form-composition, conversation-and-workspace-interaction)
-- `features/composer/ui/ComposerProjectRow.tsx` (navigation-and-selection, conversation-and-workspace-interaction)
 - `features/composer/ui/ComposerSubmissionControls.tsx` (controls-and-form-composition, conversation-and-workspace-interaction)
-- `features/composer/ui/ContextUsageIndicator.tsx` (surfaces-and-content, feedback-and-recovery)
 - `features/composer/ui/QueuePanel.tsx` (structure, conversation-and-workspace-interaction)
-- `features/composer/ui/WebuiComposer.tsx` (conversation-and-workspace-interaction)
-- `features/composer/ui/slash-palette.ts` (navigation-and-selection)
-- `features/goal/ui/GoalBanner.public.tsx` (feedback-and-recovery, conversation-and-workspace-interaction)
-- `features/interactions/ui/InteractionPanel.public.tsx` (structure)
-- `features/interactions/ui/PlanModeCards.public.tsx` (surfaces-and-content, conversation-and-workspace-interaction)
-- `features/interactions/ui/PlanModeCards.tsx` (surfaces-and-content, conversation-and-workspace-interaction)
-- `features/miniapp/ui/MiniAppAppsList.public.tsx` (surfaces-and-content)
-- `features/miniapp/ui/MiniAppPicker.public.tsx` (overlays)
-- `features/miniapp/ui/MiniAppStandalone.public.tsx` (structure, surfaces-and-content)
-- `features/miniapp/ui/MiniAppView.public.tsx` (structure)
 - `features/models/ui/ModelEffortSlider.tsx` (controls-and-form-composition)
 - `features/models/ui/ModelListPanel.tsx` (structure, surfaces-and-content)
 - `features/models/ui/ModelPanel.tsx` (structure)
-- `features/models/ui/ModelPicker.public.tsx` (overlays)
-- `features/models/ui/ProviderFormPanel.public.tsx` (controls-and-form-composition, structure)
-- `features/plugins/ui/AgentForm.tsx` (controls-and-form-composition)
-- `features/plugins/ui/McpServerForm.tsx` (controls-and-form-composition)
-- `features/plugins/ui/PluginCatalogue.tsx` (surfaces-and-content)
-- `features/plugins/ui/PluginImportDialog.tsx` (overlays)
-- `features/plugins/ui/PluginItemDialog.tsx` (overlays)
-- `features/plugins/ui/PluginManagementList.tsx` (surfaces-and-content)
-- `features/plugins/ui/PluginMarketplace.tsx` (surfaces-and-content)
-- `features/plugins/ui/SkillForm.tsx` (controls-and-form-composition)
 - `features/remote-control/ui/RemoteControlPanel.public.tsx` (structure)
-- `features/remote/ui/RemotePage.public.tsx` (structure)
 - `features/remote/ui/remote-tabs.tsx` (navigation-and-selection)
-- `features/review/ui/ReviewSettingsPage.public.tsx` (structure, surfaces-and-content)
-- `features/scheduling/ui/SchedulingPanel.public.tsx` (structure)
 - `features/scheduling/ui/scheduling-editor.tsx` (controls-and-form-composition)
 - `features/sessions/ui/ExternalDeletionDraftNotice.public.tsx` (feedback-and-recovery)
 - `features/sessions/ui/LeftRail.tsx` (navigation-and-selection)
-- `features/sessions/ui/ProjectList.tsx` (navigation-and-selection, surfaces-and-content)
 - `features/sessions/ui/RailRow.tsx` (navigation-and-selection)
-- `features/sessions/ui/SessionRail.tsx` (navigation-and-selection)
 - `features/sessions/ui/SessionRailRegion.tsx` (navigation-and-selection)
 - `features/sessions/ui/project-expansion.tsx` (navigation-and-selection, structure)
-- `features/sessions/ui/rail-context-menu.tsx` (navigation-and-selection, overlays)
 - `features/sessions/ui/session-activity-meta.tsx` (conversation-and-workspace-interaction)
-- `features/settings/ui/AccountUsageSettings.tsx` (surfaces-and-content)
-- `features/settings/ui/GlobalInstructionsSection.tsx` (structure)
-- `features/settings/ui/MemoryManagerDialog.tsx` (overlays)
-- `features/settings/ui/MemorySection.tsx` (structure)
-- `features/settings/ui/PersonalizationSettings.tsx` (surfaces-and-content)
-- `features/settings/ui/SettingsModal.public.tsx` (overlays, surfaces-and-content)
-- `features/settings/ui/SettingsModal.tsx` (overlays, surfaces-and-content)
-- `features/settings/ui/ShortcutsSettings.tsx` (surfaces-and-content)
 - `features/settings/ui/UsageHeatmap.tsx` (surfaces-and-content)
-- `features/settings/ui/UsageModelSettings.tsx` (surfaces-and-content)
-- `features/settings/ui/UsageResetCards.tsx` (surfaces-and-content)
-- `features/settings/ui/UserProfileSection.tsx` (structure)
 - `features/settings/ui/account-usage-glyphs.tsx` (surfaces-and-content)
-- `features/settings/ui/account-usage-share-image.ts` (surfaces-and-content)
-- `features/settings/ui/settings-atoms.tsx` (controls-and-form-composition, surfaces-and-content)
-- `features/ssh/ui/SshPanel.public.tsx` (structure)
 - `features/ssh/ui/ssh-host-form.tsx` (controls-and-form-composition, structure)
 - `features/ssh/ui/ssh-project-form.tsx` (controls-and-form-composition)
 - `features/ssh/ui/ssh-terminal-view.tsx` (structure)
 - `features/transcript/ui/ActivityIndicator.tsx` (feedback-and-recovery, conversation-and-workspace-interaction)
 - `features/transcript/ui/AssistantBody.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/DiffCard.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/MessageActions.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/MessageAttachments.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/MessageItem.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/OutputError.public.tsx` (feedback-and-recovery)
 - `features/transcript/ui/PlanDelivery.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/QuestionnaireResponse.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/SessionTranscript.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/Transcript.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/TranscriptPrimitives.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/TranscriptSkeletons.tsx` (feedback-and-recovery, conversation-and-workspace-interaction)
 - `features/transcript/ui/TurnNavigator.tsx` (navigation-and-selection, conversation-and-workspace-interaction)
 - `features/transcript/ui/markdown.public.tsx` (conversation-and-workspace-interaction)
 - `features/transcript/ui/webui-mermaid.tsx` (conversation-and-workspace-interaction)
-- `features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx` (structure, surfaces-and-content)
-- `features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx` (navigation-and-selection)
-- `features/workspace/ui/WorkspaceArchiveView.tsx` (structure)
-- `features/workspace/ui/WorkspaceCanvas.tsx` (structure)
-- `features/workspace/ui/WorkspaceFileTree.tsx` (structure, surfaces-and-content)
-- `features/workspace/ui/WorkspaceHtmlPreview.tsx` (structure, surfaces-and-content)
-- `features/workspace/ui/WorkspaceMediaPreview.tsx` (structure, surfaces-and-content)
 - `features/workspace/ui/WorkspacePanelControls.tsx` (controls-and-form-composition, structure)
-- `features/workspace/ui/WorkspacePanels.tsx` (structure)
-- `features/workspace/ui/WorkspaceProgressPanel.tsx` (structure, feedback-and-recovery)
 - `shell/ArchonPage.tsx` (structure)
 - `shell/ArchonShell.tsx` (structure)
 - `shell/ConnectionStatus.tsx` (feedback-and-recovery)
@@ -151,11 +87,6 @@ decision has not been taken yet. They are listed here in full so that nothing is
 - `shell/WebuiErrorBoundary.tsx` (feedback-and-recovery)
 - `shell/WebuiZoneBoundary.tsx` (structure)
 - `shell/icons.tsx` (foundations)
-- `shell/use-new-task-workspace.ts` (structure)
-- `shell/use-selected-session.ts` (structure)
-- `shell/use-session-rail-actions.ts` (navigation-and-selection)
-- `shell/use-shell-activity-wiring.ts` (structure, conversation-and-workspace-interaction)
-- `shell/use-workspace-panel-session.ts` (structure)
 
 </details>
 
@@ -196,14 +127,14 @@ Not verified by any browser check:
 
 ## Families whose contract is still partly a business's own
 
-- **surfaces-and-content** — 30 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **structure** — 41 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **overlays** — 13 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **navigation-and-selection** — 13 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **surfaces-and-content** — 5 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **structure** — 16 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **overlays** — 1 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **navigation-and-selection** — 6 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
 - **foundations** — 1 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **feedback-and-recovery** — 11 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **conversation-and-workspace-interaction** — 28 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **controls-and-form-composition** — 14 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **feedback-and-recovery** — 8 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **conversation-and-workspace-interaction** — 15 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
+- **controls-and-form-composition** — 6 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
 
 ## What was verified separately
 

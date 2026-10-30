@@ -46,10 +46,19 @@ export const FAMILIES = Object.freeze([
   "conversation-and-workspace-interaction",
 ]);
 
-/** The four dispositions. Every entry carries exactly one. */
+/**
+ * The five dispositions. Every entry carries exactly one.
+ *
+ * `composition` is for a module that renders no presentation surface of its own —
+ * a hook, a pure projection, a scaffold that only arranges other modules. Its
+ * obligation is discharged by what it mounts, not by adopting a contract it never
+ * renders, and calling it an exception would be wrong in the other direction: it
+ * is not declining the contract, it has nothing to decline.
+ */
 export const DISPOSITIONS = Object.freeze([
   "existing-shared-contract",
   "newly-adopted-contract",
+  "composition",
   "business-exception",
   "pending-contract-decision",
 ]);

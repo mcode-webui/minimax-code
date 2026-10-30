@@ -137,6 +137,8 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
   // show the word and not the marker.
   const label = selected === "__other__" ? "其他" : selectedName;
   return <WebuiDropdown
+          managed
+          managedLayerId="provider-form-preset"
     open={open}
     onOpen={() => { setOpen(true); setQuery(""); }}
     onClose={() => { setOpen(false); setQuery(""); }}
@@ -312,7 +314,9 @@ export function ProviderFormPanel({
         <div className="webui-provider-form-body">
           {!editingProvider ? <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">提供商<ProviderPresetPicker presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); editor.changeField("name", ""); editor.changeField("baseUrl", ""); editor.changeField("apiFormat", "openai-completions"); editor.clearModels(); return; } setSelectedPresetId(textOf(preset.providerId)); editor.changeField("name", textOf(preset.name)); editor.changeField("baseUrl", textOf(preset.baseUrl)); editor.changeField("apiFormat", textOf(preset.apiFormat)); editor.clearModels(); }} /></label>{selectedPresetId === "__other__" ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}</div> : null}
           {editingProvider ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}
-          <div className="webui-provider-form-provider-grid"><WebuiField className="webui-provider-form-field" label="API 格式" control={(props, field) => <WebuiDropdown open={apiFormatOpen} onOpen={() => setApiFormatOpen(true)} onClose={() => setApiFormatOpen(false)} role="listbox" ariaLabel="API 格式" width="match" wrapperClassName="webui-provider-format" className="webui-provider-format-menu" trigger={(triggerProps) => {
+          <div className="webui-provider-form-provider-grid"><WebuiField className="webui-provider-form-field" label="API 格式" control={(props, field) => <WebuiDropdown
+          managed
+          managedLayerId="provider-form-format" open={apiFormatOpen} onOpen={() => setApiFormatOpen(true)} onClose={() => setApiFormatOpen(false)} role="listbox" ariaLabel="API 格式" width="match" wrapperClassName="webui-provider-format" className="webui-provider-format-menu" trigger={(triggerProps) => {
             // Named by the field's label and by the value it shows: a name that
             // restates the value alone would not match the visible text.
             const valueId = `${props.id}-value`;

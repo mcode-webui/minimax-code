@@ -183,6 +183,8 @@ export function WebuiComposerEditorStaging({
       ) : null}
       {mention && mention.choices.length > 0 ? (
         <WebuiDropdown
+          managed
+          managedLayerId="composer-mention"
           open
           onOpen={() => undefined}
           onClose={onDismissMention}
@@ -210,6 +212,8 @@ export function WebuiComposerEditorStaging({
       ) : null}
       {commands.length > 0 ? (
         <WebuiDropdown
+          managed
+          managedLayerId="composer-command"
           open
           onOpen={() => undefined}
           onClose={onDismissCommand}

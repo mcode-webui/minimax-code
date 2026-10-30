@@ -115,6 +115,8 @@ export function WebuiContextMenu({
     });
   return (
     <WebuiDropdown
+          managed
+          managedLayerId="context-menu"
       open
       onOpen={() => undefined}
       onClose={onClose}

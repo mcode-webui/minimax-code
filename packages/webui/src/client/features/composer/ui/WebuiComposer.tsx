@@ -1095,6 +1095,10 @@ export function WebuiComposer({
         ref={composerRegionRef}
         className={`relative ${sessionLayout ? "mt-0 webui-session-composer-overlay" : "mt-8"} w-full`}
         data-webui-composer-region="true"
+        // The mention and command menus are managed layers whose region is this
+        // element: a press anywhere in the composer is inside them, so typing does
+        // not dismiss the menu the way a press elsewhere does.
+        data-overlay-layer="composer-mention composer-command"
         data-webui-session-composer-overlay={sessionLayout ? "true" : undefined}
       >
         <input

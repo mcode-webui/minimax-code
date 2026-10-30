@@ -74,6 +74,8 @@ export function WebuiComposerProjectRow({
     <div className="webui-workspace-bar" data-webui-workspace-toolbar="true">
       <div className="relative" ref={pickerRef}>
         <WebuiDropdown
+          managed
+          managedLayerId="composer-project-row"
           open={menuOpen}
           onOpen={() => onMenuOpenChange(true)}
           onClose={() => onMenuOpenChange(false)}

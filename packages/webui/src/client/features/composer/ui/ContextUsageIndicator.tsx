@@ -137,6 +137,8 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
       onMouseLeave={() => setHovered(false)}
     >
       <WebuiDropdown
+          managed
+          managedLayerId="context-usage"
         open={open}
         onOpen={() => {
           setOpen(true);

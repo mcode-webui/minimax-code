@@ -512,6 +512,8 @@ export function WebuiWorkspaceLauncher({
         {visibleTiles.map(renderTile)}
         {overflowTiles.length > 0 ? (
           <WebuiDropdown
+          managed
+          managedLayerId="workspace-tab-strip"
             open={overflowOpen}
             onOpen={() => setOverflowOpen(true)}
             onClose={() => setOverflowOpen(false)}

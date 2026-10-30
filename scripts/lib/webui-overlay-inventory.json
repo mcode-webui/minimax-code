@@ -20,20 +20,20 @@
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "features/composer/ui/ComposerEditorStaging.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the mention and command menus; the composer region carries both layer ids"
     },
     "features/composer/ui/ComposerPermissionControl.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the permission menu"
     },
     "features/composer/ui/ComposerProjectRow.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the project menu"
     },
     "features/composer/ui/ContextUsageIndicator.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the context usage popover"
     },
     "features/composer/ui/WebuiComposer.tsx": {
       "disposition": "pending",
@@ -44,12 +44,12 @@
       "note": "one layer with a ladder of its own: request-close walks list to panel, a press outside closes"
     },
     "features/models/ui/ProviderFormPanel.public.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the preset picker and the format picker"
     },
     "features/plugins/ui/PluginCatalogue.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the catalogue's filter menu"
     },
     "features/plugins/ui/PluginImportDialog.tsx": {
       "disposition": "pending",
@@ -80,16 +80,16 @@
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the tab strip's overflow menu"
     },
     "features/workspace/ui/WorkspaceProgressPanel.tsx": {
       "disposition": "pending",
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "ui/ContextMenu.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "opened at a point; a press anywhere else ends it"
     }
   }
 }

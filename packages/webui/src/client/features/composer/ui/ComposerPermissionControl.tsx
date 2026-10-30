@@ -90,6 +90,8 @@ export function WebuiComposerPermissionControl({
 }: WebuiComposerPermissionControlProps) {
   return (
     <WebuiDropdown
+          managed
+          managedLayerId="composer-permission"
       open={menuOpen}
       onOpen={onToggleRequest}
       onClose={onClose}

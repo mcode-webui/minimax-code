@@ -33,8 +33,11 @@ export function layersAt(node: Element | null): string[] {
   const found: string[] = [];
   let current: Element | null = node;
   while (current) {
-    const id = current.getAttribute?.(LAYER_ATTRIBUTE);
-    if (id) found.push(id);
+    // An element can belong to more than one layer: the composer's region holds
+    // the mention menu and the command menu, and a press in the editor is inside
+    // both of them.
+    const ids = current.getAttribute?.(LAYER_ATTRIBUTE);
+    if (ids) found.push(...ids.split(/\s+/u).filter(Boolean));
     current = current.parentElement;
   }
   return found;

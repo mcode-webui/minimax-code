@@ -336,6 +336,8 @@ export function PluginCatalogue({
             <>
               <h1>管理</h1>
               <WebuiDropdown
+          managed
+          managedLayerId="plugin-catalogue"
                 open={createMenuOpen}
                 onOpen={() => setCreateMenuOpen(true)}
                 onClose={() => setCreateMenuOpen(false)}

@@ -447,6 +447,9 @@ const SURFACES = [
           await openApp(page, "#session=session-1");
           const rail = page.locator(".webui-rail-scroll");
           await expect(rail).toContainText("Synthetic session 1");
+          // The row's timestamp is part of what the rail shows; a migration that
+          // drops it would otherwise pass a name-only check.
+          await expect(rail).toContainText(/\d{4}-\d{2}-\d{2}/u);
           await expect(rail.getByText(`Synthetic session ${RAIL_MAXIMUM_SESSIONS}`)).toHaveCount(1);
         },
       },
@@ -547,6 +550,8 @@ const SURFACES = [
         open: async (page) => {
           await openUsagePage(page);
           await expect(page.getByTestId("settings-usage-plan-name")).toHaveText(/\S/u);
+          // The model-source pill carries the badge that names the source in use.
+          await expect(page.getByTestId("settings-usage-source-tab")).not.toBeEmpty();
         },
       },
       {

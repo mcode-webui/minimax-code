@@ -252,6 +252,12 @@ export function UserMenu({
         open={open}
         onOpen={() => { setOpen(true); closePanels(); }}
         onClose={() => { setOpen(false); closePanels(); }}
+        // Managed (ADR 0028 § Overlay coordination): the account menu is a layer
+        // in the client's order, so one Escape closes it and nothing beneath it,
+        // and the popup keeps no listener of its own. `closePanels` still runs on
+        // every close, which is the semantics this menu always had.
+        managed
+        managedLayerId="user-menu"
         role="menu"
         side="top"
         align="start"

@@ -125,7 +125,21 @@ export function decideOverlayAction(
   // popup's portal, a region the parent owns), and that press is still the
   // parent's.
   const byId = new Map(layers.map((entry) => [entry.id, entry]));
-  const topmost = orderOverlayLayers(active)[0];
+  // Which active layer answers.
+  //
+  // The event names the layers it landed inside, innermost first, and that is the
+  // strongest statement available: two dialogs open at once have no order between
+  // them — the inner one is inside the outer one — so the innermost active layer
+  // in that chain answers, and only when the chain names none does the sibling
+  // order decide.
+  const insideActive = event.insideLayerIds
+    .map((id) => active.find((layer) => layer.id === id))
+    .find((layer) => layer !== undefined);
+  // Only a key reads the chain this way. A press inside a parent but outside its
+  // child must dismiss the child, which the order already says; two dialogs open
+  // at once have no order between them, and the key has to reach the inner one.
+  const topmost =
+    event.kind === "escape" ? (insideActive ?? orderOverlayLayers(active)[0]) : orderOverlayLayers(active)[0];
   if (!topmost) return NOTHING_CLAIMED;
 
   if (event.kind === "escape") {

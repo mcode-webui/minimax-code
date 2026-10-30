@@ -18,7 +18,8 @@
 // the memory manager established, under a name that says what it is rather
 // than which feature happens to use it.
 
-import type { ReactElement, ReactNode } from "react";
+import { useId, type ReactElement, type ReactNode } from "react";
+import { useOverlayLayer } from "../../../ui/overlay-coordinator.js";
 import { WebuiButton } from "../../../ui/button.js";
 
 export const PERSONALIZATION_SECTION_HINTS = {
@@ -129,18 +130,31 @@ export function SettingsDialog({
    */
   readonly dismissOnMaskClick?: boolean;
 }): ReactElement {
+  // One layer in the client's order (ADR 0028 § Overlay coordination). A dialog
+  // that offers a way out answers a dismissal by closing; one that does not — a
+  // preview with no close button — consumes the attempt instead, so the press
+  // cannot reach whatever is behind it.
+  const layerId = `settings-dialog-${useId()}`;
+  useOverlayLayer({
+    id: layerId,
+    order: 0,
+    active: true,
+    // `deferred` rather than `blocked`: a dialog that offers no way out still must
+    // not swallow presses aimed at what it holds (a nested dialog is a portal with
+    // no layer of its own), so the attempt is answered with "nothing to do" instead
+    // of being consumed.
+    dismissal: dismissOnMaskClick ? "dismissible" : "deferred",
+    onRoute: (route) => {
+      if (route === "request-close") onClose();
+    },
+  });
+
   return (
     <div
       className={`webui-settings-dialog-mask${variant === "preview" ? " is-overlay" : ""}`}
-      onClick={
-        dismissOnMaskClick
-          ? (event) => {
-              if (event.target === event.currentTarget) onClose();
-            }
-          : undefined
-      }
     >
       <div
+        data-overlay-layer={layerId}
         role="dialog"
         aria-modal="true"
         aria-label={title}

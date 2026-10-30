@@ -32,7 +32,10 @@ const DISPOSITIONS = new Set(["managed", "borrows-role", "exception", "pending"]
 export function scanSource(text) {
   const dropdowns = (text.match(/<WebuiDropdown\b/gu) ?? []).length;
   const dialogs = (text.match(/role="dialog"/gu) ?? []).length;
-  const managed = (text.match(/\bmanaged\b(?=[=\s>/])/gu) ?? []).length;
+  // A layer registers either through the dropdown's `managed` prop or by calling
+  // the hook directly; both are the same fact.
+  const managed =
+    (text.match(/\bmanaged\b(?=[=\s>/])/gu) ?? []).length + (text.match(/useOverlayLayer\(/gu) ?? []).length;
   return { dropdowns, dialogs, managed };
 }
 

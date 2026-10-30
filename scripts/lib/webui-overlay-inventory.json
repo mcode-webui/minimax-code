@@ -12,8 +12,8 @@
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "features/account/ui/UserMenu.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the account menu layers on the shared dropdown and closes its fly-outs on every close"
     },
     "features/account/ui/UserMenuUsage.tsx": {
       "disposition": "pending",
@@ -68,8 +68,8 @@
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "features/settings/ui/settings-atoms.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the shared dialog primitive: dismissible when it offers a way out, deferred otherwise so a nested portal is not swallowed"
     },
     "features/transcript/ui/MessageActions.tsx": {
       "disposition": "pending",

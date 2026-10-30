@@ -8,9 +8,14 @@ const CRON_RUNS_TABLE = 'local_runtime_v2_cron_runs';
  * Nullable on purpose. A host that does not write the column keeps working exactly as before, and
  * a run claimed by such a host stays unattributed — recovery decides those by its own scope rule
  * rather than by inference.
+ *
+ * The version must exceed every version any lineage has already written into
+ * `local_runtime_v2_schema_migrations`, because the runner skips on the number alone: a shipped
+ * database records versions up to 53, so this file sat at 37 and never ran there — the runtime then
+ * queried `owner_instance_id` against a table that did not have it. Renumber upward, never down.
  */
 export const migration: MigrationEntry = {
-  version: 37,
+  version: 54,
   name: 'add_cron_run_claim_owner',
   up(database: MigrationDatabase): void {
     const columns = readColumns(database);

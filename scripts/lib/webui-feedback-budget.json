@@ -1,6 +1,6 @@
 {
   "$comment": "Business sources that still author their own role=\"alert\". The count may only go down: `pnpm check:webui-feedback` fails when a file starts authoring one, and when a migration lands without lowering the entry. Regenerate with --write after a migration.",
-  "total": 18,
+  "total": 15,
   "exempt": {
     "shell/WebuiErrorBoundary.tsx": "the last-resort boundary around the whole client",
     "shell/StartupFallback.tsx": "renders when the client never mounted"
@@ -11,10 +11,8 @@
     "features/miniapp/ui/MiniAppPicker.public.tsx": 1,
     "features/settings/ui/UsageModelSettings.tsx": 3,
     "features/settings/ui/UsageResetCards.tsx": 2,
-    "features/transcript/ui/DiffCard.tsx": 2,
+    "features/transcript/ui/DiffCard.tsx": 1,
     "features/workspace/ui/WorkspaceArchiveView.tsx": 1,
-    "features/workspace/ui/WorkspaceCanvas.tsx": 1,
-    "features/workspace/ui/WorkspaceHtmlPreview.tsx": 1,
     "features/workspace/ui/WorkspaceMediaPreview.tsx": 3,
     "shell/StartupFallback.tsx": 1,
     "shell/WebuiErrorBoundary.tsx": 1

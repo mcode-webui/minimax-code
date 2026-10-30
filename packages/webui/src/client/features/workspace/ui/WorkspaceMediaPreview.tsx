@@ -6,6 +6,7 @@ import { useState, type ReactElement } from "react";
 import type { WebuiWorkspaceFileContent } from "../../../../shared/contracts/workspace.js";
 import { basenamePath } from "../../../projection/common/paths.js";
 import { mediaKind, isMediaContent } from "../projection/media-preview.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export type WorkspaceMediaPreviewProps = {
   /** The file path the preview tab was opened with, used for `alt` text. */
@@ -47,9 +48,14 @@ export function WorkspaceMediaNotice({
   /** `alert` for a failure, `status` for a state that was never available. */
   readonly role?: "status" | "alert";
 }): ReactElement {
-  return (
-    <p role={role} style={{ margin: "var(--spacing_16)", color: "var(--text_default_tertiary)" }}>
-      {`${name} 预览不可用：${reason}`}
+  // A failure is announced, an unavailable state is not: one component that
+  // renders both roles is exactly the conflation the family separates.
+  const message = `${name} 预览不可用：${reason}`;
+  return role === "alert" ? (
+    <FeedbackError message={message} />
+  ) : (
+    <p role="status" style={{ margin: "var(--spacing_16)", color: "var(--text_default_tertiary)" }}>
+      {message}
     </p>
   );
 }

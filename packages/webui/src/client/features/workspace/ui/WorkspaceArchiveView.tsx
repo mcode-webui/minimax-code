@@ -4,6 +4,7 @@
 // what `readWorkspaceArchive` is willing to name and never invents a path.
 
 import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   useWebuiWorkspaceArchive,
   useWebuiWorkspaceQueriesState,
@@ -14,7 +15,6 @@ import type {
   WebuiWorkspaceArchiveListing,
 } from "../../../../shared/contracts/workspace.js";
 import { archiveDestinationFor, formatArchiveSize } from "../projection/archive-projection.js";
-import { FeedbackError } from "../../../ui/feedback.js";
 
 export type WorkspaceArchiveViewProps = {
   /** Absolute workspace root; every archive path below is relative to it. */
@@ -181,7 +181,11 @@ export function WorkspaceArchiveNotice({
   /** `alert` for a failure, `status` for a state that was never available. */
   readonly role?: "status" | "alert";
 }): ReactElement {
-  return <p role={role} data-testid="workspace-archive-notice">{reason}</p>;
+  return role === "alert" ? (
+    <FeedbackError message={reason} testId="workspace-archive-notice" />
+  ) : (
+    <p role="status" data-testid="workspace-archive-notice">{reason}</p>
+  );
 }
 
 /**

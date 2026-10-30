@@ -38,9 +38,15 @@ const EXEMPT = {
   "shell/StartupFallback.tsx": "renders when the client never mounted",
 };
 
-/** How many places in one source author an alert or a busy status. */
+/**
+ * How many places in one source author an alert.
+ *
+ * Comments are stripped first: a file that *explains* why its alert is there does
+ * not thereby author another one, and counting prose made the budget drift.
+ */
 export function scanSource(text) {
-  return (text.match(/role="alert"/gu) ?? []).length;
+  const code = text.replace(/\/\*[\s\S]*?\*\//gu, "").replace(/^\s*\/\/.*$/gmu, "");
+  return (code.match(/role="alert"/gu) ?? []).length;
 }
 
 /**

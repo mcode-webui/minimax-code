@@ -33,6 +33,7 @@ import { useEffect, useState, type ReactElement } from "react";
 import type { WebuiWorkspaceFileContent } from "../../../../shared/contracts/workspace.js";
 import { basenamePath } from "../../../projection/common/paths.js";
 import { hasRelativeDocumentReference } from "../projection/html-preview.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export type WorkspaceHtmlPreviewProps = {
   /** The file path the preview tab was opened with. */
@@ -99,10 +100,18 @@ export function WorkspaceHtmlPreview({ path, fileUrl, content }: WorkspaceHtmlPr
   // isolate — the CSP branch is keyed on `text/html` too.
   const mimeType = content?.mimeType?.trim().toLowerCase();
   if (mimeType && !mimeType.startsWith("text/html")) {
-    return <div className="webui-workspace-files-empty" data-testid="workspace-html-preview-refused" role="alert">
-      <strong>不作为 HTML 预览打开</strong>
-      <p>{`文件扩展名是 .html，但运行时报告的类型是 ${mimeType}，服务端不会以隔离文档的策略回答它。`}</p>
-    </div>;
+    return (
+      <FeedbackError
+        className="webui-workspace-files-empty"
+        testId="workspace-html-preview-refused"
+        message={
+          <>
+            <strong>不作为 HTML 预览打开</strong>
+            <p>{`文件扩展名是 .html，但运行时报告的类型是 ${mimeType}，服务端不会以隔离文档的策略回答它。`}</p>
+          </>
+        }
+      />
+    );
   }
 
   if (!fileUrl) {

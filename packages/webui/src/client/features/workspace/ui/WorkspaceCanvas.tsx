@@ -48,6 +48,7 @@ import {
 } from "../../../bindings/use-query-state.js";
 import { DESKTOP_COPY, resolveCanvasPointerGesture, stepCanvasZoom, canvasPointerMoveLayout, canvasPointerResizeLayout, canvasArrowDirection, canvasKeyStep, nudgeCanvasLayout, resizeCanvasLayoutBy, canvasLayoutsEqual, buildCanvasUpdateLayoutMutation, buildCanvasAddFileMutation, buildCanvasRemoveNodeMutation, createCanvasOperationId, createCanvasNodeId, buildCanvasOperation, nextCanvasNodeLayout, describeCanvasError, parseCanvasNodes, applyCanvasLayoutPreview } from "../projection/canvas-projection.js";
 import type { CanvasNodeView, CanvasPointerGesture, CanvasLayoutPreview } from "../projection/canvas-projection.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface CanvasPan {
   readonly x: number;
@@ -365,7 +366,7 @@ export function WorkspaceCanvas({ sessionId }: {
       {readOnly ? <p style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{DESKTOP_COPY.canvasReadOnly}</p> : null}
       {busy ? <p role="status" style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{DESKTOP_COPY.canvasSaving}</p> : null}
       {notice ? <p role="status" style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{notice}</p> : null}
-      {error ? <p role="alert" style={{ margin: 0, color: "var(--text_default_primary)", fontSize: "var(--size_12)" }}>{error}</p> : null}
+      {error ? <FeedbackError message={error} /> : null}
     </div>
   </div>;
 }

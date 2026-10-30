@@ -485,6 +485,182 @@
         "empty": 0
       }
     },
+    "settings-usage-page/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 24,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 1,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 24,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 1,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 225,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 4,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 225,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 4,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/maximum/dark": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 497,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/maximum/light": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 497,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 225,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 4,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "settings-usage-page/one/light": {
+      "missing": false,
+      "root": {
+        "width": 704,
+        "height": 225,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 4,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
     "transcript/empty/dark": {
       "missing": false,
       "root": {

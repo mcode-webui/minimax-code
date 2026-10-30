@@ -460,6 +460,94 @@ const SURFACES = [
     ],
   },
   {
+    id: "settings-usage-page",
+    seed: (page, state) => seedFixture(page, { usageQuota: state.usageQuota }),
+    label: "Settings › 用量 — the usage page",
+    families: ["surfaces-and-content", "feedback-and-recovery"],
+    extremes: ["empty", "one", "maximum", "longest"],
+    root: (page) => page.locator('[data-testid="settings-usage-token-plan"]'),
+    container: '[role="dialog"][aria-label="设置"]',
+    texts: "span, label, p",
+    states: [
+      {
+        id: "empty",
+        extreme: "empty",
+        usageQuota: { signedIn: false },
+        open: async (page) => {
+          await openUsagePage(page);
+          // Signed out the page says so instead of drawing empty rows.
+          await expect(page.locator('[data-testid="settings-usage-token-plan"]')).toContainText(
+            "登录后查看用量",
+          );
+        },
+      },
+      {
+        id: "one",
+        extreme: "one",
+        // Every signed-in state answers without a token plan on purpose: a
+        // subscribed answer turns on the reset-card flow, which this surface does
+        // not measure and which the fixture does not model. The plan row, the
+        // credits and the expiry date are all reachable without it.
+        usageQuota: {
+          signedIn: true,
+          hasTokenPlan: false,
+          subscriptionType: "mplan",
+          planName: "M Plan 标准版",
+        },
+        open: async (page) => {
+          await openUsagePage(page);
+          await expect(page.getByTestId("settings-usage-plan-name")).toHaveText(/\S/u);
+        },
+      },
+      {
+        id: "maximum",
+        extreme: "maximum",
+        usageQuota: {
+          signedIn: true,
+          hasTokenPlan: false,
+          subscriptionType: "mplan",
+          planName: "M Plan 标准版",
+          creditBalance: "1280",
+          purchasedCredits: "1000",
+          freeCredits: "280",
+          tokenPlanExpiresAt: 1_800_000_000_000,
+          willRenewal: true,
+          quota: {
+            fiveHour: { usedPercent: 87, totalPercent: 100, resetAtMs: 1_800_000_000_000, unlimited: false },
+            weekly: { usedPercent: 42, totalPercent: 100, resetAtMs: 1_800_000_000_000, unlimited: false },
+            video: { usedCount: 12, totalCount: 20, resetAtMs: 1_800_000_000_000, unlimited: false },
+          },
+        },
+        open: async (page) => {
+          await openUsagePage(page);
+          // Every figure the page can draw is present: the plan row with its
+          // renewal date, and the credits.
+          const section = page.locator('[data-testid="settings-usage-token-plan"]');
+          await expect(section).toContainText("自动续费");
+          await expect(section).toContainText("积分");
+        },
+      },
+      {
+        id: "longest",
+        extreme: "longest",
+        usageQuota: {
+          signedIn: true,
+          hasTokenPlan: false,
+          subscriptionType: "mplan",
+          planName: "M Plan 企业版 Enterprise Plan With A Very Long Display Name For Layout Pressure",
+          creditBalance: "999999",
+        },
+        open: async (page) => {
+          await openUsagePage(page);
+          const planName = page.getByTestId("settings-usage-plan-name");
+          await expect(planName).toHaveText(/\S/u);
+          const length = await planName.evaluate((node) => (node.textContent ?? "").length);
+          expect(length, "the longest plan name was not rendered in full").toBeGreaterThan(20);
+        },
+      },
+    ],
+  },
+  {
     id: "plugins-mcp-form",
     // The form renders one server's fields, so it has no collection to grow to a
     // maximum: its extremes are blank, filled, and the longest values it holds.

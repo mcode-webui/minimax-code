@@ -837,6 +837,50 @@
         "empty": 0
       }
     },
+    "transcript/turn-diff/dark": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 353,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 24,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/turn-diff/light": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 353,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 24,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
     "workspace-panel/empty/dark": {
       "missing": false,
       "root": {

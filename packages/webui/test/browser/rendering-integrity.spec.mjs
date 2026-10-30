@@ -115,6 +115,8 @@ async function seedFixture(page, data) {
         if (data.tree) window.__fixture.setTree(data.tree);
         if (data.workspaceTree) window.__fixture.setWorkspaceFileTree(data.workspaceTree);
         if (data.usageQuota) window.__fixture.setUsageQuotaResult(data.usageQuota);
+        if (data.turnDiff) window.__fixture.setTurnDiff(data.turnDiff);
+        if (data.sessionMessages) window.__fixture.setPage("A", data.sessionMessages);
         for (const [action, result] of Object.entries(data.pluginManagement ?? {})) {
           window.__fixture.setPluginManagementResult(action, result);
         }
@@ -215,6 +217,13 @@ async function seedTranscript(page, messages) {
     `,
   });
 }
+
+const assistantMessage = (id, content) => ({
+  msgId: id,
+  role: "assistant",
+  msgContent: content,
+  timestamp: 1_700_000_000_500,
+});
 
 const userMessage = (index, content) => ({
   msgId: `message-${index}`,
@@ -333,6 +342,10 @@ const SURFACES = [
           // the claim a truncated or virtualised list would break.
           await expect(transcriptScroll(page)).toContainText(`Synthetic message ${TRANSCRIPT_MESSAGES}`);
           await expect(transcriptScroll(page)).toContainText("Synthetic message 1");
+          // The collection renders every item it was given, not a sample of them.
+          await expect(transcriptScroll(page).getByText(/^Synthetic message \d+$/u)).toHaveCount(
+            TRANSCRIPT_MESSAGES,
+          );
         },
       },
       {
@@ -342,6 +355,43 @@ const SURFACES = [
         open: async (page) => {
           await openApp(page, "#session=A");
           await expect(transcriptScroll(page)).toContainText(LONGEST_MESSAGE.slice(0, 40));
+        },
+      },
+      {
+        // Not one of the four extremes: the message that carries a turn diff.
+        // A diff card is a data-driven block inside the transcript, and its
+        // numbers and state are what a migration of the message body would
+        // silently drop.
+        id: "turn-diff",
+        seed: (page) => seedFixture(page, {
+          sessionMessages: {
+            messages: [
+              assistantMessage("assistant-diff", "Edited one file."),
+              userMessage(2, "A second synthetic message"),
+            ],
+            hasMore: false,
+          },
+          turnDiff: {
+            status: "active",
+            changeSetId: "cs-fixture",
+            sourceMessageId: "assistant-diff",
+            canUndo: true,
+            canReapply: false,
+            fileChanges: [
+              { file: "a.ts", additions: 2, deletions: 1 },
+              { file: "src/long-file-name-for-layout-pressure.ts", additions: 12, deletions: 7 },
+            ],
+          },
+        }),
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          const card = transcriptScroll(page).locator('[data-webui-diff-card="true"]');
+          await expect(card).toBeVisible();
+          // The counts, the file names and the state badge are the data the card
+          // exists to show.
+          await expect(card.locator('[data-webui-diff-stats="true"]').first()).toContainText("+");
+          await expect(card).toContainText("a.ts");
+          await expect(card).toHaveAttribute("data-webui-diff-state", /active|applied|undone/u);
         },
       },
     ],
@@ -609,7 +659,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       for (const theme of THEMES) {
         test(`${surface.id} / ${state.id} / ${theme}`, async ({ page }) => {
           await useTheme(page, theme);
-          await surface.seed(page, state);
+          await (state.seed ?? surface.seed)(page, state);
           await state.open(page);
           expect(await appliedTheme(page), `${surface.id}/${state.id}: the theme did not apply`).toBe(theme);
 

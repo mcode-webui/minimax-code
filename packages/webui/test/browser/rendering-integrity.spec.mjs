@@ -114,6 +114,10 @@ async function seedFixture(page, data) {
         if (data.projects) window.__fixture.setProjects(data.projects);
         if (data.tree) window.__fixture.setTree(data.tree);
         if (data.workspaceTree) window.__fixture.setWorkspaceFileTree(data.workspaceTree);
+        if (data.usageQuota) window.__fixture.setUsageQuotaResult(data.usageQuota);
+        for (const [action, result] of Object.entries(data.pluginManagement ?? {})) {
+          window.__fixture.setPluginManagementResult(action, result);
+        }
         for (const [operation, value] of Object.entries(data.responses ?? {})) {
           window.__fixture.setResponse(operation, value);
         }
@@ -161,6 +165,38 @@ async function openWorkspaceTree(page) {
   await expect(page.getByTestId("workspace-panel")).toBeVisible();
   await openLauncherTile(page, "files");
   await expect(page.getByRole("complementary", { name: "工作区文件树" })).toBeVisible();
+}
+
+const MCP_LONGEST_NAME = `synthetic-mcp-server-${"long-name-".repeat(12)}`;
+
+/** Settings › 用量, reached the way a user reaches it. */
+async function openUsagePage(page) {
+  await openApp(page, "#session=A");
+  await page.locator('[data-testid="sidebar-user-menu-trigger"]').click();
+  await page.locator('[data-testid="user-menu-settings"]').click();
+  await expect(settingsDialog(page)).toBeVisible();
+  await page.locator('.webui-settings-nav [data-menu-key="usage"]').click();
+  await expect(page.locator('[data-testid="settings-usage-token-plan"]')).toBeVisible();
+}
+
+/**
+ * Plugins › 管理 › MCP › 添加 MCP server.
+ *
+ * The management surface has to be reached before the MCP category filter and
+ * the add button exist, and the fixture has to answer `listMcpServers` for the
+ * list behind the dialog to render at all.
+ */
+async function openMcpForm(page, name) {
+  await openApp(page, "#session=A");
+  await page.getByRole("button", { name: "插件" }).first().click();
+  await page.locator(".webui-plugin-manage-trigger").click();
+  // The management surface's create control opens the chooser; "添加 MCP server"
+  // is one option in it, not a button on the management list.
+  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByRole("button", { name: "添加 MCP server" }).click();
+  const dialog = page.getByRole("dialog", { name: "MCP Server" });
+  await expect(dialog).toBeVisible();
+  if (name.length > 0) await dialog.getByLabel("名称").fill(name);
 }
 
 const S = "settings-custom-models-panel";
@@ -419,6 +455,57 @@ const SURFACES = [
           await expect(page.getByRole("complementary", { name: "工作区文件树" })).toContainText(
             LONGEST_FILENAME.slice(0, 30),
           );
+        },
+      },
+    ],
+  },
+  {
+    id: "plugins-mcp-form",
+    // The form renders one server's fields, so it has no collection to grow to a
+    // maximum: its extremes are blank, filled, and the longest values it holds.
+    seed: (page) =>
+      seedFixture(page, {
+        pluginManagement: {
+          listMcpServers: { servers: [] },
+          createMcpServer: { success: true },
+        },
+      }),
+    label: "Plugins › 管理 › MCP — the add-server form",
+    families: ["controls-and-form-composition", "overlays"],
+    extremes: ["empty", "one", "longest"],
+    root: (page) => page.getByRole("dialog", { name: "MCP Server" }),
+    texts: "span, label, p",
+    states: [
+      {
+        id: "empty",
+        extreme: "empty",
+        name: "",
+        open: (page) => openMcpForm(page, ""),
+      },
+      {
+        id: "one",
+        extreme: "one",
+        name: "local-docs",
+        open: async (page) => {
+          await openMcpForm(page, "local-docs");
+          // A field's value is not its text content, so it is read back rather
+          // than matched against the dialog's rendered text.
+          await expect(
+            page.getByRole("dialog", { name: "MCP Server" }).getByLabel("名称"),
+          ).toHaveValue("local-docs");
+        },
+      },
+      {
+        id: "longest",
+        extreme: "longest",
+        name: MCP_LONGEST_NAME,
+        open: async (page) => {
+          await openMcpForm(page, MCP_LONGEST_NAME);
+          const value = await page
+            .getByRole("dialog", { name: "MCP Server" })
+            .getByLabel("名称")
+            .inputValue();
+          expect(value, "the longest name was truncated in the field").toBe(MCP_LONGEST_NAME);
         },
       },
     ],

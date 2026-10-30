@@ -353,6 +353,138 @@
         "empty": 0
       }
     },
+    "plugins-mcp-form/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "plugins-mcp-form/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "plugins-mcp-form/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "plugins-mcp-form/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "plugins-mcp-form/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "plugins-mcp-form/one/light": {
+      "missing": false,
+      "root": {
+        "width": 800,
+        "height": 690,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 13,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
     "transcript/empty/dark": {
       "missing": false,
       "root": {

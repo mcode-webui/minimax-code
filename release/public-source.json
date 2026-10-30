@@ -4520,6 +4520,7 @@
     "packages/webui/test/browser/composer.spec.mjs",
     "packages/webui/test/browser/connection-status.spec.mjs",
     "packages/webui/test/browser/context-usage-ring.spec.mjs",
+    "packages/webui/test/browser/field-contract.spec.mjs",
     "packages/webui/test/browser/fixture.mjs",
     "packages/webui/test/browser/fonts/LICENSE.noto-fonts",
     "packages/webui/test/browser/fonts/NotoSansCJKsc-Regular-subset.otf",

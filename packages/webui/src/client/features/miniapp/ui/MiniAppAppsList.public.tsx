@@ -16,7 +16,7 @@ import {
   type WebuiMiniAppRow,
 } from "../projection/miniapp-view.js";
 import { readWebuiPluginRow } from "../../plugins/contracts/plugin-rows.js";
-import { FeedbackBusy } from "../../../ui/feedback.js";
+import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
 
 export interface MiniAppInstalledPluginRow {
   readonly source: Record<string, unknown>;
@@ -108,7 +108,7 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
           {error}
         </p>
       ) : null}
-      {state.unavailable ? <p className="webui-plugin-error" role="alert">{state.unavailable}</p> : null}
+      {state.unavailable ? <FeedbackError message={state.unavailable} className="webui-plugin-error" /> : null}
       {listingRows.length === 0 ? <p className="webui-plugin-empty">暂无已安装的 Mini App</p> : null}
       <div className="webui-plugin-list">
         {listingRows.map((item) => {

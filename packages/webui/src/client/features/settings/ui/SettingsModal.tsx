@@ -16,6 +16,7 @@ import {
 } from "../../../features/sessions/projection/worktree-state.public.js";
 import { FolderIcon } from "../../../ui/settings-glyphs.js";
 import { SettingsPage, SettingsRow, SettingsSection } from "../../../ui/settings-layout.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export { SETTINGS_GROUPS } from "../projection/settings-view.js";
 
@@ -41,7 +42,7 @@ export function WebuiWorktreePanel({ workspaces, worktrees, primary, error }: {
   // What a row carries inside it — the session list — is this page's own
   // content and keeps its own rules.
   return <SettingsPage testId="settings-worktree-page" dataAttributes={{ "data-webui-worktree-state": error ? "error" : branches.length ? "ready" : "empty" }}>
-    {error ? <p className="webui-review-error" role="alert" data-testid="worktree-error">{error}</p> : null}
+    {error ? <FeedbackError message={error} className="webui-review-error" testId="worktree-error" /> : null}
     {main ? <SettingsSection title="工作区" testId="worktree-primary-section">
       <SettingsRow
         title={<><FolderIcon />{main.name}</>}

@@ -18,6 +18,7 @@ import type {
   WebuiGoalStatus,
 } from "../../../../shared/contracts/goal.js";
 import type { WebuiGoalCommands } from "../contracts/goal-port.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   WebuiIconCommandGoal,
   WebuiIconClose,
@@ -64,7 +65,7 @@ export function WebuiGoalClearDialog({
           </button>
         </header>
         <p id="goal-clear-confirm-description">删除目标后，目标模式会关闭，转为普通模式继续。</p>
-        {error ? <p className="webui-goal-clear-dialog-error" role="alert" data-testid="goal-clear-error">{error}</p> : null}
+        {error ? <FeedbackError message={error} className="webui-goal-clear-dialog-error" testId="goal-clear-error" /> : null}
         <div className="webui-goal-clear-dialog-actions">
           <button type="button" onClick={onCancel} disabled={busy}>取消</button>
           <button type="button" data-testid="goal-clear-confirm-confirm" onClick={onConfirm} disabled={busy}>
@@ -192,7 +193,7 @@ export function WebuiGoalBanner({
         </div>
       </div>
       {objectiveExpanded ? <div className="webui-goal-objective-expanded" data-testid="thread-goal-objective-expanded">{goal.objective}</div> : null}
-      {error && !confirmClear ? <p role="alert" data-testid="thread-goal-error">{error}</p> : null}
+      {error && !confirmClear ? <FeedbackError message={error} testId="thread-goal-error" /> : null}
       {clearDialog
         ? portalTarget ? createPortal(clearDialog, portalTarget) : clearDialog
         : null}

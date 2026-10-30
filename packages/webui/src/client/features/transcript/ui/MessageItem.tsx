@@ -40,6 +40,7 @@ import {
   webuiClientRequestId,
 } from "../../sessions/projection/action-requests.public.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 /**
  * The single message renderer shared by persisted history and the live turn.
@@ -291,7 +292,7 @@ export function MessageItem({
       />
       <WebuiMessageActions {...actionProps} />
       {renderedForkDialog}
-      {mutationError && !rewindOpen && !forkOpen ? <p role="alert" className="webui-message-mutation-error">{mutationError}</p> : null}
+      {mutationError && !rewindOpen && !forkOpen ? <FeedbackError message={mutationError} className="webui-message-mutation-error" /> : null}
     </div>
   );
 }

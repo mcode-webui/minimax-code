@@ -14,6 +14,7 @@ import { useWebuiProviderEditor } from "../../../features/models/bindings/use-pr
 import type { WebuiProviderEditorCommands } from "../../../features/models/contracts/provider-editor.js";
 import { unavailableWebuiProviderOutcome } from "../../../features/models/contracts/provider-outcome.js";
 import type { WebuiModelProviderView } from "../../../../shared/contracts/models.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 type Props = {
   readonly sessionId?: string;
@@ -254,7 +255,7 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
           providerPendingDelete={providerPendingDelete}
           setProviderPendingDelete={setProviderPendingDelete}
         />
-        {oauthError ? <p role="alert">{oauthError}</p> : oauth?.state === "connected" ? <div className="flex items-center gap-3"><span>Codex OAuth 已连接</span><button type="button" disabled={!models?.canManageProviders} onClick={() => void models?.refreshModels?.()}>获取模型列表</button></div> : <div className="flex items-center gap-2"><button type="button" disabled={!settings?.canStartCodexOAuth || Boolean(oauthLoginId)} onClick={() => void beginCodexLogin()}>{oauthLoginId ? "正在连接 Codex OAuth" : "连接 Codex OAuth"}</button>{oauthLoginId ? <button type="button" disabled={!settings?.canStartCodexOAuth} onClick={() => void cancelCodexLogin()}>取消</button> : null}</div>}
+        {oauthError ? <FeedbackError message={oauthError} /> : oauth?.state === "connected" ? <div className="flex items-center gap-3"><span>Codex OAuth 已连接</span><button type="button" disabled={!models?.canManageProviders} onClick={() => void models?.refreshModels?.()}>获取模型列表</button></div> : <div className="flex items-center gap-2"><button type="button" disabled={!settings?.canStartCodexOAuth || Boolean(oauthLoginId)} onClick={() => void beginCodexLogin()}>{oauthLoginId ? "正在连接 Codex OAuth" : "连接 Codex OAuth"}</button>{oauthLoginId ? <button type="button" disabled={!settings?.canStartCodexOAuth} onClick={() => void cancelCodexLogin()}>取消</button> : null}</div>}
       </>}
     </section> : null}
   </SettingsPage>;

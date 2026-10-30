@@ -52,6 +52,7 @@ import {
 } from "../application/miniapp-bridge.js";
 import { createWebuiMiniAppAgentBridge } from "../application/miniapp-agent-bridge.js";
 import { sessionHash } from "../../../projection/common/router.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   webuiMiniAppRefusalText,
   webuiMiniAppWindowName,
@@ -467,7 +468,7 @@ export function MiniAppView({
       ) : null}
       {presentation?.kind === "stopped" && !detached ? (
         <div className="webui-miniapp-view-stopped" data-testid="miniapp-view-stopped">
-          <p role="alert">{presentation.reason}</p>
+          <FeedbackError message={presentation.reason} />
           <button type="button" onClick={() => void workflows?.open(pluginId)}>
             重新打开
           </button>

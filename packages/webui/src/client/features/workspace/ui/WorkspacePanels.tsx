@@ -78,6 +78,7 @@ import { useWebuiPortSlice } from "../../../bindings/port-slices-context.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { WebuiWorkspaceLauncher, WebuiWorkspaceTabStrip, webuiWorkspaceLauncherOpenPage, webuiWorkspaceLauncherUrl } from "./WebuiWorkspaceTabStrip.public.js";
 import { webuiFileLanguage, projectWebuiUnifiedDiffLines, isWorkspaceArchivePath, isWorkspaceHtmlPath } from "../projection/panel-projection.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   projectWebuiDiffFile,
   projectWebuiDiffFiles,
@@ -161,7 +162,7 @@ export function WebuiDiffFileSection({ file, selected, loading = false, error, o
            * entry stays in the list: the file name and the counts are the part a
            * person can still act on. */
           ? <p className="webui-turn-review-unavailable" data-testid="turn-review-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p>
-          : loading ? <p className="webui-turn-review-unavailable" role="status">正在加载差异…</p> : error ? <p className="webui-turn-review-unavailable" role="alert">{error}</p> : lines.length ? <pre className="webui-file-code webui-turn-review-code"><code className={language ? `hljs language-${language}` : ""}>{lines.map((line, index) => {
+          : loading ? <p className="webui-turn-review-unavailable" role="status">正在加载差异…</p> : error ? <FeedbackError message={error} className="webui-turn-review-unavailable" /> : lines.length ? <pre className="webui-file-code webui-turn-review-code"><code className={language ? `hljs language-${language}` : ""}>{lines.map((line, index) => {
       const highlighted = line.kind === "hunk" || line.kind === "noNewline" ? undefined : highlightFileLine(line.content, language);
       return <span className={`webui-turn-review-line webui-turn-review-line--${line.kind}`} key={`${index}-${line.kind}`}>
         {line.kind === "hunk" ? <span className="webui-turn-review-hunk">{line.content}</span> : line.kind === "noNewline" ? line.content : <>
@@ -200,9 +201,9 @@ export function WebuiFilePreview({ tabId, content, result, codeMode, workspaceFi
   return <div className="webui-workspace-file-document" data-testid="workspace-file-preview" data-file-path={content.path}>
       {archive ?? html
         ?? (result?.loading ? <p role="status">正在加载文件…</p>
-        : result?.error ? <p role="alert">{result.error}</p>
+        : result?.error ? <FeedbackError message={result.error} />
           : result?.content && isMediaContent(result.content, content.path) ? <WorkspaceMediaPreview path={content.path} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: content.workspaceDir, path: content.path })} />
-            : result?.content?.error ? <p role="alert">{result.content.error}</p>
+            : result?.content?.error ? <FeedbackError message={result.content.error} />
             : result?.content?.type === "binary" ? <p>无法在文本预览中显示二进制文件。</p>
               : result?.content ? previewMarkdown ? <WebuiMarkdown source={text} /> : <pre className="webui-file-code"><code className={language ? `hljs language-${language}` : ""}>{text.split("\n").map((line, index) => {
                 const lineNumber = index + 1;
@@ -768,13 +769,13 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     {tab === "files" ? <div className="webui-workspace-files-empty" data-testid="workspace-files-empty"><WebuiIconFolder className="size-8" /><strong>查看文件</strong><p>从工作区目录树中选择文件</p></div> : null}
     {tab === "file-preview" && activeTab?.content.kind === "file-preview" ? <WebuiFilePreview tabId={activeTab.id} content={activeTab.content} result={fileResults.get(activeFileKey!)} codeMode={fileCodeMode} workspaceFileUrl={workspaceFileUrl} /> : null}
     {tab === "review" && activeTab?.content.kind === "review" && activeTab.content.source === "workspace" ? <div className="webui-turn-review" data-testid="workspace-review">
-      {reviewSummary?.tabId !== activeTab.id || reviewSummary.loading && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="status">正在收集变更…</p> : reviewSummary.error && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="alert">{reviewSummary.error}</p> : reviewSummary.summary ? <>
+      {reviewSummary?.tabId !== activeTab.id || reviewSummary.loading && !reviewSummary.summary ? <p className="webui-turn-review-empty" role="status">正在收集变更…</p> : reviewSummary.error && !reviewSummary.summary ? <FeedbackError message={reviewSummary.error} className="webui-turn-review-empty" /> : reviewSummary.summary ? <>
         <div className="webui-turn-review-summary"><span>{reviewSummary.summary.totals.files} 个文件</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{reviewSummary.summary.totals.additions}</span>{reviewSummary.summary.totals.deletions ? <span className="webui-diff-del">-{reviewSummary.summary.totals.deletions}</span> : null}</span></div>
         {reviewSummary.summary.files.length ? <>
           <form className="webui-workspace-review-search" onSubmit={(event) => { event.preventDefault(); runReviewSearch(); }}><input aria-label="搜索变更" value={reviewSearchQuery} onChange={(event) => setReviewSearchQuery(event.currentTarget.value)} placeholder="搜索变更" /><button type="submit" disabled={!queries?.canSearchReviewDiffs || reviewSearch?.loading}>搜索</button></form>
           {reviewSearchAppliedQuery && currentWorkspaceReviewSearch?.loading ? <p className="webui-workspace-review-status" role="status">正在搜索变更…</p> : null}
-          {reviewSearchAppliedQuery && currentWorkspaceReviewSearch?.error ? <p className="webui-workspace-review-status" role="alert">{currentWorkspaceReviewSearch.error}</p> : null}
-          {reviewDiffs?.error && reviewDiffs.tabId === activeTab.id && reviewDiffs.snapshotId === activeReview?.reviewSnapshotId ? <p className="webui-workspace-review-status" role="alert">{reviewDiffs.error}</p> : null}
+          {reviewSearchAppliedQuery && currentWorkspaceReviewSearch?.error ? <FeedbackError message={currentWorkspaceReviewSearch.error} className="webui-workspace-review-status" /> : null}
+          {reviewDiffs?.error && reviewDiffs.tabId === activeTab.id && reviewDiffs.snapshotId === activeReview?.reviewSnapshotId ? <FeedbackError message={reviewDiffs.error} className="webui-workspace-review-status" /> : null}
           {showingWorkspaceReviewSearchResults && matchedWorkspaceReviewFiles.length === 0 ? <p className="webui-turn-review-empty" role="status">没有匹配的变更文件。</p> : null}
           {!reviewSearchAppliedQuery || !currentWorkspaceReviewSearch?.loading && !currentWorkspaceReviewSearch?.error && matchedWorkspaceReviewFiles.length > 0 ? <div className="webui-turn-review-files" data-testid={showingWorkspaceReviewSearchResults ? "workspace-review-search-results" : undefined}>{matchedWorkspaceReviewFiles.map((file) => {
             const result = reviewDiffs?.tabId === activeTab.id && reviewDiffs.snapshotId === activeReview?.reviewSnapshotId ? reviewDiffs.diffs[file.fileId] : undefined;
@@ -864,13 +865,13 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     {tab === "terminal" ? <div className="webui-terminal-content">
         <div ref={terminalHost} className="webui-xterm-host" />
         {!terminalsReady || !terminalTargetId && (terminalAvailability || terminalError) ? <p role={terminalError ? "alert" : "status"} data-webui-terminal-availability={terminalSupport}>{!terminalsReady ? DESKTOP_COPY.terminalLoading : terminalAvailability ?? terminalError}</p> : null}
-        {terminalError && terminalTargetId ? <p role="alert">{terminalError}</p> : null}
+        {terminalError && terminalTargetId ? <FeedbackError message={terminalError} /> : null}
     </div> : null}
       </div>
       {hasFileWorkspace && fileTreeOpen ? <aside className="webui-workspace-file-tree-panel" aria-label="工作区文件树">
         <label className="webui-workspace-file-search"><WebuiIconSearch className="size-4" /><input aria-label="搜索文件" placeholder="搜索" value={fileSearch} onChange={(event) => setFileSearch(event.currentTarget.value)} /></label>
         <div className="webui-workspace-file-tree-scroll" ref={fileTreeScrollRef}>
-          {fileTree.workspaceDir !== activeWorkspace || fileTree.loading ? <p role="status">正在加载文件…</p> : fileTree.error ? <p role="alert">{fileTree.error}</p> : fileTree.files.length ? visibleFiles.length ? <FileTree files={visibleFiles} expandedPaths={expandedDirectories} loadingPaths={fileTree.loadingDirectories} directoryErrors={fileTree.directoryErrors} onToggle={toggleWorkspaceDirectory} selectedPath={activeTab?.content.kind === "file-preview" ? selectedFilePath : activeTab?.content.kind === "review" ? selectedReviewPath : undefined} onOpen={(entry) => { const context = activeTab && "sessionId" in activeTab.content ? activeTab.content.sessionId : sessionId; if (!activeWorkspace || !context || entry.type === "directory") return; if (activeTab?.content.kind === "review" && activeTab.content.source === "turn" && turnReviewFiles.some((file) => file.file === entry.path) || activeTab?.content.kind === "review" && activeTab.content.source === "workspace" && workspaceReviewFiles.some((file) => file.path === entry.path)) dispatch({ type: "select-review-file", tabId: activeTab.id, path: entry.path }); else dispatch({ type: "open-file", sessionId: context, workspaceDir: activeWorkspace, path: entry.path }); }} /> : <p className="webui-workspace-tree-empty">没有匹配的文件。</p> : <p className="webui-workspace-tree-empty">此工作区没有可显示的文件。</p>}
+          {fileTree.workspaceDir !== activeWorkspace || fileTree.loading ? <p role="status">正在加载文件…</p> : fileTree.error ? <FeedbackError message={fileTree.error} /> : fileTree.files.length ? visibleFiles.length ? <FileTree files={visibleFiles} expandedPaths={expandedDirectories} loadingPaths={fileTree.loadingDirectories} directoryErrors={fileTree.directoryErrors} onToggle={toggleWorkspaceDirectory} selectedPath={activeTab?.content.kind === "file-preview" ? selectedFilePath : activeTab?.content.kind === "review" ? selectedReviewPath : undefined} onOpen={(entry) => { const context = activeTab && "sessionId" in activeTab.content ? activeTab.content.sessionId : sessionId; if (!activeWorkspace || !context || entry.type === "directory") return; if (activeTab?.content.kind === "review" && activeTab.content.source === "turn" && turnReviewFiles.some((file) => file.file === entry.path) || activeTab?.content.kind === "review" && activeTab.content.source === "workspace" && workspaceReviewFiles.some((file) => file.path === entry.path)) dispatch({ type: "select-review-file", tabId: activeTab.id, path: entry.path }); else dispatch({ type: "open-file", sessionId: context, workspaceDir: activeWorkspace, path: entry.path }); }} /> : <p className="webui-workspace-tree-empty">没有匹配的文件。</p> : <p className="webui-workspace-tree-empty">此工作区没有可显示的文件。</p>}
         </div>
       </aside> : null}
     </div>

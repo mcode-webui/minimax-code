@@ -36,6 +36,7 @@ import { formatWebuiMessageTimestamp } from "../projection/message-timestamp.js"
 import { toggleWebuiFeedback, copyWebuiMessageText, scheduleWebuiCopiedReset } from "../application/message-feedback.js";
 import type { WebuiCopyDependencies } from "../application/message-feedback.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export function WebuiMessageActionButton({
   testId,
@@ -217,7 +218,7 @@ export function WebuiRewindDialog({
         <section data-testid="rewind-preview-files">
           <h4>受影响的文件改动</h4>
           {loading ? <p>正在检查当前文件…</p> : null}
-          {!loading && error ? <p role="alert">暂时无法读取文件预览，仍可选择仅回退对话。</p> : null}
+          {!loading && error ? <FeedbackError message={<>暂时无法读取文件预览，仍可选择仅回退对话。</>} /> : null}
           {!loading && !error && files.length === 0 ? <p>没有受影响的文件改动。</p> : null}
           {files.map((file) => <div key={`${file.filePath}-${file.action}`} className="webui-rewind-file-row"><span>{file.filePath}</span><span>{file.skipped ? "跳过" : file.action}</span></div>)}
         </section>

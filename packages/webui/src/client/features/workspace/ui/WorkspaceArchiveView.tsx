@@ -14,6 +14,7 @@ import type {
   WebuiWorkspaceArchiveListing,
 } from "../../../../shared/contracts/workspace.js";
 import { archiveDestinationFor, formatArchiveSize } from "../projection/archive-projection.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export type WorkspaceArchiveViewProps = {
   /** Absolute workspace root; every archive path below is relative to it. */
@@ -165,7 +166,7 @@ function ArchiveExtractControls({
           )
         : null}
       {extractState.status === "error"
-        ? <p role="alert" data-testid="workspace-archive-extract-error">{extractState.error}</p>
+        ? <FeedbackError message={extractState.error} testId="workspace-archive-extract-error" />
         : null}
     </div>
   );

@@ -6,7 +6,6 @@ not claim. A number in this document is a number some gate produced.
 **Verdict: the programme is NOT complete.**
 
 It is not complete because:
-- 47 module(s) still carry a pending contract decision;
 - 4 manual accessibility review(s) are still open;
 
 ## What the review found
@@ -14,7 +13,7 @@ It is not complete because:
 | Question | Count |
 | --- | --- |
 | Client UI modules classified | 130 |
-| Modules with a pending contract decision | 47 |
+| Modules with a pending contract decision | 0 |
 | Floating layers inventoried | 21 |
 | Floating layers managed by the coordinator | 20 |
 | Business-authored alerts left (all exempt) | 2 |
@@ -25,68 +24,13 @@ It is not complete because:
 
 ## Every entry still pending, and why
 
-All 47 carry the same reason: the module was classified in #281 and its contract
+All 0 carry the same reason: the module was classified in #281 and its contract
 decision has not been taken yet. They are listed here in full so that nothing is left to
 "and some others".
 
-- **surfaces-and-content** — 5 pending
-- **structure** — 16 pending
-- **overlays** — 1 pending
-- **navigation-and-selection** — 6 pending
-- **foundations** — 1 pending
-- **feedback-and-recovery** — 8 pending
-- **conversation-and-workspace-interaction** — 15 pending
-- **controls-and-form-composition** — 6 pending
 
-<details><summary>The 47 entries</summary>
+<details><summary>The 0 entries</summary>
 
-- `features/account/ui/ConversationUsageBanner.tsx` (surfaces-and-content, feedback-and-recovery)
-- `features/account/ui/UserMenuUsage.tsx` (overlays, surfaces-and-content)
-- `features/browser/ui/BrowserPanelHost.public.tsx` (structure)
-- `features/channel/ui/ChannelConnectPanel.public.tsx` (structure)
-- `features/composer/ui/Composer.tsx` (conversation-and-workspace-interaction)
-- `features/composer/ui/ComposerSubmissionControls.tsx` (controls-and-form-composition, conversation-and-workspace-interaction)
-- `features/composer/ui/QueuePanel.tsx` (structure, conversation-and-workspace-interaction)
-- `features/models/ui/ModelEffortSlider.tsx` (controls-and-form-composition)
-- `features/models/ui/ModelListPanel.tsx` (structure, surfaces-and-content)
-- `features/models/ui/ModelPanel.tsx` (structure)
-- `features/remote-control/ui/RemoteControlPanel.public.tsx` (structure)
-- `features/remote/ui/remote-tabs.tsx` (navigation-and-selection)
-- `features/scheduling/ui/scheduling-editor.tsx` (controls-and-form-composition)
-- `features/sessions/ui/ExternalDeletionDraftNotice.public.tsx` (feedback-and-recovery)
-- `features/sessions/ui/LeftRail.tsx` (navigation-and-selection)
-- `features/sessions/ui/RailRow.tsx` (navigation-and-selection)
-- `features/sessions/ui/SessionRailRegion.tsx` (navigation-and-selection)
-- `features/sessions/ui/project-expansion.tsx` (navigation-and-selection, structure)
-- `features/sessions/ui/session-activity-meta.tsx` (conversation-and-workspace-interaction)
-- `features/settings/ui/UsageHeatmap.tsx` (surfaces-and-content)
-- `features/settings/ui/account-usage-glyphs.tsx` (surfaces-and-content)
-- `features/ssh/ui/ssh-host-form.tsx` (controls-and-form-composition, structure)
-- `features/ssh/ui/ssh-project-form.tsx` (controls-and-form-composition)
-- `features/ssh/ui/ssh-terminal-view.tsx` (structure)
-- `features/transcript/ui/ActivityIndicator.tsx` (feedback-and-recovery, conversation-and-workspace-interaction)
-- `features/transcript/ui/AssistantBody.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/MessageAttachments.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/OutputError.public.tsx` (feedback-and-recovery)
-- `features/transcript/ui/PlanDelivery.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/QuestionnaireResponse.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/Transcript.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/TranscriptPrimitives.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/TranscriptSkeletons.tsx` (feedback-and-recovery, conversation-and-workspace-interaction)
-- `features/transcript/ui/TurnNavigator.tsx` (navigation-and-selection, conversation-and-workspace-interaction)
-- `features/transcript/ui/markdown.public.tsx` (conversation-and-workspace-interaction)
-- `features/transcript/ui/webui-mermaid.tsx` (conversation-and-workspace-interaction)
-- `features/workspace/ui/WorkspacePanelControls.tsx` (controls-and-form-composition, structure)
-- `shell/ArchonPage.tsx` (structure)
-- `shell/ArchonShell.tsx` (structure)
-- `shell/ConnectionStatus.tsx` (feedback-and-recovery)
-- `shell/ConversationSurface.tsx` (structure)
-- `shell/NotFound.tsx` (structure)
-- `shell/StartupFallback.tsx` (feedback-and-recovery)
-- `shell/WebuiClientFoundationApp.tsx` (structure)
-- `shell/WebuiErrorBoundary.tsx` (feedback-and-recovery)
-- `shell/WebuiZoneBoundary.tsx` (structure)
-- `shell/icons.tsx` (foundations)
 
 </details>
 
@@ -127,14 +71,6 @@ Not verified by any browser check:
 
 ## Families whose contract is still partly a business's own
 
-- **surfaces-and-content** — 5 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **structure** — 16 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **overlays** — 1 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **navigation-and-selection** — 6 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **foundations** — 1 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **feedback-and-recovery** — 8 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **conversation-and-workspace-interaction** — 15 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
-- **controls-and-form-composition** — 6 module(s) inside the family have not been decided about, so the family's contract is declared but not adopted by everything in it.
 
 ## What was verified separately
 

@@ -22,7 +22,8 @@
         "surfaces-and-content",
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the cloud-quota banner: it states a business fact about quota, not a failure or an empty collection"
     },
     {
       "path": "features/account/ui/UserMenu.tsx",
@@ -50,7 +51,8 @@
         "overlays",
         "surfaces-and-content"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the account menu's quota fly-out: it borrows the shared surface for its look and is dismissed by the menu that owns it"
     },
     {
       "path": "features/browser/ui/BrowserAuthorizationSwitches.public.tsx",
@@ -77,7 +79,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "host for the browser panel: it mounts the owner's surface and renders none itself"
     },
     {
       "path": "features/browser/ui/BrowserSettingsPage.public.tsx",
@@ -96,7 +99,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the \u63a5\u5165 IM pane: it composes the channel's own sections and rows, none of which is a page, panel or feedback surface"
     },
     {
       "path": "features/composer/ui/Composer.tsx",
@@ -105,7 +109,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "layout wrapper: it arranges the composer's parts and renders no surface of its own"
     },
     {
       "path": "features/composer/ui/ComposerEditorStaging.tsx",
@@ -155,7 +160,8 @@
         "controls-and-form-composition",
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the toolbar's mode pills and the send-or-stop button: controls, not fields, and the conversation family owns the composer's toolbar"
     },
     {
       "path": "features/composer/ui/ContextUsageIndicator.tsx",
@@ -175,7 +181,8 @@
         "structure",
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the queued-turn list shown inside the composer: part of the conversation surface (ADR 0022), not a page or a feedback surface"
     },
     {
       "path": "features/composer/ui/WebuiComposer.tsx",
@@ -278,7 +285,8 @@
       "families": [
         "controls-and-form-composition"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the thinking scale: a control whose values are a model's reasoning levels, which no shared control expresses"
     },
     {
       "path": "features/models/ui/ModelListPanel.tsx",
@@ -288,7 +296,8 @@
         "structure",
         "surfaces-and-content"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the picker's catalogue state: it renders the provider-grouped list the picker owns, not a generic list contract"
     },
     {
       "path": "features/models/ui/ModelPanel.tsx",
@@ -297,7 +306,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the picker's first state: the model in use and its scale, shaped by the model catalogue"
     },
     {
       "path": "features/models/ui/ModelPicker.public.tsx",
@@ -400,7 +410,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the \u8fdc\u7a0b\u63a7\u5236 tab body: it renders the remote control's own layout, which ADR 0025 keeps with the remote feature"
     },
     {
       "path": "features/remote/ui/RemotePage.public.tsx",
@@ -418,7 +429,8 @@
       "families": [
         "navigation-and-selection"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "renders the \u8fdc\u7a0b page's bodies and switches between them; the bodies own their surfaces"
     },
     {
       "path": "features/review/ui/ReviewSettingsPage.public.tsx",
@@ -446,7 +458,8 @@
       "families": [
         "controls-and-form-composition"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the scheduled-task editor: it renders one task's fields and history, shaped by the schedule's model"
     },
     {
       "path": "features/sessions/ui/ExternalDeletionDraftNotice.public.tsx",
@@ -455,7 +468,8 @@
       "families": [
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "a notice about one session's fate, rendered where that session was: it is a state of the rail, not a feedback surface"
     },
     {
       "path": "features/sessions/ui/LeftRail.tsx",
@@ -464,7 +478,8 @@
       "families": [
         "navigation-and-selection"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the rail's column: it arranges the rail's regions and owns no surface of its own"
     },
     {
       "path": "features/sessions/ui/ProjectList.tsx",
@@ -483,7 +498,8 @@
       "families": [
         "navigation-and-selection"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "one rail row: a row is the navigation family's own leaf here, shaped by what it lists"
     },
     {
       "path": "features/sessions/ui/SessionRail.tsx",
@@ -504,7 +520,8 @@
       "families": [
         "navigation-and-selection"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the session rail region: it composes the rail's list, groups and menus and owns the rail's own layout"
     },
     {
       "path": "features/sessions/ui/project-expansion.tsx",
@@ -514,7 +531,8 @@
         "navigation-and-selection",
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "a projection extracted from the session rail: expansion state, no markup of its own"
     },
     {
       "path": "features/sessions/ui/rail-context-menu.tsx",
@@ -536,7 +554,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "a projection extracted from the session rail: the activity line's data, no surface"
     },
     {
       "path": "features/settings/ui/AccountUsageSettings.tsx",
@@ -619,7 +638,8 @@
       "families": [
         "surfaces-and-content"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the usage heat map: a data visualisation whose geometry is its content"
     },
     {
       "path": "features/settings/ui/UsageModelSettings.tsx",
@@ -655,7 +675,8 @@
       "families": [
         "surfaces-and-content"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "the account page's icon set; icons are the foundations vocabulary, not a surface"
     },
     {
       "path": "features/settings/ui/account-usage-share-image.ts",
@@ -693,7 +714,8 @@
         "controls-and-form-composition",
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "an implicit label that wraps its own control: the association already exists in the markup, and these fields carry no description or error for the field contract to place"
     },
     {
       "path": "features/ssh/ui/ssh-project-form.tsx",
@@ -702,7 +724,8 @@
       "families": [
         "controls-and-form-composition"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the host picker is a `<select>` inside its own label: the association is in the markup, and no description or error is shown beside it"
     },
     {
       "path": "features/ssh/ui/ssh-terminal-view.tsx",
@@ -711,7 +734,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "a terminal: it owns every pixel of its viewport and scrollback, which no shared frame can express"
     },
     {
       "path": "features/transcript/ui/ActivityIndicator.tsx",
@@ -721,7 +745,8 @@
         "feedback-and-recovery",
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the conversation's own thinking pulse: the feedback family's busy indicator would put a generic spinner where the transcript shows its own rhythm"
     },
     {
       "path": "features/transcript/ui/AssistantBody.tsx",
@@ -730,7 +755,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "renders an assistant message's content (text, diffs, widgets); ADR 0022 keeps the transcript's body layout with the conversation family"
     },
     {
       "path": "features/transcript/ui/DiffCard.tsx",
@@ -757,7 +783,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "renders the attachments under an assistant message as part of that message, inside the conversation family's layout"
     },
     {
       "path": "features/transcript/ui/MessageItem.tsx",
@@ -775,7 +802,8 @@
       "families": [
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "an error footer inside the last assistant turn: it is part of the message, not a surface that reports its own failure"
     },
     {
       "path": "features/transcript/ui/PlanDelivery.tsx",
@@ -784,7 +812,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the transcript's plan-delivery card: a message-shaped surface owned by the conversation family"
     },
     {
       "path": "features/transcript/ui/QuestionnaireResponse.tsx",
@@ -793,7 +822,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "a historical questionnaire answer rendered as a message; it is content, not a live control"
     },
     {
       "path": "features/transcript/ui/SessionTranscript.tsx",
@@ -811,7 +841,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "layout wrapper: the real transcript is `WebuiSessionTranscript`, which owns the rendering"
     },
     {
       "path": "features/transcript/ui/TranscriptPrimitives.tsx",
@@ -820,7 +851,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the transcript's presentation leaves; they exist precisely because the conversation family keeps its own markup"
     },
     {
       "path": "features/transcript/ui/TranscriptSkeletons.tsx",
@@ -830,7 +862,8 @@
         "feedback-and-recovery",
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the transcript's first-paint placeholder, shaped like a message rather than like a generic skeleton"
     },
     {
       "path": "features/transcript/ui/TurnNavigator.tsx",
@@ -840,7 +873,8 @@
         "navigation-and-selection",
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the transcript's turn tick strip and hover preview: navigation that belongs to the conversation's own geometry"
     },
     {
       "path": "features/transcript/ui/markdown.public.tsx",
@@ -849,7 +883,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "markdown rendering for message content; it has no surface of its own and no family contract to adopt"
     },
     {
       "path": "features/transcript/ui/webui-mermaid.tsx",
@@ -858,7 +893,8 @@
       "families": [
         "conversation-and-workspace-interaction"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "mermaid rendering for message content, inside the conversation family's layout"
     },
     {
       "path": "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx",
@@ -935,7 +971,8 @@
         "controls-and-form-composition",
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the workspace panel's own control strip: it is part of the panel's header, not a page or panel frame"
     },
     {
       "path": "features/workspace/ui/WorkspacePanels.tsx",
@@ -963,7 +1000,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the application root's page: it composes the shell's regions and owns the client's frame (ADR 0016)"
     },
     {
       "path": "shell/ArchonShell.tsx",
@@ -972,7 +1010,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "layout wrapper: the two-column shell is assembled inline in the application root"
     },
     {
       "path": "shell/ConnectionStatus.tsx",
@@ -981,7 +1020,8 @@
       "families": [
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the shell's connection indicator: it reports transport state, which the feedback family has no contract for"
     },
     {
       "path": "shell/ConversationSurface.tsx",
@@ -990,7 +1030,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the shell's conversation column: it arranges the transcript, composer and panels (ADR 0016)"
     },
     {
       "path": "shell/NotFound.tsx",
@@ -999,7 +1040,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the client's not-found page: a route outcome, rendered once, outside every business surface"
     },
     {
       "path": "shell/StartupFallback.tsx",
@@ -1008,7 +1050,8 @@
       "families": [
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "renders when the client never mounted: it must not depend on the family that failed to mount"
     },
     {
       "path": "shell/WebuiClientFoundationApp.tsx",
@@ -1017,7 +1060,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the shell itself: rail, main column and session wiring (ADR 0016)"
     },
     {
       "path": "shell/WebuiErrorBoundary.tsx",
@@ -1026,7 +1070,8 @@
       "families": [
         "feedback-and-recovery"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "the last-resort boundary: it must not depend on the family that threw"
     },
     {
       "path": "shell/WebuiZoneBoundary.tsx",
@@ -1035,7 +1080,8 @@
       "families": [
         "structure"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "business-exception",
+      "reason": "a zone boundary: it catches a region's failure and reports it in place, shaped to that zone"
     },
     {
       "path": "shell/icons.tsx",
@@ -1044,7 +1090,8 @@
       "families": [
         "foundations"
       ],
-      "disposition": "pending-contract-decision"
+      "disposition": "composition",
+      "reason": "the shared icon vocabulary itself: it is the foundations asset every other module reads"
     },
     {
       "path": "shell/use-new-task-workspace.ts",

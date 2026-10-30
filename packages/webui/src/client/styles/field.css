@@ -14,8 +14,12 @@
   min-width: 0;
 }
 
+/* The field owns the arrangement and not a failing colour. `inherit` was wrong in
+ * practice: inside the provider dialog the row's colour is a secondary token that
+ * measures under the threshold in the dark theme, so a label that inherited it
+ * inherited the failure. The primary text token is the one every surface proves. */
 .webui-field-label {
-  color: var(--text_default_secondary);
+  color: var(--text_default_primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
@@ -25,8 +29,11 @@
   color: var(--text_status_error);
 }
 
+/* The surface's own text colour: `--text_default_secondary` measures under the
+ * threshold on the dialog background in the dark theme, and a field that ships
+ * its own failing colour would be the contract making a surface worse. */
 .webui-field-description {
-  color: var(--text_default_tertiary);
+  color: var(--text_default_primary);
   font-size: 12px;
   line-height: 16px;
 }

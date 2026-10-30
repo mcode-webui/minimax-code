@@ -784,11 +784,8 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       return;
     }
     const baseline = compareBaseline(loadBaseline().findings ?? [], unreviewed);
-    expect(
-      baseline.newFindings,
-      "accessibility findings that are not in the recorded debt",
-    ).toEqual([]);
-    expect(baseline.staleEntries, "recorded findings that have gone; delete them").toEqual([]);
+    // The report is printed before the assertions, so a failing run carries the
+    // evidence of what it found instead of only the fact that it failed.
     const report_ = formatReport({
       scanned: scannedStates.size,
       findings,
@@ -797,6 +794,11 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       incomplete,
       review: dispositions,
     });
+    expect(
+      baseline.newFindings,
+      `accessibility findings that are not in the recorded debt\n${report_}`,
+    ).toEqual([]);
+    expect(baseline.staleEntries, "recorded findings that have gone; delete them").toEqual([]);
     // The report states what the scan cannot decide; it is printed on every run,
     // pass or fail, because a clean scan is not a finding of accessibility.
     console.log(report_);

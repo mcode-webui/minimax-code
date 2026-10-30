@@ -392,7 +392,7 @@ export function MemoryManagerDialog({
           <button
             type="button"
             data-testid="agent-memory-retry"
-            className="webui-mavis-button webui-mavis-button-gray"
+            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
             disabled={loading}
             onClick={() => void load(getAgentMemory)}
           >
@@ -409,13 +409,13 @@ export function MemoryManagerDialog({
             {formatMemoryTimestamp(updatedAt)}
           </span>
           <div className="webui-memory-manager-actions">
-            <button type="button" className="webui-mavis-button webui-mavis-button-gray" onClick={onClose}>
+            <button type="button" className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray" onClick={onClose}>
               取消
             </button>
             <button
               type="button"
               data-testid="agent-memory-save"
-              className="webui-mavis-button webui-mavis-button-black"
+              className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-black"
               disabled={!saveable || !setAgentMemory}
               onClick={() => void save()}
             >
@@ -486,7 +486,7 @@ export function MemoryManagerDialog({
         <div className="webui-memory-confirm-actions">
           <button
             type="button"
-            className="webui-mavis-button webui-mavis-button-gray"
+            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
             data-testid="agent-memory-delete-cancel"
             onClick={() => setConfirmingDelete(false)}
           >
@@ -494,7 +494,7 @@ export function MemoryManagerDialog({
           </button>
           <button
             type="button"
-            className="webui-mavis-button webui-mavis-button-danger"
+            className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-danger"
             data-testid="agent-memory-delete-confirm-button"
             disabled={saving}
             onClick={() => void remove()}

@@ -147,7 +147,7 @@ export function GlobalInstructionsSection({
         <button
           type="button"
           data-testid="global-instructions-save"
-          className="webui-mavis-button webui-mavis-button-black webui-section-save-button"
+          className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-black webui-section-save-button"
           disabled={!dirty || saving || overLimit || !setGlobalInstructions}
           onClick={() => void save()}
         >

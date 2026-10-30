@@ -152,7 +152,7 @@ export function MemorySection({
         <button
           type="button"
           data-testid="agent-memory-load"
-          className="webui-mavis-button webui-mavis-button-gray"
+          className="webui-mavis-button webui-mavis-button-regular webui-mavis-button-gray"
           disabled={!getAgentMemory || !setAgentMemory}
           onClick={() => setManaging((open) => !open)}
         >

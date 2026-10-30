@@ -38,7 +38,7 @@ const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
 };
 
 const SIZE_CLASS: Record<WebuiButtonSize, string> = {
-  regular: "",
+  regular: "webui-mavis-button-regular",
   compact: "webui-mavis-button-compact",
   header: "webui-mavis-button-header",
 };

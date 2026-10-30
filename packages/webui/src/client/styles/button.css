@@ -16,14 +16,23 @@
  * and the design-token test already assert them.
  */
 
+/* The base states structure and nothing else: no width, no height, no padding.
+ * A caller's layout decides how much room a button takes, and the size classes
+ * below are the three the client actually needs. A base that fixed a width would
+ * be a floor no caller's layout could satisfy. */
 .webui-mavis-button {
-  min-width: 80px;
-  height: 36px;
   border: 0;
   border-radius: var(--radius_8);
+  font-weight: var(--weight_medium);
+  cursor: pointer;
+}
+
+/* The default size: the standalone action. */
+.webui-mavis-button-regular {
+  min-width: 80px;
+  height: 36px;
   padding: 0 var(--spacing_12);
   font-size: var(--size_14);
-  font-weight: var(--weight_medium);
 }
 
 .webui-mavis-button-gray {
@@ -129,6 +138,9 @@
   padding: 0 var(--spacing_8);
   font-size: var(--size_12);
 }
+
+/* A size class replaces the default one rather than fighting it: the sizes are
+ * mutually exclusive, and a caller that states `compact` states it alone. */
 
 /* The settings header's action size. The account page's 分享 sits in the header
  * next to the title, the way the Desktop puts it in the top-right of its account

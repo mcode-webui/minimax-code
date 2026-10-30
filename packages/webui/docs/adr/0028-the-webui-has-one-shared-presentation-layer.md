@@ -81,6 +81,10 @@ an idle-state screenshot cannot see a missing indicator.
 
 ## Overlay coordination
 
+Here *overlay* means a floating layer above the page — a popup, a menu, a dialog or a
+tooltip. The glossary gives the word a second meaning, the durable pin the browser stores;
+that is a different thing and is not what this section coordinates.
+
 The client's overlays are not one topology — some portal into `document.body`, some render inline
 inside the app tree, and some files render both — and several features run independent Escape
 listeners, so the client needs one coordination order rather than one per surface.

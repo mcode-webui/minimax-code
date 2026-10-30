@@ -150,7 +150,7 @@ export function SettingsDialog({
         {variant === "preview" ? null : (
           <header className="webui-settings-dialog-header">
             <h3>{title}</h3>
-            <button type="button" aria-label="关闭" onClick={onClose}>
+            <button type="button" aria-label="关闭" className="webui-settings-dialog-close" onClick={onClose}>
               ×
             </button>
           </header>

@@ -1,24 +1,6 @@
 {
-  "comment": "Raw form-control selectors still present in a feature stylesheet, per file. `pnpm check:webui-presentation`-style ratchet: a new selector fails, and an entry that no longer exists fails too, so this list only shrinks. The shared button family moved to client/styles/button.css, which is why the settings stylesheet no longer declares it.",
+  "comment": "Raw form-control selectors in a feature stylesheet, per file. The ratchet fails on a new selector and on a recorded selector that has gone, so the list can only shrink. The settings stylesheet is empty: its button family lives in client/styles/button.css and every remaining control it places is addressed by a named class. The list stays because the next surface's migration needs a place to record what it has left.",
   "files": {
-    "packages/webui/src/client/features/settings/ui/settings.css": [
-      ".webui-account-login-header button",
-      ".webui-ant-select select",
-      ".webui-ant-select select:disabled",
-      ".webui-archived-search input",
-      ".webui-archived-search input::placeholder",
-      ".webui-memory-manager-menu button",
-      ".webui-memory-manager-menu button.is-danger",
-      ".webui-memory-manager-menu button:disabled",
-      ".webui-memory-manager-menu button:hover:not(:disabled)",
-      ".webui-review-search input",
-      ".webui-segmented button",
-      ".webui-segmented button.is-selected",
-      ".webui-settings-dialog-header button",
-      ".webui-settings-dialog-header button:focus-visible",
-      ".webui-settings-dialog-header button:hover",
-      ".webui-settings-search button",
-      ".webui-settings-search input"
-    ]
+    "packages/webui/src/client/features/settings/ui/settings.css": []
   }
 }

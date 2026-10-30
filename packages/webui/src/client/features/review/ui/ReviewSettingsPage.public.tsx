@@ -267,6 +267,7 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
     {state.status === "ready" ? <div className="webui-review-search">
       <SearchIcon />
       <input
+        className="webui-review-search-field"
         aria-label="在变更里搜索"
         placeholder="在变更里搜索"
         data-testid="review-search-input"

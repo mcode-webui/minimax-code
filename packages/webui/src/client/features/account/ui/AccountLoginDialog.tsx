@@ -57,6 +57,7 @@ export function AccountLoginPanel({
         <button
           type="button"
           aria-label="关闭登录"
+          className="webui-account-login-close"
           data-testid="account-login-close"
           onClick={onClose}
         >

@@ -328,7 +328,7 @@ export function MemoryManagerDialog({
               ); }}
             >
               {onCreateInSession ? (
-                <button type="button" role="menuitem" data-testid="agent-memory-create-in-session" onClick={handoff}>
+                <button type="button" role="menuitem" className="webui-memory-manager-menu-item" data-testid="agent-memory-create-in-session" onClick={handoff}>
                   <IconMessageCirclePlus aria-hidden="true" size={14} stroke={1.7} className="webui-memory-manager-menu-icon" />
                   在会话中创建
                 </button>
@@ -337,7 +337,7 @@ export function MemoryManagerDialog({
                 type="button"
                 role="menuitem"
                 data-testid="agent-memory-delete"
-                className="is-danger"
+                className="webui-memory-manager-menu-item is-danger"
                 disabled={!setAgentMemory || draft === undefined}
                 onClick={() => {
                   // Shed the menu as it opens the confirmation: leaving it up

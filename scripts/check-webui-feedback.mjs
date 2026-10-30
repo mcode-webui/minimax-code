@@ -26,6 +26,18 @@ const budgetPath = path.join(repoRoot, "scripts/lib/webui-feedback-budget.json")
 /** The shared layer itself is where these are allowed, and where nothing else is. */
 const ALLOWED = new Set(["ui/feedback.tsx", "ui/field.tsx", "ui/content-page.tsx"]);
 
+/**
+ * Surfaces that must keep their own alert, with the reason.
+ *
+ * Both render when the client has already failed: the boundary catches a render
+ * error, the fallback renders when the app never mounted. Reaching for the shared
+ * family from there would make the last resort depend on the thing that broke.
+ */
+const EXEMPT = {
+  "shell/WebuiErrorBoundary.tsx": "the last-resort boundary around the whole client",
+  "shell/StartupFallback.tsx": "renders when the client never mounted",
+};
+
 /** How many places in one source author an alert or a busy status. */
 export function scanSource(text) {
   return (text.match(/role="alert"/gu) ?? []).length;
@@ -44,6 +56,17 @@ export function compareFeedback(scanned, budget) {
 
   for (const file of [...files].sort()) {
     if (ALLOWED.has(file)) continue;
+    // An exemption is a surface that must not depend on the family: the shell's
+    // error boundary and startup fallback render when the client itself failed, so
+    // they carry their own alert on purpose. Exempt does not mean free — the count
+    // still may not grow.
+    const exemption = budget.exempt?.[file];
+    if (exemption !== undefined) {
+      const count = scanned[file] ?? 0;
+      const allowed = budget.files?.[file] ?? 0;
+      if (count > allowed) problems.push(`${file}: ${count} alert(s), exempted at ${allowed} — an exemption is not room to grow`);
+      continue;
+    }
     const count = scanned[file] ?? 0;
     const recorded = budget.files?.[file] ?? 0;
 
@@ -75,12 +98,15 @@ async function main() {
   const scanned = await scanClient();
 
   if (write) {
+    // Exempt files stay in the list with the count they are allowed: an exemption
+    // that allowed nothing would be indistinguishable from a mistake.
     const files = Object.fromEntries(Object.entries(scanned).sort(([a], [b]) => a.localeCompare(b)));
     const total = Object.values(files).reduce((sum, count) => sum + count, 0);
     const payload = {
       $comment:
         "Business sources that still author their own role=\"alert\". The count may only go down: `pnpm check:webui-feedback` fails when a file starts authoring one, and when a migration lands without lowering the entry. Regenerate with --write after a migration.",
       total,
+      exempt: EXEMPT,
       files,
     };
     const { writeFileSync } = await import("node:fs");

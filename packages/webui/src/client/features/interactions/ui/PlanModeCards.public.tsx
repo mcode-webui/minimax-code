@@ -28,6 +28,7 @@ import {
 import type {
   WebuiQuestionnaireRequest,
 } from "../../../../shared/contracts/interactions.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 /** Shared busy/error plumbing for every plan surface. */
 export interface WebuiPlanCardChrome {
@@ -38,9 +39,7 @@ export interface WebuiPlanCardChrome {
 function PlanCardError({ error }: { readonly error?: string }): ReactElement | null {
   if (!error) return null;
   return (
-    <p className="webui-plan-card-error" role="alert">
-      {error}
-    </p>
+    <FeedbackError message={error} className="webui-plan-card-error" />
   );
 }
 

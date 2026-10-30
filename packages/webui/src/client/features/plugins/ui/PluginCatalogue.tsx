@@ -28,7 +28,7 @@ import type {
 } from "../contracts/plugin-actions.js";
 import { MiniAppAppsList } from "../../miniapp/ui/MiniAppAppsList.public.js";
 import { useWebuiMiniAppCatalogueSummary } from "../../miniapp/bindings/use-miniapp-catalogue.public.js";
-import { FeedbackBusy } from "../../../ui/feedback.js";
+import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
 
 type Area = "plugins" | "skills" | "apps" | "mcp" | "agents";
 type PluginCatalogueSelection = {
@@ -457,11 +457,7 @@ export function PluginCatalogue({
       {area === "plugins" && view === "personal" && !managementOpen ? (
         <h2 className="webui-plugin-market-heading">插件</h2>
       ) : null}
-      {error ? (
-        <p role="alert" className="webui-plugin-error">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FeedbackError message={error} testId="plugin-catalogue-error" /> : null}
       {busy ? (
         <FeedbackBusy label="加载中…" />
       ) : area === "agents" ? (

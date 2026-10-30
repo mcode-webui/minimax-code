@@ -56,15 +56,23 @@ export function FeedbackError({
   action,
   id,
   testId,
+  className,
 }: {
   readonly message: ReactNode;
   readonly action?: ReactNode;
   /** The id a control associates with `aria-describedby`. */
   readonly id?: string;
   readonly testId?: string;
+  /** The surface's own classes, for a place whose error has its own chrome. */
+  readonly className?: string;
 }): ReactElement {
   return (
-    <div className="webui-feedback webui-feedback--error" role="alert" id={id} data-testid={testId}>
+    <div
+      className={`webui-feedback webui-feedback--error${className ? ` ${className}` : ""}`}
+      role="alert"
+      id={id}
+      data-testid={testId}
+    >
       <p className="webui-feedback-title">{message}</p>
       {action === undefined ? null : <div className="webui-feedback-action">{action}</div>}
     </div>

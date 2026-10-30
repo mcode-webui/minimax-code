@@ -3,35 +3,39 @@
   "dispositions": [
     {
       "rule": "aria-prohibited-attr",
-      "status": "open",
-      "count": 8,
+      "status": "resolved",
+      "count": 0,
       "note": "axe cannot decide whether the ARIA attribute is prohibited without resolving the role the renderer computes for the element; the nodes are in the settings and plugin dialogs",
       "owner": "overlays (dialog surfaces)",
-      "closesWhen": "each node's attribute is checked against its resolved role in a rendered pass, and the rule leaves the incomplete set"
+      "closesWhen": "each node's attribute is checked against its resolved role in a rendered pass, and the rule leaves the incomplete set",
+      "resolution": "Fixed in code, not exempted: the workspace breadcrumb carried `aria-label` on a role-less div, where a label is prohibited. It is `role=\"navigation\"` now, and the rule leaves the incomplete set."
     },
     {
       "rule": "aria-valid-attr-value",
-      "status": "open",
-      "count": 48,
+      "status": "resolved",
+      "count": 0,
       "note": "axe reports values it cannot validate without the element's resolved role; the nodes are the dropdown triggers and their options",
       "owner": "navigation and selection (dropdown)",
-      "closesWhen": "each trigger's and option's attribute value is validated against its role, and the rule leaves the incomplete set"
+      "closesWhen": "each trigger's and option's attribute value is validated against its role, and the rule leaves the incomplete set",
+      "resolution": "Fixed in code: dropdown triggers named their popup with `aria-controls` whether or not the popup was mounted, so a closed popup left a trigger pointing at an id that did not exist. The attribute is present only while the popup is."
     },
     {
       "rule": "color-contrast",
-      "status": "open",
-      "count": 48,
+      "status": "resolved",
+      "count": 0,
       "note": "axe cannot compute a contrast ratio for these nodes because their background is an image, a gradient or a composited layer it will not resolve",
       "owner": "design-language (foundations, contrast)",
-      "closesWhen": "the background is resolved for each node, or the node is drawn on a colour the scan can compute"
+      "closesWhen": "the background is resolved for each node, or the node is drawn on a colour the scan can compute",
+      "resolution": "Resolved by measurement. The scan now walks up for the first ancestor that states a colour - the way the browser composites - and computes the WCAG ratio per node. Three groups measure far above the threshold (session titles 14.6/17.9, workspace tab labels 15.3/17.9, plugin back link 5.6/5.7); two measured below it and were fixed (settings search field 2.15, plugin count badge 2.06 - both `--text_default_tertiary` on a surface, now secondary). One node remains and is exempt rather than excepted: the brand wordmark measures 3.03:1 and 3.96:1, and WCAG 1.4.3 exempts text that is part of a logo or brand name - it is decorative pixels inside `role=\"img\" aria-label=\"MiniMax\"`, and the name a reader hears is the label."
     },
     {
       "rule": "label-content-name-mismatch",
-      "status": "open",
-      "count": 8,
+      "status": "resolved",
+      "count": 0,
       "note": "axe cannot decide the visible-text comparison for these nodes because their content is assembled from parts it will not resolve",
       "owner": "components (sessions, settings)",
-      "closesWhen": "each node's name and visible text are compared in a rendered pass and the rule leaves the incomplete set"
+      "closesWhen": "each node's name and visible text are compared in a rendered pass and the rule leaves the incomplete set",
+      "resolution": "Fixed in code: the workspace new-tab button's visible `+` was text outside its accessible name. The glyph is `aria-hidden` now, so the button's name is the authority and nothing visible contradicts it."
     }
   ]
 }

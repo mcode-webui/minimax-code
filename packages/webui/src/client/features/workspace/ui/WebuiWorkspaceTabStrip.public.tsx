@@ -354,7 +354,9 @@ export function WebuiWorkspaceTabStrip({
         data-testid="workspace-add-tab"
         onClick={() => dispatch({ type: "open-new-tab" })}
       >
-        +
+        {/* The glyph is decoration inside a button that already has a name; leaving
+            it readable made the visible text disagree with that name. */}
+        <span aria-hidden="true">+</span>
       </button>
     </div>
   );

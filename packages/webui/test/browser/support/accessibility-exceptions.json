@@ -230,7 +230,7 @@
       "rule": "target-size",
       "surface": "*",
       "state": "*",
-      "target": "\u67e5\u770b\u6587\u4ef6 \u5173\u95ed",
+      "target": "查看文件 关闭",
       "reason": "a control wears the shared tokens of its family; the reason recorded for the family applies here",
       "owner": "design-language (foundations)",
       "removalCondition": "removed when the token or the control geometry meets the rule and the scan finds it clean"

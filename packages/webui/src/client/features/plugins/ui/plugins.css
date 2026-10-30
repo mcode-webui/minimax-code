@@ -260,7 +260,8 @@
   }
   .webui-plugin-count {
     margin-left: 6px;
-    color: var(--text_default_tertiary);
+    /* A count is text, so it is held to 4.5:1; tertiary measured 2.06:1 here. */
+    color: var(--text_default_secondary);
   }
   .webui-plugin-category-filter {
     max-width: 960px;

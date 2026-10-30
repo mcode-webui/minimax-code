@@ -711,25 +711,28 @@ test.describe("rendering integrity of the migrated surfaces", () => {
             // ancestor that states one. The ratio is logged so the manual review
             // is written from a measurement.
             if (process.env.DUMP_INCOMPLETE && entry.rule === "color-contrast") {
-              const measured = await page.evaluate(
-                ([selectors, source]) => {
-                  // The measurement runs in the page, so the function travels as
-                  // source: it is pure DOM and this keeps one implementation.
-                  const measure = new Function(`return (${source})`)();
-                  const element = selectors
-                    .map((selector) => {
+              for (const node of entry.nodes) {
+                const measured = await page.evaluate(
+                  ([selectors, source]) => {
+                    // The measurement runs in the page, so the function travels as
+                    // source: it is pure DOM and this keeps one implementation.
+                    const measure = new Function(`return (${source})`)();
+                    for (const selector of selectors) {
                       try {
-                        return document.querySelector(selector);
+                        const element = document.querySelector(selector);
+                        if (element) return measure(element);
                       } catch {
-                        return null;
+                        // A generated selector can stop matching between runs.
                       }
-                    })
-                    .find(Boolean);
-                  return element ? measure(element) : null;
-                },
-                [entry.nodes.flatMap((node) => node.selectors ?? []), contrastOf.toString()],
-              );
-              console.log(`CONTRAST\t${surface.id}/${state.id}/${theme}\t${JSON.stringify(measured)}`);
+                    }
+                    return null;
+                  },
+                  [node.selectors ?? [], contrastOf.toString()],
+                );
+                console.log(
+                  `CONTRAST\t${surface.id}/${state.id}/${theme}\t${node.html ?? node.stable}\t${JSON.stringify(measured)}`,
+                );
+              }
             }
           }
           scannedStates.add(key);

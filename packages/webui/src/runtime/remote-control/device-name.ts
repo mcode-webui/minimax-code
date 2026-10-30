@@ -1,6 +1,6 @@
 // The name this machine gives the gateway and shows in the panel.
 //
-// The format is `<hostname>-<OS>` (`fectivnfy-GTi-Ubuntu`), so that machines
+// The format is `<hostname>-<OS>` (`demo-host-Ubuntu`), so that machines
 // sharing a hostname stay distinguishable in the paired-device list — a host and
 // a container beside it, the same laptop booted into another system.
 //
@@ -22,7 +22,7 @@ let cachedOsName: string | undefined;
  */
 const WEBUI_DEVICE_SUFFIX = ".WEBUI";
 
-/** `<hostname>-<OS>.WEBUI`, e.g. `fectivnfy-GTi-Ubuntu.WEBUI`. */
+/** `<hostname>-<OS>.WEBUI`, e.g. `demo-host-Ubuntu.WEBUI`. */
 export function remoteControlDeviceName(): string {
   return composeDeviceName(hostname(), operatingSystemName());
 }

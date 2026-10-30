@@ -13,8 +13,8 @@ import {
 } from "../../src/runtime/remote-control/device-name.js";
 
 test("设备名是 主机名-系统名.WEBUI", () => {
-  assert.equal(composeDeviceName("fectivnfy-GTi", "Ubuntu"), "fectivnfy-GTi-Ubuntu.WEBUI");
-  assert.equal(composeDeviceName("fectivnfy-GTi", "Linux"), "fectivnfy-GTi-Linux.WEBUI");
+  assert.equal(composeDeviceName("demo-host", "Ubuntu"), "demo-host-Ubuntu.WEBUI");
+  assert.equal(composeDeviceName("demo-host", "Linux"), "demo-host-Linux.WEBUI");
   assert.equal(composeDeviceName("macbook", "macOS"), "macbook-macOS.WEBUI");
   assert.equal(composeDeviceName("desk", "Windows"), "desk-Windows.WEBUI");
 });
@@ -22,18 +22,18 @@ test("设备名是 主机名-系统名.WEBUI", () => {
 test("没有主机名时退回 this computer，没有系统名时只留主机名，后缀照旧", () => {
   assert.equal(composeDeviceName("", "Ubuntu"), "this computer-Ubuntu.WEBUI");
   assert.equal(composeDeviceName("   ", undefined), "this computer.WEBUI");
-  assert.equal(composeDeviceName("fectivnfy-GTi", undefined), "fectivnfy-GTi.WEBUI");
+  assert.equal(composeDeviceName("demo-host", undefined), "demo-host.WEBUI");
 });
 
 test("主机名已经带系统名时不重复拼一次，也没有第二个后缀", () => {
   assert.equal(
-    composeDeviceName("fectivnfy-GTi-Ubuntu", "Ubuntu"),
-    "fectivnfy-GTi-Ubuntu.WEBUI",
+    composeDeviceName("demo-host-Ubuntu", "Ubuntu"),
+    "demo-host-Ubuntu.WEBUI",
   );
-  assert.equal(composeDeviceName("fectivnfy-GTi-ubuntu", "Ubuntu"), "fectivnfy-GTi-ubuntu.WEBUI");
+  assert.equal(composeDeviceName("demo-host-ubuntu", "Ubuntu"), "demo-host-ubuntu.WEBUI");
   assert.equal(
-    composeDeviceName("fectivnfy-GTi-Ubuntu.WEBUI", "Ubuntu"),
-    "fectivnfy-GTi-Ubuntu.WEBUI",
+    composeDeviceName("demo-host-Ubuntu.WEBUI", "Ubuntu"),
+    "demo-host-Ubuntu.WEBUI",
   );
   // 后缀大小写不同也算已带后缀，规范化成 `.WEBUI` 而不是再加一个。
   assert.equal(composeDeviceName("box.webui", undefined), "box.WEBUI");

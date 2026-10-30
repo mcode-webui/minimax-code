@@ -197,6 +197,53 @@ contract.
   `katex/contrib/auto-render` must not be introduced, and the KaTeX stylesheet must keep arriving
   through the single compiled entry rather than a second link.
 
+## Shared controls
+
+- **The WebUI has one shared presentation layer** at `src/client/ui/`, and ADR 0016 retained it
+  deliberately. [ADR 0028](../adr/0028-the-webui-has-one-shared-presentation-layer.md) decides its
+  shape and its coverage of the whole package.
+- **The client is covered, not just a few controls.** Every client UI source module is classified
+  against eight families — foundations; controls and form composition; navigation and selection;
+  overlays; structure; surfaces and content; feedback and recovery; conversation and workspace
+  interaction — and each entry carries a disposition: an existing shared contract, a newly
+  adopted contract, a documented business exception, or a pending contract decision. A module may
+  map to several entries with different dispositions. The machine-readable inventory lives with the
+  UI gate; the family contracts live here.
+- **A control enters the shared layer by contract, not by list**: two or more business callers with
+  compatible semantics and states, business-independent, and one owner for its states.
+- **The shared layer owns a control's applicable states; the caller owns its layout.** A difference
+  between callers becomes a named variant, stays with the caller as layout, or leaves that caller
+  outside the primitive with the reason recorded.
+- **Each adopted control publishes its contract here**: what the primitive owns, what a caller
+  states, and which differences are named variants.
+- **The pilot starts with three surfaces**: the Models provider form, the Settings usage page and the
+  Plugin MCP server form. Each is preceded by a control inventory, and that inventory is a
+  deliverable, not an afterthought. Later surfaces are candidates, not authorized replacements, and
+  an empty pending list is necessary but not sufficient for completion — the adopted contracts
+  need their own verification.
+- **Overlays coordinate through one coordinator.** `client/ui/overlay-coordinator.tsx` owns
+  registration, lifetime and routing. The pure decision lives in
+  `client/projection/common/overlay-order.ts` as `decideOverlayAction(layers, event)`, which selects
+  one layer and one route; that layer's registered callback resolves the route into `handle`,
+  `request-close`, `block` or `ignore`, without routing the same event to another layer. The
+  outside-close truth table in `projection/common/outside-close.ts` and the placement geometry in
+  `projection/common/` stay where they are until their callers migrate. The full rules — managed
+  membership, the managed host, inertness, focus return by dismissal reason, ordering and the
+  migration slice — are stated in ADR 0028; the per-surface inventory lives here.
+- **Rendering integrity is checked, not assumed.** Extracting a control must not squeeze,
+  deform, truncate or reflow anything, and data-driven content must still render. Each migrated
+  surface is compared against its pre-migration state in both themes, over states that include the
+  content extremes it can actually show — empty, one item, the maximum, and the longest label —
+  because a baseline captured with short content does not prove the layout survives real content.
+  Geometry assertions travel with the screenshots and are independent of them. The rules are in ADR
+  0028.
+- **Accessibility is checked, not asserted.** The browser suite runs `axe-core` over the enumerated
+  rendered states of every migrated surface, in both themes, including open overlays and their
+  portal host. New unexcepted violations fail; a narrow reviewed exception names the rule, the
+  surface and state, the reason, the owner and the removal condition. A clean scan is not a
+  finding of accessibility — focus, keyboard reachability, motion and announcement order are
+  verified by rendered interaction checks.
+
 ## Assets
 
 - `client/assets/img/` holds the marks and illustrations the shell, the settings pages and the

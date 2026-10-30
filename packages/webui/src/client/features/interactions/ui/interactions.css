@@ -33,8 +33,13 @@
   .webui-button-primary:hover:not(:disabled) {
     background-color: var(--bg_interaction_primary_hover);
   }
+  /* Disabled primary. This used to swap in the inactive fill, but in the
+   * light theme that fill and the inactive label are the same gray — the
+   * label rendered at 1:1 against its own background and disappeared. A
+   * disabled primary keeps the primary surface and dims the label instead,
+   * which is the rule the secondary button below already uses, and it keeps
+   * the label legible in both themes: 7.99:1 on light, 5.74:1 on dark. */
   .webui-button-primary:disabled {
-    background-color: var(--bg_interaction_primary_inactive);
     color: var(--text_label_secondary_inactive);
     cursor: not-allowed;
   }
@@ -248,10 +253,6 @@
   .webui-questionnaire-progress button:disabled {
     cursor: default;
     opacity: 0.45;
-  }
-
-  .webui-questionnaire-actions .webui-button-primary:disabled {
-    color: var(--text_default_primary);
   }
 
   .webui-questionnaire-actions {

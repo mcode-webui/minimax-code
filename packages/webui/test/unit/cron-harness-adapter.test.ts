@@ -35,6 +35,8 @@ function runtimeTask(overrides: Record<string, unknown> = {}) {
     agentName: "agent-one",
     schedule: { kind: "recurring", expression: "*/5 * * * *", timezone: "UTC" },
     enabled: true,
+    // #276 added this to the runtime view: whether *this* host holds the timer.
+    armed: true,
     prompt: "Summarize the queue.",
     sessionTarget: { mode: "new" },
     nextRunAtMs: 1_800_000,
@@ -111,6 +113,9 @@ describe("the scheduled-task adapter", () => {
           agentName: "agent-one",
           prompt: "Summarize the queue.",
           enabled: true,
+          // The runtime answers `armed` for the host that answered; the wire names it as the
+          // client's own ownership, which is the only fact a client can check.
+          heldByThisClient: true,
           schedule: { kind: "recurring", expression: "*/5 * * * *", timezone: "UTC" },
           sessionTarget: { mode: "new" },
           project: null,

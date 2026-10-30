@@ -11,6 +11,7 @@
 import { useState, type ReactElement, type ReactNode } from "react";
 
 import type {
+  WebuiCronSchedule,
   WebuiCronTask,
   WebuiCronTaskCreateRequest,
   WebuiCronTaskUpdateRequest,
@@ -21,6 +22,7 @@ import {
   WEBUI_CRON_PRESET_LABELS,
   webuiCronDraftFromTask,
   webuiCronScheduleFromDraft,
+  webuiCronUpdateRequest,
   type WebuiCronDraft,
   type WebuiCronSchedulePreset,
 } from "../projection/scheduling-panel.js";
@@ -69,6 +71,17 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
           className={inputClass}
         />
       </Field>
+      {props.mode === "create"
+        ? <Field label="执行 agent">
+          <input
+            type="text"
+            data-webui-scheduling-field="agentName"
+            value={draft.agentName}
+            onChange={(event) => onChange({ agentName: event.target.value })}
+            className={inputClass}
+          />
+        </Field>
+        : null}
       <Field label="请求">
         <textarea
           data-webui-scheduling-field="prompt"
@@ -212,17 +225,26 @@ export function SchedulingEditor(props: {
   // Read once: a narrowed `props.task` inside the submit closure loses the narrowing.
   const editingTask = props.task;
   const mode = editingTask ? "edit" : "create";
-  const [draft, setDraft] = useState<WebuiCronDraft>(
-    editingTask ? webuiCronDraftFromTask(editingTask) : WEBUI_CRON_EMPTY_DRAFT,
+  const [initialDraft] = useState<WebuiCronDraft>(() =>
+    editingTask
+      ? webuiCronDraftFromTask(editingTask)
+      : { ...WEBUI_CRON_EMPTY_DRAFT, agentName: props.agentName ?? "" },
   );
+  const [draft, setDraft] = useState<WebuiCronDraft>(initialDraft);
   const [error, setError] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
   const submit = async (): Promise<void> => {
     if (draft.name.trim() === "") return setError("名称不能为空。");
     if (draft.prompt.trim() === "") return setError("请求不能为空。");
-    const schedule = webuiCronScheduleFromDraft(draft, props.nowMs());
-    if (!schedule.ok) return setError(schedule.message);
+    const agentName = draft.agentName.trim();
+    if (editingTask === undefined && agentName === "") {
+      return setError("执行任务的 agent 不能为空。");
+    }
+    // A create always carries a schedule; an edit carries one only when the schedule changed — see
+    // `webuiCronUpdateRequest`, which owns that rule for the same reason it owns the conversion.
+    const converted = webuiCronScheduleFromDraft(draft, props.nowMs());
+    if (editingTask === undefined && !converted.ok) return setError(converted.message);
 
     setBusy(true);
     setError(undefined);
@@ -233,26 +255,21 @@ export function SchedulingEditor(props: {
       ...(draft.model.trim() ? { model: draft.model.trim() } : {}),
       ...(draft.project.trim() ? { project: draft.project.trim() } : {}),
     };
-    const result = editingTask
-      ? await props.owner.updateTask({
-          cronId: editingTask.cronId,
-          name: draft.name,
-          prompt: draft.prompt,
-          schedule: schedule.schedule,
-          sessionTarget,
-          ...optional,
-        } satisfies WebuiCronTaskUpdateRequest)
-      : await props.owner.createTask({
-          name: draft.name,
-          // A task created from the panel belongs to the agent the client runs as. Picking a
-          // different agent per task is not part of this slice, and guessing one from the list
-          // would attach the task to whichever agent happened to sort first.
-          agentName: props.agentName ?? "general",
-          prompt: draft.prompt,
-          schedule: schedule.schedule,
-          sessionTarget,
-          ...optional,
-        } satisfies WebuiCronTaskCreateRequest);
+    let result: { readonly ok: true } | { readonly ok: false; readonly message: string };
+    if (editingTask !== undefined) {
+      const built = webuiCronUpdateRequest(draft, initialDraft, editingTask, props.nowMs());
+      result = built.ok ? await props.owner.updateTask(built.request) : built;
+    } else {
+      if (!converted.ok) return setError(converted.message);
+      result = await props.owner.createTask({
+        name: draft.name,
+        agentName,
+        prompt: draft.prompt,
+        schedule: converted.schedule,
+        sessionTarget,
+        ...optional,
+      } satisfies WebuiCronTaskCreateRequest);
+    }
     setBusy(false);
     if (!result.ok) return setError(result.message);
     props.onDone();

@@ -11,6 +11,7 @@
  * file with counting delivery ports, because "delivered once" is only observable where deliveries
  * are counted, and a real host would try to deliver a turn to a model.
  */
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -85,7 +86,7 @@ describe("run now and run history over the real host", () => {
 });
 
 describe("a run triggered on demand executes exactly once", () => {
-  it("delivers once even when another host recovers the same run", async () => {
+  it("delivers once when two hosts contend for the same pending run", async () => {
     const dataDir = await temporaryDataDir("webui-cron-run-once-");
     const first = new DatabaseClient({ dataDir });
     disposers.push(() => first.close());
@@ -93,10 +94,15 @@ describe("a run triggered on demand executes exactly once", () => {
 
     const deliveredRunIds: string[] = [];
     const ports = {
-      sessionCreation: { create: async (request: { runId: string }) => ({ sessionId: `session-${request.runId}` }) },
+      sessionCreation: {
+        create: async (request: { runId: string }) => {
+          // Every host that reaches delivery creates its own session, so a second execution would
+          // show up as a second entry with a different id.
+          return { sessionId: `session-${request.runId}-${String(deliveredRunIds.length)}` };
+        },
+      },
       delivery: {
         deliver: async (request: { runId: string; sessionId: string }) => {
-          // The session id makes a redelivery of the same run observable: it is the same everywhere.
           deliveredRunIds.push(`${request.runId}@${request.sessionId}`);
           return { delivered: true as const };
         },
@@ -116,30 +122,39 @@ describe("a run triggered on demand executes exactly once", () => {
       sessionTarget: { mode: "new" },
     });
 
-    const run = await cronA.service.triggerManualRun(created.cronId);
-    await cronA.close();
-    expect(deliveredRunIds).toEqual([`${run.runId}@session-${run.runId}`]);
+    // A run that exists on disk and that nobody has claimed — what a host leaves behind when it dies
+    // between inserting the run and executing it. This is the row the two hosts must contend for.
+    const runId = `run-${randomUUID()}`;
+    const nowMs = Date.now();
+    first.db
+      .insert(cronRuns)
+      .values({
+        runId,
+        cronId: created.cronId,
+        schedulerTriggerId: `${created.cronId}:0:99`,
+        triggerSource: "scheduled",
+        status: "pending",
+        createdAtMs: nowMs,
+      })
+      .run();
 
-    const rows = first.db.select().from(cronRuns).where(eq(cronRuns.cronId, created.cronId)).all();
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.status).toBe("delivered");
-    expect(rows[0]?.schedulerTriggerId).toBeNull();
-
-    // A second host on the same data directory recovers pending runs at boot. The run above is
-    // already delivered, so nothing is redelivered — and if it were still pending, the atomic claim
-    // would still let only one host execute it.
+    // The second host is live *before* either sweep, so both see the same pending run.
     const second = new DatabaseClient({ dataDir });
     disposers.push(() => second.close());
     const schedulerB = new Scheduler({ db: second.db });
     disposers.push(() => schedulerB.stop());
     const cronB = composeCronService({ db: second.db, scheduler: schedulerB, sessionPorts: ports });
     schedulerB.start({ restorePersistedJobExecution: true });
-    await cronB.recoverPendingRuns();
-    await cronB.close();
 
-    expect(deliveredRunIds).toEqual([`${run.runId}@session-${run.runId}`]);
-    expect(
-      second.db.select().from(cronRuns).where(eq(cronRuns.cronId, created.cronId)).all(),
-    ).toHaveLength(1);
+    // Both hosts sweep for pending runs at the same moment, which is what a boot race looks like.
+    await Promise.all([cronA.recoverPendingRuns(), cronB.recoverPendingRuns()]);
+    await Promise.all([cronA.close(), cronB.close()]);
+
+    expect(deliveredRunIds).toHaveLength(1);
+    expect(deliveredRunIds[0]?.startsWith(`${runId}@`)).toBe(true);
+
+    const rows = first.db.select().from(cronRuns).where(eq(cronRuns.runId, runId)).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe("delivered");
   }, 120_000);
 });

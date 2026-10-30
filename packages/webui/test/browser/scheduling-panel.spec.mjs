@@ -62,6 +62,10 @@ test.describe("the scheduled-task panel", () => {
     const editor = panel.locator('[data-webui-component="scheduling-editor"]');
     await expect(editor).toBeVisible();
     await editor.locator('[data-webui-scheduling-field="name"]').fill("每日摘要");
+    // The panel is opened from the rail, so no session is selected and this client has no agent to
+    // default to: the field is empty and the person names the agent the task runs as.
+    await expect(editor.locator('[data-webui-scheduling-field="agentName"]')).toHaveValue("");
+    await editor.locator('[data-webui-scheduling-field="agentName"]').fill("synthetic-A");
     await editor.locator('[data-webui-scheduling-field="prompt"]').fill("Summarize the day.");
     await expect(editor).toHaveScreenshot("scheduling-editor.png", screenshotOptions);
     await editor.locator('[data-webui-scheduling-submit="true"]').click();

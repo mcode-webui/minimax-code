@@ -1,12 +1,12 @@
 // The scheduled-task wire operations (ADR 0027).
 //
-// One operation so far: the list. Creating, editing, deleting, running and reading history arrive in
-// their own tickets; they belong in this file because they are one domain and one client business,
-// and splitting them across files would make the registry's order read as three unrelated groups.
+// Six operations: list, create, edit, delete, run now, and read history. They belong in one file
+// because they are one domain and one client business, and splitting them across files would make
+// the registry's order read as unrelated groups.
 //
-// `listCronTasks` validates the paging envelope only. What a task *is* is the adapter's business:
-// the runtime's cron view converts to a `WebuiCronTask` behind the harness port, so this layer
-// checks the shape a browser may send and never learns the runtime's model.
+// Each validator checks the shape a browser may send — the paging envelope, the fields a form fills,
+// the identity a mutation names — and never learns the runtime's model: the runtime's cron view
+// converts to a `WebuiCronTask` behind the harness port.
 import type {
   WebuiCronRun,
   WebuiCronRunListRequest,

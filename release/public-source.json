@@ -4635,6 +4635,7 @@
     "packages/webui/test/unit/review-state.test.ts",
     "packages/webui/test/unit/runtime-warning-rendering.test.tsx",
     "packages/webui/test/unit/scheduling-panel.test.ts",
+    "packages/webui/test/unit/scheduling-validators.test.ts",
     "packages/webui/test/unit/session-import.test.ts",
     "packages/webui/test/unit/session-rail-search.test.ts",
     "packages/webui/test/unit/session-scope.test.ts",

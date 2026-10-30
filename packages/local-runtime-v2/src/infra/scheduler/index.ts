@@ -392,6 +392,7 @@ export class Scheduler {
     return updateRestoredJob(this.options.db, record, {
       runCount: record.runCount,
       scheduleGeneration: record.scheduleGeneration,
+      state: record.state,
     });
   }
 
@@ -793,7 +794,7 @@ function agreesOnTrigger(persisted: JobRecord, memory: JobRecord): boolean {
 function updateRestoredJob(
   db: AppDb,
   record: JobRecord,
-  expected: { runCount: number; scheduleGeneration: number },
+  expected: { runCount: number; scheduleGeneration: number; state: JobState },
 ): boolean {
   const result = db
     .update(schedulerJobs)
@@ -807,6 +808,10 @@ function updateRestoredJob(
         eq(schedulerJobs.schedulerId, record.schedulerId),
         eq(schedulerJobs.runCount, expected.runCount),
         eq(schedulerJobs.scheduleGeneration, expected.scheduleGeneration),
+        // A pause changes only the state and leaves both counters intact, so without this a pause
+        // landing between the read and the write passes the guard and the restore writes `active`
+        // back — resurrecting the task the pause just stopped.
+        eq(schedulerJobs.state, expected.state),
       ),
     )
     .run();

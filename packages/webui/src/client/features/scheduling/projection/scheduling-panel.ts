@@ -15,6 +15,7 @@ import type {
   WebuiCronRun,
   WebuiCronSchedule,
   WebuiCronTask,
+  WebuiCronTaskUpdateRequest,
 } from "../../../../shared/contracts/cron.js";
 
 export const WEBUI_SCHEDULING_EMPTY_TEXT = "还没有任何定时任务。";
@@ -137,6 +138,8 @@ export type WebuiCronSchedulePreset = "daily" | "weekly" | "hourly" | "once" | "
 
 export interface WebuiCronDraft {
   readonly name: string;
+  /** The agent that executes the task. Required on create: the runtime keeps no default. */
+  readonly agentName: string;
   readonly prompt: string;
   readonly preset: WebuiCronSchedulePreset;
   /** `HH:MM`, for the daily and weekly presets. */
@@ -165,6 +168,7 @@ export const WEBUI_CRON_PRESET_LABELS: Readonly<Record<WebuiCronSchedulePreset, 
 
 export const WEBUI_CRON_EMPTY_DRAFT: WebuiCronDraft = {
   name: "",
+  agentName: "",
   prompt: "",
   preset: "daily",
   time: "09:00",
@@ -240,6 +244,7 @@ export function webuiCronDraftFromTask(task: WebuiCronTask): WebuiCronDraft {
   const draft: WebuiCronDraft = {
     ...WEBUI_CRON_EMPTY_DRAFT,
     name: task.name,
+    agentName: task.agentName,
     prompt: task.prompt,
     model: task.model ?? "",
     project: task.project ?? "",
@@ -253,11 +258,15 @@ export function webuiCronDraftFromTask(task: WebuiCronTask): WebuiCronDraft {
   const fields = task.schedule.expression.trim().split(/\s+/u);
   if (fields.length !== 5) return { ...draft, preset: "custom", expression: task.schedule.expression };
   const [minute = "", hour = "", dom = "", month = "", dow = ""] = fields;
-  if (dom === "*" && month === "*" && dow === "*") {
+  // A step (`*`/`*/5`) has no field in the preset forms, and mapping it onto one would build a draft
+  // this module's own converter rejects — so anything but plain digits stays custom.
+  const plain = (field: string): boolean => /^\d+$/u.test(field);
+  if (dom === "*" && month === "*" && dow === "*" && plain(minute)) {
     if (hour === "*") return { ...draft, preset: "hourly", minute };
-    return { ...draft, preset: "daily", time: `${pad(Number(hour))}:${pad(Number(minute))}` };
+    if (plain(hour)) return { ...draft, preset: "daily", time: `${pad(Number(hour))}:${pad(Number(minute))}` };
+    return { ...draft, preset: "custom", expression: task.schedule.expression };
   }
-  if (dom === "*" && month === "*" && /^[0-6]$/u.test(dow)) {
+  if (dom === "*" && month === "*" && /^[0-6]$/u.test(dow) && plain(minute) && plain(hour)) {
     return {
       ...draft,
       preset: "weekly",
@@ -304,4 +313,62 @@ export function webuiCronRunRows(runs: readonly WebuiCronRun[]): readonly WebuiC
     ...(run.errorCode === undefined ? {} : { failureLabel: run.errorCode }),
     run,
   }));
+}
+
+/**
+ * Whether two drafts describe the same schedule.
+ *
+ * An update that carries an unchanged schedule still reschedules the job: the runtime bumps the
+ * definition's generation and resets its run counter, and a `once` task that already fired stops
+ * being editable because its time is no longer in the future. So "did the schedule change" has to be
+ * answerable without converting it.
+ */
+export function webuiCronScheduleUnchanged(
+  draft: WebuiCronDraft,
+  initial: WebuiCronDraft,
+): boolean {
+  return (
+    draft.preset === initial.preset &&
+    draft.time === initial.time &&
+    draft.weekday === initial.weekday &&
+    draft.minute === initial.minute &&
+    draft.onceAt === initial.onceAt &&
+    draft.expression === initial.expression
+  );
+}
+
+/**
+ * The update request a draft becomes, or the field that stopped it.
+ *
+ * `schedule` is present only when the schedule changed. That is the whole reason this lives in the
+ * projection rather than in the component: it is a rule about what the wire may carry.
+ */
+export function webuiCronUpdateRequest(
+  draft: WebuiCronDraft,
+  initial: WebuiCronDraft,
+  task: WebuiCronTask,
+  nowMs: number,
+): { readonly ok: true; readonly request: WebuiCronTaskUpdateRequest }
+  | { readonly ok: false; readonly message: string } {
+  if (draft.name.trim() === "") return { ok: false, message: "名称不能为空。" };
+  if (draft.prompt.trim() === "") return { ok: false, message: "请求不能为空。" };
+  const unchanged = webuiCronScheduleUnchanged(draft, initial);
+  const converted = unchanged ? undefined : webuiCronScheduleFromDraft(draft, nowMs);
+  if (converted !== undefined && !converted.ok) {
+    return { ok: false, message: converted.message };
+  }
+  return {
+    ok: true,
+    request: {
+      cronId: task.cronId,
+      name: draft.name,
+      prompt: draft.prompt,
+      ...(converted === undefined ? {} : { schedule: converted.schedule }),
+      sessionTarget: draft.sessionId.trim()
+        ? { mode: "sessionId" as const, sessionId: draft.sessionId.trim() }
+        : { mode: "new" as const },
+      ...(draft.model.trim() ? { model: draft.model.trim() } : {}),
+      ...(draft.project.trim() ? { project: draft.project.trim() } : {}),
+    },
+  };
 }

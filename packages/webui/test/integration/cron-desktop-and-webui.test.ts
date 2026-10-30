@@ -30,6 +30,10 @@ type HostWithCron = CreatedLocalRuntimeHost & {
       readonly items: readonly Record<string, unknown>[];
     }>;
     readonly updateCronTask?: (request: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    readonly runCronTaskNow?: (cronId: string) => Promise<Record<string, unknown>>;
+    readonly listCronTaskRuns?: (query: { readonly cronId: string }) => Promise<{
+      readonly items: readonly Record<string, unknown>[];
+    }>;
   };
 };
 
@@ -64,13 +68,57 @@ async function boot(dataDir: string, runtimeOwnerKind: "webui" | "electron"): Pr
 
 function cron(host: HostWithCron) {
   const service = host.cliService;
-  if (!service?.createCronTask || !service.listCronTasks || !service.updateCronTask) {
+  if (
+    !service?.createCronTask ||
+    !service.listCronTasks ||
+    !service.updateCronTask ||
+    !service.runCronTaskNow ||
+    !service.listCronTaskRuns
+  ) {
     throw new Error("this host does not reach the Cron service");
   }
   return service as Required<NonNullable<HostWithCron["cliService"]>>;
 }
 
 describe("the Desktop and the WebUI on one data directory", () => {
+  it("arms the same job on both hosts when the Desktop starts second", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "cron-two-armed-"));
+    dataDirs.push(dataDir);
+    await mkdir(join(dataDir, "workspace"), { recursive: true });
+
+    const webui = await boot(dataDir, "webui");
+    const created = await cron(webui).createCronTask({
+      name: "shared slot",
+      agentName: "agent-one",
+      prompt: "Do it once per slot.",
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+      sessionTarget: { mode: "new" },
+    });
+    const cronId = String(created.cronId);
+
+    // The Desktop starts after the definition exists, so its boot restore arms it: this is the state
+    // ADR 0027 is about — two live hosts, both holding a timer for the same definition.
+    const desktop = await boot(dataDir, "electron");
+    const armedByDesktop = (await cron(desktop).listCronTasks({})).items[0];
+    expect(armedByDesktop).toMatchObject({ cronId, armed: true });
+    expect((await cron(webui).listCronTasks({})).items[0]).toMatchObject({ armed: true });
+
+    // Simulating the slot on both sides must still leave one run: both hosts fire the same trigger
+    // id, and the run insert converges on it.
+    const firstRun = await cron(webui).runCronTaskNow(cronId);
+    const runs = await cron(desktop).listCronTaskRuns({ cronId });
+    expect(runs.items.map((run) => run.runId)).toContain(String(firstRun.runId));
+
+    // An edit in the WebUI reaches the host that also holds the timer.
+    await cron(webui).updateCronTask({
+      cronId,
+      schedule: { kind: "recurring", expression: "30 3 * * *" },
+    });
+    expect((await cron(desktop).listCronTasks({})).items[0]).toMatchObject({
+      schedule: { kind: "recurring", expression: "30 3 * * *" },
+    });
+  }, 240_000);
+
   it("shares one schedule, reports arming truthfully, and keeps a pause", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "cron-desktop-webui-"));
     dataDirs.push(dataDir);

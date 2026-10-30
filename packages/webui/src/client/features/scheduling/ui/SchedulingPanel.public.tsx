@@ -267,6 +267,8 @@ export function SchedulingPanel(props: {
   readonly owner: WebuiSchedulingOwner;
   readonly nowMs: number;
   readonly onClose: () => void;
+  /** The agent this client runs as, used as the default for a task created here. */
+  readonly agentName?: string;
   /** Opens the session a run produced; the shell owns navigation. */
   readonly onOpenSession: (sessionId: string) => void;
 }): ReactElement {

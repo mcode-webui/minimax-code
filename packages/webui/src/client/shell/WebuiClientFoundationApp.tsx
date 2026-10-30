@@ -1069,6 +1069,7 @@ export function WebuiClientFoundationApp(
                 <SchedulingPanel
                   owner={application.schedulingOwner}
                   nowMs={activityNow}
+                  {...(selectedAgentName === undefined ? {} : { agentName: selectedAgentName })}
                   onClose={() => dispatchShellSurface({ type: "show-conversation" })}
                   onOpenSession={(sessionId) => {
                     // Opening the session a run produced is an ordinary rail navigation: it also

@@ -15,6 +15,7 @@ import {
 } from "../../src/client/features/scheduling/application/scheduling-owner.js";
 import {
   webuiCronRunRows,
+  webuiCronUpdateRequest,
   WEBUI_CRON_EMPTY_DRAFT,
   webuiCronDraftFromTask,
   webuiCronScheduleFromDraft,
@@ -402,5 +403,85 @@ describe("the run history", () => {
     // The row actions the ticket promises are on the row, not hidden in a menu.
     expect(markup).toContain('data-webui-scheduling-run="cron-1"');
     expect(markup).toContain('data-webui-scheduling-history="cron-1"');
+  });
+});
+
+describe("what an edit puts on the wire", () => {
+  const task = () =>
+    ({
+      cronId: "cron-1",
+      name: "digest",
+      agentName: "agent-one",
+      prompt: "Write it.",
+      enabled: true,
+      heldByThisClient: true,
+      schedule: { kind: "recurring", expression: "0 9 * * *" },
+      sessionTarget: { mode: "new" },
+      project: null,
+      model: null,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    }) satisfies Parameters<typeof webuiCronDraftFromTask>[0];
+
+  it("leaves the schedule off when only the name changed", () => {
+    const existing = task();
+    const initial = webuiCronDraftFromTask(existing);
+    const built = webuiCronUpdateRequest(
+      { ...initial, name: "renamed" },
+      initial,
+      existing,
+      0,
+    );
+    expect(built.ok).toBe(true);
+    // Resending it would bump the generation and reset the run counter.
+    expect(built.ok && "schedule" in built.request).toBe(false);
+    expect(built.ok && built.request.name).toBe("renamed");
+  });
+
+  it("carries the schedule when the schedule changed", () => {
+    const existing = task();
+    const initial = webuiCronDraftFromTask(existing);
+    const built = webuiCronUpdateRequest(
+      { ...initial, preset: "daily", time: "18:30" },
+      initial,
+      existing,
+      0,
+    );
+    expect(built.ok && built.request.schedule).toEqual({
+      kind: "recurring",
+      expression: "30 18 * * *",
+    });
+  });
+
+  it("edits a one-off task that already fired without resending its time", () => {
+    const fired = {
+      ...task(),
+      enabled: false,
+      schedule: { kind: "once" as const, runAtMs: Date.UTC(2026, 9, 1, 9, 0) },
+    };
+    const initial = webuiCronDraftFromTask(fired);
+    // The stale time would be rejected as past if it were resent; it is not resent.
+    const built = webuiCronUpdateRequest(
+      { ...initial, name: "renamed once" },
+      initial,
+      fired,
+      Date.UTC(2026, 9, 30),
+    );
+    expect(built.ok).toBe(true);
+    expect(built.ok && "schedule" in built.request).toBe(false);
+  });
+
+  it("reopens a step expression as a custom schedule it can save again", () => {
+    const stepped = {
+      ...task(),
+      schedule: { kind: "recurring" as const, expression: "*/5 * * * *" },
+    };
+    const draft = webuiCronDraftFromTask(stepped);
+    // A step has no preset field, so it must not be mapped onto one that rejects it.
+    expect(draft.preset).toBe("custom");
+    expect(webuiCronScheduleFromDraft(draft, 0)).toEqual({
+      ok: true,
+      schedule: { kind: "recurring", expression: "*/5 * * * *" },
+    });
   });
 });

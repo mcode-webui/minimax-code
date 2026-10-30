@@ -34,6 +34,7 @@ import {
 import { SshHostForm } from "./ssh-host-form.js";
 import { SshProjectForm } from "./ssh-project-form.js";
 import { SshTerminalView } from "./ssh-terminal-view.js";
+import { ContentPage } from "../../../ui/content-page.js";
 
 export interface SshPanelViewProps {
   readonly snapshot: WebuiSshSnapshot;
@@ -73,14 +74,12 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
     hostRows.length === 0 && props.snapshot.status === "ready" && props.snapshot.projects.length === 0;
 
   return (
-    <section
-      aria-label="SSH"
-      data-webui-component="ssh-panel"
-      className="flex h-full min-h-0 flex-col bg-bg_default_primary"
-    >
-      <header className="flex flex-shrink-0 items-center justify-between border-b-[0.5px] border-border_default px-5 py-3">
-        <h1 className="text-base font-medium text-text_default_primary">SSH</h1>
-        <div className="flex items-center gap-2">
+    <ContentPage
+      ariaLabel="SSH"
+      dataAttributes={{ "data-webui-component": "ssh-panel" }}
+      title="SSH"
+      actions={
+        <>
           <button
             type="button"
             data-webui-ssh-new-host="true"
@@ -113,9 +112,9 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
           >
             刷新
           </button>
-        </div>
-      </header>
-      <div className="webui-rail-scroll min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        </>
+      }
+    >
         {props.hostForm}
         {props.projectForm}
         {props.discoveredHosts}
@@ -271,8 +270,7 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
           onInput={props.onTerminalInput}
           onClose={props.onCloseTerminal}
         />
-      </div>
-    </section>
+      </ContentPage>
   );
 }
 

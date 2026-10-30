@@ -29,6 +29,7 @@ import {
   WEBUI_SCHEDULING_OTHER_HOST_HINT,
   webuiSchedulingRows,
 } from "../projection/scheduling-panel.js";
+import { ContentPage } from "../../../ui/content-page.js";
 import { SchedulingEditor } from "./scheduling-editor.js";
 
 export interface SchedulingPanelViewProps {
@@ -66,14 +67,12 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
   // saying so would invite the person to create a task they may already have.
   const showEmpty = rows.length === 0 && props.snapshot.status === "ready";
   return (
-    <section
-      aria-label="定时任务"
-      data-webui-component="scheduling-panel"
-      className="flex h-full min-h-0 flex-col bg-bg_default_primary"
-    >
-      <header className="flex flex-shrink-0 items-center justify-between border-b-[0.5px] border-border_default px-5 py-3">
-        <h1 className="text-base font-medium text-text_default_primary">定时任务</h1>
-        <div className="flex items-center gap-2">
+    <ContentPage
+      ariaLabel="定时任务"
+      dataAttributes={{ "data-webui-component": "scheduling-panel" }}
+      title="定时任务"
+      actions={
+        <>
           <button
             type="button"
             data-webui-scheduling-new="true"
@@ -99,9 +98,9 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
           >
             关闭
           </button>
-        </div>
-      </header>
-      <div className="webui-rail-scroll min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        </>
+      }
+    >
         <p className="mb-3 text-sm text-text_default_tertiary">{WEBUI_SCHEDULING_OTHER_HOST_HINT}</p>
         {props.editor}
         {props.runError === undefined
@@ -258,8 +257,7 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
             </li>
           ))}
         </ul>
-      </div>
-    </section>
+    </ContentPage>
   );
 }
 

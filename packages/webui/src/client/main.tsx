@@ -31,6 +31,10 @@ import { createWebuiPortSlices } from "./application/port-slices.js";
 import { createWebuiOpenEventChannel } from "./bindings/event-channel-adapter.js";
 import { WebuiApplicationProvider } from "./bindings/application-context.js";
 import { WebuiPortSlicesProvider } from "./bindings/port-slices-context.js";
+// The overlay coordinator is provided once per client document, here at the
+// composition root, so every surface in either shell registers with the same
+// one (ADR 0028 § Overlay coordination).
+import { OverlayCoordinatorProvider } from "./ui/overlay-coordinator.js";
 import { WEBUI_PROTOCOL_VERSION, WebuiWireError, WebuiErrorCode } from "../shared/envelope.js";
 
 declare const document: {
@@ -240,7 +244,7 @@ function WebuiClientRoot({
   }, [application]);
 
   return (
-
+    <OverlayCoordinatorProvider>
       <WebuiApplicationProvider application={application}>
         <WebuiPortSlicesProvider slices={slices}>
           {standalone ? (
@@ -262,7 +266,7 @@ function WebuiClientRoot({
           )}
         </WebuiPortSlicesProvider>
       </WebuiApplicationProvider>
-
+    </OverlayCoordinatorProvider>
   );
 }
 

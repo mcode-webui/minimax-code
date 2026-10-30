@@ -123,6 +123,7 @@
     {"path":"ui/activity-phrase.ts","label":"activity-phrase","kind":"concern","families":["foundations","conversation-and-workspace-interaction"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
     {"path":"ui/form-atoms.tsx","label":"form-atoms","kind":"concern","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
     {"path":"ui/layout-thresholds.ts","label":"layout-thresholds","kind":"concern","families":["structure"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/overlay-coordinator.tsx","label":"overlay-coordinator","kind":"concern","families":["overlays"],"disposition":"newly-adopted-contract","reason":"the coordinator the shared presentation layer adopts for managed overlays (ADR 0028 § Overlay coordination); it owns registration and routing, and no business state"},
     {"path":"ui/settings-glyphs.tsx","label":"settings-glyphs","kind":"concern","families":["foundations"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
     {"path":"ui/settings-layout.tsx","label":"settings-layout","kind":"concern","families":["structure","surfaces-and-content"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"}
   ],
@@ -249,6 +250,7 @@
     "ui/activity-phrase.ts": "21f2b9886f325996",
     "ui/form-atoms.tsx": "257973af8dfd79e4",
     "ui/layout-thresholds.ts": "b3bec466ad8cce38",
+    "ui/overlay-coordinator.tsx": "ed3d94391cdde3a7",
     "ui/settings-glyphs.tsx": "e5b21c9f9bb243c5",
     "ui/settings-layout.tsx": "106a35ca07ab039e"
   }

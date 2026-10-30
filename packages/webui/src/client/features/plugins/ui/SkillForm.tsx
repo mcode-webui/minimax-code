@@ -8,6 +8,7 @@
 import { useState, type ReactElement } from "react";
 
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface SkillFormProps {
   readonly onSubmit: (intent: WebuiPluginIntent) => Promise<boolean>;
@@ -54,12 +55,12 @@ export function SkillForm({ onSubmit, onClose }: SkillFormProps): ReactElement {
         <textarea value={content} onChange={(event) => setContent(event.currentTarget.value)} />
       </label>
       <div className="webui-agent-form-actions">
-        <button type="button" onClick={onClose}>
+        <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消
-        </button>
-        <button type="button" onClick={() => void save()}>
+        </WebuiButton>
+        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
           保存
-        </button>
+        </WebuiButton>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface PluginImportDialogProps {
   readonly url: string;
@@ -117,21 +118,27 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
           </p>
         ) : null}
         <footer>
-          <button onClick={() => onClose()}>取消</button>
+          <WebuiButton variant="surface" size="dialog" onClick={() => onClose()}>
+            取消
+          </WebuiButton>
           {preview ? (
-            <button
+            <WebuiButton
+              variant="primary"
+              size="dialog"
               disabled={busy || preview.canImport !== true}
               onClick={() => onImport()}
             >
               导入插件
-            </button>
+            </WebuiButton>
           ) : (
-            <button
+            <WebuiButton
+              variant="primary"
+              size="dialog"
               disabled={busy || !url.trim()}
               onClick={() => onPreview()}
             >
               预览
-            </button>
+            </WebuiButton>
           )}
         </footer>
       </section>

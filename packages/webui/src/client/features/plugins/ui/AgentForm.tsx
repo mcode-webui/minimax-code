@@ -11,6 +11,7 @@ import {
   type WebuiPluginRow as Row,
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface AgentFormProps {
   readonly editing: Row | undefined;
@@ -91,16 +92,16 @@ export function AgentForm({
       )}
       <div className="webui-agent-form-actions">
         {editing && onChatWithAgent ? (
-          <button type="button" onClick={() => void onChatWithAgent(name)}>
+          <WebuiButton variant="surface" size="panel" onClick={() => void onChatWithAgent(name)}>
             对话
-          </button>
+          </WebuiButton>
         ) : null}
-        <button type="button" onClick={onClose}>
+        <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消
-        </button>
-        <button type="button" onClick={() => void save()}>
+        </WebuiButton>
+        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
           保存
-        </button>
+        </WebuiButton>
       </div>
     </div>
   );

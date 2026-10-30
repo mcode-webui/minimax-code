@@ -368,7 +368,7 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
         <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消
         </WebuiButton>
-        <WebuiButton variant="primary" size="panel" onClick={() => void save()}>
+        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
           {editing ? "保存" : "添加服务器"}
         </WebuiButton>
       </div>

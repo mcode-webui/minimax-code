@@ -27,6 +27,8 @@ import { openApp, openLauncherTile, test } from "./harness.mjs";
 import {
   classifyFindings,
   compareBaseline,
+  loadReview,
+  undispositionedRules,
   formatReport,
   loadBaseline,
   loadExceptions,
@@ -731,6 +733,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
 
     // The accessibility half of the same enumeration (ADR 0028 § Accessibility).
     const exceptions = loadExceptions().exceptions ?? [];
+    const dispositions = loadReview().dispositions ?? [];
     const unexcepted = [];
     const stale = [];
     for (const surface of SURFACES) {
@@ -792,6 +795,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       unexcepted,
       stale,
       incomplete,
+      review: dispositions,
     });
     // The report states what the scan cannot decide; it is printed on every run,
     // pass or fail, because a clean scan is not a finding of accessibility.
@@ -801,5 +805,10 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     // exceptions are the narrower mechanism and are counted above.
     void unexcepted;
     expect(stale, "exceptions whose finding has gone").toEqual([]);
+    // An undecided finding is not allowed to sit in the report unowned.
+    expect(
+      undispositionedRules(incomplete, dispositions),
+      "incomplete rules with no recorded manual disposition",
+    ).toEqual([]);
   });
 });

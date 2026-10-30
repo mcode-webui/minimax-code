@@ -162,6 +162,30 @@ export async function scanSurface(page) {
   };
 }
 
+/**
+ * The manual disposition register for findings the engine could not decide.
+ *
+ * `incomplete` is not a pass: axe reports it when it cannot determine an answer
+ * (a colour it cannot compute, a role it cannot resolve). Each rule that appears
+ * there needs a recorded manual review, and a rule with no entry fails the run —
+ * an undecided finding is not allowed to sit in the report unowned.
+ */
+export const REVIEW_PATH = fileURLToPath(new URL("./accessibility-review.json", import.meta.url));
+
+export function loadReview() {
+  try {
+    return JSON.parse(readFileSync(REVIEW_PATH, "utf8"));
+  } catch {
+    return { version: 1, dispositions: [] };
+  }
+}
+
+/** Which incomplete rules have no recorded disposition. */
+export function undispositionedRules(incomplete, dispositions) {
+  const known = new Set(dispositions.map((disposition) => disposition.rule));
+  return [...new Set(incomplete.map((entry) => entry.rule))].filter((rule) => !known.has(rule)).sort();
+}
+
 function exceptionMatchesNode(exception, { surface, state }, violation, node) {
   if (exception.rule !== violation.rule) return false;
   if (exception.surface !== surface && exception.surface !== "*") return false;
@@ -177,7 +201,9 @@ function exceptionMatchesNode(exception, { surface, state }, violation, node) {
  */
 export function classifyFindings({ surface, state, findings, exceptions }) {
   const applicable = exceptions.filter(
-    (exception) => exception.surface === surface && (exception.state === state || exception.state === "*"),
+    (exception) =>
+      (exception.surface === surface || exception.surface === "*") &&
+      (exception.state === state || exception.state === "*"),
   );
   const unexcepted = findings
     .map((finding) => ({
@@ -195,13 +221,28 @@ export function classifyFindings({ surface, state, findings, exceptions }) {
   return { unexcepted, stale };
 }
 
+/** The dispositions that are still open: their states' review is not complete. */
+export function openDispositions(dispositions) {
+  return dispositions.filter((disposition) => disposition.status !== "resolved");
+}
+
 /** The report every run prints, including the limits of what it proved. */
-export function formatReport({ scanned, findings, unexcepted, stale, incomplete }) {
+export function formatReport({ scanned, findings, unexcepted, stale, incomplete, review }) {
   const lines = ["WebUI accessibility scan (axe-core, pinned rule set)"];
   lines.push(`  states scanned: ${scanned}`);
   lines.push(`  violations: ${findings.length}, unexcepted: ${unexcepted.length}`);
   lines.push(`  exceptions in force: ${new Set(findings.map((finding) => finding.surface)).size === 0 ? 0 : undefined}`);
   lines.push(`  incomplete findings needing a manual disposition: ${incomplete.length}`);
+  const byRule = new Map();
+  for (const entry of incomplete) byRule.set(entry.rule, (byRule.get(entry.rule) ?? 0) + 1);
+  for (const [rule, count] of [...byRule.entries()].sort()) lines.push(`    ${rule}: ${count}`);
+  if (Array.isArray(review)) {
+    const open = openDispositions(review);
+    lines.push(
+      `  manual reviews still open: ${open.length} of ${review.length} — the states they apply to are not reviewed complete`,
+    );
+    for (const disposition of open) lines.push(`    ${disposition.rule}: ${disposition.closesWhen}`);
+  }
   if (unexcepted.length > 0) {
     lines.push("");
     lines.push("UNEXCEPTED VIOLATIONS:");

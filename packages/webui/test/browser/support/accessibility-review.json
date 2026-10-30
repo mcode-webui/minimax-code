@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "dispositions": [
+    {
+      "rule": "aria-prohibited-attr",
+      "status": "open",
+      "count": 8,
+      "note": "axe cannot decide whether the ARIA attribute is prohibited without resolving the role the renderer computes for the element; the nodes are in the settings and plugin dialogs",
+      "owner": "overlays (dialog surfaces)",
+      "closesWhen": "each node's attribute is checked against its resolved role in a rendered pass, and the rule leaves the incomplete set"
+    },
+    {
+      "rule": "aria-valid-attr-value",
+      "status": "open",
+      "count": 48,
+      "note": "axe reports values it cannot validate without the element's resolved role; the nodes are the dropdown triggers and their options",
+      "owner": "navigation and selection (dropdown)",
+      "closesWhen": "each trigger's and option's attribute value is validated against its role, and the rule leaves the incomplete set"
+    },
+    {
+      "rule": "color-contrast",
+      "status": "open",
+      "count": 48,
+      "note": "axe cannot compute a contrast ratio for these nodes because their background is an image, a gradient or a composited layer it will not resolve",
+      "owner": "design-language (foundations, contrast)",
+      "closesWhen": "the background is resolved for each node, or the node is drawn on a colour the scan can compute"
+    },
+    {
+      "rule": "label-content-name-mismatch",
+      "status": "open",
+      "count": 8,
+      "note": "axe cannot decide the visible-text comparison for these nodes because their content is assembled from parts it will not resolve",
+      "owner": "components (sessions, settings)",
+      "closesWhen": "each node's name and visible text are compared in a rendered pass and the rule leaves the incomplete set"
+    }
+  ]
+}

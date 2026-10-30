@@ -55,6 +55,13 @@ export interface MiniAppPort {
    */
   readonly openMiniApp?: (request: {
     readonly pluginId: string;
+    /**
+     * The origin-relative page inside the Mini App to open, when one was named.
+     *
+     * The Agent's `open` may name a path; the server resolves it against the
+     * Mini App's own origin and answers with the URL to frame.
+     */
+    readonly path?: string;
   }) => Promise<WebuiMiniAppView>;
   /** Stops one Mini App. The server closes that plugin's proxy with it. */
   readonly stopMiniApp?: (request: {

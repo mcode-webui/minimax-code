@@ -7,7 +7,21 @@ export interface MiniAppPresentation {
 }
 
 export type MiniAppPresentationIntent =
-  | { readonly epoch: string; readonly revision: number; readonly action: "open"; readonly sessionId: string; readonly pluginId: string }
+  | {
+      readonly epoch: string;
+      readonly revision: number;
+      readonly action: "open";
+      readonly sessionId: string;
+      readonly pluginId: string;
+      /**
+       * The origin-relative page the Agent asked for, when it asked for one.
+       *
+       * The Agent's `open` action may name a path inside the Mini App. The
+       * presenter does not resolve it — the server owns the URL the page is framed
+       * at — but it has to carry it, because the client is what opens the Mini App.
+       */
+      readonly path?: string;
+    }
   | { readonly epoch: string; readonly revision: number; readonly action: "close"; readonly pluginId: string; readonly sessionId: string };
 
 /**
@@ -23,6 +37,13 @@ export interface MiniAppPresenterLike {
   open(input: {
     readonly sessionId: string;
     readonly pluginId: string;
+    /**
+     * The origin-relative page the Agent asked for, when it asked for one.
+     *
+     * The runtime's presenter port carries it, so this presenter accepts it and
+     * records it on the intent rather than dropping it.
+     */
+    readonly path?: string;
     readonly signal?: AbortSignal;
   }): Promise<void>;
   close(input: { readonly pluginId: string }): Promise<void>;
@@ -80,7 +101,13 @@ export function createMiniAppPresenter(input: CreateMiniAppPresenterInput): Mini
         openInput.signal?.throwIfAborted();
         presentation = { sessionId: openInput.sessionId, pluginId: openInput.pluginId };
         revision += 1;
-        const intent: MiniAppPresentationIntent = { action: "open", epoch, revision, ...presentation };
+        const intent: MiniAppPresentationIntent = {
+          action: "open",
+          epoch,
+          revision,
+          ...presentation,
+          ...(openInput.path !== undefined ? { path: openInput.path } : {}),
+        };
         latestIntent = intent;
         publish(intent);
         input.selectSession?.({ sessionId: openInput.sessionId, pluginId: openInput.pluginId });

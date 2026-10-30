@@ -36,8 +36,9 @@
 // The phase reported here is the bridge's own phase. A phone that is not connected reads `idle`,
 // `unbound` or `error`, and the error is the bridge's `last_error`. There is no path in this file
 // that reports `connected` without the WebSocket handshake having completed.
-import { hostname } from "node:os";
 import { join } from "node:path";
+
+import { remoteControlDeviceName } from "./device-name.js";
 
 import type {
   WebuiRemoteControlComposerMode,
@@ -325,10 +326,10 @@ export function createWebuiRemoteControl(
   };
 
   // The device name the panel shows is the same name this device reports when it asks for a
-  // pairing code (`pairing.ts` sends the host name to the server), so the panel and the phone
-  // call this machine by the same name. `this computer` is only the last resort, for a host
-  // that has no name at all.
-  const deviceName = (): string => options.getDeviceName?.() || hostname() || "this computer";
+  // pairing code (`pairing.ts` sends it to the server), so the panel and the phone call this
+  // machine by the same name. Both sides read `remoteControlDeviceName()`, which appends the
+  // operating system to the hostname.
+  const deviceName = (): string => options.getDeviceName?.() || remoteControlDeviceName();
 
   /**
    * Re-establish the link when the service comes back.

@@ -395,6 +395,10 @@ export function createMiniAppHandlerEntries(
           surfacePath: launch.launch.surfacePath,
           credential: launch.launch.credential,
           credentialHeader: launch.launch.credentialHeader,
+          // The Agent may name the page inside the Mini App it wants. The proxy
+          // resolves it against the Mini App's own origin, so the page the client
+          // frames is the page the Mini App serves.
+          ...(body.path !== undefined ? { path: body.path } : {}),
         });
         // The response is the proxy's URL, the plugin it belongs to, and the
         // generation this start issued. The runtime's origin, surface path,

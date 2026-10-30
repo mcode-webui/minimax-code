@@ -6,8 +6,6 @@ import type {
   MiniAppNodeRuntime,
   MiniAppPreparationOptions,
   MiniAppPublishedView,
-  MiniAppRuntimeLogEvent,
-  MiniAppRuntimeLogEntry,
   MiniAppStopOptions,
   MiniAppStatus,
   MiniAppSupervisor,
@@ -19,7 +17,6 @@ import type {
 import * as cleanup from './cleanup-settlement.js';
 import * as errors from '../errors.js';
 import { MiniAppError } from '../errors.js';
-import { sanitizeMiniAppRuntimeLogEvent } from '../runtime-log.js';
 import {
   activeStatusPhase,
   assertGenerationRunCurrent,
@@ -47,6 +44,8 @@ import {
   type SupervisorPreparation as Preparation,
 } from './supervisor-transition.js';
 import { SupervisorCutoverCoordinator } from './supervisor-cutover.js';
+import { MiniAppSupervisorDiagnostics } from './supervisor-diagnostics.js';
+import { statusFor, type StatusProjectionState } from './supervisor-status.js';
 
 interface ReusableRuntime {
   readonly generation: Generation;
@@ -72,14 +71,19 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
     failures: this.failures,
     explicitlyStopped: this.explicitlyStopped,
   };
-  private readonly logs = new Map<string, MiniAppRuntimeLogEntry[]>();
+  private readonly diagnostics: MiniAppSupervisorDiagnostics;
   private readonly observations = new Set<Promise<void>>();
   private readonly cutover: SupervisorCutoverCoordinator;
-  private logSequence = 0;
   private closed = false;
   private closePromise: Promise<void> | undefined;
 
   constructor(private readonly options: MiniAppSupervisorOptions) {
+    this.diagnostics = new MiniAppSupervisorDiagnostics({
+      nodeRuntime: options.nodeRuntime,
+      nowMs: () => this.nowMs(),
+      ...(options.logger ? { logger: options.logger } : {}),
+      ...(options.logCapacity !== undefined ? { logCapacity: options.logCapacity } : {}),
+    });
     this.cutover = new SupervisorCutoverCoordinator({
       active: this.active,
       retiring: this.retiring,
@@ -340,12 +344,14 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
         onPonr: options.onPonr,
       });
     }
-    return this.options.nodeRuntime.prepare({
-      candidate,
-      processGeneration: this.makeProcessGeneration(),
-      signal: preparation.controller.signal,
-      onLog: (event) => this.appendLog(candidate.pluginId, options.miniAppGeneration, event),
-    });
+    return this.diagnostics.prepare(
+      {
+        candidate,
+        processGeneration: this.makeProcessGeneration(),
+        signal: preparation.controller.signal,
+      },
+      options.miniAppGeneration,
+    );
   }
 
   private async acceptPreparedRuntime(
@@ -717,10 +723,19 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
             ...this.preparations.keys(),
             ...this.failures.keys(),
             ...this.quarantined,
-            ...this.logs.keys(),
+            ...this.diagnostics.pluginIds(),
           ]),
         ];
-    return ids.map((id) => this.statusFor(id));
+    const statusState: StatusProjectionState = {
+      active: this.active,
+      retiring: this.retiring,
+      failures: this.failures,
+      quarantined: this.quarantined,
+      disabled: this.disabled,
+      preparations: this.preparations,
+      cold: this.cold,
+    };
+    return ids.map((id) => statusFor(statusState, this.diagnostics, id));
   }
 
   close(): Promise<void> {
@@ -824,33 +839,6 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
     return generation;
   }
 
-  private statusFor(pluginId: string): MiniAppStatus {
-    const active = this.active.get(pluginId);
-    const retiring = this.retiring.get(pluginId) ?? [];
-    const failureCode = this.failures.get(pluginId);
-    return {
-      pluginId,
-      phase: this.statusPhase(pluginId, active),
-      ...(active ? { active: active.view } : {}),
-      retiringGenerationIds: retiring.map((generation) => generation.view.miniAppGeneration),
-      leaseCount:
-        (active?.leases.size ?? 0) +
-        retiring.reduce((count, generation) => count + generation.leases.size, 0),
-      ...(failureCode ? { failureCode } : {}),
-      logs: [...(this.logs.get(pluginId) ?? [])],
-    };
-  }
-
-  private statusPhase(pluginId: string, active: Generation | undefined): MiniAppStatus['phase'] {
-    if (this.quarantined.has(pluginId)) return 'quarantined';
-    if (this.disabled.has(pluginId)) return 'disabled';
-    if (active) return activeStatusPhase(active, this.failures.has(pluginId));
-    if (this.preparations.has(pluginId)) return 'preparing';
-    if (this.failures.has(pluginId)) return 'failed';
-    if (this.cold.has(pluginId)) return 'cold';
-    return 'inactive';
-  }
-
   private addRetiring(generation: Generation, pendingFinalization = false): void {
     generation.accepting = false;
     generation.retirementPendingFinalization ||= pendingFinalization;
@@ -928,13 +916,15 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
       if (!(await this.options.verifyCandidate(candidate))) {
         throw new MiniAppError('CANDIDATE_CHANGED', 'Mini App candidate changed before start');
       }
-      runtime = await this.options.nodeRuntime.prepare({
-        candidate,
-        processGeneration: this.makeProcessGeneration(),
-        preferredPort: this.options.stateStore.read(pluginId)?.preferredPort,
-        signal: controller.signal,
-        onLog: (event) => this.appendLog(pluginId, generation.view.miniAppGeneration, event),
-      });
+      runtime = await this.diagnostics.prepare(
+        {
+          candidate,
+          processGeneration: this.makeProcessGeneration(),
+          preferredPort: this.options.stateStore.read(pluginId)?.preferredPort,
+          signal: controller.signal,
+        },
+        generation.view.miniAppGeneration,
+      );
       this.assertGenerationCurrent(pluginId, generation, controller);
       if (!(await this.options.verifyCandidate(candidate))) {
         throw new MiniAppError('CANDIDATE_CHANGED', 'Mini App candidate changed during start');
@@ -1021,24 +1011,6 @@ export class DefaultMiniAppSupervisor implements MiniAppSupervisor {
       }
       throw error;
     }
-  }
-
-  private appendLog(
-    pluginId: string,
-    miniAppGeneration: string,
-    event: MiniAppRuntimeLogEvent,
-  ): void {
-    const sanitized = sanitizeMiniAppRuntimeLogEvent(event);
-    const entries = this.logs.get(pluginId) ?? [];
-    entries.push({
-      ...sanitized,
-      sequence: (this.logSequence += 1),
-      atMs: this.nowMs(),
-      miniAppGeneration,
-    });
-    const capacity = Math.max(1, this.options.logCapacity ?? 200);
-    if (entries.length > capacity) entries.splice(0, entries.length - capacity);
-    this.logs.set(pluginId, entries);
   }
 
   private recordFailure(pluginId: string, code: string, persist = true): void {

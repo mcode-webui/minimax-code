@@ -7,8 +7,10 @@ import {
   type MiniAppBusyReason,
   type MiniAppFailureReasonCode,
   type MiniAppInitResult,
+  type MiniAppInspectResult,
   type MiniAppLifecycle,
   type MiniAppListResult,
+  type MiniAppOpenActionContext,
   type MiniAppOpenResult,
   type MiniAppPublishActionContext,
   type MiniAppRuntimeErrorDetail,
@@ -78,6 +80,22 @@ export function createSessionMiniAppLifecycle(
   const inspectDefinition = (miniApp: AvailableMiniAppDefinition): MiniAppTargetResult => ({
     miniApp: summary(miniApp, statusByPlugin(supervisor.inspect()).get(miniApp.pluginId)),
   });
+  const inspectRuntime = (miniApp: AvailableMiniAppDefinition): MiniAppInspectResult => {
+    const status = supervisor
+      .inspect(miniApp.pluginId)
+      .find(({ pluginId }) => pluginId === miniApp.pluginId);
+    return {
+      miniApp: summary(
+        miniApp,
+        status ? { ...status, failureCode: status.diagnostics?.failure?.code } : undefined,
+      ),
+      diagnostics: status?.diagnostics ?? {
+        scope: 'host',
+        retention: 'runtime-memory',
+        logs: { entries: [], truncated: false, omittedCount: 0 },
+      },
+    };
+  };
   const publishFromSession = async (
     context: MiniAppPublishActionContext,
   ): Promise<MiniAppTargetResult> => {
@@ -143,8 +161,8 @@ export function createSessionMiniAppLifecycle(
     },
     init: initializeFromSessionWorkspace,
     inspect: async (context: MiniAppTargetActionContext) =>
-      inspectDefinition(await definition(context.pluginId)),
-    open: async (context: MiniAppTargetActionContext): Promise<MiniAppOpenResult> => {
+      inspectRuntime(await definition(context.pluginId)),
+    open: async (context: MiniAppOpenActionContext): Promise<MiniAppOpenResult> => {
       if (!surface) throw lifecycleError('OPEN_UNAVAILABLE');
       const miniApp = await definition(context.pluginId);
       try {
@@ -159,6 +177,7 @@ export function createSessionMiniAppLifecycle(
         await surface.open({
           sessionId: context.sessionId,
           pluginId: context.pluginId,
+          ...(context.path !== undefined ? { path: context.path } : {}),
           ...(context.signal ? { signal: context.signal } : {}),
         });
         return { miniApp: runningSummary(miniApp), opened: true };

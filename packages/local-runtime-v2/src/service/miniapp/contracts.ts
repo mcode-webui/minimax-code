@@ -1,3 +1,5 @@
+import type { MiniAppInspectDiagnostics } from '@mavis/agent-extension';
+
 /** Largest `agentConcurrency` a Mini App manifest may declare. */
 export const MINIAPP_AGENT_MAX_CONCURRENCY = 32;
 
@@ -238,6 +240,7 @@ export interface MiniAppStatus {
   readonly leaseCount: number;
   readonly failureCode?: string;
   readonly logs: readonly MiniAppRuntimeLogEntry[];
+  readonly diagnostics?: MiniAppInspectDiagnostics;
 }
 
 interface MiniAppPublicationCoordinator {
@@ -283,6 +286,8 @@ export interface MiniAppSupervisor extends MiniAppPublicationCoordinator {
 export interface MiniAppSupervisorOptions {
   readonly stateStore: MiniAppStateStore;
   readonly nodeRuntime: MiniAppNodeRuntimeFactory;
+  /** Host logger used for best-effort startup failure records. */
+  readonly logger?: { error(fields: Record<string, unknown>, message: string): void };
   readonly verifyCandidate: (candidate: MiniAppCandidate) => Promise<boolean>;
   readonly nowMs?: () => number;
   readonly makeMiniAppGeneration?: () => string;

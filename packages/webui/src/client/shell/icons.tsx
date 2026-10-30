@@ -2,10 +2,10 @@
 
 import type { ReactElement } from "react";
 import {
-  IconArchive, IconArrowBackUp, IconArrowUp, IconBell, IconBug, IconCirclePlus,
+  IconArchive, IconArrowUp, IconBell, IconBug, IconCirclePlus,
   IconCalendarEvent, IconCaretRightFilled, IconChartBar, IconCheck, IconChevronDown, IconChevronLeft,
   IconChevronRight, IconClipboard, IconCode, IconCopy, IconDeviceMobile, IconDots,
-  IconDownload, IconEdit, IconFile, IconFileCode, IconFolder, IconFolderPlus,
+  IconDownload, IconEdit, IconFile, IconFileCode, IconFileImport, IconFolder, IconFolderPlus,
   IconGitBranch, IconGitCompare, IconGitFork, IconHierarchy, IconHome, IconInfoCircle, IconLayoutDashboard, IconMaximize,
   IconLayoutSidebar, IconMapPin, IconMessage, IconMessageCircle, IconMessageQuestion,
   IconMinimize, IconPaperclip, IconPin, IconPinFilled, IconPuzzle, IconRefresh, IconSearch,
@@ -39,6 +39,9 @@ export function WebuiIconHome({ className }: WebuiIconProps): ReactElement { ret
 /** Product mark. This custom MiniMax glyph is branding, not a UI icon. */
 export function WebuiIconBrand({ className }: WebuiIconProps): ReactElement {
   return <img src="/assets/img/minimax-code-agent-icon.png" alt="" aria-hidden="true" className={className} />;
+}
+export function WebuiIconHomeBrand({ className }: WebuiIconProps): ReactElement {
+  return <img src="/assets/img/minimax-octopus-home.png" alt="" aria-hidden="true" className={className} />;
 }
 export function WebuiIconAgent({ className }: WebuiIconProps): ReactElement {
   return <img src="/assets/img/minimax-code-agent-icon.png" alt="" aria-hidden="true" className={className} />;
@@ -82,7 +85,7 @@ export function WebuiIconContextFork({ className }: WebuiIconProps): ReactElemen
 export function WebuiIconContextCopy({ className }: WebuiIconProps): ReactElement { return glyph(IconCopy, className); }
 export function WebuiIconContextFeedback({ className }: WebuiIconProps): ReactElement { return glyph(IconMessageCircle, className); }
 export function WebuiIconContextExport({ className }: WebuiIconProps): ReactElement { return glyph(IconDownload, className); }
-export function WebuiIconSessionImport({ className }: WebuiIconProps): ReactElement { return glyph(IconArrowBackUp, className); }
+export function WebuiIconSessionImport({ className }: WebuiIconProps): ReactElement { return glyph(IconFileImport, className); }
 export function WebuiIconContextTrash({ className }: WebuiIconProps): ReactElement { return glyph(IconTrash, className); }
 export function WebuiIconContextChevron({ className }: WebuiIconProps): ReactElement {
   // The submenu chevron sits in a 16px slot (`.webui-context-menu-chevron`),

@@ -31,6 +31,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
   type ReactElement,
 } from "react";
 
@@ -117,6 +118,37 @@ export function MiniAppView({
    */
   const agentHostRef = useRef<ReturnType<typeof createWebuiMiniAppAgentBridge> | null>(null);
   const frameLoadsRef = useRef(0);
+  /**
+   * The revision of the frame this view is showing.
+   *
+   * A refresh remounts the frame at the same URL, so the revision is what tells
+   * React to build a new document: the key has to change, or the browser keeps
+   * the document it already has.
+   */
+  const [reloadRevision, setReloadRevision] = useState(0);
+  /**
+   * Whether the load being reported is the one this view asked for.
+   *
+   * A refresh replaces the document, so the frame reports a load the way a
+   * navigation does — but the two are not the same thing. A navigation the page
+   * chose destroys the turn it opened, while a refresh the person asked for
+   * leaves the turn running in the runtime, exactly as the shipped client's
+   * refresh does.
+   */
+  const reloadPendingRef = useRef(false);
+  /**
+   * Reload the framed page.
+   *
+   * The shipped client reloads the page the Mini App is showing and keeps its
+   * URL, its credential and the turn it is running. This browser has no native
+   * tab to reload, so the frame is remounted at the same URL instead: the proxy
+   * injects the credential on the way out, so the replacement document is served
+   * exactly as the first one was.
+   */
+  const reload = useCallback(() => {
+    reloadPendingRef.current = true;
+    setReloadRevision((revision) => revision + 1);
+  }, []);
 
   /**
    * Present the Mini App here, or wait for the standalone tab that holds it.
@@ -314,6 +346,9 @@ export function MiniAppView({
     });
     agentHostRef.current = agentHost;
     frameLoadsRef.current = 0;
+    // A new generation means a new frame, so a reload this view was waiting for
+    // is no longer the load that is coming.
+    reloadPendingRef.current = false;
     const onMessage = (event: MessageEvent): void => {
       agentHost.handleMessage(
         { data: event.data, origin: event.origin, source: event.source },
@@ -339,6 +374,14 @@ export function MiniAppView({
    * simply does not offer it rather than offering a control that does nothing.
    */
   const canMove = !standalone && !detached && standaloneHref !== undefined;
+  /**
+   * Whether this view is framing a running Mini App.
+   *
+   * The runtime's own controls belong to it: the state it is in, the refresh that
+   * reloads the page, and the stop that ends the run. A view that frames no page
+   * — because another document holds the presentation — offers none of them.
+   */
+  const running = presentation?.kind === "open" && !detached;
 
   return (
     <div
@@ -368,7 +411,7 @@ export function MiniAppView({
           // remounts the frame: the page's in-page state is gone either way
           // (ADR 0020), and a stale document would otherwise keep rendering from
           // an origin the service has already re-pointed.
-          key={`${pluginId}:${row?.presentationRevision ?? 0}`}
+          key={`${pluginId}:${row?.presentationRevision ?? 0}:${reloadRevision}`}
           ref={frameRef}
           className="webui-miniapp-view-frame"
           data-testid="miniapp-view-frame"
@@ -376,6 +419,14 @@ export function MiniAppView({
           src={presentation.viewUrl}
           onLoad={() => {
             frameLoadsRef.current += 1;
+            // A refresh this view asked for is not a navigation the page made.
+            // The document is replaced either way, but the turn it opened is
+            // still running in the runtime, and the shipped client keeps it
+            // running across a refresh — so nothing is closed here.
+            if (reloadPendingRef.current) {
+              reloadPendingRef.current = false;
+              return;
+            }
             // The first load is this view's own document. A later one is a
             // navigation the page made, so the generation that answered it is
             // closed before the replacement document can call: its live turns are
@@ -388,11 +439,30 @@ export function MiniAppView({
           }}
         />
       ) : null}
-      {canMove ? (
-        <div className="webui-miniapp-view-move">
-          <button type="button" data-testid="miniapp-open-standalone" onClick={moveToStandalone}>
-            在新标签页中打开
-          </button>
+      {running || canMove ? (
+        <div className="webui-miniapp-view-move" data-testid="miniapp-view-actions">
+          {running ? (
+            <>
+              <span className="webui-miniapp-view-badge" data-testid="miniapp-view-status">
+                {row?.statusLabel ?? "运行中"}
+              </span>
+              <button type="button" data-testid="miniapp-refresh" onClick={reload}>
+                刷新
+              </button>
+              <button
+                type="button"
+                data-testid="miniapp-stop"
+                onClick={() => void workflows?.stop(pluginId)}
+              >
+                停止
+              </button>
+            </>
+          ) : null}
+          {canMove ? (
+            <button type="button" data-testid="miniapp-open-standalone" onClick={moveToStandalone}>
+              在新标签页中打开
+            </button>
+          ) : null}
         </div>
       ) : null}
       {presentation?.kind === "stopped" && !detached ? (

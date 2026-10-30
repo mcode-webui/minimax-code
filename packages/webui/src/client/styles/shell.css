@@ -598,9 +598,20 @@
     font-size: var(--size_12);
     line-height: var(--line_height_20);
   }
+  /* The Mini App's toolbar: what the runtime is doing, the refresh that
+   * reloads the page, the stop that ends the run, and the move to a tab of its
+   * own. One row, so the controls never take height the page needs. */
   .webui-miniapp-view-move {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
+    gap: var(--spacing_8);
+  }
+  .webui-miniapp-view-badge {
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_20);
   }
 
   /* The standalone page: one Mini App and nothing else, so the document is the

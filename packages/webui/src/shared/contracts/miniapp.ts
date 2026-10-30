@@ -132,6 +132,14 @@ export type WebuiMiniAppPresentationIntent =
       readonly action: "open";
       readonly sessionId: string;
       readonly pluginId: string;
+      /**
+       * The origin-relative page the Agent asked for, when it asked for one.
+       *
+       * The Agent's `open` action may name a path inside the Mini App; the host
+       * resolves it against the Mini App's own origin. Absent means the Mini App's
+       * declared surface, which is what the Agent gets when it names no path.
+       */
+      readonly path?: string;
     }
   | {
       /** Changes whenever the host service process that owns the presenter changes. */
@@ -141,6 +149,38 @@ export type WebuiMiniAppPresentationIntent =
       readonly pluginId: string;
       readonly sessionId: string;
     };
+
+/**
+ * The longest origin-relative path a Mini App open may carry.
+ *
+ * The shipped runtime's own bound, copied rather than re-derived: the runtime
+ * refuses a longer path before the surface ever sees it, so a client-side bound
+ * that disagreed would refuse paths the product accepts.
+ */
+export const WEBUI_MINIAPP_OPEN_PATH_MAX_LENGTH = 4096;
+
+/**
+ * Whether a value is a legal origin-relative path for a Mini App open.
+ *
+ * The shipped runtime's surface rules, copied exactly: the path starts with
+ * `/`, is not `//`, carries no control character, space, backslash or `#`, and
+ * every `%` starts a two-hex-digit escape. The path is resolved against the
+ * Mini App's own origin, so one that could leave that origin — or that carries a
+ * fragment the page would never receive — is refused rather than normalised.
+ *
+ * Kept here because the client and the server both have to agree on it: the
+ * server builds the URL the page is framed at, and the client names the path the
+ * Agent asked for.
+ */
+export function isWebuiMiniAppOpenPath(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  if (value.length > WEBUI_MINIAPP_OPEN_PATH_MAX_LENGTH) return false;
+  if (!value.startsWith("/")) return false;
+  if (value.startsWith("//")) return false;
+  if (/[\\\u0000-\u0020\u007f#]/u.test(value)) return false;
+  if (/%(?![0-9a-f]{2})/iu.test(value)) return false;
+  return true;
+}
 
 /**
  * What `openMiniApp` hands the client: the proxy's own loopback URL.

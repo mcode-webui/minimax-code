@@ -256,3 +256,61 @@ describe('Mini App proxy document rewrite', () => {
     expect(seen.length).toBe(before);
   });
 });
+
+describe('Mini App proxy with an Agent-named path', () => {
+  it('frames the path the Agent named instead of the declared surface', async () => {
+    const named = await startMiniAppProxy({
+      target: {
+        pluginId: 'fixture.path.miniapp',
+        upstreamOrigin: `http://127.0.0.1:${upstreamPort}`,
+        surfacePath: '/page?mode=dashboard',
+        path: '/items/42?tab=details',
+        credential: CREDENTIAL,
+        credentialHeader: CREDENTIAL_HEADER,
+      },
+      port: 0,
+    });
+
+    try {
+      expect(named.viewUrl).toContain('/items/42?tab=details');
+      expect(named.viewUrl).not.toContain('/page');
+    } finally {
+      await named.close();
+    }
+  });
+
+  it('frames the declared surface when the Agent named no path', async () => {
+    const plain = await startMiniAppProxy({
+      target: {
+        pluginId: 'fixture.surface.miniapp',
+        upstreamOrigin: `http://127.0.0.1:${upstreamPort}`,
+        surfacePath: '/page?mode=dashboard',
+        credential: CREDENTIAL,
+        credentialHeader: CREDENTIAL_HEADER,
+      },
+      port: 0,
+    });
+
+    try {
+      expect(plain.viewUrl).toContain('/page?mode=dashboard');
+    } finally {
+      await plain.close();
+    }
+  });
+
+  it('refuses a path that could leave the Mini App origin', async () => {
+    await expect(
+      startMiniAppProxy({
+        target: {
+          pluginId: 'fixture.bad.miniapp',
+          upstreamOrigin: `http://127.0.0.1:${upstreamPort}`,
+          surfacePath: '/page',
+          path: '//elsewhere.example/steal',
+          credential: CREDENTIAL,
+          credentialHeader: CREDENTIAL_HEADER,
+        },
+        port: 0,
+      }),
+    ).rejects.toThrow(/origin-relative path/);
+  });
+});

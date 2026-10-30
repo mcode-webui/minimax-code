@@ -722,7 +722,8 @@ export function WebuiClientFoundationApp(
         const alreadyOpen = workspacePanelOwner.stateFor(intent.sessionId).workspacePanel.tabs.some(
           (tab) => tab.content.kind === "miniapp" && tab.content.pluginId === intent.pluginId,
         );
-        const opened = alreadyOpen || (await miniAppWorkflows.open(intent.pluginId));
+        const opened =
+          alreadyOpen || (await miniAppWorkflows.open(intent.pluginId, intent.path));
         if (
           disposed ||
           presenterTask.current !== task ||

@@ -76,6 +76,7 @@ export interface MiniAppPresenter {
   open(input: {
     readonly sessionId: string;
     readonly pluginId: string;
+    readonly path?: string;
     readonly signal?: AbortSignal;
   }): Promise<void>;
   /** Closes every managed native surface for one plugin after its runtime has stopped. */

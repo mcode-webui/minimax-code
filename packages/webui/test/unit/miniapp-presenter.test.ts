@@ -100,6 +100,33 @@ describe('Mini App presenter', () => {
     expect(onClosed).toHaveBeenCalledTimes(1);
   });
 
+  it('carries the path the Agent named onto the open intent', async () => {
+    const { view } = build();
+
+    await view.presenter.open({
+      sessionId: 'session-1',
+      pluginId: 'fixture.miniapp',
+      path: '/items/42?tab=details',
+    });
+
+    expect(view.snapshot()).toEqual({
+      epoch: expect.any(String),
+      revision: 1,
+      action: 'open',
+      sessionId: 'session-1',
+      pluginId: 'fixture.miniapp',
+      path: '/items/42?tab=details',
+    });
+  });
+
+  it('names no path when the Agent named none', async () => {
+    const { view } = build();
+
+    await view.presenter.open({ sessionId: 'session-1', pluginId: 'fixture.miniapp' });
+
+    expect(view.snapshot()).not.toHaveProperty('path');
+  });
+
   it('stops showing the Mini App when the person selects another session', async () => {
     const closed: string[] = [];
     const { view } = build((input) => closed.push(input.pluginId));

@@ -298,6 +298,36 @@ describe("the Mini App descriptors", () => {
       });
     }
   });
+
+  it("accepts an origin-relative path on the open and refuses the rest", () => {
+    expect(openMiniAppOperation.validate({ pluginId: "fixture.miniapp" })).toEqual({
+      ok: true,
+      body: { pluginId: "fixture.miniapp" },
+    });
+    expect(
+      openMiniAppOperation.validate({ pluginId: "fixture.miniapp", path: "/items/42?tab=details" }),
+    ).toEqual({
+      ok: true,
+      body: { pluginId: "fixture.miniapp", path: "/items/42?tab=details" },
+    });
+    // The shipped runtime's surface rules: a path that could leave the Mini App's
+    // own origin, or that carries what a page never receives, is refused.
+    for (const path of [
+      "items/42",
+      "//elsewhere.example/steal",
+      "/items/42#fragment",
+      "/items/42 with space",
+      "/items/42%zz",
+      `/${"x".repeat(4097)}`,
+      7,
+    ]) {
+      expect(openMiniAppOperation.validate({ pluginId: "fixture.miniapp", path })).toEqual({
+        ok: false,
+        code: WebuiErrorCode.invalidBody,
+        message: "openMiniApp path must be an origin-relative path",
+      });
+    }
+  });
 });
 
 describe("a host without the Mini App capability", () => {

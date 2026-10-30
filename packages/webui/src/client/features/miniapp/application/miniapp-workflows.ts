@@ -214,7 +214,13 @@ export interface WebuiMiniAppWorkflows {
    * `false` means the start was refused: the refusal is in the snapshot under
    * this plugin id, and both surfaces render it.
    */
-  readonly open: (pluginId: string) => Promise<boolean>;
+  /**
+   * Start one Mini App and keep its view URL.
+   *
+   * `path` is the origin-relative page inside the Mini App, when the Agent
+   * named one. Absent means the Mini App's declared surface.
+   */
+  readonly open: (pluginId: string, path?: string) => Promise<boolean>;
   /** Reopen an inline frame after another document has replaced its connection. */
   readonly refreshInline: (pluginId: string) => Promise<void>;
   /** Stop one Mini App and clear its view, recording why. */
@@ -416,13 +422,16 @@ export function createWebuiMiniAppWorkflows(deps: {
     }
   };
 
-  const open = async (pluginId: string): Promise<boolean> => {
+  const open = async (pluginId: string, path?: string): Promise<boolean> => {
     if (!available || !port.openMiniApp) return false;
     set((current) => ({ ...current, opening: pluginId }));
     setPresentation(pluginId, { kind: "opening" });
     setRefusal(pluginId, undefined);
     try {
-      const view = await port.openMiniApp({ pluginId });
+      const view = await port.openMiniApp({
+        pluginId,
+        ...(path !== undefined ? { path } : {}),
+      });
       setPresentation(pluginId, {
         kind: "open",
         viewUrl: view.viewUrl,

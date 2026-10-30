@@ -32,8 +32,7 @@
 // from the main process. The WebUI's service does hold a first-party lease — the one the quota and
 // the daily check-in sign with — so it signs the pairing pipeline with that, and the account id
 // travels in the `user_id` common-param the server cross-checks against the token.
-import { hostname } from "node:os";
-
+import { remoteControlDeviceName } from "./device-name.js";
 import { resolveAuthScope, readWebuiAuthContext } from "../auth-context.js";
 import { PairingClient } from "./bridge/pairing-client.js";
 import type { RcLogger } from "./bridge/types.js";
@@ -256,7 +255,7 @@ export function createRemoteControlPairingClient(
     getDeviceId: options.getDeviceId,
     getPlatform: resolveRemoteControlPlatform,
     getAppVersion: () => options.appVersion,
-    getDeviceName: options.getDeviceName ?? (() => hostname() || undefined),
+    getDeviceName: options.getDeviceName ?? (() => remoteControlDeviceName()),
     getExtraHeaders: () => ({}),
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     ...(options.logger ? { logger: options.logger } : {}),

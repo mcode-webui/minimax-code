@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { WebuiIconBrand } from "./icons.js";
+import { WebuiIconHomeBrand } from "./icons.js";
 import { GreetingSkeleton } from "../features/transcript/ui/TranscriptSkeletons.js";
 import { WebuiWorkspacePanelControls } from "../features/workspace/ui/WorkspacePanelControls.js";
 
@@ -65,7 +65,7 @@ export function ConversationSurface(props: {
           ? "flex w-full max-w-[743px] shrink-0 flex-col items-center gap-2 px-4"
           : "webui-session-layout relative flex min-h-0 w-full flex-1 flex-col items-center gap-2"}>
           {props.home ? (props.greetingPending ? <GreetingSkeleton /> : <div className="flex flex-col items-center gap-2 text-center [@media(max-height:300px)]:hidden">
-            <div className="group/avatar relative size-16 flex-shrink-0"><div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary"><span className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"><WebuiIconBrand className="h-full w-full" /></span></div></div>
+            <div className="group/avatar relative size-[94px] flex-shrink-0"><div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary"><span className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"><WebuiIconHomeBrand className="h-full w-full" /></span></div></div>
             <h1 className="text-[28px] font-medium leading-tight text-text_default_primary">MiniMax Code Web，让工作更简单。</h1>
           </div>) : null}
           {props.usageBanner}

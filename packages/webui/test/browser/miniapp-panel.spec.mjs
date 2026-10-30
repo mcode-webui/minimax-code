@@ -165,6 +165,75 @@ test("the launcher's 应用 tile turns the tab into the Mini App tool page, and 
   await expect(page.getByTestId("workspace-panel")).toHaveAttribute("data-active-tab", "miniapp");
 });
 
+test("the running Mini App offers its refresh, its stop and the runtime's state, and the refresh reloads the page", async ({
+  page,
+}) => {
+  // The stub is served by the spec, so the count of requests is the count of
+  // documents the browser actually fetched: a refresh has to fetch it again.
+  let served = 0;
+  await page.route("**/__miniapp-stub*", (route) => {
+    served += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><html><body><p>Mini App stub</p></body></html>",
+    });
+  });
+  await configureFixture(page, () => {
+    window.__WEBUI_FIXTURE_SETUP__ ??= [];
+    window.__WEBUI_FIXTURE_SETUP__.push(() => {
+      window.__fixture.setResponse("listMiniApps", {
+        miniApps: [
+          {
+            pluginId: "demo.miniapp",
+            displayName: "演示应用",
+            description: "一个用于浏览器验收的 Mini App",
+            runtime: { kind: "process", status: "stopped" },
+          },
+        ],
+      });
+      window.__fixture.setResponse("openMiniApp", {
+        pluginId: "demo.miniapp",
+        viewUrl: `${window.location.origin}/__miniapp-stub`,
+      });
+    });
+  });
+  await page.setViewportSize({ width: 800, height: 816 });
+  await openApp(page);
+  await openWorkspacePanel(page);
+  await openMiniAppPickerFromLauncher(page);
+  await page.getByRole("button", { name: "展开面板" }).click();
+  const picker = page.getByTestId("miniapp-picker");
+  await expect(picker).toBeVisible();
+  await picker.getByRole("button", { name: "打开" }).click();
+
+  await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
+  await expect.poll(() => served).toBe(1);
+  await expect(page.getByTestId("miniapp-stop")).toBeVisible();
+  await expect(page.getByTestId("miniapp-refresh")).toBeVisible();
+
+  // The runtime's own state is on screen, not a guess: the catalogue says the
+  // Mini App is running, and the badge follows it.
+  await page.evaluate(() => {
+    window.__fixture.setResponse("listMiniApps", {
+      miniApps: [
+        {
+          pluginId: "demo.miniapp",
+          displayName: "演示应用",
+          description: "一个用于浏览器验收的 Mini App",
+          runtime: { kind: "process", status: "running" },
+        },
+      ],
+    });
+  });
+  await expect(page.getByTestId("miniapp-view-status")).toHaveText("运行中");
+
+  // The refresh reloads the page the view frames: the same URL is fetched again.
+  await page.getByTestId("miniapp-refresh").click();
+  await expect.poll(() => served).toBe(2);
+  await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
+});
+
 test("the Mini App picker follows the centered app-list layout in a narrow workspace panel", async ({ page }) => {
   await configureFixture(page, () => {
     window.__WEBUI_FIXTURE_SETUP__ ??= [];

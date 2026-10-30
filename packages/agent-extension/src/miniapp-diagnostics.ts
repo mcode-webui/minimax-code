@@ -9,6 +9,36 @@ export interface MiniAppFailureDiagnostic {
   readonly hint: string;
 }
 
+export interface MiniAppInspectDiagnostics {
+  readonly scope: 'host';
+  readonly retention: 'runtime-memory';
+  readonly failure?: { readonly code: string; readonly message: string };
+  readonly run?: {
+    readonly runId: string;
+    readonly current: boolean;
+    readonly preparationStartedAtMs: number;
+    readonly readyAtMs?: number;
+    readonly exitedAtMs?: number;
+    readonly exit?: {
+      readonly code: number | null;
+      readonly signal: string | null;
+      readonly shutdownRequested: boolean;
+    };
+    readonly failure?: { readonly code: string; readonly message: string };
+  };
+  readonly logs: {
+    readonly entries: readonly {
+      readonly sequence: number;
+      readonly atMs: number;
+      readonly code: string;
+      readonly message: string;
+    }[];
+    readonly truncated: boolean;
+    /** Plugin log events excluded from this Host-only view, including raw stdout and stderr. */
+    readonly omittedCount: number;
+  };
+}
+
 interface MiniAppFailureCatalogEntry {
   readonly lifecycleCode: 'PREPARATION_FAILED' | 'PLUGIN_ALREADY_EXISTS';
   readonly stage: MiniAppFailureStage;

@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import net from 'node:net';
 import { type Readable } from 'node:stream';
+
+import { isWebuiMiniAppOpenPath } from "../../shared/contracts/miniapp.js";
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 
 /**
@@ -15,6 +17,15 @@ export interface MiniAppProxyTarget {
   readonly upstreamOrigin: string;
   /** The runtime-selected page the client should frame, including its query. */
   readonly surfacePath: string;
+  /**
+   * The origin-relative page the Agent named, when it named one.
+   *
+   * It replaces the declared surface for this presentation, exactly as it does
+   * in the shipped runtime: the path is resolved against the Mini App's own
+   * origin, and this proxy forwards paths unchanged, so the page the client
+   * frames here is the page the Mini App serves there.
+   */
+  readonly path?: string;
   readonly credential: string;
   /** Request header the upstream guard reads the credential from. */
   readonly credentialHeader: string;
@@ -81,6 +92,13 @@ export async function startMiniAppProxy(input: StartMiniAppProxyInput): Promise<
   const surface = new URL(input.target.surfacePath, 'http://miniapp.invalid');
   if (!input.target.surfacePath.startsWith('/') || surface.origin !== 'http://miniapp.invalid') {
     throw new TypeError('A Mini App surface path must be an absolute path on its own origin');
+  }
+  const framed = new URL(input.target.path ?? input.target.surfacePath, 'http://miniapp.invalid');
+  if (
+    input.target.path !== undefined &&
+    (!isWebuiMiniAppOpenPath(input.target.path) || framed.origin !== 'http://miniapp.invalid')
+  ) {
+    throw new TypeError('A Mini App open path must be an origin-relative path');
   }
   // Anything this listener owns that can be torn down: inbound sockets, forwarded requests, upgrade pairs.
   const sockets = new Set<{ destroy(): void }>();
@@ -209,7 +227,7 @@ export async function startMiniAppProxy(input: StartMiniAppProxyInput): Promise<
 
   return {
     port: boundPort,
-    viewUrl: `http://127.0.0.1:${boundPort}${surface.pathname}${surface.search}${surface.hash}`,
+    viewUrl: `http://127.0.0.1:${boundPort}${framed.pathname}${framed.search}${framed.hash}`,
     async close() {
       for (const socket of sockets) socket.destroy();
       sockets.clear();

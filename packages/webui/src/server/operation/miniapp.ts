@@ -15,6 +15,7 @@ import type {
   WebuiMiniAppCatalogue,
   WebuiMiniAppView,
 } from "../../shared/contracts/miniapp.js";
+import { isWebuiMiniAppOpenPath } from "../../shared/contracts/miniapp.js";
 import { WebuiErrorCode } from "../../shared/envelope.js";
 import {
   LIST_MINI_APPS_OPERATION_NAME,
@@ -96,12 +97,42 @@ function validatePluginId(
  * than the server.
  */
 export const openMiniAppOperation: WebuiOperation<
-  { readonly pluginId: string },
+  { readonly pluginId: string; readonly path?: string },
   WebuiMiniAppView
 > = {
   name: OPEN_MINI_APP_OPERATION_NAME,
-  validate: (body) => validatePluginId(OPEN_MINI_APP_OPERATION_NAME, body),
+  validate: (body) => validateOpenMiniApp(OPEN_MINI_APP_OPERATION_NAME, body),
 };
+
+/**
+ * The two fields `openMiniApp` carries.
+ *
+ * `path` is the origin-relative page the Agent named, when it named one. It is
+ * checked against the shipped runtime's surface rules here, so a path the runtime
+ * would refuse is refused before a process is started for it.
+ */
+function validateOpenMiniApp(
+  operation: string,
+  body: unknown,
+): WebuiOperationValidation<{ readonly pluginId: string; readonly path?: string }> {
+  const pluginId = validatePluginId(operation, body);
+  if (!pluginId.ok) return pluginId;
+  const path = (body as Record<string, unknown>).path;
+  if (path !== undefined && !isWebuiMiniAppOpenPath(path)) {
+    return {
+      ok: false,
+      code: WebuiErrorCode.invalidBody,
+      message: `${operation} path must be an origin-relative path`,
+    };
+  }
+  return {
+    ok: true,
+    body: {
+      pluginId: pluginId.body.pluginId,
+      ...(path !== undefined ? { path } : {}),
+    },
+  };
+}
 
 /**
  * Stops one Mini App. Answers `success` rather than the runtime's `void` so the

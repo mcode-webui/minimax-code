@@ -290,6 +290,36 @@ describe("the Mini App view the panel frames", () => {
     expect(markup).not.toContain("surface/");
   });
 
+  it("offers the running Mini App its refresh, its stop and what the runtime is doing", async () => {
+    const workflows = createWebuiMiniAppWorkflows({
+      port: port({ miniApps: [summary("dashboard", "running")] }),
+    });
+    await workflows.open("dashboard");
+    const markup = render(
+      createElement(MiniAppView, { pluginId: "dashboard", sessionId: "session-1" }),
+      workflows,
+    );
+    expect(markup).toContain('data-testid="miniapp-refresh"');
+    expect(markup).toContain('data-testid="miniapp-stop"');
+    expect(markup).toContain('data-testid="miniapp-view-status"');
+    expect(markup).toContain("运行中");
+    expect(markup).toContain("刷新");
+    expect(markup).toContain("停止");
+  });
+
+  it("offers no runtime control for a view that is not running", async () => {
+    const workflows = createWebuiMiniAppWorkflows({
+      port: port({ miniApps: [summary("dashboard", "stopped")] }),
+    });
+    await workflows.loadListing();
+    const markup = render(
+      createElement(MiniAppView, { pluginId: "dashboard", sessionId: "session-1" }),
+      workflows,
+    );
+    expect(markup).not.toContain('data-testid="miniapp-refresh"');
+    expect(markup).not.toContain('data-testid="miniapp-stop"');
+  });
+
   it("renders a cleared view with its reason and a button, and starts nothing on its own", async () => {
     let opens = 0;
     const workflows = createWebuiMiniAppWorkflows({

@@ -4299,6 +4299,7 @@
     "packages/webui/src/client/ui/form-atoms.tsx",
     "packages/webui/src/client/ui/layout-thresholds.ts",
     "packages/webui/src/client/ui/overlay-coordinator.tsx",
+    "packages/webui/src/client/ui/overlay-listeners.tsx",
     "packages/webui/src/client/ui/settings-glyphs.tsx",
     "packages/webui/src/client/ui/settings-layout.tsx",
     "packages/webui/src/runtime/account-login.ts",

@@ -35,6 +35,7 @@ import { WebuiPortSlicesProvider } from "./bindings/port-slices-context.js";
 // composition root, so every surface in either shell registers with the same
 // one (ADR 0028 § Overlay coordination).
 import { OverlayCoordinatorProvider } from "./ui/overlay-coordinator.js";
+import { OverlayListenerHost } from "./ui/overlay-listeners.js";
 import { WEBUI_PROTOCOL_VERSION, WebuiWireError, WebuiErrorCode } from "../shared/envelope.js";
 
 declare const document: {
@@ -245,6 +246,9 @@ function WebuiClientRoot({
 
   return (
     <OverlayCoordinatorProvider>
+      {/* The one document listener for every managed layer (#289). It renders
+        * nothing; the coordinator decides and the layers answer. */}
+      <OverlayListenerHost />
       <WebuiApplicationProvider application={application}>
         <WebuiPortSlicesProvider slices={slices}>
           {standalone ? (

@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayLayer } from "../../../ui/overlay-coordinator.js";
 import { IconDots, IconMessageCirclePlus, IconTrash, IconX } from "@tabler/icons-react";
 import { basenamePath } from "../../../projection/common/paths.js";
 import type { WebuiAgentMemoryView, WebuiMemorySettingsView } from "../../../../shared/contracts/personalization.js";
@@ -249,30 +250,51 @@ export function MemoryManagerDialog({
    * Unmount restores focus to whatever held it before, so closing with Escape
    * leaves the keyboard on the row the user came from.
    */
+  // The dialog, the menu inside it and the confirmation inside the menu are one
+  // nested path (ADR 0028 § Overlay coordination): each layer registers with the
+  // one above it, so Escape sheds exactly the topmost one and a press outside
+  // dismisses exactly the layer it landed outside of.
+  useOverlayLayer({
+    id: "memory-manager",
+    order: 0,
+    active: true,
+    // While the menu or the confirmation is open this layer consumes a dismissal
+    // rather than closing: closing the editor behind an open child is not what
+    // pressing Escape once means. This is a mixed path until the menu migrates
+    // to the managed dropdown, so the single-listener invariant is not claimed.
+    dismissal: menuOpen || confirmingDelete ? "blocked" : "dismissible",
+    onRoute: (route) => {
+      if (route === "request-close") onClose();
+    },
+  });
+  useOverlayLayer({
+    id: "memory-manager-menu",
+    parentId: "memory-manager",
+    order: 10,
+    active: menuOpen,
+    dismissal: "dismissible",
+    onRoute: (route) => {
+      if (route === "request-close") setMenuOpen(false);
+    },
+  });
+  useOverlayLayer({
+    id: "memory-manager-confirm",
+    parentId: "memory-manager",
+    order: 20,
+    active: confirmingDelete,
+    dismissal: "dismissible",
+    onRoute: (route) => {
+      if (route === "request-close") setConfirmingDelete(false);
+    },
+  });
+
   const surfaceRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const restoreTo = dom.getActiveElement();
     surfaceRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape") return;
-      event.stopPropagation();
-      // Two layers sit above the editor, and Escape sheds the topmost one so
-      // that a second press has to be a second press. Dismissing the editor
-      // instead would throw away the draft behind an open menu or an open
-      // confirmation, which is not what pressing Escape once means.
-      if (confirmOpenRef.current) {
-        setConfirmingDelete(false);
-        return;
-      }
-      if (menuOpenRef.current) {
-        setMenuOpen(false);
-        return;
-      }
-      onClose();
-    };
-    const stopKeyDown = dom.listenForKeyDown(onKeyDown);
+    // Who answers Escape, and in what order, is the coordinator's decision (see
+    // the registrations above): this effect only moves focus in and puts it back.
     return () => {
-      stopKeyDown();
       restoreTo?.focus();
     };
   }, [dom, onClose]);
@@ -281,20 +303,11 @@ export function MemoryManagerDialog({
     <div
       data-testid="agent-memory-manager"
       className="webui-memory-manager-mask"
-      onMouseDown={(event) => {
-        // Shed the menu before the dialog: a click on the scrim with a menu
-        // open means "put that away", not "discard the memory editor".
-        if (event.target !== event.currentTarget) return;
-        if (menuOpenRef.current) {
-          setMenuOpen(false);
-          return;
-        }
-        onClose();
-      }}
     >
       <section
         ref={surfaceRef}
         tabIndex={-1}
+        data-overlay-layer="memory-manager"
         role="dialog"
         aria-modal="true"
         aria-label="记忆摘要"
@@ -452,13 +465,10 @@ export function MemoryManagerDialog({
     <div
       className="webui-memory-confirm-mask"
       data-testid="agent-memory-delete-confirm"
-      onMouseDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        setConfirmingDelete(false);
-      }}
     >
       <div
         ref={confirmRef}
+        data-overlay-layer="memory-manager-confirm"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="webui-memory-confirm-title"

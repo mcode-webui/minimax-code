@@ -555,7 +555,8 @@
       "packages/webui/test/unit/ssh-owner.test.ts",
       "packages/webui/test/unit/ssh-panel-projection.test.ts",
       "packages/webui/test/unit/webui-field.test.tsx",
-      "packages/webui/test/gates/webui-overlays.test.ts"
+      "packages/webui/test/gates/webui-overlays.test.ts",
+      "packages/webui/test/unit/content-page.test.ts"
     ]
   }
 }

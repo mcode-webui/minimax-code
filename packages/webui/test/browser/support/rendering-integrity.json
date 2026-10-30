@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "states": {
+    "models-provider-form/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 4,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 12,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 4,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 12,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/maximum/dark": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/maximum/light": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "models-provider-form/one/light": {
+      "missing": false,
+      "root": {
+        "width": 1434,
+        "height": 900,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 11,
+        "minHeight": 21,
+        "maxHeight": 68,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 22,
+        "clipped": 0,
+        "empty": 0
+      }
+    }
+  }
+}

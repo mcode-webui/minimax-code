@@ -30,7 +30,7 @@
     "check:webui-dependency": "node scripts/check-webui-dependency.mjs",
     "check:webui-presentation": "node scripts/check-webui-presentation.mjs",
     "check:webui-motion": "node scripts/check-webui-motion.mjs",
-    "check:webui-overlays": "node scripts/check-webui-overlays.mjs",
+    "check:webui-overlays": "node scripts/check-webui-overlays.mjs --strict",
     "install:webui-browsers": "playwright install chromium",
     "test:webui": "node scripts/run-vitest-suite.mjs webui",
     "test:webui-package": "node scripts/verify-webui-package.mjs",

@@ -35,6 +35,7 @@ import type { WebuiMessageActionCapabilities } from "../contracts/transcript-vie
 import { formatWebuiMessageTimestamp } from "../projection/message-timestamp.js";
 import { toggleWebuiFeedback, copyWebuiMessageText, scheduleWebuiCopiedReset } from "../application/message-feedback.js";
 import type { WebuiCopyDependencies } from "../application/message-feedback.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 export function WebuiMessageActionButton({
   testId,
@@ -203,11 +204,13 @@ export function WebuiRewindDialog({
   readonly onClose: () => void;
   readonly onConfirm: (rewindTurnDiff: boolean) => void;
 }): ReactElement {
+  // A modal layer: the rewind preview answers its own dismissal.
+  const layerId = useDialogLayer({ id: "rewind-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const files = preview?.turns.flatMap((turn) => turn.files) ?? [];
   const turns = preview?.turns.length ?? 1;
   const dialog = (
-    <div className="webui-message-dialog" role="dialog" aria-modal="true" data-testid="rewind-preview-dialog" data-message-id={messageId}>
+    <div className="webui-message-dialog" data-overlay-layer={layerId} role="dialog" aria-modal="true" data-testid="rewind-preview-dialog" data-message-id={messageId}>
       <div className="webui-message-dialog-surface">
         <h3>{"回退"}</h3>
         <p>{files.length > 0 ? `${turns} 轮对话将会回退 · ${files.length} 个文件将被修改。` : `${turns} 轮对话将会回退，不涉及任何文件改动。`}</p>

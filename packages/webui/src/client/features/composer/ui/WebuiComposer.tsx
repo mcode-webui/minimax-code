@@ -1248,6 +1248,8 @@ export function WebuiComposer({
                 data-webui-composer-toolbar="true"
               >
                 <WebuiDropdown
+          managed
+          managedLayerId="composer-tools"
                   open={composerMenu !== undefined}
                   onOpen={() => {
                     setPermissionMenuOpen(false);

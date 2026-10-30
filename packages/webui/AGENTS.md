@@ -129,6 +129,7 @@ needs a rerun, run that gate instead of repeating the full suite.
 | Imports, roles, moves | `pnpm check:webui-dependency` |
 | A client UI module added, moved or reclassified | `pnpm check:webui-presentation` |
 | A duration, easing or `@keyframes` added or changed | `pnpm check:webui-motion` |
+| A dialog, popover or menu added, or its dismissal changed | `pnpm check:webui-overlays` |
 | Entries, bundling, packaging | `pnpm build:webui` then `pnpm check:webui-boundary`; `pnpm test:webui-package` only when packaging is in scope |
 | Anything file-level | `node scripts/source-inventory.mjs --write`, then `pnpm check:source` |
 | Full aggregate verification | `pnpm verify` only when the user explicitly asks for it |

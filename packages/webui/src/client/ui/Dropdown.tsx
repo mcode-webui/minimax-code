@@ -287,7 +287,7 @@ export function WebuiDropdown({
   placement,
   collision = "none",
   dismissRegionRef,
-  managed = false,
+  managed = true,
   managedLayerId,
   managedDismissal = "dismissible",
   onManagedRoute,
@@ -373,33 +373,10 @@ export function WebuiDropdown({
     },
   }, { enabled: managed });
 
-  useEffect(() => {
-    // A managed popup answers through the coordinator, which owns the single
-    // document listener; attaching its own here would make two listeners answer
-    // the same Escape.
-    if (!open || managed) return;
-    const stopPointerDown = dom.listenForPointerDown((event) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      // The trigger and the popup are the two halves of the dropdown; a press
-      // on either is inside, and anything else is a dismissal. A surface with
-      // no trigger names the region that holds it instead.
-      if (dismissRegionRefRef.current?.current?.contains(target)) return;
-      if (wrapperRef.current?.contains(target)) return;
-      if (popupRef.current?.contains(target)) return;
-      onCloseRef.current();
-    });
-    const stopKeyDown = dom.listenForKeyDown((event) => {
-      if (event.key !== "Escape") return;
-      onCloseRef.current();
-      // Escape returns the focus to the control that opened the dropdown.
-      triggerRef.current?.focus?.();
-    });
-    return () => {
-      stopPointerDown();
-      stopKeyDown();
-    };
-  }, [dom, open, managed]);
+  // The compatibility path is gone (ADR 0028 § Overlay coordination, #290): every
+  // popup answers through the coordinator, which owns the single document
+  // listener. A popup that kept its own would make two listeners answer one key.
+
 
   /**
    * The anchor, asked for now.

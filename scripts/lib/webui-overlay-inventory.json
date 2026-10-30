@@ -16,8 +16,8 @@
       "note": "the account menu layers on the shared dropdown and closes its fly-outs on every close"
     },
     "features/account/ui/UserMenuUsage.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "borrows-role",
+      "note": "renders role=dialog for labelling only: it is a hover/focus fly-out inside the account menu's layer and is dismissed by that menu, not by itself"
     },
     "features/composer/ui/ComposerEditorStaging.tsx": {
       "disposition": "managed",
@@ -36,8 +36,8 @@
       "note": "the context usage popover"
     },
     "features/composer/ui/WebuiComposer.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the composer's tool menu"
     },
     "features/models/ui/ModelPicker.public.tsx": {
       "disposition": "managed",
@@ -72,12 +72,12 @@
       "note": "the shared dialog primitive: dismissible when it offers a way out, deferred otherwise so a nested portal is not swallowed"
     },
     "features/transcript/ui/MessageActions.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the rewind preview dialog"
     },
     "features/transcript/ui/MessageItem.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the fork dialog; its layer is active only while it is rendered"
     },
     "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": {
       "disposition": "managed",

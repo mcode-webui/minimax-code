@@ -123,15 +123,23 @@ export function useDialogLayer(options: {
   readonly onClose?: () => void;
   readonly dismissible?: boolean;
   readonly order?: number;
+  /**
+   * Whether the layer is open.
+   *
+   * A dialog component that is only mounted while open can leave this alone; a
+   * component that renders its dialog conditionally has to say so, or the layer
+   * would answer a key while nothing is on screen to answer it.
+   */
+  readonly active?: boolean;
 }): string {
-  const { id, onClose, dismissible = true, order = 0 } = options;
+  const { id, onClose, dismissible = true, order = 0, active = true } = options;
   const parentId = useParentLayerId();
   useOverlayLayer(
     {
       id,
       parentId,
       order,
-      active: true,
+      active,
       dismissal: dismissible ? "dismissible" : "deferred",
       onRoute: (route) => {
         if (route === "request-close") onClose?.();

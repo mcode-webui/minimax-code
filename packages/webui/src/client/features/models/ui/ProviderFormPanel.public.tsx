@@ -47,6 +47,7 @@ import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiButton } from "../../../ui/button.js";
 import { WebuiField, WebuiFormActions } from "../../../ui/field.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { CloseIcon, IconButton, RefreshIcon } from "../../../ui/form-atoms.js";
 
 /** The attachment modalities, in Desktop's own words. */
@@ -227,6 +228,16 @@ export function ProviderFormPanel({
     headers: draftHeaders, tested: draftTested, skipConnectionTest: skipTest,
     busy: formBusy, error: formError,
   } = snapshot;
+  // Two modal layers: the provider form and the delete confirmation it can raise.
+  // Without them a press inside the form counts as a press outside the settings
+  // modal that holds it, and the modal would close under the user.
+  const formLayerId = useDialogLayer({ id: "provider-form", active: showProviderForm, onClose: () => editor.close() });
+  const deleteLayerId = useDialogLayer({
+    id: "provider-delete",
+    order: 10,
+    active: providerPendingDelete !== undefined,
+    onClose: () => setProviderPendingDelete(undefined),
+  });
   const [selectedPresetId, setSelectedPresetId] = useState<string>();
   const [apiFormatOpen, setApiFormatOpen] = useState(false);
   // The API formats the runtime accepts, plus whatever a saved provider carries
@@ -309,7 +320,7 @@ export function ProviderFormPanel({
         </div>;
       })}
       <WebuiButton variant="plain" className="h-9 w-fit rounded-[8px] px-3" disabled={!commands.canManageProviders} onClick={() => void openProviderForm()}>添加模型</WebuiButton>
-      {showProviderForm && portalTarget ? createPortal(<div role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
+      {showProviderForm && portalTarget ? createPortal(<div data-overlay-layer={formLayerId} role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
         <header className="webui-provider-form-header"><h3>{editingProvider ? "编辑提供商" : "添加模型"}</h3><button type="button" aria-label="关闭" onClick={() => editor.close()}><CloseIcon /></button></header>
         <div className="webui-provider-form-body">
           {!editingProvider ? <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">提供商<ProviderPresetPicker presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); editor.changeField("name", ""); editor.changeField("baseUrl", ""); editor.changeField("apiFormat", "openai-completions"); editor.clearModels(); return; } setSelectedPresetId(textOf(preset.providerId)); editor.changeField("name", textOf(preset.name)); editor.changeField("baseUrl", textOf(preset.baseUrl)); editor.changeField("apiFormat", textOf(preset.apiFormat)); editor.clearModels(); }} /></label>{selectedPresetId === "__other__" ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}</div> : null}
@@ -332,7 +343,7 @@ export function ProviderFormPanel({
         </div>
         <footer className="webui-provider-form-actions"><label><input type="checkbox" checked={skipTest} onChange={(event) => editor.setSkipConnectionTest(event.target.checked)} />跳过连通检测</label><span /><WebuiButton variant="secondary" disabled={formBusy || !hasModelId} onClick={() => void editor.test()}>连通检测</WebuiButton><WebuiButton variant="secondary" disabled={formBusy} onClick={() => editor.close()}>取消</WebuiButton><WebuiButton variant="muted" type="submit" disabled={formBusy || (!draftTested && !skipTest)}>{formBusy ? "加载中…" : "保存"}</WebuiButton></footer>
       </form></div>, portalTarget) : null}
-      {providerPendingDelete ? <div role="dialog" aria-modal="true" aria-label={`删除供应商${textOf(providerPendingDelete.name)}`} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.25)]"><div className="w-[480px] overflow-clip rounded-[20px] bg-bg_grouped_secondary p-6" style={{ boxShadow: "0 4px 10px 0 rgba(0,0,0,0.04)" }}><div className="flex flex-col gap-6"><div className="flex flex-col gap-4"><div className="flex items-center justify-between"><h3 className="text-[18px] font-medium leading-[26px] text-text_default_primary">删除供应商"{textOf(providerPendingDelete.name)}"吗？</h3><button type="button" aria-label="关闭" className="flex size-[22px] items-center justify-center text-icon_default_tertiary hover:text-icon_default_secondary" onClick={() => setProviderPendingDelete(undefined)}><CloseIcon /></button></div><p className="text-[14px] leading-5 text-text_default_secondary">删除后将移除该供应商下的所有模型选项。</p></div>{formError ? <p role="alert">{formError}</p> : null}<div className="flex justify-end gap-4"><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] px-4" onClick={() => setProviderPendingDelete(undefined)}>取消</button><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] bg-bg_status_error px-4" onClick={() => void confirmDeleteProvider()}>{formBusy ? "删除中…" : "删除"}</button></div></div></div></div> : null}
+      {providerPendingDelete ? <div data-overlay-layer={deleteLayerId} role="dialog" aria-modal="true" aria-label={`删除供应商${textOf(providerPendingDelete.name)}`} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.25)]"><div className="w-[480px] overflow-clip rounded-[20px] bg-bg_grouped_secondary p-6" style={{ boxShadow: "0 4px 10px 0 rgba(0,0,0,0.04)" }}><div className="flex flex-col gap-6"><div className="flex flex-col gap-4"><div className="flex items-center justify-between"><h3 className="text-[18px] font-medium leading-[26px] text-text_default_primary">删除供应商"{textOf(providerPendingDelete.name)}"吗？</h3><button type="button" aria-label="关闭" className="flex size-[22px] items-center justify-center text-icon_default_tertiary hover:text-icon_default_secondary" onClick={() => setProviderPendingDelete(undefined)}><CloseIcon /></button></div><p className="text-[14px] leading-5 text-text_default_secondary">删除后将移除该供应商下的所有模型选项。</p></div>{formError ? <p role="alert">{formError}</p> : null}<div className="flex justify-end gap-4"><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] px-4" onClick={() => setProviderPendingDelete(undefined)}>取消</button><button type="button" disabled={formBusy} className="h-9 min-w-[68px] rounded-[8px] bg-bg_status_error px-4" onClick={() => void confirmDeleteProvider()}>{formBusy ? "删除中…" : "删除"}</button></div></div></div></div> : null}
   </>;
 }
 

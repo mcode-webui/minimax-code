@@ -39,6 +39,7 @@ import {
   buildWebuiRewindRequest,
   webuiClientRequestId,
 } from "../../sessions/projection/action-requests.public.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 /**
  * The single message renderer shared by persisted history and the live turn.
@@ -181,8 +182,15 @@ export function MessageItem({
     onFork: role === "assistant" ? openFork : undefined,
     timestamp,
   };
+  // The dialog is rendered conditionally, so the layer is only active while it is
+  // on screen: an inactive layer casts no vote.
+  const forkLayerId = useDialogLayer({
+    id: "fork-dialog",
+    active: forkOpen,
+    onClose: () => setForkOpen(false),
+  });
   const forkDialog = forkOpen ? (
-    <div className="webui-message-dialog" role="dialog" aria-modal="true" data-testid="fork-dialog">
+    <div className="webui-message-dialog" data-overlay-layer={forkLayerId} role="dialog" aria-modal="true" data-testid="fork-dialog">
       <div className="webui-message-dialog-surface">
         <h3>复制为新会话</h3>
         <p>{forkOptions?.unavailableReason ?? "保留当前上下文，在新会话中继续"}</p>

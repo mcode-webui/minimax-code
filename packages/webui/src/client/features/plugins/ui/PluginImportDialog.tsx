@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 export interface PluginImportDialogProps {
   readonly url: string;
@@ -26,6 +27,8 @@ export interface PluginImportDialogProps {
 }
 
 export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onPreview, onImport, onClose }: PluginImportDialogProps): ReactElement {
+  // A modal layer: one dismissal closes it, and nothing beneath it answers.
+  const layerId = useDialogLayer({ id: "plugin-import-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const portalTarget = dom.portalTarget();
   const dialog = (
@@ -39,6 +42,7 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
     >
       <section
         className="webui-plugin-dialog webui-plugin-import-dialog"
+        data-overlay-layer={layerId}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plugin-import-title"

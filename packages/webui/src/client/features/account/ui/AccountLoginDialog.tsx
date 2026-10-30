@@ -26,6 +26,7 @@ import {
 } from "../bindings/use-account-workflows.public.js";
 import { deriveWebuiAccountLoginPhase } from "../application/login-phase.js";
 import type { WebuiAccountLoginPhase } from "../application/login-phase.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 export function AccountLoginPanel({
   phase,
@@ -43,9 +44,12 @@ export function AccountLoginPanel({
   readonly onSwitch: () => void;
   readonly onClose: () => void;
 }): ReactElement {
+  // A modal layer (ADR 0028 § Overlay coordination): one dismissal closes it.
+  const layerId = useDialogLayer({ id: "account-login", onClose });
   return (
     <div
       className="webui-account-login"
+      data-overlay-layer={layerId}
       role="dialog"
       aria-modal="true"
       aria-label="账号登录"

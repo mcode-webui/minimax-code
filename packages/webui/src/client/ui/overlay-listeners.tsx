@@ -12,6 +12,7 @@
  */
 
 import { createContext, useContext, useEffect, useRef, type ReactElement, type ReactNode, type RefObject } from "react";
+import { useOverlayLayer } from "./overlay-coordinator.js";
 import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { useOverlayCoordinator } from "./overlay-coordinator.js";
 
@@ -108,6 +109,38 @@ export function useParentLayerId(): string | null {
 
 /** The attribute that lets the listener find a layer from an event target. */
 export const OVERLAY_LAYER_ATTRIBUTE = LAYER_ATTRIBUTE;
+
+/**
+ * Register one modal dialog as a layer and return the id to mark it with.
+ *
+ * A dialog is `active` for as long as it is mounted, which is the whole of its
+ * life: it renders nothing when closed. `dismissible` closes it on
+ * `request-close`; `deferred` leaves the attempt unanswered, for a dialog that
+ * has no way out and must not swallow presses aimed at what it holds.
+ */
+export function useDialogLayer(options: {
+  readonly id: string;
+  readonly onClose?: () => void;
+  readonly dismissible?: boolean;
+  readonly order?: number;
+}): string {
+  const { id, onClose, dismissible = true, order = 0 } = options;
+  const parentId = useParentLayerId();
+  useOverlayLayer(
+    {
+      id,
+      parentId,
+      order,
+      active: true,
+      dismissal: dismissible ? "dismissible" : "deferred",
+      onRoute: (route) => {
+        if (route === "request-close") onClose?.();
+      },
+    },
+    { enabled: true },
+  );
+  return id;
+}
 
 /** A ref that marks its element as a managed layer of the given id. */
 export function useLayerAttribute<T extends HTMLElement>(): {

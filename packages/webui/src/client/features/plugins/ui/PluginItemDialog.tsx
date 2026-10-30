@@ -19,6 +19,7 @@ import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { McpServerForm } from "./McpServerForm.js";
 import { AgentForm } from "./AgentForm.js";
 import { SkillForm } from "./SkillForm.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 export interface PluginItemDialogProps {
   readonly dialog: "mcp" | "agent" | "skill";
@@ -42,6 +43,10 @@ export function PluginItemDialog({
   onChatWithAgent,
   onClose,
 }: PluginItemDialogProps): ReactElement {
+  // The plugin editor is a modal layer (ADR 0028 § Overlay coordination): it
+  // answers a dismissal, and a press outside it is answered by it rather than by
+  // whatever is behind the dialog.
+  const layerId = useDialogLayer({ id: "plugin-item-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const portalTarget = dom.portalTarget();
   const surface = (
@@ -53,6 +58,7 @@ export function PluginItemDialog({
     >
       <div
         className={`webui-plugin-dialog${dialog === "mcp" ? " webui-mcp-dialog" : ""}`}
+        data-overlay-layer={layerId}
         role="dialog"
         aria-modal="true"
         aria-label={TITLE[dialog]}

@@ -8,6 +8,7 @@ import {
   useWebuiWorkspaceQueriesState,
 } from "../../../bindings/use-query-state.js";
 import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, WebuiIconFile, WebuiIconRunLocation } from "../../../shell/icons.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 const PROGRESS_COPY = {
   environment: "环境信息",
@@ -96,6 +97,8 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }
   readonly mutateGit: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
   readonly onClose: () => void;
 }): ReactElement {
+  // A modal layer: the commit dialog answers its own dismissal.
+  const layerId = useDialogLayer({ id: "workspace-commit-dialog", onClose });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -111,7 +114,7 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setBusy(false));
   };
-  return <div className="webui-commit-dialog" role="dialog" aria-modal="true" aria-label={PROGRESS_COPY.commit}>
+  return <div className="webui-commit-dialog" data-overlay-layer={layerId} role="dialog" aria-modal="true" aria-label={PROGRESS_COPY.commit}>
     <div className="webui-commit-dialog-header"><strong>{PROGRESS_COPY.commit}</strong><button type="button" aria-label={PROGRESS_COPY.close} onClick={onClose}><WebuiIconClose className="size-4" /></button></div>
     {hasChanges ? <label className="webui-commit-dialog-label"><span>提交说明</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="输入提交说明" autoFocus /></label> : <p className="webui-commit-dialog-hint">当前没有未提交变更，将推送当前分支。</p>}
     {error ? <p className="webui-commit-dialog-error" role="alert">{error}</p> : null}

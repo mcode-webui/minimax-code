@@ -8,8 +8,8 @@
   },
   "files": {
     "features/account/ui/AccountLoginDialog.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the sign-in panel is a modal layer"
     },
     "features/account/ui/UserMenu.tsx": {
       "disposition": "managed",
@@ -52,20 +52,20 @@
       "note": "the catalogue's filter menu"
     },
     "features/plugins/ui/PluginImportDialog.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "a modal layer; a dismissal closes it"
     },
     "features/plugins/ui/PluginItemDialog.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the plugin editor and the MCP dialog, one layer each mount"
     },
     "features/settings/ui/MemoryManagerDialog.tsx": {
       "disposition": "managed",
       "note": "dialog, menu and confirmation register as one nested path"
     },
     "features/settings/ui/SettingsModal.public.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the shell's settings modal"
     },
     "features/settings/ui/settings-atoms.tsx": {
       "disposition": "managed",
@@ -84,8 +84,8 @@
       "note": "the tab strip's overflow menu"
     },
     "features/workspace/ui/WorkspaceProgressPanel.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "the commit dialog is a modal layer"
     },
     "ui/ContextMenu.tsx": {
       "disposition": "managed",

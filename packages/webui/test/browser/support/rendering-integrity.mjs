@@ -159,11 +159,13 @@ async function measure(page, surface, state) {
         root: {
           width: Math.round(rootBox.width),
           height: Math.round(rootBox.height),
+          // A surface may be taller than the viewport — a transcript scrolls with
+          // its page — but it may not escape sideways, and it must be on screen.
           insideViewport:
             rootBox.left >= -1 &&
-            rootBox.top >= -1 &&
             rootBox.right <= window.innerWidth + 1 &&
-            rootBox.bottom <= window.innerHeight + 1,
+            rootBox.bottom > 0 &&
+            rootBox.top < window.innerHeight,
           insideContainer: containerBox
             ? intersection(rootBox, containerBox) >= 0.99 * rootBox.width * rootBox.height
             : true,

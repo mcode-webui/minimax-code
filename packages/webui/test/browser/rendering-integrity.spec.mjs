@@ -99,9 +99,37 @@ async function openCustomModels(page) {
 
 const S = "settings-custom-models-panel";
 
+/**
+ * Seed a session's transcript. `setPage` replaces what `resumeSession` answers
+ * for that session, so the transcript renders exactly the messages given here.
+ */
+async function seedTranscript(page, messages) {
+  await page.addInitScript({
+    content: `
+      window.__WEBUI_FIXTURE_SETUP__ ??= [];
+      window.__WEBUI_FIXTURE_SETUP__.push(function () {
+        window.__fixture.setPage("A", ${JSON.stringify({ messages, hasMore: false })});
+      });
+    `,
+  });
+}
+
+const userMessage = (index, content) => ({
+  msgId: `message-${index}`,
+  role: "user",
+  msgContent: content,
+  timestamp: 1_700_000_000_000 + index,
+});
+
+const transcriptScroll = (page) => page.locator(".webui-session-transcript-scroll");
+
+const TRANSCRIPT_MESSAGES = 40;
+const LONGEST_MESSAGE = `${"LongestMessageWithoutAnyBreak".repeat(12)}`.slice(0, 600);
+
 const SURFACES = [
   {
     id: "models-provider-form",
+    seed: (page, state) => seed(page, state.data),
     label: "Settings › 用量 › 自定义模型 — the provider form",
     families: ["controls-and-form-composition", "overlays"],
     extremes: ["empty", "one", "maximum", "longest"],
@@ -164,6 +192,58 @@ const SURFACES = [
       },
     ],
   },
+  {
+    id: "transcript",
+    seed: (page, state) => seedTranscript(page, state.messages),
+    label: "The conversation transcript of a session",
+    families: ["conversation-and-workspace-interaction", "surfaces-and-content"],
+    extremes: ["empty", "one", "maximum", "longest"],
+    root: (page) => transcriptScroll(page),
+    texts: "span, p",
+    states: [
+      {
+        id: "empty",
+        extreme: "empty",
+        messages: [],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(page.getByTestId("transcript-empty-state")).toBeVisible();
+        },
+      },
+      {
+        id: "one",
+        extreme: "one",
+        messages: [userMessage(1, "A single synthetic message")],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(transcriptScroll(page)).toContainText("A single synthetic message");
+        },
+      },
+      {
+        id: "maximum",
+        extreme: "maximum",
+        messages: Array.from({ length: TRANSCRIPT_MESSAGES }, (_, index) =>
+          userMessage(index + 1, `Synthetic message ${index + 1}`),
+        ),
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          // Every message the fixture was given is on the page: the last one is
+          // the claim a truncated or virtualised list would break.
+          await expect(transcriptScroll(page)).toContainText(`Synthetic message ${TRANSCRIPT_MESSAGES}`);
+          await expect(transcriptScroll(page)).toContainText("Synthetic message 1");
+        },
+      },
+      {
+        id: "longest",
+        extreme: "longest",
+        messages: [userMessage(1, LONGEST_MESSAGE)],
+        open: async (page) => {
+          await openApp(page, "#session=A");
+          await expect(transcriptScroll(page)).toContainText(LONGEST_MESSAGE.slice(0, 40));
+        },
+      },
+    ],
+  },
 ];
 
 test.describe("rendering integrity of the migrated surfaces", () => {
@@ -175,7 +255,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
       for (const theme of THEMES) {
         test(`${surface.id} / ${state.id} / ${theme}`, async ({ page }) => {
           await useTheme(page, theme);
-          await seed(page, state.data);
+          await surface.seed(page, state);
           await state.open(page);
           expect(await appliedTheme(page), `${surface.id}/${state.id}: the theme did not apply`).toBe(theme);
 

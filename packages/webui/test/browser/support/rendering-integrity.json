@@ -176,6 +176,182 @@
         "clipped": 0,
         "empty": 0
       }
+    },
+    "transcript/empty/dark": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 661,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 3,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/empty/light": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 661,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 3,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/longest/dark": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 216,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/longest/light": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 216,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/maximum/dark": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 4152,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 122,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/maximum/light": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 4152,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 122,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/one/dark": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 96,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 0
+      }
+    },
+    "transcript/one/light": {
+      "missing": false,
+      "root": {
+        "width": 864,
+        "height": 96,
+        "insideViewport": true,
+        "insideContainer": true,
+        "clipped": false
+      },
+      "items": {
+        "count": 0,
+        "minHeight": 0,
+        "maxHeight": 0,
+        "zeroSized": 0,
+        "outsideRoot": 0
+      },
+      "texts": {
+        "count": 5,
+        "clipped": 0,
+        "empty": 0
+      }
     }
   }
 }

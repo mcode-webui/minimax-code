@@ -45,6 +45,29 @@
   color: var(--text_label_primary_default);
 }
 
+/* The fill of the surface the button sits on. */
+.webui-mavis-button-surface {
+  background: var(--bg_grouped_secondary);
+  color: var(--text_default_primary);
+}
+
+/* The plugin forms' action row. */
+.webui-mavis-button-panel {
+  min-width: 96px;
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-size: inherit;
+}
+
+/* The plugin dialogs' footer row. */
+.webui-mavis-button-dialog {
+  min-width: 94px;
+  border-radius: 9px;
+  padding: 11px 18px;
+  font-size: inherit;
+}
+
 .webui-mavis-button-muted {
   background: #8f8f8f;
   color: #fff;

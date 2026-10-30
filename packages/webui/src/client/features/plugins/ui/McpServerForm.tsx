@@ -20,6 +20,7 @@ import {
   type WebuiPluginRow as Row,
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface McpServerFormProps {
   /** The server being edited, or `undefined` for a new one. */
@@ -364,12 +365,12 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
       )}
       {localError ? <p role="alert">{localError}</p> : null}
       <div className="webui-agent-form-actions">
-        <button type="button" onClick={onClose}>
+        <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消
-        </button>
-        <button type="button" onClick={() => void save()}>
+        </WebuiButton>
+        <WebuiButton variant="primary" size="panel" onClick={() => void save()}>
           {editing ? "保存" : "添加服务器"}
-        </button>
+        </WebuiButton>
       </div>
     </div>
   );

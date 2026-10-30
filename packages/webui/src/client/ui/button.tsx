@@ -16,7 +16,13 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from "react";
 
 /** The variants the client's callers need today. */
-export type WebuiButtonVariant = "secondary" | "primary" | "muted" | "danger" | "plain";
+export type WebuiButtonVariant =
+  | "secondary"
+  | "surface"
+  | "primary"
+  | "muted"
+  | "danger"
+  | "plain";
 
 /**
  * The sizes the client's callers need today.
@@ -26,10 +32,14 @@ export type WebuiButtonVariant = "secondary" | "primary" | "muted" | "danger" | 
  * None of them carries a width: a caller's layout decides how wide the button is
  * allowed to be.
  */
-export type WebuiButtonSize = "regular" | "compact" | "header";
+export type WebuiButtonSize = "regular" | "compact" | "header" | "panel" | "dialog";
 
 const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   secondary: "webui-mavis-button-gray",
+  // `surface` is the fill of the surface the button sits on: white on a grouped
+  // panel. The plugin forms' action rows use it, and it is a variant because the
+  // fill is the control's, not the caller's.
+  surface: "webui-mavis-button-surface",
   primary: "webui-mavis-button-black",
   // `muted` is the filled-but-quiet save the forms use: a surface's primary
   // action that does not shout. Two forms render it, so it is a named variant
@@ -45,6 +55,10 @@ const SIZE_CLASS: Record<WebuiButtonSize, string> = {
   regular: "webui-mavis-button-regular",
   compact: "webui-mavis-button-compact",
   header: "webui-mavis-button-header",
+  // The plugin surfaces' two action rows, kept apart because they are two sizes
+  // rather than one size two callers disagree about.
+  panel: "webui-mavis-button-panel",
+  dialog: "webui-mavis-button-dialog",
 };
 
 export interface WebuiButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> {

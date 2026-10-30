@@ -16,7 +16,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from "react";
 
 /** The variants the client's callers need today. */
-export type WebuiButtonVariant = "secondary" | "primary" | "danger" | "plain";
+export type WebuiButtonVariant = "secondary" | "primary" | "muted" | "danger" | "plain";
 
 /**
  * The sizes the client's callers need today.
@@ -31,6 +31,10 @@ export type WebuiButtonSize = "regular" | "compact" | "header";
 const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   secondary: "webui-mavis-button-gray",
   primary: "webui-mavis-button-black",
+  // `muted` is the filled-but-quiet save the forms use: a surface's primary
+  // action that does not shout. Two forms render it, so it is a named variant
+  // rather than a class string each of them writes.
+  muted: "webui-mavis-button-muted",
   danger: "webui-mavis-button-danger",
   // `plain` is the button a surface already styles as "a button, no fill" — the
   // contract owns its states (focus, disabled) and the caller owns the rest.

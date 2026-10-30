@@ -45,6 +45,11 @@
   color: var(--text_label_primary_default);
 }
 
+.webui-mavis-button-muted {
+  background: #8f8f8f;
+  color: #fff;
+}
+
 .webui-mavis-button-danger {
   background: var(--bg_interaction_danger_primary_default);
   color: var(--text_label_danger_primary_default);

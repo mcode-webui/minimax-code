@@ -1,6 +1,24 @@
 {
   "comment": "Raw form-control selectors in a feature stylesheet, per file. The ratchet fails on a new selector and on a recorded selector that has gone, so the list can only shrink. The settings stylesheet is empty: its button family lives in client/styles/button.css and every remaining control it places is addressed by a named class. The list stays because the next surface's migration needs a place to record what it has left.",
   "files": {
-    "packages/webui/src/client/features/settings/ui/settings.css": []
+    "packages/webui/src/client/features/settings/ui/settings.css": [],
+    "packages/webui/src/client/features/models/ui/models.css": [
+      ".webui-provider-form-chip button",
+      ".webui-provider-form-chip button:hover",
+      ".webui-provider-form-effort input",
+      ".webui-provider-form-field input",
+      ".webui-provider-form-field input:focus",
+      ".webui-provider-form-field select",
+      ".webui-provider-form-field select:focus",
+      ".webui-provider-form-field textarea",
+      ".webui-provider-form-field textarea:focus",
+      ".webui-provider-form-header > button",
+      ".webui-provider-form-header > button svg",
+      ".webui-provider-form-header-row input",
+      ".webui-provider-picker-other button",
+      ".webui-provider-picker-other button:hover",
+      ".webui-provider-picker-trigger > input",
+      ".webui-provider-picker-trigger > input::placeholder"
+    ]
   }
 }

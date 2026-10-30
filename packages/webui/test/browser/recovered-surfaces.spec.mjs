@@ -104,6 +104,24 @@ test("full-access permission trigger colors its label and icon as warning", asyn
   await page.locator(".webui-composer-permission-option", { hasText: "完全访问权限" }).click();
   await expect(trigger).toContainText("完全访问权限");
 
+  // Every button transitions `color`, so the colour read in the same tick
+  // as the mode landing is still the colour the trigger had before it: the
+  // transition has been created but has not advanced. The assertion waits
+  // for the transition to settle rather than reading one frame after the
+  // change, which is what made this fail whenever the browser had not
+  // painted a frame in between.
+  const warning = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--text_status_warning)";
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  await expect
+    .poll(() => trigger.evaluate((button) => getComputedStyle(button).color))
+    .toBe(warning);
+
   const colors = await trigger.evaluate((button) => {
     const label = button.querySelector(".webui-composer-permission-label");
     const icon = button.querySelector(".webui-composer-permission-icon");
@@ -111,18 +129,9 @@ test("full-access permission trigger colors its label and icon as warning", asyn
       button: getComputedStyle(button).color,
       label: getComputedStyle(label).color,
       icon: getComputedStyle(icon).color,
-      warning: (() => {
-        const probe = document.createElement("span");
-        probe.style.color = "var(--text_status_warning)";
-        document.body.append(probe);
-        const color = getComputedStyle(probe).color;
-        probe.remove();
-        return color;
-      })(),
     };
   });
 
-  expect(colors.button).toBe(colors.warning);
   expect(colors.label).toBe(colors.button);
   expect(colors.icon).toBe(colors.button);
 });

@@ -71,7 +71,13 @@ test("pointer and wheel input start immediately and coalesce within a display fr
   await openPage(page, "https://example.test/");
   const frame = page.getByTestId("browser-panel-frame");
   await expect(frame).toBeVisible();
-  await page.clock.install();
+  // The clock is installed a moment behind the host's and paused at the
+  // host's own time. Pausing at the very instant the clock was installed
+  // asks the page's clock to fast-forward to a moment it has already
+  // passed, and the page's clock ticks past that moment while the pause is
+  // being asked for -- a fast-forward into the past, which failed the run
+  // whenever the host was busy.
+  await page.clock.install({ time: new Date(Date.now() - 1000) });
   await page.clock.pauseAt(new Date());
   // With timers paused, the first input must reach the wire without a timeout firing.
   await frame.dispatchEvent("pointermove", { clientX: 100, clientY: 100 });

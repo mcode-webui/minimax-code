@@ -23,6 +23,7 @@ import {
   webuiMiniAppRunningRows,
 } from "../projection/miniapp-view.js";
 import { WebuiIconChevronRight, WebuiIconSites } from "../../../shell/icons.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface MiniAppPickerProps {
   /** The session the chosen Mini App's view belongs to. */
@@ -87,9 +88,7 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
       {/* A refused fourth start says which applications are using the capacity,
           and each of them carries the stop button that frees one. */}
       {capacityRefused ? (
-        <p className="webui-plugin-error" role="alert" data-testid="miniapp-picker-capacity">
-          {webuiMiniAppCapacityText(rows)}
-        </p>
+        <FeedbackError message={webuiMiniAppCapacityText(rows)} className="webui-plugin-error" testId="miniapp-picker-capacity" />
       ) : null}
       <div className="webui-plugin-list">
         {rows.map((row) => {

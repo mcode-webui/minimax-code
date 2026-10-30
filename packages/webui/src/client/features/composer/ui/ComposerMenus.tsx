@@ -21,6 +21,7 @@ import { WebuiIconAttach, WebuiIconCommandGoal, WebuiIconCommandPlan, WebuiIconP
 import { IconChevronRight } from "@tabler/icons-react";
 import type { WebuiComposerPluginSummary } from "../../../features/plugins/application/composer-catalogue.public.js";
 import type { WebuiSlashSkillSummary } from "./slash-palette.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export type WebuiComposerMenu = "root" | "skills" | "plugins";
 
@@ -125,14 +126,14 @@ export function WebuiComposerMenus({
       </div>
       {menu === "skills" ? (
         <div className="webui-composer-menu webui-dropdown-surface" role="menu" aria-label="技能" data-webui-composer-menu="skills" data-webui-composer-submenu="skills">
-          {skillsLoading ? <div className="webui-composer-menu-empty">正在加载技能…</div> : skillsError ? <div className="webui-composer-menu-empty" role="alert">{skillsError}</div> : skills.length ? skills.map((skill) => <button key={skill.name} type="button" role="menuitem" onClick={() => { onMenuChange(undefined); onInsertSkill(skill.name); }}>{skill.displayName ?? skill.name}</button>) : <div className="webui-composer-menu-empty">没有已安装的技能</div>}
+          {skillsLoading ? <div className="webui-composer-menu-empty">正在加载技能…</div> : skillsError ? <FeedbackError message={skillsError} className="webui-composer-menu-empty" /> : skills.length ? skills.map((skill) => <button key={skill.name} type="button" role="menuitem" onClick={() => { onMenuChange(undefined); onInsertSkill(skill.name); }}>{skill.displayName ?? skill.name}</button>) : <div className="webui-composer-menu-empty">没有已安装的技能</div>}
           <div role="separator" />
           <button type="button" role="menuitem" onClick={() => { onMenuChange(undefined); onOpenPluginManagement?.("skills"); }}>管理技能</button>
           <button type="button" role="menuitem" onClick={() => { onMenuChange(undefined); onOpenPluginManagement?.("skills"); }}>添加技能</button>
         </div>
       ) : menu === "plugins" ? (
         <div className="webui-composer-menu webui-dropdown-surface" role="menu" aria-label="插件" data-webui-composer-menu="plugins" data-webui-composer-submenu="plugins">
-          {pluginsLoading ? <div className="webui-composer-menu-empty">正在加载插件…</div> : pluginsError ? <div className="webui-composer-menu-empty" role="alert">{pluginsError}</div> : plugins.length ? plugins.map((plugin) => <button key={plugin.name} type="button" role="menuitem" title={plugin.description} onClick={() => { onMenuChange(undefined); onInsertPlugin(plugin.name); }}>{plugin.displayName}</button>) : <div className="webui-composer-menu-empty">{pluginsAvailable ? "没有已安装的插件" : "插件目录暂不可用"}</div>}
+          {pluginsLoading ? <div className="webui-composer-menu-empty">正在加载插件…</div> : pluginsError ? <FeedbackError message={pluginsError} className="webui-composer-menu-empty" /> : plugins.length ? plugins.map((plugin) => <button key={plugin.name} type="button" role="menuitem" title={plugin.description} onClick={() => { onMenuChange(undefined); onInsertPlugin(plugin.name); }}>{plugin.displayName}</button>) : <div className="webui-composer-menu-empty">{pluginsAvailable ? "没有已安装的插件" : "插件目录暂不可用"}</div>}
           <div role="separator" />
           <button type="button" role="menuitem" onClick={() => { onMenuChange(undefined); onOpenPluginManagement?.("plugins"); }}>添加插件</button>
         </div>

@@ -14,6 +14,7 @@
 // it.
 
 import { useEffect, useState, type ReactElement } from "react";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 import {
   WEBUI_PLAN_COPY,
@@ -168,9 +169,7 @@ export function WebuiPlanReviewDecision({
         </div>
       </div>
       {chrome?.error ? (
-        <p className="webui-plan-card-error" role="alert">
-          {chrome.error}
-        </p>
+        <FeedbackError message={chrome.error} className="webui-plan-card-error" />
       ) : null}
     </section>
   );
@@ -223,9 +222,7 @@ export function WebuiPlanEnterConfirmation({
         </div>
       </div>
       {chrome?.error ? (
-        <p className="webui-plan-card-error" role="alert">
-          {chrome.error}
-        </p>
+        <FeedbackError message={chrome.error} className="webui-plan-card-error" />
       ) : null}
     </section>
   );

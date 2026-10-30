@@ -33,6 +33,7 @@ import {
 } from "../projection/transcript-projection.js";
 import { projectWebuiTranscriptMessage } from "../projection/message-projection.js";
 import { projectWebuiTranscriptView } from "../projection/transcript-view-model.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   projectHistoricalTurnView,
   projectLiveTurnView,
@@ -320,12 +321,7 @@ export function WebuiSessionTranscript({
         data-webui-message-list="true"
       >
         {error ? (
-          <p
-            role="alert"
-            className="text-text_default_secondary text-size_14 leading-line_height_20"
-          >
-            Unable to load messages: {error}
-          </p>
+          <FeedbackError message=<>Unable to load messages: {error}</> className="text-text_default_secondary text-size_14 leading-line_height_20" />
         ) : null}
         {!turnLive && loading && items.length === 0 ? <ChatSkeleton /> : null}
         {showEmptyState ? (

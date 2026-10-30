@@ -149,6 +149,7 @@ import {
   sectionWebuiSlashPalette,
 } from "../contracts/slash-command.js";
 import { planWebuiRetryResend } from "../application/turn-retry.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 const WEBUI_SLASH_FALLBACK_SECTIONED: SlashCommandEntry[] = await (async () => {
   const { resolveWebuiSlashSkills } = await import("./slash-palette.js");
@@ -1373,13 +1374,7 @@ export function WebuiComposer({
         ) : null}
         </div>
           {credentialMessage ? (
-          <p
-            role="alert"
-            data-webui-credential-warning="true"
-            className="mt-2 text-text_default_secondary text-size_12"
-          >
-            Model credentials unavailable: {credentialMessage}
-          </p>
+          <FeedbackError message=<>Model credentials unavailable: {credentialMessage}</> className="mt-2 text-text_default_secondary text-size_12" />
         ) : null}
       </div>
     </section>

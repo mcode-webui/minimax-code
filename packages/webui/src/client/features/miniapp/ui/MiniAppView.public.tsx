@@ -475,13 +475,7 @@ export function MiniAppView({
         </div>
       ) : null}
       {presentation === undefined && refusal ? (
-        <p className="webui-plugin-error" role="alert" data-testid="miniapp-view-refusal">
-          {webuiMiniAppRefusalText({
-            code: refusal.code,
-            message: refusal.message,
-            rows: state.listing.rows,
-          })}
-        </p>
+        <FeedbackError message={webuiMiniAppRefusalText({ code: refusal.code, message: refusal.message, rows: state.listing.rows, })} className="webui-plugin-error" testId="miniapp-view-refusal" />
       ) : null}
       {presentation === undefined && !refusal && state.unavailable ? (
         <p className="webui-plugin-empty">{state.unavailable}</p>

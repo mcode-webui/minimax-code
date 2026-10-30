@@ -104,9 +104,7 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
   return (
     <div className="webui-miniapp-apps" data-testid="miniapp-apps">
       {error ? (
-        <p className="webui-plugin-error" role="alert">
-          {error}
-        </p>
+        <FeedbackError message={error} className="webui-plugin-error" />
       ) : null}
       {state.unavailable ? <FeedbackError message={state.unavailable} className="webui-plugin-error" /> : null}
       {listingRows.length === 0 ? <p className="webui-plugin-empty">暂无已安装的 Mini App</p> : null}

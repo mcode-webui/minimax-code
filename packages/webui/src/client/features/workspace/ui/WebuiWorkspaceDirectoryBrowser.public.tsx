@@ -9,6 +9,7 @@ import { WebuiIconFolder } from "../../../shell/icons.js";
 import type { WebuiWorkspaceDirectoryListing } from "../../../../shared/contracts/workspace.js";
 import { looksLikeAbsoluteWorkspacePath } from "../../../projection/common/paths.js";
 import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { FeedbackError } from "../../../ui/feedback.js";
 import {
   useWebuiWorkspaceFiles,
   useWebuiWorkspaceQueriesState,
@@ -84,9 +85,7 @@ export function WebuiWorkspaceDirectoryBrowser({
           />
         </label>
         {error ? (
-          <p className="webui-commit-dialog-error" role="alert">
-            {error}
-          </p>
+          <FeedbackError message={error} className="webui-commit-dialog-error" />
         ) : null}
         <div className="webui-workspace-browser-actions">
           <button
@@ -127,9 +126,7 @@ export function WebuiWorkspaceDirectoryBrowser({
         </span>
       </div>
       {error ? (
-        <p className="webui-commit-dialog-error" role="alert">
-          {error}
-        </p>
+        <FeedbackError message={error} className="webui-commit-dialog-error" />
       ) : null}
       {loading ? (
         <p className="webui-composer-menu-empty">正在读取目录…</p>

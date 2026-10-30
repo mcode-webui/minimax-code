@@ -64,6 +64,7 @@ import {
   webuiBrowserFrameDataUrl,
 } from "../projection/browser-state.js";
 import { webuiBrowserPicturePoint } from "../application/browser-commands.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 const PANEL_COPY = {
   title: "浏览器",
@@ -387,14 +388,7 @@ export function BrowserPanel({
       ) : null}
 
       {state?.error ? (
-        <p
-          className="webui-browser-notice is-error"
-          role="alert"
-          data-testid="browser-panel-error"
-          data-error-code={state.error.code}
-        >
-          {state.error.message}
-        </p>
+        <FeedbackError message={state.error.message} className="webui-browser-notice is-error" testId="browser-panel-error" />
       ) : null}
       {/*
         The unauthorized notice is about the *surface*, not about whether a tab

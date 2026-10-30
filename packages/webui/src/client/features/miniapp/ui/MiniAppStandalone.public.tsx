@@ -25,6 +25,7 @@ import {
   useWebuiMiniAppWorkflowsState,
 } from "../bindings/use-miniapp-workflows.js";
 import { MiniAppView } from "./MiniAppView.public.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface MiniAppStandaloneProps {
   readonly pluginId: string;
@@ -81,13 +82,7 @@ export function MiniAppStandalone({
         </p>
       ) : null}
       {state.standaloneFailure !== undefined ? (
-        <p
-          className="webui-miniapp-standalone-notice"
-          role="alert"
-          data-testid="miniapp-standalone-session-unresolved"
-        >
-          无法确认会话状态：{state.standaloneFailure}
-        </p>
+        <FeedbackError message=<>无法确认会话状态：{state.standaloneFailure}</> className="webui-miniapp-standalone-notice" testId="miniapp-standalone-session-unresolved" />
       ) : null}
       <MiniAppView pluginId={pluginId} sessionId={sessionId} surface="standalone" />
     </div>

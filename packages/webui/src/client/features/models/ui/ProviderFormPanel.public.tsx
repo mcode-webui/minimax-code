@@ -49,6 +49,7 @@ import { WebuiButton } from "../../../ui/button.js";
 import { WebuiField, WebuiFormActions } from "../../../ui/field.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { CloseIcon, IconButton, RefreshIcon } from "../../../ui/form-atoms.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 /** The attachment modalities, in Desktop's own words. */
 const ATTACHMENT_LABELS: Readonly<
@@ -339,7 +340,7 @@ export function ProviderFormPanel({
             {draftModels.length ? draftModels.map((model, index) => <ProviderModelCard key={model.id} model={model} index={index} busy={formBusy} onChange={(patch) => editor.changeModel(model.id, patch)} onTest={() => void editor.testModel(model.id)} onRemove={() => editor.removeModel(model.id)} />) : <p className="webui-provider-form-models-empty">请至少添加一个模型</p>}
           </div>
           <div className="webui-provider-form-headers"><div className="text-[13px] font-medium leading-5 text-text_default_primary">自定义 Headers</div>{draftHeaders.map((header) => <div key={header.id} className="webui-provider-form-header-row"><input aria-label="Header 名称" placeholder="Header 名称" value={header.name} onChange={(event) => editor.setHeaders(draftHeaders.map((item) => item.id === header.id ? { ...item, name: event.target.value } : item))} /><input aria-label="Header 值" placeholder={header.persistedName ? "留空保留原值" : "Header 值"} value={header.value} onChange={(event) => editor.setHeaders(draftHeaders.map((item) => item.id === header.id ? { ...item, value: event.target.value } : item))} /><IconButton label="移除 Header" onClick={() => editor.removeHeader(header.id)}><IconTrash aria-hidden="true" size={16} stroke={1.7} /></IconButton></div>)}<button type="button" className="webui-provider-form-add-header" onClick={() => editor.addHeader()}><IconPlus aria-hidden="true" size={16} stroke={1.7} /> 添加 Header</button></div>
-          {formError ? <p role="alert" className="webui-provider-form-error">{formError}</p> : null}
+          {formError ? <FeedbackError message={formError} className="webui-provider-form-error" /> : null}
         </div>
         <footer className="webui-provider-form-actions"><label><input type="checkbox" checked={skipTest} onChange={(event) => editor.setSkipConnectionTest(event.target.checked)} />跳过连通检测</label><span /><WebuiButton variant="secondary" disabled={formBusy || !hasModelId} onClick={() => void editor.test()}>连通检测</WebuiButton><WebuiButton variant="secondary" disabled={formBusy} onClick={() => editor.close()}>取消</WebuiButton><WebuiButton variant="muted" type="submit" disabled={formBusy || (!draftTested && !skipTest)}>{formBusy ? "加载中…" : "保存"}</WebuiButton></footer>
       </form></div>, portalTarget) : null}
@@ -379,7 +380,7 @@ function ProviderModelCard({ model, index, busy, onChange, onTest, onRemove }: {
         <AttachmentField value={model.modalities} onChange={(modalities) => onChange({ modalities })} />
         <p className="webui-provider-form-hint">所选附件将默认直接发送给模型处理，请确保模型原生支持。其余类型由平台工具处理，需消耗平台积分。</p>
       </div>
-      {model.error ? <p role="alert" className="webui-provider-form-error">{model.error}</p> : null}
+      {model.error ? <FeedbackError message={model.error} className="webui-provider-form-error" /> : null}
     </div>
   </div>;
 }

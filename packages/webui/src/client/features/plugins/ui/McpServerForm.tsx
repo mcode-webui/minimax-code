@@ -21,6 +21,7 @@ import {
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface McpServerFormProps {
   /** The server being edited, or `undefined` for a new one. */
@@ -363,7 +364,7 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
           ) : null}
         </div>
       )}
-      {localError ? <p role="alert">{localError}</p> : null}
+      {localError ? <FeedbackError message={localError} /> : null}
       <div className="webui-agent-form-actions">
         <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消

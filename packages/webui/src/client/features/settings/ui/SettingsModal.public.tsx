@@ -61,6 +61,7 @@ import { ShortcutsSettings } from "./ShortcutsSettings.js";
 import { WebuiZoneBoundary } from "../../../shell/WebuiZoneBoundary.js";
 import { WebuiWorktreePanel } from "./SettingsModal.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 const ICONS = {
   desktop: IconLayoutDashboard,
@@ -208,7 +209,7 @@ function ArchivedSessionsPage({ sessions, canDelete, canUnarchive, onDelete, onU
     grouped.set(key, [...(grouped.get(key) ?? []), session]);
   }
   return <SettingsPage testId="settings-archived-page">
-    {actionError ? <p role="alert" className="webui-archived-error">{actionError}</p> : null}
+    {actionError ? <FeedbackError message={actionError} className="webui-archived-error" /> : null}
     <div className="webui-archived-filters">
       <label className="webui-archived-search"><SearchIcon /><input className="webui-archived-search-field" aria-label="搜索已归档聊天" placeholder="搜索已归档聊天" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
     </div>

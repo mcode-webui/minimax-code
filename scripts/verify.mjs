@@ -74,6 +74,7 @@ const steps = [
   { name: "check:webui-presentation", script: "check:webui-presentation" },
   { name: "check:webui-motion", script: "check:webui-motion" },
   { name: "check:webui-overlays", script: "check:webui-overlays" },
+  { name: "check:webui-feedback", script: "check:webui-feedback" },
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui-package", script: "test:webui-package", platforms: ["linux", "darwin"] },

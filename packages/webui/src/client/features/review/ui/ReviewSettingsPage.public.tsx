@@ -41,6 +41,7 @@ import {
 } from "../../../bindings/use-query-state.js";
 import { FolderIcon, SearchIcon } from "../../../ui/settings-glyphs.js";
 import { SettingsCard, SettingsPage } from "../../../ui/settings-layout.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 type WebuiReviewStateAction = Parameters<typeof reduceWebuiReviewState>[1];
 
@@ -215,7 +216,7 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
   const state = error ? "error" : loading ? "loading" : workspaces.length ? "ready" : "empty";
   return <SettingsPage testId="review-workspace-picker" dataAttributes={{ "data-webui-workspace-state": state }}>
     <p className="webui-review-empty">选一个工作区来审查它的变更。</p>
-    {error ? <p className="webui-review-error" role="alert" data-testid="review-workspace-error">{error}</p> : null}
+    {error ? <FeedbackError message={error} className="webui-review-error" testId="review-workspace-error" /> : null}
     {loading ? <p className="webui-review-loading" role="status">正在读取可审查的工作区…</p> : null}
     {!loading && !error && workspaces.length === 0 ? (
       /* Saying why matters more than saying that: an empty list under the same

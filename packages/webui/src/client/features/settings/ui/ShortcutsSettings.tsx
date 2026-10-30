@@ -21,6 +21,7 @@ import {
 import { SettingsDivider, SettingsPage, SettingsRow, SettingsSection } from "../../../ui/settings-layout.js";
 import { SettingsButton } from "./settings-atoms.js";
 import { shortcutActionTitle, shortcutSettingsRows } from "../projection/settings-shortcuts.js";
+import { FeedbackError } from "../../../ui/feedback.js";
 
 export interface ShortcutsSettingsProps {
   readonly bindings: ShortcutBindings;
@@ -74,7 +75,7 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
           </SettingsButton>
         }
       >
-        {error ? <p role="alert" className="mavis-settings-shortcut-error" data-testid="mavis-settings-shortcut-error">{error}</p> : null}
+        {error ? <FeedbackError message={error} className="mavis-settings-shortcut-error" testId="mavis-settings-shortcut-error" /> : null}
         {rows.map((row, index) => (
           <Fragment key={row.actionId}>
             {index > 0 ? <SettingsDivider /> : null}

@@ -40,8 +40,8 @@
       "reason": "still answers its own Escape and outside press; the migration is #290"
     },
     "features/models/ui/ModelPicker.public.tsx": {
-      "disposition": "pending",
-      "reason": "still answers its own Escape and outside press; the migration is #290"
+      "disposition": "managed",
+      "note": "one layer with a ladder of its own: request-close walks list to panel, a press outside closes"
     },
     "features/models/ui/ProviderFormPanel.public.tsx": {
       "disposition": "pending",

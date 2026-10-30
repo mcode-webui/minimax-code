@@ -21,6 +21,25 @@ import { configureFixture, openApp, test } from "./harness.mjs";
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
   await configureFixture(page, () => {
+    // The two providers the model picker's ladder walks through.
+    window.__fixture.setModels([
+      {
+        providerId: "fixture-provider",
+        providerName: "Fixture Provider",
+        modelId: "fixture-configurable",
+        displayName: "Fixture Configurable",
+        selected: true,
+        effortOptions: ["default", "low", "high"],
+        thinking: { effort: "high" },
+        contextWindowOptions: [128_000, 1_000_000],
+      },
+      {
+        providerId: "other-provider",
+        providerName: "Other Provider",
+        modelId: "other-model",
+        displayName: "Other Model",
+      },
+    ]);
     window.__fixture.setResponse("getMemorySettings", { enabled: true, proactive: false });
     window.__fixture.setResponse("getAgentMemory", {
       agentName: "main",
@@ -157,6 +176,27 @@ test("the click after a dismissal reaches what is underneath", async ({ page }) 
   expect(landedOn.inLeavingPopup, "the leaving popup does not intercept the click").toBe(false);
   expect(landedOn.inDialog, "the click reaches the dialog underneath").toBe(true);
   await expect(dialog(page)).toBeVisible();
+});
+
+test("the model picker's Escape ladder steps from its list to its panel, then closes", async ({ page }) => {
+  // The picker is one managed layer that answers a dismissal itself: the
+  // coordinator hands it `request-close`, and the layer reads the event to tell
+  // the Escape key (walk back one step) from a press outside (end the visit).
+  const chip = page.locator("[data-webui-model-selector] button");
+  await chip.click();
+  const panel = page.getByRole("dialog");
+  await expect(panel).toBeVisible();
+
+  // Into the list, by choosing the provider the fixture reports.
+  await panel.getByRole("button", { name: /Fixture Configurable/u }).click();
+  await expect(page.locator('[data-webui-model-view="list"]')).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-webui-model-view="list"]')).toHaveCount(0);
+  await expect(panel).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
 });
 
 test("closing the dialog returns focus to the control that opened it", async ({ page }) => {

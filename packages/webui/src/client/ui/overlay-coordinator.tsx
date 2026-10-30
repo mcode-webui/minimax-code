@@ -136,7 +136,7 @@ export function useOverlayLayer(
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
   const stableOnRoute = useCallback(
-    (route: OverlayDecision["route"]) => onRouteRef.current(route),
+    (route: OverlayDecision["route"], event?: OverlayEvent) => onRouteRef.current(route, event),
     [],
   );
 

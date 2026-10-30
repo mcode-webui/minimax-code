@@ -147,19 +147,6 @@ export function WebuiModelPicker({
     close();
   }, [close, view]);
 
-  const handlePopupKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "Escape") return;
-      // The popup answers its own Escape, so the skeleton's document listener
-      // never sees this press: one press, one answer.
-      event.stopPropagation();
-      event.preventDefault();
-      escapeRef.current = true;
-      handleDismiss();
-    },
-    [handleDismiss],
-  );
-
   /**
    * Commit a level.
    *
@@ -285,6 +272,25 @@ export function WebuiModelPicker({
         open={open}
         onOpen={handleOpen}
         onClose={handleDismiss}
+        // Managed (ADR 0028 § Overlay coordination). The popup keeps its ladder of
+        // its own, and the ladder is driven by the event rather than by a route of
+        // its own: a dismissal aimed at this layer arrives as `request-close`, and
+        // the layer reads the event to decide whether that press was the Escape key
+        // (walk back one step) or a press outside (end the visit).
+        managed
+        managedLayerId="model-picker"
+        onManagedRoute={(route, event) => {
+          if (route !== "request-close") return;
+          if (event?.kind === "escape" && view === "list") {
+            // One step back: the list returns to the panel without closing.
+            setView("panel");
+            setIsViewTransitioning(true);
+            return;
+          }
+          // The panel is the last step, and a press outside skips the ladder.
+          escapeRef.current = false;
+          close();
+        }}
         role="dialog"
         // The panel is named by the control that opens it, which is the same
         // one the skeleton's trigger props name — `id` below is this id, so
@@ -357,7 +363,6 @@ export function WebuiModelPicker({
         <div
           className="webui-model-popup"
           data-webui-model-popup="true"
-          onKeyDown={handlePopupKeyDown}
         >
           {popup}
         </div>

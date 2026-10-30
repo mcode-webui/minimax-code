@@ -152,6 +152,8 @@
       "packages/local-runtime-v2/src/service/turn-system/execution/reminder/session-identity-reminder.test.ts",
       "packages/local-runtime-v2/src/services.test.ts",
       "packages/local-runtime-v2/src/application/session/session-title-policy.test.ts",
+      "packages/local-runtime-v2/src/application/session/project-groups.test.ts",
+      "packages/local-runtime-v2/src/application/session/pin-application.test.ts",
       "packages/local-runtime-v2/test/unit/agent/builtin/catalog.test.ts",
       "packages/local-runtime-v2/test/unit/agent/storage/agent.repository.test.ts",
       "packages/local-runtime-v2/test/unit/agent/storage/canonical-agent-config.test.ts",
@@ -268,7 +270,8 @@
       "packages/browser-extension/test/pairing.test.ts",
       "packages/browser-extension/test/bridge-client.test.ts",
       "packages/browser-extension/test/input.test.ts",
-      "packages/browser-extension/test/cdp.test.ts"
+      "packages/browser-extension/test/cdp.test.ts",
+      "packages/local-runtime/test/unit/channel-bridge-surface.test.ts"
     ],
     "status-contract": [
       "packages/tui/test/unit/tui-build-mode-contract.test.ts"
@@ -525,7 +528,21 @@
       "packages/webui/test/unit/miniapp-agent-bridge.test.ts",
       "packages/webui/test/integration/miniapp-agent-loopback.test.ts",
       "packages/webui/test/integration/miniapp-real-flow.test.ts",
-      "packages/webui/test/integration/miniapp-ui-flow.test.ts"
+      "packages/webui/test/integration/miniapp-ui-flow.test.ts",
+      "packages/webui/test/unit/channel-harness-adapter.test.ts",
+      "packages/webui/test/unit/channel-panel.test.ts",
+      "packages/webui/test/unit/remote-control-command-router.test.ts",
+      "packages/webui/test/unit/remote-control-credential-flow.test.ts",
+      "packages/webui/test/unit/remote-control-harness-adapter.test.ts",
+      "packages/webui/test/unit/remote-control-operations.test.ts",
+      "packages/webui/test/unit/remote-control-panel.test.tsx",
+      "packages/webui/test/unit/remote-control-pairing-credential.test.ts",
+      "packages/webui/test/unit/remote-control-binding-watcher.test.ts",
+      "packages/webui/test/unit/remote-control-status-stream.test.ts",
+      "packages/webui/test/unit/ssh-harness-adapter.test.ts",
+      "packages/webui/test/unit/ssh-host-discovery.test.ts",
+      "packages/webui/test/unit/ssh-owner.test.ts",
+      "packages/webui/test/unit/ssh-panel-projection.test.ts"
     ]
   }
 }

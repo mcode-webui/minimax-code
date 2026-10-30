@@ -23,6 +23,42 @@ import type {
   WebuiCronTaskUpdateRequest,
 } from "../shared/contracts/cron.js";
 import type {
+  WebuiChannelConfigCheckRequest,
+  WebuiChannelConfigCheckResult,
+  WebuiChannelConnectRequest,
+  WebuiChannelDisconnectRequest,
+  WebuiChannelMessageFilter,
+  WebuiChannelMessageFilterRequest,
+  WebuiChannelOperationResult,
+  WebuiChannelStatus,
+} from "../shared/contracts/channel.js";
+import type {
+  WebuiRemoteControlComposerMode,
+  WebuiRemoteControlConnectRequest,
+  WebuiRemoteControlConnectResult,
+  WebuiRemoteControlCredentials,
+  WebuiRemoteControlDisconnectRequest,
+  WebuiRemoteControlOperationResult,
+  WebuiRemoteControlPendingUnbind,
+  WebuiRemoteControlStatus,
+  WebuiWatchRemoteControlResult,
+} from "../shared/contracts/remote-control.js";
+import type {
+  WebuiSshConnection,
+  WebuiSshDiscovery,
+  WebuiSshListDirectoriesRequest,
+  WebuiSshListDirectoriesResult,
+  WebuiSshProbeResult,
+  WebuiSshProject,
+  WebuiSshProjectRequest,
+  WebuiSshProjectResult,
+  WebuiSshRemoveResult,
+  WebuiSshSaveConnectionRequest,
+  WebuiSshSaveConnectionResult,
+  WebuiSshSetEnabledRequest,
+  WebuiSshTerminalSession,
+} from "../shared/contracts/ssh.js";
+import type {
   WebuiRunCommandRequest,
   WebuiRunCommandResult,
 } from "../shared/contracts/terminal.js";
@@ -728,6 +764,106 @@ export interface WebuiHarnessPort {
   deleteCronTask(request: WebuiCronTaskDeleteRequest): Promise<void>;
   runCronTaskNow(request: WebuiCronTaskRunRequest): Promise<WebuiCronRun>;
   listCronTaskRuns(request: WebuiCronRunListRequest): Promise<WebuiCronRunPage>;
+  /**
+   * The 接入 IM surface.
+   *
+   * Not a harness capability: Desktop's IM client talks to the runtime's channel-bridge routes,
+   * and the route table lives inside the runtime host. The assembly supplies the client (see
+   * `runtime/channel-bridge.ts`), so the member is unconditionally present on the port the service
+   * binds to.
+   */
+  listChannelStatus(): Promise<WebuiChannelStatus>;
+  connectChannel(request: WebuiChannelConnectRequest): Promise<WebuiChannelOperationResult>;
+  disconnectChannel(request: WebuiChannelDisconnectRequest): Promise<WebuiChannelOperationResult>;
+  checkChannelConfig(
+    request: WebuiChannelConfigCheckRequest,
+  ): Promise<WebuiChannelConfigCheckResult>;
+  getChannelMessageFilter(request: {
+    readonly agent: string;
+  }): Promise<WebuiChannelMessageFilter>;
+  updateChannelMessageFilter(
+    request: WebuiChannelMessageFilterRequest,
+  ): Promise<WebuiChannelMessageFilter>;
+  /**
+   * The 远程控制 surface.
+   *
+   * Not a harness capability: the phone link is a host-side capability, owned by the service that
+   * holds the socket to MiniMax's gateway. The assembly supplies the client (see
+   * `runtime/remote-control.ts`), so the member is unconditionally present on the port the service
+   * binds to.
+   */
+  getRemoteControlStatus(): Promise<WebuiRemoteControlStatus>;
+  watchRemoteControlStatus(): Promise<WebuiWatchRemoteControlResult>;
+  connectRemoteControl(
+    request: WebuiRemoteControlConnectRequest,
+  ): Promise<WebuiRemoteControlConnectResult>;
+  disconnectRemoteControl(
+    request: WebuiRemoteControlDisconnectRequest,
+  ): Promise<WebuiRemoteControlOperationResult>;
+  applyRemoteControlCredentials(
+    request: WebuiRemoteControlCredentials,
+  ): Promise<WebuiRemoteControlOperationResult>;
+  reportRemoteControlBindingLost(): Promise<WebuiRemoteControlOperationResult>;
+  getRemoteControlPendingUnbind(): Promise<WebuiRemoteControlPendingUnbind | null>;
+  resolveRemoteControlUnbind(request: {
+    readonly requestId: string;
+    readonly confirmed: boolean;
+  }): Promise<WebuiRemoteControlOperationResult>;
+  publishRemoteControlComposerMode(
+    request: WebuiRemoteControlComposerMode,
+  ): Promise<{ readonly accepted: boolean }>;
+  /**
+   * The SSH surface.
+   *
+   * Not a harness capability: SSH is a host-side capability in Desktop too, owned by the Electron
+   * main process (`dist/main/modules/ssh-runtime/`). The assembly supplies the client (see
+   * `runtime/ssh/`), so the member is unconditionally present on the port the service binds to.
+   */
+  listSshConnections(): Promise<readonly WebuiSshConnection[]>;
+  saveSshConnection(request: WebuiSshSaveConnectionRequest): Promise<WebuiSshSaveConnectionResult>;
+  setSshConnectionEnabled(request: WebuiSshSetEnabledRequest): Promise<WebuiSshSaveConnectionResult>;
+  removeSshConnection(request: {
+    readonly alias: string;
+  }): Promise<WebuiSshRemoveResult>;
+  discoverSshHosts(): Promise<WebuiSshDiscovery>;
+  probeSshConnection(request: { readonly alias: string }): Promise<WebuiSshProbeResult>;
+  listSshDirectories(request: WebuiSshListDirectoriesRequest): Promise<WebuiSshListDirectoriesResult>;
+  listSshProjects(): Promise<readonly WebuiSshProject[]>;
+  saveSshProject(request: WebuiSshProjectRequest): Promise<WebuiSshProjectResult>;
+  removeSshProject(request: { readonly id: string }): Promise<WebuiSshProjectResult>;
+  openSshTerminal(request: {
+    readonly alias: string;
+    readonly path?: string;
+  }): Promise<WebuiSshTerminalSession>;
+  writeSshTerminal(request: {
+    readonly terminalId: string;
+    readonly data: string;
+  }): Promise<{ readonly accepted: boolean }>;
+  resizeSshTerminal(request: {
+    readonly terminalId: string;
+    readonly cols: number;
+    readonly rows: number;
+  }): Promise<{ readonly accepted: boolean }>;
+  closeSshTerminal(request: {
+    readonly terminalId: string;
+  }): Promise<{ readonly accepted: boolean }>;
+  watchSshTerminal(request: { readonly terminalId: string }): Promise<
+    | {
+        readonly ok: true;
+        readonly source:
+          | AsyncIterable<{ readonly data: string }>
+          | Iterable<{ readonly data: string }>;
+      }
+    | {
+        readonly ok: false;
+        readonly status: number;
+        readonly body: {
+          readonly key?: string;
+          readonly message: string;
+          readonly detail?: string;
+        };
+      }
+  >;
   /**
    * Release anything the port owns. The service calls this after closing
    * every transport-side resource so the harness can tear itself down in

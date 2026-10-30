@@ -85,6 +85,7 @@ browser.attachHost(assembled.host);
 // service, so the release is wired here rather than on one operation.
 const port = createHarnessPortFromHost(assembled.host, {
   onSessionEnded: (sessionId) => browser.releaseSession(sessionId),
+  browserPort: browser.port,
 });
 const terminal = new WebuiTerminalManager();
 // The browser port is absent when the host cannot answer the browser

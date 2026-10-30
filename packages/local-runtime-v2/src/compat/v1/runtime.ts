@@ -874,6 +874,8 @@ function createThreadGoalApplication(
       objective: rawObjective,
       tokenBudget,
       kickoffAttachments,
+      objectiveResources,
+      requireKickoffAdmission,
     }) => {
       requireEnabled();
       const normalizedSessionId = requireGoalSessionId(sessionId);
@@ -884,8 +886,9 @@ function createThreadGoalApplication(
         objective,
         ...(tokenBudget !== undefined ? { tokenBudget } : {}),
         ...(kickoffAttachments?.length ? { kickoffAttachments } : {}),
+        ...(objectiveResources !== undefined ? { objectiveResources } : {}),
       };
-      const created = kickoffAttachments?.length
+      const created = requireKickoffAdmission || kickoffAttachments?.length
         ? await integration.createGoal(input, { requireKickoffAdmission: true })
         : await integration.createGoal(input);
       return toGlobalThreadGoal(created);
@@ -940,7 +943,10 @@ function isBareUserPause(patch: GoalApplicationPatch): boolean {
   return (
     patch.status === "paused" &&
     patch.objective === undefined &&
-    patch.tokenBudget === undefined
+    patch.tokenBudget === undefined &&
+    patch.objectiveResources === undefined &&
+    patch.expectedGoalId === undefined &&
+    patch.rejectIfUpdatedAtChangedFrom === undefined
   );
 }
 
@@ -963,14 +969,18 @@ function normalizeProcessLocalGoalPatch(
     ...(patch.tokenBudget !== undefined
       ? { tokenBudget: patch.tokenBudget }
       : {}),
+    ...(patch.expectedGoalId !== undefined ? { expectedGoalId: patch.expectedGoalId } : {}),
+    ...(patch.rejectIfUpdatedAtChangedFrom !== undefined ? { rejectIfUpdatedAtChangedFrom: patch.rejectIfUpdatedAtChangedFrom } : {}),
+    ...(patch.objectiveResources !== undefined ? { objectiveResources: patch.objectiveResources } : {}),
   };
 }
 
-function toGlobalThreadGoal(state: ThreadGoalState): GlobalThreadGoal {
+function toGlobalThreadGoal(state: ThreadGoalState): GlobalThreadGoal & Pick<ThreadGoalState, "objectiveResources"> {
   return {
     goalId: state.goalId,
     sessionId: state.sessionId,
     objective: state.objective,
+    ...(state.objectiveResources !== undefined ? { objectiveResources: state.objectiveResources } : {}),
     status: state.status,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,

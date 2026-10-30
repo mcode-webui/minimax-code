@@ -157,6 +157,15 @@
       "home": "current"
     },
     {
+      "path": "client/bindings/ssh-owner-context.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/bindings/use-connection-health.ts",
       "layers": [
         "bindings"
@@ -496,6 +505,42 @@
       ],
       "role": "feature-ui",
       "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/application/channel-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/contracts/channel-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/projection/channel-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/ui/ChannelConnectPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "channel",
       "home": "target"
     },
     {
@@ -1075,6 +1120,105 @@
       "home": "target"
     },
     {
+      "path": "client/features/miniapp/application/miniapp-agent-bridge.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/application/miniapp-bridge.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/application/miniapp-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/bindings/use-miniapp-catalogue.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/bindings/use-miniapp-workflows.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/contracts/miniapp-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/projection/miniapp-view.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppAppsList.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppPicker.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppStandalone.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppView.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
       "path": "client/features/models/application/models-workflows.ts",
       "layers": [
         "application"
@@ -1498,6 +1642,78 @@
       "home": "target"
     },
     {
+      "path": "client/features/remote-control/application/remote-control-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/contracts/remote-control-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/projection/remote-control-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/ui/RemoteControlPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/application/remote-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/contracts/remote-page.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/ui/RemotePage.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/ui/remote-tabs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote",
+      "home": "target"
+    },
+    {
       "path": "client/features/review/application/turn-review-owner.ts",
       "layers": [
         "application"
@@ -1567,6 +1783,51 @@
       ],
       "role": "feature-ui",
       "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/application/scheduling-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/contracts/scheduling-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/projection/scheduling-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
       "home": "target"
     },
     {
@@ -1885,6 +2146,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/settings/projection/settings-shortcuts.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
       "path": "client/features/settings/projection/settings-view.ts",
       "layers": [
         "view"
@@ -1967,6 +2237,15 @@
     },
     {
       "path": "client/features/settings/ui/SettingsModal.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/ShortcutsSettings.tsx",
       "layers": [
         "bindings"
       ],
@@ -2071,6 +2350,69 @@
       ],
       "role": "feature-projection",
       "business": "shell",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/application/ssh-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/contracts/ssh-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/projection/ssh-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/SshPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-host-form.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-project-form.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-terminal-view.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
       "home": "target"
     },
     {
@@ -3199,6 +3541,15 @@
       "home": "current"
     },
     {
+      "path": "client/projection/common/shortcuts.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/projection/common/unread-badge.ts",
       "layers": [
         "view"
@@ -3361,6 +3712,15 @@
       "home": "current"
     },
     {
+      "path": "client/styles/layout.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/styles/shell.css",
       "layers": [
         "unknown"
@@ -3416,6 +3776,15 @@
     },
     {
       "path": "client/ui/form-atoms.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/layout-thresholds.ts",
       "layers": [
         "bindings"
       ],
@@ -3631,6 +4000,15 @@
       "home": "outside"
     },
     {
+      "path": "runtime/harness/channel.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/harness/cron.ts",
       "layers": [
         "runtime"
@@ -3676,6 +4054,24 @@
       "home": "outside"
     },
     {
+      "path": "runtime/harness/miniapp-agent.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/miniapp.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/harness/models-plugins.ts",
       "layers": [
         "runtime"
@@ -3686,6 +4082,15 @@
     },
     {
       "path": "runtime/harness/provider-input.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/remote-control.ts",
       "layers": [
         "runtime"
       ],
@@ -3722,6 +4127,15 @@
     },
     {
       "path": "runtime/harness/settings.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/ssh.ts",
       "layers": [
         "runtime"
       ],
@@ -3802,6 +4216,186 @@
       "home": "outside"
     },
     {
+      "path": "runtime/remote-control/bridge/attachment-fetch.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/audit-redaction.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/command-router.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/connection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/credential.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/data-plane.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/device-identity.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/event-frame-mapper.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/frame-codec.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/index.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/pairing-client.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/pairing-session.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/permission-upstream.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/stream-pump.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/types.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/command-router.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/global-events.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/logger.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/owner.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/pairing.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/reset-card-projection.ts",
       "layers": [
         "runtime"
@@ -3830,6 +4424,141 @@
     },
     {
       "path": "runtime/signing.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/askpass.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/command.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/connection-repository.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/connection-service.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/credentials.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/errors.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/host-discovery.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/index.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/project-repository.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/project-service.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/storage.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/terminal.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/transport.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/types.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/validators.ts",
       "layers": [
         "runtime"
       ],
@@ -3964,7 +4693,7 @@
       "home": "outside"
     },
     {
-      "path": "server/browser-bridge/credential-store.ts",
+      "path": "server/browser-bridge/core-transport.ts",
       "layers": [
         "server"
       ],
@@ -3973,7 +4702,7 @@
       "home": "outside"
     },
     {
-      "path": "server/browser-bridge/core-transport.ts",
+      "path": "server/browser-bridge/credential-store.ts",
       "layers": [
         "server"
       ],
@@ -4126,6 +4855,78 @@
       "home": "outside"
     },
     {
+      "path": "server/miniapp/agent-connections.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/agent-panels.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/agent-runs.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/bridge.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/presentation-lease.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/presenter.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/proxy-registry.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/proxy.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "server/operation/account.ts",
       "layers": [
         "server"
@@ -4163,6 +4964,15 @@
     },
     {
       "path": "server/operation/browser.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/channel.ts",
       "layers": [
         "server"
       ],
@@ -4234,6 +5044,42 @@
       "home": "outside"
     },
     {
+      "path": "server/operation/handlers/miniapp-agent.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/miniapp.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/remote-control.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/ssh.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "server/operation/handlers/stream.ts",
       "layers": [
         "server"
@@ -4280,6 +5126,24 @@
     },
     {
       "path": "server/operation/messages.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/miniapp-agent.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/miniapp.ts",
       "layers": [
         "server"
       ],
@@ -4369,7 +5233,34 @@
       "home": "outside"
     },
     {
+      "path": "server/operation/remote-control.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/scheduling.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "server/operation/session.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/ssh.ts",
       "layers": [
         "server"
       ],
@@ -4513,7 +5404,7 @@
       "home": "outside"
     },
     {
-      "path": "shared/contracts/cron.ts",
+      "path": "shared/contracts/channel.ts",
       "layers": [
         "shared"
       ],
@@ -4523,6 +5414,15 @@
     },
     {
       "path": "shared/contracts/commands.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/cron.ts",
       "layers": [
         "shared"
       ],
@@ -4585,6 +5485,24 @@
       "home": "outside"
     },
     {
+      "path": "shared/contracts/miniapp-agent.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/miniapp.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "shared/contracts/models.ts",
       "layers": [
         "shared"
@@ -4621,6 +5539,15 @@
       "home": "outside"
     },
     {
+      "path": "shared/contracts/remote-control.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "shared/contracts/review.ts",
       "layers": [
         "shared"
@@ -4640,6 +5567,15 @@
     },
     {
       "path": "shared/contracts/session.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/ssh.ts",
       "layers": [
         "shared"
       ],
@@ -4736,348 +5672,6 @@
       "role": "outside",
       "business": null,
       "home": "outside"
-    },
-    {
-      "path": "client/styles/layout.css",
-      "layers": [
-        "unknown"
-      ],
-      "role": "styles",
-      "business": null,
-      "home": "current"
-    },
-    {
-      "path": "client/ui/layout-thresholds.ts",
-      "layers": [
-        "bindings"
-      ],
-      "role": "ui",
-      "business": null,
-      "home": "target"
-    },
-    {
-      "path": "client/features/settings/projection/settings-shortcuts.ts",
-      "layers": [
-        "view"
-      ],
-      "role": "feature-projection",
-      "business": "settings",
-      "home": "target"
-    },
-    {
-      "path": "client/features/settings/ui/ShortcutsSettings.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "settings",
-      "home": "target"
-    },
-    {
-      "path": "client/projection/common/shortcuts.ts",
-      "layers": [
-        "view"
-      ],
-      "role": "projection-common",
-      "business": null,
-      "home": "current"
-    },
-    {
-      "path": "runtime/harness/miniapp.ts",
-      "layers": [
-        "runtime"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/presenter.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/proxy.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/operation/handlers/miniapp.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/operation/miniapp.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "shared/contracts/miniapp.ts",
-      "layers": [
-        "shared"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "client/features/miniapp/application/miniapp-bridge.ts",
-      "layers": [
-        "application"
-      ],
-      "role": "feature-application",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/application/miniapp-workflows.ts",
-      "layers": [
-        "application"
-      ],
-      "role": "feature-application",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/bindings/use-miniapp-workflows.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-bindings",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/contracts/miniapp-port.ts",
-      "layers": [
-        "contracts"
-      ],
-      "role": "feature-contracts",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/projection/miniapp-view.ts",
-      "layers": [
-        "view"
-      ],
-      "role": "feature-projection",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/ui/MiniAppAppsList.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/ui/MiniAppPicker.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/miniapp/ui/MiniAppView.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "server/miniapp/bridge.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/proxy-registry.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "client/features/miniapp/ui/MiniAppStandalone.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "server/miniapp/presentation-lease.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "client/features/miniapp/application/miniapp-agent-bridge.ts",
-      "layers": [
-        "application"
-      ],
-      "role": "feature-application",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "runtime/harness/miniapp-agent.ts",
-      "layers": [
-        "runtime"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/agent-connections.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/agent-runs.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/operation/handlers/miniapp-agent.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/operation/miniapp-agent.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "shared/contracts/miniapp-agent.ts",
-      "layers": [
-        "shared"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "server/miniapp/agent-panels.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "client/features/miniapp/bindings/use-miniapp-catalogue.public.ts",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-bindings",
-      "business": "miniapp",
-      "home": "target"
-    },
-    {
-      "path": "client/features/scheduling/application/scheduling-owner.ts",
-      "layers": [
-        "application"
-      ],
-      "role": "feature-application",
-      "business": "scheduling",
-      "home": "target"
-    },
-    {
-      "path": "client/features/scheduling/contracts/scheduling-port.ts",
-      "layers": [
-        "contracts"
-      ],
-      "role": "feature-contracts",
-      "business": "scheduling",
-      "home": "target"
-    },
-    {
-      "path": "client/features/scheduling/projection/scheduling-panel.ts",
-      "layers": [
-        "view"
-      ],
-      "role": "feature-projection",
-      "business": "scheduling",
-      "home": "target"
-    },
-    {
-      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "scheduling",
-      "home": "target"
-    },
-    {
-      "path": "server/operation/scheduling.ts",
-      "layers": [
-        "server"
-      ],
-      "role": "outside",
-      "business": null,
-      "home": "outside"
-    },
-    {
-      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "scheduling",
-      "home": "target"
     }
   ],
   "directions": [

@@ -177,6 +177,105 @@ class ScriptedHarnessPort implements WebuiHarnessPort {
     return { items: [], hasMore: false };
   }
 
+  // The 接入 IM surface. The port requires the six members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers an IM channel operation.
+  async listChannelStatus() {
+    return { clients: [] };
+  }
+  async connectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async disconnectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async checkChannelConfig(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async getChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async updateChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+
+  // The 远程控制 surface. The port requires the nine members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers a remote-control operation.
+  async getRemoteControlStatus() {
+    return { phase: "idle" as const };
+  }
+  async watchRemoteControlStatus(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async connectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async disconnectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async applyRemoteControlCredentials(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async reportRemoteControlBindingLost(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async getRemoteControlPendingUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async resolveRemoteControlUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async publishRemoteControlComposerMode(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+
+  // The SSH surface. The port requires the fifteen members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers an SSH operation.
+  async listSshConnections() {
+    return [] as const;
+  }
+  async saveSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async setSshConnectionEnabled(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async removeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async discoverSshHosts(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async probeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async listSshDirectories(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async listSshProjects() {
+    return [] as const;
+  }
+  async saveSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async removeSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async openSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async writeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async resizeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async closeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async watchSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+
   /** Recorded so a test can assert the command reached the port, not a runner. */
   readonly commandsRun: Array<{ readonly command: string; readonly input?: string }> = [];
   async runCommand(request: { readonly command: string; readonly input?: string }): Promise<
@@ -803,6 +902,137 @@ function awaitFinalised(
     );
   });
 }
+
+/**
+ * The 接入 IM, 远程控制 and SSH members. The harness port requires them, and no suite in this
+ * file registers an operation from those three surfaces. A fake that spells the port out by hand
+ * spreads this rather than repeating thirty no-ops, and the ones that throw cannot be mistaken
+ * for a working bridge, phone link or SSH runtime.
+ */
+const NO_REMOTE_SURFACES: Pick<
+  WebuiHarnessPort,
+  | "listChannelStatus"
+  | "connectChannel"
+  | "disconnectChannel"
+  | "checkChannelConfig"
+  | "getChannelMessageFilter"
+  | "updateChannelMessageFilter"
+  | "getRemoteControlStatus"
+  | "watchRemoteControlStatus"
+  | "connectRemoteControl"
+  | "disconnectRemoteControl"
+  | "applyRemoteControlCredentials"
+  | "reportRemoteControlBindingLost"
+  | "getRemoteControlPendingUnbind"
+  | "resolveRemoteControlUnbind"
+  | "publishRemoteControlComposerMode"
+  | "listSshConnections"
+  | "saveSshConnection"
+  | "setSshConnectionEnabled"
+  | "removeSshConnection"
+  | "discoverSshHosts"
+  | "probeSshConnection"
+  | "listSshDirectories"
+  | "listSshProjects"
+  | "saveSshProject"
+  | "removeSshProject"
+  | "openSshTerminal"
+  | "writeSshTerminal"
+  | "resizeSshTerminal"
+  | "closeSshTerminal"
+  | "watchSshTerminal"
+> = {
+  async listChannelStatus() {
+    return { clients: [] };
+  },
+  async connectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  },
+  async disconnectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  },
+  async checkChannelConfig(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  },
+  async getChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  },
+  async updateChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  },
+  async getRemoteControlStatus() {
+    return { phase: "idle" as const };
+  },
+  async watchRemoteControlStatus(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async connectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async disconnectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async applyRemoteControlCredentials(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async reportRemoteControlBindingLost(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async getRemoteControlPendingUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async resolveRemoteControlUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async publishRemoteControlComposerMode(): Promise<never> {
+    throw new Error("this port has no phone link");
+  },
+  async listSshConnections() {
+    return [] as const;
+  },
+  async saveSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async setSshConnectionEnabled(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async removeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async discoverSshHosts(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async probeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async listSshDirectories(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async listSshProjects() {
+    return [] as const;
+  },
+  async saveSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async removeSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async openSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async writeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async resizeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async closeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+  async watchSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  },
+};
 
 describe("WebUI service", () => {
   it("turns a node-pty native load failure into an actionable error", () => {
@@ -3747,6 +3977,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
     });
     const recordingPort: WebuiHarnessPort = {
       ...NO_SCHEDULED_TASKS,
+      ...NO_REMOTE_SURFACES,
       version() {
         return { version: "0.4.2-shutdown-test", protocolVersion: 1 };
       },
@@ -4157,6 +4388,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
     let versionCalls = 0;
     const recordingPort: WebuiHarnessPort = {
       ...NO_SCHEDULED_TASKS,
+      ...NO_REMOTE_SURFACES,
       version() {
         versionCalls += 1;
         return { version: "0.4.2-shutdown-gate", protocolVersion: 1 };

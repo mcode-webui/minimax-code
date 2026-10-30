@@ -1313,6 +1313,7 @@ async function initializeSessionApplications(
   });
   const applications = initializeApplications({
     sessionSystem: sessionApplications,
+    pinService: input.pinService,
     compatibility: input.options.compatibility.sessionV2,
     attachmentRegistration: input.options.compatibility.attachmentRegistration,
     resolveAgentWriteTarget: input.agentSessionPorts.resolveWriteTarget,

@@ -364,8 +364,10 @@ describe('resolveRuntimeOwnerPolicy', () => {
     expect(webui.wiring.schedulerHost).toBe(true);
     expect(webui.wiring.cronService).toBe(true);
     expect(webui.wiring.miniAppService).toBe(true);
-    // The one cell that still differs from Desktop's row: the WebUI has no channel
-    // surface to bind an IM channel with.
+    // The IM channel service is assembled for the browser owner too: the 远程 page
+    // carries the 接入 IM tab, so there is a surface to bind a channel with. This
+    // host declares the command-line capability profile, which keeps the answer
+    // off here exactly as it is for the Desktop row.
     expect(webui.wiring.channelService).toBe(false);
     expect(webui.wiring.browserActivation).toBe('desktop-plugin');
     // The skill hub catalogue: the browser client reads it the way the Desktop
@@ -383,11 +385,11 @@ describe('resolveRuntimeOwnerPolicy', () => {
     expect(webui.execution.titleSafetyBypass).toBe(false);
   });
 
-  it('the webui row matches the Desktop row on every cell except channelService', () => {
+  it('the webui row matches the Desktop row on every cell', () => {
     // The alignment this change makes: the WebUI is a desktop-class client, so its
-    // row carries Desktop's values cell by cell. `channelService` stays off because
-    // the runtime would assemble an IM channel service the browser client has no
-    // surface for.
+    // row carries Desktop's values cell by cell. The IM channel service is part of
+    // that: the browser client has the 接入 IM surface, so the runtime assembles
+    // the channel service for it exactly as it does for the desktop owner.
     const webui = policyFor({
       kind: 'webui',
       cliEmbedded: true,
@@ -405,7 +407,7 @@ describe('resolveRuntimeOwnerPolicy', () => {
         .filter((cell) => electron[group][cell] !== webui[group][cell])
         .map((cell) => `${group}.${cell}`),
     );
-    expect(differing).toEqual(['wiring.channelService']);
+    expect(differing).toEqual([]);
   });
 
   it('no longer routes webui through the unknown-owner guard', () => {

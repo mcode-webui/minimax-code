@@ -1,0 +1,482 @@
+// The published surface of the SSH business.
+//
+// The shell is a peer of this business and may only import what the business publishes, and a
+// published module may not re-export another module's symbol — so the panel lives here and is
+// published as itself rather than through a forwarding file.
+//
+// Split in two on purpose. `SshPanelView` is a pure render of a snapshot, so a test can pin every
+// branch — the host rows, the two empty states, the project rows, the terminal — through
+// `renderToStaticMarkup` without a DOM (there is no jsdom in this package). `SshPanel` is the thin
+// part that subscribes to the owner and reads once when it opens.
+//
+// The panel is a surface of its own: it does not assume which page hosts it. The settings page's
+// `连接` tab and the 远程 page's `SSH` entry both mount this one component.
+import { useEffect, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
+
+import type {
+  WebuiSshConnection,
+  WebuiSshDiscoveredHost,
+  WebuiSshProject,
+} from "../../../../shared/contracts/ssh.js";
+import type {
+  WebuiSshSnapshot,
+  WebuiSshTerminalSnapshot,
+} from "../application/ssh-owner.js";
+import type { createWebuiSshOwner } from "../application/ssh-owner.js";
+import {
+  webuiSshDiscoveredHostRows,
+  webuiSshDiscoveryEmptyText,
+  webuiSshHostRows,
+  webuiSshProjectRows,
+  WEBUI_SSH_LOADING_TEXT,
+  WEBUI_SSH_NO_CONNECTIONS_TEXT,
+} from "../projection/ssh-panel.js";
+import { SshHostForm } from "./ssh-host-form.js";
+import { SshProjectForm } from "./ssh-project-form.js";
+import { SshTerminalView } from "./ssh-terminal-view.js";
+
+export interface SshPanelViewProps {
+  readonly snapshot: WebuiSshSnapshot;
+  readonly terminal: WebuiSshTerminalSnapshot;
+  /** The host form, when it is open. */
+  readonly hostForm?: ReactNode;
+  /** The project form, when it is open. */
+  readonly projectForm?: ReactNode;
+  /** The discovered-host picker, when it is open. */
+  readonly discoveredHosts?: ReactNode;
+  /** A message from the last action: what a removal took with it, or why an action failed. */
+  readonly notice?: string;
+  readonly onRefresh: () => void;
+  readonly onAddHost: () => void;
+  readonly onToggleHost: (connection: WebuiSshConnection) => void;
+  readonly onProbeHost: (connection: WebuiSshConnection) => void;
+  readonly onRemoveHost: (connection: WebuiSshConnection) => void;
+  readonly onDiscoverHosts: () => void;
+  readonly onAddProject: () => void;
+  readonly onRemoveProject: (project: WebuiSshProject) => void;
+  readonly onOpenTerminal: (connection: WebuiSshConnection) => void;
+  readonly onCloseTerminal: () => void;
+  readonly onTerminalInput: (data: string) => void;
+  /** The host whose removal is asking for confirmation. */
+  readonly confirmingRemove?: string;
+  readonly onRequestRemove: (connection: WebuiSshConnection) => void;
+  readonly onCancelRemove: () => void;
+}
+
+export function SshPanelView(props: SshPanelViewProps): ReactElement {
+  const hostRows = webuiSshHostRows(props.snapshot.connections);
+  const projectRows = webuiSshProjectRows(props.snapshot.projects);
+  const discoveryEmpty = webuiSshDiscoveryEmptyText(props.snapshot.discovery);
+  // "No host at all" is only true of a successful read: a failed one is not empty, and saying so
+  // would invite the person to add a host they may already have.
+  const showEmpty =
+    hostRows.length === 0 && props.snapshot.status === "ready" && props.snapshot.projects.length === 0;
+
+  return (
+    <section
+      aria-label="SSH"
+      data-webui-component="ssh-panel"
+      className="flex h-full min-h-0 flex-col bg-bg_default_primary"
+    >
+      <header className="flex flex-shrink-0 items-center justify-between border-b-[0.5px] border-border_default px-5 py-3">
+        <h1 className="text-base font-medium text-text_default_primary">SSH</h1>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-webui-ssh-new-host="true"
+            onClick={props.onAddHost}
+            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+          >
+            添加主机
+          </button>
+          <button
+            type="button"
+            data-webui-ssh-new-project="true"
+            onClick={props.onAddProject}
+            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+          >
+            添加项目
+          </button>
+          <button
+            type="button"
+            data-webui-ssh-discover="true"
+            onClick={props.onDiscoverHosts}
+            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+          >
+            发现主机
+          </button>
+          <button
+            type="button"
+            data-webui-ssh-refresh="true"
+            onClick={props.onRefresh}
+            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+          >
+            刷新
+          </button>
+        </div>
+      </header>
+      <div className="webui-rail-scroll min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        {props.hostForm}
+        {props.projectForm}
+        {props.discoveredHosts}
+        {props.notice === undefined
+          ? null
+          : <p data-webui-ssh-notice="true" className="mb-3 text-sm text-text_default_secondary">
+            {props.notice}
+          </p>}
+        {props.snapshot.status === "error" && props.snapshot.error
+          ? <p data-webui-ssh-error="true" className="mb-3 text-sm text-text_default_secondary">
+            {props.snapshot.error}
+          </p>
+          : null}
+        {props.snapshot.status === "loading" && hostRows.length === 0
+          ? <p data-webui-ssh-loading="true" className="text-sm text-text_default_tertiary">
+            {WEBUI_SSH_LOADING_TEXT}
+          </p>
+          : null}
+        {showEmpty
+          ? <p data-webui-ssh-empty="true" className="text-sm text-text_default_tertiary">
+            {WEBUI_SSH_NO_CONNECTIONS_TEXT}
+          </p>
+          : null}
+        <ul className="space-y-2">
+          {hostRows.map((row) => (
+            <li
+              key={row.alias}
+              data-webui-ssh-host={row.alias}
+              className="rounded-[8px] border border-border_default px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-text_default_primary">{row.displayName}</span>
+                <span
+                  data-webui-ssh-status={row.alias}
+                  className="text-xs text-text_default_tertiary"
+                >
+                  {row.statusLabel}
+                </span>
+              </div>
+              <p className="mt-1 font-mono text-xs text-text_default_secondary">{row.endpointLabel}</p>
+              {row.errorLabel === undefined
+                ? null
+                : <p data-webui-ssh-host-error={row.alias} className="mt-0.5 text-xs text-text_default_tertiary">
+                  {row.errorLabel}
+                </p>}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  data-webui-ssh-toggle={row.alias}
+                  onClick={() => {
+                    const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
+                    if (connection) props.onToggleHost(connection);
+                  }}
+                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+                >
+                  {row.enabled ? "停用" : "启用"}
+                </button>
+                <button
+                  type="button"
+                  data-webui-ssh-probe={row.alias}
+                  onClick={() => {
+                    const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
+                    if (connection) props.onProbeHost(connection);
+                  }}
+                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+                >
+                  探测
+                </button>
+                <button
+                  type="button"
+                  data-webui-ssh-terminal={row.alias}
+                  onClick={() => {
+                    const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
+                    if (connection) props.onOpenTerminal(connection);
+                  }}
+                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+                >
+                  打开终端
+                </button>
+                {props.confirmingRemove === row.alias
+                  ? <>
+                    <button
+                      type="button"
+                      data-webui-ssh-remove-confirm={row.alias}
+                      onClick={() => {
+                        const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
+                        if (connection) props.onRemoveHost(connection);
+                      }}
+                      className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_primary"
+                    >
+                      确认删除
+                    </button>
+                    <button
+                      type="button"
+                      data-webui-ssh-remove-cancel={row.alias}
+                      onClick={props.onCancelRemove}
+                      className="rounded-[6px] px-2 py-0.5 text-xs text-text_default_tertiary"
+                    >
+                      取消
+                    </button>
+                  </>
+                  : <button
+                    type="button"
+                    data-webui-ssh-remove={row.alias}
+                    onClick={() => {
+                      const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
+                      if (connection) props.onRequestRemove(connection);
+                    }}
+                    className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+                  >
+                    删除
+                  </button>}
+              </div>
+            </li>
+          ))}
+        </ul>
+        {projectRows.length === 0
+          ? null
+          : <ul className="mt-3 space-y-2">
+            {projectRows.map((row) => (
+              <li
+                key={row.id}
+                data-webui-ssh-project={row.id}
+                className="rounded-[8px] border border-border_default px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-text_default_primary">{row.displayName}</span>
+                  <button
+                    type="button"
+                    data-webui-ssh-project-remove={row.id}
+                    onClick={() => {
+                      const project = props.snapshot.projects.find((item) => item.id === row.id);
+                      if (project) props.onRemoveProject(project);
+                    }}
+                    className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+                  >
+                    删除
+                  </button>
+                </div>
+                <p className="mt-1 font-mono text-xs text-text_default_secondary">
+                  {row.alias} · {row.path}
+                </p>
+              </li>
+            ))}
+          </ul>}
+        {discoveryEmpty
+          ? <p data-webui-ssh-discovery-empty="true" className="mt-3 text-xs text-text_default_tertiary">
+            {discoveryEmpty}
+          </p>
+          : null}
+        <SshTerminalView
+          terminal={props.terminal}
+          onInput={props.onTerminalInput}
+          onClose={props.onCloseTerminal}
+        />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The published panel.
+ *
+ * The owner is the only thing it needs: the panel reads the snapshot, subscribes to the owner's
+ * changes and turns the person's clicks into the owner's calls. Which page hosts it is not the
+ * panel's business.
+ */
+export interface SshPanelProps {
+  readonly owner: ReturnType<typeof createWebuiSshOwner>;
+}
+
+export function SshPanel(props: SshPanelProps): ReactElement {
+  const snapshot = useSyncExternalStore(
+    props.owner.subscribe,
+    props.owner.getSnapshot,
+    props.owner.getSnapshot,
+  );
+  const terminal = useSyncExternalStore(
+    props.owner.subscribe,
+    props.owner.getTerminalSnapshot,
+    props.owner.getTerminalSnapshot,
+  );
+  const [hostFormOpen, setHostFormOpen] = useState(false);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [discoveredOpen, setDiscoveredOpen] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState<string | undefined>(undefined);
+  const [pickedHost, setPickedHost] = useState<WebuiSshDiscoveredHost | undefined>(undefined);
+  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    void props.owner.load();
+  }, [props.owner]);
+
+  const terminalId = terminal.terminalId;
+  useEffect(() => props.owner.watchTerminal(), [props.owner, terminalId]);
+
+  return (
+    <SshPanelView
+      snapshot={snapshot}
+      terminal={terminal}
+      {...(hostFormOpen
+        ? {
+            hostForm: (
+              <SshHostForm
+                {...(pickedHost
+                  ? {
+                      initial: {
+                        alias: pickedHost.alias,
+                        ...(pickedHost.hostname === undefined ? {} : { hostname: pickedHost.hostname }),
+                        ...(pickedHost.user === undefined ? {} : { user: pickedHost.user }),
+                        ...(pickedHost.port === undefined ? {} : { port: pickedHost.port }),
+                        ...(pickedHost.identityFile === undefined
+                          ? {}
+                          : { identityFile: pickedHost.identityFile }),
+                      },
+                    }
+                  : {})}
+                onCancel={() => setHostFormOpen(false)}
+                error={error}
+                onSubmit={(request) => {
+                  void props.owner.saveConnection(request).then((answer) => {
+                    if (answer.ok) {
+                      setHostFormOpen(false);
+                      setError(undefined);
+                      setNotice(
+                        answer.probe && answer.probe.status !== "connected"
+                          ? `已保存，但探测失败：${answer.probe.detail ?? answer.probe.status}`
+                          : "已保存。",
+                      );
+                      return;
+                    }
+                    setError(answer.message);
+                  });
+                }}
+              />
+            ),
+          }
+        : {})}
+      {...(projectFormOpen
+        ? {
+            projectForm: (
+              <SshProjectForm
+                hosts={snapshot.connections}
+                error={error}
+                onBrowse={(alias, path) => props.owner.listDirectories(alias, path)}
+                onCancel={() => setProjectFormOpen(false)}
+                onSubmit={(request) => {
+                  void props.owner.saveProject(request).then((answer) => {
+                    if (answer.ok) {
+                      setProjectFormOpen(false);
+                      setError(undefined);
+                      setNotice("已保存项目。");
+                      return;
+                    }
+                    setError(answer.message);
+                  });
+                }}
+              />
+            ),
+          }
+        : {})}
+      {...(discoveredOpen
+        ? {
+            discoveredHosts: (
+              <div
+                data-webui-ssh-discovered="true"
+                className="rounded-[8px] border border-border_default px-3 py-2"
+              >
+                <p className="text-xs text-text_default_tertiary">~/.ssh/config 中的主机</p>
+                {webuiSshDiscoveredHostRows(snapshot.discovery).length === 0
+                  ? <p className="mt-1 text-xs text-text_default_tertiary">
+                    {webuiSshDiscoveryEmptyText(snapshot.discovery) ?? ""}
+                  </p>
+                  : <ul className="mt-1 space-y-0.5">
+                    {webuiSshDiscoveredHostRows(snapshot.discovery).map((row) => (
+                      <li key={row.alias}>
+                        <button
+                          type="button"
+                          data-webui-ssh-discovered-host={row.alias}
+                          onClick={() => {
+                            const host = snapshot.discovery?.hosts.find((item) => item.alias === row.alias);
+                            if (!host) return;
+                            setPickedHost(host);
+                            setDiscoveredOpen(false);
+                            setHostFormOpen(true);
+                            setNotice(`已选择 ${host.alias}，请确认后保存。`);
+                          }}
+                          className="w-full truncate rounded-[6px] px-2 py-0.5 text-left font-mono text-xs text-text_default_secondary hover:text-text_default_primary"
+                        >
+                          {row.alias} · {row.endpointLabel}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>}
+              </div>
+            ),
+          }
+        : {})}
+      {...(notice === undefined ? {} : { notice })}
+      onRefresh={() => void props.owner.load()}
+      onAddHost={() => {
+        setError(undefined);
+        setHostFormOpen(true);
+      }}
+      onToggleHost={(connection) => {
+        void props.owner.setEnabled(connection.alias, !connection.enabled).then((answer) => {
+          setNotice(answer.ok ? undefined : answer.message);
+        });
+      }}
+      onProbeHost={(connection) => {
+        void props.owner.probeConnection(connection.alias).then((answer) => {
+          if (!answer.ok) {
+            setNotice(answer.message);
+            return;
+          }
+          setNotice(
+            answer.probe?.status === "connected"
+              ? `${connection.alias} 探测成功。`
+              : `${connection.alias} 探测失败：${answer.probe?.detail ?? answer.probe?.status ?? "未知原因"}`,
+          );
+        });
+      }}
+      onRemoveHost={(connection) => {
+        setConfirmingRemove(undefined);
+        void props.owner.removeConnection(connection.alias).then((answer) => {
+          if (!answer.ok) {
+            setNotice(answer.message);
+            return;
+          }
+          const removed = answer.removedProjectIds ?? [];
+          setNotice(
+            removed.length === 0
+              ? `已删除 ${connection.alias}。`
+              : `已删除 ${connection.alias}，同时移除了 ${String(removed.length)} 个项目。`,
+          );
+        });
+      }}
+      onDiscoverHosts={() => {
+        setDiscoveredOpen(true);
+        void props.owner.loadDiscovery();
+      }}
+      onAddProject={() => {
+        setError(undefined);
+        setProjectFormOpen(true);
+      }}
+      onRemoveProject={(project) => {
+        void props.owner.removeProject(project.id).then((answer) => {
+          setNotice(answer.ok ? `已删除项目 ${project.displayName}。` : answer.message);
+        });
+      }}
+      onOpenTerminal={(connection) => {
+        void props.owner.openTerminal(connection.alias).then((answer) => {
+          setNotice(answer.ok ? undefined : answer.message);
+        });
+      }}
+      onCloseTerminal={() => void props.owner.closeTerminal()}
+      onTerminalInput={(data) => void props.owner.writeTerminal(data)}
+      {...(confirmingRemove === undefined ? {} : { confirmingRemove })}
+      onRequestRemove={(connection) => setConfirmingRemove(connection.alias)}
+      onCancelRemove={() => setConfirmingRemove(undefined)}
+    />
+  );
+}

@@ -19,7 +19,11 @@ export const DESKTOP_SETTINGS_TABS: readonly SettingsTabDefinition[] = [
   // that panel first, so they are a page of their own — under 偏好, next to
   // the other preferences.
   { key: "browser", group: "preferences", label: "浏览器", icon: "browser" },
-  { key: "usage", group: "management", label: "用量与模型", icon: "chart" }, { key: "connection", group: "management", label: "连接", icon: "link", disabled: true }, { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding" }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree" }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
+  { key: "usage", group: "management", label: "用量与模型", icon: "chart" },
+  // The SSH host management is here on the Desktop too (`设置 > 连接 > SSH`), and the 远程 page's
+  // SSH link opens the same surface.
+  { key: "connection", group: "management", label: "连接", icon: "link" },
+  { key: "account", group: "management", label: "账户", icon: "user" }, { key: "coding", group: "coding", label: "代码审查", icon: "coding" }, { key: "worktree", group: "coding", label: "工作树", icon: "worktree" }, { key: "archived", group: "archived", label: "已归档任务", icon: "archived" },
 ];
 
 export function resolveThemePreference(preference: string, systemDark: boolean): "light" | "dark" { return preference === "system" ? (systemDark ? "dark" : "light") : preference === "dark" ? "dark" : "light"; }

@@ -5,7 +5,11 @@ import type {
   SessionTreePage as GetSessionTreeResp,
   ListSessionsInput as ListSessionsReq,
   SessionPage as ListSessionsResp,
+  SearchSessionsInput,
 } from "../application/session/query-contract.js";
+import type { ProjectListInput } from "../service/session-system/projects/contracts.js";
+import type { SessionQueryApplication } from "../application/session/query-application.js";
+import type { PinnedItemRef } from "../application/session/pin-application.js";
 import type {
   AbortSessionInput as AbortSessionReq,
   AbortSessionResult as AbortSessionResp,
@@ -151,8 +155,41 @@ export class CliService {
     return this.options.applications.session.query.listSessions(ctx, req);
   }
 
+  searchSessions(req: SearchSessionsInput, ctx: ProcessLocalContext = {}) {
+    return this.options.applications.session.query.searchSessions(ctx, req);
+  }
+
+  getPinnedItemsOrder() {
+    return this.options.applications.session.pin.getOrder();
+  }
+
+  putPinnedItemsOrder(items: readonly PinnedItemRef[]) {
+    return this.options.applications.session.pin.putOrder(items);
+  }
+
+  pinSession(input: { readonly sessionId: string; readonly pinned: boolean; readonly insertIndex?: number }) {
+    return this.options.applications.session.pin.pinSession(input);
+  }
+
   listVisibleProjects(limit = 100) {
     return this.options.applications.session.query.listVisibleProjects(limit);
+  }
+
+  /**
+   * The projects together with the sessions under them.
+   *
+   * `listVisibleProjects` answers "which projects exist"; a client that
+   * renders a project's conversations needs the sessions too, and reading them
+   * separately would race with the project page it belongs to.
+   */
+  listProjectGroups(input: ProjectListInput) {
+    return this.options.applications.session.query.listProjectGroups(input);
+  }
+
+  listProjectSessions(
+    ...args: Parameters<SessionQueryApplication["listProjectSessions"]>
+  ) {
+    return this.options.applications.session.query.listProjectSessions(...args);
   }
 
   createSession(
@@ -770,6 +807,58 @@ export class CliService {
         ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {}),
       },
     );
+  }
+
+  /**
+   * The workspace's branches.
+   *
+   * A client that offers a branch picker has to ask the workspace which
+   * branches exist before it can offer one; the runtime owns that answer and
+   * the client only forwards it.
+   */
+  async getWorkspaceGitBranches(workspaceDir: string, includeRemote = false) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getBranches)
+      throw new Error("Runtime does not expose Workspace git branches.");
+    return git.getBranches(workspaceDir, includeRemote);
+  }
+
+  /** The branches plus the worktrees that carry them. */
+  async getWorkspaceGitBranchPicker(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getBranchPicker)
+      throw new Error("Runtime does not expose Workspace git branch picker.");
+    return git.getBranchPicker(workspaceDir);
+  }
+
+  /** The branch a fresh workspace would start from. */
+  async getWorkspaceGitDefaultBranch(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getDefaultBranch)
+      throw new Error("Runtime does not expose Workspace git default branch.");
+    return git.getDefaultBranch(workspaceDir);
+  }
+
+  /** Whether the workspace is a git repository at all. */
+  async getWorkspaceGitProbe(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.probe)
+      throw new Error("Runtime does not expose Workspace git probe.");
+    return git.probe(workspaceDir);
+  }
+
+  /** The worktrees of the workspace. */
+  async getWorkspaceGitWorktrees(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.listWorktrees)
+      throw new Error("Runtime does not expose Workspace git worktrees.");
+    return git.listWorktrees(workspaceDir);
+  }
+
+  async checkoutWorkspaceGitBranch(workspaceDir: string, branch: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.checkout) throw new Error("Runtime does not expose Workspace git checkout.");
+    return git.checkout(workspaceDir, branch);
   }
 
   async getWorkspaceGitEnvironment(workspaceDir: string) {

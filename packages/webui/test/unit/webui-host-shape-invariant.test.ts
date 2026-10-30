@@ -95,6 +95,105 @@ class FullPort implements WebuiHarnessPort {
   async listCronTaskRuns() {
     return { items: [], hasMore: false };
   }
+
+  // The 接入 IM surface. The port requires the six members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers an IM channel operation.
+  async listChannelStatus() {
+    return { clients: [] };
+  }
+  async connectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async disconnectChannel(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async checkChannelConfig(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async getChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+  async updateChannelMessageFilter(): Promise<never> {
+    throw new Error("this port has no IM channel bridge");
+  }
+
+  // The 远程控制 surface. The port requires the nine members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers a remote-control operation.
+  async getRemoteControlStatus() {
+    return { phase: "idle" as const };
+  }
+  async watchRemoteControlStatus(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async connectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async disconnectRemoteControl(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async applyRemoteControlCredentials(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async reportRemoteControlBindingLost(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async getRemoteControlPendingUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async resolveRemoteControlUnbind(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+  async publishRemoteControlComposerMode(): Promise<never> {
+    throw new Error("this port has no phone link");
+  }
+
+  // The SSH surface. The port requires the fifteen members, so a fake that claims the whole
+  // port has to answer them; none of these suites registers an SSH operation.
+  async listSshConnections() {
+    return [] as const;
+  }
+  async saveSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async setSshConnectionEnabled(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async removeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async discoverSshHosts(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async probeSshConnection(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async listSshDirectories(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async listSshProjects() {
+    return [] as const;
+  }
+  async saveSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async removeSshProject(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async openSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async writeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async resizeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async closeSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
+  async watchSshTerminal(): Promise<never> {
+    throw new Error("this port has no SSH runtime");
+  }
   // Added with the F-zone archive contract. This class exists to make a
   // forgotten port member a compile error, so the members land here rather
   // than being left optional.
@@ -646,7 +745,7 @@ describe("WebUI host-shape invariant (batch C seam)", () => {
     // The bindings materialise from the operation descriptors; we only need
     // to verify the port is accepted and every binding is registered.
     const entries = createBindingEntries(port);
-    expect(entries.size).toBe(99);
+    expect(entries.size).toBe(127);
   });
 
   // --------------------------------------------------------------------

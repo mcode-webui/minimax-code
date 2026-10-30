@@ -15,7 +15,14 @@ import {
 } from "../../service/session-system/index.js";
 import type { ApplicationContext } from "../context.js";
 import { AppError } from "../errors.js";
-import { toSessionInfoView, toSessionTreeChildView } from "./wire.js";
+import {
+  toProjectDetail,
+  toSessionInfoView,
+  toSessionTreeChildView,
+  toSessionTreeNodeView,
+} from "./wire.js";
+import type { ListProjectsResp } from "./view-contract.js";
+import type { ProjectListInput } from "../../service/session-system/projects/contracts.js";
 import type { ProjectService } from "../../service/session-system/projects/service.js";
 
 export interface SessionQueryApplicationOptions {
@@ -23,12 +30,52 @@ export interface SessionQueryApplicationOptions {
     SessionQueryService,
     "list" | "search" | "tree" | "get"
   >;
-  readonly projects?: Pick<ProjectService, "list">;
+  readonly projects?: Pick<ProjectService, "list" | "listSessions">;
 }
 
 /** Local Session query; parameters come from the service contract and results are built by local view converters. */
 export class SessionQueryApplication {
   constructor(private readonly options: SessionQueryApplicationOptions) {}
+
+  /**
+   * The projects, each carrying the sessions that belong to it.
+   *
+   * `listVisibleProjects` answers "which projects exist" and therefore drops
+   * the sessions on the floor. A client that renders a project's conversations
+   * needs both halves in one read, so this is the group form of the same
+   * query: the project view plus its session tree, in the Desktop's shape.
+   */
+  async listProjectGroups(input: ProjectListInput): Promise<ListProjectsResp> {
+    if (!this.options.projects) throw new Error("Project listing is unavailable.");
+    const page = await this.options.projects.list(input);
+    return {
+      projects: page.projects.map((group) => ({
+        project: toProjectDetail(group.project),
+        sessions: group.sessions.map((session) =>
+          toSessionTreeNodeView(session, group.childrenByParent),
+        ),
+        hasMoreSessions: group.hasMoreSessions,
+        ...(group.nextSessionCursor
+          ? { nextSessionCursor: group.nextSessionCursor }
+          : {}),
+      })),
+      hasMore: page.hasMore,
+      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    };
+  }
+
+  async listProjectSessions(
+    reference: Parameters<ProjectService["listSessions"]>[0],
+    input: Parameters<ProjectService["listSessions"]>[1],
+  ) {
+    if (!this.options.projects) throw new Error("Project listing is unavailable.");
+    const page = await this.options.projects.listSessions(reference, input);
+    return {
+      sessions: page.sessions.map((session) => toSessionTreeNodeView(session, page.childrenByParent)),
+      hasMore: page.hasMore,
+      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    };
+  }
 
   listVisibleProjects(limit = 100) {
     if (!this.options.projects) throw new Error("Project listing is unavailable.");

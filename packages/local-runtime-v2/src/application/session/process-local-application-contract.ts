@@ -235,17 +235,19 @@ export interface LocalRuntimeApplication {
   };
   readonly goals?: {
     isEnabled(): boolean;
-    get(sessionId: string): Promise<GlobalThreadGoal | undefined>;
+    get(sessionId: string): Promise<(GlobalThreadGoal & { readonly objectiveResources?: readonly ThreadGoalAttachment[] }) | undefined>;
     create(input: {
       sessionId: string;
       objective: string;
       tokenBudget?: number | null;
       kickoffAttachments?: readonly ThreadGoalAttachment[];
-    }): Promise<GlobalThreadGoal>;
+      objectiveResources?: readonly ThreadGoalAttachment[];
+      requireKickoffAdmission?: boolean;
+    }): Promise<GlobalThreadGoal & { readonly objectiveResources?: readonly ThreadGoalAttachment[] }>;
     patch(
       sessionId: string,
-      patch: Pick<ThreadGoalPatchInput, "status" | "objective" | "tokenBudget">,
-    ): Promise<GlobalThreadGoal>;
+      patch: Pick<ThreadGoalPatchInput, "status" | "objective" | "tokenBudget" | "objectiveResources" | "expectedGoalId" | "rejectIfUpdatedAtChangedFrom">,
+    ): Promise<GlobalThreadGoal & { readonly objectiveResources?: readonly ThreadGoalAttachment[] }>;
     clear(sessionId: string): Promise<boolean>;
   };
   readonly mcp?: Pick<
@@ -304,6 +306,20 @@ export interface LocalRuntimeApplication {
         workspaceDir: string,
         branch: string,
       ): Promise<Record<string, unknown> | undefined>;
+      /** The workspace's branches. The remote branch list is opt-in. */
+      getBranches?(
+        workspaceDir: string,
+        includeRemote?: boolean,
+      ): Promise<Record<string, unknown>>;
+      /** The branches plus the worktrees that carry them. */
+      getBranchPicker?(workspaceDir: string): Promise<Record<string, unknown>>;
+      /** The branch a fresh workspace would start from. */
+      getDefaultBranch?(workspaceDir: string): Promise<Record<string, unknown>>;
+      /** Whether the workspace is a git repository at all. */
+      probe?(workspaceDir: string): Promise<Record<string, unknown>>;
+      /** The worktrees of the workspace. */
+      listWorktrees?(workspaceDir: string): Promise<Record<string, unknown>>;
+      checkout?(workspaceDir: string, branch: string): Promise<Record<string, unknown>>;
       getReviewSummary?(workspaceDir: string, source: { readonly type: "workspace" }): Promise<WorkspaceReviewSummary>;
       listReviewFileDiffs?(workspaceDir: string, source: { readonly type: "workspace" }, request: { readonly reviewSnapshotId: string; readonly fileIds?: string[] }): Promise<{ readonly reviewSnapshotId: string; readonly diffs: readonly WorkspaceReviewFileDiff[] }>;
       getReviewFileContent?(workspaceDir: string, source: { readonly type: "workspace" }, request: { readonly reviewSnapshotId: string; readonly fileId: string; readonly side: "old" | "new" }): Promise<WorkspaceReviewFileContent>;

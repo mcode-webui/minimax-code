@@ -10,6 +10,12 @@ describe("composeProcessLocalApplication workspace ownership", () => {
     const workspaceGit = {
       getMetadata: vi.fn(async () => ({ branch: "v2-main" })),
       getChanges: vi.fn(async () => ({ changedFiles: 2 })),
+      getBranches: vi.fn(async () => ({ current: "v2-main", branches: [] })),
+      getBranchPicker: vi.fn(async () => ({ current: "v2-main", branches: [], worktrees: [] })),
+      getDefaultBranch: vi.fn(async () => ({ branch: "v2-main" })),
+      probe: vi.fn(async () => ({ isGitRepo: true })),
+      listWorktrees: vi.fn(async () => ({ worktrees: [] })),
+      checkout: vi.fn(async () => ({ success: true })),
       getReviewSummary: vi.fn(),
       listReviewFileDiffs: vi.fn(),
       getReviewFileContent: vi.fn(),
@@ -46,6 +52,18 @@ describe("composeProcessLocalApplication workspace ownership", () => {
     await expect(application.workspace?.git.getChanges?.("/repo", "full")).resolves.toEqual({ changedFiles: 2 });
     expect(workspaceGit.getMetadata).toHaveBeenCalledWith("/repo");
     expect(workspaceGit.getChanges).toHaveBeenCalledWith("/repo", "full");
+    await application.workspace?.git.getBranches?.("/repo", true);
+    await application.workspace?.git.getBranchPicker?.("/repo");
+    await application.workspace?.git.getDefaultBranch?.("/repo");
+    await application.workspace?.git.probe?.("/repo");
+    await application.workspace?.git.listWorktrees?.("/repo");
+    await application.workspace?.git.checkout?.("/repo", "feature");
+    expect(workspaceGit.getBranches).toHaveBeenCalledWith("/repo", true);
+    expect(workspaceGit.getBranchPicker).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.getDefaultBranch).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.probe).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.listWorktrees).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.checkout).toHaveBeenCalledWith("/repo", "feature");
     expect(legacyWorkspaceGit.getMetadata).not.toHaveBeenCalled();
     expect(legacyWorkspaceGit.getChanges).not.toHaveBeenCalled();
     await application.workspace?.git.getReviewSummary?.("/repo", { type: "workspace" });

@@ -33,6 +33,7 @@ import {
 import {
   initialWebuiShellSurface,
   isPluginManagementSurface,
+  isRemoteSurface,
   isSchedulingSurface,
   reduceWebuiShellSurface,
   webuiPluginManagementArea,
@@ -71,6 +72,7 @@ import type {
 import type { WebuiProjectGroup } from "../features/sessions/projection/rail-groups.js";
 import { selectWebuiCatalogFlatPage, selectWebuiCatalogTreePage } from "../features/sessions/application/session-catalog.public.js";
 import { WebuiPortSlicesProvider } from "../bindings/port-slices-context.js";
+import { WebuiSshOwnerProvider } from "../bindings/ssh-owner-context.js";
 import { WebuiApplicationProvider } from "../bindings/application-context.js";
 import { useWebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 import { useWebuiApplicationOptional } from "../bindings/application-context.js";
@@ -113,6 +115,8 @@ import { useWorkspacePanelSession } from "./use-workspace-panel-session.js";
 import { useNewTaskWorkspace } from "./use-new-task-workspace.js";
 import { useShellActivityWiring } from "./use-shell-activity-wiring.js";
 import { SchedulingPanel } from "../features/scheduling/ui/SchedulingPanel.public.js";
+import { RemotePage } from "../features/remote/ui/RemotePage.public.js";
+import { renderRemoteBody } from "../features/remote/ui/remote-tabs.js";
 import { useSessionRailActions } from "./use-session-rail-actions.js";
 import { WebuiZoneBoundary } from "./WebuiZoneBoundary.js";
 
@@ -671,6 +675,11 @@ export function WebuiClientFoundationApp(
     () => dispatchShellSurface({ type: "open-scheduling" }),
     [dispatchShellSurface],
   );
+  const remoteOpen = isRemoteSurface(shellSurface);
+  const openRemote = useCallback(
+    () => dispatchShellSurface({ type: "open-remote" }),
+    [dispatchShellSurface],
+  );
   const openPluginManagement = useCallback((area: WebuiPluginManagementArea) => {
     dispatchShellSurface({ type: "open-plugin-management", area });
   }, [dispatchShellSurface]);
@@ -969,6 +978,7 @@ export function WebuiClientFoundationApp(
         * business's slice from this context, which is the reason a child
         * component never has to fall back to the transport. */}
       <WebuiPortSlicesProvider slices={portSlices}>
+        <WebuiSshOwnerProvider owner={application.sshOwner}>
     {/* The browser family owns its authorization, and the panel in the tool area
         and the settings page in the modal are different trees: only a provider
         above both of them gives them one answer. */}
@@ -1020,6 +1030,8 @@ export function WebuiClientFoundationApp(
               openPlugins={() => openPluginManagement("plugins")}
               schedulingOpen={schedulingOpen}
               openScheduling={openScheduling}
+              remoteOpen={remoteOpen}
+              openRemote={openRemote}
               hasSearchResults={railPage.sessions.length > 0}
               projectList={{
                 teamModeLabel: props.teamModeLabel, page: railPage, treePage: railTreePage,
@@ -1064,7 +1076,19 @@ export function WebuiClientFoundationApp(
             data-webui-shell-region="surface"
             className="relative flex min-h-0 min-w-0 flex-1 flex-row"
           >
-            {schedulingOpen
+            {remoteOpen
+              ? <WebuiZoneBoundary zone="remote">
+                <RemotePage
+                  owner={application.remoteOwner}
+                  render={renderRemoteBody({
+                    channelOwner: application.channelOwner,
+                    remoteControlOwner: application.remoteControlOwner,
+                    sshOwner: application.sshOwner,
+                    onOpenSsh: () => application.remoteOwner.openSsh(),
+                  })}
+                />
+              </WebuiZoneBoundary>
+              : schedulingOpen
               ? <WebuiZoneBoundary zone="scheduling">
                 <SchedulingPanel
                   owner={application.schedulingOwner}
@@ -1224,6 +1248,7 @@ export function WebuiClientFoundationApp(
     </WebuiAccountWorkflowsProvider>
     </WebuiWorkspaceQueriesProvider>
     </WebuiBrowserAuthorizationProvider>
+      </WebuiSshOwnerProvider>
       </WebuiPortSlicesProvider>
     </>
   );

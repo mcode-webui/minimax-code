@@ -10,6 +10,8 @@ import {
   type SessionLifecycleApplicationOptions,
 } from "./session/lifecycle-application.js";
 import { SessionQueryApplication } from "./session/query-application.js";
+import { PinApplication } from "./session/pin-application.js";
+import type { PinService } from "../service/pin/index.js";
 import { SessionTransferApplication } from "./session/transfer-application.js";
 import {
   SessionRootApplication,
@@ -27,6 +29,7 @@ import {
 export interface RuntimeApplications {
   readonly session: {
     readonly query: SessionQueryApplication;
+    readonly pin: PinApplication;
     readonly content: SessionContentApplication;
     readonly lifecycle: SessionLifecycleApplication;
     readonly root: SessionRootApplication;
@@ -38,6 +41,7 @@ export interface RuntimeApplications {
 }
 
 export interface InitializeApplicationsOptions {
+  readonly pinService: Pick<PinService, "getOrder" | "putOrder" | "pinSession">;
   readonly sessionSystem: InitializedSessionApplicationSystem;
   readonly compatibility: V1SessionCompatibility;
   readonly attachmentRegistration: LocalAttachmentRegistrationPort;
@@ -126,6 +130,7 @@ export const initializeApplications: InitializeApplications = (options) => {
     service: options.sessionSystem.session.query,
     projects: options.sessionSystem.project,
   });
+  const pin = new PinApplication({ service: options.pinService, publishGlobalEvent: options.publishGlobalEvent });
   const content = new SessionContentApplication({
     messages: options.sessionSystem.messages.query,
     sources: options.sessionSystem.messages.sources,
@@ -159,7 +164,7 @@ export const initializeApplications: InitializeApplications = (options) => {
     now: options.nowMs ?? Date.now,
   });
   return {
-    session: { query, content, lifecycle, root, diff, conversationMutation, transfer },
+    session: { query, pin, content, lifecycle, root, diff, conversationMutation, transfer },
     queue,
   };
 };

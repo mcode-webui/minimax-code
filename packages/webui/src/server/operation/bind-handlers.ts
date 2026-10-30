@@ -84,6 +84,40 @@ import {
   runCronTaskNowOperation,
   updateCronTaskOperation,
 } from "./scheduling.js";
+import {
+  closeSshTerminalOperation,
+  discoverSshHostsOperation,
+  listSshConnectionsOperation,
+  listSshDirectoriesOperation,
+  listSshProjectsOperation,
+  openSshTerminalOperation,
+  probeSshConnectionOperation,
+  removeSshConnectionOperation,
+  removeSshProjectOperation,
+  resizeSshTerminalOperation,
+  saveSshConnectionOperation,
+  saveSshProjectOperation,
+  setSshConnectionEnabledOperation,
+  writeSshTerminalOperation,
+} from "./ssh.js";
+import {
+  applyRemoteControlCredentialsOperation,
+  connectRemoteControlOperation,
+  disconnectRemoteControlOperation,
+  getRemoteControlPendingUnbindOperation,
+  getRemoteControlStatusOperation,
+  publishRemoteControlComposerModeOperation,
+  reportRemoteControlBindingLostOperation,
+  resolveRemoteControlUnbindOperation,
+} from "./remote-control.js";
+import {
+  checkChannelConfigOperation,
+  connectChannelOperation,
+  disconnectChannelOperation,
+  getChannelMessageFilterOperation,
+  listChannelStatusOperation,
+  updateChannelMessageFilterOperation,
+} from "./channel.js";
 import { pluginManagementOperation } from "./plugin-management.js";
 import {
   getPermissionModeOperation,
@@ -476,6 +510,160 @@ export const WEBUI_OPERATION_BINDINGS = {
     result: identity,
   }),
 
+  // ssh. The hosts, the projects and the remote terminal. The SSH runtime is host-side — the
+  // adapter owns it and builds it from the host's data directory — so a host without a data
+  // directory refuses every member with one `capability_unavailable`, and no `missing:` policy
+  // is needed here.
+  listSshConnections: bind("ssh")("listSshConnections")("listSshConnections")({
+    operation: listSshConnectionsOperation,
+    args: () => [],
+    result: identity,
+  }),
+  saveSshConnection: bind("ssh")("saveSshConnection")("saveSshConnection")({
+    operation: saveSshConnectionOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  setSshConnectionEnabled: bind("ssh")("setSshConnectionEnabled")("setSshConnectionEnabled")({
+    operation: setSshConnectionEnabledOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  removeSshConnection: bind("ssh")("removeSshConnection")("removeSshConnection")({
+    operation: removeSshConnectionOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  discoverSshHosts: bind("ssh")("discoverSshHosts")("discoverSshHosts")({
+    operation: discoverSshHostsOperation,
+    args: () => [],
+    result: identity,
+  }),
+  probeSshConnection: bind("ssh")("probeSshConnection")("probeSshConnection")({
+    operation: probeSshConnectionOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  listSshDirectories: bind("ssh")("listSshDirectories")("listSshDirectories")({
+    operation: listSshDirectoriesOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  listSshProjects: bind("ssh")("listSshProjects")("listSshProjects")({
+    operation: listSshProjectsOperation,
+    args: () => [],
+    result: identity,
+  }),
+  saveSshProject: bind("ssh")("saveSshProject")("saveSshProject")({
+    operation: saveSshProjectOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  removeSshProject: bind("ssh")("removeSshProject")("removeSshProject")({
+    operation: removeSshProjectOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  openSshTerminal: bind("ssh")("openSshTerminal")("openSshTerminal")({
+    operation: openSshTerminalOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  writeSshTerminal: bind("ssh")("writeSshTerminal")("writeSshTerminal")({
+    operation: writeSshTerminalOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  resizeSshTerminal: bind("ssh")("resizeSshTerminal")("resizeSshTerminal")({
+    operation: resizeSshTerminalOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  closeSshTerminal: bind("ssh")("closeSshTerminal")("closeSshTerminal")({
+    operation: closeSshTerminalOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+
+  // channels. The IM binding belongs to the runtime's owner policy: a host whose owner does not
+  // assemble the channel service has no bridge, and the adapter refuses with one
+  // `capability_unavailable` instead of answering an empty client list that reads as "nothing is
+  // bound".
+  listChannelStatus: bind("channels")("listChannelStatus")("listChannelStatus")({
+    operation: listChannelStatusOperation,
+    args: () => [],
+    result: identity,
+  }),
+  connectChannel: bind("channels")("connectChannel")("connectChannel")({
+    operation: connectChannelOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  disconnectChannel: bind("channels")("disconnectChannel")("disconnectChannel")({
+    operation: disconnectChannelOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  checkChannelConfig: bind("channels")("checkChannelConfig")("checkChannelConfig")({
+    operation: checkChannelConfigOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  getChannelMessageFilter: bind("channels")("getChannelMessageFilter")("getChannelMessageFilter")({
+    operation: getChannelMessageFilterOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  updateChannelMessageFilter: bind("channels")("updateChannelMessageFilter")("updateChannelMessageFilter")({
+    operation: updateChannelMessageFilterOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+
+  // remote control. The phone link is host-side — the adapter owns the bridge and the socket — so
+  // a host without the link refuses every member with one `capability_unavailable`, and no
+  // `missing:` policy is needed here. The status stream is a dedicated handler, not a binding.
+  getRemoteControlStatus: bind("remoteControl")("getRemoteControlStatus")("getRemoteControlStatus")({
+    operation: getRemoteControlStatusOperation,
+    args: () => [],
+    result: identity,
+  }),
+  connectRemoteControl: bind("remoteControl")("connectRemoteControl")("connectRemoteControl")({
+    operation: connectRemoteControlOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  disconnectRemoteControl: bind("remoteControl")("disconnectRemoteControl")("disconnectRemoteControl")({
+    operation: disconnectRemoteControlOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  applyRemoteControlCredentials: bind("remoteControl")("applyRemoteControlCredentials")("applyRemoteControlCredentials")({
+    operation: applyRemoteControlCredentialsOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  reportRemoteControlBindingLost: bind("remoteControl")("reportRemoteControlBindingLost")("reportRemoteControlBindingLost")({
+    operation: reportRemoteControlBindingLostOperation,
+    args: () => [],
+    result: identity,
+  }),
+  getRemoteControlPendingUnbind: bind("remoteControl")("getRemoteControlPendingUnbind")("getRemoteControlPendingUnbind")({
+    operation: getRemoteControlPendingUnbindOperation,
+    args: () => [],
+    result: identity,
+  }),
+  resolveRemoteControlUnbind: bind("remoteControl")("resolveRemoteControlUnbind")("resolveRemoteControlUnbind")({
+    operation: resolveRemoteControlUnbindOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+  publishRemoteControlComposerMode: bind("remoteControl")("publishRemoteControlComposerMode")("publishRemoteControlComposerMode")({
+    operation: publishRemoteControlComposerModeOperation,
+    args: (body) => [body],
+    result: identity,
+  }),
+
   // plugins
   pluginManagement: bind("plugins")("pluginManagement")("pluginManagement")({
     operation: pluginManagementOperation,
@@ -810,6 +998,10 @@ export const DEDICATED_OPERATION_NAMES = [
   "stopMiniApp",
   "watchMiniAppAgentTurn",
   "miniAppAgentCall",
+  // The two host-side streams: the phone link's live state and the remote
+  // terminal's output. Both return a `{ stream }` envelope rather than a body.
+  "watchRemoteControlStatus",
+  "watchSshTerminal",
 ] as const;
 
 type AnyBinding = WebuiOperationBinding<

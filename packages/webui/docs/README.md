@@ -49,6 +49,7 @@ facets as directed there. The repository glossary is `CONTEXT.md` at the reposit
 | [`runtime/boot.md`](runtime/boot.md) | Boot order, close order, the process resources, and the service entries | You are changing assembly, credentials, quota, terminal or shutdown |
 | [`runtime/harness-boundary.md`](runtime/harness-boundary.md) | `WebuiHarnessPort`, the adapters, and the roster that must agree with the operation registry | You are adding or removing an operation |
 | [`runtime/owner-identity.md`](runtime/owner-identity.md) | The `webui` runtime-owner row and what each differing cell means | You are changing how the client identifies itself to the harness |
+| [`runtime/remote-control.md`](runtime/remote-control.md) | The phone pairing link: who signs the binding HTTP, where the lease comes from, and how a restarted service relinks | You are changing the 远程控制 tab, the pairing pipeline or the credential |
 
 ## Design
 

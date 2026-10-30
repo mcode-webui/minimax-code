@@ -3,6 +3,8 @@ import type {
   WebuiSendMessageResult,
   WebuiWatchEventsResult,
 } from "../../shared/contracts/stream.js";
+import type { WebuiWatchRemoteControlResult } from "../../shared/contracts/remote-control.js";
+import type { WebuiSshTerminalStreamResult } from "../../shared/contracts/ssh.js";
 
 export interface WebuiOperationContext {
   readonly requestId: string;
@@ -14,7 +16,11 @@ export interface WebuiOperationResult<Body> {
 }
 
 export interface WebuiOperationStreamResult {
-  readonly stream: WebuiSendMessageResult | WebuiWatchEventsResult;
+  readonly stream:
+    | WebuiSendMessageResult
+    | WebuiWatchEventsResult
+    | WebuiWatchRemoteControlResult
+    | WebuiSshTerminalStreamResult;
 }
 
 export type WebuiOperationHandler<Body, ResultBody = Body> = (

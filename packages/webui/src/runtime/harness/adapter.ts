@@ -13,7 +13,7 @@
 import { WEBUI_PROTOCOL_VERSION } from "../../shared/envelope.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
 
-import type { WebuiHarnessPort } from "../port.js";
+import type { WebuiBrowserPort, WebuiHarnessPort } from "../port.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { createSessionsAdapter } from "./sessions.js";
 import { createExecutionAdapter } from "./execution.js";
@@ -25,6 +25,9 @@ import { createMiniAppAdapter } from "./miniapp.js";
 import { createMiniAppAgentAdapter } from "./miniapp-agent.js";
 import { createAccountAdapter } from "./account.js";
 import { createCronAdapter } from "./cron.js";
+import { createSshAdapter } from "./ssh.js";
+import { createRemoteControlAdapter } from "./remote-control.js";
+import { createChannelAdapter } from "./channel.js";
 import { runWebuiCommand } from "../commands/runner.js";
 import { importWebuiSessionTransfer } from "../session-transfer.js";
 
@@ -37,6 +40,7 @@ import { importWebuiSessionTransfer } from "../session-transfer.js";
  * place that can wire the two together.
  */
 export interface CreateHarnessPortOptions {
+  readonly browserPort?: Pick<WebuiBrowserPort, "getAuthorization" | "setAuthorization">;
   /**
    * Called when a session has ended — deleted, archived, or transferred away.
    *
@@ -77,6 +81,9 @@ export function createHarnessPortFromHost(
     ...createMiniAppAgentAdapter(host),
     ...createAccountAdapter(host),
     ...createCronAdapter(host),
+    ...createSshAdapter(host),
+    ...createRemoteControlAdapter(host, options.browserPort),
+    ...createChannelAdapter(host),
     async close() {
       if (closed) return;
       closed = true;

@@ -19,6 +19,42 @@ export {
 } from "./scheduling.js";
 export { pluginManagementOperation } from "./plugin-management.js";
 export {
+  checkChannelConfigOperation,
+  connectChannelOperation,
+  disconnectChannelOperation,
+  getChannelMessageFilterOperation,
+  listChannelStatusOperation,
+  updateChannelMessageFilterOperation,
+} from "./channel.js";
+export {
+  applyRemoteControlCredentialsOperation,
+  connectRemoteControlOperation,
+  disconnectRemoteControlOperation,
+  getRemoteControlPendingUnbindOperation,
+  getRemoteControlStatusOperation,
+  publishRemoteControlComposerModeOperation,
+  reportRemoteControlBindingLostOperation,
+  resolveRemoteControlUnbindOperation,
+  watchRemoteControlStatusOperation,
+} from "./remote-control.js";
+export {
+  closeSshTerminalOperation,
+  discoverSshHostsOperation,
+  listSshConnectionsOperation,
+  listSshDirectoriesOperation,
+  listSshProjectsOperation,
+  openSshTerminalOperation,
+  probeSshConnectionOperation,
+  removeSshConnectionOperation,
+  removeSshProjectOperation,
+  resizeSshTerminalOperation,
+  saveSshConnectionOperation,
+  saveSshProjectOperation,
+  setSshConnectionEnabledOperation,
+  watchSshTerminalOperation,
+  writeSshTerminalOperation,
+} from "./ssh.js";
+export {
   listMiniAppsOperation,
   openMiniAppOperation,
   stopMiniAppOperation,
@@ -49,6 +85,8 @@ import {
 import { createCommandHandlerEntries } from "./handlers/commands.js";
 import { createAccountHandlerEntries } from "./handlers/account.js";
 import { createStreamHandlerEntries } from "./handlers/stream.js";
+import { createSshHandlerEntries } from "./handlers/ssh.js";
+import { createRemoteControlHandlerEntries } from "./handlers/remote-control.js";
 import { createMessageHandlerEntries } from "./handlers/messages.js";
 import type {
   WebuiOperationHandler,
@@ -128,6 +166,8 @@ export function createOperationRegistry(
     ...createCommandHandlerEntries(port),
     ...createAccountHandlerEntries(port),
     ...createStreamHandlerEntries(port),
+    ...createSshHandlerEntries(port),
+    ...createRemoteControlHandlerEntries(port),
     ...createMessageHandlerEntries(port),
     ...createMiniAppHandlerEntries(port, {
       ...(miniAppProxies ? { proxies: miniAppProxies } : {}),
@@ -330,6 +370,36 @@ export function createOperationRegistry(
   // Appended: ADR 0027 scheduled tasks. The registry order is the wire order, so a new operation
   // lands at the end rather than in the domain it reads like.
   registerOperation(registry, entry("listCronTasks"));
+  registerOperation(registry, entry("listSshConnections"));
+  registerOperation(registry, entry("saveSshConnection"));
+  registerOperation(registry, entry("setSshConnectionEnabled"));
+  registerOperation(registry, entry("removeSshConnection"));
+  registerOperation(registry, entry("discoverSshHosts"));
+  registerOperation(registry, entry("probeSshConnection"));
+  registerOperation(registry, entry("listSshDirectories"));
+  registerOperation(registry, entry("listSshProjects"));
+  registerOperation(registry, entry("saveSshProject"));
+  registerOperation(registry, entry("removeSshProject"));
+  registerOperation(registry, entry("openSshTerminal"));
+  registerOperation(registry, entry("writeSshTerminal"));
+  registerOperation(registry, entry("resizeSshTerminal"));
+  registerOperation(registry, entry("closeSshTerminal"));
+  registerOperation(registry, entry("watchSshTerminal"));
+  registerOperation(registry, entry("listChannelStatus"));
+  registerOperation(registry, entry("connectChannel"));
+  registerOperation(registry, entry("disconnectChannel"));
+  registerOperation(registry, entry("checkChannelConfig"));
+  registerOperation(registry, entry("getChannelMessageFilter"));
+  registerOperation(registry, entry("updateChannelMessageFilter"));
+  registerOperation(registry, entry("getRemoteControlStatus"));
+  registerOperation(registry, entry("connectRemoteControl"));
+  registerOperation(registry, entry("disconnectRemoteControl"));
+  registerOperation(registry, entry("applyRemoteControlCredentials"));
+  registerOperation(registry, entry("reportRemoteControlBindingLost"));
+  registerOperation(registry, entry("getRemoteControlPendingUnbind"));
+  registerOperation(registry, entry("resolveRemoteControlUnbind"));
+  registerOperation(registry, entry("publishRemoteControlComposerMode"));
+  registerOperation(registry, entry("watchRemoteControlStatus"));
   registerOperation(registry, entry("createCronTask"));
   registerOperation(registry, entry("updateCronTask"));
   registerOperation(registry, entry("deleteCronTask"));

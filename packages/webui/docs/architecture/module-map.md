@@ -28,9 +28,14 @@ pure derivations), `bindings/` (its React subscriptions), `ui/` (its presentatio
 business populates every role — a business with no screen has no `ui/`, and empty directories are
 not created. `ls packages/webui/src/client/features` is the list.
 
-The current businesses are `account`, `browser`, `composer`, `goal`, `interactions`, `miniapp`,
-`models`, `plugins`, `review`, `scheduling`, `sessions`, `settings`, `shell`, `terminal`, `transcript`,
-`turn` and `workspace`. What a business is — and what it is not — is in `../client/ownership.md`.
+The current businesses are `account`, `browser`, `channel`, `composer`, `goal`, `interactions`, `miniapp`,
+`models`, `plugins`, `remote`, `remote-control`, `review`, `scheduling`, `sessions`, `settings`, `shell`,
+`ssh`, `terminal`, `transcript`, `turn` and `workspace`. What a business is — and what it is not — is in
+`../client/ownership.md`.
+
+`remote` is the 远程 page: the shell for the two tabs Desktop's remote page carries. `remote-control`
+is the phone pairing and the live phone link; `channel` is 接入 IM; `ssh` is the SSH host management,
+the projects rooted on a host and the remote terminal.
 
 ## Runtime
 
@@ -44,6 +49,7 @@ The current businesses are `account`, `browser`, `composer`, `goal`, `interactio
 | `runtime/auth-session.ts`, `runtime/auth-context.ts` | The one OAuth core with its lease and refresh timer, and the per-request auth context. |
 | `runtime/account-login.ts`, `runtime/check-in.ts`, `runtime/usage-quota.ts`, `runtime/usage-quota-projection.ts`, `runtime/reset-card-projection.ts`, `runtime/signing.ts` | Account login, daily check-in, the account-billing client (the quota, the credit fallback and the reset cards) and its two pure projections, request signing. |
 | `runtime/terminal.ts` | The terminal process manager. One per WebUI service, not a host-wide singleton. |
+| `runtime/remote-control/` | The phone pairing link: the vendored bridge, the pairing client and its credential source, the owner, the command router and the global-event source. See [`runtime/remote-control.md`](../runtime/remote-control.md). |
 | `runtime/mcode-tools.ts`, `runtime/mcode-tools-environment.ts`, `runtime/mcode-tools-entry.ts` | The mcode-tools broker, the child-process environment projection and the embedded entry loader. |
 | `runtime/workspace-archive.ts` + `runtime/workspace-archive/` | Archive listing and extraction: `zip-adapter.ts` and `tar-adapter.ts` over `archive-policy.ts`, `archive-listing.ts`, `archive-filesystem.ts`, `archive-types.ts`. |
 | `runtime/session-transfer.ts`, `runtime/profile-files.ts` | Session import/export and profile file reads. |

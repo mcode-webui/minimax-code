@@ -18,6 +18,7 @@ export const HOST_PUBLISHED_EVENT_TYPES = [
   "session.interaction_mode.changed",
   "session.llm_retry",
   "session.model_updated",
+  "session.pinned_updated",
   "session.queue.updated",
   "session.start",
   "session.title_updated",

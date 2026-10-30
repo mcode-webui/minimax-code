@@ -5,17 +5,21 @@ import {
   SessionTypeView,
   type ModelInfoView,
   type ModelThinkingInput,
+  type ProjectDetail,
   type RunLocationView,
   type SessionInfoView,
   type SessionKind as DesktopSessionKindValue,
   type SessionMemoryPolicyView,
   type SessionStatusInfoView,
   type SessionTreeChildView,
+  type SessionTreeNodeView,
 } from "./view-contract.js";
 
-import type {
-  SessionKind,
-  SessionRecord,
+import {
+  DEFAULT_PROJECT_KEY,
+  type ProjectRecord,
+  type SessionKind,
+  type SessionRecord,
 } from "../../service/session-system/index.js";
 import {
   CURRENT_SESSION_DATA_VERSION,
@@ -192,6 +196,59 @@ function conversationCapabilities(
     return { conversationCapabilities: { fork: true, rewind: false } };
   }
   return { conversationCapabilities: { fork: true, rewind: true } };
+}
+
+/**
+ * The Desktop's project view for one project record.
+ *
+ * `key` is the project identity the phone addresses projects by, so it follows
+ * the runtime's own canonical form (`workspace:<dir>`, or the default bucket
+ * for a session without a workspace) rather than a second one.
+ */
+export function toProjectDetail(project: ProjectRecord): ProjectDetail {
+  const workspaceDir = project.workspaceDir ?? undefined;
+  return {
+    key: workspaceDir ? `workspace:${workspaceDir}` : DEFAULT_PROJECT_KEY,
+    projectId: project.projectId,
+    ...(workspaceDir ? { workspaceDir } : {}),
+    displayName: projectDisplayName(workspaceDir),
+    archived: false,
+    latestActivityAt: project.latestActivityAtMs,
+    sessionCount: project.sessionCount,
+    state: {
+      pinned: project.pinned,
+      hidden: project.hidden,
+      orderIndex: project.orderIndex,
+      ...(project.recentAtMs === null ? {} : { recentAt: project.recentAtMs }),
+    },
+    ...(project.extraDataJson ? { extraDataJson: project.extraDataJson } : {}),
+    createdAt: project.createdAtMs,
+    updatedAt: project.updatedAtMs,
+  };
+}
+
+/**
+ * The user-facing project name: the workspace directory's own name, the way
+ * the Desktop names a project. A session without a workspace belongs to the
+ * default bucket and has no directory to name.
+ */
+export function projectDisplayName(workspaceDir: string | undefined): string {
+  if (!workspaceDir) return "No project selected";
+  const segments = workspaceDir.split(/[\\/]+/).filter((segment) => segment.length > 0);
+  return segments[segments.length - 1] ?? workspaceDir;
+}
+
+/** A tree node: the session plus the children that hang off it. */
+export function toSessionTreeNodeView(
+  session: SessionRecord,
+  childrenByParent: ReadonlyMap<string, readonly SessionRecord[]>,
+): SessionTreeNodeView {
+  return {
+    session: toSessionInfoView(session),
+    childSessions: (childrenByParent.get(session.sessionId) ?? []).map(
+      toSessionTreeChildView,
+    ),
+  };
 }
 
 export function toSessionTreeChildView(

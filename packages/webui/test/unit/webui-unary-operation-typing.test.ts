@@ -26,6 +26,8 @@ import {
 } from "../../src/server/operation/bind-handlers.js";
 import type { WebuiOperationPort } from "../../src/server/operation/bind-handlers.js";
 import { createStreamHandlerEntries } from "../../src/server/operation/handlers/stream.js";
+import { createRemoteControlHandlerEntries } from "../../src/server/operation/handlers/remote-control.js";
+import { createSshHandlerEntries } from "../../src/server/operation/handlers/ssh.js";
 import { watchTerminalOperation } from "../../src/server/operation/workspace.js";
 import { watchBrowserFramesOperation, watchBrowserWebTabsOperation } from "../../src/server/operation/browser.js";
 import { watchMiniAppPresentationOperation, watchMiniAppPresenterOperation } from "../../src/server/operation/miniapp.js";
@@ -118,12 +120,17 @@ describe("the unary request interface over OperationSpec", () => {
         `${name} is a stream and must not be unary`,
       );
     }
-    assert.equal(streams.length, 9);
+    assert.equal(streams.length, 11);
   });
 
   it("matches the server's registered stream descriptors exactly", () => {
     const registered = [
       ...createStreamHandlerEntries(inertPort).keys(),
+      // The two host-side streams: the phone link's live state and the remote
+      // terminal's output. Both keep a dedicated handler — their frames are the
+      // host's own, not the generic stream factory's.
+      ...createRemoteControlHandlerEntries(inertPort).keys(),
+      ...createSshHandlerEntries(inertPort).keys(),
       watchTerminalOperation.name,
       watchBrowserFramesOperation.name,
       watchBrowserWebTabsOperation.name,

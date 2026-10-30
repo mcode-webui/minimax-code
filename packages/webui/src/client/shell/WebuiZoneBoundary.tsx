@@ -17,7 +17,8 @@ export type WebuiErrorZone =
   | "plugins"
   | "settings"
   | "review"
-  | "scheduling";
+  | "scheduling"
+  | "remote";
 
 const COPY: Readonly<Record<WebuiErrorZone, { readonly title: string; readonly detail: string }>> = {
   composer: {
@@ -47,6 +48,10 @@ const COPY: Readonly<Record<WebuiErrorZone, { readonly title: string; readonly d
   scheduling: {
     title: "定时任务出现错误",
     detail: "定时任务面板未能正常显示。其他状态已保留，可以重试恢复。",
+  },
+  remote: {
+    title: "远程出现错误",
+    detail: "远程页面未能正常显示。其他状态已保留，可以重试恢复。",
   },
 };
 

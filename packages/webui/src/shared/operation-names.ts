@@ -203,6 +203,64 @@ export const UPDATE_CRON_TASK_OPERATION_NAME = "updateCronTask" as const;
 export const DELETE_CRON_TASK_OPERATION_NAME = "deleteCronTask" as const;
 export const RUN_CRON_TASK_NOW_OPERATION_NAME = "runCronTaskNow" as const;
 export const LIST_CRON_TASK_RUNS_OPERATION_NAME = "listCronTaskRuns" as const;
+/**
+ * The 接入 IM surface: the IM clients the runtime has bound, and the mutations that bind and
+ * unbind them.
+ *
+ * Desktop's IM client talks to the runtime's channel-bridge routes; the WebUI projects the same
+ * five routes (`status`, `connect`, `disconnect`, `config-check`, `message-filter`) as named
+ * operations, so the browser never learns a route path.
+ */
+export const LIST_CHANNEL_STATUS_OPERATION_NAME = "listChannelStatus" as const;
+export const CONNECT_CHANNEL_OPERATION_NAME = "connectChannel" as const;
+export const DISCONNECT_CHANNEL_OPERATION_NAME = "disconnectChannel" as const;
+export const CHECK_CHANNEL_CONFIG_OPERATION_NAME = "checkChannelConfig" as const;
+export const GET_CHANNEL_MESSAGE_FILTER_OPERATION_NAME = "getChannelMessageFilter" as const;
+export const UPDATE_CHANNEL_MESSAGE_FILTER_OPERATION_NAME = "updateChannelMessageFilter" as const;
+/**
+ * The 远程控制 surface: the phone link's status, the mutations that open and close it, and the
+ * credentials the browser signs and pushes down.
+ *
+ * `watchRemoteControlStatus` is a stream because the phone link's phase changes on the host: a
+ * pairing code expires, a socket drops, the phone asks a permission question. Desktop pushes each
+ * of those to the renderer; the WebUI pushes them down one stream so the pairing page shows the
+ * live phase without polling.
+ */
+export const GET_REMOTE_CONTROL_STATUS_OPERATION_NAME = "getRemoteControlStatus" as const;
+export const WATCH_REMOTE_CONTROL_STATUS_OPERATION_NAME = "watchRemoteControlStatus" as const;
+export const CONNECT_REMOTE_CONTROL_OPERATION_NAME = "connectRemoteControl" as const;
+export const DISCONNECT_REMOTE_CONTROL_OPERATION_NAME = "disconnectRemoteControl" as const;
+export const APPLY_REMOTE_CONTROL_CREDENTIALS_OPERATION_NAME =
+  "applyRemoteControlCredentials" as const;
+export const REPORT_REMOTE_CONTROL_BINDING_LOST_OPERATION_NAME =
+  "reportRemoteControlBindingLost" as const;
+export const GET_REMOTE_CONTROL_PENDING_UNBIND_OPERATION_NAME =
+  "getRemoteControlPendingUnbind" as const;
+export const RESOLVE_REMOTE_CONTROL_UNBIND_OPERATION_NAME = "resolveRemoteControlUnbind" as const;
+export const PUBLISH_REMOTE_CONTROL_COMPOSER_MODE_OPERATION_NAME =
+  "publishRemoteControlComposerMode" as const;
+/**
+ * The SSH surface: the hosts this machine can reach, the projects rooted on them, and the remote
+ * terminal.
+ *
+ * Desktop owns these in its Electron main process (`dist/main/modules/ssh-runtime/`); the WebUI
+ * owns them in its loopback service, which is the same host-side position.
+ */
+export const LIST_SSH_CONNECTIONS_OPERATION_NAME = "listSshConnections" as const;
+export const SAVE_SSH_CONNECTION_OPERATION_NAME = "saveSshConnection" as const;
+export const SET_SSH_CONNECTION_ENABLED_OPERATION_NAME = "setSshConnectionEnabled" as const;
+export const REMOVE_SSH_CONNECTION_OPERATION_NAME = "removeSshConnection" as const;
+export const DISCOVER_SSH_HOSTS_OPERATION_NAME = "discoverSshHosts" as const;
+export const PROBE_SSH_CONNECTION_OPERATION_NAME = "probeSshConnection" as const;
+export const LIST_SSH_DIRECTORIES_OPERATION_NAME = "listSshDirectories" as const;
+export const LIST_SSH_PROJECTS_OPERATION_NAME = "listSshProjects" as const;
+export const SAVE_SSH_PROJECT_OPERATION_NAME = "saveSshProject" as const;
+export const REMOVE_SSH_PROJECT_OPERATION_NAME = "removeSshProject" as const;
+export const OPEN_SSH_TERMINAL_OPERATION_NAME = "openSshTerminal" as const;
+export const WRITE_SSH_TERMINAL_OPERATION_NAME = "writeSshTerminal" as const;
+export const RESIZE_SSH_TERMINAL_OPERATION_NAME = "resizeSshTerminal" as const;
+export const CLOSE_SSH_TERMINAL_OPERATION_NAME = "closeSshTerminal" as const;
+export const WATCH_SSH_TERMINAL_OPERATION_NAME = "watchSshTerminal" as const;
 
 import type {
   WebuiActiveTurnResult,
@@ -303,6 +361,44 @@ import type {
   WebuiCronTask,
   WebuiCronTaskUpdateRequest,
 } from "./contracts/cron.js";
+import type {
+  WebuiChannelConfigCheckRequest,
+  WebuiChannelConfigCheckResult,
+  WebuiChannelConnectRequest,
+  WebuiChannelDisconnectRequest,
+  WebuiChannelMessageFilter,
+  WebuiChannelMessageFilterRequest,
+  WebuiChannelOperationResult,
+  WebuiChannelStatus,
+} from "./contracts/channel.js";
+import type {
+  WebuiRemoteControlComposerMode,
+  WebuiRemoteControlConnectRequest,
+  WebuiRemoteControlConnectResult,
+  WebuiRemoteControlCredentials,
+  WebuiRemoteControlDisconnectRequest,
+  WebuiRemoteControlOperationResult,
+  WebuiRemoteControlPendingUnbind,
+  WebuiRemoteControlStatus,
+  WebuiWatchRemoteControlResult,
+} from "./contracts/remote-control.js";
+import type {
+  WebuiSshConnection,
+  WebuiSshDiscovery,
+  WebuiSshDirectoryEntry,
+  WebuiSshListDirectoriesRequest,
+  WebuiSshListDirectoriesResult,
+  WebuiSshProbeResult,
+  WebuiSshProject,
+  WebuiSshProjectRequest,
+  WebuiSshProjectResult,
+  WebuiSshRemoveResult,
+  WebuiSshSaveConnectionRequest,
+  WebuiSshSaveConnectionResult,
+  WebuiSshSetEnabledRequest,
+  WebuiSshTerminalSession,
+  WebuiSshTerminalStreamResult,
+} from "./contracts/ssh.js";
 import type { WebuiVersionInfo } from "./contracts/version.js";
 import type {
   WebuiBrowserAuthorization,
@@ -907,6 +1003,155 @@ export interface OperationSpec {
    */
   runCronTaskNow: { request: WebuiCronTaskRunRequest; response: WebuiCronRun };
   listCronTaskRuns: { request: WebuiCronRunListRequest; response: WebuiCronRunPage };
+  /**
+   * The 接入 IM surface.
+   *
+   * One projection of the runtime's channel-bridge routes. The response is the WebUI's own status
+   * shape, not the runtime's route body: the runtime keys clients by name and reports each one's
+   * platform, and `shared/contracts/channel.ts` is the only shape the browser may name.
+   */
+  listChannelStatus: { request: undefined; response: WebuiChannelStatus };
+  /**
+   * Binding one IM client.
+   *
+   * `appSecret` travels once, in the request, and is never echoed back: the browser sends it to
+   * the host, and the host hands it to the runtime's platform adapter.
+   */
+  connectChannel: {
+    request: WebuiChannelConnectRequest;
+    response: WebuiChannelOperationResult;
+  };
+  disconnectChannel: {
+    request: WebuiChannelDisconnectRequest;
+    response: WebuiChannelOperationResult;
+  };
+  /** Whether one agent's IM channel is configured on this host. */
+  checkChannelConfig: {
+    request: WebuiChannelConfigCheckRequest;
+    response: WebuiChannelConfigCheckResult;
+  };
+  /** How much of a turn the IM client receives: the final result, or the full transcript. */
+  getChannelMessageFilter: {
+    request: { readonly agent: string };
+    response: WebuiChannelMessageFilter;
+  };
+  updateChannelMessageFilter: {
+    request: WebuiChannelMessageFilterRequest;
+    response: WebuiChannelMessageFilter;
+  };
+  /**
+   * The 远程控制 surface.
+   *
+   * The status is the bridge's own snapshot, minus the epochs the browser has no business
+   * holding: the phase, the pairing code, its expiry and the pending unbind.
+   */
+  getRemoteControlStatus: { request: undefined; response: WebuiRemoteControlStatus };
+  /**
+   * The phone link's live state.
+   *
+   * A stream, because the phase changes on the host: a pairing code expires, a socket drops, the
+   * phone asks a permission question. Desktop pushes each of those to the renderer.
+   */
+  watchRemoteControlStatus: {
+    request: undefined;
+    response: WebuiWatchRemoteControlResult;
+  };
+  connectRemoteControl: {
+    request: WebuiRemoteControlConnectRequest;
+    response: WebuiRemoteControlConnectResult;
+  };
+  disconnectRemoteControl: {
+    request: WebuiRemoteControlDisconnectRequest;
+    response: WebuiRemoteControlOperationResult;
+  };
+  /**
+   * The browser hands down the one-shot ticket it signed.
+   *
+   * Only the browser can sign `GET /desktop/bindings`: the service holds the socket but not the
+   * signing material. So the browser signs and pushes, and the host opens the connection.
+   */
+  applyRemoteControlCredentials: {
+    request: WebuiRemoteControlCredentials;
+    response: WebuiRemoteControlOperationResult;
+  };
+  reportRemoteControlBindingLost: {
+    request: undefined;
+    response: WebuiRemoteControlOperationResult;
+  };
+  getRemoteControlPendingUnbind: {
+    request: undefined;
+    response: WebuiRemoteControlPendingUnbind | null;
+  };
+  resolveRemoteControlUnbind: {
+    request: { readonly requestId: string; readonly confirmed: boolean };
+    response: WebuiRemoteControlOperationResult;
+  };
+  /** The phone set a composer mode on one session. */
+  publishRemoteControlComposerMode: {
+    request: WebuiRemoteControlComposerMode;
+    response: { readonly accepted: boolean };
+  };
+  /**
+   * The SSH surface.
+   *
+   * The hosts this machine can reach, the projects rooted on them and the remote terminal. The
+   * response is the WebUI's own projection; the service's own records stay inside the service.
+   */
+  listSshConnections: {
+    request: undefined;
+    response: readonly WebuiSshConnection[];
+  };
+  /** Saving a host probes it, so the answer carries both the saved host and the probe. */
+  saveSshConnection: {
+    request: WebuiSshSaveConnectionRequest;
+    response: WebuiSshSaveConnectionResult;
+  };
+  setSshConnectionEnabled: {
+    request: WebuiSshSetEnabledRequest;
+    response: WebuiSshSaveConnectionResult;
+  };
+  /** Removing a host takes its projects with it, so the answer names them. */
+  removeSshConnection: {
+    request: { readonly alias: string };
+    response: WebuiSshRemoveResult;
+  };
+  discoverSshHosts: { request: undefined; response: WebuiSshDiscovery };
+  probeSshConnection: {
+    request: { readonly alias: string };
+    response: WebuiSshProbeResult;
+  };
+  /** One remote directory, for the project's folder browser. */
+  listSshDirectories: {
+    request: WebuiSshListDirectoriesRequest;
+    response: WebuiSshListDirectoriesResult;
+  };
+  listSshProjects: { request: undefined; response: readonly WebuiSshProject[] };
+  saveSshProject: { request: WebuiSshProjectRequest; response: WebuiSshProjectResult };
+  removeSshProject: {
+    request: { readonly id: string };
+    response: WebuiSshProjectResult;
+  };
+  openSshTerminal: {
+    request: { readonly alias: string; readonly path?: string };
+    response: WebuiSshTerminalSession;
+  };
+  writeSshTerminal: {
+    request: { readonly terminalId: string; readonly data: string };
+    response: { readonly accepted: boolean };
+  };
+  resizeSshTerminal: {
+    request: { readonly terminalId: string; readonly cols: number; readonly rows: number };
+    response: { readonly accepted: boolean };
+  };
+  closeSshTerminal: {
+    request: { readonly terminalId: string };
+    response: { readonly accepted: boolean };
+  };
+  /** The remote terminal's output. */
+  watchSshTerminal: {
+    request: { readonly terminalId: string };
+    response: WebuiSshTerminalStreamResult;
+  };
 }
 
 /**
@@ -930,6 +1175,8 @@ export const WEBUI_STREAM_OPERATION_NAMES = [
   WATCH_MINI_APP_PRESENTATION_OPERATION_NAME,
   WATCH_MINI_APP_PRESENTER_OPERATION_NAME,
   WATCH_MINI_APP_AGENT_TURN_OPERATION_NAME,
+  WATCH_REMOTE_CONTROL_STATUS_OPERATION_NAME,
+  WATCH_SSH_TERMINAL_OPERATION_NAME,
 ] as const;
 
 export type WebuiStreamOperationName = (typeof WEBUI_STREAM_OPERATION_NAMES)[number];

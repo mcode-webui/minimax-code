@@ -26,6 +26,9 @@
 // | `account` | `WebuiAccountSlice` | `AccountPort` | the eight login, signin and quota members |
 // | `shell` | `WebuiShellSlice` | `ShellEventPort` | `watchEvents` |
 // | `scheduling` | `WebuiSchedulingSlice` | `SchedulingPort` | `listCronTasks` |
+// | `channel` | `WebuiChannelSlice` | `ChannelPort` | the six 接入 IM members |
+// | `remoteControl` | `WebuiRemoteControlSlice` | `RemoteControlPort` | the nine 远程控制 members |
+// | `ssh` | `WebuiSshSlice` | `SshPort` | the fifteen SSH members |
 // | `turn` | `WebuiTurnCapabilitySlice` | `TurnExecutionPort` (+ the queue write, the message loader and the session creator its send path needs) | the published capability slice |
 //
 // **`turn` is not a `Pick` of one port.** It reads the execution slice *and* the
@@ -50,6 +53,9 @@ import type { SessionPort } from "../features/sessions/contracts/session-port.js
 import type { SettingsPort } from "../features/settings/contracts/settings-port.js";
 import type { ShellEventPort } from "../features/shell/contracts/watch-port.js";
 import type { SchedulingPort } from "../features/scheduling/contracts/scheduling-port.js";
+import type { ChannelPort } from "../features/channel/contracts/channel-port.js";
+import type { RemoteControlPort } from "../features/remote-control/contracts/remote-control-port.js";
+import type { SshPort } from "../features/ssh/contracts/ssh-port.js";
 import type { TranscriptPort } from "../features/transcript/contracts/session-read-port.js";
 import type { TurnExecutionPort } from "../features/turn/contracts/execution-port.js";
 import type { TerminalPort } from "../features/terminal/contracts/terminal-port.js";
@@ -83,7 +89,10 @@ export interface WebuiPortSliceSource
     AccountPort,
     PluginPort,
     BrowserPort,
-    MiniAppPort {}
+    MiniAppPort,
+    ChannelPort,
+    RemoteControlPort,
+    SshPort {}
 
 // The key lists below are the old-to-new mapping as data. Each is checked
 // against its port by `satisfies`, so a renamed or removed member stops the
@@ -249,6 +258,57 @@ const SCHEDULING_KEYS = [
   "listCronTaskRuns",
 ] as const satisfies readonly (keyof SchedulingPort)[];
 
+/**
+ * The 接入 IM slice: the IM clients this host has bound, and the mutations that bind and unbind
+ * them.
+ */
+const CHANNEL_KEYS = [
+  "listChannelStatus",
+  "connectChannel",
+  "disconnectChannel",
+  "checkChannelConfig",
+  "getChannelMessageFilter",
+  "updateChannelMessageFilter",
+] as const satisfies readonly (keyof ChannelPort)[];
+
+/**
+ * The 远程控制 slice: the phone link's state, the mutations that open and close it, and the
+ * credentials the browser signs and pushes down.
+ */
+const REMOTE_CONTROL_KEYS = [
+  "getRemoteControlStatus",
+  "watchRemoteControlStatus",
+  "connectRemoteControl",
+  "disconnectRemoteControl",
+  "applyRemoteControlCredentials",
+  "reportRemoteControlBindingLost",
+  "getRemoteControlPendingUnbind",
+  "resolveRemoteControlUnbind",
+  "publishRemoteControlComposerMode",
+] as const satisfies readonly (keyof RemoteControlPort)[];
+
+/**
+ * The SSH slice: the hosts this machine can reach, the projects rooted on them, and the remote
+ * terminal.
+ */
+const SSH_KEYS = [
+  "listSshConnections",
+  "saveSshConnection",
+  "setSshConnectionEnabled",
+  "removeSshConnection",
+  "discoverSshHosts",
+  "probeSshConnection",
+  "listSshDirectories",
+  "listSshProjects",
+  "saveSshProject",
+  "removeSshProject",
+  "openSshTerminal",
+  "writeSshTerminal",
+  "resizeSshTerminal",
+  "closeSshTerminal",
+  "watchSshTerminal",
+] as const satisfies readonly (keyof SshPort)[];
+
 const MINIAPP_KEYS = [
   "watchMiniAppPresenter",
   "listMiniApps",
@@ -275,6 +335,12 @@ export type WebuiSettingsSlice = Pick<SettingsPort, (typeof SETTINGS_KEYS)[numbe
 export type WebuiAccountSlice = Pick<AccountPort, (typeof ACCOUNT_KEYS)[number]>;
 export type WebuiShellSlice = Pick<ShellEventPort, (typeof SHELL_KEYS)[number]>;
 export type WebuiSchedulingSlice = Pick<SchedulingPort, (typeof SCHEDULING_KEYS)[number]>;
+export type WebuiChannelSlice = Pick<ChannelPort, (typeof CHANNEL_KEYS)[number]>;
+export type WebuiRemoteControlSlice = Pick<
+  RemoteControlPort,
+  (typeof REMOTE_CONTROL_KEYS)[number]
+>;
+export type WebuiSshSlice = Pick<SshPort, (typeof SSH_KEYS)[number]>;
 export type WebuiBrowserSlice = Pick<BrowserPort, (typeof BROWSER_KEYS)[number]>;
 export type WebuiMiniAppSlice = WebuiMiniAppPortSlice;
 export type WebuiTurnSlice = WebuiTurnCapabilitySlice;
@@ -293,6 +359,12 @@ export interface WebuiPortSlices {
   readonly account: WebuiAccountSlice;
   readonly shell: WebuiShellSlice;
   readonly scheduling: WebuiSchedulingSlice;
+  /** The 接入 IM slice. */
+  readonly channel: WebuiChannelSlice;
+  /** The 远程控制 slice. */
+  readonly remoteControl: WebuiRemoteControlSlice;
+  /** The SSH slice. */
+  readonly ssh: WebuiSshSlice;
   readonly browser: WebuiBrowserSlice;
   readonly miniapp: WebuiMiniAppSlice;
   readonly turn: WebuiTurnSlice;
@@ -334,6 +406,9 @@ export function createWebuiPortSlices(
     account: cut(source, ACCOUNT_KEYS),
     shell: cut(source, SHELL_KEYS),
     scheduling: cut(source, SCHEDULING_KEYS),
+    channel: cut(source, CHANNEL_KEYS),
+    remoteControl: cut(source, REMOTE_CONTROL_KEYS),
+    ssh: cut(source, SSH_KEYS),
     browser: cut(source, BROWSER_KEYS),
     miniapp: cut(source, MINIAPP_KEYS),
     // `turn`'s published slice, built by its own factory so there is exactly one

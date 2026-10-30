@@ -155,6 +155,36 @@ export type WebuiOperationPort = Pick<
   | "readMiniAppAgentSession"
   | "createMiniAppAgentSession"
   | "runCommand"
+  | "listChannelStatus"
+  | "connectChannel"
+  | "disconnectChannel"
+  | "checkChannelConfig"
+  | "getChannelMessageFilter"
+  | "updateChannelMessageFilter"
+  | "getRemoteControlStatus"
+  | "watchRemoteControlStatus"
+  | "connectRemoteControl"
+  | "disconnectRemoteControl"
+  | "applyRemoteControlCredentials"
+  | "reportRemoteControlBindingLost"
+  | "getRemoteControlPendingUnbind"
+  | "resolveRemoteControlUnbind"
+  | "publishRemoteControlComposerMode"
+  | "listSshConnections"
+  | "saveSshConnection"
+  | "setSshConnectionEnabled"
+  | "removeSshConnection"
+  | "discoverSshHosts"
+  | "probeSshConnection"
+  | "listSshDirectories"
+  | "listSshProjects"
+  | "saveSshProject"
+  | "removeSshProject"
+  | "openSshTerminal"
+  | "writeSshTerminal"
+  | "resizeSshTerminal"
+  | "closeSshTerminal"
+  | "watchSshTerminal"
 >;
 
 export type MethodKeys<T> = {
@@ -241,6 +271,60 @@ export interface RuntimeGroups {
     | "listCronTaskRuns"
   >;
   readonly plugins: Pick<WebuiHarnessPort, "pluginManagement">;
+  /**
+   * The 接入 IM surface.
+   *
+   * One group for the six members the 接入 IM tab needs, so the bindings that implement them
+   * extend a group that already exists rather than inventing a second seam.
+   */
+  readonly channels: Pick<
+    WebuiHarnessPort,
+    | "listChannelStatus"
+    | "connectChannel"
+    | "disconnectChannel"
+    | "checkChannelConfig"
+    | "getChannelMessageFilter"
+    | "updateChannelMessageFilter"
+  >;
+  /**
+   * The 远程控制 surface.
+   *
+   * The phone link's status, the mutations that open and close it, and the credentials the
+   * browser signs and pushes down.
+   */
+  readonly remoteControl: Pick<
+    WebuiHarnessPort,
+    | "getRemoteControlStatus"
+    | "watchRemoteControlStatus"
+    | "connectRemoteControl"
+    | "disconnectRemoteControl"
+    | "applyRemoteControlCredentials"
+    | "reportRemoteControlBindingLost"
+    | "getRemoteControlPendingUnbind"
+    | "resolveRemoteControlUnbind"
+    | "publishRemoteControlComposerMode"
+  >;
+  /**
+   * The SSH surface: hosts, projects and the remote terminal.
+   */
+  readonly ssh: Pick<
+    WebuiHarnessPort,
+    | "listSshConnections"
+    | "saveSshConnection"
+    | "setSshConnectionEnabled"
+    | "removeSshConnection"
+    | "discoverSshHosts"
+    | "probeSshConnection"
+    | "listSshDirectories"
+    | "listSshProjects"
+    | "saveSshProject"
+    | "removeSshProject"
+    | "openSshTerminal"
+    | "writeSshTerminal"
+    | "resizeSshTerminal"
+    | "closeSshTerminal"
+    | "watchSshTerminal"
+  >;
   readonly settings: Pick<
     WebuiHarnessPort,
     | "getPermissionMode"

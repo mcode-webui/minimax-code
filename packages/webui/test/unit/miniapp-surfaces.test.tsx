@@ -180,8 +180,13 @@ describe("the plugin catalogue's apps area", () => {
 
     expect(apps).toContain("其他客户端运行中");
     expect(apps).toContain("electron");
-    expect(apps).toContain('data-testid="miniapp-app-open-shared" disabled=""');
-    expect(picker).toContain('data-testid="miniapp-picker-open-shared" disabled=""');
+    // Each attribute is asserted on its own: the row renders `data-testid`,
+    // `aria-label`, `disabled` and `title`, and a substring that spans two of
+    // them pins the attribute order instead of the state the test is about.
+    expect(apps).toContain('data-testid="miniapp-app-open-shared"');
+    expect(apps).toMatch(/data-testid="miniapp-app-open-shared"[^>]*disabled=""/u);
+    expect(picker).toContain('data-testid="miniapp-picker-open-shared"');
+    expect(picker).toMatch(/data-testid="miniapp-picker-open-shared"[^>]*disabled=""/u);
   });
 
   it("offers 启用 for a disabled Mini App instead of a start it cannot do", async () => {

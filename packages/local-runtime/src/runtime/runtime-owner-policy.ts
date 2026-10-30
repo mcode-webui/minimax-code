@@ -386,9 +386,9 @@ export function resolveRuntimeOwnerPolicy(
     case 'webui':
       // The maintainer-decided row, aligned with the Desktop (`electron`) row.
       // Read as "where WebUI differs from Desktop": every cell carries Desktop's
-      // value except `wiring.channelService`, which stays off until the browser
-      // client has a surface to bind and manage an IM channel (tracked in
-      // `.temp/desktop-webui-capability-gaps.md`).
+      // value, including `wiring.channelService` — the browser client has the
+      // 接入 IM surface now, so the runtime assembles the IM channel service for
+      // this owner exactly as it does for the desktop one.
       //
       // The WebUI is a desktop-class client, not a command-line one, so the cells
       // that used to carry the `tui` row's values now carry Desktop's. Four of the
@@ -409,11 +409,12 @@ export function resolveRuntimeOwnerPolicy(
           // earlier, the agent could start a Mini App that nothing can display.
           miniAppService: true,
           cronService: true,
-          // The one cell that still differs from Desktop: the runtime assembles the
-          // IM channel service for a desktop owner, but the WebUI has no screen to
-          // bind a channel with, so turning it on would start a service nobody can
-          // configure. Deferred, not forgotten.
-          channelService: false,
+          // Desktop's value. The browser client's 远程 page carries the 接入 IM tab,
+          // so a browser owner has a screen to bind and manage an IM channel with and
+          // the IM channel service is assembled for it like it is for the desktop one.
+          // The expression is the Desktop row's own, so a host that declares the
+          // command-line capability profile still reads the same answer there.
+          channelService: capabilityProfile !== 'cli',
           // Desktop's browser activation: the `browser.use` host binding comes from
           // the installed `browser-use` plugin, and the built-in `browser` tool is
           // then exposed under the `mcp_browser` alias. Desktop gates browser control

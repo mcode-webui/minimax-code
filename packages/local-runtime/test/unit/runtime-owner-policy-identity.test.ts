@@ -224,8 +224,10 @@ describe('phase 3 byte-identity', () => {
         }).wiring.channelService;
         if (hostOld !== servicesOld) {
           expect(cell, `${String(kind)}/${String(capabilityProfile)}`).toBe(
-            // The stricter, kind-based answer.
-            hostOld && servicesOld,
+            // The stricter, kind-based answer — except for the `webui` row, whose
+            // channel cell is a declared change: the browser client has the 接入 IM
+            // surface, so it follows the Desktop's answer instead.
+            kind === 'webui' ? hostOld : hostOld && servicesOld,
           );
           diverging.push(`${String(kind)}/${String(capabilityProfile)}`);
         } else {

@@ -44,10 +44,10 @@ function deterministicPort(): WebuiHarnessPort {
 describe("WebUI operation bindings", () => {
   it("covers every operation exactly once as a binding or a dedicated handler", () => {
     const bindingNames = Object.keys(WEBUI_OPERATION_BINDINGS);
-    expect(bindingNames).toHaveLength(99);
-    expect(DEDICATED_OPERATION_NAMES).toHaveLength(18);
+    expect(bindingNames).toHaveLength(127);
+    expect(DEDICATED_OPERATION_NAMES).toHaveLength(20);
     const all = new Set<string>([...bindingNames, ...DEDICATED_OPERATION_NAMES]);
-    expect(all.size).toBe(117);
+    expect(all.size).toBe(147);
     for (const dedicated of DEDICATED_OPERATION_NAMES)
       expect(bindingNames).not.toContain(dedicated);
   });
@@ -91,7 +91,7 @@ describe("WebUI operation bindings", () => {
 
   it("materialises every binding into a registry entry keyed by operation name", () => {
     const entries = createBindingEntries(deterministicPort());
-    expect(entries.size).toBe(99);
+    expect(entries.size).toBe(127);
     expect(entries.has("archiveSession")).toBe(true);
     expect(entries.has("sendMessage")).toBe(false);
     for (const entry of entries.values())

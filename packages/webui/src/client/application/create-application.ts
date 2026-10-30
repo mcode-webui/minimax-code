@@ -41,6 +41,10 @@ import { createWebuiModelsWorkflows } from "../features/models/application/model
 import { createWebuiSettingsWorkflows } from "../features/settings/application/settings-workflows.js";
 import { createWebuiPluginWorkflows } from "../features/plugins/application/plugin-workflows.js";
 import { createWebuiSchedulingOwner } from "../features/scheduling/application/scheduling-owner.js";
+import { createWebuiRemoteOwner } from "../features/remote/application/remote-owner.js";
+import { createWebuiChannelOwner } from "../features/channel/application/channel-owner.js";
+import { createWebuiRemoteControlOwner } from "../features/remote-control/application/remote-control-owner.js";
+import { createWebuiSshOwner } from "../features/ssh/application/ssh-owner.js";
 import { createWebuiMiniAppWorkflows } from "../features/miniapp/application/miniapp-workflows.js";
 import type { WebuiPluginManagementAction } from "../../shared/plugin-management.js";
 import { createWebuiComposerPluginCatalogue } from "../features/plugins/application/composer-catalogue.js";
@@ -350,6 +354,14 @@ export interface WebuiApplication {
   readonly accountWorkflows: ReturnType<typeof createWebuiAccountWorkflows>;
   /** The scheduled-task list (ADR 0027). One owner for the panel the rail opens. */
   readonly schedulingOwner: ReturnType<typeof createWebuiSchedulingOwner>;
+  /** The 远程 page's tab owner: which of its two tabs is showing. */
+  readonly remoteOwner: ReturnType<typeof createWebuiRemoteOwner>;
+  /** The 接入 IM business's owner. */
+  readonly channelOwner: ReturnType<typeof createWebuiChannelOwner>;
+  /** The 远程控制 business's owner. */
+  readonly remoteControlOwner: ReturnType<typeof createWebuiRemoteControlOwner>;
+  /** The SSH business's owner. */
+  readonly sshOwner: ReturnType<typeof createWebuiSshOwner>;
   /** The settings owner: instructions, memory, profile and display. */
   readonly settingsWorkflows: ReturnType<typeof createWebuiSettingsWorkflows>;
   /** The models owner: catalogue, selection and provider CRUD. */
@@ -827,6 +839,14 @@ export function createWebuiApplication(
   // The scheduled-task panel reads one list. Its owner is built here for the same reason the others
   // are: the business gets the slice it is allowed to use, not the composed transport.
   const schedulingOwner = createWebuiSchedulingOwner({ port: slices.scheduling });
+  // The 远程 page holds one fact: which of its two tabs is showing. Its tab bodies own their own
+  // state, so the owner is the page's own and takes no port.
+  const remoteOwner = createWebuiRemoteOwner();
+  // The two tab bodies and the SSH surface each get their business's slice, not the composed
+  // transport: a business sees its own capabilities and nothing else.
+  const channelOwner = createWebuiChannelOwner({ port: slices.channel });
+  const remoteControlOwner = createWebuiRemoteControlOwner({ port: slices.remoteControl });
+  const sshOwner = createWebuiSshOwner({ port: slices.ssh });
   const settingsWorkflows = createWebuiSettingsWorkflows({
     port: slices.settings,
     identityEpochs,
@@ -1022,6 +1042,10 @@ export function createWebuiApplication(
     workspaceQueries,
     accountWorkflows,
     schedulingOwner,
+    remoteOwner,
+    channelOwner,
+    remoteControlOwner,
+    sshOwner,
     settingsWorkflows,
     modelsWorkflows,
     pluginWorkflows,

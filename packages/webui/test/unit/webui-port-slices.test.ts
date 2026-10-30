@@ -104,6 +104,23 @@ const EXPECTED: Record<
     "runCronTaskNow", "listCronTaskRuns",
   ],
   shell: ["watchEvents"],
+  channel: [
+    "listChannelStatus", "connectChannel", "disconnectChannel",
+    "checkChannelConfig", "getChannelMessageFilter", "updateChannelMessageFilter",
+  ],
+  remoteControl: [
+    "getRemoteControlStatus", "watchRemoteControlStatus", "connectRemoteControl",
+    "disconnectRemoteControl", "applyRemoteControlCredentials",
+    "reportRemoteControlBindingLost", "getRemoteControlPendingUnbind",
+    "resolveRemoteControlUnbind", "publishRemoteControlComposerMode",
+  ],
+  ssh: [
+    "listSshConnections", "saveSshConnection", "setSshConnectionEnabled",
+    "removeSshConnection", "discoverSshHosts", "probeSshConnection",
+    "listSshDirectories", "listSshProjects", "saveSshProject", "removeSshProject",
+    "openSshTerminal", "writeSshTerminal", "resizeSshTerminal", "closeSshTerminal",
+    "watchSshTerminal",
+  ],
 };
 
 /** A source with nothing wired: every port member absent. */

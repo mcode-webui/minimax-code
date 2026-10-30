@@ -460,6 +460,35 @@ export async function createWebuiRuntimeHost(
     ...host,
     appVersion: options.appVersion ?? host.appVersion ?? "webui",
     invalidateAuth: authSession.invalidateAuth,
+    // The remote-control pairing pipeline signs its own HTTP, and the browser
+    // never holds the token — so the credential comes from the one OAuth core,
+    // the same lease the quota and the daily check-in sign with. A second core
+    // would be a second lease and a second way to be signed out; `auth-session.ts`
+    // is where that invariant is kept.
+    getAuthCredential: async () => {
+      try {
+        const lease = await authSession.oauthCore.getAccessToken({
+          requiredScopes: [...MCODE_OAUTH_SCOPES],
+          minValidityMs: 30_000,
+        });
+        // The pairing request sends the account id as a common-param and the
+        // server cross-checks it against the token's own subject, so a credential
+        // without an account id is not sent at all.
+        const realUserID =
+          authSession.authContext.getter()?.realUserID?.trim() ||
+          (await authSession.usageQuota
+            .resolveAccountIdentity(lease.accessToken)
+            .catch(() => undefined))?.realUserID;
+        return {
+          accessToken: lease.accessToken,
+          ...(realUserID ? { realUserID } : {}),
+        };
+      } catch {
+        // Nobody is signed in. The remote-control surface says so; it does not
+        // pretend a signed-out installation is a broken one.
+        return undefined;
+      }
+    },
     getUsageQuota: (request?: { readonly forceRefresh?: boolean }) =>
       authSession.usageQuota.getUsageQuota(request),
     // The account-billing surface of the usage-and-model page rides the same

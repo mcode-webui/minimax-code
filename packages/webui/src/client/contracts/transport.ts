@@ -30,6 +30,9 @@ import type { SchedulingPort } from "../features/scheduling/contracts/scheduling
 import type { TerminalPort } from "../features/terminal/contracts/terminal-port.js";
 import type { BrowserPort } from "../features/browser/contracts/browser-port.js";
 import type { MiniAppPort } from "../features/miniapp/contracts/miniapp-port.js";
+import type { ChannelPort } from "../features/channel/contracts/channel-port.js";
+import type { RemoteControlPort } from "../features/remote-control/contracts/remote-control-port.js";
+import type { SshPort } from "../features/ssh/contracts/ssh-port.js";
 
 export interface WebuiTransport
   extends SessionPort,
@@ -47,4 +50,7 @@ export interface WebuiTransport
     SchedulingPort,
     TerminalPort,
     BrowserPort,
-    MiniAppPort {}
+    MiniAppPort,
+    ChannelPort,
+    RemoteControlPort,
+    SshPort {}

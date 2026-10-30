@@ -27,7 +27,6 @@ import type {
   WebuiSessionTreeRequest,
   WebuiSessionTreePage,
   WebuiProjectRecord,
-  WebuiCreateSessionRequest,
   WebuiCreateSessionResult,
   WebuiGetSessionDiffRequest,
   WebuiGetSessionDiffResult,
@@ -85,8 +84,6 @@ import type { WebuiCanvasDocument } from "../../shared/contracts/canvas.js";
 import type { WebuiModelEntry } from "../../shared/contracts/models.js";
 import type {
   WebuiGoal,
-  WebuiGoalCreateRequest,
-  WebuiGoalPatchRequest,
 } from "../../shared/contracts/goal.js";
 import type { WebuiMemorySettingsView } from "../../shared/contracts/personalization.js";
 
@@ -145,6 +142,18 @@ type HostResult<K extends keyof CliService> = CliService[K] extends (...args: ne
 
 export interface WebuiRuntimeCliService {
   listVisibleProjects?(limit?: number): Promise<readonly WebuiProjectRecord[]>;
+  /**
+   * The projects together with the sessions under them.
+   *
+   * `listVisibleProjects` answers "which projects exist" and therefore leaves
+   * the sessions out. A client that renders a project's conversations needs
+   * both halves in one read, and the runtime already owns that projection: the
+   * Desktop's project list, with each project carrying its own session tree.
+   */
+  listProjectGroups?(
+    request: WebuiHostRequest<"listProjectGroups">,
+  ): Promise<HostResult<"listProjectGroups">>;
+  listProjectSessions?: CliService["listProjectSessions"];
   /** Converted in `result-conversion.ts`: the runtime numbers `sessionType`
    * and reports each session as an interface, which an index-signature wire DTO
    * cannot be satisfied by. */
@@ -152,6 +161,10 @@ export interface WebuiRuntimeCliService {
     request: WebuiSessionListRequest,
     context?: Record<string, never>,
   ): Promise<HostResult<"listSessions">>;
+  searchSessions(request: WebuiHostRequest<"searchSessions">): Promise<HostResult<"searchSessions">>;
+  getPinnedItemsOrder(): Promise<HostResult<"getPinnedItemsOrder">>;
+  putPinnedItemsOrder(items: WebuiHostRequest<"putPinnedItemsOrder">): Promise<HostResult<"putPinnedItemsOrder">>;
+  pinSession(request: WebuiHostRequest<"pinSession">): Promise<HostResult<"pinSession">>;
   pluginManagement(
     request: import("../../shared/plugin-management.js").WebuiPluginManagementRequest,
   ): Promise<HostResult<"pluginManagement">>;
@@ -184,7 +197,7 @@ export interface WebuiRuntimeCliService {
   ): Promise<HostResult<"forkSession">>;
   /** Converted: the runtime answers with an interface, the wire with a record. */
   createSession(
-    request: WebuiCreateSessionRequest,
+    request: WebuiHostRequest<"createSession">,
     context?: Record<string, never>,
   ): Promise<HostResult<"createSession">>;
   getSession(
@@ -250,12 +263,12 @@ export interface WebuiRuntimeCliService {
     sessionId: string,
   ): Promise<import("../../shared/contracts/session.js").WebuiActiveTurn | undefined>;
   isGoalEnabled(): boolean;
-  getGoal(sessionId: string): Promise<WebuiGoal | undefined>;
-  createGoal(request: WebuiGoalCreateRequest): Promise<WebuiGoal>;
+  getGoal(sessionId: string): Promise<(WebuiGoal & { readonly objectiveResources?: WebuiHostRequest<"createGoal">["objectiveResources"] }) | undefined>;
+  createGoal(request: WebuiHostRequest<"createGoal">): Promise<WebuiGoal & { readonly objectiveResources?: WebuiHostRequest<"createGoal">["objectiveResources"] }>;
   patchGoal(
     sessionId: string,
-    patch: Omit<WebuiGoalPatchRequest, "sessionId">,
-  ): Promise<WebuiGoal>;
+    patch: Parameters<CliService["patchGoal"]>[1],
+  ): Promise<WebuiGoal & { readonly objectiveResources?: WebuiHostRequest<"createGoal">["objectiveResources"] }>;
   clearGoal(sessionId: string): Promise<boolean>;
   /** Converted: the runtime reports names and shape but no file facts, and the
    * adapter stats the files it keeps. See `runtime/harness/workspace.ts`. */
@@ -296,6 +309,29 @@ export interface WebuiRuntimeCliService {
     readonly metadata: Record<string, unknown>;
     readonly changes: Record<string, unknown>;
   }>;
+  /**
+   * The workspace's branches, and the worktrees that carry them.
+   *
+   * A client that offers a branch picker asks the workspace which branches
+   * exist before it can offer one; the runtime owns that answer.
+   */
+  getWorkspaceGitBranches?(
+    workspaceDir: string,
+    includeRemote?: boolean,
+  ): Promise<Record<string, unknown>>;
+  getWorkspaceGitBranchPicker?(
+    workspaceDir: string,
+  ): Promise<Record<string, unknown>>;
+  getWorkspaceGitDefaultBranch?(
+    workspaceDir: string,
+  ): Promise<Record<string, unknown>>;
+  getWorkspaceGitProbe?(
+    workspaceDir: string,
+  ): Promise<Record<string, unknown>>;
+  getWorkspaceGitWorktrees?(
+    workspaceDir: string,
+  ): Promise<Record<string, unknown>>;
+  checkoutWorkspaceGitBranch?(workspaceDir: string, branch: string): Promise<Record<string, unknown>>;
   mutateWorkspaceGit?(
     request: WebuiWorkspaceGitMutationRequest,
   ): Promise<Record<string, unknown>>;
@@ -388,6 +424,7 @@ export interface WebuiRuntimeCliService {
     readonly name: string;
     readonly sessionId: string;
   }): Promise<{ readonly request?: WebuiQuestionnaireRequest }>;
+  getLatestPlanReview(request: WebuiHostRequest<"getLatestPlanReview">): Promise<HostResult<"getLatestPlanReview">>;
   replyPermission(
     request: WebuiHostRequest<"replyPermission">,
   ): Promise<WebuiInteractionReplyResult>;
@@ -406,6 +443,9 @@ export interface WebuiRuntimeCliService {
     readonly paused?: boolean;
     readonly pendingCount?: number;
   }>;
+  getQueueItem(request: WebuiHostRequest<"getQueueItem">): Promise<HostResult<"getQueueItem">>;
+  updateQueueItem(request: WebuiHostRequest<"updateQueueItem">): Promise<HostResult<"updateQueueItem">>;
+  reorderQueue(request: WebuiHostRequest<"reorderQueue">): Promise<HostResult<"reorderQueue">>;
   deleteQueueItem(request: {
     readonly id: string;
     readonly itemId: string;
@@ -647,6 +687,27 @@ export interface WebuiRuntimeHostHandle {
   readonly dataDir?: string;
   readonly invalidateAuth?: () => void;
   /**
+   * The account credential the service holds, for the first-party clients that
+   * sign their own HTTP.
+   *
+   * The browser never receives this token — it may be running on another
+   * machine, and the WebUI's own transport is a local loopback socket — so a
+   * surface that talks to the cloud directly cannot sign from the client. The
+   * assembly hands the lease down instead: the same one OAuth core the quota
+   * and check-in clients sign with, so there is one credential and one lease.
+   *
+   * `undefined` means nobody is signed in. `realUserID` is the account the
+   * server cross-checks the token against, so a credential without it is
+   * reported as such rather than sent unsigned.
+   */
+  readonly getAuthCredential?: () => Promise<
+    | {
+        readonly accessToken?: string;
+        readonly realUserID?: string;
+      }
+    | undefined
+  >;
+  /**
    * Cloud quota for the usage panel. Backed by `usage-quota.ts`, not the
    * harness — the assembly supplies the client alongside the host.
    */
@@ -717,4 +778,65 @@ export interface WebuiRuntimeHostHandle {
    * the runtime host; the WebUI only needs the structural shape to forward.
    */
   readonly cliService?: WebuiRuntimeCliService;
+  /**
+   * The 接入 IM surface: the IM clients this host has bound.
+   *
+   * Optional, and optional for a reason: the channel bridge belongs to the
+   * runtime's owner policy. A host whose owner does not assemble the channel
+   * service has no bridge to forward to, and the adapter turns that absence
+   * into one `capability_unavailable` refusal rather than an empty client list
+   * that reads as "nothing is bound".
+   */
+  readonly listChannelStatus?: () => Promise<
+    import("../../shared/contracts/channel.js").WebuiChannelStatus
+  >;
+  readonly connectChannel?: (
+    request: import("../../shared/contracts/channel.js").WebuiChannelConnectRequest,
+  ) => Promise<import("../../shared/contracts/channel.js").WebuiChannelOperationResult>;
+  readonly disconnectChannel?: (
+    request: import("../../shared/contracts/channel.js").WebuiChannelDisconnectRequest,
+  ) => Promise<import("../../shared/contracts/channel.js").WebuiChannelOperationResult>;
+  readonly checkChannelConfig?: (
+    request: import("../../shared/contracts/channel.js").WebuiChannelConfigCheckRequest,
+  ) => Promise<import("../../shared/contracts/channel.js").WebuiChannelConfigCheckResult>;
+  readonly getChannelMessageFilter?: (request: {
+    readonly agent: string;
+  }) => Promise<import("../../shared/contracts/channel.js").WebuiChannelMessageFilter>;
+  readonly updateChannelMessageFilter?: (
+    request: import("../../shared/contracts/channel.js").WebuiChannelMessageFilterRequest,
+  ) => Promise<import("../../shared/contracts/channel.js").WebuiChannelMessageFilter>;
+  /**
+   * The 远程控制 surface: the phone link this host holds.
+   *
+   * Host-side by construction — the link is a socket to MiniMax's gateway, so
+   * the service owns it and the browser only asks for its state.
+   */
+  readonly getRemoteControlStatus?: () => Promise<
+    import("../../shared/contracts/remote-control.js").WebuiRemoteControlStatus
+  >;
+  readonly watchRemoteControlStatus?: () => Promise<
+    import("../../shared/contracts/remote-control.js").WebuiWatchRemoteControlResult
+  >;
+  readonly connectRemoteControl?: (
+    request: import("../../shared/contracts/remote-control.js").WebuiRemoteControlConnectRequest,
+  ) => Promise<import("../../shared/contracts/remote-control.js").WebuiRemoteControlConnectResult>;
+  readonly disconnectRemoteControl?: (
+    request: import("../../shared/contracts/remote-control.js").WebuiRemoteControlDisconnectRequest,
+  ) => Promise<import("../../shared/contracts/remote-control.js").WebuiRemoteControlOperationResult>;
+  readonly applyRemoteControlCredentials?: (
+    request: import("../../shared/contracts/remote-control.js").WebuiRemoteControlCredentials,
+  ) => Promise<import("../../shared/contracts/remote-control.js").WebuiRemoteControlOperationResult>;
+  readonly reportRemoteControlBindingLost?: () => Promise<
+    import("../../shared/contracts/remote-control.js").WebuiRemoteControlOperationResult
+  >;
+  readonly getRemoteControlPendingUnbind?: () => Promise<
+    import("../../shared/contracts/remote-control.js").WebuiRemoteControlPendingUnbind | null
+  >;
+  readonly resolveRemoteControlUnbind?: (request: {
+    readonly requestId: string;
+    readonly confirmed: boolean;
+  }) => Promise<import("../../shared/contracts/remote-control.js").WebuiRemoteControlOperationResult>;
+  readonly publishRemoteControlComposerMode?: (
+    request: import("../../shared/contracts/remote-control.js").WebuiRemoteControlComposerMode,
+  ) => Promise<{ readonly accepted: boolean }>;
 }

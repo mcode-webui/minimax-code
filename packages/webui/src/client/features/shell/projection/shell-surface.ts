@@ -27,12 +27,21 @@ export type WebuiShellSurface =
    * session-scoped: it cannot be a tab of the workspace panel or a section of the settings modal,
    * and the rail has to stay live beside it so a session click is the way back out.
    */
-  | { readonly kind: "scheduling" };
+  | { readonly kind: "scheduling" }
+  /**
+   * The 远程 page: the phone pairing tab and the 接入 IM tab.
+   *
+   * A surface of its own for the same reason as the scheduled-task panel: the phone link and the
+   * IM binding are not session-scoped, so the rail stays live beside them and a rail click is the
+   * way back.
+   */
+  | { readonly kind: "remote" };
 
 export type WebuiShellSurfaceCommand =
   | { readonly type: "open-plugin-management"; readonly area: WebuiPluginManagementArea }
   | { readonly type: "close-plugin-management" }
   | { readonly type: "open-scheduling" }
+  | { readonly type: "open-remote" }
   | { readonly type: "show-conversation" };
 
 export const initialWebuiShellSurface: WebuiShellSurface = { kind: "conversation" };
@@ -51,6 +60,8 @@ export function reduceWebuiShellSurface(
       return { kind: "plugin-management", area: command.area };
     case "open-scheduling":
       return state.kind === "scheduling" ? state : { kind: "scheduling" };
+    case "open-remote":
+      return state.kind === "remote" ? state : { kind: "remote" };
     case "close-plugin-management":
     case "show-conversation":
       // Both collapse to the conversation: closing from the page's × and
@@ -63,6 +74,11 @@ export function reduceWebuiShellSurface(
 
 export function isSchedulingSurface(surface: WebuiShellSurface): boolean {
   return surface.kind === "scheduling";
+}
+
+/** Whether the 远程 page is the surface the main column shows. */
+export function isRemoteSurface(surface: WebuiShellSurface): boolean {
+  return surface.kind === "remote";
 }
 
 export function isPluginManagementSurface(surface: WebuiShellSurface): boolean {

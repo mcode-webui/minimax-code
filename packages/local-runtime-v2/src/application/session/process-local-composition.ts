@@ -21,6 +21,12 @@ export function composeProcessLocalApplication(input: {
     WorkspaceGitService,
     | 'getMetadata'
     | 'getChanges'
+    | 'getBranches'
+    | 'getBranchPicker'
+    | 'getDefaultBranch'
+    | 'probe'
+    | 'listWorktrees'
+    | 'checkout'
     | 'getReviewSummary'
     | 'listReviewFileDiffs'
     | 'getReviewFileContent'
@@ -63,6 +69,18 @@ export function composeProcessLocalApplication(input: {
         getChanges: async (workspaceDir, mode) => ({
           ...(await input.workspaceGit.getChanges(workspaceDir, mode)),
         }),
+        getBranches: async (workspaceDir, includeRemote) => ({
+          ...(await input.workspaceGit.getBranches(workspaceDir, includeRemote)),
+        }),
+        getBranchPicker: async (workspaceDir) => ({
+          ...(await input.workspaceGit.getBranchPicker(workspaceDir)),
+        }),
+        getDefaultBranch: async (workspaceDir) => ({
+          ...(await input.workspaceGit.getDefaultBranch(workspaceDir)),
+        }),
+        probe: async (workspaceDir) => ({ ...(await input.workspaceGit.probe(workspaceDir)) }),
+        listWorktrees: async (workspaceDir) => ({ ...(await input.workspaceGit.listWorktrees(workspaceDir)) }),
+        checkout: async (workspaceDir, branch) => ({ ...(await input.workspaceGit.checkout(workspaceDir, branch)) }),
         getReviewSummary: input.workspaceGit.getReviewSummary.bind(input.workspaceGit),
         listReviewFileDiffs: input.workspaceGit.listReviewFileDiffs.bind(input.workspaceGit),
         getReviewFileContent: input.workspaceGit.getReviewFileContent.bind(input.workspaceGit),

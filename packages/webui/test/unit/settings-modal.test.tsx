@@ -138,12 +138,14 @@ it("leaves the implemented tabs clickable while the unimplemented tabs stay disa
     // sign-out error region), `coding` (workspace review), `worktree` (parallel
     // experiment branches), `custom-instructions` (profile-wide AGENTS.md
     // editor) and `shortcuts` (the rebindable composer bindings) are all
-    // built, so all five sit in the ungated group. The rest have no content
-    // behind them and clicking one would land on an empty pane.
-    for (const key of ["account", "coding", "worktree", "custom-instructions", "shortcuts"]) {
+    // built, so all five sit in the ungated group. `connection` joined them
+    // with the SSH host management: it is where Desktop puts `设置 > 连接 > SSH`,
+    // and it now carries the SSH panel. The rest have no content behind them
+    // and clicking one would land on an empty pane.
+    for (const key of ["account", "coding", "worktree", "custom-instructions", "shortcuts", "connection"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBeUndefined();
     }
-    for (const key of ["voice", "connection"]) {
+    for (const key of ["voice"]) {
       expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBe(true);
     }
   });

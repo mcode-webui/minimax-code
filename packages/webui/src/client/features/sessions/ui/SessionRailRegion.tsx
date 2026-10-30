@@ -12,6 +12,8 @@ export function SessionRailRegion(props: {
   readonly pluginManagementOpen: boolean;
   /** The scheduled-task panel is the surface (ADR 0027). */
   readonly schedulingOpen: boolean;
+  /** The 远程 page is the surface. */
+  readonly remoteOpen: boolean;
   readonly startNewTask: () => void;
   readonly importInputRef: RefObject<HTMLInputElement>;
   readonly openImportPicker: () => void;
@@ -24,6 +26,7 @@ export function SessionRailRegion(props: {
   readonly closeSearch: () => void;
   readonly openPlugins: () => void;
   readonly openScheduling: () => void;
+  readonly openRemote: () => void;
   readonly projectList: ProjectListProps;
   readonly hasSearchResults: boolean;
   readonly footer?: ReactNode;
@@ -69,7 +72,7 @@ export function SessionRailRegion(props: {
               <RailRow label="插件" icon={<WebuiIconPlugins />} active={props.pluginManagementOpen} onSelect={props.openPlugins} />
               <RailRow label="定时任务" icon={<WebuiIconSchedule />} active={props.schedulingOpen} onSelect={props.openScheduling} />
               <RailRow label="网站" icon={<WebuiIconSites />} inert />
-              <RailRow label="远程" icon={<WebuiIconRemote />} inert />
+              <RailRow label="远程" icon={<WebuiIconRemote />} active={props.remoteOpen} onSelect={props.openRemote} />
             </div>
             <WebuiProjectList {...props.projectList} />
             {props.searchQuery.trim() && !props.hasSearchResults ? <p data-webui-rail-search-empty="true" className="px-2 py-3 text-sm text-text_default_tertiary">没有匹配的会话</p> : null}

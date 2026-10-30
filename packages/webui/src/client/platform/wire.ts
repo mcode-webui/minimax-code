@@ -146,6 +146,19 @@ export interface WebuiWire {
     onFrame: (frame: WebuiTerminalFrame) => void,
   ): () => void;
   /**
+   * A long-lived frame watch for a host-side stream.
+   *
+   * The remote-control status and the remote terminal are watches rather than
+   * request/response streams: the subscription outlives the render that opened
+   * it, and detaching has to release the runtime-side resources the socket held
+   * rather than merely stop reading them.
+   */
+  watchFrames<T>(
+    operation: string,
+    requestBody: unknown,
+    onFrame: (frame: T) => void,
+  ): () => void;
+  /**
    * The browser image stream.
    *
    * A watch rather than a stream: the panel keeps the images flowing for as
@@ -520,6 +533,27 @@ export function createWebuiWire({
     };
   }
 
+  function watchFrames<T>(
+    operation: string,
+    requestBody: unknown,
+    onFrame: (frame: T) => void,
+  ): () => void {
+    let stopped = false;
+    const session = openWireSession(operation, requestBody, {
+      frame: (_session, frame) => {
+        // A stopped watch must not deliver, and `close()` is not a promise that
+        // the socket stops emitting: the caller's flag is what guarantees it.
+        if (stopped) return;
+        if (frame.kind !== "event" || !frame.body || typeof frame.body !== "object") return;
+        onFrame(frame.body as T);
+      },
+    });
+    return () => {
+      stopped = true;
+      session.close();
+    };
+  }
+
   function watchBrowserFrames(
     operation: string,
     requestBody: {
@@ -788,6 +822,7 @@ export function createWebuiWire({
     request,
     stream,
     watchTerminal,
+    watchFrames,
     watchBrowserFrames,
     watchBrowserWebTabs,
     watchMiniAppPresentation,

@@ -205,6 +205,10 @@ import {
   type GoalVerifierRunRegistry,
 } from "../thread-goal/verifier-execution.js";
 import { LocalTurnFileChangeCaptureService } from "../turns/file-changes.js";
+import {
+  createLocalChannelBridgeSurface,
+  type LocalChannelBridgeSurface,
+} from "./channel-bridge-surface.js";
 import { toAgentMessages } from "./conversation-message-adapter.js";
 import { observeSteerCompletion } from "./conversation-steer.js";
 import {
@@ -416,6 +420,15 @@ export class LocalRuntimeApiHost {
   private readonly feishuOnboardService: LocalFeishuOnboardService;
   private readonly telegramChannelApi: LocalTelegramChannelApi;
   private readonly wechatChannelApi: LocalWeChatChannelApi;
+  /**
+   * The narrow public face of the IM channel bridge.
+   *
+   * It forwards to the channel-bridge routes this host already serves, so the
+   * WebUI's 接入 IM tab reads the same facts Desktop's IM client reads without
+   * a second implementation. A host whose owner policy carries no channel
+   * service refuses every call instead of answering an empty list.
+   */
+  public readonly channelBridge: LocalChannelBridgeSurface;
   private readonly hostDiagnosticsProvider:
     | LocalHostDiagnosticsProvider
     | undefined;
@@ -1052,6 +1065,17 @@ export class LocalRuntimeApiHost {
     });
     this.telegramChannelApi = subsys.telegramChannelApi;
     this.wechatChannelApi = subsys.wechatChannelApi;
+    // The IM channel bridge's public face. It forwards to the routes the
+    // channel subsystem already serves, so a browser client reads the same
+    // facts Desktop's IM client reads without a second implementation.
+    this.channelBridge = createLocalChannelBridgeSurface({
+      infra: this.channelBridgeInfra,
+      runner: this.channelRunner,
+      feishu: this.feishuChannelApi,
+      telegram: this.telegramChannelApi,
+      wechat: this.wechatChannelApi,
+      enabled: this.channelCapabilityEnabled,
+    });
     this.hostDiagnosticsProvider = options.hostDiagnosticsProvider;
     this.permissionRules = new LocalPermissionRuleStore(
       () => this.configGetter().dataDir,

@@ -4,6 +4,13 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+// The remote-control bridge logs its own decisions — did the pairing poll run,
+// what did it see, why did a credential fail — at the info level, and the
+// service drops that level by default because the bridge is chatty. Those lines
+// are the evidence a pairing problem turns on, so the development server asks
+// for them by name. The child process inherits this.
+process.env.WEBUI_REMOTE_CONTROL_VERBOSE ??= "1";
+
 if (!process.env.WEBUI_SERVER_TSX) {
   const tsconfigPath = fileURLToPath(
     new URL("../tsconfig.standalone.json", import.meta.url),
@@ -97,6 +104,7 @@ if (!process.env.WEBUI_SERVER_TSX) {
 // service, so the release is wired here rather than on one operation.
 const port = createHarnessPortFromHost(assembled.host, {
   onSessionEnded: (sessionId) => browser.releaseSession(sessionId),
+  browserPort: browser.port,
 });
   // The registry and the terminal port are assembled here, by the host, and the
   // network service binds what it was handed (T14). The manager itself belongs to

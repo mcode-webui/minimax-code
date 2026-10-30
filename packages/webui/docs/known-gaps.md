@@ -104,9 +104,31 @@ state.
 
 ## 4. Settings tabs that are declared but disabled
 
-`client/features/settings/projection/settings-view.ts` declares `voice`, `shortcuts` and `connection`
-with `disabled: true`. They render as tabs that cannot be opened. That is the shipped state, not a
-regression.
+`client/features/settings/projection/settings-view.ts` declares `voice` with `disabled: true`. It renders
+as a tab that cannot be opened. That is the shipped state, not a regression.
+
+`connection` used to be in that group. The SSH host management, the projects rooted on a host and the
+remote terminal shipped with the 远程 page, and the tab now carries them — the same place Desktop keeps
+them (`设置 > 连接 > SSH`). `shortcuts` left the group earlier, when the rebindable composer bindings
+shipped.
+
+## 4a. The 接入 IM surface has four sections without a route behind them
+
+The 接入 IM tab is a bot list plus a detail pane. The list and the binding state are wired to the
+runtime's channel bridge. Four of the detail pane's sections are not, because this repository's runtime
+exposes no route for them:
+
+| Section | What is missing |
+| --- | --- |
+| the bot list | the connection list (`GET /mavis/api/channel/connections/`, the prepare / binding-delete / delete / authorization-cancel calls) — the store exists (`LocalImConnectionStore.listViews`), the route does not |
+| the QR binding | `POST /channel-bridge/wechat/bind/start` and `GET .../bind/status`, which serve `扫描二维码绑定` / `刷新二维码` |
+| the Agent and working-directory choice | the binding write (`LocalChannelBindingWrite`: agentName, sessionId, strategy, pinned, routeRuleId, exactOwnerName, ownerInstanceId, projectKey, routingMode) |
+| 删除Bot | `store.deleteConnection` |
+
+Each of those renders as `Disabled (not yet wired)`: the Desktop's own markup and copy, an
+`aria-disabled` state, a neutral colour, and no handler. None of them fakes a success state. The
+seams are listed here rather than left implied, because the tab is otherwise indistinguishable from
+the Desktop's.
 
 ## 5. Upstream open results need runtime conversion
 

@@ -340,7 +340,7 @@ export function WebuiDropdown({
       // Escape returns the focus to the control that opened the popup.
       triggerRef.current?.focus?.();
     },
-  });
+  }, { enabled: managed });
 
   useEffect(() => {
     // A managed popup answers through the coordinator, which owns the single

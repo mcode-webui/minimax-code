@@ -126,8 +126,12 @@ export function useOverlayCoordinator(): OverlayRegistry | null {
  * leaving a stale fact behind. Under a React remount the previous registration
  * is replaced, not duplicated, and its cleanup cannot unregister the new one.
  */
-export function useOverlayLayer(descriptor: OverlayRegistration): void {
+export function useOverlayLayer(
+  descriptor: OverlayRegistration,
+  options: { readonly enabled?: boolean } = {},
+): void {
   const coordinator = useOverlayCoordinator();
+  const enabled = options.enabled ?? true;
   const { id, parentId, order, active, dismissal, onRoute } = descriptor;
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
@@ -137,7 +141,7 @@ export function useOverlayLayer(descriptor: OverlayRegistration): void {
   );
 
   useEffect(() => {
-    if (!coordinator) return undefined;
+    if (!coordinator || !enabled) return undefined;
     const unregister = coordinator.register({
       id,
       parentId: parentId ?? null,
@@ -147,5 +151,5 @@ export function useOverlayLayer(descriptor: OverlayRegistration): void {
       onRoute: stableOnRoute,
     });
     return unregister;
-  }, [coordinator, id, parentId, order, active, dismissal, stableOnRoute]);
+  }, [coordinator, enabled, id, parentId, order, active, dismissal, stableOnRoute]);
 }

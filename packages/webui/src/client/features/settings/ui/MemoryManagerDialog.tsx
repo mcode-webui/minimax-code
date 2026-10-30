@@ -321,6 +321,8 @@ export function MemoryManagerDialog({
               open={menuOpen}
               onOpen={() => setMenuOpen(true)}
               onClose={() => setMenuOpen(false)}
+              managed
+              managedLayerId="memory-manager-menu"
               role="menu"
               ariaLabel="记忆操作"
               testId="agent-memory-menu-panel"

@@ -1,0 +1,167 @@
+// One nested path answers one dismissal at a time (#289, ADR 0028 § Overlay
+// coordination).
+//
+// The memory manager dialog, the menu inside it and the deletion confirmation
+// inside that menu are registered with the coordinator as a nested path. This
+// file asserts the consequence of that registration: one Escape sheds exactly the
+// topmost layer, a press outside dismisses exactly the layer it landed outside
+// of, the popup draws above the dialog, and the click that follows a dismissal
+// reaches what is underneath instead of the surface that is already leaving.
+//
+// The decision itself is tested without a browser in `overlay-order.test.ts`.
+//
+// Locator note: the dropdown's `testId` lands on its wrapper and the popup is
+// portalled to `document.body`, so a popup is found by its layer attribute — not
+// by descending from the wrapper's test id.
+
+import { expect } from "@playwright/test";
+
+import { configureFixture, openApp, test } from "./harness.mjs";
+
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", (error) => console.error("BROWSER_PAGE_ERROR", error.stack ?? error.message));
+  await configureFixture(page, () => {
+    window.__fixture.setResponse("getMemorySettings", { enabled: true, proactive: false });
+    window.__fixture.setResponse("getAgentMemory", {
+      agentName: "main",
+      path: "memory.md",
+      exists: true,
+      sizeBytes: 11,
+      content: "server body",
+    });
+  });
+  await openApp(page, "#session=A");
+});
+
+const dialog = (page) => page.getByTestId("agent-memory-manager");
+const menu = (page) => page.locator('[data-overlay-layer="memory-manager-menu"]');
+const confirm = (page) => page.locator('[data-overlay-layer="memory-manager-confirm"]');
+
+/** Opens settings › 自定义指令 › 管理, and returns that opener. */
+async function openManager(page) {
+  await page.getByTestId("sidebar-user-menu-trigger").click();
+  await page.getByTestId("user-menu-settings").click();
+  await page.locator('[data-menu-key="custom-instructions"]').click();
+  const opener = page.getByTestId("memory-section").getByRole("button", { name: "管理" });
+  await opener.click();
+  await expect(dialog(page)).toBeVisible();
+  return opener;
+}
+
+/** Opens the ⋯ menu and returns its items once they are there. */
+async function openMenu(page) {
+  await page.getByTestId("agent-memory-menu").click();
+  await expect(menu(page)).toHaveCount(1);
+  const items = menu(page).getByRole("menuitem");
+  await expect(items.first()).toBeVisible();
+  return items;
+}
+
+test("one Escape sheds the topmost layer and never the one beneath it", async ({ page }) => {
+  await openManager(page);
+
+  // The confirmation replaces the menu, so the path below reads top down: the
+  // confirmation, then the menu, then the dialog.
+  const items = await openMenu(page);
+  await items.filter({ hasText: "删除" }).first().click();
+  await expect(confirm(page)).toBeVisible();
+  await expect(menu(page)).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(confirm(page)).toHaveCount(0);
+  await expect(dialog(page)).toBeVisible();
+
+  // The menu is the next layer down: one press sheds it and leaves the dialog.
+  await openMenu(page);
+  await page.keyboard.press("Escape");
+  await expect(menu(page)).toHaveCount(0);
+  await expect(dialog(page)).toBeVisible();
+
+  // Only when nothing sits above it does a press reach the dialog.
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+});
+
+test("a press outside dismisses only the layer it landed outside of", async ({ page }) => {
+  await openManager(page);
+  const items = await openMenu(page);
+  await items.filter({ hasText: "删除" }).first().click();
+  await expect(confirm(page)).toBeVisible();
+
+  // A press on the confirmation's own scrim (outside its panel, inside the
+  // viewport corner) dismisses the confirmation only.
+  await page.mouse.click(6, 6);
+  await expect(confirm(page)).toHaveCount(0);
+  await expect(dialog(page)).toBeVisible();
+});
+
+test("the menu draws above the dialog it belongs to", async ({ page }) => {
+  await openManager(page);
+  await openMenu(page);
+
+  const stacking = await page.evaluate(() => {
+    const popup = document.querySelector('[data-overlay-layer="memory-manager-menu"]');
+    const surface = document.querySelector('[data-overlay-layer="memory-manager"]');
+    if (!popup || !surface) return null;
+    const box = popup.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    const z = (node) => {
+      const value = Number.parseInt(getComputedStyle(node).zIndex || "0", 10);
+      return Number.isFinite(value) ? value : 0;
+    };
+    return { topIsPopup: popup.contains(hit), popupZ: z(popup), surfaceZ: z(surface) };
+  });
+
+  expect(stacking, "both layers rendered").not.toBeNull();
+  expect(stacking?.topIsPopup, "the menu is the topmost element at its own centre").toBe(true);
+  expect(stacking?.popupZ ?? 0).toBeGreaterThanOrEqual(stacking?.surfaceZ ?? 0);
+});
+
+test("the click after a dismissal reaches what is underneath", async ({ page }) => {
+  await openManager(page);
+  await openMenu(page);
+
+  // A point inside the dialog but outside the popup: the press dismisses the
+  // popup, and the click that follows must land on the dialog, not on the surface
+  // that is already leaving.
+  const target = await page.evaluate(() => {
+    const surface = document.querySelector('[data-overlay-layer="memory-manager"]');
+    const popup = document.querySelector('[data-overlay-layer="memory-manager-menu"]');
+    if (!surface || !popup) return null;
+    const dialogBox = surface.getBoundingClientRect();
+    const popupBox = popup.getBoundingClientRect();
+    // The dialog's top-left corner is outside the popup, which hangs off its right edge.
+    const x = Math.round(dialogBox.left + 24);
+    const y = Math.round(dialogBox.top + 24);
+    const insidePopup = x >= popupBox.left && x <= popupBox.right && y >= popupBox.top && y <= popupBox.bottom;
+    return { x, y, insidePopup };
+  });
+  expect(target, "both layers rendered").not.toBeNull();
+  expect(target?.insidePopup, "the press point is outside the popup").toBe(false);
+
+  await page.mouse.move(target?.x ?? 0, target?.y ?? 0);
+  await page.mouse.down();
+  await expect(menu(page)).toHaveCount(0);
+  await page.mouse.up();
+
+  const landedOn = await page.evaluate(
+    ({ x, y }) => {
+      const hit = document.elementFromPoint(x, y);
+      return {
+        inLeavingPopup: Boolean(hit?.closest('[data-overlay-layer="memory-manager-menu"]')),
+        inDialog: Boolean(hit?.closest('[data-overlay-layer="memory-manager"]')),
+      };
+    },
+    { x: target?.x ?? 0, y: target?.y ?? 0 },
+  );
+  expect(landedOn.inLeavingPopup, "the leaving popup does not intercept the click").toBe(false);
+  expect(landedOn.inDialog, "the click reaches the dialog underneath").toBe(true);
+  await expect(dialog(page)).toBeVisible();
+});
+
+test("closing the dialog returns focus to the control that opened it", async ({ page }) => {
+  const opener = await openManager(page);
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});

@@ -4533,6 +4533,7 @@
     "packages/webui/test/browser/model-picker-interactions.spec.mjs",
     "packages/webui/test/browser/motion.spec.mjs",
     "packages/webui/test/browser/native-runtime.spec.mjs",
+    "packages/webui/test/browser/overlay-coordination.spec.mjs",
     "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs",
     "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs-snapshots/Agent-add-form-is-centered-fields-are-aligned-and-backdrop-dismissal-works-1-linux.png",
     "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs-snapshots/Git-plugin-import-form-is-an-accessible-viewport-overlay-and-previews-local-fixture-data-1-linux.png",

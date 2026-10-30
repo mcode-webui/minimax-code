@@ -32,11 +32,14 @@ export const EXCEPTIONS_PATH = fileURLToPath(
 export const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 /** What this scan cannot decide, printed with every report. */
+// What this scan does not decide, and where each answer actually comes from. The
+// report prints these on every run so a clean scan cannot be read as "accessible".
 export const SCAN_BOUNDARY = [
-  "keyboard reachability, focus containment and focus return",
-  "motion and reduced-motion behaviour",
-  "announcement order and duplicate announcements",
-  "real interaction with the rendered surface",
+  "keyboard reachability — verified by the rendered interaction checks in each surface's own spec, not by this scan",
+  "focus containment and focus return — verified by the overlay's rendered interaction checks",
+  "motion and reduced-motion behaviour — verified by rendered checks that drive the preference, not by a static rule",
+  "announcement order and duplicate announcements — verified by a rendered interaction sequence",
+  "real interaction with the rendered surface — verified by the surface's own Playwright cases",
 ];
 
 /**

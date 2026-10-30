@@ -32,6 +32,7 @@
  * emits it at the `@tailwind components` directive below, so what the split had
  * to preserve is the rules' order relative to each other. */
 @import "../features/plugins/ui/plugins.css";
+@import "./button.css";
 @import "../features/settings/ui/settings.css";
 @import "../features/models/ui/models.css";
 @import "../features/interactions/ui/interactions.css";

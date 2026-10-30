@@ -1,0 +1,119 @@
+/* The shared button contract (ADR 0028 § Shared contracts).
+ *
+ * These declarations used to live in `features/settings/ui/settings.css`, which
+ * meant the settings business owned the appearance of a control that any
+ * business may render. They moved here unchanged: the same classes, the same
+ * values, the same order relative to the rest of the client's stylesheets, so a
+ * static render of every existing caller is identical. What changed is who owns
+ * them — the shared presentation layer does, and a feature stylesheet that
+ * re-declares these states is drift.
+ *
+ * The states a caller may rely on are the ones written here: the resting
+ * appearance, `:hover` where the variant has one, `:focus-visible`, and
+ * `:disabled`. A caller owns its layout — width, margin, alignment — and states
+ * a variant and a size, nothing else. `.webui-button--*` are the React
+ * contract's names; the `mavis-` names are kept because every existing caller
+ * and the design-token test already assert them.
+ */
+
+.webui-mavis-button {
+  min-width: 80px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius_8);
+  padding: 0 var(--spacing_12);
+  font-size: var(--size_14);
+  font-weight: var(--weight_medium);
+}
+
+.webui-mavis-button-gray {
+  background: var(--bg_interaction_secondary_default);
+  color: var(--text_default_primary);
+}
+
+.webui-mavis-button-black {
+  background: var(--bg_interaction_primary_default);
+  color: var(--text_label_primary_default);
+}
+
+.webui-mavis-button-danger {
+  background: var(--bg_interaction_danger_primary_default);
+  color: var(--text_label_danger_primary_default);
+}
+
+.webui-mavis-button-danger:hover:not(:disabled) {
+  background: var(--bg_interaction_danger_primary_hover);
+}
+
+.webui-mavis-button:focus-visible {
+  outline: 2px solid var(--border_accent);
+  outline-offset: 1px;
+}
+
+.webui-mavis-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* An icon-only button: the same ownership split, at the size a header or a row
+ * uses for a glyph. The geometry is the settings header's icon button, which is
+ * the one the client already measured; adopting it is what makes the icon
+ * button a shared contract rather than a per-surface class string. */
+.webui-icon-button {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius_8);
+  padding: 0;
+  background: var(--bg_interaction_tertiary_default);
+  color: var(--text_default_tertiary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.webui-icon-button:hover:not(:disabled) {
+  background: var(--bg_interaction_tertiary_hover);
+  color: var(--text_default_secondary);
+}
+
+.webui-icon-button:focus-visible {
+  outline: 2px solid var(--border_accent);
+  outline-offset: 1px;
+}
+
+.webui-icon-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* The row-action size. A settings row is 56px tall and its control sits on the
+ * right; the regular button's 80px minimum width makes a two-character action
+ * read as the row's headline. This drops the minimum, shortens the button and
+ * steps the type down one notch, so the action reads as an action. */
+.webui-mavis-button-compact {
+  min-width: 0;
+  height: 30px;
+  padding: 0 var(--spacing_8);
+  font-size: var(--size_12);
+}
+
+/* The settings header's action size. The account page's 分享 sits in the header
+ * next to the title, the way the Desktop puts it in the top-right of its account
+ * page: a 30px button on the secondary surface, carrying the icon and the label
+ * as one row.
+ *
+ * The geometry is the Desktop's own, read off the live page: 30px tall, 4px/12px
+ * of padding, 13px type on an 18.57px line, and no minimum width — the Desktop's
+ * action button is 72px wide because of what it says, not because of a floor. */
+.webui-mavis-button-header {
+  min-width: 0;
+  height: 30px;
+  padding: 4px var(--spacing_12);
+  font-size: 13px;
+  line-height: 18.57px;
+  font-weight: 430;
+}

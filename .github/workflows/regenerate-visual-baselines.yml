@@ -27,9 +27,23 @@ jobs:
       - run: pnpm build:webui
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test packages/webui/test/browser/visual-baselines.spec.mjs packages/webui/test/browser/responsive-baselines.spec.mjs --update-snapshots
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      # The shared dialog's own backdrop changed, so the screenshots that show it
+      # are older than the surfaces they show.
+      - run: pnpm exec playwright test packages/webui/test/browser/plugin-catalogue-layout.spec.mjs packages/webui/test/browser/scheduling-panel.spec.mjs --update-snapshots
+      # The manifest of the measured surfaces. The recorder writes what it
+      # measures, and the surfaces the shared dialog moved are measured again.
+      - run: pnpm exec playwright test packages/webui/test/browser/rendering-integrity.spec.mjs
+        env:
+          RECORD_RENDERING_INTEGRITY: "1"
+      # The artifacts are uploaded whatever the recording steps did: a run that
+      # failed on one spec still holds the recordings the other specs made.
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: linux-visual-baselines
           path: |
             packages/webui/test/browser/visual-baselines.spec.mjs-snapshots
             packages/webui/test/browser/responsive-baselines.spec.mjs-snapshots
+            packages/webui/test/browser/plugin-catalogue-layout.spec.mjs-snapshots
+            packages/webui/test/browser/scheduling-panel.spec.mjs-snapshots
+            packages/webui/test/browser/support/rendering-integrity.json

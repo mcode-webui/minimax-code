@@ -238,7 +238,7 @@ test("the boundary did not break the healthy app around it", async ({ page }) =>
   await openSettings(page);
   await settingsNavItem(page, "usage").click();
   await expect(page.locator(".webui-settings-content-header h2")).toHaveText("用量与模型");
-  await page.locator('.webui-settings-back[aria-label="返回"]').click();
+  await page.locator(".webui-settings-back").click();
   await expect(settingsDialog(page)).toHaveCount(0);
   await expect(composer).toBeVisible();
   await expect(page.locator('[data-testid="webui-error-boundary"]')).toHaveCount(0);

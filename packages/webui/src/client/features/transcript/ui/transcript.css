@@ -1015,9 +1015,14 @@
     height: 18px;
   }
 
+  /* The file name fills the row between the icon and the counts, and it reads
+   * from the start of that space. The shared button base centres its content,
+   * and `text-align` alone cannot undo that — the name is the button's flex
+   * content, so the distribution is what places it. */
   .webui-diff-file-name {
     min-width: 0;
     flex: 1;
+    justify-content: flex-start;
     overflow: hidden;
     text-overflow: ellipsis;
     text-align: left;

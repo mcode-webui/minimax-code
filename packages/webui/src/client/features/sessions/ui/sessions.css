@@ -195,10 +195,15 @@
   .webui-project-section-content-inner,
   .webui-project-section-content > * { min-height: 0; overflow: hidden; }
   [data-webui-pinned-sessions="true"] { margin-bottom: var(--spacing_4); }
+  /* The section header is a full-width disclosure row, so its label belongs at
+   * the start of the row. The shared button base centres its content, and
+   * `text-align` alone cannot undo that — the label and the chevron are flex
+   * items, so the distribution is what places them. */
   .webui-project-section-toggle {
     display: flex;
     width: 100%;
     align-items: center;
+    justify-content: flex-start;
     gap: var(--spacing_8);
     padding: 0 var(--spacing_8);
     text-align: left;

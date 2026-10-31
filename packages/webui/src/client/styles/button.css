@@ -40,9 +40,16 @@
     padding: 0 var(--spacing_12);
     font-size: var(--size_14);
   }
+  /* The filled grey button: the fill of the surface the button sits on,
+   * one step deeper than the page. */
   .webui-mavis-button-gray {
     background: var(--bg_interaction_secondary_default);
     color: var(--text_default_primary);
+  }
+  /* It deepens under the pointer. A filled button that does not answer the
+   * pointer reads as a label rather than as something to press. */
+  .webui-mavis-button-gray:hover:not(:disabled) {
+    background: var(--bg_interaction_secondary_hover);
   }
   .webui-mavis-button-black {
     background: var(--bg_interaction_primary_default);
@@ -356,6 +363,15 @@
     background: var(--bg_interaction_tertiary_selected);
     color: var(--icon_default_primary);
   }
+  /* The segmented control's segment.
+   *
+   * The pressed segment is the surface's own tint, one step deeper than
+   * whatever it sits on: a flat grey block, with no edge of its own and
+   * nothing lifted off the surface below it. A tint belongs to the surface it
+   * lies on rather than to a shape, so it reads the same over the grey track a
+   * group may paint and over a bare page — and a group that has no track at
+   * all, the marketplace's category filter, gets a selected state that is
+   * still visible. */
   .webui-mavis-button-segmented {
     border: 0;
     background: transparent;
@@ -365,9 +381,8 @@
     color: var(--text_default_primary);
   }
   .webui-mavis-button-segmented[aria-pressed="true"] {
-    background: var(--bg_default_primary);
+    background: var(--bg_interaction_tertiary_selected);
     color: var(--text_default_primary);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
   }
   .webui-mavis-button-selectable-row {
     justify-content: flex-start;

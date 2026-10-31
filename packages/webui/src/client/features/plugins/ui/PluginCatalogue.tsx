@@ -423,8 +423,12 @@ export function PluginCatalogue({
                 >
                   ⟳
                 </WebuiIconButton>
+                {/* The management entry is an action of its own, not a quiet
+                 * label on the page: it fills like the row actions below it
+                 * (安装 / 已安装), so the header and the list speak one
+                 * language. */}
                 <WebuiButton
-                  variant="surface-quiet"
+                  variant="secondary"
                   size="compact"
                   contentGap="compact"
                   className="min-w-[92px]"

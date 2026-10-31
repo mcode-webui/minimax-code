@@ -81,6 +81,10 @@
     height: 32px;
   }
 
+  /* The body scrolls against the footer's rule, so it needs room at its own
+   * bottom: without it the last element in the dialog sits on the line that
+   * separates the body from the actions, and a form that ends in a field
+   * reads as cut off rather than as finished. */
   .webui-dialog-body {
     display: flex;
     min-height: 0;
@@ -89,7 +93,16 @@
     gap: var(--spacing_16);
     overflow-x: hidden;
     overflow-y: auto;
-    padding: var(--spacing_20) var(--spacing_24) 0;
+    padding: var(--spacing_20) var(--spacing_24) var(--spacing_20);
+  }
+  /* And the room is only real if the body's children stay the size they are.
+   * A child that fills the body (flex: 1) and may shrink (min-height: 0)
+   * shrinks below its own content once the dialog is short enough, and the
+   * content it spills out of lands on the footer's rule — spending the
+   * clearance the body asked for. The child may still grow into the room
+   * that is left over; it just never gives back the height it needs. */
+  .webui-dialog-surface .webui-dialog-body > * {
+    flex-shrink: 0;
   }
 
   .webui-dialog-footer {

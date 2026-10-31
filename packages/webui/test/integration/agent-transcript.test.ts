@@ -1041,7 +1041,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     expect(modelRequests.some((request) => request.body.includes("Create a task checklist.") &&
       request.body.includes("todowrite"))).toBe(true);
 
-    const attachmentInput = page.locator('input.webui-composer-hidden-file-input[aria-label="添加文件或图片"]');
+    const attachmentInput = page.locator('input.webui-file-input[aria-label="添加文件或图片"]');
     await attachmentInput.setInputFiles({
       name: "runtime-note.txt",
       mimeType: "text/plain",

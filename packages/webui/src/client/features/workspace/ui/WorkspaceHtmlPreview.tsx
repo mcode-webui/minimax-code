@@ -127,9 +127,16 @@ export function WorkspaceHtmlPreview({ path, fileUrl, content }: WorkspaceHtmlPr
   const relativeReference = content?.type === "text" ? hasRelativeDocumentReference(content.content) : false;
 
   return <div data-testid="workspace-html-preview" style={{ display: "flex", height: "100%", minWidth: 0, minHeight: 0, flexDirection: "column" }}>
-    {frameState === "loaded" ? null : <p className="webui-workspace-review-status" data-testid="workspace-html-preview-status" role={frameState === "failed" ? "alert" : "status"}>
-      {frameState === "failed" ? HTML_PREVIEW_COPY.loadFailed : HTML_PREVIEW_COPY.loading}
-    </p>}
+    {/* A failed load is an error and is announced as one; a load still
+        running is a status and is announced as one. The two are different
+        states, so each carries the shared family's own channel. */}
+    {frameState === "failed" ? (
+      <FeedbackError message={HTML_PREVIEW_COPY.loadFailed} className="webui-workspace-review-status" testId="workspace-html-preview-status" />
+    ) : frameState === "loaded" ? null : (
+      <FeedbackLiveRegion className="webui-workspace-review-status" testId="workspace-html-preview-status">
+        {HTML_PREVIEW_COPY.loading}
+      </FeedbackLiveRegion>
+    )}
     <p className="webui-workspace-review-status" data-testid="workspace-html-preview-isolation-note">
       {relativeReference ? HTML_PREVIEW_COPY.relativeDetected : HTML_PREVIEW_COPY.relativeUndetected}
       {" "}

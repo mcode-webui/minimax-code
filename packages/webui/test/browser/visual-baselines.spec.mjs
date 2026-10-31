@@ -13,7 +13,27 @@ import {
   test,
 } from "./harness.mjs";
 
+/**
+ * Wait until the element's own motion has come to rest.
+ *
+ * A modal's entrance is a designed movement — it slides and scales into place —
+ * so a box measured during the motion is a frame the next run does not repeat.
+ * The full-height settings dialog makes this visible: mid-entrance it sits a
+ * few pixels below the viewport, because it is arriving from there. The frame
+ * it rests in is the one the layout contract is about.
+ */
+async function settleAnimations(locator) {
+  await locator.evaluate(async (element) => {
+    const finite = element.getAnimations({ subtree: true }).filter((animation) => {
+      const timing = animation.effect?.getComputedTiming();
+      return timing ? Number.isFinite(timing.endTime) : false;
+    });
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 async function assertInViewport(locator, page) {
+  await settleAnimations(locator);
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
   expect(box.width).toBeGreaterThan(0);
@@ -99,13 +119,7 @@ test("settings dialog layout baseline", async ({ page }) => {
   // while either is still moving is a frame the next run does not repeat. The
   // same wait the browser panel case uses, over the whole subtree, so this
   // records the settled frame rather than a lucky one.
-  await dialog.evaluate(async (element) => {
-    const finite = element.getAnimations({ subtree: true }).filter((animation) => {
-      const timing = animation.effect?.getComputedTiming();
-      return timing ? Number.isFinite(timing.endTime) : false;
-    });
-    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)));
-  });
+  await settleAnimations(dialog);
   await expect(dialog).toHaveScreenshot("settings-dialog.png", screenshotOptions);
 });
 

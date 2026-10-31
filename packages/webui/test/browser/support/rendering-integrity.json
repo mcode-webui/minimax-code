@@ -189,7 +189,7 @@
       "items": {
         "count": 5,
         "minHeight": 18,
-        "maxHeight": 68,
+        "maxHeight": 21,
         "zeroSized": 0,
         "outsideRoot": 0
       },
@@ -211,7 +211,7 @@
       "items": {
         "count": 5,
         "minHeight": 18,
-        "maxHeight": 68,
+        "maxHeight": 21,
         "zeroSized": 0,
         "outsideRoot": 0
       },
@@ -370,7 +370,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -392,7 +392,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -414,7 +414,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -436,7 +436,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -458,7 +458,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -480,7 +480,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 13,
+        "count": 8,
         "clipped": 0,
         "empty": 0
       }
@@ -898,7 +898,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 5,
+        "count": 6,
         "clipped": 0,
         "empty": 1
       }
@@ -920,7 +920,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 5,
+        "count": 6,
         "clipped": 0,
         "empty": 1
       }
@@ -942,7 +942,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 7,
         "clipped": 1,
         "empty": 1
       }
@@ -964,7 +964,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 7,
         "clipped": 1,
         "empty": 1
       }
@@ -986,7 +986,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 64,
+        "count": 65,
         "clipped": 30,
         "empty": 1
       }
@@ -1008,7 +1008,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 64,
+        "count": 65,
         "clipped": 30,
         "empty": 1
       }
@@ -1030,7 +1030,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 7,
         "clipped": 1,
         "empty": 1
       }
@@ -1052,7 +1052,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 7,
         "clipped": 1,
         "empty": 1
       }

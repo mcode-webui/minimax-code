@@ -479,7 +479,14 @@
   .webui-canvas-node { border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_8); font-size: var(--size_12); }
   .webui-canvas-zoom { position: absolute; right: var(--spacing_8); bottom: var(--spacing_8); font-size: var(--size_12); }
   .webui-terminal-content { position: relative; display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; background: var(--bg_default_primary); padding: var(--spacing_16); }
-  .webui-terminal-content > p { position: absolute; z-index: 1; top: var(--spacing_16); left: var(--spacing_16); margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); }
+  /* The terminal's own status line, placed over the terminal surface. It is
+     the shared feedback family's channel now, so the line names itself
+     rather than being found by the element it happens to be. */
+  .webui-terminal-content > .webui-terminal-status { position: absolute; z-index: 1; top: var(--spacing_16); left: var(--spacing_16); margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); }
+  /* The failure line keeps the terminal's own size; the colour is the shared
+     family's, because a failure is the one thing on this surface that must
+     read as a failure. */
+  .webui-terminal-content > .webui-terminal-status .webui-feedback-title { font-size: var(--size_14); line-height: var(--line_height_20); }
   .webui-xterm-host { width: 100%; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden; background: var(--bg_default_primary); text-align: left; }
   .webui-xterm-host .xterm { height: 100%; }
   .webui-xterm-host .xterm-viewport { background: var(--bg_default_primary) !important; }

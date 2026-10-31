@@ -9,12 +9,12 @@ not claim. A number in this document is a number some gate produced.
 
 | Question | Count |
 | --- | --- |
-| Client UI modules classified | 130 |
+| Client UI modules classified | 131 |
 | Modules with a pending contract decision | 0 |
-| Floating layers inventoried | 21 |
-| Floating layers managed by the coordinator | 20 |
+| Floating layers inventoried | 22 |
+| Floating layers managed by the coordinator | 21 |
 | Business-authored alerts left (all exempt) | 2 |
-| Motion distinct effects with a recorded reason | 25 |
+| Motion distinct effects with a recorded reason | 24 |
 | Accessibility findings recorded as debt | 0 |
 | Accessibility exceptions | 26 |
 | Accessibility manual reviews open | 0 |
@@ -60,7 +60,7 @@ Not verified by any browser check:
 
 ### The motion inventory
 
-- 25 durations and one keyframe are recorded as distinct effects, each with the reason it is not one of the four families (`docs/design/motion-inventory.json`).
+- 24 durations and one keyframe are recorded as distinct effects, each with the reason it is not one of the four families (`docs/design/motion-inventory.json`).
 
 ## Families whose contract is still partly a business's own
 

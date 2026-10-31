@@ -868,7 +868,30 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     ) : null}
     {tab === "terminal" ? <div className="webui-terminal-content">
         <div ref={terminalHost} className="webui-xterm-host" />
-        {!terminalsReady || !terminalTargetId && (terminalAvailability || terminalError) ? <p role={terminalError ? "alert" : "status"} data-webui-terminal-availability={terminalSupport}>{!terminalsReady ? DESKTOP_COPY.terminalLoading : terminalAvailability ?? terminalError}</p> : null}
+        {/* A terminal that failed is an error and is announced as one; a
+            terminal still coming up is a status and is announced as one. The
+            two are different states, so each carries the shared family's own
+            channel. The line keeps no paragraph of its own: the family's
+            channel is the element, and the terminal's own metrics come from
+            `.webui-terminal-content > .webui-terminal-status`. */}
+        {!terminalsReady || !terminalTargetId && (terminalAvailability || terminalError) ? (
+          terminalError ? (
+            <FeedbackError
+              message={terminalError}
+              className="webui-terminal-status"
+              testId="workspace-terminal-status"
+              dataAttributes={{ "data-webui-terminal-availability": terminalSupport }}
+            />
+          ) : (
+            <FeedbackLiveRegion
+              className="webui-terminal-status"
+              testId="workspace-terminal-status"
+              dataAttributes={{ "data-webui-terminal-availability": terminalSupport }}
+            >
+              {!terminalsReady ? DESKTOP_COPY.terminalLoading : terminalAvailability}
+            </FeedbackLiveRegion>
+          )
+        ) : null}
         {terminalError && terminalTargetId ? <FeedbackError message={terminalError} /> : null}
     </div> : null}
       </div>

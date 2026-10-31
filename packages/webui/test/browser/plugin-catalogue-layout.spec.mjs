@@ -205,6 +205,7 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
     // sibling. The assertion is about the control's box, so it reads the
     // controls directly.
     const controls = [...node.querySelectorAll(".webui-agent-form input, .webui-agent-form textarea")];
+    const labelBoxes = labels.map((label) => label.getBoundingClientRect());
     const prompt = node.querySelector("textarea").getBoundingClientRect();
     return {
       labelCount: labels.length,
@@ -216,7 +217,7 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
         (control) => control.getBoundingClientRect().height >= 40,
       ),
       noHorizontalOverflow: node.scrollWidth <= node.clientWidth,
-      labelBoxesInDialog: boxes.every((box) => box.left >= node.getBoundingClientRect().left && box.right <= node.getBoundingClientRect().right),
+      labelBoxesInDialog: labelBoxes.every((box) => box.left >= node.getBoundingClientRect().left && box.right <= node.getBoundingClientRect().right),
     };
   });
   expect(alignment, JSON.stringify(alignment)).toMatchObject({ labelCount: 4, promptHasWidth: true, labelInputsHaveUsableHeight: true, noHorizontalOverflow: true, labelBoxesInDialog: true });

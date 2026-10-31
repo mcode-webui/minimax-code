@@ -443,7 +443,12 @@ describe("the terminal roster is read before it is shown", () => {
     expect(panelSource).toContain("terminalSupport");
     expect(panelSource).toContain("terminalAvailability");
     expect(panelSource).toContain("terminalError");
-    expect(panelSource).toContain("data-webui-terminal-availability={terminalSupport}");
+    // The panel publishes the service's answer as a marker on the line it
+    // shows. The shared feedback contract carries a surface's own attributes
+    // through `dataAttributes`, so the marker may be written as a JSX
+    // attribute or as an entry of that record — what matters is that it is
+    // bound to the service's answer.
+    expect(panelSource).toMatch(/data-webui-terminal-availability["']?\s*[:=]\s*\{?\s*terminalSupport/);
     // The create is gated by what the owner can do, so the panel never opens a
     // terminal the service would refuse.
     expect(panelSource).toContain("!terminalOwner?.canCreate");

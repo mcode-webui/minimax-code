@@ -280,6 +280,11 @@
   --border_tertiary_hover: var(--opacity_black_1_8);
   --border_tertiary_inactive: var(--opacity_black_1_8);
   --border_tertiary_press: var(--opacity_black_1_15);
+  /* The diff stats are 12px text, and a code colour has to clear WCAG AA
+   * (4.5:1) against the surface it is drawn on. The status colours do not:
+   * the light theme's green measures 2.7:1 on the grouped surface. */
+  --code-theme-addition-foreground: var(--green_700);
+  --code-theme-deletion-foreground: var(--red_600);
   --icon_default_accent: var(--blue_400);
   --icon_default_inverted: var(--gray_0);
   --icon_default_inverted_static: var(--opacity_white_0_95);
@@ -495,6 +500,11 @@
   --border_tertiary_hover: var(--opacity_black_1_8);
   --border_tertiary_inactive: var(--opacity_black_1_8);
   --border_tertiary_press: var(--opacity_black_1_15);
+  /* The diff stats are 12px text, and a code colour has to clear WCAG AA
+   * (4.5:1) against the surface it is drawn on. The status colours do not:
+   * the light theme's green measures 2.7:1 on the grouped surface. */
+  --code-theme-addition-foreground: var(--green_700);
+  --code-theme-deletion-foreground: var(--red_600);
   --icon_default_accent: var(--blue_400);
   --icon_default_inverted: var(--gray_0);
   --icon_default_inverted_static: var(--opacity_white_0_95);
@@ -713,6 +723,10 @@
   --border_tertiary_hover: var(--opacity_white_0_15);
   --border_tertiary_inactive: var(--opacity_white_0_15);
   --border_tertiary_press: var(--opacity_white_0_8);
+  /* The dark theme draws the diff stats on a darker surface, so the code
+   * colours are the lighter steps: they measure 6.3:1 and 5.9:1 there. */
+  --code-theme-addition-foreground: var(--green_400);
+  --code-theme-deletion-foreground: var(--red_300);
   --icon_default_accent: var(--blue_500);
   --icon_default_inverted: var(--gray_1000);
   --icon_default_inverted_static: var(--opacity_white_0_95);

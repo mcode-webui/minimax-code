@@ -1329,7 +1329,11 @@ function filesWritingVersion(repositoryRoot, version) {
       const full = path.join(directory, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (/\.(?:ts|tsx|mts|mjs|cjs|js|jsx)$/u.test(entry.name) && readFileSync(full, 'utf8').includes(version)) {
-        offenders.push(path.relative(repositoryRoot, full));
+        // The comparison below names a path with forward slashes, so the
+        // relative path has to carry them too: `path.relative` hands back
+        // backslashes on Windows, and the shared module would then read as an
+        // offender of itself.
+        offenders.push(path.relative(repositoryRoot, full).split(path.sep).join('/'));
       }
     }
   };

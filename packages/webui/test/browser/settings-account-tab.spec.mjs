@@ -115,15 +115,14 @@ test("the account tab is enabled where the unfinished tabs are still disabled", 
   // The other half, and the reason the assertion above is not vacuous: the nav
   // really does still ship disabled items, so "enabled" is a fact about this
   // tab rather than a property of every button in the sidebar. A nav that
-  // silently enabled 语音/连接 would pass the first two lines.
+  // silently enabled 语音 would pass the first two lines.
   //
-  // 代码审查, 工作树 and 快捷键 left this list when their pages were built —
-  // they are real panels now, not empty panes behind a clickable label. The two
-  // that remain have no content behind them, which is what the `disabled` gate
-  // is still for.
-  for (const key of ["voice", "connection"]) {
-    await expect(settingsNavItem(page, key)).toBeDisabled();
-  }
+  // 代码审查, 工作树, 快捷键 and 连接 left this list when their pages were
+  // built — they are real panels now, not empty panes behind a clickable
+  // label. 语音 is the one that remains: it has no content behind it, which is
+  // what the `disabled` gate is still for.
+  await expect(settingsNavItem(page, "voice")).toBeDisabled();
+  await expect(settingsNavItem(page, "connection")).toBeEnabled();
   // The app behind the modal is still mounted: the modal is a `document.body`
   // portal, so it renders over a live app rather than replacing it. A fallback
   // here would mean the crash surface is showing while settings are open.

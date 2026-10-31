@@ -585,12 +585,16 @@ it("a real agent turn resumes after refresh and drains a queued message in order
       const viewportWidth = document.body.clientWidth;
       const viewportHeight = document.body.clientHeight;
       const dialog = node.getBoundingClientRect();
-      const surface = node.querySelector(".webui-dialog-surface")!.getBoundingClientRect();
+      // The shared dialog carries its test id on the surface; the scrim it
+      // sits in is the mask around it.
+      const backdrop = node.parentElement!;
+      const backdropRect = backdrop.getBoundingClientRect();
+      const surface = dialog;
       const buttons = [...node.querySelectorAll<HTMLButtonElement>(".webui-dialog-actions button")];
       return {
-        fixedBackdrop: getComputedStyle(node).position === "fixed",
-        backdropCoversViewport: dialog.left <= 0 && dialog.top <= 0 &&
-          dialog.right >= viewportWidth && dialog.bottom >= viewportHeight,
+        fixedBackdrop: getComputedStyle(backdrop).position === "fixed",
+        backdropCoversViewport: backdropRect.left <= 0 && backdropRect.top <= 0 &&
+          backdropRect.right >= viewportWidth && backdropRect.bottom >= viewportHeight,
         centered: Math.abs(surface.left + surface.width / 2 - viewportWidth / 2) < 3 &&
           Math.abs(surface.top + surface.height / 2 - viewportHeight / 2) < 3,
         surfaceWithinViewport: surface.left >= 0 && surface.top >= 0 &&
@@ -601,9 +605,9 @@ it("a real agent turn resumes after refresh and drains a queued message in order
             rect.top >= 0 && rect.bottom <= viewportHeight && !button.disabled;
         }),
         portalClientBox: { width: viewportWidth, height: viewportHeight },
-        backdropRect: { left: dialog.left, top: dialog.top, right: dialog.right, bottom: dialog.bottom },
+        backdropRect: { left: backdropRect.left, top: backdropRect.top, right: backdropRect.right, bottom: backdropRect.bottom },
         surfaceRect: { left: surface.left, top: surface.top, right: surface.right, bottom: surface.bottom },
-        grid: { display: getComputedStyle(node).display, placeItems: getComputedStyle(node).placeItems },
+        grid: { display: getComputedStyle(backdrop).display, placeItems: getComputedStyle(backdrop).placeItems },
       };
     });
     expect(rewindGeometry, JSON.stringify(rewindGeometry)).toMatchObject({

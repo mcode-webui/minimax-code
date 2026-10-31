@@ -46,6 +46,7 @@ import {
   loadManifest,
   manifestKey,
   saveManifest,
+  settledSurface,
   summariseSurface,
   useTheme,
 } from "./support/rendering-integrity.mjs";
@@ -690,6 +691,7 @@ test.describe("rendering integrity of the migrated surfaces", () => {
           await (state.seed ?? surface.seed)(page, state);
           await state.open(page);
           expect(await appliedTheme(page), `${surface.id}/${state.id}: the theme did not apply`).toBe(theme);
+          await settledSurface(page);
 
           const facts = await captureSurface(page, surface, state);
           const key = manifestKey(surface.id, state.id, theme);

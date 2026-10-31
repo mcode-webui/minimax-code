@@ -25,7 +25,25 @@ import {
   type SessionRepository,
 } from '../session-system/index.js';
 import type { AgentHostTurnOutcome, RequestCompactionResult } from '../turn-system/index.js';
+import { MINIAPP_AGENT_PURPOSE_PREFIX } from '../miniapp/contracts.js';
+import { SessionServiceError } from '../session-system/index.js';
 import type { V1ConversationCompatibilityOptions } from './contracts.js';
+
+/**
+ * `miniapp:` marks a Session as owned by a Mini App plugin, and the runtime routes that plugin's
+ * permission asks back by it. This surface is client-facing but its non-root branch reuses
+ * `createInternalSession`, so the reserved label has to be refused here: only the runtime's own Mini
+ * App session creation may write it. Thrown as the same typed failure the session owner raises, so both
+ * client-facing create paths report the same `purpose-reserved` reason.
+ */
+function assertPurposeIsCallerWritable(purpose: string | undefined): void {
+  if (purpose === undefined) return;
+  if (!purpose.trim().startsWith(MINIAPP_AGENT_PURPOSE_PREFIX)) return;
+  throw new SessionServiceError(
+    'purpose-reserved',
+    'Session purpose is reserved for runtime-owned Sessions',
+  );
+}
 
 /** v2 service implementation injected into hosted v1 compatibility consumers. */
 export class V1ConversationCompatibilityService implements RuntimeConversation {
@@ -195,6 +213,7 @@ export class V1ConversationCompatibilityService implements RuntimeConversation {
   };
 
   private async createSession(input: ConversationSessionCreateInput): Promise<ConversationSession> {
+    assertPurposeIsCallerWritable(input.purpose);
     const agentName = await this.options.resolveAgentWriteTarget(input.agentName);
     if (input.sessionType === 'root') {
       const workspaceDir = nonEmpty(input.workspaceDir);

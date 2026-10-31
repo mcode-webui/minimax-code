@@ -195,6 +195,7 @@ export interface GitChangesInfo {
 
 export interface LocalWorkspaceGitFacade {
   getMetadata(workspace: string): Promise<Record<string, unknown>>;
+  getChanges(workspace: string, mode: GitChangesMode): Promise<Record<string, unknown>>;
   /**
    * Reads the review link recorded for `workspace` on `branch`, or `undefined`
    * when the branch has no recorded pull request / merge request.
@@ -206,12 +207,15 @@ export interface LocalWorkspaceGitFacade {
   getReviewLink(workspace: string, branch: string): Promise<Record<string, unknown> | undefined>;
 }
 
-/** Read-only process-local Git metadata facade; mutation remains outside this seam. */
+/** Read-only process-local Git status facade; mutation remains outside this seam. */
 export function createLocalWorkspaceGitFacade(
   reviewLinkStore: Pick<LocalReviewLinkStore, 'read'> = new LocalReviewLinkStore(getDataDir),
 ): LocalWorkspaceGitFacade {
   return {
     getMetadata: (workspace) => getGitMetadata(workspace),
+    getChanges: async (workspace, mode) => ({
+      ...(await getGitChanges(workspace, mode, defaultGitChangesCoordinator)),
+    }),
     getReviewLink: async (workspace, branch) => {
       const entry = reviewLinkStore.read(workspace, branch);
       // Widened to the facade's untyped shape; the consumer re-validates it

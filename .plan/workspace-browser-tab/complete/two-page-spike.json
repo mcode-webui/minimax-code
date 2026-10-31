@@ -1,0 +1,344 @@
+{
+  "probe": "workspace-browser-tab two-page spike",
+  "issue": 200,
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "chrome": {
+      "path": "/usr/bin/google-chrome",
+      "product": "Chrome/152.0.7977.82",
+      "revision": "@d04cdb24d67b081f6cf80200ffc5233f44b61109"
+    }
+  },
+  "method": {
+    "what": "Drive, stream and input into two pages of one real isolated Chromium, and record what happens.",
+    "phases": {
+      "provider": "Launch the repository's own WebuiIsolatedChromiumProvider, open a tab through it, and try to drive, input into and stream that new page. This is what the provider does today.",
+      "substrate": "Launch a real Chrome in the provider's own launch shape, attach to two pages over the repository's own WebuiBrowserCdpConnection, and exercise them concurrently: Page.enable on both, Page.startScreencast on both, Input.insertText into both, Page.navigate on the second, and the per-page generation accounting."
+    },
+    "pages": "Two real documents served by a local HTTP server on 127.0.0.1 — no network, no real user content.",
+    "whatItIsNot": "This is not a test. It asserts nothing; it records what it observed. The record is the evidence.",
+    "reproduce": "Run the spike from the repository's webui package with tsx, against /usr/bin/google-chrome. The spike script itself is work material and lives outside the published source; the record it writes is committed here."
+  },
+  "startedAt": "2026-10-21T12:30:01.796Z",
+  "phases": {
+    "provider": {
+      "description": "The real WebuiIsolatedChromiumProvider class, today.",
+      "targetsBeforeOpenTab": [
+        {
+          "id": {
+            "surface": "isolated-chromium",
+            "browserId": "isolated-chromium-wadkjvl8",
+            "targetId": "14E37D8770E0DB344CB98AAD88A06C4C",
+            "generation": 1
+          },
+          "title": "about:blank",
+          "url": "about:blank",
+          "status": "open",
+          "selected": false
+        },
+        {
+          "id": {
+            "surface": "isolated-chromium",
+            "browserId": "isolated-chromium-wadkjvl8",
+            "targetId": "AFB89EBB03E3F0272D7C87098E21FC86",
+            "generation": 1
+          },
+          "title": "about:blank",
+          "url": "about:blank",
+          "status": "open",
+          "selected": true
+        }
+      ],
+      "openTabResult": {
+        "targetId": "AFEDCFF719D084495C93E65A16E9B932"
+      },
+      "targetsAfterOpenTab": [
+        {
+          "id": {
+            "surface": "isolated-chromium",
+            "browserId": "isolated-chromium-wadkjvl8",
+            "targetId": "14E37D8770E0DB344CB98AAD88A06C4C",
+            "generation": 1
+          },
+          "title": "about:blank",
+          "url": "about:blank",
+          "status": "open",
+          "selected": false
+        },
+        {
+          "id": {
+            "surface": "isolated-chromium",
+            "browserId": "isolated-chromium-wadkjvl8",
+            "targetId": "AFB89EBB03E3F0272D7C87098E21FC86",
+            "generation": 1
+          },
+          "title": "about:blank",
+          "url": "about:blank",
+          "status": "open",
+          "selected": true
+        },
+        {
+          "id": {
+            "surface": "isolated-chromium",
+            "browserId": "isolated-chromium-wadkjvl8",
+            "targetId": "AFEDCFF719D084495C93E65A16E9B932",
+            "generation": 1
+          },
+          "title": "about:blank",
+          "url": "about:blank",
+          "status": "open",
+          "selected": false
+        }
+      ],
+      "pageCount": {
+        "before": 2,
+        "after": 3
+      },
+      "newPageIdentity": {
+        "surface": "isolated-chromium",
+        "browserId": "isolated-chromium-wadkjvl8",
+        "targetId": "AFEDCFF719D084495C93E65A16E9B932",
+        "generation": 1
+      },
+      "newPageIsListedByTheProvider": true,
+      "driveNewPageNavigate": {
+        "attempted": true,
+        "outcome": {
+          "ok": true,
+          "value": {
+            "frameId": "AFEDCFF719D084495C93E65A16E9B932",
+            "loaderId": "197A18319FAFF4ABD19D84BC8F4C3974",
+            "isDownload": false
+          }
+        }
+      },
+      "driveNewPageInput": {
+        "attempted": true,
+        "outcome": {
+          "ok": true,
+          "value": null
+        }
+      },
+      "streamNewPage": {
+        "attempted": true,
+        "outcome": {
+          "ok": true,
+          "value": null
+        }
+      },
+      "generationOfNewPage": 1,
+      "newPageSelected": false,
+      "driveLaunchPage": {
+        "attempted": true,
+        "outcome": {
+          "ok": true,
+          "value": {}
+        }
+      },
+      "launchPageGeneration": 1
+    },
+    "substrate": {
+      "description": "The provider's own CDP connection against one real Chromium, with two attached pages.",
+      "pages": [
+        {
+          "label": "A",
+          "targetId": "523F643B0CC0383A2686FE4D40E887D2",
+          "sessionId": "6E4260243A3E33B0B99DE1AB8BA18A2E"
+        },
+        {
+          "label": "B",
+          "targetId": "1E783F3D1623A1BFAA511D24FAAEED2D",
+          "sessionId": "60354765619FF6A7B540EC966A496330"
+        }
+      ],
+      "sessionsAreDistinct": true,
+      "targetIdsAreDistinct": true,
+      "pageEnableSentTo": [
+        "6E4260243A3E33B0B99DE1AB8BA18A2E",
+        "60354765619FF6A7B540EC966A496330"
+      ],
+      "screencastStartedFor": [
+        "6E4260243A3E33B0B99DE1AB8BA18A2E",
+        "60354765619FF6A7B540EC966A496330"
+      ],
+      "input": {
+        "pageAValue": "alpha",
+        "pageBValue": "bravo",
+        "independent": true
+      },
+      "framesAfterBothPagesWereTypedInto": {
+        "count": 3,
+        "byEnvelopeSession": [
+          {
+            "sessionId": "60354765619FF6A7B540EC966A496330",
+            "page": "B",
+            "count": 3
+          }
+        ],
+        "sample": [
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 10448,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          },
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 10840,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          },
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 11312,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          }
+        ]
+      },
+      "generation": {
+        "before": {
+          "A": 1,
+          "B": 1
+        },
+        "after": {
+          "A": 1,
+          "B": 2
+        },
+        "navigationsObserved": [
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "mainFrame": true,
+            "url": "http://127.0.0.1:44699/b2"
+          }
+        ]
+      },
+      "fence": {
+        "staleReferenceOnNavigatedPage": {
+          "accepted": false,
+          "error": {
+            "code": "browser_target_stale",
+            "message": "The browser page was replaced; the input was not delivered."
+          }
+        },
+        "currentReferenceOnUntouchedPage": {
+          "accepted": true
+        },
+        "staleRefused": true,
+        "untouchedPageStillAccepts": true
+      },
+      "afterNavigation": {
+        "driveA": {
+          "ok": true,
+          "value": {
+            "result": {
+              "type": "string",
+              "value": "Page A"
+            }
+          }
+        },
+        "driveB": {
+          "ok": true,
+          "value": {
+            "result": {
+              "type": "string",
+              "value": "Page B2"
+            }
+          }
+        }
+      },
+      "perTargetScreenshot": {
+        "aBytes": 10988,
+        "bBytes": 11312
+      },
+      "framesAtTheEnd": {
+        "count": 4,
+        "byEnvelopeSession": [
+          {
+            "sessionId": "60354765619FF6A7B540EC966A496330",
+            "page": "B",
+            "count": 3
+          },
+          {
+            "sessionId": "6E4260243A3E33B0B99DE1AB8BA18A2E",
+            "page": "A",
+            "count": 1
+          }
+        ],
+        "sample": [
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 10448,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          },
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 10840,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          },
+          {
+            "envelopeSessionId": "60354765619FF6A7B540EC966A496330",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 11312,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          },
+          {
+            "envelopeSessionId": "6E4260243A3E33B0B99DE1AB8BA18A2E",
+            "envelopeSessionIdType": "string",
+            "paramsSessionId": 1,
+            "paramsSessionIdType": "number",
+            "dataLength": 11364,
+            "dataPrefix": "/9j/4AAQSkZJRgABAQAAAQAB"
+          }
+        ]
+      },
+      "frameRouting": {
+        "envelopeSessionIdResolvesToAPage": true,
+        "paramsSessionIdResolvesToAPage": false,
+        "paramsSessionIdValues": [
+          "1"
+        ],
+        "envelopeSessionIdValues": [
+          "60354765619FF6A7B540EC966A496330",
+          "6E4260243A3E33B0B99DE1AB8BA18A2E"
+        ],
+        "conclusion": "the envelope's event.sessionId is the target session and identifies the page; event.params.sessionId is a number that is not the target session and identifies nothing"
+      },
+      "currentProviderFrameRule": {
+        "rule": "every Page.screencastFrame is stamped with the provider's own target id, without asking which page the frame came from",
+        "source": "packages/webui/src/runtime/browser/isolated-chromium/provider.ts — #onEvent, the Page.screencastFrame branch",
+        "modelledWith": "page A stands for the one page the provider owns",
+        "observedFrames": 4,
+        "framesFromAnotherPage": 3,
+        "misStampedByTheCurrentRule": 3,
+        "consequence": "with two pages streaming, the other page's image is delivered as this page's image"
+      },
+      "frameIdentityIsSufficient": {
+        "distinctEnvelopeSessions": 2,
+        "pages": 2,
+        "pagesThatStreamed": [
+          "A",
+          "B"
+        ],
+        "bothPagesStreamedAtTheSameTime": true
+      }
+    }
+  },
+  "finishedAt": "2026-10-21T12:30:04.453Z"
+}

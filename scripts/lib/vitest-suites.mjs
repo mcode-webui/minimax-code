@@ -40,9 +40,12 @@ export function suiteInventoryViolations(files, suites) {
       violations.push(`${file}: registered Vitest file is missing`);
   }
   for (const file of files) {
+    // Playwright owns these specs through playwright.config.mjs; they are not
+    // Vitest suites and therefore must not be registered in this manifest.
     if (
       file.startsWith("packages/") &&
       /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(file) &&
+      !file.startsWith("packages/webui/test/browser/") &&
       !registered.has(file)
     )
       violations.push(

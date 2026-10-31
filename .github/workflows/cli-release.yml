@@ -29,7 +29,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The same ceiling the CI verify job has: this job runs the same
+    # verification pipeline, including the real-browser suite.
+    timeout-minutes: 40
     outputs:
       version: ${{ steps.release.outputs.version }}
       matrix: ${{ steps.release.outputs.matrix }}

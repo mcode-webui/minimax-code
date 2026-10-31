@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import os from 'node:os';
@@ -14,10 +14,22 @@ import type {
   MiniAppRuntimeExit,
   ProcessMiniAppCandidate,
 } from '../../contracts.js';
+import { MINIAPP_LOOPBACK_HEALTH_PATH, MINIAPP_LOOPBACK_TOKEN_HEADER } from '../../contracts.js';
 import { selectFailureAfterCleanup } from '../../supervisor/cleanup-settlement.js';
 import { MiniAppCleanupUnprovenError, markMiniAppRootTerminationProven } from '../../errors.js';
 import { sanitizeMiniAppRuntimeLogEvent } from '../../runtime-log.js';
 import type { MiniAppRunnerInitMessage } from './host-runner.js';
+import { waitForLoopbackReadiness } from './loopback-readiness.js';
+import {
+  resolveMiniAppRunnerLaunch,
+  type MiniAppRunnerLaunch,
+} from './runner-entry.js';
+import { probeMiniAppPortOwnership } from './loopback-ownership.js';
+import {
+  acquireMiniAppOwner,
+  readMiniAppOwnerIdentity,
+  type MiniAppOwnerIdentity,
+} from './owner-lease.js';
 import {
   createDirectNodeRootTerminator,
   type DirectNodeRootTerminator,
@@ -69,6 +81,8 @@ interface NodeRuntimeOptions {
   readonly hostConnectorSessionFactory?: MiniAppHostConnectorSessionFactory;
   readonly execPath?: string;
   readonly runnerPath?: string;
+  /** Resolves the runner child's argument vector; injectable for tests. */
+  readonly resolveRunnerLaunch?: () => MiniAppRunnerLaunch;
   readonly platform?: NodeJS.Platform;
   readonly env?: NodeJS.ProcessEnv;
   readonly spawn?: SpawnLike;
@@ -83,6 +97,9 @@ interface NodeRuntimeOptions {
   readonly ensureDirectory?: (directory: string) => Promise<void>;
   readonly resolveRealPath?: (target: string) => Promise<string>;
   readonly makeStartupToken?: () => string;
+  readonly makeLoopbackToken?: () => string;
+  /** Label this client records when it takes ownership of a Mini App. */
+  readonly ownerClient?: string;
   readonly nowMs?: () => number;
   readonly wait?: (ms: number, signal: AbortSignal) => Promise<void>;
   readonly runnerStartTimeoutMs?: number;
@@ -99,7 +116,7 @@ type ResolvedOptions = Required<
     | 'materializePackage'
     | 'isPortReserved'
     | 'execPath'
-    | 'runnerPath'
+    | 'resolveRunnerLaunch'
     | 'platform'
     | 'env'
     | 'spawn'
@@ -111,6 +128,8 @@ type ResolvedOptions = Required<
     | 'ensureDirectory'
     | 'resolveRealPath'
     | 'makeStartupToken'
+    | 'makeLoopbackToken'
+    | 'ownerClient'
     | 'nowMs'
     | 'wait'
     | 'runnerStartTimeoutMs'
@@ -119,7 +138,7 @@ type ResolvedOptions = Required<
     | 'maxPortAttempts'
   >
 > &
-  Pick<NodeRuntimeOptions, 'reservePort' | 'hostConnectorSessionFactory'>;
+  Pick<NodeRuntimeOptions, 'reservePort' | 'hostConnectorSessionFactory' | 'runnerPath'>;
 
 interface Attempt {
   readonly child: ChildProcess;
@@ -143,6 +162,10 @@ export function createMiniAppNodeRuntimeAdapter(
   const resolved = resolveOptions(options);
   const physicalRoots = createPhysicalRootCapacity(MAX_RUNNING_PLUGIN_SERVICES);
   return {
+    async ownerClient(pluginId) {
+      const dataDir = await resolveDataDir(resolved, pluginId);
+      return (await readMiniAppOwnerIdentity(dataDir))?.client;
+    },
     async prepare(input) {
       assertCapabilities(resolved, input.candidate);
       throwIfAborted(input.signal);
@@ -223,9 +246,49 @@ async function prepareRuntime(input: {
   readonly dataDir: string;
   readonly runtimeDir: string;
 }): Promise<MiniAppNodeRuntime> {
+  // Ownership is taken before the port loop and before any spawn: a second client must never reach
+  // the point of starting a process over the same plugin data.
+  const ownership = await acquireMiniAppOwner({
+    pluginDataDir: input.dataDir,
+    pluginId: input.candidate.pluginId,
+    identity: { client: input.options.ownerClient },
+    nowMs: input.options.nowMs,
+  });
+  if (ownership.kind === 'held') {
+    throw new MiniAppNodeRuntimeError(
+      'OWNED_ELSEWHERE',
+      ownerHeldDetail(ownership.owner, input.candidate.pluginId),
+    );
+  }
+  try {
+    return await preparedRuntimeWithOwnership(input, ownership);
+  } catch (error) {
+    await ownership.release();
+    throw error;
+  }
+}
+
+function ownerHeldDetail(owner: MiniAppOwnerIdentity | undefined, pluginId: string): string {
+  return owner
+    ? `Mini App ${pluginId} is already running in ${owner.client} (pid ${owner.pid})`
+    : `Mini App ${pluginId} is already running in another client`;
+}
+
+async function preparedRuntimeWithOwnership(
+  input: Parameters<typeof prepareRuntime>[0],
+  ownership: { release(): Promise<void> },
+): Promise<MiniAppNodeRuntime> {
+  // One credential per process generation: every port attempt reuses it.
+  const loopbackToken = input.options.makeLoopbackToken();
+  const ownershipPort = deriveMiniAppNodePort(input.candidate.pluginId);
+  const firstCandidatePort = candidatePort(input, 0);
+  // Probe the plugin's stable port before applying Host reservation policy. A
+  // reservation may skip that candidate, but it cannot make an existing owner
+  // safe to run beside on a fallback port.
+  await refuseIfPortIsOwnedElsewhere(input, ownershipPort);
   let lastError: unknown;
   for (let index = 0; index < input.options.maxPortAttempts; index += 1) {
-    const port = candidatePort(input, index);
+    const port = index === 0 ? firstCandidatePort : candidatePort(input, index);
     const reservation = input.options.reservePort?.({
       pluginId: input.candidate.pluginId,
       port,
@@ -235,18 +298,22 @@ async function prepareRuntime(input: {
     const deadline = input.options.nowMs() + input.options.runnerStartTimeoutMs;
     let attempt: Attempt | undefined;
     try {
-      attempt = await spawnAttempt(input, port);
+      attempt = await spawnAttempt(input, port, loopbackToken);
       const readinessSignal = AbortSignal.any([input.signal, attempt.fatal.signal]);
       await waitForStarted(
         attempt,
         readinessSignal,
         Math.min(input.options.runnerStartTimeoutMs, remaining(deadline, input.options.nowMs)),
       );
-      await waitForTcp({
-        options: input.options,
+      await waitForLoopbackReadiness({
         port,
-        signal: readinessSignal,
+        token: loopbackToken,
         deadline,
+        nowMs: input.options.nowMs,
+        probeTimeoutMs: input.options.tcpConnectTimeoutMs,
+        retryMs: input.options.tcpRetryMs,
+        wait: input.options.wait,
+        signal: readinessSignal,
       });
       attempt.startupErrorCapture.complete();
       return preparedRuntime({
@@ -254,6 +321,8 @@ async function prepareRuntime(input: {
         attempt,
         port,
         reservation,
+        loopbackToken,
+        ownership,
       });
     } catch (error) {
       const failure = await selectFailureAfterCleanup(error, () =>
@@ -262,13 +331,42 @@ async function prepareRuntime(input: {
       attachStartupFailureDetail(error, failure);
       attempt?.startupErrorCapture.attachFailure(failure, error);
       lastError = failure;
-      if (!retryablePortError(failure) || index + 1 >= input.options.maxPortAttempts) throw failure;
+      if (!retryablePortError(failure)) throw failure;
+      // Only this plugin's deterministic port identifies its cross-client owner. A guarded
+      // listener on any fallback candidate can belong to a different Mini App.
+      if (port === ownershipPort) await refuseIfPortIsOwnedElsewhere(input, port);
+      if (index + 1 >= input.options.maxPortAttempts) throw failure;
     }
   }
   throw (
     lastError ??
     new MiniAppNodeRuntimeError('NO_CANDIDATE_PORT', 'No Host-approved port is available')
   );
+}
+
+async function refuseIfPortIsOwnedElsewhere(
+  input: Parameters<typeof prepareRuntime>[0],
+  port: number,
+): Promise<void> {
+  throwIfAborted(input.signal);
+  const ownership = await probeMiniAppPortOwnership({
+    port,
+    timeoutMs: input.options.tcpConnectTimeoutMs,
+    signal: input.signal,
+  });
+  throwIfAborted(input.signal);
+  if (ownership === 'unknown') {
+    throw new MiniAppNodeRuntimeError(
+      'RUNNER_START_FAILED',
+      `Unable to verify whether Mini App ${input.candidate.pluginId} is already running in another client`,
+    );
+  }
+  if (ownership === 'guarded') {
+    throw new MiniAppNodeRuntimeError(
+      'OWNED_ELSEWHERE',
+      ownerHeldDetail(undefined, input.candidate.pluginId),
+    );
+  }
 }
 
 async function cleanupFailedAttempt(
@@ -298,6 +396,7 @@ async function cleanupFailedPreparation(
 async function spawnAttempt(
   input: Parameters<typeof prepareRuntime>[0],
   port: number,
+  loopbackToken: string,
 ): Promise<Attempt> {
   const init: MiniAppRunnerInitMessage = {
     type: 'miniapp:init',
@@ -312,18 +411,21 @@ async function spawnAttempt(
       startupToken: input.options.makeStartupToken(),
       nodeDigest: input.candidate.nodeDigest,
     },
+    loopbackToken,
     hostConnectorPolicy: input.candidate.hostConnectorPolicy,
+    agentPolicy: input.candidate.agentPolicy ?? { kind: 'deny-all' },
   };
   const physicalRoot = input.physicalRoots.acquire(input.candidate.pluginId);
   let child: ChildProcess;
   try {
-    child = input.options.spawn(input.options.execPath, [input.options.runnerPath], {
+    const launch = await input.options.resolveRunnerLaunch();
+    child = input.options.spawn(input.options.execPath, [...launch.args], {
       cwd: input.candidate.packageRoot,
       detached: false,
       windowsHide: true,
       shell: false,
       env: runnerEnvironment(input.options.env),
-      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     });
   } catch (error) {
     physicalRoot.release();
@@ -355,7 +457,6 @@ async function spawnAttempt(
     processGeneration: input.processGeneration,
     onLog: input.onLog,
     fatal,
-    connectorEnabled: Boolean(connector),
   });
   let shutdownRequested = false;
   let resolveClosed: (exit: MiniAppRuntimeExit) => void = () => undefined;
@@ -483,19 +584,20 @@ function createConnectorSession(
   child: ChildProcess,
   fatal: AbortController,
 ): MiniAppHostConnectorSession | undefined {
-  if (input.candidate.hostConnectorPolicy.kind !== 'allowlist') return undefined;
-  if (!child.stdout || !child.stdin || !input.options.hostConnectorSessionFactory) {
+  const { hostConnectorPolicy, agentPolicy } = input.candidate;
+  if (!needsConnectorChannel(input.candidate)) return undefined;
+  if (!child.send || child.connected === false || !input.options.hostConnectorSessionFactory) {
     throw new MiniAppNodeRuntimeError(
       'HOST_CONNECTOR_UNAVAILABLE',
-      'Host Connector stdio or session factory is unavailable',
+      'Host Connector IPC or session factory is unavailable',
     );
   }
   return input.options.hostConnectorSessionFactory.create({
     pluginId: input.candidate.pluginId,
     processGeneration: input.processGeneration,
-    providers: input.candidate.hostConnectorPolicy.providers,
-    request: child.stdout,
-    response: child.stdin,
+    providers: hostConnectorPolicy.kind === 'allowlist' ? hostConnectorPolicy.providers : [],
+    ...(agentPolicy ? { agentPolicy } : {}),
+    transport: child,
     onFatal: (error) => fatal.abort(error),
   });
 }
@@ -506,7 +608,6 @@ function captureChildLogs(
     readonly processGeneration: string;
     readonly onLog: Parameters<MiniAppNodeRuntimeFactory['prepare']>[0]['onLog'];
     readonly fatal: AbortController;
-    readonly connectorEnabled: boolean;
   },
 ): void {
   child.on('message', (raw: unknown) => {
@@ -527,28 +628,31 @@ function captureChildLogs(
       }),
     );
   });
-  child.stderr?.on('data', (chunk: Buffer | string) => {
+  // stdout and stderr are the plugin's own logs: bounded, sanitized, and never protocol input.
+  let logWindowStartedAt = Date.now();
+  let remainingLogBytes = 64 * 1024;
+  const captureStreamLog = (level: 'info' | 'error', chunk: Buffer | string) => {
+    const now = Date.now();
+    if (now - logWindowStartedAt >= 1_000) {
+      logWindowStartedAt = now;
+      remainingLogBytes = 64 * 1024;
+    }
+    if (remainingLogBytes <= 0) return;
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    const accepted = bytes.subarray(0, Math.min(4 * 1024, remainingLogBytes));
+    remainingLogBytes -= accepted.byteLength;
     options.onLog(
       sanitizeMiniAppRuntimeLogEvent({
         processGeneration: options.processGeneration,
-        level: 'error',
-        message: bytes.toString('utf8').trim(),
+        level,
+        message: accepted.toString('utf8').trim(),
         byteLength: bytes.byteLength,
         fieldKeys: [],
       }),
     );
-  });
-  if (!options.connectorEnabled) {
-    child.stdout?.once('data', () => {
-      options.fatal.abort(
-        new MiniAppNodeRuntimeError(
-          'HOST_CONNECTOR_PROTOCOL_VIOLATION',
-          'Mini App wrote to reserved stdout',
-        ),
-      );
-    });
-  }
+  };
+  child.stderr?.on('data', (chunk: Buffer | string) => captureStreamLog('error', chunk));
+  child.stdout?.on('data', (chunk: Buffer | string) => captureStreamLog('info', chunk));
 }
 
 function waitForStarted(attempt: Attempt, signal: AbortSignal, timeoutMs: number): Promise<void> {
@@ -607,47 +711,13 @@ function waitForStarted(attempt: Attempt, signal: AbortSignal, timeoutMs: number
   });
 }
 
-async function waitForTcp(input: {
-  readonly options: ResolvedOptions;
-  readonly port: number;
-  readonly signal: AbortSignal;
-  readonly deadline: number;
-}): Promise<void> {
-  let lastError: unknown;
-  for (;;) {
-    throwIfAborted(input.signal);
-    try {
-      await input.options.connectPort({
-        host: LOOPBACK_HOST,
-        port: input.port,
-        timeoutMs: Math.min(
-          input.options.tcpConnectTimeoutMs,
-          remaining(input.deadline, input.options.nowMs),
-        ),
-        signal: input.signal,
-      });
-      return;
-    } catch (error) {
-      lastError = error;
-    }
-    const delay = Math.min(
-      input.options.tcpRetryMs,
-      remaining(input.deadline, input.options.nowMs),
-    );
-    await input.options.wait(delay, input.signal);
-    if (input.options.nowMs() >= input.deadline) {
-      throw new MiniAppNodeRuntimeError('READINESS_TIMEOUT', 'TCP readiness timed out', {
-        cause: lastError,
-      });
-    }
-  }
-}
-
 function preparedRuntime(
   input: Parameters<typeof prepareRuntime>[0] & {
     readonly attempt: Attempt;
     readonly port: number;
     readonly reservation?: { release(): void };
+    readonly loopbackToken: string;
+    readonly ownership: { release(): Promise<void> };
   },
 ): MiniAppNodeRuntime {
   let stopPromise: Promise<{ readonly proven: boolean }> | undefined;
@@ -681,6 +751,11 @@ function preparedRuntime(
       } catch (removeError) {
         postStopErrors.push(removeError);
       }
+      try {
+        await input.ownership.release();
+      } catch (releaseError) {
+        postStopErrors.push(releaseError);
+      }
       throwPostStopErrors(postStopErrors);
       return { proven: true };
     })();
@@ -698,6 +773,7 @@ function preparedRuntime(
     nodeDigest: input.candidate.nodeDigest,
     port: input.port,
     origin: `http://${LOOPBACK_HOST}:${input.port}`,
+    loopbackToken: input.loopbackToken,
     ...(input.attempt.connector ? { hostConnectorSession: input.attempt.connector } : {}),
     closed: input.attempt.closed,
     stop() {
@@ -773,7 +849,14 @@ async function stopAttempt(
 function resolveOptions(options: NodeRuntimeOptions): ResolvedOptions {
   const defaults = {
     execPath: process.execPath,
-    runnerPath: fileURLToPath(new URL('./host-runner.js', import.meta.url)),
+    // The runner entry sits beside this module, and its shape depends on how the Host was
+    // built: a built Host has a JavaScript entry, a source checkout has a TypeScript one that
+    // the child can only start through the repository's loader.
+    resolveRunnerLaunch: () =>
+      resolveMiniAppRunnerLaunch({
+        moduleDir: path.dirname(fileURLToPath(import.meta.url)),
+        ...(options.runnerPath !== undefined ? { runnerPath: options.runnerPath } : {}),
+      }),
     platform: process.platform,
     env: process.env,
     spawn: nodeSpawn,
@@ -789,6 +872,8 @@ function resolveOptions(options: NodeRuntimeOptions): ResolvedOptions {
     },
     resolveRealPath: realpath,
     makeStartupToken: randomUUID,
+    makeLoopbackToken: () => randomBytes(32).toString('base64url'),
+    ownerClient: 'unknown',
     nowMs: Date.now,
     wait: defaultWait,
     runnerStartTimeoutMs: 10_000,
@@ -810,7 +895,7 @@ function resolveOptions(options: NodeRuntimeOptions): ResolvedOptions {
 }
 
 function assertCapabilities(options: ResolvedOptions, candidate: ProcessMiniAppCandidate): void {
-  if (candidate.hostConnectorPolicy.kind === 'allowlist' && !options.hostConnectorSessionFactory) {
+  if (needsConnectorChannel(candidate) && !options.hostConnectorSessionFactory) {
     throw new MiniAppNodeRuntimeError(
       'HOST_CONNECTOR_UNAVAILABLE',
       'Host Connector session is unavailable',
@@ -829,13 +914,16 @@ async function resolveDataDir(options: ResolvedOptions, pluginId: string): Promi
   return options.resolveRealPath(requested);
 }
 
+/** Connector and Agent access share one `miniapp:connector` IPC session. */
+function needsConnectorChannel(candidate: ProcessMiniAppCandidate): boolean {
+  return (
+    candidate.hostConnectorPolicy.kind === 'allowlist' ||
+    candidate.agentPolicy?.kind === 'allowlist'
+  );
+}
+
 function candidatePort(input: Parameters<typeof prepareRuntime>[0], index: number): number {
-  const preferred = input.preferredPort;
-  const digest = createHash('sha256').update(input.candidate.pluginId).digest();
-  const base =
-    preferred !== undefined && preferred >= PORT_MIN && preferred <= PORT_MAX
-      ? preferred
-      : PORT_MIN + (digest.readUInt32BE(0) % PORT_COUNT);
+  const base = deterministicPort(input);
   let available = 0;
   for (let offset = 0; offset < PORT_COUNT; offset += 1) {
     const port = PORT_MIN + ((base - PORT_MIN + offset) % PORT_COUNT);
@@ -844,6 +932,17 @@ function candidatePort(input: Parameters<typeof prepareRuntime>[0], index: numbe
     available += 1;
   }
   throw new MiniAppNodeRuntimeError('NO_CANDIDATE_PORT', 'No Host-approved port is available');
+}
+
+export function deriveMiniAppNodePort(pluginId: string): number {
+  const digest = createHash('sha256').update(pluginId).digest();
+  return PORT_MIN + (digest.readUInt32BE(0) % PORT_COUNT);
+}
+
+function deterministicPort(input: Parameters<typeof prepareRuntime>[0]): number {
+  const preferred = input.preferredPort;
+  if (preferred !== undefined && preferred >= PORT_MIN && preferred <= PORT_MAX) return preferred;
+  return deriveMiniAppNodePort(input.candidate.pluginId);
 }
 
 function runnerEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {

@@ -111,6 +111,24 @@ export interface LocalTurnPermissionGateOptions {
   readonly sideSessions?: {
     isSideSession(sessionId: string): Promise<boolean>;
   };
+  /**
+   * Decides whether a Mini App ask has anybody who could answer it. Consulted only when a tool would
+   * actually prompt: a Mini App Session created by a plugin has no human behind it unless its running
+   * turn registered a listener or a host chat shows it in a side panel.
+   */
+  readonly miniAppApprovals?: LocalTurnMiniAppApprovalRouter;
+}
+
+/** The Mini App lineage facts the approval router needs; derived from the turn's session record. */
+export interface LocalTurnSessionLineage {
+  /** The session itself is a Mini App root. */
+  readonly miniApp: boolean;
+  readonly parentSessionId?: string | null;
+}
+
+/** Implemented by the Mini App agent gateway; absent when the runtime has no Mini App service. */
+export interface LocalTurnMiniAppApprovalRouter {
+  shouldDenyApproval(sessionId: string, lineage?: LocalTurnSessionLineage): Promise<boolean>;
 }
 
 type PermissionExecutionPlanPort = NonNullable<LocalTurnPermissionGateOptions['executionPlans']>;
@@ -133,6 +151,8 @@ interface BeforeToolCallInput {
   readonly signal?: AbortSignal;
   readonly channelContext?: AgentHostChannelContext;
   readonly trustedExactWritePaths?: readonly string[];
+  /** Mini App lineage of the asking Session; absent when the turn could not supply it. */
+  readonly sessionLineage?: LocalTurnSessionLineage;
   /** Compatible-compatible PreToolUse permission request. Policy deny always wins. */
   readonly preToolPermission?: {
     readonly behavior: 'allow' | 'ask';
@@ -374,6 +394,8 @@ export class LocalTurnPermissionGate {
     if (pluginDecision.updatedInput || pluginDecision.updatedPermissions?.length) {
       return this.resolveRewrittenPermission(input, pluginDecision);
     }
+    const miniAppDenial = await this.resolveMiniAppApproval(input, request);
+    if (miniAppDenial) return miniAppDenial;
     return this.resolveApproval({
       input,
       request,
@@ -381,6 +403,57 @@ export class LocalTurnPermissionGate {
       pluginDecision,
       executionPlan,
     });
+  }
+
+  /**
+   * Looked up only when a tool would actually prompt. A Mini App ask nobody can answer is denied with
+   * a reason the model can act on, instead of parking the turn on a prompt with no reader.
+   */
+  private async resolveMiniAppApproval(
+    input: BeforeToolCallInput,
+    request: PermissionToolRequest,
+  ): Promise<{ readonly block: true; readonly reason: string } | undefined> {
+    const router = this.options.miniAppApprovals;
+    const lineage = input.sessionLineage;
+    if (!router || isOrdinaryRootSession(lineage)) return undefined;
+    try {
+      if (!(await router.shouldDenyApproval(input.sessionId, lineage))) return undefined;
+    } catch {
+      return this.resolveMiniAppLookupFailure(input, request);
+    }
+    this.logEnforcement(input, request, {
+      policy_behavior: 'ask',
+      gate_result: 'blocked',
+      decision_source: 'approval_or_abort',
+      approval_decision: 'deny',
+      rewrite_applied: false,
+      miniapp_denied: true,
+    });
+    return permissionBlock(request.toolName, miniAppDeniedApprovalReason(request.toolName), 'policy');
+  }
+
+  /**
+   * A router failure must not deny an ordinary Session's tool, so only a Session already known to be a
+   * Mini App root fails closed here; everything else continues into the normal approval flow.
+   */
+  private resolveMiniAppLookupFailure(
+    input: BeforeToolCallInput,
+    request: PermissionToolRequest,
+  ): { readonly block: true; readonly reason: string } | undefined {
+    if (input.sessionLineage?.miniApp !== true) return undefined;
+    this.logEnforcement(input, request, {
+      policy_behavior: 'ask',
+      gate_result: 'blocked',
+      decision_source: 'approval_or_abort',
+      approval_decision: 'deny',
+      rewrite_applied: false,
+      miniapp_lookup_failed: true,
+    });
+    return permissionBlock(
+      request.toolName,
+      miniAppDeniedApprovalReason(request.toolName),
+      'policy',
+    );
   }
 
   private async applyPluginPermissionUpdates(
@@ -568,6 +641,14 @@ function preToolHookAllowsWithoutApproval(
   return (
     input.preToolPermission?.behavior === 'allow' && decision.hookAutoApprovalEligible === true
   );
+}
+
+function isOrdinaryRootSession(lineage: LocalTurnSessionLineage | undefined): boolean {
+  return lineage !== undefined && !lineage.miniApp && !lineage.parentSessionId;
+}
+
+function miniAppDeniedApprovalReason(toolName: string): string {
+  return `Nobody can answer this permission request: the Mini App that owns this Session registered no event listener for this run and has not opened the Session in a chat side panel. Continue without ${toolName} or explain what you need.`;
 }
 
 function shouldSkipPermissionCheck(

@@ -1,0 +1,39 @@
+{
+  "name": "@fectivnfy112358/minimax-code-web",
+  "version": "0.1.0-preview.3",
+  "description": "MiniMax Code WebUI with a local, process-based runtime.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fectivnfy112357/minimax-code.git"
+  },
+  "type": "module",
+  "bin": {
+    "mcode-webui": "bin/mcode-webui.mjs"
+  },
+  "files": [
+    "assets/",
+    "bin/",
+    "client/",
+    "server/",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=22.19 <23 || >=24.2 <27"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "node-pty": "1.1.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.1",
+    "utf-8-validate": ">=5.0.2"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}

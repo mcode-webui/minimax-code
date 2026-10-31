@@ -1,0 +1,117 @@
+[
+  {
+    "surface": "chrome",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "entry": "development",
+    "case": "the extension completes the handshake once it can prove the installation key",
+    "settings": {
+      "surface": "chrome",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the handshake completed and the host reported the surface connected",
+    "result": "pass",
+    "at": "2026-10-31T04:22:09.255Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-browser"
+  },
+  {
+    "surface": "chrome",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "entry": "development",
+    "case": "an extension that cannot prove the installation key is refused",
+    "settings": {
+      "surface": "chrome",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": false
+    },
+    "observed": "the host refused the extension and reported no connected surface",
+    "result": "pass",
+    "at": "2026-10-31T04:22:09.558Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-browser"
+  },
+  {
+    "surface": "edge",
+    "browser": "msedge",
+    "browserVersion": "155.0.4283.62",
+    "entry": "development",
+    "case": "the extension completes the handshake once it can prove the installation key",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the handshake completed and the host reported the surface connected",
+    "result": "pass",
+    "at": "2026-10-31T04:22:09.909Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-browser"
+  },
+  {
+    "surface": "edge",
+    "browser": "msedge",
+    "browserVersion": "155.0.4283.62",
+    "entry": "development",
+    "case": "an extension that cannot prove the installation key is refused",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": false
+    },
+    "observed": "the host refused the extension and reported no connected surface",
+    "result": "pass",
+    "at": "2026-10-31T04:22:10.321Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-browser"
+  },
+  {
+    "surface": "edge and chrome",
+    "browser": "chromium and msedge",
+    "browserVersion": "153.0.8010.12 and 155.0.4283.62",
+    "entry": "development",
+    "case": "each browser lands on its own surface when one identity is listed on both",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": true,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development, on both surfaces",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "both browsers were connected, each on its own surface, and each surface's provider belonged to that surface",
+    "result": "pass",
+    "at": "2026-10-31T04:22:11.242Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-browser"
+  }
+]

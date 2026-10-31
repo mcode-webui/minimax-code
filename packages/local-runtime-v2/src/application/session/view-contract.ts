@@ -97,3 +97,53 @@ export type SessionTreeChildView = Pick<
   | "status"
   | "sessionKind"
 > & { compressed: boolean };
+
+/**
+ * The Desktop's project view (`ProjectDetail` in the desktop-service IDL).
+ *
+ * The phone's remote-control project list is keyed by it, so it is part of the
+ * wire contract rather than a UI detail: a project without a key cannot be
+ * addressed, and a project without `displayName` renders as its raw path.
+ */
+export interface ProjectDetail {
+  key: string;
+  projectId?: number;
+  workspaceDir?: string;
+  displayName?: string;
+  archived?: boolean;
+  latestActivityAt?: number;
+  sessionCount?: number;
+  state?: ProjectUserState;
+  extraDataJson?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+/** The per-user project state the Desktop keeps next to the project itself. */
+export interface ProjectUserState {
+  pinned?: boolean;
+  hidden?: boolean;
+  orderIndex?: number;
+  recentAt?: number;
+}
+
+/** A tree node: the session itself plus the children that hang off it. */
+export interface SessionTreeNodeView {
+  session: SessionInfoView;
+  childSessions: SessionTreeChildView[];
+}
+
+/** One project and the sessions that belong to it. */
+export interface ProjectSessionGroup {
+  project: ProjectDetail;
+  sessions: SessionTreeNodeView[];
+  hasMoreSessions: boolean;
+  nextSessionCursor?: string;
+}
+
+/** The Desktop's `ListProjectsResp`: projects, each carrying its own sessions. */
+export interface ListProjectsResp {
+  projects: ProjectSessionGroup[];
+  hasMore: boolean;
+  nextCursor?: string;
+}

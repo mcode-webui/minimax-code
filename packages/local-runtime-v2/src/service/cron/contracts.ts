@@ -32,6 +32,14 @@ export interface CronDefinitionView {
   readonly agentName: string;
   readonly schedule: CronSchedule;
   readonly enabled: boolean;
+  /**
+   * Whether the host that answered this has the armed timer for the definition (ADR 0027).
+   *
+   * Not a property of the task: two scheduler hosts can serve one data directory and only one of
+   * them may hold a given definition's timer. It is the only honest form of "who will fire this"
+   * the runtime can answer, because the job row records no owner.
+   */
+  readonly armed: boolean;
   readonly prompt: string;
   readonly sessionTarget: CronSessionTarget;
   readonly project?: string | null;
@@ -347,6 +355,8 @@ export interface CronRun {
   readonly status: CronRunStatus;
   readonly createdAtMs: number;
   readonly executionClaimedAtMs?: number;
+  /** ADR 0027 R4: who claimed this run. Absent when no host recorded one. */
+  readonly ownerInstanceId?: string;
   readonly deliveredAtMs?: number;
   readonly failedAtMs?: number;
   readonly errorCode?: string;
@@ -370,7 +380,15 @@ export interface CronRunRepository {
   listPage(query: CronRunPageQuery): CronRun[];
   listPending(): CronRun[];
   hasPendingForCronId(cronId: string): boolean;
-  claimExecution(runId: string, claimedAtMs: number): CronRun | undefined;
+  /**
+   * Atomically claims an unclaimed pending run. `claimOwnerId` is the runtime-owner identity of the
+   * claiming host (ADR 0027 R4); a host that passes none leaves the column null.
+   */
+  claimExecution(
+    runId: string,
+    claimedAtMs: number,
+    claimOwnerId?: string,
+  ): CronRun | undefined;
   attachSession(runId: string, sessionId: string): boolean;
   markDelivered(runId: string, deliveredAtMs: number): boolean;
   markFailed(input: MarkCronRunFailedInput): boolean;

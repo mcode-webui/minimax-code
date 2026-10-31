@@ -217,8 +217,12 @@ export interface LocalTurnExecutionInput<
   };
   /** Turn-owned identity + durable surface for user-visible Hook warnings. */
   readonly pluginHookEventReporter?: TurnEventReporter & {
-    /** Present only for the real TUI terminal host. */
-    readonly terminalSequenceSurface?: 'tui';
+    /**
+     * Whether this runtime surface actually executes terminal control sequences.
+     * A capability, not a label: a client named `tui` that runs in a browser cannot
+     * execute them.
+     */
+    readonly executesTerminalControl?: boolean;
   };
   readonly pluginApprovalRequests?: Map<
     string,

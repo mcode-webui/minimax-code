@@ -5,7 +5,11 @@ import type {
   SessionTreePage as GetSessionTreeResp,
   ListSessionsInput as ListSessionsReq,
   SessionPage as ListSessionsResp,
+  SearchSessionsInput,
 } from "../application/session/query-contract.js";
+import type { ProjectListInput } from "../service/session-system/projects/contracts.js";
+import type { SessionQueryApplication } from "../application/session/query-application.js";
+import type { PinnedItemRef } from "../application/session/pin-application.js";
 import type {
   AbortSessionInput as AbortSessionReq,
   AbortSessionResult as AbortSessionResp,
@@ -26,6 +30,10 @@ import type {
   GetLatestPlanReviewInput as GetLatestPlanReviewReq,
   GetMessagesInput as GetMessagesReq,
   GetMessagesResult as GetMessagesResp,
+  GetSessionDiffInput as GetSessionDiffReq,
+  GetSessionDiffResult as GetSessionDiffResp,
+  GetTurnDiffInput as GetTurnDiffReq,
+  GetTurnDiffResult as GetTurnDiffResp,
   GetQuestionnaireResult as GetQuestionnaireResp,
   GetPendingQuestionnaireInput as GetPendingQuestionnaireReq,
   GetPendingQuestionnaireResult as GetPendingQuestionnaireResp,
@@ -54,6 +62,10 @@ import type {
   ReorderQueueResult as ReorderQueueResp,
   RewindSessionInput as RewindSessionReq,
   RewindSessionResult as RewindSessionResp,
+  RevertTurnDiffInput as RevertTurnDiffReq,
+  RevertTurnDiffResult as RevertTurnDiffResp,
+  ReapplyTurnDiffInput as ReapplyTurnDiffReq,
+  ReapplyTurnDiffResult as ReapplyTurnDiffResp,
   RequestCompactionInput as RequestCompactionReq,
   RequestCompactionResult as RequestCompactionResp,
   MutatePluginInput as MutatePluginReq,
@@ -92,16 +104,45 @@ import type {
   ConversationSendOptions,
 } from "../application/conversation/conversation-application.js";
 import type { RuntimeApplications } from "../application/initialize.js";
+import type {
+  ImportSessionTransferRequest as ImportSessionTransferReq,
+  ImportSessionTransferResult as ImportSessionTransferResp,
+  SessionTransferFile,
+} from "../application/session/transfer-application.js";
 import type { LocalRuntimeApplication } from "../application/session/process-local-application-contract.js";
+import type {
+  CreateCronDefinitionCommand,
+  CronDefinitionView,
+  CronPage,
+  CronRunView,
+  CronService,
+  DeleteCronDefinitionCommand,
+  ListCronDefinitionsQuery,
+  ListCronRunsQuery,
+  UpdateCronDefinitionCommand,
+} from "../service/cron/index.js";
+import type { CliManagementApplication } from "../application/cli-management-application.js";
 
 export interface CliServiceOptions {
   readonly applications: RuntimeApplications;
   readonly application: LocalRuntimeApplication;
   readonly conversation: ConversationApplication;
+  readonly management: CliManagementApplication;
+  /**
+   * The v2 Cron service.
+   *
+   * Absent on a host composed without an owned Scheduler, which is why every cron member below
+   * fails closed with one message instead of assuming it. The WebUI reaches scheduled tasks
+   * through this member and never through cron orchestration.
+   */
+  readonly cron?: CronService;
 }
 
 export type CliSendMessageReq = ConversationSendMessageRequest;
 export type CliSendMessageOptions = ConversationSendOptions;
+
+/** The runtime's Mini App Agent application, named once so the facade's signatures derive from it. */
+type MiniAppAgentCapability = NonNullable<LocalRuntimeApplication["miniAppAgent"]>;
 
 /** In-process CLI entry point: call local Application directly, without HTTP or RPC envelopes. */
 export class CliService {
@@ -112,6 +153,43 @@ export class CliService {
     ctx: ProcessLocalContext = {},
   ): Promise<ListSessionsResp> {
     return this.options.applications.session.query.listSessions(ctx, req);
+  }
+
+  searchSessions(req: SearchSessionsInput, ctx: ProcessLocalContext = {}) {
+    return this.options.applications.session.query.searchSessions(ctx, req);
+  }
+
+  getPinnedItemsOrder() {
+    return this.options.applications.session.pin.getOrder();
+  }
+
+  putPinnedItemsOrder(items: readonly PinnedItemRef[]) {
+    return this.options.applications.session.pin.putOrder(items);
+  }
+
+  pinSession(input: { readonly sessionId: string; readonly pinned: boolean; readonly insertIndex?: number }) {
+    return this.options.applications.session.pin.pinSession(input);
+  }
+
+  listVisibleProjects(limit = 100) {
+    return this.options.applications.session.query.listVisibleProjects(limit);
+  }
+
+  /**
+   * The projects together with the sessions under them.
+   *
+   * `listVisibleProjects` answers "which projects exist"; a client that
+   * renders a project's conversations needs the sessions too, and reading them
+   * separately would race with the project page it belongs to.
+   */
+  listProjectGroups(input: ProjectListInput) {
+    return this.options.applications.session.query.listProjectGroups(input);
+  }
+
+  listProjectSessions(
+    ...args: Parameters<SessionQueryApplication["listProjectSessions"]>
+  ) {
+    return this.options.applications.session.query.listProjectSessions(...args);
   }
 
   createSession(
@@ -147,6 +225,108 @@ export class CliService {
     if (!workspaceRoot)
       throw new Error("Session has no workspace for project MCP.");
     return { sessionId, workspaceRoot };
+  }
+
+  /** The Mini App listing the catalogue and the picker both read. */
+  listMiniApps() {
+    return this.requireCapability("miniApps", "Mini App").list();
+  }
+
+  /**
+   * Every installed Mini App, enabled or not.
+   *
+   * The management read: `listMiniApps` answers what this host can start, and a
+   * disabled package is installed but not startable. A surface that shows the
+   * installed set — and offers to enable one of them — needs this one.
+   */
+  listInstalledMiniApps() {
+    return this.requireCapability("miniApps", "Mini App").listInstalled();
+  }
+
+  /**
+   * Starts a Mini App and, when this host has a presenter, shows it. A forwarding call only: the
+   * application owns the lifecycle, and `launch` is server-only coordinates the caller must not forward
+   * to a renderer.
+   */
+  openMiniApp(input: { readonly pluginId: string; readonly signal?: AbortSignal }) {
+    return this.requireCapability("miniApps", "Mini App").open(input);
+  }
+
+  stopMiniApp(input: { readonly pluginId: string; readonly signal?: AbortSignal }) {
+    return this.requireCapability("miniApps", "Mini App").stop(input);
+  }
+
+  /**
+   * The Mini App Agent API, as the page bridge's host half reaches it.
+   *
+   * A forwarding facade only: the application (`miniAppAgent`) already owns arena policy,
+   * per-plugin concurrency, session ownership and the turn algorithm, and every one of these
+   * methods is one call into it. What the caller must not do is spell identity — `caller` is the
+   * `{ pluginId, runId, hostSessionId }` the Host resolved from the view it framed, and `runId` is
+   * the launch's own process generation, because that is what the registered arena is keyed on.
+   *
+   * The refusal is the runtime's own `MiniAppAgentError`; mapping it to a renderer-safe failure
+   * code belongs to the layer that speaks to a page, not here.
+   */
+  private miniAppAgent() {
+    return this.requireCapability("miniAppAgent", "Mini App Agent");
+  }
+
+  /** One `run` turn. Events arrive only when the caller passes `onEvent`. */
+  runMiniAppAgentTurn(input: Parameters<MiniAppAgentCapability["run"]>[0]) {
+    return this.miniAppAgent().run(input);
+  }
+
+  /** The continuation turn a questionnaire answer starts; followed like `run`. */
+  answerMiniAppAgentQuestion(input: Parameters<MiniAppAgentCapability["answer"]>[0]) {
+    return this.miniAppAgent().answer(input);
+  }
+
+  /** Decides one pending permission ask: `allowOnce` or `deny`, never a global rule. */
+  replyMiniAppAgentPermission(input: Parameters<MiniAppAgentCapability["reply"]>[0]) {
+    return this.miniAppAgent().reply(input);
+  }
+
+  /** Ownership check for showing one of the plugin's sessions in the host's chat surface. */
+  openMiniAppAgentSession(input: Parameters<MiniAppAgentCapability["open"]>[0]) {
+    return this.miniAppAgent().open(input);
+  }
+
+  /** The host's UI now shows that session, so its asks are answerable. Idempotent. */
+  panelOpenedMiniAppAgentSession(
+    input: Parameters<MiniAppAgentCapability["panelOpened"]>[0],
+  ) {
+    return this.miniAppAgent().panelOpened(input);
+  }
+
+  /** The host's UI stopped showing it. Idempotent. */
+  panelClosedMiniAppAgentSession(
+    input: Parameters<MiniAppAgentCapability["panelClosed"]>[0],
+  ) {
+    return this.miniAppAgent().panelClosed(input);
+  }
+
+  /** The enabled models a run may switch to, the default, and a page's host model. */
+  listMiniAppAgentModels(input: Parameters<MiniAppAgentCapability["models"]>[0]) {
+    return this.miniAppAgent().models(input);
+  }
+
+  /** The agents a new Mini App session may be created for. */
+  listMiniAppAgentAgents(input: Parameters<MiniAppAgentCapability["agents"]>[0]) {
+    return this.miniAppAgent().agents(input);
+  }
+
+  listMiniAppAgentSessions(input: Parameters<MiniAppAgentCapability["sessions"]>[0]) {
+    return this.miniAppAgent().sessions(input);
+  }
+
+  readMiniAppAgentSession(input: Parameters<MiniAppAgentCapability["session"]>[0]) {
+    return this.miniAppAgent().session(input);
+  }
+
+  /** A session without a turn; `runMiniAppAgentTurn({ sessionId })` continues it. */
+  createMiniAppAgentSession(input: Parameters<MiniAppAgentCapability["create"]>[0]) {
+    return this.miniAppAgent().create(input);
   }
 
   clearSessionMcpServers(sessionId: string): Promise<void> {
@@ -195,6 +375,34 @@ export class CliService {
     return this.options.applications.session.content.getMessages(ctx, req);
   }
 
+  getSessionDiff(
+    req: GetSessionDiffReq,
+    ctx: ProcessLocalContext = {},
+  ): Promise<GetSessionDiffResp> {
+    return this.options.applications.session.diff.getSessionDiff(ctx, req);
+  }
+
+  getTurnDiff(
+    req: GetTurnDiffReq,
+    ctx: ProcessLocalContext = {},
+  ): Promise<GetTurnDiffResp> {
+    return this.options.applications.session.diff.getTurnDiff(ctx, req);
+  }
+
+  revertTurnDiff(
+    req: RevertTurnDiffReq,
+    ctx: ProcessLocalContext = {},
+  ): Promise<RevertTurnDiffResp> {
+    return this.options.applications.session.diff.revertTurnDiff(ctx, req);
+  }
+
+  reapplyTurnDiff(
+    req: ReapplyTurnDiffReq,
+    ctx: ProcessLocalContext = {},
+  ): Promise<ReapplyTurnDiffResp> {
+    return this.options.applications.session.diff.reapplyTurnDiff(ctx, req);
+  }
+
   listSessionInputSummaries(
     req: ListSessionInputSummariesReq,
     ctx: ProcessLocalContext = {},
@@ -223,6 +431,22 @@ export class CliService {
       ctx,
       req,
     );
+  }
+
+  /**
+   * Both storage layers of a session, in a form `importSessionTransfer` can
+   * read back. Not the same thing as `getMessages`: that one returns a view
+   * prepared for rendering, which drops the canonical receipts on compaction
+   * and fork-origin rows.
+   */
+  exportSessionTransfer(sessionId: string): Promise<SessionTransferFile> {
+    return this.options.applications.session.transfer.read(sessionId);
+  }
+
+  importSessionTransfer(
+    req: ImportSessionTransferReq,
+  ): Promise<ImportSessionTransferResp> {
+    return this.options.applications.session.transfer.write(req);
   }
 
   getSessionRewindPreview(
@@ -514,6 +738,163 @@ export class CliService {
     );
   }
 
+  getWorkspaceReviewSummary(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getReviewSummary)
+      throw new Error("Runtime does not expose Workspace review summaries.");
+    return git.getReviewSummary(workspaceDir, { type: "workspace" });
+  }
+
+  listWorkspaceReviewFileDiffs(input: {
+    workspaceDir: string;
+    reviewSnapshotId: string;
+    fileIds?: string[];
+  }) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.listReviewFileDiffs)
+      throw new Error("Runtime does not expose Workspace review file diffs.");
+    return git.listReviewFileDiffs(
+      input.workspaceDir,
+      { type: "workspace" },
+      {
+        reviewSnapshotId: input.reviewSnapshotId,
+        ...(input.fileIds ? { fileIds: input.fileIds } : {}),
+      },
+    );
+  }
+
+  getWorkspaceReviewFileContent(input: {
+    workspaceDir: string;
+    reviewSnapshotId: string;
+    fileId: string;
+    side: "old" | "new";
+  }) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getReviewFileContent)
+      throw new Error("Runtime does not expose Workspace review file content.");
+    return git.getReviewFileContent(
+      input.workspaceDir,
+      { type: "workspace" },
+      {
+        reviewSnapshotId: input.reviewSnapshotId,
+        fileId: input.fileId,
+        side: input.side,
+      },
+    );
+  }
+
+  searchWorkspaceReviewDiffs(input: {
+    workspaceDir: string;
+    reviewSnapshotId: string;
+    query: string;
+    includeUntrackedFiles: boolean;
+    pageIndex?: number;
+    pageSize?: number;
+  }) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.searchReviewDiffs)
+      throw new Error("Runtime does not expose Workspace review search.");
+    return git.searchReviewDiffs(
+      input.workspaceDir,
+      { type: "workspace" },
+      {
+        reviewSnapshotId: input.reviewSnapshotId,
+        query: input.query,
+        includeUntrackedFiles: input.includeUntrackedFiles,
+        ...(input.pageIndex !== undefined
+          ? { pageIndex: input.pageIndex }
+          : {}),
+        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {}),
+      },
+    );
+  }
+
+  /**
+   * The workspace's branches.
+   *
+   * A client that offers a branch picker has to ask the workspace which
+   * branches exist before it can offer one; the runtime owns that answer and
+   * the client only forwards it.
+   */
+  async getWorkspaceGitBranches(workspaceDir: string, includeRemote = false) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getBranches)
+      throw new Error("Runtime does not expose Workspace git branches.");
+    return git.getBranches(workspaceDir, includeRemote);
+  }
+
+  /** The branches plus the worktrees that carry them. */
+  async getWorkspaceGitBranchPicker(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getBranchPicker)
+      throw new Error("Runtime does not expose Workspace git branch picker.");
+    return git.getBranchPicker(workspaceDir);
+  }
+
+  /** The branch a fresh workspace would start from. */
+  async getWorkspaceGitDefaultBranch(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.getDefaultBranch)
+      throw new Error("Runtime does not expose Workspace git default branch.");
+    return git.getDefaultBranch(workspaceDir);
+  }
+
+  /** Whether the workspace is a git repository at all. */
+  async getWorkspaceGitProbe(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.probe)
+      throw new Error("Runtime does not expose Workspace git probe.");
+    return git.probe(workspaceDir);
+  }
+
+  /** The worktrees of the workspace. */
+  async getWorkspaceGitWorktrees(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.listWorktrees)
+      throw new Error("Runtime does not expose Workspace git worktrees.");
+    return git.listWorktrees(workspaceDir);
+  }
+
+  async checkoutWorkspaceGitBranch(workspaceDir: string, branch: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (!git.checkout) throw new Error("Runtime does not expose Workspace git checkout.");
+    return git.checkout(workspaceDir, branch);
+  }
+
+  async getWorkspaceGitEnvironment(workspaceDir: string) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    const [metadata, changes] = await Promise.all([
+      git.getMetadata(workspaceDir),
+      git.getChanges
+        ? git.getChanges(workspaceDir, "full")
+        : Promise.resolve({ isGitRepo: false }),
+    ]);
+    return { metadata, changes };
+  }
+
+  mutateWorkspaceGit(input: {
+    workspaceDir: string;
+    action: "commit" | "commitAndPush" | "push";
+    message?: string;
+  }) {
+    const git = this.requireCapability("workspace", "Workspace").git;
+    if (input.action === "push") {
+      if (!git.push)
+        throw new Error("Runtime does not expose Workspace git push.");
+      return git.push(input.workspaceDir);
+    }
+    if (!input.message?.trim())
+      throw new Error("A commit message is required.");
+    if (input.action === "commitAndPush") {
+      if (!git.commitAndPush)
+        throw new Error("Runtime does not expose Workspace git commitAndPush.");
+      return git.commitAndPush(input.workspaceDir, input.message.trim(), true);
+    }
+    if (!git.commit)
+      throw new Error("Runtime does not expose Workspace git commit.");
+    return git.commit(input.workspaceDir, input.message.trim(), true);
+  }
+
   /**
    * Reads the review link recorded for a workspace branch.
    *
@@ -560,6 +941,18 @@ export class CliService {
     if (!searchFiles)
       throw new Error("Runtime does not expose Workspace file search.");
     return searchFiles(input);
+  }
+
+  readWorkspaceFile(input: { workspaceDir: string; path: string }) {
+    return this.options.management.readWorkspaceFile(input);
+  }
+
+  readCanvas(input: { sessionId: string }) {
+    return this.options.management.readCanvas(input);
+  }
+
+  applyCanvas(input: Parameters<CliManagementApplication["applyCanvas"]>[0]) {
+    return this.options.management.applyCanvas(input);
   }
 
   getAccountStatus(
@@ -623,6 +1016,12 @@ export class CliService {
     return this.options.application.plugins.uninstallPlugin(req);
   }
 
+  pluginManagement(
+    request: Parameters<CliManagementApplication["pluginManagement"]>[0],
+  ) {
+    return this.options.management.pluginManagement(request);
+  }
+
   getPermissionMode() {
     return this.requireCapability(
       "configuration",
@@ -639,6 +1038,68 @@ export class CliService {
       "configuration",
       "Configuration",
     ).setPermissionMode(input);
+  }
+
+  /**
+   * The memory switches are optional on the capability, so a host that
+   * predates the surface must produce one clear failure here rather than a
+   * `TypeError` from calling `undefined`. Absence means "this host cannot
+   * answer" — it is deliberately not reported as a boolean value, because
+   * `false` would read as "the user turned memory off".
+   */
+  getMemorySettings(): Promise<{ enabled: boolean; proactive: boolean }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.getMemorySettings)
+      throw new Error("Runtime host does not expose memory settings");
+    return configuration.getMemorySettings();
+  }
+
+  setMemorySettings(
+    input: Parameters<
+      NonNullable<
+        NonNullable<LocalRuntimeApplication["configuration"]>["setMemorySettings"]
+      >
+    >[0],
+  ): Promise<{ enabled: boolean; proactive: boolean }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.setMemorySettings)
+      throw new Error("Runtime host does not expose memory settings");
+    return configuration.setMemorySettings(input);
+  }
+
+  /**
+   * The browser authorization switches, optional on the capability for the same
+   * reason the memory pair is: a host that predates the surface has to fail
+   * closed with one clear message rather than crash on an absent method.
+   */
+  getBrowserAuthorization(): Promise<{
+    isolatedChromium: boolean;
+    edge: boolean;
+    chrome: boolean;
+    fullCdp: boolean;
+  }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.getBrowserAuthorization)
+      throw new Error("Runtime host does not expose browser authorization");
+    return configuration.getBrowserAuthorization();
+  }
+
+  setBrowserAuthorization(
+    input: Parameters<
+      NonNullable<
+        NonNullable<LocalRuntimeApplication["configuration"]>["setBrowserAuthorization"]
+      >
+    >[0],
+  ): Promise<{
+    isolatedChromium: boolean;
+    edge: boolean;
+    chrome: boolean;
+    fullCdp: boolean;
+  }> {
+    const configuration = this.requireCapability("configuration", "Configuration");
+    if (!configuration.setBrowserAuthorization)
+      throw new Error("Runtime host does not expose browser authorization");
+    return configuration.setBrowserAuthorization(input);
   }
 
   listModels(
@@ -815,6 +1276,39 @@ export class CliService {
     ).testProvider(input);
   }
 
+  testUserModelCandidate(
+    input: Parameters<
+      NonNullable<
+        LocalRuntimeApplication["modelProviders"]
+      >["testUserModelCandidate"]
+    >[0],
+  ) {
+    return this.requireCapability(
+      "modelProviders",
+      "Model Provider",
+    ).testUserModelCandidate(input);
+  }
+
+  revealModelProviderApiKey(
+    input: Parameters<
+      NonNullable<
+        LocalRuntimeApplication["modelProviders"]
+      >["revealModelProviderApiKey"]
+    >[0],
+  ) {
+    return this.requireCapability(
+      "modelProviders",
+      "Model Provider",
+    ).revealModelProviderApiKey(input);
+  }
+
+  refreshModels() {
+    return this.requireCapability(
+      "modelProviders",
+      "Model Provider",
+    ).refreshModels();
+  }
+
   testUserModel(
     input: Parameters<
       NonNullable<LocalRuntimeApplication["modelProviders"]>["testModel"]
@@ -859,6 +1353,45 @@ export class CliService {
     return mcp.listMcpCapabilities
       ? mcp.listMcpCapabilities({ keyword: input.keyword, context })
       : mcp.listLocalMcpServers(input);
+  }
+
+  /**
+   * The six scheduled-task members.
+   *
+   * Each one forwards to the v2 Cron service and does nothing else: the service already owns
+   * definition storage, the scheduler arming and the run queue, and a second layer of decisions
+   * here would be a second authority over them. A host composed without a Scheduler has no Cron
+   * service, and every member then fails with the same sentence rather than acting on an
+   * undefined.
+   */
+  listCronTasks(query: ListCronDefinitionsQuery = {}): CronPage<CronDefinitionView> {
+    return this.requireCron().listDefinitions(query);
+  }
+
+  createCronTask(command: CreateCronDefinitionCommand): Promise<CronDefinitionView> {
+    return this.requireCron().createDefinition(command);
+  }
+
+  updateCronTask(command: UpdateCronDefinitionCommand): Promise<CronDefinitionView> {
+    return this.requireCron().updateDefinition(command);
+  }
+
+  async deleteCronTask(command: DeleteCronDefinitionCommand): Promise<void> {
+    await this.requireCron().deleteDefinition(command);
+  }
+
+  runCronTaskNow(cronId: string): Promise<CronRunView> {
+    return this.requireCron().triggerManualRun(cronId);
+  }
+
+  listCronTaskRuns(query: ListCronRunsQuery): CronPage<CronRunView> {
+    return this.requireCron().listRuns(query);
+  }
+
+  private requireCron(): CronService {
+    const cron = this.options.cron;
+    if (!cron) throw new Error("Runtime does not expose the Cron service.");
+    return cron;
   }
 
   private requireQuestionnaires(): NonNullable<

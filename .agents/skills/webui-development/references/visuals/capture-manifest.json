@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-10-19T03:08:57.024Z",
+  "head": "7574e4b07579570c08fd1d83af67cc92294de75d",
+  "trackedChanges": "",
+  "evidence": "Built client with repository synthetic browser fixture; no real host, account or provider",
+  "inputHashes": {
+    "dist-webui/client/client.js": "0e6375d10843466d4ee4da08f608cb353a63376cc0c1ac2e76a801fe585fe3f6",
+    "dist-webui/client/styles.css": "ffdcfb9081d9dc3e4a07dabe00a1b6730b7726ab7ef465ee71341017046d7e9e",
+    "packages/webui/test/browser/fixture.mjs": "525cabb675379adea2ce17ff7d70127cbfecc97f4f5a1f6d67674f237aa83a59"
+  },
+  "captures": [
+    {
+      "file": "home-light.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light"
+    },
+    {
+      "file": "conversation-light.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light"
+    },
+    {
+      "file": "settings-light.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light"
+    },
+    {
+      "file": "settings-dark.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark"
+    },
+    {
+      "file": "conversation-dark.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark"
+    },
+    {
+      "file": "home-dark.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark"
+    }
+  ],
+  "pageErrors": []
+}

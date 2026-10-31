@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "MiniMax Code Browser Bridge",
+  "version": "0.1.0",
+  "description": "Pairs this browser with a local MiniMax Code WebUI host so the person and the Agent can operate the same browser session.",
+  "minimum_chrome_version": "116",
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "activeTab",
+    "debugger",
+    "scripting",
+    "storage",
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

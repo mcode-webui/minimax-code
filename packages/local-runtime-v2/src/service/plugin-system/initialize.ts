@@ -75,7 +75,11 @@ export function initializePluginService(
     previewSecret: process.env.PREVIEW_SECRET,
     lane: process.env.MAVIS_PLUGIN_CLOUD_LANE,
   });
-  const registryClient = new PluginRegistryClient(cloudTransport);
+  const registryClient = new PluginRegistryClient(
+    cloudTransport,
+    compatibility.marketplaceVisibilityVersion,
+    metricTags,
+  );
   const githubImporter = new GithubPluginImporter({
     dataDir: compatibility.dataDir,
     fetchImpl: compatibility.fetchImpl,
@@ -167,6 +171,8 @@ export function initializePluginService(
       system.miniAppPublication.isAcceptedMiniAppRunning(pluginId),
     listAvailableMiniApps: () =>
       system.miniAppPublication.listAvailableMiniApps(),
+    listInstalledMiniApps: () =>
+      system.miniAppPublication.listInstalledMiniApps(),
     activateMiniApp: (input) => system.miniAppPublication.activate(input),
     initializeWorkspaceMiniApp: (input) =>
       system.miniAppPublication.initializeWorkspace(input),

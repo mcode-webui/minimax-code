@@ -2,6 +2,7 @@ import { join } from 'node:path';
 
 import type { AppDb } from '../../infra/db/client.js';
 import type { HostProcessConnectorGateway } from '../host-connector-system/index.js';
+import type { MiniAppAgentGateway } from './agent/contracts.js';
 import type { MiniAppCandidate, MiniAppSupervisor } from './contracts.js';
 import {
   initializeMiniAppSupervisor,
@@ -27,13 +28,15 @@ export interface RuntimeMiniAppServiceOptions {
 }
 
 export function resolveRuntimeMiniAppOptions(
-  input: RuntimeMiniAppServiceOptions & { readonly runtimeOwnerKind?: string },
+  input: RuntimeMiniAppServiceOptions & {
+    /** The runtime owner policy's `wiring.miniAppService` cell for this host. */
+    readonly miniAppService?: boolean;
+  },
 ): RuntimeMiniAppOptions | undefined {
-  if (input.runtimeOwnerKind !== undefined && input.runtimeOwnerKind !== 'electron') {
-    return undefined;
-  }
+  // Explicit options stay reachable: a caller that constructs the runtime with them has asked for the
+  // service by name, including the case with no declared owner kind.
   if (input.miniApp) return input.miniApp;
-  return input.runtimeOwnerKind === 'electron' ? {} : undefined;
+  return input.miniAppService === true ? {} : undefined;
 }
 
 export function createDeferredRuntimeOwnersLifecycle(): {
@@ -79,6 +82,8 @@ export async function composeMiniAppRuntimeCapability(input: {
   readonly dataDir: string;
   readonly nowMs: () => number;
   readonly plugin: MiniAppPluginPublicationCapability;
+  /** Passed through so the child IPC connector can register its arena on the real gateway. */
+  readonly agentGateway?: MiniAppAgentGateway;
   readonly readyOwners: () => Promise<void>;
   readonly closeOwners: () => Promise<void>;
 }): Promise<{
@@ -93,6 +98,7 @@ export async function composeMiniAppRuntimeCapability(input: {
         ...input.options,
         db: input.db,
         connectorGateway: input.plugin.hostConnectorGateway,
+        ...(input.agentGateway ? { agentGateway: input.agentGateway } : {}),
         verifyCandidate: (candidate) => input.plugin.verifyMiniAppCandidate(candidate),
         materializePackage: (materialization) =>
           input.plugin.materializeMiniAppRuntimePackage(materialization),

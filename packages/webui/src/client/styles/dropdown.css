@@ -1,0 +1,165 @@
+/*
+ * The shared dropdown surface.
+ *
+ * Every floating popup in the client hangs off the same skeleton
+ * (`client/ui/Dropdown.tsx`), so the surface — the background, the border, the
+ * radius, the shadow and the motion — is stated once, here, and a surface's
+ * own CSS file only describes what is specific to what the popup holds.
+ *
+ * Placement is not here: the popup is positioned in viewport coordinates by
+ * the skeleton, because a popup that positions itself with `absolute` is
+ * clipped by every scrolling ancestor between it and its trigger.
+ */
+
+@layer components {
+
+  .webui-dropdown {
+    position: relative;
+  }
+
+  /*
+   * A popup with no trigger.
+   *
+   * A list that follows the caret in a textarea, or a panel that another
+   * surface opens, has no button to hang on — but it still needs the shared
+   * surface, the shared motion and the shared dismissal. Its wrapper then
+   * holds nothing, so it must not take up room in its parent's layout:
+   * `display: contents` keeps the element in the DOM (the dismissal still
+   * asks it what it contains) while giving it no box of its own.
+   */
+  .webui-dropdown--detached {
+    display: contents;
+  }
+
+  .webui-dropdown-popup {
+    position: fixed;
+    z-index: 120;
+    border: 1px solid var(--border_light);
+    border-radius: 12px;
+    background: var(--bg_default_primary);
+    color: var(--text_default_primary);
+    font-size: 14px;
+    line-height: 20px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+    animation: webui-dropdown-in var(--webui-motion-duration-surface) var(--webui-motion-ease-enter);
+  }
+
+  /*
+   * A fly-out that opens on hover rather than on a click.
+   *
+   * It is not a dropdown: there is no trigger to toggle and no outside press
+   * to dismiss it, because it hangs off a menu row and has to stay open while
+   * the pointer is on it. But it is the same surface, so it carries the same
+   * look and the same motion — a reader who sees a floating panel in this
+   * client sees one panel, not two.
+   */
+  .webui-dropdown-surface {
+    border: 1px solid var(--border_light);
+    border-radius: 12px;
+    background: var(--bg_default_primary);
+    color: var(--text_default_primary);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+    animation: webui-dropdown-in var(--webui-motion-duration-surface) var(--webui-motion-ease-enter);
+  }
+
+  /*
+   * The exit animation. The skeleton keeps the popup mounted for exactly this
+   * long, so the surface fades out instead of vanishing; `--webui-dropdown-exit-duration`
+   * is the same number the skeleton waits for.
+   *
+   * `pointer-events: none` while it leaves: the popup that dismisses on an
+   * outside press is still on screen while it fades, and a popup that is still
+   * on screen must not catch the click that was aimed at what was underneath it.
+   */
+  .webui-dropdown-popup.is-leaving {
+    pointer-events: none;
+    animation: webui-dropdown-out var(--webui-dropdown-exit-duration, var(--webui-motion-duration-popup-exit))
+      var(--webui-motion-ease-exit) forwards;
+  }
+
+  /*
+   * The motion: the surface fades AND SLIDES, and it is never scaled.
+   *
+   * The scale is what a reader saw as *the text moving*: a popup that enters
+   * at `scale(.98)` draws every label inside it at 98% for the length of the
+   * animation and at 100% afterwards, so the words squashed and straightened
+   * themselves under the eye. A slide moves the popup and its text together,
+   * which reads as one panel arriving; a scale redraws the text, which reads
+   * as the text flinching. So the slide stays and the scale goes.
+   *
+   * The slide follows the side the popup actually opened on, which the
+   * skeleton writes into `data-webui-dropdown-side`: a panel that opens below
+   * its trigger comes down from above it, and a panel that opens above it
+   * comes up from below. One shared slide cannot be right for both, and
+   * getting it wrong is what makes a popup look like it is falling.
+   */
+  @keyframes webui-dropdown-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes webui-dropdown-in-reverse {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes webui-dropdown-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  @keyframes webui-dropdown-out-reverse {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  /* The popup that opened ABOVE its trigger (or to its left) slides the other
+   * way. The attribute is the side the popup ended up on, so a popup that
+   * flipped because it did not fit animates the way it actually opened. */
+  .webui-dropdown-popup[data-webui-dropdown-side="top"],
+  .webui-dropdown-popup[data-webui-dropdown-side="left"] {
+    animation-name: webui-dropdown-in-reverse;
+  }
+
+  .webui-dropdown-popup.is-leaving[data-webui-dropdown-side="top"],
+  .webui-dropdown-popup.is-leaving[data-webui-dropdown-side="left"] {
+    animation-name: webui-dropdown-out-reverse;
+  }
+
+  /*
+   * A reader who asked for less motion gets none: the popup appears and
+   * disappears outright. The skeleton still unmounts it on its own timer, so
+   * the popup does not linger.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .webui-dropdown-popup,
+    .webui-dropdown-popup.is-leaving,
+    .webui-dropdown-surface {
+      animation: none;
+    }
+  }
+}

@@ -1,0 +1,256 @@
+/*
+ * The field contract's own arrangement (#288, ADR 0028 § Shared contracts).
+ *
+ * A field is a label, an optional description, an optional error and a control.
+ * These rules own the common control shape and the arrangement of label,
+ * description, error and control. A business owns form submission, validation
+ * rules, pending/dirty state and its field layout.
+ */
+
+@layer components {
+  .webui-control {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid var(--border_default);
+    border-radius: 9px;
+    background: var(--bg_default_primary);
+    padding: 9px 12px;
+    color: var(--text_default_primary);
+    font: inherit;
+  }
+  .webui-control:focus-visible {
+    border-color: var(--border_accent);
+    outline: 2px solid var(--border_accent);
+    outline-offset: 1px;
+  }
+  .webui-control:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+  .webui-control--compact {
+    min-height: 40px;
+    border-radius: 8px;
+    padding: 0 12px;
+  }
+  .webui-control--dense {
+    min-height: 36px;
+    border-radius: 8px;
+    padding: 0 10px;
+  }
+  .webui-control--bare {
+    width: auto;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+  .webui-control--text-small { font-size: var(--size_12); }
+  .webui-control--text-large { font-size: var(--size_16); }
+  .webui-control--text-secondary { color: var(--text_default_secondary); }
+  .webui-control--custom-chevron {
+    min-height: 36px;
+    appearance: none;
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_8);
+    background: transparent;
+    padding: 0 32px 0 11px;
+  }
+  .webui-control::placeholder {
+    color: var(--text_default_tertiary);
+  }
+  .webui-control--multiline {
+    min-height: 180px;
+    resize: vertical;
+  }
+  .webui-control--multiline.webui-control--compact {
+    min-height: 72px;
+  }
+  .webui-control--large {
+    min-height: 240px;
+  }
+  .webui-control--document {
+    height: auto;
+    field-sizing: content;
+    min-height: 144px;
+    max-height: 200px;
+    resize: none;
+  }
+  .webui-control--document-appearance {
+    border: 0;
+    outline: none;
+    background: var(--bg_grouped_tertiary);
+    border-radius: var(--radius_16);
+    padding: 10px var(--spacing_16);
+    color: var(--text_default_primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--size_12);
+    line-height: var(--line_height_20);
+  }
+  .webui-control--document-appearance::placeholder {
+    color: var(--text_default_tertiary);
+  }
+  .webui-checkbox {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    accent-color: var(--border_accent);
+  }
+  .webui-checkbox:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 2px;
+  }
+  .webui-radio {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    accent-color: var(--border_accent);
+  }
+  .webui-radio:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 2px;
+  }
+  .webui-file-input {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .webui-search-field {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--spacing_8);
+    border: 1px solid var(--border_default);
+    background: var(--bg_default_primary);
+    color: var(--text_default_tertiary);
+  }
+  .webui-search-field--regular {
+    height: 40px;
+    border-radius: 10px;
+    padding: 0 var(--spacing_12);
+  }
+  .webui-search-field--compact {
+    height: 38px;
+    border-radius: 12px;
+    padding: 0 var(--spacing_12);
+    color: var(--text_default_secondary);
+  }
+  .webui-search-field:focus-within { border-color: var(--border_accent); }
+  .webui-search-field-icon { display: flex; flex: none; align-items: center; }
+  .webui-search-field-icon > svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.6;
+  }
+  .webui-search-field-control { flex: 1 1 auto; }
+
+  .webui-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_6);
+    min-width: 0;
+  }
+  .webui-field--gap-compact { gap: var(--spacing_6); }
+  .webui-field--gap-small { gap: var(--spacing_8); }
+  /* The field owns the arrangement and not a failing colour. `inherit` was wrong in
+   * practice: inside the provider dialog the row's colour is a secondary token that
+   * measures under the threshold in the dark theme, so a label that inherited it
+   * inherited the failure. The primary text token is the one every surface proves. */
+  .webui-field-label {
+    color: var(--text_default_primary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+  .webui-field-required {
+    color: var(--text_status_error);
+  }
+  /* The surface's own text colour: `--text_default_secondary` measures under the
+   * threshold on the dialog background in the dark theme, and a field that ships
+   * its own failing colour would be the contract making a surface worse. */
+  .webui-field-description {
+    color: var(--text_default_primary);
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .webui-field-error {
+    color: var(--text_status_error);
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .webui-field-control {
+    display: flex;
+    min-width: 0;
+  }
+  /* A settings row: the text on the left, the control on the right. */
+  .webui-field--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .webui-field--row .webui-field-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .webui-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .webui-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* The toggle switch: the shared control's own appearance.
+   *
+   * These rules lived in `features/settings/ui/settings.css`, which meant a
+   * shared component was painted by one business's stylesheet. They moved here
+   * with the declarations they had; the three literal colours became the tokens
+   * that already held those values (`--opacity_black_1_8` is `#0a0a0a14`,
+   * `--blue_400` is `#0094fc`). */
+  .webui-toggle-switch {
+    position: relative;
+    display: inline-flex;
+    width: 40px;
+    height: 20px;
+    flex: 0 0 40px;
+    align-items: center;
+    border: 0;
+    border-radius: var(--radius_full);
+    background: var(--opacity_black_1_8);
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 200ms ease;
+  }
+  .webui-toggle-switch > span {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    display: block;
+    width: 18px;
+    height: 10px;
+    border-radius: var(--radius_full);
+    background: #fff;
+    box-shadow: none;
+    transition: transform 200ms ease;
+  }
+  .webui-toggle-switch.is-checked { background: var(--blue_400); }
+  .webui-toggle-switch.is-checked > span { transform: translateX(12px); }
+  .webui-toggle-switch:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
+  .webui-toggle-switch:disabled { cursor: default; opacity: 0.6; }
+}

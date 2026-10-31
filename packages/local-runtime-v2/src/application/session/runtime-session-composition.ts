@@ -1,3 +1,4 @@
+import type { RuntimeOwnerPolicy } from '@mavis/local-runtime';
 import { isLocalSourceProvenanceEnabled } from '@mavis/config';
 import type { InternalTurnPromptReadRegistry } from '@mavis/agent-runtime';
 import type { GlobalEventInput } from '@mavis/shared/global-events';
@@ -86,6 +87,8 @@ export interface RuntimeSessionCompositionInput {
   readonly metrics?: CronMetricsClient;
   readonly runtimeOwnerKind?: string;
   readonly capabilityProfile?: 'cli';
+  /** Policy resolved once by the composition root. */
+  readonly ownerPolicy: RuntimeOwnerPolicy;
   readonly systemPromptOverrides?: SystemPromptOverrides;
   readonly runtimeOwnerIdentity: Parameters<
     typeof initializeSessionSystem
@@ -103,7 +106,7 @@ export interface RuntimeSessionCompositionInput {
 export function createProductionSessionComposition(
   input: RuntimeSessionCompositionInput,
 ): ProductionSessionComposition {
-  const tuiProductPolicy = input.runtimeOwnerKind === 'tui';
+  const tuiProductPolicy = input.ownerPolicy.execution.reviewPolicy === 'tui';
   let executionSessionSystem: SessionSystemOwner | undefined;
   const product = createRuntimeAgentProduct({
     baseProduct: input.baseProduct,
@@ -121,6 +124,7 @@ export function createProductionSessionComposition(
     nowMs: input.nowMs,
     runtimeOwnerKind: input.runtimeOwnerKind,
     capabilityProfile: input.capabilityProfile,
+    ownerPolicy: input.ownerPolicy,
     miniappAvailable: input.miniappAvailable,
     browserUse: input.browserUse,
     implicitCustomProviderThinking: tuiProductPolicy,
@@ -168,6 +172,7 @@ export function createProductionSessionComposition(
     defaultWorkspaceDir: input.compatibility.workspace.defaultDirectory,
     titlePolicy: createSessionTitlePolicy({
       runtimeOwnerKind: input.runtimeOwnerKind,
+      ownerPolicy: input.ownerPolicy,
       config: input.modelConfig.read,
       safety: input.safety,
       readDefinition: (sessionId) =>

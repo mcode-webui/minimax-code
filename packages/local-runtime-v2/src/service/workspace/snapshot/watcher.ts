@@ -1,6 +1,6 @@
 import { watch, type FSWatcher, type Stats } from 'node:fs';
 import { lstat, readFile, realpath, stat } from 'node:fs/promises';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import type {
   WorkspaceGitChangeKind,
@@ -182,9 +182,20 @@ class WorkspaceGitWatcherCoordinator implements WorkspaceGitWatchHandle {
   };
 
   private handleWorkspaceGitPath(normalized: string): void {
-    if (normalized !== '.git' && this.repositoryWatchers.length > 0) return;
+    const repositoryPath = normalized === '.git' ? '' : normalized.slice('.git/'.length);
+    const layoutMayHaveChanged =
+      repositoryPath === 'commondir' ||
+      repositoryPath === 'gitdir' ||
+      repositoryPath === 'refs' ||
+      repositoryPath === 'info';
+    if (
+      normalized !== '.git' &&
+      !this.isRelevantRepositoryPath(repositoryPath, false, layoutMayHaveChanged)
+    ) {
+      return;
+    }
     this.pendingKind = 'repository';
-    this.requestRepositoryRebind();
+    if (normalized === '.git' || layoutMayHaveChanged) this.requestRepositoryRebind();
     this.markPotential();
   }
 
@@ -282,21 +293,16 @@ class WorkspaceGitWatcherCoordinator implements WorkspaceGitWatchHandle {
     layout: GitDirectoryLayout,
     onError: (error: unknown) => void,
   ): void {
-    this.attachWatcher({
-      target: watchers,
-      directory: layout.gitDir,
-      recursive: false,
-      listener: (fileName) => this.enqueueRepositoryPath(fileName, false),
-      onError,
-    });
-    if (layout.commonDir === layout.gitDir) return;
-    this.attachWatcher({
-      target: watchers,
-      directory: layout.commonDir,
-      recursive: false,
-      listener: (fileName) => this.enqueueRepositoryPath(fileName, false),
-      onError,
-    });
+    for (const directory of new Set([layout.gitDir, layout.commonDir])) {
+      if (isWithinDirectory(this.workspace, directory)) continue;
+      this.attachWatcher({
+        target: watchers,
+        directory,
+        recursive: false,
+        listener: (fileName) => this.enqueueRepositoryPath(fileName, false),
+        onError,
+      });
+    }
   }
 
   private async attachRepositoryRefWatchers(
@@ -306,6 +312,7 @@ class WorkspaceGitWatcherCoordinator implements WorkspaceGitWatchHandle {
   ): Promise<void> {
     const refsDirectories = new Set([join(layout.gitDir, 'refs'), join(layout.commonDir, 'refs')]);
     for (const directory of refsDirectories) {
+      if (isWithinDirectory(this.workspace, directory)) continue;
       if (!(await isDirectory(directory))) continue;
       this.attachWatcher({
         target: watchers,
@@ -324,6 +331,7 @@ class WorkspaceGitWatcherCoordinator implements WorkspaceGitWatchHandle {
   ): Promise<void> {
     const infoDirectories = new Set([join(layout.gitDir, 'info'), join(layout.commonDir, 'info')]);
     for (const directory of infoDirectories) {
+      if (isWithinDirectory(this.workspace, directory)) continue;
       if (!(await isDirectory(directory))) continue;
       this.attachWatcher({
         target: watchers,
@@ -496,6 +504,16 @@ function normalizeWatchFileName(fileName: string | Buffer | null): string {
   if (fileName === null) return '';
   const value = Buffer.isBuffer(fileName) ? fileName.toString('utf8') : fileName;
   return value.split(sep).filter(Boolean).join('/');
+}
+
+function isWithinDirectory(directory: string, candidate: string): boolean {
+  const relativePath = relative(directory, candidate);
+  return (
+    relativePath === '' ||
+    (relativePath !== '..' &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !isAbsolute(relativePath))
+  );
 }
 
 async function isDirectory(path: string): Promise<boolean> {

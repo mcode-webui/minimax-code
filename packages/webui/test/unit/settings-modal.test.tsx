@@ -1,0 +1,160 @@
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { GENERIC_FILE_ROW_ORDER, GENERIC_RADIO_CONTRACT, GENERIC_SECTION_TEST_IDS, SETTINGS_GROUPS, SETTINGS_ICON_PATHS } from "../../src/client/features/settings/ui/SettingsModal.js";
+import { DESKTOP_SETTINGS_TABS, filterSettingsTabs, resolveThemePreference } from "../../src/client/features/settings/projection/settings-view.js";
+import { DisabledBillingActions, UsageModelSettings } from "../../src/client/features/settings/ui/UsageModelSettings.js";
+import { reorderModelIds } from "../../src/client/features/models/projection/model-reorder.js";
+import { formatResetLabel, getActiveSourceBadge } from "../../src/client/features/models/projection/usage-settings.public.js";
+import { projectProviderHeaders } from "../../src/client/features/models/projection/usage-settings.js";
+import { createWebuiBrowserDom } from "../../src/client/platform/browser-dom.js";
+
+describe("desktop settings registry", () => {
+  it("keeps the electron tab order, labels, and groups", () => {
+    expect(DESKTOP_SETTINGS_TABS.map((tab) => [tab.key, tab.group, tab.label])).toEqual([
+      ["desktop", "preferences", "通用"],
+      ["voice", "preferences", "语音"],
+      ["shortcuts", "preferences", "快捷键"],
+      ["custom-instructions", "preferences", "个性化"],
+      ["browser", "preferences", "浏览器"],
+      ["usage", "management", "用量与模型"],
+      ["connection", "management", "连接"],
+      ["account", "management", "账户"],
+      ["coding", "coding", "代码审查"],
+      ["worktree", "coding", "工作树"],
+      ["archived", "archived", "已归档任务"],
+    ]);
+  });
+
+  it("declares every desktop group exactly once", () => {
+    expect(SETTINGS_GROUPS.map((group) => group.key)).toEqual(["preferences", "management", "coding", "archived"]);
+    expect(new Set(DESKTOP_SETTINGS_TABS.map((tab) => tab.key)).size).toBe(DESKTOP_SETTINGS_TABS.length);
+    for (const group of SETTINGS_GROUPS) expect(DESKTOP_SETTINGS_TABS.some((tab) => tab.group === group.key)).toBe(true);
+  });
+
+  it("resolves system theme against the OS preference", () => {
+    expect(resolveThemePreference("system", true)).toBe("dark");
+    expect(resolveThemePreference("system", false)).toBe("light");
+    expect(resolveThemePreference("light", true)).toBe("light");
+    expect(resolveThemePreference("dark", false)).toBe("dark");
+  });
+
+  it("returns the desktop empty-state condition for an unmatched search", () => {
+    expect(filterSettingsTabs("不存在的设置")).toHaveLength(0);
+  });
+
+  it("keeps the generic page structure and control contracts", () => {
+    expect(GENERIC_SECTION_TEST_IDS).toEqual(["app-mode-section", "application-section", "link-open-destination-section", "file-section", "session-management-section", "agent-control-permission-section", "about-section"]);
+    expect(GENERIC_FILE_ROW_ORDER).toEqual(["file-open-in-new-tab-switch", "file-line-wrap-switch"]);
+    expect(GENERIC_RADIO_CONTRACT).toEqual({ position: "absolute right-4 top-[22px]", accentToken: "icon_default_accent" });
+    const iconPaths = SETTINGS_ICON_PATHS as Readonly<Record<string, string>>;
+    for (const tab of DESKTOP_SETTINGS_TABS) expect(iconPaths[tab.icon]).toBeTruthy();
+  });
+
+  it("renders the usage source shell and its loading branch without a DOM runtime", () => {
+    const markup = renderToStaticMarkup(<UsageModelSettings />);
+    // The source label follows the account's subscription kind, and the
+    // default kind reads "M Plan" — the legacy "Token Plan" name belongs to
+    // the legacy `token_plan` subscription only.
+    expect(markup).toContain("M Plan");
+    expect(markup).toContain("加载中…");
+  });
+
+  it("keeps every cloud billing control inert and leaves credit fallback unchecked", () => {
+    const markup = renderToStaticMarkup(<DisabledBillingActions />);
+    expect((markup.match(/disabled=""/gu) ?? []).length).toBe(8);
+    expect(markup).toContain("Disabled (not yet wired)");
+    expect(markup).toContain('aria-checked="false"');
+    expect(markup).toMatch(/<button(?=[^>]*disabled="")(?=[^>]*title="Disabled \(not yet wired\)")[^>]*><span[^>]*>明细<\/span>/u);
+  });
+
+  it("reorders model ids by stable identity and leaves missing ids untouched", () => {
+    expect(reorderModelIds(["a", "b", "c"], "a", "c")).toEqual(["b", "c", "a"]);
+    expect(reorderModelIds(["a", "b", "c"], "missing", "c")).toEqual(["a", "b", "c"]);
+  });
+
+  it("does not claim an active source until the source read resolves", () => {
+    expect(getActiveSourceBadge(false, "token_plan", true)).toBeUndefined();
+    expect(getActiveSourceBadge(true, "token_plan", true)).toBe("使用中");
+    expect(getActiveSourceBadge(true, "minimax_api_key", true)).toBe("未启用");
+  });
+
+  it("formats reset countdowns at and below the one-minute boundary", () => {
+    const now = 1_000_000;
+    expect(formatResetLabel(now + 59_000, now)).toBe("59秒");
+    expect(formatResetLabel(now + 60_000, now)).toBe("1分后重置");
+    expect(formatResetLabel(now, now)).toBeUndefined();
+  });
+
+  it("preserves all saved headers unless an individual row is removed or renamed", () => {
+    const original = ["X-First", "X-Second"];
+    expect(projectProviderHeaders([
+      { id: "1", name: "X-First", value: "one", persistedName: "X-First" },
+      { id: "2", name: "X-Second", value: "", persistedName: "X-Second" },
+    ], original)).toEqual({ headers: { "X-First": "one" } });
+    expect(projectProviderHeaders([
+      { id: "1", name: "X-Renamed", value: "new", persistedName: "X-First" },
+    ], original)).toEqual({ headers: { "X-Renamed": "new" }, removeHeaders: ["X-First", "X-Second"] });
+  });
+});
+
+describe("injected browser DOM adapter", () => {
+  it("owns portal lookup, document listeners, and appearance updates", () => {
+    const listeners = new Map<string, EventListener>();
+    const toggles: Array<[string, boolean]> = [];
+    const body = {} as HTMLElement;
+    const documentElement = {
+      classList: { toggle: (name: string, enabled: boolean) => toggles.push([name, enabled]) },
+      lang: "",
+    } as unknown as HTMLElement;
+    const documentObject = {
+      body,
+      documentElement,
+      addEventListener: (name: string, listener: EventListener) => listeners.set(name, listener),
+      removeEventListener: (name: string) => listeners.delete(name),
+      getElementById: () => null,
+    } as unknown as Document;
+    const dom = createWebuiBrowserDom(documentObject, undefined);
+    expect(dom.getActiveElement()).toBeNull();
+    const listener = () => undefined;
+    const stop = dom.listenForKeyDown(listener);
+    expect(dom.portalTarget()).toBe(body);
+    expect(listeners.has("keydown")).toBe(true);
+    stop();
+    expect(listeners.has("keydown")).toBe(false);
+    dom.updateDocumentAppearance("dark", "zh-CN");
+    expect(toggles).toEqual([["dark", true], ["light", false]]);
+    expect(documentElement.lang).toBe("zh-CN");
+  });
+
+  it("returns no active element when there is no document", () => {
+    expect(createWebuiBrowserDom(undefined, undefined).getActiveElement()).toBeNull();
+  });
+});
+
+describe("account tab gating", () => {
+it("leaves the implemented tabs clickable while the unimplemented tabs stay disabled", () => {
+    // A fully implemented panel must not carry the `disabled` gate the
+    // not-yet-built panels still need. `account` (email row, sign-out button,
+    // sign-out error region), `coding` (workspace review), `worktree` (parallel
+    // experiment branches), `custom-instructions` (profile-wide AGENTS.md
+    // editor) and `shortcuts` (the rebindable composer bindings) are all
+    // built, so all five sit in the ungated group. `connection` joined them
+    // with the SSH host management: it is where Desktop puts `设置 > 连接 > SSH`,
+    // and it now carries the SSH panel. The rest have no content behind them
+    // and clicking one would land on an empty pane.
+    for (const key of ["account", "coding", "worktree", "custom-instructions", "shortcuts", "connection"]) {
+      expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBeUndefined();
+    }
+    for (const key of ["voice"]) {
+      expect(DESKTOP_SETTINGS_TABS.find((tab) => tab.key === key)?.disabled).toBe(true);
+    }
+  });
+
+  it("keeps the account tab reachable through the settings search", () => {
+    expect(filterSettingsTabs("账户").map((tab) => tab.key)).toContain("account");
+  });
+
+  it("keeps the personalization tab reachable through the settings search", () => {
+    expect(filterSettingsTabs("个性化").map((tab) => tab.key)).toEqual(["custom-instructions"]);
+  });
+});

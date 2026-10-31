@@ -16,6 +16,18 @@ import { PLUGIN_PACKAGE_V1_LIMITS } from './plugin/package/package-contract.js';
 // wire-protocol constants.
 const SIGNATURE_SALT = 'I*7Cf%WZ#S&%1RlZJ&C2';
 const YY_SUFFIX = 'ooui';
+
+// The cloud's status code for a client version it will not serve.
+//
+// The marketplace filters its catalogue by the desktop version a client
+// declares, and answers this code when the declaration is one it refuses.
+// The repository's only evidence of the code is the transport test that models
+// it, so the mapping below is trusted for the marketplace until the server
+// confirms what else answers with it.
+const CLIENT_VERSION_REJECTED_STATUS = 1406010011;
+
+/** The error the transport raises when the cloud refuses the declared client version. */
+export const CLIENT_VERSION_REJECTED = 'CLIENT_VERSION_REJECTED';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 120_000;
 
@@ -42,6 +54,7 @@ export interface PluginSystemCloudRequest {
   readonly query?: Readonly<Record<string, string | number | boolean | undefined>>;
   readonly body?: Readonly<Record<string, unknown>>;
   readonly auth: 'none' | 'optional' | 'required';
+  readonly appVersion?: string;
   /** Immutable host-owned credential captured by an admission gate. */
   readonly authContext?: PluginSystemCloudAuthContext;
   readonly onDispatch?: () => void;
@@ -88,7 +101,7 @@ export class PluginSystemCloudTransport {
     const route = buildRoute(request.path, request.query);
     const publicParams = buildPublicParams({
       now,
-      appVersion: this.options.appVersion,
+      appVersion: request.appVersion ?? this.options.appVersion,
       userId: auth?.realUserID,
     });
     const signedPath = appendQuery(route, publicParams);
@@ -309,6 +322,12 @@ function assertBusinessSuccess(payload: unknown): void {
   if (!base) return;
   const status = readNumber(base, 'status_code', 'statusCode');
   if (status !== undefined && status !== 0) {
+    if (status === CLIENT_VERSION_REJECTED_STATUS) {
+      throw new PluginSystemCloudTransportError(
+        CLIENT_VERSION_REJECTED,
+        'Plugin System Cloud rejected the declared client version',
+      );
+    }
     throw new PluginSystemCloudTransportError(
       'BUSINESS_ERROR',
       'Plugin System Cloud request was rejected',

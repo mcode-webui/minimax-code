@@ -1,0 +1,9 @@
+{
+  "frame": {
+    "eventJson": "{\"type\":\"questionnaire.ask\",\"timestamp\":4,\"source\":\"harness\",\"payload\":{\"sessionId\":\"s1\",\"requestId\":\"q1\",\"request\":{\"schemaVersion\":2,\"id\":\"q1\",\"presentation\":{\"replaceComposer\":true,\"showProgress\":true,\"allowBackNavigation\":false},\"steps\":[{\"id\":\"step-1\",\"question\":\"Choose an option\",\"selectionMode\":\"single\",\"options\":[{\"id\":\"option-1\",\"label\":\"Option 1\"}],\"allowOther\":true,\"otherPlaceholder\":\"Others...\",\"required\":true}],\"mode\":\"questionnaire\",\"status\":\"pending\"}}}"
+  },
+  "expected": {
+    "sessionId": "s1",
+    "questionnaireRequestId": "q1"
+  }
+}

@@ -28,6 +28,7 @@ import {
 import { isTaskSession } from '../repo/drizzle/normalization.js';
 import { AgentServiceError } from '../../../agent/errors.js';
 import { SessionServiceError } from '../errors.js';
+import { MINIAPP_AGENT_PURPOSE_PREFIX } from '../../../miniapp/contracts.js';
 import { isDefaultProjectWorkspace } from '../../shared/project-workspace.js';
 import type {
   SessionMutationFields,
@@ -411,6 +412,7 @@ export class SessionRecordService
   }
 
   async createSession(input: SessionCreateInput): Promise<SessionRecord> {
+    assertPurposeIsCallerWritable(input.purpose);
     const context = await this.prepareSessionCreate(input);
     return this.createRecord(toMetadataCreateInput(context));
   }
@@ -961,6 +963,20 @@ interface InternalMetadataContext {
 type CurrentSessionAgentDefinitionCreate = ReturnType<
   typeof withCurrentSessionAgentDefinitionProject
 >;
+
+/**
+ * `miniapp:` marks a Session as owned by a Mini App plugin, and that label is what routes the plugin's
+ * permission asks back to it. Only the runtime's own Mini App session creation may write it, through
+ * `createInternalSession`; this is the external create, so a reserved label here is an ownership claim.
+ */
+function assertPurposeIsCallerWritable(purpose: string | undefined): void {
+  if (purpose === undefined) return;
+  if (!purpose.trim().startsWith(MINIAPP_AGENT_PURPOSE_PREFIX)) return;
+  throw new SessionServiceError(
+    'purpose-reserved',
+    'Session purpose is reserved for runtime-owned Sessions',
+  );
+}
 
 function toMetadataCreateInput(context: CreateMetadataContext): SessionMetadataCreateInput {
   const requestedKind = metadataSessionKind(context.input);

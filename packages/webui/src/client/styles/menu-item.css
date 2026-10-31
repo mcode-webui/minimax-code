@@ -1,0 +1,102 @@
+/*
+ * The shared menu-item contract (ADR 0028 § Shared contracts).
+ *
+ * A menu row is a control, and this file owns its states: the hover fill, the
+ * focus ring, the disabled state and the danger state. It also owns the row's
+ * arrangement — the glyph slot, the label, and the trailing affordance pushed
+ * to the far edge.
+ *
+ * The four rows this contract replaced each re-derived that arrangement in
+ * their own business stylesheet, at four slightly different heights and four
+ * slightly different gaps, so a menu looked like a different control
+ * depending on which menu the reader opened. One row, stated once.
+ *
+ * The row is a button, so it resets the button's own appearance: no border, no
+ * fill, and the label's colour rather than the UA's. The states below are the
+ * only things that change it.
+ */
+
+@layer components {
+
+  .webui-menu-item {
+    display: flex;
+    min-height: 30px;
+    width: 100%;
+    align-items: center;
+    gap: var(--spacing_8);
+    margin-block: var(--spacing_2);
+    border: 0;
+    border-radius: var(--radius_8);
+    background: transparent;
+    padding: var(--spacing_4) var(--spacing_8);
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .webui-menu-item:not(:disabled):hover {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+
+  .webui-menu-item:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: -2px;
+  }
+
+  .webui-menu-item:disabled {
+    cursor: default;
+    color: var(--text_default_tertiary);
+    opacity: 0.68;
+  }
+
+  .webui-menu-item--danger:not(:disabled) {
+    color: var(--text_label_danger_secondary_default);
+  }
+
+  /*
+   * The glyph slot.
+   *
+   * Fixed at the icon ramp so a column of glyphs aligns down the menu, while
+   * the label keeps the flexible half. A row with no glyph has no slot at all
+   * rather than an empty one, so its label starts at the same edge.
+   */
+  .webui-menu-item-icon {
+    display: flex;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    align-items: center;
+    justify-content: center;
+    color: var(--icon_default_primary);
+  }
+
+  .webui-menu-item-label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The trailing slot: a shortcut hint, a chevron, a count.
+   *
+   * It is pushed to the far edge, so a row that has one and a row that does
+   * not still put their labels in the same place.
+   */
+  .webui-menu-item-trailing {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+  }
+
+  .webui-menu-separator {
+    height: 1px;
+    margin: var(--spacing_4) var(--spacing_8);
+    background: var(--border_light);
+  }
+}

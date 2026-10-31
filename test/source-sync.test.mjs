@@ -21,6 +21,43 @@ import { compareVersions, releaseCli } from '../scripts/release-cli.mjs';
 import { compareRuns, exitCodeForStatus, renderReport, spread, validateRun, validateRequest, validateToolOutput, median, selectScenarios } from '../scripts/perf/report.mjs';
 import { copyMcodeToolsArtifact, downloadMcodeToolsArtifact, MCODE_TOOLS_ARTIFACT } from '../scripts/lib/mcode-tools-artifact.mjs';
 import { checkWindowsSourceLocation, runWindowsSourceLocationCheck } from '../scripts/check-windows-source-location.mjs';
+import { recordBuildIntegrity, verifyBuildIntegrity } from '../scripts/lib/webui-build-integrity.mjs';
+import { validateExceptionLedger, sourceFingerprint } from '../scripts/lib/webui-dependency-rules.mjs';
+import { acceptanceRecordFiles, restoreAcceptanceRecords } from '../scripts/lib/acceptance-records.mjs';
+
+test('permanent loader approval follows tokens rather than line numbers', () => {
+  const loader = 'const entry = new URL("./embedded/cli.mjs", import.meta.url); await import(entry.href);';
+  assert.equal(sourceFingerprint('loader.ts', loader), sourceFingerprint('loader.ts', `// comment\n\n${loader}`));
+  assert.notEqual(sourceFingerprint('loader.ts', loader), sourceFingerprint('loader.ts', loader.replace('./embedded/cli.mjs', './other/cli.mjs')));
+});
+
+test('WebUI artifact integrity rejects changed sources, changed output and absent records', t => {
+  const root = mkdtempSync(path.join(tmpdir(), 'webui-integrity-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = path.join(root, 'packages/webui/src/client/main.tsx');
+  const output = path.join(root, 'dist-webui/client/client.js');
+  mkdirSync(path.dirname(source), { recursive: true });
+  mkdirSync(path.dirname(output), { recursive: true });
+  writeFileSync(source, 'export const value = 1');
+  writeFileSync(output, 'const value = 1');
+  const metafile = { inputs: { 'src/client/main.tsx': {} }, outputs: { '../../dist-webui/client/client.js': {} } };
+  assert.throws(() => verifyBuildIntegrity(root, metafile), /record missing/);
+  metafile.integrity = recordBuildIntegrity(root, metafile);
+  verifyBuildIntegrity(root, metafile);
+  writeFileSync(source, 'export const value = 2');
+  assert.throws(() => verifyBuildIntegrity(root, metafile), /Stale or modified/);
+  writeFileSync(source, 'export const value = 1');
+  writeFileSync(output, 'const value = 2');
+  assert.throws(() => verifyBuildIntegrity(root, metafile), /Stale or modified/);
+});
+
+test('WebUI exception ledgers require rationale, ownership and unique edges', () => {
+  assert.throws(() => validateExceptionLedger([{ from: 'a', to: 'b' }], ['reason']), /reason/);
+  assert.throws(() => validateExceptionLedger([{ from: 'a', to: 'b', owner: 'T01' }], ['owner', 'exitCondition']), /exitCondition/);
+  const entry = { from: 'a', to: 'b', reason: 'Reviewed contract' };
+  assert.throws(() => validateExceptionLedger([entry, entry], ['reason']), /Duplicate/);
+  validateExceptionLedger([entry], ['reason']);
+});
 
 test('Windows source preflight accepts local NTFS without parsing fsutil display text', () => {
   for (const fsutilOutput of ['E: - Fixed Drive\r\n', 'E: - Festplatte\r\n', new Error('Error 5: Access is denied')]) {
@@ -621,9 +658,16 @@ function verificationFixture(t) {
   const directory = mkdtempSync(path.join(tmpdir(), 'verify-fixture-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const root = path.join(directory, 'source');
-  mkdirSync(path.join(root, 'scripts'), { recursive: true });
+  mkdirSync(path.join(root, 'scripts/lib'), { recursive: true });
   const verifier = path.join(root, 'scripts/verify.mjs');
   copyFileSync(new URL('../scripts/verify.mjs', import.meta.url), verifier);
+  // The verifier imports the module that puts the acceptance records back, so
+  // the fixture carries it the same way it carries a stub for the export step.
+  // The fixture is not a checkout, so the restore finds nothing to do there.
+  copyFileSync(
+    new URL('../scripts/lib/acceptance-records.mjs', import.meta.url),
+    path.join(root, 'scripts/lib/acceptance-records.mjs'),
+  );
   const manager = path.join(directory, 'manager.cjs');
   writeFileSync(manager, `
     const fs = require('node:fs');
@@ -664,15 +708,70 @@ function verificationFixture(t) {
   };
 }
 
-test('platform verification omits only the compiler gate and invalid profiles fail closed', t => {
+test('a verification run puts the browser acceptance records back the way the checkout had them', t => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'acceptance-records-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const commit = (...args) => git('-c', 'user.name=fixture', '-c', 'user.email=fixture@local', ...args);
+  git('init');
+  // The repository's own attributes, so the checkout writes the records the
+  // way the repository writes them. Without them a Windows machine would
+  // check the file out with CRLF, and git would keep calling it modified
+  // after it had been restored.
+  copyFileSync(new URL('../.gitattributes', import.meta.url), path.join(directory, '.gitattributes'));
+  commit('add', '--', '.gitattributes');
+  commit('commit', '-m', 'the attributes');
+  commit('commit', '--allow-empty', '-m', 'base');
+  const record = '.plan/browser-use/complete/isolated-chromium.acceptance.json';
+  mkdirSync(path.join(directory, path.dirname(record)), { recursive: true });
+  writeFileSync(path.join(directory, record), '[]\n');
+  commit('add', '--', record);
+  commit('commit', '-m', 'the accepted record');
+  const dirty = () => git('status', '--porcelain', '--untracked-files=no').trim();
+
+  assert.deepEqual(acceptanceRecordFiles(directory), [record]);
+
+  // A run rewrites the record: every record carries the time and the machine
+  // it ran on, so the working tree is dirty once the suite is over.
+  writeFileSync(path.join(directory, record), '[{"at":"2026-01-01T00:00:00.000Z"}]\n');
+  assert.equal(dirty(), `M ${record}`);
+
+  const previous = { ci: process.env.CI, actions: process.env.GITHUB_ACTIONS };
+  delete process.env.CI;
+  delete process.env.GITHUB_ACTIONS;
+  try {
+    // Locally the records stay: they are what the run just produced, and the
+    // published matrix is written from them.
+    assert.deepEqual(restoreAcceptanceRecords(directory), []);
+    assert.equal(dirty(), `M ${record}`);
+
+    // On CI they go back, so the release packaging finds a clean tree.
+    process.env.CI = 'true';
+    assert.deepEqual(restoreAcceptanceRecords(directory), [record]);
+    assert.equal(dirty(), '');
+  } finally {
+    for (const [name, value] of [['CI', previous.ci], ['GITHUB_ACTIONS', previous.actions]]) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
+test('platform verification omits only the compiler gates and invalid profiles fail closed', t => {
   const f = verificationFixture(t);
   const full = f.run(['--list']);
   const platform = f.run(['--profile', 'platform', '--list']);
   assert.equal(full.status, 0, full.stderr);
   assert.equal(platform.status, 0, platform.stderr);
   const gates = full.stdout.trim().split('\n');
-  assert.ok(gates.includes('typecheck'));
-  assert.deepEqual(platform.stdout.trim().split('\n'), gates.filter(g => g !== 'typecheck'));
+  // Every gate the verifier marks `fullOnly` is one Linux job's work: the
+  // compiler inputs are identical across the matrix, so `platform` drops them.
+  // Derived from the verifier's own list rather than hardcoded, because
+  // adding a third `fullOnly` gate must not need a second edit here.
+  const fullOnly = gates.filter((g) => f.run(['--profile', 'full', '--list']).stdout.includes(g)
+    && !f.run(['--profile', 'platform', '--list']).stdout.split('\n').includes(g));
+  assert.ok(fullOnly.includes('typecheck'), `expected typecheck to be full-only, got ${fullOnly.join(', ')}`);
+  assert.deepEqual(platform.stdout.trim().split('\n'), gates.filter((g) => !fullOnly.includes(g)));
   assert.notEqual(f.run(['--profile', 'platfrom', '--list']).status, 0);
   assert.notEqual(f.run(['--unknown']).status, 0);
   assert.equal(existsSync(f.reportDir), false);
@@ -949,6 +1048,12 @@ test('Windows contract profile selects focused gates', () => {
   try {
     const fixture = path.join(root, 'verify.mjs');
     copyFileSync(new URL('../scripts/verify.mjs', import.meta.url), fixture);
+    // The verifier imports the module that puts the acceptance records back.
+    mkdirSync(path.join(root, 'lib'), { recursive: true });
+    copyFileSync(
+      new URL('../scripts/lib/acceptance-records.mjs', import.meta.url),
+      path.join(root, 'lib/acceptance-records.mjs'),
+    );
     const preload = path.join(root, 'platform.cjs');
     writeFileSync(preload, "Object.defineProperty(process, 'platform', { value: 'win32' });\n");
     const result = spawnSync(process.execPath, ['--require', preload, fixture, '--profile', 'windows', '--list'], {
@@ -973,11 +1078,12 @@ test('Windows contract profile selects focused gates', () => {
   }
 });
 
-test('source inventory rejects unregistered, missing and duplicate first-party test gates', () => {
+test('Vitest inventory rejects missing registrations and allows the WebUI Playwright suite', () => {
   const existing = 'packages/example/src/existing.test.ts';
   const omitted = 'packages/example/test/omitted.spec.tsx';
   const missing = 'packages/example/test/missing.test.ts';
-  const files = [existing, omitted, 'third_party/vendor/vendor.test.ts', 'test/release.test.mjs'];
+  const browser = 'packages/webui/test/browser/sample.spec.mjs';
+  const files = [existing, omitted, browser, 'third_party/vendor/vendor.test.ts', 'test/release.test.mjs'];
   assert.deepEqual(suiteInventoryViolations(files, { capability: [existing, existing, missing] }), [
     `${existing}: duplicate Vitest registration`,
     `${missing}: registered Vitest file is missing`,
@@ -1208,4 +1314,40 @@ test('TUI lint failure stops full and platform verification before compilation o
     assert.equal(report.gates.find(gate => gate.name === 'lint:tui').exitCode, 17);
     assert.equal(report.gates.find(gate => gate.name === 'build').status, 'NOT_RUN');
   }
+});
+
+// The desktop version the cloud filters the marketplace by is declared in one
+// place: the shared module. A second copy would let what the client declares
+// and what the cloud was told drift apart, which is the one failure this
+// declaration is prone to.
+function filesWritingVersion(repositoryRoot, version) {
+  const offenders = [];
+  const skipped = ['node_modules', 'dist', 'dist-webui', 'coverage', 'out'];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.') || skipped.includes(entry.name)) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(?:ts|tsx|mts|mjs|cjs|js|jsx)$/u.test(entry.name) && readFileSync(full, 'utf8').includes(version)) {
+        offenders.push(path.relative(repositoryRoot, full));
+      }
+    }
+  };
+  for (const directory of ['packages', 'scripts', 'test']) {
+    walk(path.join(repositoryRoot, directory));
+  }
+  return offenders;
+}
+
+test('the desktop version the marketplace is filtered by is declared in exactly one file', () => {
+  const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+  const sharedModule = path.join(repositoryRoot, 'packages/shared/src/marketplace-visibility.ts');
+  const declared = readFileSync(sharedModule, 'utf8')
+    .match(/MARKETPLACE_VISIBILITY_DESKTOP_VERSION = '([^']+)'/u)?.[1];
+  assert.ok(declared, 'the shared module declares the desktop version');
+  assert.match(declared, /^\d+\.\d+\.\d+$/u, 'the declared version is a plain release version');
+  const offenders = filesWritingVersion(repositoryRoot, declared).filter(
+    (file) => file !== 'packages/shared/src/marketplace-visibility.ts',
+  );
+  assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
 });

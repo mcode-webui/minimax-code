@@ -1,3 +1,5 @@
+/// <reference path="../types/bmp-js.d.ts" />
+
 import { open, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, parse } from 'node:path';
 

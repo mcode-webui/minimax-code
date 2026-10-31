@@ -75,3 +75,11 @@ export type {
   ListSessionsInput as ListSessionsReq,
   SessionPage as ListSessionsResp,
 } from "../application/session/query-contract.js";
+export type {
+  ListProjectsResp,
+  ProjectDetail,
+  ProjectSessionGroup,
+  ProjectUserState,
+  SessionTreeNodeView,
+} from "../application/session/view-contract.js";
+export type { ProjectListInput } from "../service/session-system/projects/contracts.js";

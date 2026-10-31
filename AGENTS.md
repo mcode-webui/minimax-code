@@ -38,7 +38,6 @@ Never merge internal Git history or cherry-pick internal commits into this repos
 | Package export → source file | each package's `exports` via `scripts/lib/package-exports.mjs` | `tsconfig.standalone.json`, `vitest.oss.config.mjs` |
 | Vitest files per gate | `test/vitest-suites.json` | `vitest.oss.config.mjs`, `scripts/run-vitest-suite.mjs` |
 | Retired source paths | `scripts/lib/retired-sources.mjs` | `check:source` (must not exist), `check:standalone` (must not be bundled) |
-| Verification pipeline | `scripts/verify.mjs` | GitHub CI, `pnpm verify` |
 | Documentation-only classification | `scripts/ci-changes.mjs` | source verification, release audit |
 | Source archive validation/extraction | `scripts/lib/source-archive.mjs` | source export, candidate validation |
 
@@ -52,14 +51,16 @@ Adding a Vitest file: add its path to the appropriate group in `test/vitest-suit
 
 Adding a verification gate: add a step to `scripts/verify.mjs`, with `platforms` when it cannot run everywhere. Do not add steps to the workflow file.
 
-## Verification
-
-`pnpm verify` runs the same gates as CI in the same order; `pnpm verify --list` shows which apply on the current platform. Run it before opening a pull request. Individual gates such as `pnpm typecheck`, `pnpm build`, and `pnpm test:byok` remain available for iteration.
-
-The full profile is the local default. `platform` omits only duplicate type checking. Use `pnpm verify --profile docs` only when every changed path qualifies under `scripts/ci-changes.mjs`; it runs source inventory, generated-path, source-export, and release-tool checks. `AGENTS.md`, bundled runtime prompts, and `release/` changes do not qualify for that profile. `archive` skips Git export for source archives; the candidate workflow authenticates the archive before invoking it. Keep profile selection in the shared verifier.
-
-Source export reads committed `HEAD` and rejects uncommitted tracked changes. During editing, run the relevant individual gates; run the complete applicable profile on the reviewed commit with a clean tracked working tree before opening a PR. Report the checks actually run and any blocked or untested boundaries. Offline tests do not establish live-service or cross-platform acceptance.
-
 ## Boundaries
 
 Do not reference internal hosts, generated IDL, or private services; `check:source` catches known patterns but does not replace publication review. Do not restore paths listed in `scripts/lib/retired-sources.mjs` or remove supported capabilities to make standalone checks pass. Do not commit account data, sessions, logs, credentials, or real user content; use temporary data directories and synthetic test inputs. Documentation and commit messages are written in English; preserve the required languages of localized product strings and bundled runtime prompts. See `CONTRIBUTING.md`.
+
+## WebUI
+
+`packages/webui` is a browser client with its own operating guide. Before changing anything under it,
+read `packages/webui/AGENTS.md` — the layering rules, the gates each kind of change needs, the test
+conventions and the fork's branch and issue workflow — and `packages/webui/docs/README.md` for the
+architecture, module map and decision log. Its issue tracker conventions and triage labels are
+`packages/webui/docs/agents/`.
+
+Repository-wide contributor workflows live in `.agents/skills/` and are listed in `CONTRIBUTING.md`.

@@ -1,0 +1,19 @@
+{
+  "comment": "Raw form-control selectors in a feature stylesheet, per file. The ratchet fails on a new selector and on a recorded selector that has gone, so the list can only shrink. Every business stylesheet is listed, including the ones that are clean: a stylesheet that is absent from this file is a stylesheet the ratchet does not watch, which is how the eleven unwatched ones came to hold 58 selectors nobody could see. Regenerate the entries after a migration.",
+  "files": {
+    "packages/webui/src/client/features/account/ui/account.css": [],
+    "packages/webui/src/client/features/browser/ui/browser.css": [],
+    "packages/webui/src/client/features/composer/ui/composer.css": [],
+    "packages/webui/src/client/features/goal/ui/goal.css": [],
+    "packages/webui/src/client/features/interactions/ui/interactions.css": [],
+    "packages/webui/src/client/features/interactions/ui/plan-mode.css": [],
+    "packages/webui/src/client/features/models/ui/models.css": [],
+    "packages/webui/src/client/features/plugins/ui/plugins.css": [],
+    "packages/webui/src/client/features/sessions/ui/sessions.css": [],
+    "packages/webui/src/client/features/settings/ui/settings.css": [],
+    "packages/webui/src/client/features/transcript/ui/transcript-widgets.css": [],
+    "packages/webui/src/client/features/transcript/ui/transcript.css": [],
+    "packages/webui/src/client/features/workspace/ui/workspace-progress.css": [],
+    "packages/webui/src/client/features/workspace/ui/workspace.css": []
+  }
+}

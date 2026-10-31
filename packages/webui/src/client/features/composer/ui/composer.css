@@ -1,0 +1,697 @@
+/* composer — moved out of styles/shell.css; rules kept in their original relative order. */
+@layer components {
+
+  /* The floating composer card. Same layer as `.webui-card`, at the 20px
+   * radius, with the shadow added from `sm` upward. Same reason
+   * as `.webui-hero-avatar` for living here instead of in the markup.
+   *
+   * The card is a size container: the toolbar's own form follows the width of
+   * the card it is in, not the width of the window (ADR 0025). */
+  .webui-composer-card {
+    min-width: 0;
+    box-shadow: 0 0 10px 0 var(--shadow_default);
+    container: webui-composer / inline-size;
+  }
+
+  /*
+   * The composer's toolbar.
+   *
+   * One row, always.
+   *
+   * The toolbar used to wrap, and whether it wrapped was decided by a
+   * threshold that had nothing to do with what the row needed. At 1024px the
+   * composer's card was 406px — enough for every control — and the model
+   * button and the permission control still ended up on two lines, because
+   * 406px was under a limit set at 419px. The limit was the column's width
+   * wearing the row's clothes.
+   *
+   * The row cannot wrap now. A control that does not fit gives up its text
+   * instead: the model name becomes an icon, and the permission label becomes
+   * a shield (ADR 0025).
+   */
+  [data-webui-composer-toolbar] {
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  [data-webui-composer-toolbar] > * {
+    min-width: 0;
+  }
+
+  .webui-composer-toolbar-actions {
+    min-width: 0;
+    max-width: 100%;
+    /* The cluster sits at the right of the toolbar. */
+    margin-left: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  /*
+   * The permission control's narrow form.
+   *
+   * The permission control is a fixed, unshrinkable label — it cannot
+   * truncate, and it is the reason a single-row toolbar eventually pushes the
+   * send control off the row. Below the stacking threshold it keeps its glyph
+   * and drops its words, and its accessible name and its tooltip keep saying
+   * which mode is in force, so nothing is lost that a reader would have had.
+   *
+   * This is the LAST control to narrow: the model name gives up its text
+   * first, because the model name is the variable-length one and the shield
+   * says less than the words do.
+   */
+  @container webui-composer (max-width: 271px) {
+    .webui-composer-permission-button {
+      width: 32px;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+
+    .webui-composer-permission-button .webui-composer-permission-label {
+      display: none;
+    }
+
+    .webui-composer-permission-button .webui-composer-permission-chevron {
+      display: none;
+    }
+  }
+
+  /* The surface — the background, the border, the radius, the shadow and the
+   * motion — belongs to the shared dropdown layer. What is left here is the
+   * content's own box. The mention list is still the composer's own surface
+   * (it hangs off the caret, not off a trigger), so it keeps its own. */
+  .webui-composer-menu,
+  .webui-composer-mention-menu {
+    min-width: 220px;
+    max-width: min(360px, calc(100vw - 32px));
+    padding: 6px;
+  }
+
+  /* The `+` trigger's wrap: the button plus the panel it opens. It is the
+   * positioning context for `.webui-composer-menu` and the container the
+   * outside-close test uses, so both anchoring and dismissal follow the button
+   * rather than the composer region. */
+  .webui-composer-add-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Anchored to the `+` button's wrap, so the panel always clears it. The old
+   * `bottom: 56px` was measured from the composer region instead, which made
+   * the panel grow over the `+` and the permission pill as soon as anything
+   * below the card changed height. */
+  .webui-composer-menu {
+    max-height: min(420px, calc(100dvh - 112px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Keep the root menu mounted beside its active flyout, matching the
+   * hover navigation. The stack is also the shared pointer/focus surface, so
+   * moving between the root and submenu does not collapse the flyout. */
+  /* The stack is the dropdown's popup: the shared layer places it against the
+   * `+` button and gives it the surface and the motion.
+   *
+   * It declares NO position of its own. The shared layer's `position: fixed`
+   * is what puts it on screen: a `position: relative` here would win the
+   * cascade over the shared rule, and the popup would then be laid out in the
+   * page flow — at the bottom of the document, a viewport-height below where
+   * the reader is looking — with the shared placement's `top`/`left` added to
+   * it as an offset. The panel was there all along, off screen. */
+  .webui-composer-menu-stack {
+    width: max-content;
+  }
+
+  .webui-composer-menu-stack > .webui-composer-menu[data-webui-composer-menu="root"] {
+    position: relative;
+    inset: auto;
+    max-height: min(420px, calc(100dvh - 112px));
+    width: max-content;
+  }
+
+  /* The flyout is pinned with `top: 0`. A `max-height` instead of a second
+   * offset let a long skill list grow past the stack and off the viewport, so
+   * the trailing rows were unreachable; `top`+`bottom: 0` pins both ends to the
+   * stack, whose height is the root menu's. */
+  .webui-composer-menu-stack > .webui-composer-menu[data-webui-composer-submenu] {
+    position: absolute;
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: calc(100% + var(--spacing_4));
+    width: max-content;
+    min-width: 240px;
+    max-width: min(320px, calc(100vw - 244px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  @media (max-width: 600px) {
+    .webui-composer-menu-stack {
+      max-width: calc(100vw - 24px);
+    }
+
+    .webui-composer-menu-stack > .webui-composer-menu[data-webui-composer-submenu] {
+      top: calc(100% - 1px);
+      right: auto;
+      bottom: auto;
+      left: 0;
+      max-height: min(320px, calc(100dvh - 180px));
+      min-width: 220px;
+      max-width: min(360px, calc(100vw - 32px));
+    }
+  }
+
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the composer's own arrangement: its menus are roomier
+   * than a context menu's, so the rows are taller, the gap is wider and the
+   * padding is deeper. */
+  .webui-composer-menu-item {
+    min-height: 38px;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+  }
+
+  /* The mention list is not a menu — its rows are options in a listbox, so it
+   * is the composer's own row rather than the shared menu row. */
+  .webui-composer-mention-option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .webui-composer-menu-back {
+    font-weight: 600;
+  }
+
+  .webui-composer-menu-empty {
+    padding: 10px;
+    color: var(--webui-color-text-tertiary, #999);
+    font-size: var(--size_12);
+  }
+
+  .webui-composer-permission-wrap {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .webui-composer-permission-button:hover:not(:disabled) {
+    background: var(--bg_grouped_tertiary);
+    color: var(--text_default_primary);
+  }
+
+  /* `完全访问权限` is the one mode whose own row is orange in the popover, so
+   * the trigger matches it: the label, the glyph and the chevron all take the
+   * warning ramp. Without this the trigger would be the only place the selected
+   * mode is not signalled. Only the colour is overridden — the base rule
+   * already supplies the transparent rest state and the grouped hover fill. The
+   * explicit `:hover` is required, not redundant: the base hover selector
+   * outranks a bare modifier class. */
+  .webui-composer-permission-button.webui-composer-permission-button--warning {
+    padding-right: var(--spacing_4);
+    color: var(--text_status_warning);
+  }
+
+  .webui-composer-permission-button--warning .webui-composer-permission-label {
+    color: var(--text_status_warning);
+  }
+
+  .webui-composer-permission-button--warning .webui-composer-permission-icon {
+    color: var(--icon_status_warning);
+  }
+
+  .webui-composer-permission-button.webui-composer-permission-button--warning:hover:not(:disabled) {
+    color: var(--text_status_warning);
+  }
+
+  .webui-composer-permission-button--warning .webui-composer-permission-chevron {
+    color: var(--icon_status_warning);
+  }
+
+  .webui-composer-permission-icon {
+    display: block;
+    width: var(--size_16);
+    height: var(--size_16);
+    flex: 0 0 var(--size_16);
+  }
+
+  .webui-composer-permission-chevron {
+    display: block;
+    width: var(--size_12);
+    height: var(--size_12);
+    flex: 0 0 var(--size_12);
+    margin-left: var(--spacing_2);
+    color: var(--icon_default_tertiary);
+  }
+
+  /* The popover is a question plus three answers: a header row, then one
+   * two-line row per mode. These rows carry their own button reset rather than
+   * joining the single-line `.webui-composer-menu button` rule above — that
+   * rule's `min-height: 38px` and centred alignment are the wrong shape for a
+   * stacked label, and its compound selector would outrank a single class
+   * anyway. Only the selected full-access row uses the warning color; the
+   * other selected modes keep the normal text color. */
+  .webui-composer-permission-menu {
+    min-width: 320px;
+    max-width: min(360px, calc(100vw - 32px));
+    padding: var(--spacing_6);
+  }
+
+  .webui-composer-permission-option {
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    gap: var(--spacing_12);
+    padding: var(--spacing_8);
+    border: 0;
+    border-radius: var(--radius_8);
+    background: transparent;
+    color: var(--text_default_primary);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .webui-composer-permission-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing_12);
+    padding: var(--spacing_4) var(--spacing_8) var(--spacing_8);
+  }
+
+  .webui-composer-permission-question {
+    min-width: 0;
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_18);
+  }
+
+  .webui-composer-permission-learn-more {
+    flex: 0 0 auto;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_18);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+  }
+
+  .webui-composer-permission-learn-more:hover {
+    color: var(--text_default_secondary);
+  }
+
+  .webui-composer-permission-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--spacing_2);
+  }
+
+  .webui-composer-permission-label {
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    font-weight: var(--weight_medium);
+    line-height: var(--line_height_20);
+  }
+
+  .webui-composer-permission-description {
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_18);
+  }
+
+  .webui-composer-permission-check {
+    width: var(--size_16);
+    height: var(--size_16);
+    flex: 0 0 var(--size_16);
+    align-self: center;
+  }
+
+  .webui-composer-permission-option[data-permission-mode="bypassPermissions"][aria-checked="true"] .webui-composer-permission-icon,
+  .webui-composer-permission-option[data-permission-mode="bypassPermissions"][aria-checked="true"] .webui-composer-permission-label,
+  .webui-composer-permission-option[data-permission-mode="bypassPermissions"][aria-checked="true"] .webui-composer-permission-description,
+  .webui-composer-permission-option[data-permission-mode="bypassPermissions"][aria-checked="true"] .webui-composer-permission-check {
+    color: var(--text_status_warning);
+  }
+
+  /* The mention list is a dropdown now: the shared layer places it against
+   * the composer's input box and gives it the surface and the motion, so what
+   * is left here is only the list's own box. */
+  .webui-composer-mention-menu {
+    width: min(360px, calc(100vw - 32px));
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .webui-composer-mention-section {
+    padding: 8px 10px 4px;
+    color: var(--webui-color-text-tertiary, #999);
+    font-size: 11px;
+  }
+
+  .webui-composer-mention-option {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--spacing_2);
+  }
+
+  .webui-composer-mention-option small {
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--webui-color-text-tertiary, #999);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .webui-composer-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    order: -1;
+    padding: 4px 4px 10px;
+  }
+
+  .webui-composer-attachment {
+    position: relative;
+    display: flex;
+    width: 116px;
+    min-height: 96px;
+    flex-direction: column;
+    gap: 5px;
+    overflow: hidden;
+    padding: 8px;
+    border-radius: 14px;
+    background: var(--webui-color-bg-secondary, #f5f5f5);
+    color: var(--webui-color-text-secondary, #666);
+    font-size: var(--size_12);
+  }
+
+  .webui-composer-attachment.is-image {
+    padding: 0;
+  }
+
+  .webui-composer-attachment img {
+    width: 100%;
+    height: 76px;
+    object-fit: cover;
+  }
+
+  .webui-composer-attachment-type {
+    display: grid;
+    height: 46px;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--webui-color-bg-primary, #fff);
+    color: var(--webui-color-text-accent, #6a78e8);
+  }
+
+  .webui-composer-attachment-name {
+    overflow: hidden;
+    padding: 0 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .webui-composer-attachment-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
+
+  .webui-composer-attachment-loading {
+    align-self: center;
+    color: var(--webui-color-text-tertiary, #999);
+    font-size: var(--size_12);
+  }
+
+  .webui-composer-url-reference {
+    display: inline-flex;
+    max-width: min(420px, 100%);
+    min-height: 32px;
+    align-items: center;
+    gap: var(--spacing_6);
+    padding: 0 6px 0 10px;
+    border-radius: 10px;
+    background: var(--webui-color-bg-secondary, #f5f5f5);
+    color: var(--webui-color-text-secondary, #666);
+  }
+
+  .webui-composer-url-reference .webui-control {
+    width: 300px;
+    max-width: min(300px, calc(100vw - 112px));
+  }
+
+  /* Only the model selector needs a positioning context here. The workspace
+   * menu is `position: absolute` in the composer shell, and it was in that
+   * original order too: this grouped rule sat *before* the absolute one, so the
+   * relative declaration never applied to the workspace menu. After the split
+   * the two rules ended up in different files and the compiled stylesheet put this one last,
+   * which made `relative` win and pushed the panel into the document flow —
+   * the home composer grew by the panel's height. Dropping the selector keeps
+   * the effective result the split was supposed to preserve. */
+  .webui-model-selector {
+    position: relative;
+    width: fit-content;
+    max-width: min(244px, 36vw);
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  /* The thinking trigger. Three tones, and the third is the one that matters:
+   * `unstated` is NOT `off`. The wire says an empty effort means "no override,
+   * the engine picks", and the engine never reports back which level it chose,
+   * so a blue brain beside the word "Default" would assert a state nothing in
+   * this process can verify. The neutral tone is the honest one, and the label
+   * beside it carries the truth. */
+  .webui-thinking-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
+  /* The brain's hover bubble: the same dark shape with an arrow as
+   * `.webui-context-usage-label` two controls away, so a tooltip here and a
+   * tooltip there are one object rather than two. A native `title` was the
+   * alternative and it never appeared — it is drawn by the window chrome, not
+   * by this page, and in this shell it stayed invisible. */
+  .webui-thinking-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-thinking-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-thinking-label[data-webui-thinking-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
+  .webui-thinking-brain {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+  .webui-thinking-brain--on {
+    color: var(--text_default_accent);
+  }
+  .webui-thinking-brain--off,
+  .webui-thinking-brain--unstated {
+    color: var(--icon_default_tertiary);
+  }
+  /* Slash palette rows reproduce the icon, bold title, dim
+     description pattern. The leading icon is the command glyph; the trailing
+     "/name" suffix is dim and shows the literal slash form. */
+  .webui-command-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: var(--spacing_12);
+  }
+  .webui-command-option-icon {
+    flex-shrink: 0;
+  }
+  /* Label column. The label is the skill/command name and the user's first
+     anchor — it must always render fully. It takes its natural width up to
+     a sensible cap so a long name like `docker-container-ops` never
+     collapses to `d...`. A `max-w-[50%]` here fights
+     the description's `flex-1` and crushes long skill names; pin the label
+     to its content + a 220px ceiling so descriptions can wrap or shrink
+     instead. */
+  .webui-command-option-label {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 220px;
+    min-width: 0;
+    font-weight: var(--weight_medium);
+    color: var(--text_default_primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Description column. Takes whatever horizontal space the label leaves,
+     dim text, single line with ellipsis. `min-width: 0` is what lets the
+     flex item shrink below its content size instead of overflowing. */
+  .webui-command-option-description {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text_default_tertiary);
+    font-weight: var(--weight_regular);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Section header inside the popover. A small dim
+     divider separates the default section from the skills section; this rule
+     gives it a fixed slot above the first skill row, with the same
+     type-size + line-height the rest of the popover has. */
+  .webui-command-section-header {
+    padding: var(--spacing_8) var(--spacing_12) var(--spacing_4);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+    font-weight: var(--weight_regular);
+  }
+  /* Inert palette rows render with the same shape as live rows (1:1)
+     but show as unavailable: muted icon, dimmer label/description, no hover
+     tint, and a not-allowed cursor so the user can tell the row exists for
+     visual parity only. The harness port still wires the supported commands
+     (compact, new); unsupported entries wait for the matching feature. The
+     selected highlight stays so keyboard navigation is still legible. */
+  .webui-command-option[data-webui-command-option-inert="true"] {
+    cursor: not-allowed;
+  }
+  .webui-command-option[data-webui-command-option-inert="true"]:hover {
+    background-color: transparent;
+  }
+  .webui-command-option[data-webui-command-option-inert="true"]
+    .webui-command-option-icon,
+  .webui-command-option[data-webui-command-option-inert="true"]
+    .webui-command-option-label,
+  .webui-command-option[data-webui-command-option-inert="true"]
+    .webui-command-option-description {
+    color: var(--text_default_tertiary);
+    opacity: 0.55;
+  }
+  /* The directory browser keeps the shared `.webui-workspace-menu` panel, which
+   * is still anchored to this row. The recent list is a dropdown now: the
+   * shared layer gives it the surface and the placement, and this says only
+   * what the list itself needs. */
+  .webui-workspace-menu {
+    right: auto;
+    left: 0;
+    min-width: 220px;
+  }
+  .webui-workspace-picker-menu {
+    display: flex;
+    min-width: 220px;
+    max-width: 320px;
+    max-height: 320px;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--spacing_4);
+  }
+  /* The command palette is a dropdown now: the shared layer places it against
+   * the composer's input box and gives it the surface and the motion. Which
+   * side it opens on is the placement rule's own decision — it is made from
+   * the panel's measured height and the viewport, because those are the two
+   * numbers that say whether it fits. What is left here is the list's own box. */
+  .webui-command-menu {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--spacing_4);
+    max-height: 320px;
+  }
+
+  /* The composer's own size for the shared icon-button contract
+     (styles/button.css): a 28px square rather than the contract's 26px.
+     The contract owns the surface, the states and the name; the size is this
+     surface's own. */
+  .webui-composer-add-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* The composer field sits inside the card rather than on the surface: no
+   * border of its own, no resize handle, and a floor so the card keeps its
+   * height while the field is empty. The shared field contract owns the resting
+   * appearance and the placeholder, so these rules name this surface's class and
+   * nothing else. */
+  .webui-composer-input {
+    width: 100%;
+    min-height: 56px;
+    border: 0;
+    border-radius: var(--radius_20);
+    background-color: transparent;
+    color: var(--text_default_primary);
+    padding: var(--spacing_12) var(--spacing_16);
+    line-height: var(--line_height_22);
+    resize: none;
+    outline: none;
+  }
+  /* The composer is already framed by its card; do not add the generic blue
+   * input focus ring around the message field. Keep focus styling on the
+   * send/action controls where it remains useful. */
+  .webui-composer-input:focus,
+  .webui-composer-input:focus-visible {
+    border: 0;
+    outline: none;
+    box-shadow: none;
+  }
+  /* The composer stays in the bottom zone while the transcript owns the
+   * complete message list, including the active turn. */
+  .webui-session-layout .webui-session-composer {
+    display: contents;
+  }
+
+  /* The composer overlays the bottom of the session reading column. Its
+   * measured height is exported by SessionComposer and consumed by the
+   * explicit spacer at the end of the shared message viewport. */
+  .webui-session-layout .webui-session-composer-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* 60, not 20, and not for the transcript: because this is a POSITIONED
+     * element with a z-index it is a STACKING CONTEXT, so everything the
+     * composer opens is ranked inside it and can never outrank the rail's
+     * z-50 outside it — however high its own z-index says. The context-usage
+     * panel is what exposed that: it is 480px wide and right-aligned to a ring
+     * near the middle of the column, so it reaches left over the rail, and at
+     * 20 the rail painted straight over its heading, its figures and the label
+     * of every plan meter. Raising the panel to 1000 changed nothing, which is
+     * the signature of a trapped context rather than a missing one.
+     *
+     * 60 is the next layer up that the sheet already uses, and it changes
+     * nothing where the two do not overlap — which is everywhere except a panel
+     * the composer deliberately grew over the rail. */
+    z-index: 60;
+    padding: 0 24px 16px;
+    background: linear-gradient(
+      to top,
+      var(--bg_default_primary) 0%,
+      var(--bg_default_primary) 60%,
+      rgb(0 0 0 / 0%) 100%
+    );
+    pointer-events: none;
+  }
+  .webui-session-layout .webui-session-composer-overlay > * {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 768px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+  .webui-session-layout
+    .webui-session-composer-overlay
+    > *
+    .message-input-home-container {
+    gap: 0;
+    padding-bottom: 0;
+  }
+  .webui-session-layout .webui-goal-composer-panel .message-input-home-container {
+    border-radius: 0;
+    background: transparent;
+  }
+  .webui-session-layout .webui-goal-composer-panel .webui-composer-card {
+    box-shadow: 0 0 20px 0 var(--shadow_default);
+  }
+
+  .webui-send-stop-square {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    background: #fff;
+  }
+
+}

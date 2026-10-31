@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { format } from 'node:util';
 
 import {
   ConnectorGatewayError,
@@ -6,17 +7,33 @@ import {
   type ConnectorToolHandle,
 } from '../../../host-connector-system/index.js';
 import type {
-  MiniAppHostConnectorReadable,
+  MiniAppAgentGateway,
+  MiniAppAgentRunEvent,
+} from '../../agent/contracts.js';
+import type {
   MiniAppHostConnectorSession,
   MiniAppHostConnectorSessionFactory,
-  MiniAppHostConnectorWritable,
+  MiniAppIpcMessage,
+  MiniAppIpcTransport,
 } from '../../contracts.js';
 import {
-  encodeFrame,
-  HostConnectorProtocolError,
-  StrictNdjsonDecoder,
-  writeBytes,
-} from './host-connector-ndjson.js';
+  bindMiniAppIpcChannel,
+  encodeMiniAppIpcMessage,
+  sendMiniAppIpcMessage,
+} from '../node-runtime/ipc-transport.js';
+import {
+  agentClientError,
+  createHostAgentSession,
+  decodeAgentResult,
+  decodeAgentRunEvent,
+  decodeAgentWireError,
+  encodeAgentAnswerParams,
+  encodeAgentCreateParams,
+  encodeAgentReplyParams,
+  encodeAgentRunParams,
+  encodeAgentSessionParams,
+  type MiniAppAgentClient,
+} from './host-connector-agent.js';
 import {
   createHostConnectorGatewayRelease,
   HostConnectorSessionLifecycle,
@@ -27,6 +44,7 @@ import {
   type HostConnectorDiagnosticIssue,
   type HostConnectorDisposition,
   HostConnectorError,
+  HostConnectorProtocolError,
   HostConnectorRequestTimeoutError,
   type HostConnectorWireError as WireError,
   isSafeHostConnectorDiagnosticConstraint,
@@ -38,23 +56,27 @@ import {
   unavailableWireError,
 } from './host-connector-errors.js';
 
-const REQUEST_MAX_BYTES = 256 * 1024;
-const RESPONSE_MAX_BYTES = 8 * 1024 * 1024;
-const MAX_IDENTIFIER_BYTES = 256;
-const MAX_PENDING = 16;
-
-type JsonPrimitive = null | boolean | number | string;
-type HostConnectorJson =
-  | JsonPrimitive
-  | { readonly [key: string]: HostConnectorJson }
-  | readonly HostConnectorJson[];
-type HostConnectorJsonObject = { readonly [key: string]: HostConnectorJson };
 type HostConnectorListedTool = Awaited<ReturnType<HostConnectorClient['list']>>['tools'][number];
 
-declare const HOST_CONNECTOR_TOOL_REF: unique symbol;
-type HostConnectorToolRef = string & {
-  readonly [HOST_CONNECTOR_TOOL_REF]: true;
-};
+import {
+  type ChildRequestMethod,
+  hasExactKeys,
+  hasHostConnectorRequestCapacity,
+  type HostConnectorJson,
+  type HostConnectorJsonObject,
+  type HostConnectorToolRef,
+  isAgentMethod,
+  isAgentShortMethod,
+  isAgentTurnMethod,
+  isBoundedIdentifier,
+  isRecord,
+  isRequestId,
+  REQUEST_MAX_BYTES,
+  RESPONSE_MAX_BYTES,
+} from './host-connector-wire.js';
+
+export type { MiniAppAgentClient };
+export { hasHostConnectorRequestCapacity, REQUEST_MAX_BYTES, RESPONSE_MAX_BYTES };
 
 export interface HostConnectorClient {
   list(options?: { readonly signal?: AbortSignal }): Promise<{
@@ -77,14 +99,15 @@ export interface HostConnectorClient {
 
 interface RequestFrame {
   readonly id: string;
-  readonly method: 'connector.list' | 'connector.call' | 'connector.cancel';
+  readonly method: ChildRequestMethod | 'connector.cancel' | 'agent.cancel';
   readonly params?: Record<string, unknown>;
 }
 
 interface PendingChildRequest {
-  readonly method: 'connector.list' | 'connector.call';
+  readonly method: ChildRequestMethod;
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: Error) => void;
+  readonly onEvent?: (event: MiniAppAgentRunEvent) => void;
   written: boolean;
   invocationId?: string;
   abortCleanup?: () => void;
@@ -92,13 +115,13 @@ interface PendingChildRequest {
 
 export interface MiniAppHostConnectorRuntimeClient {
   readonly client: HostConnectorClient;
+  readonly agent: MiniAppAgentClient;
   close(): void;
 }
 
 /** Child-side implementation injected into `start(context)`. */
 export function createMiniAppHostConnectorRuntimeClient(options: {
-  readonly input: MiniAppHostConnectorReadable;
-  readonly output: MiniAppHostConnectorWritable;
+  readonly transport: MiniAppIpcTransport;
   readonly onFatal?: (error: Error) => void;
 }): MiniAppHostConnectorRuntimeClient {
   const pending = new Map<string, PendingChildRequest>();
@@ -106,39 +129,12 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
   let closed = false;
   let writeTail = Promise.resolve();
 
-  const decoder = new StrictNdjsonDecoder(RESPONSE_MAX_BYTES, (value) => {
-    try {
-      handleResponse(value);
-    } catch (error) {
-      fatal(error);
-    }
+  const detach = bindMiniAppIpcChannel(options.transport, {
+    type: 'miniapp:connector',
+    maxBytes: RESPONSE_MAX_BYTES,
+    onMessage: handleResponse,
+    onFatal: fatal,
   });
-  const onData = (chunk: unknown) => {
-    try {
-      decoder.push(chunk as Buffer | string);
-    } catch (error) {
-      fatal(error);
-    }
-  };
-  const onEnd = () => {
-    try {
-      decoder.end();
-    } catch (error) {
-      fatal(error);
-      return;
-    }
-    fatal(new HostConnectorProtocolError('Host Connector response ended'));
-  };
-  const onError = () => fatal(new HostConnectorProtocolError('Host Connector response failed'));
-  options.input.on('data', onData);
-  options.input.on('end', onEnd);
-  options.input.on('error', onError);
-
-  function detach(): void {
-    options.input.removeListener('data', onData);
-    options.input.removeListener('end', onEnd);
-    options.input.removeListener('error', onError);
-  }
 
   function fatal(error: unknown): void {
     if (closed) return;
@@ -164,20 +160,12 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
       recordAdmissionReceipt(value, entry);
       return;
     }
-    const success = value.ok === true;
-    const keys = success ? ['v', 'id', 'ok', 'result'] : ['v', 'id', 'ok', 'error'];
-    if (!hasExactKeys(value, keys)) {
-      throw new HostConnectorProtocolError('Host Connector response shape is invalid');
-    }
-    if (success) {
-      const result = decodeChildResult(entry.method, value.result);
-      assertInvocationIdentity(entry, result);
-      settle(value.id, entry, undefined, result);
+    if ('event' in value) {
+      deliverAgentEvent(value, entry);
       return;
     }
-    const decoded = decodeWireError(value.error);
-    assertInvocationIdentity(entry, decoded);
-    settle(value.id, entry, decoded);
+    const outcome = decodeChildOutcome(entry, value);
+    settle(value.id, entry, outcome.error, outcome.result);
   }
 
   function settle(id: string, entry: PendingChildRequest, error?: Error, result?: unknown): void {
@@ -188,37 +176,50 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
   }
 
   function send(
-    method: PendingChildRequest['method'],
+    method: ChildRequestMethod,
     params: Record<string, unknown>,
     signal?: AbortSignal,
+    onEvent?: (event: MiniAppAgentRunEvent) => void,
   ): Promise<unknown> {
-    if (closed) return Promise.reject(unavailableError());
-    if (signal?.aborted) return Promise.reject(cancelledError());
-    if (pending.size >= MAX_PENDING) return Promise.reject(unavailableError(true));
+    if (closed) return Promise.reject(childUnavailableError(method));
+    if (signal?.aborted) return Promise.reject(childCancelledError(method));
+    if (!hasHostConnectorRequestCapacity(method, pending.values())) {
+      return Promise.reject(childUnavailableError(method, true));
+    }
     const id = allocateRequestId();
-    let frame: Buffer;
+    let frame: MiniAppIpcMessage;
     try {
-      frame = encodeFrame({ v: 1, id, method, params }, REQUEST_MAX_BYTES);
-    } catch {
-      return Promise.reject(
-        method === 'connector.call'
-          ? invalidArgumentsError()
-          : new HostConnectorProtocolError('Host Connector list request is invalid'),
+      frame = encodeMiniAppIpcMessage(
+        'miniapp:connector',
+        { v: 1, id, method, params },
+        REQUEST_MAX_BYTES,
       );
+    } catch {
+      return Promise.reject(childEncodeError(method));
     }
     return new Promise((resolve, reject) => {
-      const entry: PendingChildRequest = { method, resolve, reject, written: false };
+      const entry: PendingChildRequest = {
+        method,
+        resolve,
+        reject,
+        written: false,
+        ...(onEvent ? { onEvent } : {}),
+      };
       pending.set(id, entry);
       const onAbort = () => {
         if (!entry.written) {
-          settle(id, entry, cancelledError());
+          settle(id, entry, childCancelledError(method));
           return;
         }
         enqueueWrite(async () => {
           if (pending.has(id)) {
-            await writeBytes(
-              options.output,
-              encodeFrame({ v: 1, id, method: 'connector.cancel' }, REQUEST_MAX_BYTES),
+            await sendMiniAppIpcMessage(
+              options.transport,
+              encodeMiniAppIpcMessage(
+                'miniapp:connector',
+                { v: 1, id, method: isAgentMethod(method) ? 'agent.cancel' : 'connector.cancel' },
+                REQUEST_MAX_BYTES,
+              ),
             );
           }
         });
@@ -229,7 +230,7 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
       }
       enqueueWrite(async () => {
         if (!pending.has(id)) return;
-        await writeBytes(options.output, frame, () => {
+        await sendMiniAppIpcMessage(options.transport, frame, () => {
           entry.written = true;
         });
         if (signal?.aborted) onAbort();
@@ -272,8 +273,54 @@ export function createMiniAppHostConnectorRuntimeClient(options: {
     },
   });
 
+  type AgentTurnOptions = Parameters<MiniAppAgentClient['run']>[1];
+  type AgentTurnResult = Awaited<ReturnType<MiniAppAgentClient['run']>>;
+  async function sendAgentTurn(
+    method: 'agent.run' | 'agent.answer',
+    params: Record<string, unknown>,
+    turnOptions: AgentTurnOptions,
+  ): Promise<AgentTurnResult> {
+    const onEvent = typeof turnOptions?.onEvent === 'function' ? turnOptions.onEvent : undefined;
+    // Without `observe` the Host runs the turn with no listener, so its approvals are denied.
+    const wireParams = onEvent ? { ...params, observe: true } : params;
+    return (await send(method, wireParams, turnOptions?.signal, onEvent)) as AgentTurnResult;
+  }
+
+  const agent: MiniAppAgentClient = Object.freeze({
+    async run(input: Parameters<MiniAppAgentClient['run']>[0], runOptions?: AgentTurnOptions) {
+      return sendAgentTurn('agent.run', encodeAgentRunParams(input), runOptions);
+    },
+    async reply(input: Parameters<MiniAppAgentClient['reply']>[0]) {
+      await send('agent.reply', encodeAgentReplyParams(input));
+    },
+    async answer(
+      input: Parameters<MiniAppAgentClient['answer']>[0],
+      answerOptions?: AgentTurnOptions,
+    ) {
+      return sendAgentTurn('agent.answer', encodeAgentAnswerParams(input), answerOptions);
+    },
+    async models() {
+      return (await send('agent.models', {})) as Awaited<ReturnType<MiniAppAgentClient['models']>>;
+    },
+    async agents() {
+      return (await send('agent.agents', {})) as Awaited<ReturnType<MiniAppAgentClient['agents']>>;
+    },
+    async sessions() {
+      return (await send('agent.sessions', {})) as Awaited<ReturnType<MiniAppAgentClient['sessions']>>;
+    },
+    async session(sessionId: string) {
+      return (await send('agent.session', encodeAgentSessionParams(sessionId))) as Awaited<ReturnType<MiniAppAgentClient['session']>>;
+    },
+    async create(input?: Parameters<MiniAppAgentClient['create']>[0]) {
+      return (await send('agent.create', encodeAgentCreateParams(input))) as Awaited<
+        ReturnType<MiniAppAgentClient['create']>
+      >;
+    },
+  });
+
   return {
     client,
+    agent,
     close() {
       fatal(new HostConnectorProtocolError('Host Connector client closed'));
     },
@@ -294,14 +341,41 @@ async function runChildWrite(
 }
 
 interface ActiveHostRequest {
+  readonly method: ChildRequestMethod;
   readonly controller: AbortController;
   readonly completion: Promise<void>;
+  readonly agent: boolean;
   execution?: Promise<void>;
   dispatched: boolean;
 }
 
 interface RegisteredActiveHostRequest extends ActiveHostRequest {
   readonly complete: () => void;
+}
+
+function requireHostRequestAdmission(
+  id: string,
+  method: ChildRequestMethod,
+  highestRequestId: bigint,
+  requests: ReadonlyMap<string, ActiveHostRequest>,
+): bigint {
+  const numericId = BigInt(id);
+  if (
+    numericId <= highestRequestId ||
+    !hasHostConnectorRequestCapacity(method, requests.values())
+  ) {
+    throw new HostConnectorProtocolError('Host Connector request ordering is invalid');
+  }
+  return numericId;
+}
+
+/** Agent turns never hold a cutover open; they settle through their own terminal frame. */
+function abortAgentRequests(requests: ReadonlyMap<string, ActiveHostRequest>): void {
+  for (const request of requests.values()) {
+    if (request.agent) {
+      request.controller.abort(new HostConnectorCancelledError('Mini App Agent run cancelled'));
+    }
+  }
 }
 
 function markHostRequestDispatched(requests: Map<string, ActiveHostRequest>, id: string): void {
@@ -327,14 +401,17 @@ function registerActiveHostRequest(
   requests: Map<string, ActiveHostRequest>,
   id: string,
   controller: AbortController,
+  method: ChildRequestMethod,
 ): RegisteredActiveHostRequest {
   let resolveCompletion!: () => void;
   const completion = new Promise<void>((resolve) => {
     resolveCompletion = resolve;
   });
   const request: RegisteredActiveHostRequest = {
+    method,
     controller,
     completion,
+    agent: isAgentTurnMethod(method),
     dispatched: false,
     complete: () => {
       requests.delete(id);
@@ -347,11 +424,13 @@ function registerActiveHostRequest(
 
 interface HostSessionFactoryOptions {
   readonly gateway: HostProcessConnectorGateway;
+  readonly agentGateway?: MiniAppAgentGateway;
   readonly makeToolRef?: () => string;
   readonly makeInvocationId?: () => string;
   readonly graceTimeoutMs?: number;
   readonly settleTimeoutMs?: number;
   readonly requestTimeoutMs?: number;
+  readonly logger?: { warn(fields: Record<string, unknown>, message: string): void };
 }
 
 /** Host-side generation-bound session backed only by the ConnectorGateway seam. */
@@ -384,25 +463,36 @@ function createHostConnectorSession(
   let writeTail = Promise.resolve();
   let retirePromise: Promise<void> | undefined;
   const releaseGateway = createHostConnectorGatewayRelease(options.gateway, input);
+  const agent = createHostAgentSession({
+    gateway: options.agentGateway,
+    identity: input,
+    lifecycle,
+    makeInvocationId: () => requireInvocationId(makeInvocationId()),
+    maxFrameBytes: RESPONSE_MAX_BYTES,
+    enqueueResponse: (value: unknown) => enqueueResponse(value),
+    ...(options.logger ? { logger: options.logger } : {}),
+  });
+  const releaseBindings = () => {
+    releaseGateway();
+    agent.release();
+  };
   const makeToolRef = options.makeToolRef ?? randomUUID;
   const makeInvocationId = options.makeInvocationId ?? randomUUID;
   const timeouts = hostSessionTimeouts(options);
-  const decoder = new StrictNdjsonDecoder(REQUEST_MAX_BYTES, (value) => {
-    try {
+  const detach = bindMiniAppIpcChannel(input.transport, {
+    type: 'miniapp:connector',
+    maxBytes: REQUEST_MAX_BYTES,
+    onMessage(value) {
+      if (!handshakeStarted) {
+        throw new HostConnectorProtocolError('Host Connector request preceded handshake');
+      }
       handleFrame(value);
-    } catch (error) {
-      fail(error);
-    }
-  });
-  const detach = bindHostRequestDecoder({
-    request: input.request,
-    decoder,
-    handshakeStarted: () => handshakeStarted,
-    fail,
+    },
+    onFatal: fail,
   });
   function handleFrame(value: unknown): void {
     const frame = decodeRequest(value);
-    if (frame.method === 'connector.cancel') {
+    if (frame.method === 'connector.cancel' || frame.method === 'agent.cancel') {
       const request = requests.get(frame.id);
       if (request) {
         request.controller.abort(new HostConnectorCancelledError('Request cancelled'));
@@ -411,17 +501,18 @@ function createHostConnectorSession(
       }
       return;
     }
-    const numericId = BigInt(frame.id);
-    if (numericId <= highestRequestId || requests.size >= MAX_PENDING) {
-      throw new HostConnectorProtocolError('Host Connector request ordering is invalid');
-    }
-    highestRequestId = numericId;
+    highestRequestId = requireHostRequestAdmission(
+      frame.id,
+      frame.method,
+      highestRequestId,
+      requests,
+    );
     const controller = new AbortController();
-    const request = registerActiveHostRequest(requests, frame.id, controller);
+    const request = registerActiveHostRequest(requests, frame.id, controller, frame.method);
     request.execution = runTimedHostRequest({
       frame,
       controller,
-      timeoutMs: timeouts.requestMs,
+      timeoutMs: isAgentTurnMethod(frame.method) ? undefined : timeouts.requestMs,
       dispatch,
       fail,
       complete: request.complete,
@@ -429,6 +520,10 @@ function createHostConnectorSession(
   }
 
   async function dispatch(frame: RequestFrame, signal: AbortSignal): Promise<void> {
+    if (isAgentMethod(frame.method)) {
+      const markDispatched = () => markHostRequestDispatched(requests, frame.id);
+      return agent.handle({ ...frame, method: frame.method }, signal, markDispatched);
+    }
     const gate = lifecycle.gate();
     if (gate !== 'open') {
       await respondError(
@@ -501,8 +596,8 @@ function createHostConnectorSession(
   function enqueueResponse(value: unknown): Promise<void> {
     const operation = writeHostResponse(
       writeTail,
-      () => publishResponses && !lifecycle.isRetired() && !input.response.destroyed,
-      input.response,
+      () => publishResponses && !lifecycle.isRetired() && input.transport.connected !== false,
+      input.transport,
       value,
     );
     writeTail = ignoreFailure(operation);
@@ -511,6 +606,7 @@ function createHostConnectorSession(
 
   async function retire(): Promise<void> {
     if (!lifecycle.beginRetirement()) return;
+    abortAgentRequests(requests);
     const pending = requestCompletions(requests);
     if (!(await settleWithin(Promise.allSettled(pending), timeouts.graceMs))) {
       publishResponses = false;
@@ -524,7 +620,7 @@ function createHostConnectorSession(
     refs.clear();
     refsByHandle.clear();
     detach();
-    releaseGateway();
+    releaseBindings();
   }
 
   function fail(error: unknown): void {
@@ -536,7 +632,7 @@ function createHostConnectorSession(
     refsByHandle.clear();
     for (const request of requests.values()) request.controller.abort();
     detach();
-    releaseGateway();
+    releaseBindings();
     retirePromise ??= retire();
     input.onFatal(
       error instanceof Error ? error : new HostConnectorProtocolError('Host Connector failed'),
@@ -547,16 +643,22 @@ function createHostConnectorSession(
     startHandshake() {
       if (!lifecycle.isRetired()) handshakeStarted = true;
     },
-    activate: () => lifecycle.activate(),
+    activate() {
+      lifecycle.activate();
+      agent.activate();
+    },
     beginQuiesce(quiesceInput) {
       return lifecycle.beginQuiesce({
         pending: dispatchedRequestCompletions(requests),
         deadlineMs: quiesceInput.deadlineMs,
         signal: quiesceInput.signal,
+        // Agent turns are aborted only once the switch is final: a `busy` or resumed quiesce
+        // leaves the old generation running, and its in-flight turns must survive that.
         commit: () => {
+          abortAgentRequests(requests);
           refs.clear();
           refsByHandle.clear();
-          releaseGateway();
+          releaseBindings();
         },
       });
     },
@@ -570,7 +672,7 @@ function createHostConnectorSession(
       refs.clear();
       refsByHandle.clear();
       detach();
-      releaseGateway();
+      releaseBindings();
       retirePromise ??= retire();
       return retirePromise;
     },
@@ -647,52 +749,27 @@ function hostSessionTimeouts(options: HostSessionFactoryOptions) {
   };
 }
 
-function bindHostRequestDecoder(input: {
-  readonly request: MiniAppHostConnectorReadable;
-  readonly decoder: StrictNdjsonDecoder;
-  readonly handshakeStarted: () => boolean;
-  readonly fail: (error: unknown) => void;
-}): () => void {
-  const onData = (chunk: unknown) => {
-    if (!input.handshakeStarted()) {
-      input.fail(new HostConnectorProtocolError('Host Connector output preceded handshake'));
-      return;
-    }
-    try {
-      input.decoder.push(chunk as Buffer | string);
-    } catch (error) {
-      input.fail(error);
-    }
-  };
-  const onEnd = () => {
-    try {
-      input.decoder.end();
-    } catch (error) {
-      input.fail(error);
-      return;
-    }
-    input.fail(new HostConnectorProtocolError('Host Connector request ended'));
-  };
-  const onError = () => input.fail(new HostConnectorProtocolError('Host Connector request failed'));
-  return bindRequestStream(input.request, { onData, onEnd, onError });
-}
 
 async function runTimedHostRequest(input: {
   readonly frame: RequestFrame;
   readonly controller: AbortController;
-  readonly timeoutMs: number;
+  /** Absent for `agent.run` / `agent.answer`: the Agent turn, not the IPC session, owns completion. */
+  readonly timeoutMs: number | undefined;
   readonly dispatch: (frame: RequestFrame, signal: AbortSignal) => Promise<void>;
   readonly fail: (error: unknown) => void;
   readonly complete: () => void;
 }): Promise<void> {
-  const timer = setTimeout(
-    () =>
-      input.controller.abort(
-        new HostConnectorRequestTimeoutError('Host Connector request timed out'),
-      ),
-    input.timeoutMs,
-  );
-  timer.unref();
+  const timer =
+    input.timeoutMs === undefined
+      ? undefined
+      : setTimeout(
+          () =>
+            input.controller.abort(
+              new HostConnectorRequestTimeoutError('Host Connector request timed out'),
+            ),
+          input.timeoutMs,
+        );
+  timer?.unref();
   try {
     await input.dispatch(input.frame, input.controller.signal);
   } catch (error) {
@@ -703,23 +780,6 @@ async function runTimedHostRequest(input: {
   }
 }
 
-function bindRequestStream(
-  request: MiniAppHostConnectorReadable,
-  listeners: {
-    readonly onData: (chunk: unknown) => void;
-    readonly onEnd: () => void;
-    readonly onError: () => void;
-  },
-): () => void {
-  request.on('data', listeners.onData);
-  request.on('end', listeners.onEnd);
-  request.on('error', listeners.onError);
-  return () => {
-    request.removeListener('data', listeners.onData);
-    request.removeListener('end', listeners.onEnd);
-    request.removeListener('error', listeners.onError);
-  };
-}
 
 async function listHostConnectorTools(input: {
   readonly gateway: HostProcessConnectorGateway;
@@ -861,12 +921,15 @@ function mintToolRef(
 async function writeHostResponse(
   previous: Promise<void>,
   shouldPublish: () => boolean,
-  output: MiniAppHostConnectorWritable,
+  transport: MiniAppIpcTransport,
   value: unknown,
 ): Promise<void> {
   await previous;
   if (!shouldPublish()) return;
-  await writeBytes(output, encodeFrame(value, RESPONSE_MAX_BYTES));
+  await sendMiniAppIpcMessage(
+    transport,
+    encodeMiniAppIpcMessage('miniapp:connector', value, RESPONSE_MAX_BYTES),
+  );
 }
 
 async function raceWithSignal<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -909,11 +972,14 @@ function decodeCallParams(params: Record<string, unknown> | undefined): {
 
 function decodeRequest(value: unknown): RequestFrame {
   if (!isRecord(value) || value.v !== 1 || !isRequestId(value.id)) throw protocolParamsError();
-  if (value.method === 'connector.cancel' && hasExactKeys(value, ['v', 'id', 'method'])) {
+  if (
+    (value.method === 'connector.cancel' || value.method === 'agent.cancel') &&
+    hasExactKeys(value, ['v', 'id', 'method'])
+  ) {
     return { id: value.id, method: value.method };
   }
   if (
-    (value.method !== 'connector.list' && value.method !== 'connector.call') ||
+    !isParamsMethod(value.method) ||
     !hasExactKeys(value, ['v', 'id', 'method', 'params']) ||
     !isRecord(value.params)
   ) {
@@ -922,7 +988,60 @@ function decodeRequest(value: unknown): RequestFrame {
   return { id: value.id, method: value.method, params: value.params };
 }
 
-function decodeChildResult(method: PendingChildRequest['method'], value: unknown): unknown {
+function isParamsMethod(value: unknown): value is ChildRequestMethod {
+  return (
+    value === 'connector.list' ||
+    value === 'connector.call' ||
+    (typeof value === 'string' && isAgentMethod(value))
+  );
+}
+
+function decodeChildOutcome(
+  entry: PendingChildRequest,
+  value: Record<string, unknown>,
+): { readonly error?: Error; readonly result?: unknown } {
+  const success = value.ok === true;
+  const keys = success ? ['v', 'id', 'ok', 'result'] : ['v', 'id', 'ok', 'error'];
+  if (!hasExactKeys(value, keys)) {
+    throw new HostConnectorProtocolError('Host Connector response shape is invalid');
+  }
+  if (success) {
+    const result = decodeChildResult(entry.method, value.result);
+    assertInvocationIdentity(entry, result);
+    return { result };
+  }
+  if (isAgentMethod(entry.method)) return { error: decodeAgentWireError(value.error) };
+  const error = decodeWireError(value.error);
+  assertInvocationIdentity(entry, error);
+  return { error };
+}
+
+function deliverAgentEvent(value: Record<string, unknown>, entry: PendingChildRequest): void {
+  if (!hasExactKeys(value, ['v', 'id', 'event'])) {
+    throw new HostConnectorProtocolError('Host Connector notification shape is invalid');
+  }
+  if (!isAgentTurnMethod(entry.method)) return;
+  const event = decodeAgentRunEvent(value.event);
+  if (!event) return;
+  try {
+    entry.onEvent?.(event);
+  } catch (error) {
+    // A Mini App callback failure must not tear down the shared connector channel or end the
+    // run, but the author still needs to see it; child stderr is collected into runtime logs.
+    reportAgentEventHandlerError(error);
+  }
+}
+
+function reportAgentEventHandlerError(error: unknown): void {
+  try {
+    process.stderr.write(`${format('[miniapp] agent onEvent handler threw', error)}\n`);
+  } catch {
+    // Diagnostics are best-effort; a broken stderr must not fail the run either.
+  }
+}
+
+function decodeChildResult(method: ChildRequestMethod, value: unknown): unknown {
+  if (isAgentMethod(method)) return decodeAgentResult(method, value);
   if (!isRecord(value)) throw new HostConnectorProtocolError('Host Connector result is invalid');
   if (method === 'connector.list') {
     if (
@@ -1024,7 +1143,8 @@ function decodeWireDiagnosticIssue(value: unknown): HostConnectorDiagnosticIssue
 
 function recordAdmissionReceipt(value: Record<string, unknown>, entry: PendingChildRequest): void {
   if (
-    entry.method !== 'connector.call' ||
+    entry.method === 'connector.list' ||
+    isAgentShortMethod(entry.method) ||
     entry.invocationId ||
     !hasExactKeys(value, ['v', 'id', 'receipt', 'invocationId']) ||
     !isBoundedIdentifier(value.invocationId)
@@ -1076,7 +1196,12 @@ async function resolvesTrue(operation: Promise<unknown>): Promise<true> {
   return true;
 }
 
-function disconnectedError(id: string, request: PendingChildRequest): HostConnectorError {
+function disconnectedError(id: string, request: PendingChildRequest): Error {
+  if (isAgentMethod(request.method)) {
+    return request.written
+      ? agentClientError('AGENT_OUTCOME_UNKNOWN')
+      : agentClientError('AGENT_UNAVAILABLE', true);
+  }
   return request.method === 'connector.call' && request.written
     ? new HostConnectorError(
         'CONNECTOR_OUTCOME_UNKNOWN',
@@ -1085,6 +1210,23 @@ function disconnectedError(id: string, request: PendingChildRequest): HostConnec
         { retryable: false, invocationId: request.invocationId ?? id },
       )
     : unavailableError(true);
+}
+
+function childUnavailableError(method: ChildRequestMethod, retryable = false): Error {
+  return isAgentMethod(method)
+    ? agentClientError('AGENT_UNAVAILABLE', retryable)
+    : unavailableError(retryable);
+}
+
+function childCancelledError(method: ChildRequestMethod): Error {
+  return isAgentMethod(method) ? agentClientError('REQUEST_CANCELLED') : cancelledError();
+}
+
+function childEncodeError(method: ChildRequestMethod): Error {
+  if (isAgentMethod(method)) return agentClientError('INVALID_ARGUMENTS');
+  return method === 'connector.call'
+    ? invalidArgumentsError()
+    : new HostConnectorProtocolError('Host Connector list request is invalid');
 }
 
 function unavailableError(retryable = false): HostConnectorError {
@@ -1125,29 +1267,3 @@ function requireInvocationId(value: unknown): string {
   return value;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isBoundedIdentifier(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    Buffer.byteLength(value) <= MAX_IDENTIFIER_BYTES
-  );
-}
-
-function isRequestId(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^[1-9]\d{0,19}$/u.test(value)) return false;
-  try {
-    return BigInt(value) <= 18_446_744_073_709_551_615n;
-  } catch {
-    return false;
-  }
-}
-
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-  const actual = Object.keys(value).sort();
-  const expected = [...keys].sort();
-  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
-}

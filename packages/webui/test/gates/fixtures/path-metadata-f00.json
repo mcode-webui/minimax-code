@@ -1,0 +1,6686 @@
+{
+  "baseline": "f00b1268c28ad15054a8882620c3fb08beb86d58",
+  "sourceSha256": "46b86b658adc1611f3531d8dc9844612f7e9ee3de0eec4a532aeec44b5de0a12",
+  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures.",
+  "cases": [
+    {
+      "path": "client/application/create-application.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/identity-epochs.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/observation-scheduler.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/port-slices.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/selectors.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/session-store.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/snapshot-store.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/state.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/task-session-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/application/version-cell.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "assembly",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/application-context.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/browser-capabilities.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/browser-effects.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/composer-store.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/event-channel-adapter.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/navigation.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/port-slices-context.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/ssh-owner-context.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/use-connection-health.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/use-query-state.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/use-session-state.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/bindings/version-cells.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/contracts/browser-drawing.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "contracts-shared",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/contracts/transport.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "contracts-shared",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/contracts/value-readers.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "contracts-shared",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/conversation/request-freshness.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/session-scope.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/stream-instrumentation.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/stream-lease.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/stream-loop.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/transcript-history.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/conversation/transcript-request-ownership.ts",
+      "layers": [
+        "mechanisms"
+      ],
+      "role": "conversation",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/application/account-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/application/login-phase.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/bindings/use-account-workflows.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/bindings/use-account-workflows.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/contracts/account-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/projection/usage.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/account.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/AccountLoginDialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/ConversationUsageBanner.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/UserMenu.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/UserMenuSignin.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/account/ui/UserMenuUsage.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/application/browser-authorization.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/application/browser-commands.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/bindings/use-browser-authorization.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/bindings/use-browser-run.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/contracts/browser-panel.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/contracts/browser-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/projection/browser-state.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/ui/browser.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/ui/BrowserAuthorizationSwitches.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/ui/BrowserPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/ui/BrowserPanelHost.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/browser/ui/BrowserSettingsPage.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/application/channel-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/contracts/channel-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/projection/channel-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/channel/ui/ChannelConnectPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "channel",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/command-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/composer-controller.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/composer-history.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/composer-queue.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/composer-store.public.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/composer-store.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/application/turn-retry.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/bindings/use-composer-attachments.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/bindings/use-composer-controller.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/bindings/use-composer-input.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/bindings/use-composer-layout.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/command-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/composer-controller.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/composer-interactions.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/composer-observations.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/composer-state.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/composer-turn.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/context-usage.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/contracts/slash-command.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/composer-goal-outcome.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/composer-interactions.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/composer-state.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/context-breakdown.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/context-usage-popover.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/seed-application.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/projection/submission-gate.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/composer.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/Composer.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ComposerEditorStaging.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ComposerMenus.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ComposerPermissionControl.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ComposerProjectRow.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ComposerSubmissionControls.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ContextUsageIndicator.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/QueuePanel.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/slash-palette.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/ThinkingTrigger.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/composer/ui/WebuiComposer.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/application/owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/bindings/use-view.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/contracts/input.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/projection/view.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/ui/Panel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/future/unknown/file.ts",
+      "layers": [
+        "unknown"
+      ],
+      "role": "feature-root",
+      "business": "future",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/application/goal-coordinator.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/application/goal-session-owners.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/application/goal-submission.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/bindings/goal-owner.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/contracts/goal-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/projection/goal-state.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/ui/goal.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/goal/ui/GoalBanner.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "goal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/application/interaction-coordinator.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/application/interaction-session-owners.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/bindings/interaction-owner.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/contracts/interaction-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/contracts/plan-mode.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/projection/plan-mode.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/projection/questionnaire-state.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/InteractionPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/interactions.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/plan-mode.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/PlanModeCards.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/PlanModeCards.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/application/miniapp-agent-bridge.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/application/miniapp-bridge.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/application/miniapp-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/bindings/use-miniapp-catalogue.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/bindings/use-miniapp-workflows.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/contracts/miniapp-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/projection/miniapp-view.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppAppsList.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppPicker.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppStandalone.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/miniapp/ui/MiniAppView.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "miniapp",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/application/models-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/application/provider-editor.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/bindings/use-model-picker-interaction.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/bindings/use-provider-editor.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/contracts/model-selection.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/contracts/model-view.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/contracts/provider-editor.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/contracts/provider-outcome.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/contracts/provider-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/effort-scale.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-draft.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-favorites.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-picker-cascade.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-picker-hover.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-picker-rows.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-picker-search.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/model-reorder.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/thinking-control.public.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/token-plan-model.public.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/usage-settings.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/projection/usage-settings.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelDraftEditor.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelEffortSlider.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelListPanel.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelMenu.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelPanel.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelPicker.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/models.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ModelSettingsFlyout.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/models/ui/ProviderFormPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/application/composer-catalogue.public.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/application/composer-catalogue.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/application/plugin-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/contracts/plugin-actions.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/contracts/plugin-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/contracts/plugin-rows.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/projection/catalogue-view.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/projection/mcp-status.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/AgentForm.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/McpServerForm.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/PluginCatalogue.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/PluginImportDialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/PluginItemDialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/PluginManagementList.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/PluginMarketplace.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/plugins.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/plugins/ui/SkillForm.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "plugins",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/application/remote-control-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/contracts/remote-control-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/projection/remote-control-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote-control/ui/RemoteControlPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote-control",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/application/remote-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/contracts/remote-page.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/ui/remote-tabs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/remote/ui/RemotePage.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "remote",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/application/turn-review-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/application/workspace-review-owner.public.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/bindings/use-turn-review.public.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/contracts/review-view.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/contracts/turn-review.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/contracts/workspace-review.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/projection/review-state.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/review/ui/ReviewSettingsPage.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "review",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/application/scheduling-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/contracts/scheduling-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/projection/scheduling-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "scheduling",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-activity-controller.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-catalog.public.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-catalog.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-commands.public.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-commands.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/session-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/application/unread.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-rail-context-menu.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-session-rail-overlays.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-session-rail-pins.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-session-rail-state.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-session-team-mode.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/contracts/session-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/contracts/session-view.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/action-requests.public.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/rail-buckets.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/rail-groups.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/rail-menu.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/session-activity.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/session-lookups.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/projection/worktree-state.public.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/ExternalDeletionDraftNotice.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/LeftRail.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/project-expansion.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/ProjectList.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/rail-context-menu.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/rail-view-tabs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/RailRow.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/session-activity-meta.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/SessionList.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/SessionRail.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/SessionRailRegion.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/sessions.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/application/settings-workflows.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/contracts/memory-handoff.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/contracts/settings-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/projection/settings-shortcuts.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/projection/settings-view.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/projection/usage-plan.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/projection/usage-report.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/account-usage-glyphs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/account-usage-share-image.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/AccountUsageSettings.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/GlobalInstructionsSection.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/MemoryManagerDialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/MemorySection.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/PersonalizationSettings.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/settings-atoms.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/settings.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/SettingsModal.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/SettingsModal.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/ShortcutsSettings.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/UsageHeatmap.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/UsageModelSettings.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/UsageResetCards.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/UserProfileSection.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/shell/application/boundary-error.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "shell",
+      "home": "target"
+    },
+    {
+      "path": "client/features/shell/contracts/watch-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "shell",
+      "home": "target"
+    },
+    {
+      "path": "client/features/shell/projection/shell-surface.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "shell",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/application/ssh-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/contracts/ssh-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/projection/ssh-panel.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-host-form.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-project-form.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/ssh-terminal-view.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/SshPanel.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/terminal/application/terminal-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "terminal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/terminal/contracts/terminal-owner.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "terminal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/terminal/contracts/terminal-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "terminal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/terminal/projection/terminal-size.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "terminal",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/application/message-feedback.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/bindings/use-transcript-scroll.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/contracts/message-stream.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/contracts/message-view.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/contracts/session-read-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/contracts/transcript-view.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/message-file-reference.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/message-parts.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/message-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/message-timestamp.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/tool-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/transcript-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/transcript-scroll.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/transcript-shape.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/projection/transcript-view-model.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/ActivityIndicator.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/AssistantBody.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/DiffCard.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/markdown.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/MessageActions.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/MessageAttachments.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/MessageItem.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/OutputError.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/PlanDelivery.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/QuestionnaireResponse.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/SessionTranscript.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/transcript-widgets.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/transcript.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/Transcript.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/TranscriptPrimitives.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/TranscriptSkeletons.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/TurnNavigator.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/webui-mermaid.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/composer-submission.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/delivery-disposers.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/effect-reducer.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/event-channel.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/event-coordinator.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/execution-target.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/queue-command.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/session-fact.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-frame-classify.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-lease-controller.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-lease.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-loop-sink.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-phase-commands.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/stream-state-bundle.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/submission-admission.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/turn-capabilities.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/turn-command-writer.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/turn-commands.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/turn-coordinator.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/application/turn-lifecycle-commands.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/active-turn-probe.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/execution-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/interaction-phase-intents.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/stream-loop.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/stream-state.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/submission.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/turn-command-views.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/contracts/turn-commands.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/projection/stream-recovery.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/projection/stream-state.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/turn/projection/stream-state.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "turn",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-archive-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-canvas-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-environment-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-files-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-owner-contracts.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-panel-owner.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/application/workspace-queries.ts",
+      "layers": [
+        "application"
+      ],
+      "role": "feature-application",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/contracts/panel-command.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/contracts/progress.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/contracts/workspace-port.ts",
+      "layers": [
+        "contracts"
+      ],
+      "role": "feature-contracts",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/archive-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/canvas-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/html-preview.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/media-preview.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/panel-projection.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/workspace-file-tree.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/workspace-name.public.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/workspace-panel-state.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/projection/workspace-progress.ts",
+      "layers": [
+        "domain"
+      ],
+      "role": "feature-projection",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/workspace-progress.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/workspace.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceArchiveView.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceCanvas.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceFileTree.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceHtmlPreview.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceMediaPreview.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspacePanelControls.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspacePanels.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/WorkspaceProgressPanel.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/future/unknown.ts",
+      "layers": [
+        "unknown"
+      ],
+      "role": "unknown",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/global.d.ts",
+      "layers": [
+        "root"
+      ],
+      "role": "entry",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/main.tsx",
+      "layers": [
+        "root"
+      ],
+      "role": "entry",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/browser-dom.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/connection-health.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/event-channel.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/no-project.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/session-import.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/session-transfer-download.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/session-transfer-target.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/storage.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/team-mode.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/transport.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/platform/wire.ts",
+      "layers": [
+        "infrastructure"
+      ],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/projection/common/context-menu.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/diff-workspace-boundary.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/dropdown-placement.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/event-kinds.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/event-parsers.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/flyout-position.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/goal-message.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/outside-close.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/overlay-geometry.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/overlay-order.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/paths.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/plugin-failure-text.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/router.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/shortcuts.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/projection/common/unread-badge.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/shell/ArchonPage.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/ArchonShell.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/ConnectionStatus.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/ConversationSurface.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/icons.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/NotFound.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/StartupFallback.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/use-new-task-workspace.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/use-selected-session.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/use-session-rail-actions.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/use-shell-activity-wiring.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/use-workspace-panel-session.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/WebuiClientFoundationApp.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/WebuiErrorBoundary.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/WebuiZoneBoundary.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/styles/button.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/dialog.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/dropdown.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/feedback.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/field.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/index.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/layout.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/menu-item.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/motion.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/shell.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/tokens.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/ui/activity-phrase.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/button.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/content-page.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/ContextMenu.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/dialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/Dropdown.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/feedback.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/field.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/form-atoms.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/layout-primitives.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/layout-thresholds.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/menu-item.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/overlay-coordinator.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/overlay-listeners.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/settings-glyphs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/settings-layout.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/ToggleSwitch.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "runtime/account-login.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/assembly.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/auth-context.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/auth-session.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser-provider.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/authorization.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/browser-service.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/errors.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/input.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/isolated-chromium/cdp-connection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/isolated-chromium/core-transport.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/isolated-chromium/provider.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/target-registry.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/browser/tool-adapter.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/check-in.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/commands/descriptors.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/commands/runner.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/account.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/adapter.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/browser.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/canvas-input.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/channel.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/cron.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/execution.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/future.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/host-contract.ts",
+      "layers": [
+        "runtime-port"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/interactions.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/miniapp-agent.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/miniapp.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/models-plugins.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/provider-input.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/remote-control.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/requirements.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/result-conversion.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/sessions.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/settings.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/ssh.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/harness/workspace.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/index.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/lifecycle.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/mcode-tools-entry.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/mcode-tools-environment.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/mcode-tools.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/port.ts",
+      "layers": [
+        "runtime-port"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/profile-files.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/attachment-fetch.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/audit-redaction.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/command-router.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/connection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/credential.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/data-plane.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/device-identity.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/event-frame-mapper.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/frame-codec.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/index.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/pairing-client.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/pairing-session.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/permission-upstream.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/stream-pump.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/bridge/types.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/command-router.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/device-name.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/global-events.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/logger.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/owner.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/pairing.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/reset-card-projection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/runtime-environment.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/session-transfer.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/signing.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/askpass.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/command.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/connection-repository.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/connection-service.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/credentials.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/errors.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/host-discovery.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/index.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/project-repository.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/project-service.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/storage.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/terminal.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/transport.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/types.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/ssh/validators.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/terminal.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/usage-quota-projection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/usage-quota.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/usage-summary-projection.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/archive-filesystem.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/archive-listing.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/archive-policy.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/archive-types.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/tar-adapter.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-archive/zip-adapter.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/workspace-real-path.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/access-policy.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/admission.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/core-transport.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/credential-store.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/index.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/pairing.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/reconnect.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/registry.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/server.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/browser-bridge/session.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/credentials.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/envelope.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/frame-handler.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http-server.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http/client-assets.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http/responses.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http/router.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http/session-transfer.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/http/workspace-file.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/index.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/agent-connections.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/agent-panels.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/agent-runs.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/bridge.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/presentation-lease.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/presenter.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/proxy-registry.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/miniapp/proxy.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/account.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/agent-memory.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/bind-handlers.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/binding-mechanism.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/browser.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/channel.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/common.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/future.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/goal.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/account.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/browser.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/commands.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/messages.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/miniapp-agent.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/miniapp.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/remote-control.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/ssh.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/stream.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/terminal.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/handlers/workspace.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/interaction.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/memory-settings.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/messages.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/miniapp-agent.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/miniapp.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/operation-contract.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/operation-dispatch.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/operations.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/permission-mode.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/personalization.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/plugin-management.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/provider.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/questionnaire.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/queue.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/remote-control.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/scheduling.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/session.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/ssh.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/user-profile.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/operation/workspace.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/projections/context-snapshot.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/projections/index.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/projections/model-provider.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/projections/usage.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/service.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "server/websocket-server.ts",
+      "layers": [
+        "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/capability-manifest.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/account-billing.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/account-usage.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/account.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/browser-bridge.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/browser.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/canvas.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/channel.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/commands.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/cron.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/delivery.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/future.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/goal.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/host-event-types.generated.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/interactions.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/messages.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/miniapp-agent.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/miniapp.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/models.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/observations.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/personalization.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/queue.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/remote-control.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/review.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/session-facts.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/session.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/ssh.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/stream.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/terminal.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/usage-quota.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/version.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/contracts/workspace.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/envelope.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/operation-codecs.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/operation-names.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/plugin-management.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/session-transfer-format.ts",
+      "layers": [
+        "shared"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    }
+  ],
+  "directions": [
+    {
+      "from": "application",
+      "to": "application",
+      "allowed": true
+    },
+    {
+      "from": "application",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "application",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "application",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "mechanisms",
+      "allowed": true
+    },
+    {
+      "from": "application",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "application",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "application",
+      "to": "view",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "application",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "bindings",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "infrastructure",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "mechanisms",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "bindings",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "bindings",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "bindings",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "bindings",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "bindings",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "bindings",
+      "to": "view",
+      "allowed": true
+    },
+    {
+      "from": "contracts",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "contracts",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "contracts",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "contracts",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "domain",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "domain",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "domain",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "domain",
+      "to": "view",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "infrastructure",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "mechanisms",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "infrastructure",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "infrastructure",
+      "to": "view",
+      "allowed": true
+    },
+    {
+      "from": "mechanisms",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "mechanisms",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "mechanisms",
+      "allowed": true
+    },
+    {
+      "from": "mechanisms",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "mechanisms",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "mechanisms",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "root",
+      "to": "application",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "bindings",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "infrastructure",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "mechanisms",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "root",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "runtime",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "runtime-port",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "server",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "root",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "root",
+      "to": "view",
+      "allowed": true
+    },
+    {
+      "from": "runtime",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "contracts",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "runtime",
+      "allowed": true
+    },
+    {
+      "from": "runtime",
+      "to": "runtime-port",
+      "allowed": true
+    },
+    {
+      "from": "runtime",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "runtime",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "runtime",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "contracts",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "runtime",
+      "allowed": true
+    },
+    {
+      "from": "runtime-port",
+      "to": "runtime-port",
+      "allowed": true
+    },
+    {
+      "from": "runtime-port",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "runtime-port",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "runtime-port",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "contracts",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "runtime-port",
+      "allowed": true
+    },
+    {
+      "from": "server",
+      "to": "server",
+      "allowed": true
+    },
+    {
+      "from": "server",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "server",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "server",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "contracts",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "shared",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "shared",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "contracts",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "domain",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "shared",
+      "allowed": false
+    },
+    {
+      "from": "unknown",
+      "to": "unknown",
+      "allowed": true
+    },
+    {
+      "from": "unknown",
+      "to": "view",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "application",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "bindings",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "contracts",
+      "allowed": true
+    },
+    {
+      "from": "view",
+      "to": "domain",
+      "allowed": true
+    },
+    {
+      "from": "view",
+      "to": "infrastructure",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "mechanisms",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "root",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "runtime",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "runtime-port",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "server",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "shared",
+      "allowed": true
+    },
+    {
+      "from": "view",
+      "to": "unknown",
+      "allowed": false
+    },
+    {
+      "from": "view",
+      "to": "view",
+      "allowed": true
+    }
+  ]
+}

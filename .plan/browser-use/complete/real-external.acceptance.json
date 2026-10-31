@@ -1,0 +1,140 @@
+[
+  {
+    "surface": "chrome",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "entry": "development",
+    "case": "the bridge survives the worker being terminated during an active stream",
+    "settings": {
+      "surface": "chrome",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the host noticed the terminated worker, the surface went down and came back, and a command against the live tab answered again",
+    "result": "pass",
+    "at": "2026-10-31T04:22:12.595Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  },
+  {
+    "surface": "chrome",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "entry": "development",
+    "case": "text input reaches the page and the page's image reaches the host",
+    "settings": {
+      "surface": "chrome",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the text the host sent appeared in the page's field, and a non-empty image frame for that page arrived at the host",
+    "result": "pass",
+    "at": "2026-10-31T04:22:13.210Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  },
+  {
+    "surface": "chrome",
+    "browser": "chromium",
+    "browserVersion": "153.0.8010.12",
+    "entry": "development",
+    "case": "a DevTools command runs against the live tab, and one outside the allowed set is refused as unsupported",
+    "settings": {
+      "surface": "chrome",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the command in the allowed subset answered with the page's title, and a command outside it was refused as unsupported",
+    "result": "pass",
+    "at": "2026-10-31T04:22:13.840Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  },
+  {
+    "surface": "edge",
+    "browser": "msedge",
+    "browserVersion": "155.0.4283.62",
+    "entry": "development",
+    "case": "the bridge survives the worker being terminated during an active stream",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the host noticed the terminated worker, the surface went down and came back, and a command against the live tab answered again",
+    "result": "pass",
+    "at": "2026-10-31T04:22:15.668Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  },
+  {
+    "surface": "edge",
+    "browser": "msedge",
+    "browserVersion": "155.0.4283.62",
+    "entry": "development",
+    "case": "text input reaches the page and the page's image reaches the host",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the text the host sent appeared in the page's field, and a non-empty image frame for that page arrived at the host",
+    "result": "pass",
+    "at": "2026-10-31T04:22:16.775Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  },
+  {
+    "surface": "edge",
+    "browser": "msedge",
+    "browserVersion": "155.0.4283.62",
+    "entry": "development",
+    "case": "a DevTools command runs against the live tab, and one outside the allowed set is refused as unsupported",
+    "settings": {
+      "surface": "edge",
+      "surfaceSwitch": true,
+      "otherSurfaceSwitch": false,
+      "isolatedChromium": "not carried by the bridge",
+      "fullCdp": "enforced in the runtime service, not in the bridge",
+      "allowlist": "development",
+      "build": "development",
+      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "installationKeyProved": true
+    },
+    "observed": "the command in the allowed subset answered with the page's title, and a command outside it was refused as unsupported",
+    "result": "pass",
+    "at": "2026-10-31T04:22:17.295Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "real-external"
+  }
+]

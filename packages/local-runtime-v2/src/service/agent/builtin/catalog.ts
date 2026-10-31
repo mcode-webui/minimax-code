@@ -36,6 +36,7 @@ import {
   type BuiltinSurfaceRenderInput,
 } from './definitions.js';
 import {
+  assertAgentPromptProfile,
   createBuiltinPromptContext,
   parseFrontmatter,
   renderBuiltinTemplate,
@@ -607,6 +608,10 @@ function resolvePromptMode(input: BuiltinRenderInput): AgentPromptMode {
 }
 
 function usesV2Prompts(input: BuiltinRenderInput): boolean {
+  // An out-of-union profile used to answer false here and silently fall through to the
+  // legacy renderer. It is validated at the render boundary instead, so the failure is
+  // a named error rather than a quiet downgrade to different prompt text.
+  assertAgentPromptProfile(input.promptProfile);
   return (
     input.promptProfile === 'desktop' ||
     input.promptProfile === 'tui' ||

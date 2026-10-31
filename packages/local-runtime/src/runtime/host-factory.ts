@@ -1,4 +1,10 @@
-import { getConfig, isManagedRuntime } from "@mavis/config";
+import {
+  getConfig,
+  getRuntimeBuildEnv,
+  getRuntimeRegion,
+  isManagedRuntime,
+  replaceLocalManagedMinimaxProvider,
+} from "@mavis/config";
 
 import { LocalRuntimeApiHost } from "../api/host.js";
 import { copyV2LayoutMigrationReceipt } from "../persistence/migration/v2-migration.js";
@@ -14,6 +20,12 @@ import { LocalSkillHubStore } from "../skills/hub-api.js";
 import type { AgentReferenceResolver } from "../agent/port.js";
 import type { LocalAgentRuntimePort } from "../agent/runtime-port.js";
 import { LocalSessionController } from "../sessions/controller.js";
+import {
+  OfficialModelConfigFetchError,
+  OfficialModelConfigSync,
+  fetchOfficialModelConfig,
+  resolveOfficialModelConfigUrl,
+} from "../model-provider/official-model-config-sync.js";
 import {
   createLocalRuntimeTelemetrySink,
   createMatrixToolLogger,
@@ -39,7 +51,9 @@ import {
   LiveSessionWriter,
 } from "../sessions/writer/index.js";
 import { buildLocalRuntimeMetricsClient } from "./host-metrics.js";
+import { managedBackendRoutingHeaders } from "./routing-headers.js";
 import { LocalBashCompletionCorrelation } from "./bash-completion-correlation.js";
+import { resolveRuntimeOwnerPolicy } from "./runtime-owner-policy.js";
 import {
   composeTelemetrySinks,
   createLocalRuntimeMetricsReporter,
@@ -228,6 +242,53 @@ export function createLocalRuntimeHost(
       : {}),
   });
   const apiHost = new LocalRuntimeApiHost(apiHostOptions);
+  if (isManagedRuntime()) {
+    const officialModelConfigSync = new OfficialModelConfigSync({
+      fetchSnapshot: async () => {
+        const managedBaseUrl = configGetter().provider?.minimax?.options?.baseURL;
+        if (typeof managedBaseUrl !== "string" || !managedBaseUrl.trim()) {
+          throw new Error("Managed MiniMax base URL is unavailable");
+        }
+        const buildEnv = getRuntimeBuildEnv();
+        const url = resolveOfficialModelConfigUrl(
+          managedBaseUrl,
+          getRuntimeRegion(),
+          buildEnv,
+        );
+        const routingHeaders = managedBackendRoutingHeaders(
+          options.routingContextGetter?.(),
+          buildEnv,
+        );
+        const accessToken = options.authContextGetter?.()?.accessToken?.trim();
+        try {
+          return await fetchOfficialModelConfig(
+            url,
+            options.fetchImpl,
+            accessToken,
+            routingHeaders,
+          );
+        } catch (error) {
+          if (
+            !(error instanceof OfficialModelConfigFetchError) ||
+            (error.status !== 401 && error.status !== 403) ||
+            !accessToken
+          ) {
+            throw error;
+          }
+          return fetchOfficialModelConfig(url, options.fetchImpl, undefined, routingHeaders);
+        }
+      },
+      writeProvider: async (provider) => {
+        await replaceLocalManagedMinimaxProvider(provider);
+      },
+      nowMs: runtimeNowMs,
+      metrics: metricsClient,
+      logger: {
+        warn: (fields, message) => logger.warn(fields, message),
+      },
+    });
+    apiHost.bindOfficialModelConfigRefresh(() => officialModelConfigSync.refreshIfStale());
+  }
   if (options.sandboxOperationsFactory) {
     const buildOwnerTurnToolSources =
       apiHost.buildOwnerTurnToolSources.bind(apiHost);
@@ -254,14 +315,27 @@ function assertConversationUnavailable(operation: string): never {
   throw new Error(`Local Runtime V1 Conversation is unavailable: ${operation}`);
 }
 
-function shouldUseRemoteSkillHub(
+/**
+ * Whether the skill hub reads the remote catalogue.
+ *
+ * Exported for the gate test: the decision is a function of the owner row and the
+ * runtime posture, and the browser client lost the catalogue here.
+ */
+export function shouldUseRemoteSkillHub(
   options: CreateLocalRuntimeHostOptions,
 ): boolean {
   if (options.configGetter?.().skillHub?.enabled === false) return false;
   if (process.env.__MAVIS_RUNTIME_MANAGED === "0") return false;
-  return (
-    options.runtimeOwnerKind === "electron" ||
-    options.capabilities?.electronHost === true ||
-    isManagedRuntime()
-  );
+  // The owner row decides for the owner's kind. The browser client is a
+  // desktop-class client and reads the catalogue the way the Desktop does.
+  const ownerPolicy = resolveRuntimeOwnerPolicy({
+    kind: options.runtimeOwnerKind,
+    cliEmbedded: options.capabilities?.cliEmbedded === true,
+    electronHost: options.capabilities?.electronHost === true,
+    capabilityProfile: options.capabilityProfile,
+  });
+  if (ownerPolicy.wiring.remoteSkillHub) return true;
+  // The remaining disjuncts are runtime facts rather than owner facts: an
+  // Electron host capability, and a managed runtime for any owner.
+  return options.capabilities?.electronHost === true || isManagedRuntime();
 }

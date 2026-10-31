@@ -13,6 +13,20 @@ regexTarget = "match"
 regexes = ['''^labelKey: 'permission\.scope\.byArgvPrefix2'$''']
 
 [[rules.allowlists]]
+description = "Published pairing transfer vector, not a credential"
+condition = "AND"
+paths = ['''(^|/)packages/(browser-extension/test/protocol\.test\.ts|webui/test/unit/browser-bridge-pairing\.test\.ts)$''']
+regexTarget = "secret"
+regexes = ['''^00112233445566778899aabbccddeeff$''']
+
+[[rules.allowlists]]
+description = "WebUI shortcut storage key name, not a credential"
+condition = "AND"
+paths = ['''(^|/)packages/webui/src/client/projection/common/shortcuts\.ts$''']
+regexTarget = "match"
+regexes = ['''^SHORTCUT_STORAGE_KEY = "webui-shortcuts\.v1"$''']
+
+[[rules.allowlists]]
 description = "Documented keyboard shortcut"
 condition = "AND"
 paths = ['''(^|/)(packages/local-runtime|dist)/assets/skills/cu-desktop/SKILL\.md$''']

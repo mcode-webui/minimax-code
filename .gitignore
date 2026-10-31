@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-webui/
+dist-webui-npm/
 .turbo/
 .cache/
 .pnpm-store/
@@ -8,3 +10,9 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+.idea/
+.codegraph/
+dist-*.zip
+dist-store-*/
+.temp
+

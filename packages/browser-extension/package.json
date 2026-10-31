@@ -1,0 +1,17 @@
+{
+  "name": "@mavis/browser-extension",
+  "version": "0.1.0",
+  "description": "Edge/Chrome extension that bridges a person's own browser to the local WebUI browser bridge.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node scripts/build.mjs",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "^4"
+  }
+}

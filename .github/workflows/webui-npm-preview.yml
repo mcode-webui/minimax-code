@@ -1,0 +1,119 @@
+name: WebUI npm preview
+
+on:
+  push:
+    branches: ["webui"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webui-npm-preview
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # This job runs the same verification pipeline the CI verify job runs, so
+    # it needs the same ceiling.
+    timeout-minutes: 45
+    # `secrets` cannot be read inside a step's `if:` ("Secrets cannot be
+    # directly referenced in if: conditionals"), so a step cannot be gated on
+    # whether the credential exists without going through a job-level env entry
+    # first. Deriving a flag here keeps the token itself out of the job
+    # environment: it stays on the single step that needs it, below.
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+          scope: "@fectivnfy112358"
+      - run: pnpm install --frozen-lockfile
+      - name: Verify the source revision before packaging
+        run: pnpm verify
+        env:
+          MCODE_VERIFY_REPORT_DIR: ${{ runner.temp }}/verification
+          MCODE_WEBUI_VERIFY_DIR: ${{ runner.temp }}/webui-installed-check
+      - name: Resolve next preview version
+        id: release
+        shell: bash
+        run: |
+          # The published version is the next counter after the highest
+          # `<core>-preview.<n>` already on the registry, so a plain push never
+          # needs a version bump in the repository. Resolving it from the
+          # registry rather than from a git tag is what makes reruns safe: a
+          # rerun recomputes the same number only if nothing was published in
+          # between, and the publish step below treats an existing version as a
+          # no-op instead of a failure.
+          package="$(node -p 'require("./release/webui-npm/package.json").name')"
+          versions="$(npm view "$package" versions --json)"
+          version="$(printf '%s' "$versions" | node -e '
+            let raw = "";
+            process.stdin.on("data", (c) => (raw += c)).on("end", () => {
+              const parsed = JSON.parse(raw || "[]");
+              const list = Array.isArray(parsed) ? parsed : [parsed];
+              const seen = [];
+              for (const value of list) {
+                const match = /^(\d+)\.(\d+)\.(\d+)-preview\.(\d+)$/.exec(String(value));
+                if (!match) continue;
+                seen.push({ core: [Number(match[1]), Number(match[2]), Number(match[3])], n: Number(match[4]) });
+              }
+              if (seen.length === 0) {
+                console.log("0.1.0-preview.1");
+                return;
+              }
+              // Numeric tuple compare, not a string compare, so 0.10.0 outranks 0.9.0.
+              const top = seen.reduce((a, b) => {
+                for (let i = 0; i < 3; i++) {
+                  if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i] ? a : b;
+                }
+                return a.n >= b.n ? a : b;
+              });
+              console.log(`${top.core.join(".")}-preview.${top.n + 1}`);
+            });
+          ')"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing $package@$version"
+      - name: Build npm package
+        run: node scripts/package-webui-npm.mjs --version "${{ steps.release.outputs.version }}" --outdir "$RUNNER_TEMP/webui-package"
+      - name: Inspect package contents
+        run: npm pack --dry-run --json "$RUNNER_TEMP/webui-package"
+      - name: Verify installation of the exact preview package
+        run: node scripts/verify-webui-package.mjs --package-dir "$RUNNER_TEMP/webui-package"
+        env:
+          MCODE_WEBUI_VERIFY_DIR: ${{ runner.temp }}/webui-preview-check
+      - name: Publish preview to the npm registry
+        # This repository carries no Actions secrets, so the publish fails with
+        # ENEEDAUTH and takes the job red on every push to `webui`. That buries
+        # the part of this job worth gating: that the WebUI still packs into a
+        # publishable npm tarball, which the two steps above keep proving on
+        # every push. Skipping the one step that cannot work here, and saying so
+        # in the run log, keeps that signal readable. Add `NPM_TOKEN` to the
+        # repository secrets and the preview resumes with no change here.
+        if: ${{ env.HAS_NPM_TOKEN == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="${{ steps.release.outputs.package }}"
+          version="${{ steps.release.outputs.version }}"
+          if npm view "$package@$version" version >/dev/null 2>&1; then
+            echo "$package@$version is already published; nothing to do."
+            exit 0
+          fi
+          npm publish "$RUNNER_TEMP/webui-package" --tag preview
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Report the skipped preview
+        if: ${{ env.HAS_NPM_TOKEN != 'true' }}
+        run: |
+          echo "::warning::NPM_TOKEN is not configured, so no preview was published."
+          echo "::warning::The package was still built and inspected above; only the registry write was skipped."

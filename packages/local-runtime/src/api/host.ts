@@ -96,6 +96,7 @@ import type {
   LocalTokenUsageStore,
   LocalTurnDiffStore,
 } from "../persistence/ports.js";
+import { closeLocalRuntimeDb } from "../persistence/db.js";
 import {
   SqliteLocalCommunicationMessageStore,
   SqliteLocalTokenUsageStore,
@@ -135,6 +136,10 @@ import {
   type LocalRuntimeMode,
   type LocalRuntimeSurfaceCapabilities,
 } from "../runtime/mode.js";
+import {
+  resolveRuntimeOwnerPolicy,
+  type RuntimeOwnerPolicy,
+} from "../runtime/runtime-owner-policy.js";
 import type {
   LocalModelResolverLike,
   LocalRuntimeAuthContext,
@@ -200,6 +205,10 @@ import {
   type GoalVerifierRunRegistry,
 } from "../thread-goal/verifier-execution.js";
 import { LocalTurnFileChangeCaptureService } from "../turns/file-changes.js";
+import {
+  createLocalChannelBridgeSurface,
+  type LocalChannelBridgeSurface,
+} from "./channel-bridge-surface.js";
 import { toAgentMessages } from "./conversation-message-adapter.js";
 import { observeSteerCompletion } from "./conversation-steer.js";
 import {
@@ -269,10 +278,7 @@ import {
   type HostedTurnLifecycleInput,
   type HostedTurnSettlementInput,
 } from "./hosted-agent-capabilities.js";
-import {
-  createHostedCapabilities,
-  isCliRestrictedRuntime,
-} from "./hosted-agent-capability-factory.js";
+import { createHostedCapabilities } from "./hosted-agent-capability-factory.js";
 import {
   createHostedChannelCapabilities,
   type HostedChannelCapabilities,
@@ -414,6 +420,15 @@ export class LocalRuntimeApiHost {
   private readonly feishuOnboardService: LocalFeishuOnboardService;
   private readonly telegramChannelApi: LocalTelegramChannelApi;
   private readonly wechatChannelApi: LocalWeChatChannelApi;
+  /**
+   * The narrow public face of the IM channel bridge.
+   *
+   * It forwards to the channel-bridge routes this host already serves, so the
+   * WebUI's 接入 IM tab reads the same facts Desktop's IM client reads without
+   * a second implementation. A host whose owner policy carries no channel
+   * service refuses every call instead of answering an empty list.
+   */
+  public readonly channelBridge: LocalChannelBridgeSurface;
   private readonly hostDiagnosticsProvider:
     | LocalHostDiagnosticsProvider
     | undefined;
@@ -422,6 +437,7 @@ export class LocalRuntimeApiHost {
   private readonly legacyMigrator: LegacyOpencodeMigrator | undefined;
   public readonly agentRoutes: LocalApiAgentRoutes;
   private readonly lockOwner: LocalSessionLockOwner;
+  private readonly ownerPolicy: RuntimeOwnerPolicy;
   private readonly runtimeStartupToken: string | undefined;
   private promptSnapshots: PromptSnapshotSource | undefined;
   private internalTurnPromptReads: InternalTurnPromptReadRegistry | undefined;
@@ -434,6 +450,14 @@ export class LocalRuntimeApiHost {
   private readonly metricsReporter: LocalRuntimeApiHostOptions["metricsReporter"];
   private readonly mavisCronAdapterProvider: LocalRuntimeApiHostOptions["mavisCronAdapterProvider"];
   private readonly deleteAgentCronTasksOverride: LocalRuntimeApiHostOptions["deleteAgentCronTasks"];
+  /**
+   * The data directory this host's stores opened against, captured at
+   * construction. `configGetter()` stays live — a process may boot a second
+   * host (and move `MINIMAX_DATA_DIR`) before the first one closes — but the
+   * cached V1 SQLite connection this host owns is keyed by the construction
+   * time path, so that is the path close must release.
+   */
+  private readonly persistenceDataDir: string;
   private readonly fileGitChangesCoordinator =
     createLocalFileApiGitChangesCoordinator();
   constructor(options: LocalRuntimeApiHostOptions = {}) {
@@ -452,7 +476,6 @@ export class LocalRuntimeApiHost {
       options.startupExecutionPolicy,
     );
     this.capabilityProfile = options.capabilityProfile;
-    this.channelCapabilityEnabled = this.capabilityProfile !== "cli";
     const questionnaireRecoveryDeferred =
       options.deferQuestionnaireRecovery === true;
     this.mavisCronAdapterProvider = options.mavisCronAdapterProvider;
@@ -462,9 +485,8 @@ export class LocalRuntimeApiHost {
       this.runtimeMode,
       options.capabilities,
     );
-    this.surfaces = buildLocalRuntimeSurfaceCapabilities(this.runtimeMode);
-    this.configGetter = options.configGetter ?? (() => getConfig());
     this.shellFamily = options.shellFamily;
+    this.configGetter = options.configGetter ?? (() => getConfig());
     this.authContextGetter = options.authContextGetter;
     this.authContextInvalidator = options.authContextInvalidator;
     this.routingContextGetter = options.routingContextGetter;
@@ -507,6 +529,7 @@ export class LocalRuntimeApiHost {
       );
     }
     const runtimeDataDir = this.configGetter().dataDir;
+    this.persistenceDataDir = runtimeDataDir;
     try {
       ensureTrashScript(runtimeDataDir);
       // Seeded alongside the trash script: the shim is the execution-layer
@@ -707,6 +730,29 @@ export class LocalRuntimeApiHost {
         makeRuntimeOwnerId(options.runtimeOwnerKind ?? "runtime"),
       ownerKind: options.runtimeOwnerKind ?? "runtime",
     };
+    // Resolved once, from the RAW option. `lockOwner.ownerKind` is the coerced
+    // "runtime" string and is not interchangeable with an absent owner: the service
+    // gates read undefined and answer differently from it. See the `'absent'` row in
+    // runtime-owner-policy.ts.
+    this.ownerPolicy = resolveRuntimeOwnerPolicy({
+      kind: options.runtimeOwnerKind,
+      cliEmbedded: this.capabilities.cliEmbedded === true,
+      electronHost: this.capabilities.electronHost === true,
+      capabilityProfile: this.capabilityProfile,
+    });
+    // Built after the policy so `cron` and `channelBridge` stop reporting `native` on
+    // a host that does not assemble those services. This table is a reporting
+    // vocabulary, not an authority for wiring — recording availability here does not
+    // make it true, which is why it used to lie.
+    this.surfaces = buildLocalRuntimeSurfaceCapabilities(
+      this.runtimeMode,
+      this.ownerPolicy,
+    );
+    // Channels were governed by two independent switches: owner kind (services.ts)
+    // and capabilityProfile (here and host-channel-composition.ts). One cell now
+    // drives both sites, so dropping capabilityProfile can no longer silently enable
+    // channels.
+    this.channelCapabilityEnabled = this.ownerPolicy.wiring.channelService;
     this.threadGoalKickoffQueue = new LocalThreadGoalKickoffQueue({
       ...(this.runtimeConversation
         ? { conversation: this.runtimeConversation }
@@ -961,6 +1007,10 @@ export class LocalRuntimeApiHost {
     const subsys = wireHostChannelSubsystem(
       this as unknown as HostChannelCompositionHandle,
       options,
+      // The same cell as `channelCapabilityEnabled`, so the two channel gates cannot
+      // disagree. Not re-derived here: re-implementing the cell at a call site is the
+      // failure mode that made the policy a second, drifting source of truth.
+      this.ownerPolicy.wiring.channelService,
     );
     this.channelOwnerStore = subsys.channelOwnerStore;
     this.channelBridgeInfra = subsys.channelBridgeInfra;
@@ -1015,6 +1065,17 @@ export class LocalRuntimeApiHost {
     });
     this.telegramChannelApi = subsys.telegramChannelApi;
     this.wechatChannelApi = subsys.wechatChannelApi;
+    // The IM channel bridge's public face. It forwards to the routes the
+    // channel subsystem already serves, so a browser client reads the same
+    // facts Desktop's IM client reads without a second implementation.
+    this.channelBridge = createLocalChannelBridgeSurface({
+      infra: this.channelBridgeInfra,
+      runner: this.channelRunner,
+      feishu: this.feishuChannelApi,
+      telegram: this.telegramChannelApi,
+      wechat: this.wechatChannelApi,
+      enabled: this.channelCapabilityEnabled,
+    });
     this.hostDiagnosticsProvider = options.hostDiagnosticsProvider;
     this.permissionRules = new LocalPermissionRuleStore(
       () => this.configGetter().dataDir,
@@ -1167,8 +1228,7 @@ export class LocalRuntimeApiHost {
   createHostedAgentCapabilities(): HostedAgentCapabilities {
     return createHostedCapabilities(
       this,
-      this.lockOwner.ownerKind,
-      this.capabilities.cliEmbedded,
+      this.ownerPolicy.execution,
       this.capabilityProfile,
     );
   }
@@ -1382,18 +1442,13 @@ export class LocalRuntimeApiHost {
    * `CRON_UNSUPPORTED_HOST`.
    */
   private isCronCapabilityAvailable(): boolean {
-    if (
-      isCliRestrictedRuntime(
-        this.lockOwner.ownerKind,
-        this.capabilities.cliEmbedded,
-      )
-    ) {
+    if (this.ownerPolicy.execution.restricted) {
       return false;
     }
     return this.buildOwnerMavisCronAdapter() !== undefined;
   }
   private isUserMemoryCapabilityAvailable(): boolean {
-    return this.lockOwner.ownerKind !== "tui";
+    return this.ownerPolicy.execution.memoryFeature;
   }
   private buildOwnerMavisSessionAdapter() {
     const conversation = this.requireRuntimeConversation(
@@ -1456,6 +1511,16 @@ export class LocalRuntimeApiHost {
       () => this.globalEvents.close(),
       () => drainBackgroundTasks(this),
       () => this.errorReporter?.close(),
+      // The V1 stores share one process-wide cached connection per data
+      // directory (`withLocalRuntimeDb`), and nothing else owns its lifetime.
+      // Closing it last — after the background tasks that may still write
+      // through it have drained — releases the SQLite file handles; on
+      // Windows an open handle keeps the data directory undeletable
+      // (`EBUSY`), which every isolated-data-dir consumer inherits. The
+      // construction-time path is the key: `configGetter()` reads the live
+      // environment, which a second host in the same process has already
+      // moved.
+      () => closeLocalRuntimeDb(this.persistenceDataDir),
     ];
     for (const close of cleanups) {
       try {

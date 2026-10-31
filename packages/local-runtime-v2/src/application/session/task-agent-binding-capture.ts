@@ -5,6 +5,10 @@ import {
   type ConversationModelSelection,
   type ConversationTaskModelSelection,
 } from '@mavis/conversation-contract';
+import {
+  isCommandLineRuntimeOwner,
+  type RuntimeOwnerPolicy,
+} from '@mavis/local-runtime';
 import type { AgentExecutionProfile, LocalAgentService } from '../../service/agent/index.js';
 import {
   resolveEffectiveAgentModelSelection,
@@ -69,6 +73,8 @@ export interface TaskAgentBindingCaptureOptions {
   };
   readonly runtimeOwnerKind?: string;
   readonly capabilityProfile?: 'cli';
+  /** Policy resolved once by the composition root. */
+  readonly ownerPolicy: RuntimeOwnerPolicy;
 }
 
 export interface TaskAgentCapabilityInventory {
@@ -340,24 +346,37 @@ async function renderSessionProfile(input: {
   readonly legacyTaskSurface: boolean;
 }): Promise<AgentExecutionProfile> {
   const configuredCapabilities = input.config.agents?.default;
-  const capabilities =
-    input.options.capabilityProfile === 'cli'
-      ? {
-          ...configuredCapabilities,
-          features: { ...configuredCapabilities?.features, mavis: false },
-        }
-      : configuredCapabilities;
+  // The second implementation of the `mavis` gate. It moved together with the copy in
+  // profile-source.ts; converting one and leaving the other would let the profile and
+  // the Task-capture path disagree.
+  const capabilities = input.options.ownerPolicy.execution.mavisFeatureBundle
+    ? configuredCapabilities
+    : {
+        ...configuredCapabilities,
+        features: { ...configuredCapabilities?.features, mavis: false },
+      };
   return input.options.agentService.renderProfile({
     exactOwnerName: input.agentName,
     surface: input.legacyTaskSurface
       ? 'task-child'
-      : resolveAgentPromptSurface(input.session, input.options.runtimeOwnerKind),
-    promptProfile: input.options.runtimeOwnerKind === 'tui' ? 'tui' : 'desktop',
+      : resolveAgentPromptSurface(
+          input.session,
+          input.options.runtimeOwnerKind,
+          input.options.ownerPolicy.execution.promptSurfaceDefault,
+        ),
+    promptProfile: input.options.ownerPolicy.execution.promptProfile,
     appMode: input.appMode ?? input.session.appMode ?? 'coding',
     capabilities,
+    // Same two-part gate as profile-source.ts: the owner-kind half preserves today's
+    // answer, the policy half makes an unrecognised owner fail closed. Moving one copy
+    // without the other is the bug this pair already caused once.
     memoryEnabled:
-      !isCommandLineRuntimeOwner(input.options.runtimeOwnerKind) && input.config.memory?.enabled,
-    cronEnabled: !isCommandLineRuntimeOwner(input.options.runtimeOwnerKind),
+      input.options.ownerPolicy.execution.memoryFeature &&
+      !isCommandLineRuntimeOwner(input.options.runtimeOwnerKind) &&
+      input.config.memory?.enabled,
+    cronEnabled:
+      input.options.ownerPolicy.wiring.cronService &&
+      !isCommandLineRuntimeOwner(input.options.runtimeOwnerKind),
     dataDirToken: input.config.dataDir,
   });
 }
@@ -733,8 +752,4 @@ function uniqueNames(values: readonly string[]): readonly string[] {
     if (!normalized.has(key)) normalized.set(key, trimmed);
   }
   return [...normalized.values()];
-}
-
-function isCommandLineRuntimeOwner(runtimeOwnerKind: string | undefined): boolean {
-  return runtimeOwnerKind === 'cli' || runtimeOwnerKind === 'tui';
 }

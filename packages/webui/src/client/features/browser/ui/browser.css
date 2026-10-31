@@ -1,0 +1,250 @@
+/* browser — the Browser panel: target list, live frame, input surface.
+ *
+ * The stage is a positioned box because the input surface is absolutely
+ * positioned over the frame rather than beside it: the coordinates the panel
+ * forwards are measured against that element, so anything drawn next to the
+ * picture would aim the pointer at the wrong place.
+ *
+ * The frame uses `object-fit: cover` with top-left anchoring so narrow panels
+ * crop the right and bottom edges instead of distorting the page. */
+
+@layer components {
+
+  /* The host stacks the toolbar over the stage, so the stage is the child that
+   * gives up height rather than the toolbar: a chrome row that grows would push
+   * the picture — the thing the person is looking at — off the panel. */
+  .webui-browser-host {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .webui-browser-host > .webui-browser-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The toolbar sits above the stage rather than inside it: the stage is
+   * measured to aim the pointer, and anything drawn beside the picture would
+   * move the coordinates the input surface computes. The url takes the free
+   * width and clips itself, because a long url is not a reason to push the
+   * commands off the row. */
+  .webui-browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_2);
+    min-width: 0;
+    padding: 6px 10px;
+    background: var(--bg_grouped_secondary);
+    border-bottom: 1px solid var(--border_default);
+  }
+
+  /* The three commands are marks, not words: a row of bordered text buttons
+   * reads as a toolbar of some other kind. The name stays on the button for
+   * anyone who cannot see the mark. */
+  .webui-browser-toolbar-command {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--icon_default_secondary, #5b6473);
+    cursor: pointer;
+  }
+
+  .webui-browser-toolbar-command:hover {
+    background: var(--bg_interaction_tertiary_hover);
+    color: var(--text_default_primary);
+  }
+
+  /* The address bar. A rounded, quiet field with the url in it — the shape
+   * every browser draws, and the shape that says "this is where the page
+   * lives" without a label. */
+  .webui-browser-omnibox {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--spacing_8);
+    height: 28px;
+    margin: 0 6px;
+    padding: 0 10px;
+    border-radius: 14px;
+    background: var(--bg_default_primary);
+    box-shadow: inset 0 0 0 1px var(--border_default);
+  }
+
+  .webui-browser-omnibox:focus-within {
+    box-shadow: inset 0 0 0 1px var(--icon_default_accent);
+  }
+
+  .webui-browser-omnibox-glyph {
+    color: var(--icon_default_tertiary, #a0a6b0);
+  }
+
+  /* The page the Agent is on. A real browser has one person and one page, so
+   * it has no such mark; this one has two, and the difference is the point of
+   * the tab model. It is a report at the quiet end of the row, never a
+   * control. */
+  .webui-browser-toolbar-agent {
+    display: inline-flex;
+    max-width: 38%;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: var(--spacing_6);
+    padding: 0 8px;
+    color: var(--text_default_tertiary);
+    font-size: var(--font-size_11, 11px);
+  }
+
+  .webui-browser-toolbar-agent-dot {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: var(--icon_default_accent);
+  }
+
+  .webui-browser-toolbar-agent-label {
+    flex: 0 0 auto;
+    color: var(--text_default_tertiary);
+  }
+
+  .webui-browser-toolbar-agent-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text_default_secondary);
+  }
+
+  /* A browser window has no heading above its page, and the page reaches the
+   * edges of the window. The notices below the toolbar are states, not chrome,
+   * and they keep their own padding. */
+  .webui-browser-panel {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    background: var(--bg_default_primary);
+  }
+
+  .webui-browser-surfaces {
+    display: flex;
+    gap: var(--spacing_4);
+    flex-wrap: wrap;
+  }
+
+  .webui-browser-surface {
+    padding: 4px 10px;
+    border: 1px solid var(--border_light);
+    border-radius: var(--border-radius_8, 8px);
+    background: var(--bg_grouped_secondary);
+    color: var(--text_default_secondary);
+    font-size: var(--font-size_12, 12px);
+    cursor: pointer;
+  }
+
+  .webui-browser-surface.is-active {
+    border-color: var(--icon_default_accent);
+    color: var(--text_default_primary);
+  }
+
+  /* An unauthorized surface stays legible rather than looking broken: the panel
+   * still shows which browsers exist, and the notice above says why they cannot
+   * be used. */
+  .webui-browser-surface[data-authorized="false"] {
+    opacity: 0.55;
+  }
+
+  /* The states a page can be in, drawn as a bubble over the page's own corner
+   * — the way a browser says "this page changed" without taking the page's
+   * space away. A bar between the toolbar and the page would cut the window
+   * in two, and the page is the thing the person came for. */
+  .webui-browser-notice {
+    /* The layer is what keeps the bubble visible, and being positioned is
+     * not enough. The notice is rendered before the stage, and the stage is
+     * `position: relative` with an opaque background while the input surface
+     * over it is `position: absolute` — both `z-index: auto`, so they paint
+     * over the bubble in tree order. 3 sits with the pinned headers (1 and 2)
+     * in the shell's declared scale: the browser panel is an in-flow region
+     * of the shell, not an overlay, so nothing it draws may cover the goal
+     * overlay at 20 or the workspace drawer at 40. */
+    position: absolute;
+    z-index: 3;
+    top: 8px;
+    left: 8px;
+    max-width: calc(100% - 16px);
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: var(--border-radius_8, 8px);
+    background: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: var(--font-size_12, 12px);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  }
+
+  .webui-browser-notice.is-error {
+    color: var(--text_default_primary);
+    border: 1px solid var(--border_light);
+  }
+
+  /* The page area. No border and no rounded frame: a page is not a picture in
+   * a box, and the frame around it was the first thing that made this read as
+   * a media panel rather than a window. The frame keeps its own aspect — the
+   * page's — and the area around it is the window's own surface. */
+  .webui-browser-stage {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    scrollbar-gutter: auto;
+    /* The space around the page is the window's own surface, not more page.
+     * A page that does not fill the area is a page in a frame; a browser's
+     * window is the other way round. */
+    background: var(--bg_default_primary);
+  }
+
+  /* The picture fills the area without changing its aspect ratio. */
+  .webui-browser-frame {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: none;
+    object-fit: cover;
+    object-position: left top;
+    user-select: none;
+    touch-action: none;
+    outline: none;
+    cursor: default;
+  }
+
+  .webui-browser-frame:focus-visible {
+    outline: 2px solid var(--icon_default_accent);
+    outline-offset: -2px;
+  }
+
+  .webui-browser-empty {
+    margin: 0;
+    padding: 12px;
+    color: var(--text_default_secondary);
+    font-size: var(--font-size_12, 12px);
+    text-align: center;
+  }
+}

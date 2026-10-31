@@ -1,3 +1,40 @@
+import type { MiniAppInspectDiagnostics } from '@mavis/agent-extension';
+
+/** Largest `agentConcurrency` a Mini App manifest may declare. */
+export const MINIAPP_AGENT_MAX_CONCURRENCY = 32;
+
+/**
+ * Session `purpose` label that marks a Mini App-owned session, followed by the plugin id.
+ *
+ * It lives here, with the rest of the Mini App policy constants, because the session boundary rejects
+ * client-supplied `purpose` values starting with it and the turn owner reads it for approval lineage.
+ */
+export const MINIAPP_AGENT_PURPOSE_PREFIX = 'miniapp:';
+
+
+/** Runs of one plugin at once when its manifest omits `agentConcurrency`. */
+export const MINIAPP_AGENT_DEFAULT_CONCURRENCY = 4;
+
+type MiniAppAgentCapability = 'session.run' | 'session.read';
+
+/**
+ * Derived from the parsed manifest's `agentAccess`; absent or empty means deny-all.
+ * `maxConcurrent` is the manifest's `agentConcurrency` (runs of this plugin at once).
+ */
+export type MiniAppAgentPolicy =
+  | { readonly kind: 'deny-all' }
+  | {
+      readonly kind: 'allowlist';
+      readonly capabilities: readonly MiniAppAgentCapability[];
+      readonly maxConcurrent: number;
+    };
+
+/** Every Mini App HTTP server answers this path from the guard, never from plugin code. */
+export const MINIAPP_LOOPBACK_HEALTH_PATH = '/__mavis/health';
+
+/** Request header carrying the Host-issued loopback credential. */
+export const MINIAPP_LOOPBACK_TOKEN_HEADER = 'x-mavis-miniapp-token';
+
 export type MiniAppHostConnectorPolicy =
   | { readonly kind: 'deny-all' }
   | { readonly kind: 'allowlist'; readonly providers: readonly string[] };
@@ -19,6 +56,8 @@ export interface ProcessMiniAppCandidate extends MiniAppCandidateBase {
     readonly path: string;
   }[];
   readonly hostConnectorPolicy: MiniAppHostConnectorPolicy;
+  /** Optional so existing fixtures stay valid; missing is treated as deny-all. */
+  readonly agentPolicy?: MiniAppAgentPolicy;
 }
 
 /** Process-only package contract consumed by the PluginSystem composition layer. */
@@ -49,15 +88,16 @@ export interface MiniAppHostConnectorSession {
   close(): Promise<void>;
 }
 
-export interface MiniAppHostConnectorReadable {
-  on(event: 'data' | 'end' | 'error', listener: (...args: unknown[]) => void): unknown;
-  removeListener(event: string, listener: (...args: unknown[]) => void): unknown;
+/** One message on the parent/child IPC channel; lifecycle frames carry their own `type`. */
+export interface MiniAppIpcMessage {
+  readonly type: 'miniapp:connector';
+  readonly payload: unknown;
 }
 
-export interface MiniAppHostConnectorWritable {
-  readonly destroyed?: boolean;
-  write(chunk: Buffer): boolean;
-  once(event: 'drain' | 'error' | 'close', listener: (...args: unknown[]) => void): unknown;
+export interface MiniAppIpcTransport {
+  readonly connected?: boolean;
+  send(message: MiniAppIpcMessage, callback: (error: Error | null) => void): boolean;
+  on(event: 'message' | 'disconnect' | 'error', listener: (...args: unknown[]) => void): unknown;
   removeListener(event: string, listener: (...args: unknown[]) => void): unknown;
 }
 
@@ -66,8 +106,10 @@ export interface MiniAppHostConnectorSessionFactory {
     readonly pluginId: string;
     readonly processGeneration: string;
     readonly providers: readonly string[];
-    readonly request: MiniAppHostConnectorReadable;
-    readonly response: MiniAppHostConnectorWritable;
+    /** Missing is treated as deny-all; the child then receives no `agent` context. */
+    readonly agentPolicy?: MiniAppAgentPolicy;
+    /** The parent/child IPC channel, shared with lifecycle frames and told apart by `type`. */
+    readonly transport: MiniAppIpcTransport;
     readonly onFatal: (error: Error) => void;
   }): MiniAppHostConnectorSession;
 }
@@ -91,12 +133,16 @@ export interface MiniAppNodeRuntime {
   readonly nodeDigest: string;
   readonly port: number;
   readonly origin: string;
+  /** Server-only: the proxy injects it. Never forwarded to a renderer or a published view. */
+  readonly loopbackToken: string;
   readonly hostConnectorSession?: MiniAppHostConnectorSession;
   readonly closed: Promise<MiniAppRuntimeExit>;
   stop(): Promise<{ readonly proven: boolean }>;
 }
 
 export interface MiniAppNodeRuntimeFactory {
+  /** Reads the renderer-safe owner label after the process guard proves another client is live. */
+  ownerClient?(pluginId: string): Promise<string | undefined>;
   prepare(input: {
     readonly candidate: ProcessMiniAppCandidate;
     readonly processGeneration: string;
@@ -194,6 +240,7 @@ export interface MiniAppStatus {
   readonly leaseCount: number;
   readonly failureCode?: string;
   readonly logs: readonly MiniAppRuntimeLogEntry[];
+  readonly diagnostics?: MiniAppInspectDiagnostics;
 }
 
 interface MiniAppPublicationCoordinator {
@@ -226,12 +273,21 @@ export interface MiniAppSupervisor extends MiniAppPublicationCoordinator {
     readonly expectedProcessGeneration?: string;
   }): Promise<MiniAppGenerationLease>;
   inspect(pluginId?: string): readonly MiniAppStatus[];
+  /** The label recorded by a live external Mini App owner, when readable. */
+  ownerClient?(pluginId: string): Promise<string | undefined>;
+  /**
+   * Server-only: the live generation's loopback credential, so the proxy that injects it has something
+   * to inject. Never part of a published view and never forwarded to a renderer.
+   */
+  launchCredential(pluginId: string): string | undefined;
   close(): Promise<void>;
 }
 
 export interface MiniAppSupervisorOptions {
   readonly stateStore: MiniAppStateStore;
   readonly nodeRuntime: MiniAppNodeRuntimeFactory;
+  /** Host logger used for best-effort startup failure records. */
+  readonly logger?: { error(fields: Record<string, unknown>, message: string): void };
   readonly verifyCandidate: (candidate: MiniAppCandidate) => Promise<boolean>;
   readonly nowMs?: () => number;
   readonly makeMiniAppGeneration?: () => string;

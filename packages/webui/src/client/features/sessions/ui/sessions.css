@@ -1,0 +1,421 @@
+/* sessions — moved out of styles/shell.css; rules kept in their original relative order. */
+@layer components {
+
+  /* --------------------------------------------------------------- rail rows */
+
+  /* Navigation rows. The row's geometry is a utility
+   * composition (`h-8`, `rounded-lg`, `gap-2`, `pl-2 pr-2.5`); this rule carries
+   * the selected state, which those utilities cannot express. */
+  .webui-nav-item {
+    border-radius: var(--radius_8);
+  }
+  .webui-nav-item[data-webui-nav-active="true"] {
+    background-color: var(--bg_interaction_tertiary_hover);
+    color: var(--text_default_primary);
+  }
+  .webui-brand-create-button {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: 48px;
+    align-items: center;
+    gap: var(--spacing_8);
+    border: 1px solid var(--border_status_blue);
+    border-radius: var(--radius_full);
+    background: var(--bg_status_blue);
+    padding: 0 var(--spacing_12);
+    text-align: left;
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .webui-brand-create-button:hover {
+    border-color: var(--border_accent);
+    background: var(--bg_interaction_accent_hover);
+  }
+  .webui-nav-item.webui-brand-create-button[data-webui-nav-active="true"] {
+    background: var(--bg_status_blue);
+  }
+  .webui-nav-item.webui-brand-create-button[data-webui-nav-active="true"]:hover {
+    background: var(--bg_interaction_accent_hover);
+  }
+  .webui-brand-create-button:active { background: var(--bg_interaction_accent_press); }
+  .webui-brand-create-mascot {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: var(--spacing_8);
+    width: 56px;
+    height: 39px;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .webui-brand-create-mark { width: 20px; height: 20px; flex: 0 0 20px; }
+  .webui-brand-create-wordmark {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: baseline;
+    gap: var(--spacing_4);
+    overflow: hidden;
+    color: var(--text_default_primary);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .webui-brand-create-wordmark > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .webui-brand-create-wordmark > span:last-child { color: var(--text_label_accent_default); }
+  .webui-brand-create-action {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--spacing_4);
+    color: var(--text_label_accent_default);
+    font-size: var(--size_12);
+    font-weight: 500;
+    line-height: var(--line_height_16);
+  }
+  .webui-brand-create-action > svg { width: 16px; height: 16px; }
+  .webui-rail-primary-action {
+    position: relative;
+    padding-top: var(--spacing_24);
+  }
+  .webui-rail-command-group { padding-bottom: var(--spacing_8); }
+  .webui-rail-navigation-group {
+    border-top: 1px solid var(--border_light);
+    padding-top: var(--spacing_8);
+  }
+  .webui-rail-group-label {
+    padding: 0 var(--spacing_8) var(--spacing_4);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
+
+  /* The right-hand end of a rail row: how long ago the session last did
+   * something, and a spinner while a turn holds it. The runtime runs sessions
+   * in parallel, so without this a task that finished in the background is
+   * indistinguishable from one that never ran.
+   *
+   * The spinner reuses the signin claim keyframes rather than declaring its
+   * own. Same rotation, and a second copy would be a second thing to keep in
+   * step when the timing changes. */
+  .webui-rail-session-meta {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing_4);
+    /* The type scale, not a size of its own: 11px was off the scale, and a
+     * rail whose meta text is set apart from the scale drifts from the rest
+     * of the shell the first time the scale moves. */
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+    color: var(--text_default_tertiary);
+  }
+  .webui-rail-spinner {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    /* Not `currentColor`: the meta inherits the tertiary text grey, and a 10px
+     * ring in grey on a grey rail does not read -- and the row it sits in is
+     * exactly the one the user is not looking at. Blue is this project's own
+     * accent (`--icon_default_accent`, already the selected-state colour). Red
+     * is not available for this: it is reserved for danger and error across the
+     * token set, and a running turn is not an error. The thicker border is the
+     * same point -- at 1.5px the ring was a hairline that read as a rendering
+     * artefact rather than as a spinner. */
+    border: 2px solid var(--icon_default_accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: webui-signin-claim-spin 0.6s linear infinite;
+  }
+  /* Stopped, not hidden: the ring still reads as "busy" for a reader who asked
+   * for less motion, which is the one fact the row is there to convey. */
+  @media (prefers-reduced-motion: reduce) {
+    .webui-rail-spinner { animation: none; }
+  }
+
+  /* The home rail is project-first. A project row uses the same quiet
+   * navigation treatment as the fixed rows, but keeps the folder glyph and
+   * label aligned as one navigation target. */
+  .webui-project-row,
+  .webui-pinned-session-row,
+  .webui-project-session-row,
+  .webui-project-child-session-row { position: relative; min-width: 0; }
+  .webui-project-row { display: flex; }
+  .webui-pinned-session-row {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    border-radius: var(--radius_8);
+    transition: background-color 120ms ease;
+  }
+  .webui-pinned-session-row:hover,
+  .webui-pinned-session-row:has(:focus-visible),
+  .webui-pinned-session-row[data-webui-session-active="true"] {
+    background-color: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-pinned-session-card {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    height: 36px;
+    align-items: center;
+    gap: var(--spacing_12);
+    border-radius: var(--radius_8);
+    padding: 0 var(--spacing_8);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    transition: color 120ms ease;
+  }
+  .webui-pinned-session-card > span:first-of-type {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .webui-pinned-session-card:hover,
+  .webui-pinned-session-row:hover .webui-pinned-session-card {
+    color: var(--text_default_primary);
+  }
+  .webui-pinned-session-row:hover .webui-pinned-session-card > span:first-of-type,
+  .webui-pinned-session-row:has(:focus-visible) .webui-pinned-session-card > span:first-of-type {
+    clip-path: inset(0 88px 0 0);
+  }
+  .webui-project-section-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows 180ms ease, opacity 140ms ease, visibility 180ms linear;
+  }
+  .webui-project-section-content[data-webui-section-expanded="true"] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+  .webui-project-section-content[data-webui-section-expanded="false"] { pointer-events: none; }
+  .webui-project-section-content-inner,
+  .webui-project-section-content > * { min-height: 0; overflow: hidden; }
+  [data-webui-pinned-sessions="true"] { margin-bottom: var(--spacing_4); }
+  .webui-project-section-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--spacing_8);
+    padding: 0 var(--spacing_8);
+    text-align: left;
+  }
+  .webui-project-section-toggle > svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    transition: transform 160ms ease;
+  }
+  .webui-project-section-toggle > svg.is-expanded { transform: rotate(90deg); }
+  .webui-project-section-toggle[data-webui-rail-section-id="projects"] {
+    margin-top: var(--spacing_8);
+  }
+  .webui-project-sections {
+    margin-top: var(--spacing_4);
+    border-top: 1px solid var(--border_light);
+    padding-top: var(--spacing_8);
+  }
+  .webui-pinned-session-card:focus-visible {
+    outline: 2px solid var(--border_accent);
+    outline-offset: 1px;
+  }
+  .webui-project-session-row {
+    z-index: 1;
+    display: flex;
+    min-height: 30px;
+    align-items: center;
+    border-radius: var(--radius_8);
+    transition: background-color 120ms ease;
+  }
+  .webui-project-session-row:hover,
+  .webui-project-session-row:has(:focus-visible),
+  .webui-project-session-row[data-webui-session-active="true"] {
+    background-color: var(--bg_interaction_tertiary_hover);
+  }
+  .webui-project-card {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: var(--spacing_12);
+    padding: 0 68px 0 var(--spacing_8);
+  }
+  .webui-project-folder-icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: var(--text_default_primary);
+  }
+  .webui-project-row-actions,
+  .webui-session-row-actions {
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .webui-project-row:hover .webui-project-row-actions,
+  .webui-project-row:has(:focus-visible) .webui-project-row-actions,
+  .webui-pinned-session-row:hover .webui-session-row-actions,
+  .webui-pinned-session-row:has(:focus-visible) .webui-session-row-actions,
+  .webui-project-session-row:hover .webui-session-row-actions,
+  .webui-project-session-row:has(:focus-visible) .webui-session-row-actions,
+  .webui-project-child-session-row:hover .webui-session-row-actions,
+  .webui-project-child-session-row:has(:focus-visible) .webui-session-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .webui-pinned-session-row:hover .webui-rail-spinner,
+  .webui-pinned-session-row:has(:focus-visible) .webui-rail-spinner,
+  .webui-project-session-row:hover .webui-rail-spinner,
+  .webui-project-session-row:has(:focus-visible) .webui-rail-spinner,
+  .webui-project-child-session-row:hover .webui-rail-spinner,
+  .webui-project-child-session-row:has(:focus-visible) .webui-rail-spinner {
+    visibility: hidden;
+  }
+  .webui-project-session-list {
+    padding: 1px 0 var(--spacing_4) 2px;
+  }
+  .webui-project-session-more {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 0 10px 0 32px;
+    text-align: left;
+  }
+  .webui-session-leading-marker {
+    display: flex;
+    /* The disclosure inside it is a 24px target; an 18px column clipped the one
+       place a session row is opened from. */
+    width: 24px;
+    height: 30px;
+    flex: 0 0 24px;
+    align-items: center;
+    justify-content: center;
+    color: var(--icon_default_tertiary);
+  }
+  .webui-session-leading-line {
+    display: block;
+    height: 30px;
+    border-left: 0.5px solid var(--border_default);
+  }
+  .webui-session-disclosure {
+    display: flex;
+    /* 24px is the smallest target a pointer may be asked to hit (WCAG 2.2 AA);
+       18px was below it in the one place a session row is opened from. */
+    width: 24px;
+    height: 30px;
+    min-width: 24px;
+    min-height: 24px;
+    flex: 0 0 24px;
+    /* The row it opens sits directly beside it; the margin is the space the
+       target rule asks for when two targets touch. */
+    margin-right: 2px;
+    align-items: center;
+    justify-content: center;
+  }
+  .webui-session-disclosure svg {
+    transition: transform 160ms ease;
+  }
+  .webui-session-disclosure svg.is-expanded {
+    transform: rotate(90deg);
+  }
+  .webui-project-session-card,
+  .webui-project-child-session-card {
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
+  .webui-project-session-card {
+    display: flex;
+    width: auto;
+    min-width: 0;
+    flex: 1;
+    height: 30px;
+    align-items: center;
+    gap: var(--spacing_4);
+    border-radius: var(--radius_8);
+    padding: 0 var(--spacing_8);
+  }
+  .webui-project-session-card > span:first-child {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .webui-project-session-row:hover .webui-project-session-card > span:first-child,
+  .webui-project-session-row:focus-within .webui-project-session-card > span:first-child {
+    clip-path: inset(0 88px 0 0);
+  }
+  .webui-pinned-session-row:hover .webui-rail-session-meta,
+  .webui-pinned-session-row:has(:focus-visible) .webui-rail-session-meta,
+  .webui-project-session-row:hover .webui-rail-session-meta,
+  .webui-project-session-row:focus-within .webui-rail-session-meta,
+  .webui-project-child-session-row:hover .webui-rail-session-meta,
+  .webui-project-child-session-row:focus-within .webui-rail-session-meta {
+    display: none;
+  }
+
+  /* Subagent rows retain the nested-session geometry: a compact
+   * 30px row, 2px spacing between siblings, and a 34px leading indent that
+   * makes the parent/child relationship visible without changing the data
+   * projection. */
+  .webui-project-child-session-list {
+    padding-top: 1px;
+  }
+  .webui-project-child-session-card {
+    display: flex;
+    width: 100%;
+    height: 30px;
+    align-items: center;
+    gap: var(--spacing_8);
+    border-radius: var(--radius_8);
+    padding-left: 34px;
+    padding-right: var(--spacing_8);
+    text-align: left;
+    transition: background-color 120ms ease;
+  }
+  .webui-project-child-session-card > span:first-of-type {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .webui-project-child-session-row:hover .webui-project-child-session-card > span:first-of-type,
+  .webui-project-child-session-row:focus-within .webui-project-child-session-card > span:first-of-type {
+    clip-path: inset(0 28px 0 0);
+  }
+  .webui-project-child-session-card:hover,
+  .webui-project-child-session-row:hover .webui-project-child-session-card,
+  .webui-project-child-session-card[data-webui-session-active="true"] {
+    background-color: var(--bg_interaction_tertiary_hover);
+  }
+
+  /* ---------------------------------------------------------------- composer */
+
+  .webui-project-empty {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    gap: var(--spacing_8);
+    margin: 0 var(--spacing_2);
+    border-radius: var(--radius_8);
+    padding: 0 var(--spacing_8);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16);
+  }
+  .webui-project-empty > svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    color: var(--icon_default_tertiary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .webui-project-section-content { transition: none; }
+  }
+}

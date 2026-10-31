@@ -1,0 +1,246 @@
+/*
+ * The layout threshold contract (ADR 0025).
+ *
+ * The widths the client adapts at are declared in `client/ui/layout-thresholds.ts`.
+ * The values below are the stylesheet's copy of them, and
+ * `test/unit/webui-layout-thresholds.test.ts` asserts that the two agree: a
+ * query condition cannot use `var()`, so the thresholds appear here as
+ * literals in the conditions and as custom properties everywhere else, and a
+ * drift between the two surfaces is a failing test rather than a layout that
+ * breaks quietly.
+ *
+ * The rules in this file are the shell skeleton's: the header row, the
+ * conversation column's floor and the rail's form. A business's own surfaces
+ * keep their own rules in their own stylesheet, and read these properties for
+ * the widths they share with the shell.
+ */
+
+@layer components {
+  .webui-inline,
+  .webui-stack {
+    display: flex;
+  }
+
+  .webui-inline { flex-direction: row; }
+  .webui-inline--inline { display: inline-flex; }
+  .webui-stack { flex-direction: column; }
+  .webui-inline--wrap { flex-wrap: wrap; }
+  .webui-inline--justify-start,
+  .webui-stack--justify-start { justify-content: flex-start; }
+  .webui-inline--justify-center,
+  .webui-stack--justify-center { justify-content: center; }
+  .webui-inline--justify-end,
+  .webui-stack--justify-end { justify-content: flex-end; }
+  .webui-inline--justify-between,
+  .webui-stack--justify-between { justify-content: space-between; }
+
+  .webui-inline--align-start,
+  .webui-stack--align-start { align-items: flex-start; }
+  .webui-inline--align-center,
+  .webui-stack--align-center { align-items: center; }
+  .webui-inline--align-end,
+  .webui-stack--align-end { align-items: flex-end; }
+  .webui-inline--align-stretch,
+  .webui-stack--align-stretch { align-items: stretch; }
+  .webui-inline--align-baseline,
+  .webui-stack--align-baseline { align-items: baseline; }
+
+  .webui-inline--gap-none,
+  .webui-stack--gap-none { gap: 0; }
+  .webui-inline--gap-hairline,
+  .webui-stack--gap-hairline { gap: 1px; }
+  .webui-inline--gap-micro,
+  .webui-stack--gap-micro { gap: 2px; }
+  .webui-inline--gap-tight,
+  .webui-stack--gap-tight { gap: var(--spacing_4); }
+  .webui-inline--gap-compact,
+  .webui-stack--gap-compact { gap: var(--spacing_6); }
+  .webui-inline--gap-small,
+  .webui-stack--gap-small { gap: var(--spacing_8); }
+  .webui-inline--gap-medium,
+  .webui-stack--gap-medium { gap: var(--spacing_12); }
+  .webui-inline--gap-roomy,
+  .webui-stack--gap-roomy { gap: var(--spacing_16); }
+  .webui-inline--gap-large,
+  .webui-stack--gap-large { gap: var(--spacing_24); }
+
+  :root {
+    /*
+     * The smallest width at which each full form applies. The rail is a column
+     * at `shellCompact` and above, and a drawer below it; the workspace panel
+     * is a column beside the conversation at `surfaceSplit` and above, and an
+     * overlay below it.
+     */
+    --webui-shell-compact: 640px;
+    --webui-surface-split: 680px;
+    /*
+     * The conversation column is the reading surface, so it is the thing that
+     * keeps its space: it never gets narrower than this, and the tool regions
+     * give way instead.
+     */
+    --webui-conversation-min: 320px;
+    /* The workspace panel's floor while it is a column, and its cap as an overlay. */
+    --webui-panel-min: 360px;
+    --webui-panel-overlay-max: 560px;
+    /*
+     * The composer's own narrow forms. The composer's card does not fill the
+     * column it sits in, so the toolbar's width is its own business: below
+     * `composer-model-icon` the model name becomes an icon, and below
+     * `composer-permission-icon` the permission label does too.
+     */
+    --webui-composer-model-icon: 360px;
+    --webui-composer-permission-icon: 272px;
+    /*
+     * The rail's width.
+     */
+    --webui-rail-width: 240px;
+    --webui-rail-collapsed-width: 64px;
+  }
+
+  /*
+   * The conversation column.
+   *
+   * The markup used to carry `min-w-0` here, which is a declaration that the
+   * content may be clipped to nothing: a flex child with `min-width: 0` gives
+   * up the browser's natural floor, and a column whose siblings have no floors
+   * of their own is then the narrowest thing that decides how much survives.
+   * The floor belongs to the shell, so it is declared here.
+   */
+  .webui-conversation-column {
+    min-width: var(--webui-conversation-min);
+    min-height: 0;
+  }
+
+  /*
+   * The session header.
+   *
+   * One row: the rail's toggle and the search button, the session title, and
+   * the panel controls. The title is the only part that gives way, and it gives
+   * way by truncating.
+   *
+   * The toggle and the search button used to float over the window in their
+   * own absolutely positioned strip, and the title carried a second literal to
+   * clear them. Two numbers describing one geometry, and they disagreed: in the
+   * rail's drawer form the strip still sat where the rail's column used to be,
+   * on top of the title. In a row there is nothing to disagree about — the
+   * title simply starts after the buttons.
+   *
+   * The row is as tall as what is in it. It used to carry a fixed height of its
+   * own, which was the height of the floating strip it replaced.
+   */
+  .webui-session-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--spacing_8);
+    padding: 0 var(--spacing_12);
+  }
+
+  .webui-session-header-tools,
+  .webui-session-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--spacing_4);
+  }
+
+  .webui-session-header-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The rail's brand.
+   *
+   * The rail's top used to hold nothing but the floating toolbar's empty
+   * shadow. It is the rail's own header now: the one place that says which
+   * product this is, and it is empty space in every form otherwise.
+   */
+  .webui-rail-brand {
+    display: flex;
+    height: 50px;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing_8);
+    padding: 0 var(--spacing_16);
+  }
+
+  .webui-rail-brand-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    font-weight: var(--weight_medium);
+  }
+
+  /* The collapsed rail is narrower, and everything that measures the rail
+   * against the window follows it. */
+  [data-webui-shell="two-column"][data-webui-rail-collapsed="true"] {
+    --webui-rail-width: var(--webui-rail-collapsed-width);
+  }
+
+  /*
+   * The rail's own width.
+   *
+   * It used to be a utility in the markup and a declaration in the models
+   * stylesheet, which meant two copies of one number and a rule about which
+   * one won. The width is the shell skeleton's, so it lives here with the
+   * thresholds it answers to.
+   */
+  .webui-rail {
+    width: 240px;
+    z-index: 50;
+  }
+
+  .webui-rail[data-webui-rail-width="64"] {
+    width: 64px;
+  }
+
+  /*
+   * The rail as a drawer.
+   *
+   * Below the compact width the rail floats above the surface with a scrim
+   * instead of taking a column of it. A 240px column on a 360px screen would
+   * leave the conversation nothing, and the conversation is the thing the
+   * client is for.
+   *
+   * The rail keeps its width here — it is a drawer, not a narrower column — so
+   * the collapsed state does not apply to it: a collapsed drawer is a drawer
+   * that is closed.
+   */
+  [data-webui-shell="two-column"][data-webui-rail-mode="drawer"] .webui-rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 90;
+    width: min(280px, 80vw);
+    transform: translateX(-100%);
+    transition: transform 180ms cubic-bezier(.2, .7, .2, 1), width 180ms cubic-bezier(.2, .7, .2, 1);
+    box-shadow: 12px 0 32px rgb(10 10 10 / 12%);
+  }
+
+  [data-webui-shell="two-column"][data-webui-rail-mode="drawer"][data-webui-rail-open="true"] .webui-rail {
+    transform: translateX(0);
+  }
+
+  /* The scrim behind an open drawer. It takes the surface's clicks, so the
+   * content behind a drawer is not reachable by tapping it. It dims the whole
+   * shell, so it sits above every shell surface — the composer's own overlay
+   * and the expanded workspace panel among them — and below the portalled
+   * menus and dialogs. */
+  .webui-rail-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    border: 0;
+    padding: 0;
+    background: rgb(10 10 10 / 24%);
+    cursor: default;
+  }
+}

@@ -1,0 +1,451 @@
+{
+  "$comment": "Every duration and keyframe in the client's stylesheets, mapped to a named motion family or recorded as a justified distinct effect. `pnpm check:webui-motion` fails when a stylesheet gains a raw duration or a keyframe that is not recorded here, and when a recorded entry stops appearing.",
+  "families": {
+    "feedback": "a control answers pointer, hover, focus or press",
+    "surface": "a floating surface enters or leaves",
+    "disclosure": "a region opens, closes or resizes",
+    "loading": "work is in progress"
+  },
+  "tokens": {
+    "feedback": "120ms",
+    "surface": "180ms",
+    "disclosure": "160ms",
+    "loading": "1.2s",
+    "popupExit": "120ms"
+  },
+  "files": {
+    "features/account/ui/account.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "1.2s",
+          "family": "loading"
+        },
+        {
+          "value": "140ms",
+          "family": "distinct",
+          "reason": "a fly-out that opens on hover uses its own short enter; it is not a surface that a press summoned"
+        },
+        {
+          "value": "0.36s",
+          "family": "distinct",
+          "reason": "the account panel's card slides in after the menu, so it must outlast the menu's own entry"
+        },
+        {
+          "value": "0.6s",
+          "family": "distinct",
+          "reason": "a one-shot highlight pulse that marks a change; it is feedback but not a control transition"
+        }
+      ],
+      "keyframes": []
+    },
+    "features/composer/ui/composer.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "0s",
+          "family": "distinct",
+          "reason": "no transition at all in one reduced case; a recorded zero, not an effect"
+        }
+      ],
+      "keyframes": []
+    },
+    "features/interactions/ui/interactions.css": {
+      "durations": [],
+      "keyframes": []
+    },
+    "features/interactions/ui/plan-mode.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        }
+      ],
+      "keyframes": []
+    },
+    "features/models/ui/models.css": {
+      "durations": [
+        {
+          "value": "180ms",
+          "family": "surface"
+        },
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "160ms",
+          "family": "disclosure"
+        },
+        {
+          "value": "110ms",
+          "family": "distinct",
+          "reason": "the provider form's model row settles faster than a surface because it is inside one"
+        },
+        {
+          "value": "140ms",
+          "family": "distinct",
+          "reason": "a fly-out that opens on hover uses its own short enter; it is not a surface that a press summoned"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "webui-model-list-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-model-panel-enter",
+          "family": "surface"
+        }
+      ]
+    },
+    "features/plugins/ui/plugins.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        }
+      ],
+      "keyframes": []
+    },
+    "features/sessions/ui/sessions.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "0.6s",
+          "family": "distinct",
+          "reason": "a one-shot highlight pulse that marks a change; it is feedback but not a control transition"
+        },
+        {
+          "value": "160ms",
+          "family": "disclosure"
+        },
+        {
+          "value": "180ms",
+          "family": "surface"
+        },
+        {
+          "value": "140ms",
+          "family": "distinct",
+          "reason": "a fly-out that opens on hover uses its own short enter; it is not a surface that a press summoned"
+        }
+      ],
+      "keyframes": []
+    },
+    "features/settings/ui/settings.css": {
+      "durations": [
+        {
+          "value": "160ms",
+          "family": "disclosure"
+        },
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the settings dialog's backdrop fade is behind a modal and must not pull the eye"
+        },
+        {
+          "value": "180ms",
+          "family": "surface"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "webui-settings-content-in",
+          "family": "surface"
+        }
+      ]
+    },
+    "features/transcript/ui/transcript-widgets.css": {
+      "durations": [
+        {
+          "value": "1.6s",
+          "family": "distinct",
+          "reason": "the transcript widget's attention blink repeats a fixed number of times and needs its own period"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "transcript-shimmer",
+          "family": "loading"
+        }
+      ]
+    },
+    "features/transcript/ui/transcript.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "0s",
+          "family": "distinct",
+          "reason": "no transition at all in one reduced case; a recorded zero, not an effect"
+        },
+        {
+          "value": "180ms",
+          "family": "surface"
+        },
+        {
+          "value": "150ms",
+          "family": "distinct",
+          "reason": "the shell's rail collapse is a layout change, not a disclosure of content, and reads slower than one"
+        },
+        {
+          "value": ".18s",
+          "family": "distinct",
+          "reason": "the transcript's own alias for the surface duration, written before the tokens existed; it equals the surface token and stays because the rule also carries its own keyframes"
+        },
+        {
+          "value": "0.18s",
+          "family": "distinct",
+          "reason": "an alias for the surface duration, kept in the transcript where the rule was written before the tokens existed"
+        },
+        {
+          "value": "1.2s",
+          "family": "loading"
+        },
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the settings dialog's backdrop fade is behind a modal and must not pull the eye"
+        },
+        {
+          "value": "160ms",
+          "family": "disclosure"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "webui-turn-jump-flash",
+          "family": "distinct",
+          "reason": "a one-shot highlight that marks where a turn jump landed; it is feedback but it is not a control's transition"
+        }
+      ]
+    },
+    "features/workspace/ui/workspace-progress.css": {
+      "durations": [
+        {
+          "value": "180ms",
+          "family": "surface"
+        },
+        {
+          "value": "1.3s",
+          "family": "distinct",
+          "reason": "the workspace progress bar's indeterminate sweep, slower than the shared loader so it reads as a bar, not a spinner"
+        },
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the settings dialog's backdrop fade is behind a modal and must not pull the eye"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "webui-progress-content-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-progress-skeleton",
+          "family": "loading"
+        }
+      ]
+    },
+    "features/workspace/ui/workspace.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "180ms",
+          "family": "surface"
+        },
+        {
+          "value": "100ms",
+          "family": "distinct",
+          "reason": "the workspace resize handle answers a drag; a longer tint trails the pointer"
+        },
+        {
+          "value": "140ms",
+          "family": "distinct",
+          "reason": "a fly-out that opens on hover uses its own short enter; it is not a surface that a press summoned"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "webui-workspace-panel-collapse",
+          "family": "disclosure"
+        },
+        {
+          "name": "webui-workspace-panel-exit",
+          "family": "surface"
+        },
+        {
+          "name": "webui-workspace-panel-expand",
+          "family": "surface"
+        }
+      ]
+    },
+    "styles/button.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        }
+      ],
+      "keyframes": []
+    },
+    "styles/dialog.css": {
+      "durations": [
+        {
+          "value": "160ms",
+          "family": "disclosure",
+          "reason": "the scrim that reveals the surface: a region fading in, so it takes the disclosure token rather than the slower surface one"
+        },
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the dialog surface settles behind the scrim; the shared surface enter is 180ms and a modal reads slower than a popover"
+        }
+      ],
+      "keyframes": []
+    },
+    "styles/dropdown.css": {
+      "durations": [],
+      "keyframes": [
+        {
+          "name": "webui-dropdown-in",
+          "family": "surface"
+        },
+        {
+          "name": "webui-dropdown-in-reverse",
+          "family": "surface"
+        },
+        {
+          "name": "webui-dropdown-out",
+          "family": "surface"
+        },
+        {
+          "name": "webui-dropdown-out-reverse",
+          "family": "surface"
+        }
+      ]
+    },
+    "styles/feedback.css": {
+      "durations": [],
+      "keyframes": [
+        {
+          "name": "webui-feedback-spin",
+          "family": "loading"
+        }
+      ]
+    },
+    "styles/field.css": {
+      "durations": [
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the toggle's knob slides and its track fills on a press; it was recorded under the settings stylesheet until the control's appearance moved to the shared layer, and 200ms is the speed the control was measured at"
+        }
+      ],
+      "keyframes": []
+    },
+    "styles/index.css": {
+      "durations": [
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "0.01ms",
+          "family": "distinct",
+          "reason": "the reduced-motion collapse, which is the policy's own value"
+        }
+      ],
+      "keyframes": []
+    },
+    "styles/layout.css": {
+      "durations": [
+        {
+          "value": "180ms",
+          "family": "surface"
+        }
+      ],
+      "keyframes": []
+    },
+    "styles/shell.css": {
+      "durations": [
+        {
+          "value": "150ms",
+          "family": "distinct",
+          "reason": "the shell's rail collapse is a layout change, not a disclosure of content, and reads slower than one"
+        },
+        {
+          "value": "0.24s",
+          "family": "distinct",
+          "reason": "the shell's composer grows taller as text wraps; the growth is a layout settle, not a disclosure"
+        },
+        {
+          "value": "120ms",
+          "family": "feedback"
+        },
+        {
+          "value": "0s",
+          "family": "distinct",
+          "reason": "no transition at all in one reduced case; a recorded zero, not an effect"
+        }
+      ],
+      "keyframes": [
+        {
+          "name": "message-appear",
+          "family": "surface"
+        },
+        {
+          "name": "signin-card-collapse",
+          "family": "disclosure"
+        },
+        {
+          "name": "signin-day-claimed",
+          "family": "feedback"
+        },
+        {
+          "name": "webui-menu-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-modal-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-overlay-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-panel-enter-right",
+          "family": "surface"
+        },
+        {
+          "name": "webui-popover-enter",
+          "family": "surface"
+        },
+        {
+          "name": "webui-signin-claim-spin",
+          "family": "loading"
+        },
+        {
+          "name": "webui-user-menu-usage-pulse",
+          "family": "feedback"
+        }
+      ]
+    }
+  }
+}

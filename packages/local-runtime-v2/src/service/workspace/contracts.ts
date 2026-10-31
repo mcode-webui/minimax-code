@@ -88,6 +88,7 @@ export interface WorkspaceFileContent {
   content: string;
   encoding?: string;
   mimeType?: string;
+  previewDataUrl?: string;
   error?: string;
 }
 

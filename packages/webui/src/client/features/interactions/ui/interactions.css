@@ -1,0 +1,156 @@
+/* interactions — moved out of styles/shell.css; rules kept in their original relative order. */
+@layer components {
+
+
+  /* A block surface in the main column. The composer card is this
+   * shape: a hairline border with a soft layer underneath it. The border alone
+   * reads as nothing on a light surface; the shadow is what makes the layer
+   * visible at all. */
+  .webui-card {
+    background-color: var(--bg_default_primary);
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_16);
+    box-shadow: 0 0 10px 0 var(--shadow_default);
+  }
+
+  /* A quick-action chip: 32px, 8px radius, a hairline ring. */
+
+  /* The accent action and the grouped pill used to be declared here, as
+   * `.webui-button-primary` and `.webui-button-secondary`. The account,
+   * transcript, composer, workspace and shell businesses rendered both, so the
+   * two appearances were the shared button contract's to own, and they are
+   * declared once in `client/styles/button.css` now. A caller renders
+   * `WebuiButton` with `variant="accent"` or `variant="grouped"`. */
+
+  .webui-questionnaire-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing_8);
+  }
+
+  .webui-questionnaire-content {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .webui-questionnaire-sub {
+    margin: 0;
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: 16px;
+  }
+
+  .webui-questionnaire-options {
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+  }
+
+  .webui-questionnaire-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 10px;
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    line-height: 20px;
+    cursor: pointer;
+  }
+
+  .webui-questionnaire-option + .webui-questionnaire-option {
+    border-top: 1px solid var(--border_default);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .webui-questionnaire-option:hover,
+  .webui-questionnaire-option[data-selected] {
+    background: var(--bg_interaction_secondary_default);
+  }
+
+  .webui-questionnaire-letter {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .webui-questionnaire-option[data-selected] .webui-questionnaire-letter {
+    background: var(--bg_interaction_primary_default);
+    color: var(--text_default_inverted);
+  }
+
+  .webui-questionnaire-other-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_8);
+    margin-top: 4px;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: var(--size_14);
+    cursor: pointer;
+  }
+
+  .webui-questionnaire-other-row[data-selected] {
+    background: var(--bg_interaction_secondary_default);
+  }
+
+  .webui-questionnaire-other-toggle {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: var(--bg_interaction_secondary_default);
+    color: var(--text_default_secondary);
+    font-size: var(--size_14);
+  }
+
+  .webui-questionnaire-other-row[data-selected]
+    .webui-questionnaire-other-toggle {
+    background: var(--bg_interaction_primary_default);
+    color: var(--text_default_inverted);
+  }
+
+  .webui-questionnaire-progress,
+  .webui-questionnaire-countdown,
+  .webui-questionnaire-multi-hint {
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+  }
+
+  .webui-questionnaire-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing_4);
+    margin-left: auto;
+  }
+
+  .webui-questionnaire-actions {
+    flex: 0 0 auto;
+    padding-top: var(--spacing_8);
+  }
+
+  .webui-questionnaire-countdown {
+    align-self: flex-end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .webui-questionnaire-multi-hint {
+    margin: 4px 8px;
+  }
+}

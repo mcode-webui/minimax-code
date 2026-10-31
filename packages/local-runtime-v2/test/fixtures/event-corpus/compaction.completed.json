@@ -1,0 +1,9 @@
+{
+  "frame": {
+    "eventJson": "{\"type\":\"session.compaction.completed\",\"timestamp\":3,\"source\":\"harness\",\"payload\":{\"sessionId\":\"s1\",\"compactionId\":\"compact-1\",\"messagesBefore\":10,\"messagesAfter\":3,\"tokensBefore\":1000,\"tokensAfter\":300,\"tokenUsage\":{\"inputTokens\":1000,\"outputTokens\":300,\"cacheReadTokens\":20,\"cacheWriteTokens\":5,\"totalTokens\":1325,\"incomplete\":true}}}"
+  },
+  "expected": {
+    "sessionId": "s1",
+    "compaction": { "state": "completed", "lastAt": 3 }
+  }
+}

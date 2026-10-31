@@ -23,6 +23,7 @@ import type {
 import { activateAvailableMiniApp, type MiniAppActivationInput } from './activation.js';
 import {
   listEnabledMiniAppDefinitions,
+  listInstalledMiniAppDefinitions,
   listAcceptedMiniApps,
   miniAppCandidateFromPackage,
   sameMiniAppCandidate,
@@ -249,6 +250,20 @@ export class PluginMiniAppPublicationController {
     return this.options.host.runExclusive(async () =>
       listEnabledMiniAppDefinitions(await this.options.readAvailableSnapshot()).map(
         ({ candidate, ...metadata }) => ({ pluginId: candidate.pluginId, ...metadata }),
+      ),
+    );
+  }
+
+  async listInstalledMiniApps(): Promise<readonly AvailableMiniAppDefinition[]> {
+    await this.options.host.initialize();
+    this.options.host.assertUsable();
+    return this.options.host.runExclusive(async () =>
+      listInstalledMiniAppDefinitions(await this.options.readAvailableSnapshot()).map(
+        ({ candidate, enabled, ...metadata }) => ({
+          pluginId: candidate.pluginId,
+          enabled,
+          ...metadata,
+        }),
       ),
     );
   }

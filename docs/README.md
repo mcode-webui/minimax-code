@@ -9,6 +9,7 @@
 - [Examples](examples.md): code fixes, model selection, search, and image input.
 - [Real TUI demo](demo.md): a 20-second replay, still image, and reproduction steps.
 - [Status line configuration](../packages/tui/docs/status-line-config.md): the default status line and optional machine-readable mode.
+- [WebUI](../packages/webui/docs/README.md): the browser client and its loopback service — architecture, runtime, verification and reference material.
 - [Capabilities and service boundaries](tui-capabilities.md): accounts, tools, plugins, sandboxing, and network behavior.
 - [TUI usage telemetry](telemetry.md): opt-in settings, sent fields, destinations, and retention boundary.
 

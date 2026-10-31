@@ -577,6 +577,11 @@ export function createV1RuntimeCompatibility(
           authContextGetter: options.authContextGetter ?? (() => undefined),
           fetchImpl: options.fetchImpl ?? globalThis.fetch,
           ...(options.appVersion ? { appVersion: options.appVersion } : {}),
+          // The host declares which desktop version the marketplace is filtered
+          // by; the runtime carries that declaration and never decides it.
+          ...(options.marketplaceVisibilityVersion
+            ? { marketplaceVisibilityVersion: options.marketplaceVisibilityVersion }
+            : {}),
           metrics: host.metricsClient,
           skill: host.apiHost.skillService,
           standaloneSkillIdentities: () =>
@@ -726,8 +731,11 @@ function createPeripheralApplication(
         ),
     },
     account: {
-      getStatus: ({ sessionId, model } = {}) =>
-        host.apiHost.getProcessLocalAccountStatus(sessionId, model),
+      getStatus: async ({ sessionId, model } = {}) => {
+        const status = await host.apiHost.getProcessLocalAccountStatus(sessionId, model);
+        const uid = host.apiHost.authContextGetter?.()?.realUserID?.trim();
+        return uid ? { ...status, identity: { uid } } : status;
+      },
     },
     diagnostics: {
       getRuntimeSnapshot: async () =>
@@ -738,6 +746,74 @@ function createPeripheralApplication(
         readLocalPermissionMode(host.apiHost.configGetter().permissionMode),
       setPermissionMode: ({ mode }) =>
         host.apiHost.setProcessLocalPermissionMode(mode),
+      /**
+       * Reads the two long-term-memory switches with the same defaults the
+       * config declares (`packages/config/src/config.ts`: `enabled` true,
+       * `proactive` false). A missing `memory` tree is not an error — it is the
+       * documented default state, and reporting it as "off" would be a lie the
+       * settings UI would then write back.
+       */
+      getMemorySettings: async () => {
+        const memory = host.apiHost.configGetter().memory;
+        return {
+          enabled: memory?.enabled !== false,
+          proactive: memory?.proactive === true,
+        };
+      },
+      /**
+       * `put` rather than the `preparedCommitPayload` argument: that path does
+       * a shallow `Object.assign`, so passing `{ memory: { enabled, proactive } }`
+       * would silently drop `memory.dailyDigest` from the user's config. `put`
+       * deep-merges into the existing subtree and touches one key per call.
+       */
+      setMemorySettings: async ({ enabled, proactive }) => {
+        const put: Record<string, boolean> = {};
+        if (enabled !== undefined) put.enabled = enabled;
+        if (proactive !== undefined) put.proactive = proactive;
+        if (Object.keys(put).length > 0) {
+          await updateLocalConfigFile({ field: "memory", put });
+        }
+        const memory = host.apiHost.configGetter().memory;
+        return {
+          enabled: memory?.enabled !== false,
+          proactive: memory?.proactive === true,
+        };
+      },
+      /**
+       * The four browser authorization switches.
+       *
+       * Read as "on only when the configuration says `true`", so a missing
+       * `browser` tree is the documented default — nothing is authorized — rather
+       * than an error. Writing goes through `put` on the `browser` root for the
+       * same reason the memory pair does: the shallow-assign path would drop the
+       * sibling keys.
+       */
+      getBrowserAuthorization: async () => {
+        const browser = host.apiHost.configGetter().browser;
+        return {
+          isolatedChromium: browser?.isolatedChromium === true,
+          edge: browser?.edge === true,
+          chrome: browser?.chrome === true,
+          fullCdp: browser?.fullCdp === true,
+        };
+      },
+      setBrowserAuthorization: async (input) => {
+        const put: Record<string, boolean> = {};
+        if (input.isolatedChromium !== undefined) put.isolatedChromium = input.isolatedChromium;
+        if (input.edge !== undefined) put.edge = input.edge;
+        if (input.chrome !== undefined) put.chrome = input.chrome;
+        if (input.fullCdp !== undefined) put.fullCdp = input.fullCdp;
+        if (Object.keys(put).length > 0) {
+          await updateLocalConfigFile({ field: "browser", put });
+        }
+        const browser = host.apiHost.configGetter().browser;
+        return {
+          isolatedChromium: browser?.isolatedChromium === true,
+          edge: browser?.edge === true,
+          chrome: browser?.chrome === true,
+          fullCdp: browser?.fullCdp === true,
+        };
+      },
     },
     backgroundTasks: {
       list: async ({
@@ -798,6 +874,8 @@ function createThreadGoalApplication(
       objective: rawObjective,
       tokenBudget,
       kickoffAttachments,
+      objectiveResources,
+      requireKickoffAdmission,
     }) => {
       requireEnabled();
       const normalizedSessionId = requireGoalSessionId(sessionId);
@@ -808,8 +886,9 @@ function createThreadGoalApplication(
         objective,
         ...(tokenBudget !== undefined ? { tokenBudget } : {}),
         ...(kickoffAttachments?.length ? { kickoffAttachments } : {}),
+        ...(objectiveResources !== undefined ? { objectiveResources } : {}),
       };
-      const created = kickoffAttachments?.length
+      const created = requireKickoffAdmission || kickoffAttachments?.length
         ? await integration.createGoal(input, { requireKickoffAdmission: true })
         : await integration.createGoal(input);
       return toGlobalThreadGoal(created);
@@ -864,7 +943,10 @@ function isBareUserPause(patch: GoalApplicationPatch): boolean {
   return (
     patch.status === "paused" &&
     patch.objective === undefined &&
-    patch.tokenBudget === undefined
+    patch.tokenBudget === undefined &&
+    patch.objectiveResources === undefined &&
+    patch.expectedGoalId === undefined &&
+    patch.rejectIfUpdatedAtChangedFrom === undefined
   );
 }
 
@@ -887,14 +969,18 @@ function normalizeProcessLocalGoalPatch(
     ...(patch.tokenBudget !== undefined
       ? { tokenBudget: patch.tokenBudget }
       : {}),
+    ...(patch.expectedGoalId !== undefined ? { expectedGoalId: patch.expectedGoalId } : {}),
+    ...(patch.rejectIfUpdatedAtChangedFrom !== undefined ? { rejectIfUpdatedAtChangedFrom: patch.rejectIfUpdatedAtChangedFrom } : {}),
+    ...(patch.objectiveResources !== undefined ? { objectiveResources: patch.objectiveResources } : {}),
   };
 }
 
-function toGlobalThreadGoal(state: ThreadGoalState): GlobalThreadGoal {
+function toGlobalThreadGoal(state: ThreadGoalState): GlobalThreadGoal & Pick<ThreadGoalState, "objectiveResources"> {
   return {
     goalId: state.goalId,
     sessionId: state.sessionId,
     objective: state.objective,
+    ...(state.objectiveResources !== undefined ? { objectiveResources: state.objectiveResources } : {}),
     status: state.status,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,

@@ -1,6 +1,6 @@
 import type { HostProcessConnectorGateway } from '../../../host-connector-system/index.js';
 import type { MiniAppHostConnectorQuiesceAttempt } from '../../contracts.js';
-import { HostConnectorProtocolError } from './host-connector-ndjson.js';
+import { HostConnectorProtocolError } from './host-connector-errors.js';
 
 type HostConnectorSessionState =
   | 'candidate'

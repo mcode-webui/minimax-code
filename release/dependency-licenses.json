@@ -10,6 +10,14 @@
       "homepage": "https://github.com/agentclientprotocol/typescript-sdk#readme"
     },
     {
+      "name": "@alloc/quick-lru",
+      "versions": [
+        "5.3.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/aleclarson/quick-lru#readme"
+    },
+    {
       "name": "@anthropic-ai/sdk",
       "versions": [
         "0.91.1"
@@ -211,6 +219,14 @@
       "homepage": "https://github.com/awslabs/aws-lambda-invoke-store"
     },
     {
+      "name": "@axe-core/playwright",
+      "versions": [
+        "4.14.0"
+      ],
+      "license": "MPL-2.0",
+      "homepage": "https://github.com/dequelabs/axe-core-npm#readme"
+    },
+    {
       "name": "@babel/helper-string-parser",
       "versions": [
         "7.29.7"
@@ -259,7 +275,39 @@
       "homepage": "https://github.com/bcoe/v8-coverage#readme"
     },
     {
-      "name": "@esbuild/darwin-arm64",
+      "name": "@dnd-kit/accessibility",
+      "versions": [
+        "3.1.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/clauderic/dnd-kit#readme"
+    },
+    {
+      "name": "@dnd-kit/core",
+      "versions": [
+        "6.3.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/clauderic/dnd-kit#readme"
+    },
+    {
+      "name": "@dnd-kit/sortable",
+      "versions": [
+        "10.0.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/clauderic/dnd-kit#readme"
+    },
+    {
+      "name": "@dnd-kit/utilities",
+      "versions": [
+        "3.2.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/clauderic/dnd-kit#readme"
+    },
+    {
+      "name": "@esbuild/linux-x64",
       "versions": [
         "0.28.2"
       ],
@@ -347,6 +395,14 @@
       "homepage": "https://github.com/npm/fs-minipass#readme"
     },
     {
+      "name": "@jridgewell/gen-mapping",
+      "versions": [
+        "0.3.13"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/jridgewell/sourcemaps/tree/main/packages/gen-mapping"
+    },
+    {
       "name": "@jridgewell/resolve-uri",
       "versions": [
         "3.1.2"
@@ -387,7 +443,7 @@
       "homepage": "https://github.com/badlogic/clipboard#readme"
     },
     {
-      "name": "@mariozechner/clipboard-darwin-arm64",
+      "name": "@mariozechner/clipboard-linux-x64-gnu",
       "versions": [
         "0.3.9"
       ],
@@ -395,7 +451,7 @@
       "homepage": "https://github.com/badlogic/clipboard#readme"
     },
     {
-      "name": "@mariozechner/clipboard-darwin-universal",
+      "name": "@mariozechner/clipboard-linux-x64-musl",
       "versions": [
         "0.3.9"
       ],
@@ -417,6 +473,14 @@
       ],
       "license": "MIT",
       "homepage": "https://modelcontextprotocol.io"
+    },
+    {
+      "name": "@napi-rs/lzma-linux-x64-gnu",
+      "versions": [
+        "1.5.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/Brooooooklyn/lzma#readme"
     },
     {
       "name": "@nodelib/fs.scandir",
@@ -459,7 +523,15 @@
       "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/semantic-conventions"
     },
     {
-      "name": "@oxc-parser/binding-darwin-arm64",
+      "name": "@oxc-parser/binding-linux-x64-gnu",
+      "versions": [
+        "0.148.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://oxc.rs/docs/guide/usage/parser"
+    },
+    {
+      "name": "@oxc-parser/binding-linux-x64-musl",
       "versions": [
         "0.148.0"
       ],
@@ -475,7 +547,15 @@
       "homepage": "https://oxc.rs"
     },
     {
-      "name": "@oxc-resolver/binding-darwin-arm64",
+      "name": "@oxc-resolver/binding-linux-x64-gnu",
+      "versions": [
+        "11.24.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://oxc.rs"
+    },
+    {
+      "name": "@oxc-resolver/binding-linux-x64-musl",
       "versions": [
         "11.24.2"
       ],
@@ -579,7 +659,15 @@
       "homepage": "https://github.com/protobufjs/protobuf.js#readme"
     },
     {
-      "name": "@rollup/rollup-darwin-arm64",
+      "name": "@rollup/rollup-linux-x64-gnu",
+      "versions": [
+        "4.63.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://rollupjs.org/"
+    },
+    {
+      "name": "@rollup/rollup-linux-x64-musl",
       "versions": [
         "4.63.1"
       ],
@@ -645,8 +733,8 @@
     {
       "name": "@smithy/node-http-handler",
       "versions": [
-        "4.7.3",
-        "4.12.1"
+        "4.12.1",
+        "4.7.3"
       ],
       "license": "Apache-2.0",
       "homepage": "https://github.com/smithy-lang/smithy-typescript/tree/main/packages/node-http-handler"
@@ -690,6 +778,22 @@
       ],
       "license": "MIT",
       "homepage": "https://standardschema.dev"
+    },
+    {
+      "name": "@tabler/icons",
+      "versions": [
+        "3.49.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://tabler.io/icons"
+    },
+    {
+      "name": "@tabler/icons-react",
+      "versions": [
+        "3.49.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://tabler.io/icons"
     },
     {
       "name": "@types/chai",
@@ -797,12 +901,36 @@
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pngjs"
     },
     {
+      "name": "@types/prop-types",
+      "versions": [
+        "15.7.15"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/prop-types"
+    },
+    {
       "name": "@types/proper-lockfile",
       "versions": [
         "4.1.4"
       ],
       "license": "MIT",
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/proper-lockfile"
+    },
+    {
+      "name": "@types/react",
+      "versions": [
+        "18.3.31"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react"
+    },
+    {
+      "name": "@types/react-dom",
+      "versions": [
+        "18.3.7"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom"
     },
     {
       "name": "@types/readable-stream",
@@ -910,7 +1038,7 @@
       "homepage": "https://www.typescriptlang.org/"
     },
     {
-      "name": "@typescript/native-preview-darwin-arm64",
+      "name": "@typescript/native-preview-linux-x64",
       "versions": [
         "7.0.0-dev.20260707.2"
       ],
@@ -998,7 +1126,7 @@
       "homepage": "https://github.com/microsoft/vscode-ripgrep#readme"
     },
     {
-      "name": "@vscode/ripgrep-darwin-arm64",
+      "name": "@vscode/ripgrep-linux-x64",
       "versions": [
         "1.18.0"
       ],
@@ -1006,9 +1134,25 @@
       "homepage": "https://github.com/microsoft/vscode-ripgrep#readme"
     },
     {
+      "name": "@xterm/addon-fit",
+      "versions": [
+        "0.11.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/xtermjs/xterm.js/tree/master#readme"
+    },
+    {
       "name": "@xterm/headless",
       "versions": [
         "5.5.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/xtermjs/xterm.js#readme"
+    },
+    {
+      "name": "@xterm/xterm",
+      "versions": [
+        "6.0.0"
       ],
       "license": "MIT",
       "homepage": "https://github.com/xtermjs/xterm.js#readme"
@@ -1120,6 +1264,22 @@
       "homepage": "http://github.com/kevinbeaty/any-promise"
     },
     {
+      "name": "anymatch",
+      "versions": [
+        "3.1.3"
+      ],
+      "license": "ISC",
+      "homepage": "https://github.com/micromatch/anymatch"
+    },
+    {
+      "name": "arg",
+      "versions": [
+        "5.0.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/vercel/arg#readme"
+    },
+    {
       "name": "argparse",
       "versions": [
         "2.0.1"
@@ -1224,12 +1384,28 @@
       "homepage": "https://github.com/davidmarkclements/atomic-sleep#readme"
     },
     {
+      "name": "autoprefixer",
+      "versions": [
+        "10.4.20"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/autoprefixer#readme"
+    },
+    {
       "name": "available-typed-arrays",
       "versions": [
         "1.0.7"
       ],
       "license": "MIT",
       "homepage": "https://github.com/inspect-js/available-typed-arrays#readme"
+    },
+    {
+      "name": "axe-core",
+      "versions": [
+        "4.14.0"
+      ],
+      "license": "MPL-2.0",
+      "homepage": "https://github.com/dequelabs/axe-core#readme"
     },
     {
       "name": "axios",
@@ -1257,6 +1433,14 @@
       "homepage": "https://github.com/beatgammit/base64-js"
     },
     {
+      "name": "baseline-browser-mapping",
+      "versions": [
+        "2.11.26"
+      ],
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/web-platform-dx/baseline-browser-mapping#readme"
+    },
+    {
       "name": "better-sqlite3",
       "versions": [
         "12.11.1"
@@ -1271,6 +1455,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/MikeMcl/bignumber.js#readme"
+    },
+    {
+      "name": "binary-extensions",
+      "versions": [
+        "2.3.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/sindresorhus/binary-extensions#readme"
     },
     {
       "name": "bindings",
@@ -1331,6 +1523,14 @@
       "homepage": "https://github.com/micromatch/braces"
     },
     {
+      "name": "browserslist",
+      "versions": [
+        "4.29.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/browserslist/browserslist#readme"
+    },
+    {
       "name": "buffer",
       "versions": [
         "5.7.1",
@@ -1388,6 +1588,22 @@
       "homepage": "https://github.com/sindresorhus/callsites#readme"
     },
     {
+      "name": "camelcase-css",
+      "versions": [
+        "2.0.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/stevenvachon/camelcase-css#readme"
+    },
+    {
+      "name": "caniuse-lite",
+      "versions": [
+        "1.0.30001812"
+      ],
+      "license": "CC-BY-4.0",
+      "homepage": "https://github.com/browserslist/caniuse-lite#readme"
+    },
+    {
       "name": "canvas",
       "versions": [
         "3.2.3"
@@ -1413,12 +1629,12 @@
       "homepage": "https://github.com/chalk/chalk#readme"
     },
     {
-      "name": "chownr",
+      "name": "chokidar",
       "versions": [
-        "1.1.4"
+        "3.6.0"
       ],
-      "license": "ISC",
-      "homepage": "https://github.com/isaacs/chownr#readme"
+      "license": "MIT",
+      "homepage": "https://github.com/paulmillr/chokidar"
     },
     {
       "name": "chownr",
@@ -1426,6 +1642,14 @@
         "3.0.0"
       ],
       "license": "BlueOak-1.0.0",
+      "homepage": "https://github.com/isaacs/chownr#readme"
+    },
+    {
+      "name": "chownr",
+      "versions": [
+        "1.1.4"
+      ],
+      "license": "ISC",
       "homepage": "https://github.com/isaacs/chownr#readme"
     },
     {
@@ -1480,7 +1704,8 @@
       "name": "commander",
       "versions": [
         "12.1.0",
-        "15.0.0"
+        "15.0.0",
+        "4.1.1"
       ],
       "license": "MIT",
       "homepage": "https://github.com/tj/commander.js#readme"
@@ -1574,6 +1799,22 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/moxystudio/node-cross-spawn"
+    },
+    {
+      "name": "cssesc",
+      "versions": [
+        "3.0.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://mths.be/cssesc"
+    },
+    {
+      "name": "csstype",
+      "versions": [
+        "3.2.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/frenic/csstype#readme"
     },
     {
       "name": "data-uri-to-buffer",
@@ -1697,6 +1938,14 @@
       "homepage": "https://github.com/lovell/detect-libc#readme"
     },
     {
+      "name": "didyoumean",
+      "versions": [
+        "1.2.2"
+      ],
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/dcporter/didyoumean.js"
+    },
+    {
       "name": "diff",
       "versions": [
         "8.0.4"
@@ -1711,6 +1960,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/kevva/dir-glob#readme"
+    },
+    {
+      "name": "dlv",
+      "versions": [
+        "1.1.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/developit/dlv#readme"
     },
     {
       "name": "doctrine",
@@ -1752,6 +2009,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/jonathanong/ee-first#readme"
+    },
+    {
+      "name": "electron-to-chromium",
+      "versions": [
+        "1.5.439"
+      ],
+      "license": "ISC",
+      "homepage": "https://github.com/Kilian/electron-to-chromium#readme"
     },
     {
       "name": "emoji-regex",
@@ -2298,6 +2563,14 @@
       "homepage": "https://github.com/jshttp/forwarded#readme"
     },
     {
+      "name": "fraction.js",
+      "versions": [
+        "4.3.7"
+      ],
+      "license": "MIT",
+      "homepage": "https://www.xarg.org/2014/03/rational-numbers-in-javascript/"
+    },
+    {
       "name": "fresh",
       "versions": [
         "2.0.0"
@@ -2320,14 +2593,6 @@
       ],
       "license": "ISC",
       "homepage": "https://github.com/isaacs/fs.realpath#readme"
-    },
-    {
-      "name": "fsevents",
-      "versions": [
-        "2.3.3"
-      ],
-      "license": "MIT",
-      "homepage": "https://github.com/fsevents/fsevents"
     },
     {
       "name": "function-bind",
@@ -2452,17 +2717,17 @@
     {
       "name": "glob",
       "versions": [
-        "7.2.3"
+        "13.0.6"
       ],
-      "license": "ISC",
+      "license": "BlueOak-1.0.0",
       "homepage": "https://github.com/isaacs/node-glob#readme"
     },
     {
       "name": "glob",
       "versions": [
-        "13.0.6"
+        "7.2.3"
       ],
-      "license": "BlueOak-1.0.0",
+      "license": "ISC",
       "homepage": "https://github.com/isaacs/node-glob#readme"
     },
     {
@@ -2816,6 +3081,14 @@
       "homepage": "https://github.com/inspect-js/is-bigint#readme"
     },
     {
+      "name": "is-binary-path",
+      "versions": [
+        "2.1.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/sindresorhus/is-binary-path#readme"
+    },
+    {
       "name": "is-boolean-object",
       "versions": [
         "1.2.2"
@@ -3084,6 +3357,7 @@
     {
       "name": "jiti",
       "versions": [
+        "1.21.7",
         "2.7.0"
       ],
       "license": "MIT",
@@ -3116,7 +3390,8 @@
     {
       "name": "js-tokens",
       "versions": [
-        "10.0.0"
+        "10.0.0",
+        "4.0.0"
       ],
       "license": "MIT",
       "homepage": "https://github.com/lydell/js-tokens#readme"
@@ -3138,7 +3413,15 @@
       "homepage": "https://jscpd.dev"
     },
     {
-      "name": "jscpd-darwin-arm64",
+      "name": "jscpd-linux-x64-gnu",
+      "versions": [
+        "5.2.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/kucherenko/jscpd#readme"
+    },
+    {
+      "name": "jscpd-linux-x64-musl",
       "versions": [
         "5.2.1"
       ],
@@ -3228,6 +3511,14 @@
       "homepage": "https://github.com/brianloveswords/node-jws#readme"
     },
     {
+      "name": "katex",
+      "versions": [
+        "0.18.7"
+      ],
+      "license": "MIT",
+      "homepage": "https://katex.org"
+    },
+    {
       "name": "keyv",
       "versions": [
         "4.5.4"
@@ -3276,6 +3567,22 @@
       "homepage": "https://github.com/calvinmetcalf/lie#readme"
     },
     {
+      "name": "lilconfig",
+      "versions": [
+        "3.1.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/antonk52/lilconfig#readme"
+    },
+    {
+      "name": "lines-and-columns",
+      "versions": [
+        "1.2.4"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/eventualbuddha/lines-and-columns#readme"
+    },
+    {
       "name": "locate-path",
       "versions": [
         "6.0.0"
@@ -3314,6 +3621,22 @@
       ],
       "license": "Apache-2.0",
       "homepage": "https://github.com/dcodeIO/long.js#readme"
+    },
+    {
+      "name": "loose-envify",
+      "versions": [
+        "1.4.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/zertosh/loose-envify"
+    },
+    {
+      "name": "lottie-web",
+      "versions": [
+        "5.13.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/airbnb/lottie-web#readme"
     },
     {
       "name": "lru-cache",
@@ -3424,18 +3747,18 @@
     {
       "name": "minimatch",
       "versions": [
-        "3.1.5",
-        "9.0.9"
+        "10.2.6"
       ],
-      "license": "ISC",
+      "license": "BlueOak-1.0.0",
       "homepage": "https://github.com/isaacs/minimatch#readme"
     },
     {
       "name": "minimatch",
       "versions": [
-        "10.2.6"
+        "3.1.5",
+        "9.0.9"
       ],
-      "license": "BlueOak-1.0.0",
+      "license": "ISC",
       "homepage": "https://github.com/isaacs/minimatch#readme"
     },
     {
@@ -3591,6 +3914,30 @@
       "homepage": "https://github.com/microsoft/node-pty"
     },
     {
+      "name": "node-releases",
+      "versions": [
+        "2.0.57"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/chicoxyzzy/node-releases#readme"
+    },
+    {
+      "name": "normalize-path",
+      "versions": [
+        "3.0.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/jonschlinkert/normalize-path"
+    },
+    {
+      "name": "normalize-range",
+      "versions": [
+        "0.1.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/jamestalmage/normalize-range#readme"
+    },
+    {
       "name": "npm-run-path",
       "versions": [
         "2.0.2"
@@ -3605,6 +3952,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/sindresorhus/object-assign#readme"
+    },
+    {
+      "name": "object-hash",
+      "versions": [
+        "3.0.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/puleos/object-hash"
     },
     {
       "name": "object-inspect",
@@ -3939,6 +4294,14 @@
       "homepage": "https://github.com/pinojs/pino-std-serializers#readme"
     },
     {
+      "name": "pirates",
+      "versions": [
+        "4.0.7"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/danez/pirates#readme"
+    },
+    {
       "name": "pkce-challenge",
       "versions": [
         "5.0.1"
@@ -3969,6 +4332,54 @@
       ],
       "license": "MIT",
       "homepage": "https://postcss.org/"
+    },
+    {
+      "name": "postcss-import",
+      "versions": [
+        "15.1.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/postcss-import#readme"
+    },
+    {
+      "name": "postcss-js",
+      "versions": [
+        "4.1.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/postcss-js#readme"
+    },
+    {
+      "name": "postcss-load-config",
+      "versions": [
+        "4.0.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/postcss-load-config#readme"
+    },
+    {
+      "name": "postcss-nested",
+      "versions": [
+        "6.2.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/postcss-nested#readme"
+    },
+    {
+      "name": "postcss-selector-parser",
+      "versions": [
+        "6.1.4"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/postcss/postcss-selector-parser"
+    },
+    {
+      "name": "postcss-value-parser",
+      "versions": [
+        "4.2.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/TrySound/postcss-value-parser"
     },
     {
       "name": "prebuild-install",
@@ -4131,6 +4542,30 @@
       "homepage": "https://github.com/dominictarr/rc#readme"
     },
     {
+      "name": "react",
+      "versions": [
+        "18.3.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
+    },
+    {
+      "name": "react-dom",
+      "versions": [
+        "18.3.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
+    },
+    {
+      "name": "read-cache",
+      "versions": [
+        "1.0.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/TrySound/read-cache#readme"
+    },
+    {
       "name": "readable-stream",
       "versions": [
         "2.3.8",
@@ -4139,6 +4574,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/nodejs/readable-stream"
+    },
+    {
+      "name": "readdirp",
+      "versions": [
+        "3.6.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/paulmillr/readdirp"
     },
     {
       "name": "real-require",
@@ -4336,6 +4779,14 @@
       ],
       "license": "ISC",
       "homepage": "https://github.com/lddubeau/saxes#readme"
+    },
+    {
+      "name": "scheduler",
+      "versions": [
+        "0.23.2"
+      ],
+      "license": "MIT",
+      "homepage": "https://reactjs.org/"
     },
     {
       "name": "secure-json-parse",
@@ -4607,15 +5058,6 @@
       "homepage": "https://github.com/ljharb/stop-iteration-iterator#readme"
     },
     {
-      "name": "string_decoder",
-      "versions": [
-        "1.1.1",
-        "1.3.0"
-      ],
-      "license": "MIT",
-      "homepage": "https://github.com/nodejs/string_decoder"
-    },
-    {
       "name": "string-width",
       "versions": [
         "4.2.3"
@@ -4646,6 +5088,15 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/es-shims/String.prototype.trimStart#readme"
+    },
+    {
+      "name": "string_decoder",
+      "versions": [
+        "1.1.1",
+        "1.3.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/nodejs/string_decoder"
     },
     {
       "name": "strip-ansi",
@@ -4682,6 +5133,14 @@
       "homepage": "https://github.com/sindresorhus/strip-json-comments#readme"
     },
     {
+      "name": "sucrase",
+      "versions": [
+        "3.35.1"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/alangpierce/sucrase#readme"
+    },
+    {
       "name": "supports-color",
       "versions": [
         "7.2.0"
@@ -4704,6 +5163,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/un-ts/synckit#readme"
+    },
+    {
+      "name": "tailwindcss",
+      "versions": [
+        "3.4.17"
+      ],
+      "license": "MIT",
+      "homepage": "https://tailwindcss.com"
     },
     {
       "name": "tapable",
@@ -4832,6 +5299,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/JoshuaKGoldberg/ts-api-utils#readme"
+    },
+    {
+      "name": "ts-interface-checker",
+      "versions": [
+        "0.1.13"
+      ],
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/gristlabs/ts-interface-checker#readme"
     },
     {
       "name": "tsconfig-paths",
@@ -5002,6 +5477,14 @@
       ],
       "license": "MIT",
       "homepage": "https://github.com/stream-utils/unpipe#readme"
+    },
+    {
+      "name": "update-browserslist-db",
+      "versions": [
+        "1.3.3"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/browserslist/update-db#readme"
     },
     {
       "name": "uri-js",
@@ -5203,6 +5686,14 @@
       ],
       "license": "ISC",
       "homepage": "https://github.com/yargs/yargs-parser#readme"
+    },
+    {
+      "name": "yauzl",
+      "versions": [
+        "3.4.0"
+      ],
+      "license": "MIT",
+      "homepage": "https://github.com/thejoshwolfe/yauzl"
     },
     {
       "name": "yocto-queue",

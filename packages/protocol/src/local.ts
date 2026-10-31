@@ -1121,6 +1121,11 @@ export interface PluginCapabilitySummary {
   hookCount?: number;
 }
 
+export interface PluginMarketplaceTag {
+  key: string;
+  displayName: string;
+}
+
 export interface PluginAppInfo {
   provider: string;
   displayName?: string;
@@ -1147,6 +1152,7 @@ export interface PluginSkillInfo {
 
 export interface PluginMarketplaceSummary {
   name: string;
+  tags?: PluginMarketplaceTag[];
   version?: string;
   displayName?: string;
   description?: string;
@@ -1246,6 +1252,7 @@ export interface ListMarketplacePluginsInput {
 
 export interface ListMarketplacePluginsResult {
   plugins: PluginMarketplaceSummary[];
+  tagDefinitions?: PluginMarketplaceTag[];
   nextCursor?: string;
   hasMore?: boolean;
   marketplaceSkills?: SkillHubItem[];

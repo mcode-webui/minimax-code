@@ -1,0 +1,184 @@
+/* goal — moved out of styles/shell.css; rules kept in their original relative order. */
+@layer components {
+
+  .webui-session-layout .webui-goal-composer-panel {
+    width: 100%;
+    max-width: 768px;
+    border-radius: 24px 24px 20px 20px;
+    background: var(--bg_grouped_primary);
+  }
+  .webui-session-layout .webui-goal-composer-panel > .webui-goal-banner {
+    position: relative;
+    z-index: 20;
+    margin: 0;
+    padding: 0 12px 4px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .webui-goal-banner {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0 12px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .webui-goal-banner-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .webui-goal-banner-content-row,
+  .webui-goal-banner-leading,
+  .webui-goal-banner-objective-group,
+  .webui-goal-banner-actions-slot,
+  .webui-goal-usage {
+    display: flex;
+    align-items: center;
+  }
+
+  .webui-goal-banner-leading {
+    flex: none;
+    gap: var(--spacing_6);
+    padding: 8px 0 0 2px;
+  }
+
+  .webui-goal-banner-content-row {
+    flex: 1;
+    min-width: 0;
+    gap: var(--spacing_8);
+    padding: 8px 0 0 8px;
+  }
+
+  .webui-goal-banner-objective-group {
+    flex: 1;
+    min-width: 0;
+    gap: var(--spacing_4);
+  }
+
+  .webui-goal-banner-icon {
+    display: inline-flex;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--text_status_blue);
+  }
+
+  .webui-goal-banner-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .webui-goal-banner[data-goal-status="paused"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="paused"] .webui-goal-status {
+    color: var(--icon_default_secondary);
+  }
+  .webui-goal-banner[data-goal-status="blocked"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="blocked"] .webui-goal-status {
+    color: var(--text_status_error);
+  }
+  .webui-goal-banner[data-goal-status="complete"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="complete"] .webui-goal-status {
+    color: var(--text_status_success);
+  }
+  .webui-goal-banner[data-goal-status="budget_limited"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="budget_limited"] .webui-goal-status,
+  .webui-goal-banner[data-goal-status="usage_limited"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="usage_limited"] .webui-goal-status {
+    color: var(--text_status_warning);
+  }
+  .webui-goal-banner[data-goal-status="updated"] .webui-goal-banner-icon,
+  .webui-goal-banner[data-goal-status="updated"] .webui-goal-status {
+    color: var(--text_status_blue);
+  }
+
+  .webui-goal-banner-objective-group strong,
+  .webui-goal-objective {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .webui-goal-objective {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .webui-goal-status {
+    flex: none;
+    color: var(--text_status_blue);
+    font-size: var(--size_14);
+    line-height: 20px;
+  }
+
+  .webui-goal-usage,
+  .webui-goal-timer {
+    flex: none;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: 20px;
+  }
+
+  .webui-goal-usage {
+    gap: var(--spacing_8);
+    white-space: nowrap;
+  }
+
+  .webui-goal-budget-guide,
+  .webui-goal-usage-guide {
+    color: var(--text_status_warning);
+  }
+
+  .webui-goal-time-divider {
+    flex: none;
+    width: 1px;
+    height: 12px;
+    background: var(--border_default);
+  }
+
+  .webui-goal-banner-actions-slot {
+    flex: none;
+    gap: var(--spacing_4);
+    padding: 8px 0 0 8px;
+  }
+
+  /* The icon-only control is the shared contract (styles/button.css); what is
+     left here is the goal banner's own size for it. */
+  .webui-goal-action {
+    width: 24px;
+    height: 24px;
+  }
+
+  .webui-goal-action svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .webui-goal-wait {
+    margin: 0;
+  }
+
+  .webui-goal-usage {
+    min-width: 0;
+  }
+
+  .webui-goal-objective-expanded {
+    max-height: 240px;
+    overflow: auto;
+    padding: 8px 12px;
+    color: var(--text_default_secondary);
+    font-size: var(--size_14);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

@@ -1,5 +1,7 @@
 import path from 'node:path';
 
+import { MINIAPP_AGENT_MAX_CONCURRENCY } from '../../../../miniapp/contracts.js';
+
 import {
   isRecord,
   resolvePluginDirectory,
@@ -23,10 +25,12 @@ const MINIAPP_FIELDS = new Set([
   'surface',
   'mcpEndpoints',
   'hostConnectorAccess',
+  'agentAccess',
+  'agentConcurrency',
 ]);
 const ARTIFACT_FIELDS = new Set(['client', 'node']);
 const PROCESS_RUNTIME_FIELDS = new Set(['kind', 'entry', 'lifecycle']);
-const SURFACE_FIELDS = new Set(['path']);
+const SURFACE_FIELDS = new Set(['path', 'window']);
 const MCP_ENDPOINT_FIELDS = new Set(['server', 'path']);
 const HOST_CONNECTOR_ACCESS_FIELDS = new Set(['providers']);
 const CONNECTOR_PROVIDER = /^[a-z0-9_-]{1,64}$/u;
@@ -46,12 +50,16 @@ export async function readMiniAppManifest(
   const surface = readSurface(value.surface);
   const mcpEndpoints = readMcpEndpoints(value.mcpEndpoints, mcpServerNames);
   const hostConnectorAccess = readHostConnectorAccess(value.hostConnectorAccess);
+  const agentAccess = readAgentAccess(value.agentAccess);
+  const agentConcurrency = readAgentConcurrency(value.agentConcurrency);
   return {
     artifacts,
     runtime,
     surface,
     mcpEndpoints,
     ...(hostConnectorAccess ? { hostConnectorAccess } : {}),
+    ...(agentAccess ? { agentAccess } : {}),
+    ...(agentConcurrency === undefined ? {} : { agentConcurrency }),
   };
 }
 
@@ -136,8 +144,11 @@ async function readProcessRuntime(
 
 function readSurface(value: unknown): { path: string } {
   if (!isRecord(value) || hasUnknownField(value, SURFACE_FIELDS)) {
-    miniAppFail('SURFACE_INVALID', 'surface must contain only path');
+    miniAppFail('SURFACE_INVALID', 'surface must contain only path and window');
   }
+  // `surface.window` is accepted and ignored: the window block is not part of this
+  // client's Mini App contract, so declaring it has no effect here. The key stays in
+  // the allowlist so a package built for the desktop client is not rejected.
   return { path: normalizeRoutePath(value.path, 'surface.path') };
 }
 
@@ -194,6 +205,34 @@ function readHostConnectorAccess(value: unknown): { providers: string[] } | unde
     );
   }
   return { providers };
+}
+
+function readAgentAccess(value: unknown): ('session.run' | 'session.read')[] | undefined {
+  if (value === undefined) return undefined;
+  if (
+    !Array.isArray(value) ||
+    value.some((capability) => capability !== 'session.run' && capability !== 'session.read')
+  ) {
+    miniAppFail('AGENT_ACCESS_INVALID', 'agentAccess may only contain session.run and session.read');
+  }
+  return [...new Set(value as ('session.run' | 'session.read')[])];
+}
+
+/** Allowed without `agentAccess`, where it has no effect. */
+function readAgentConcurrency(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > MINIAPP_AGENT_MAX_CONCURRENCY
+  ) {
+    miniAppFail(
+      'AGENT_CONCURRENCY_INVALID',
+      `agentConcurrency must be an integer from 1 to ${MINIAPP_AGENT_MAX_CONCURRENCY}`,
+    );
+  }
+  return value;
 }
 
 async function resolveFileOrDirectory(

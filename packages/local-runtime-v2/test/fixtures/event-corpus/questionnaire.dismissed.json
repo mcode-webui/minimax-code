@@ -1,0 +1,9 @@
+{
+  "frame": {
+    "eventJson": "{\"type\":\"questionnaire.dismiss\",\"timestamp\":5,\"source\":\"harness\",\"payload\":{\"sessionId\":\"s1\",\"requestId\":\"q1\",\"status\":\"dismissed\"}}"
+  },
+  "expected": {
+    "sessionId": "s1",
+    "questionnaireRequestId": null
+  }
+}

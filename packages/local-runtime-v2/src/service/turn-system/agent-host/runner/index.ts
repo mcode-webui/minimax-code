@@ -11,7 +11,9 @@ export {
   type LocalTurnPermissionDecision,
   type LocalTurnPermissionDecisionSource,
   type LocalTurnPermissionGateOptions,
+  type LocalTurnMiniAppApprovalRouter,
   type LocalTurnPermissionMutationOwner,
+  type LocalTurnSessionLineage,
 } from './policy/local-turn-permission-gate.js';
 export {
   LocalOutputSafetyEventWriter,

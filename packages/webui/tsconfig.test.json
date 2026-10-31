@@ -1,0 +1,61 @@
+// Full-coverage typecheck for the WebUI package.
+//
+// This program holds every test file and every source file in the package to
+// `strict`. It replaces a narrower program that named four test files out of the
+// hundred-odd in `test/unit/`, so the rest — and the client components they
+// render — were not type-checked by anything in the standard gate sequence. A
+// test can call a function with the wrong arity, or pass a string where a
+// discriminated union is expected, and still pass: Vitest's transform strips
+// types without checking them. `pnpm verify` was the only gate that ever saw
+// those files, through the separate `test-full` program this one absorbed.
+//
+// It extends `tsconfig.json` rather than `tsconfig.server.json`, because this is
+// a client-side program: it renders through `react-dom/server` and holds the
+// browser tree. The overrides, each for a specific error class rather than for
+// convenience:
+//
+//   * `lib: ES2023` — `Array.prototype.findLastIndex` needs the newer lib.
+//   * `DOM`/`DOM.Iterable` — the test tree renders DOM nodes server-side.
+//   * `module: ESNext` + `moduleResolution: Bundler` — the resolution the
+//     bundler actually uses. The inherited `NodeNext` pair bound the
+//     `lottie-web` default import to the CJS namespace, so `loadAnimation`
+//     appeared missing, and demanded a `type: "json"` attribute on the
+//     animation JSON import.
+//   * `jsx: react-jsx` — the test tree contains `.tsx` files, and
+//     `tsconfig.server.json` inherits `jsx: preserve`, which leaves `JSX.Element`
+//     unresolved.
+//   * `allowImportingTsExtensions` — the path map points at `.ts` entry points.
+//
+// Neither sibling program is lost. `tsconfig.server.json` still holds the server
+// and runtime trees under `NodeNext`, and `tsconfig.client.json` still holds the
+// client tree under the bundler; this one checks both trees together under the
+// bundler, because a test imports both at once.
+//
+// Two strictness flags are *not* in force here, and never were:
+// `noUncheckedIndexedAccess` and `noImplicitOverride` are turned off in
+// `tsconfig.json`, because this program's path map pulls in workspace packages
+// and vendored `third_party` sources that are written to a looser standard and
+// TypeScript has no per-directory options. `strict` and `verbatimModuleSyntax`
+// do apply, and those are the two that catch the errors this program exists for.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
+    "src/shared/**/*.ts",
+    "src/server/**/*.ts",
+    "src/runtime/**/*.ts",
+    "vite.config.ts"
+  ]
+}

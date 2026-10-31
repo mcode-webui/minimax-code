@@ -4,11 +4,140 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { MARKETPLACE_VISIBILITY_DESKTOP_VERSION } from '@mavis/shared/marketplace-visibility';
+
 import { PluginSystemCloudTransport, PluginSystemCloudTransportError } from './cloud-transport.js';
+import { PluginRegistryClient } from './plugin/runtime/registry-client.js';
 import { writeFileChunkFully } from './file-chunk-writer.js';
 
 // The transport is shared by the Plugin registry and Connector app clients.
 const roots: string[] = [];
+
+describe('the marketplace visibility version', () => {
+  it('declares the visibility version for official state recovery', async () => {
+    const versions: (string | null)[] = [];
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example', appVersion: 'webui-dev',
+      authContextGetter: () => ({ accessToken: 'test-token', realUserID: 'test-user' }),
+      fetchImpl: async (input) => {
+        const version = new URL(String(input)).searchParams.get('desktop_version');
+        versions.push(version);
+        return Response.json(version === MARKETPLACE_VISIBILITY_DESKTOP_VERSION
+          ? { runtime_enabled: true, installations: [], effective_plugins: [] }
+          : { base_resp: { status_code: 1406010011 } });
+      },
+    });
+    const client = new PluginRegistryClient(transport, MARKETPLACE_VISIBILITY_DESKTOP_VERSION);
+    await expect(client.getFullState()).resolves.toMatchObject({ runtimeEnabled: true });
+    expect(versions).toEqual([MARKETPLACE_VISIBILITY_DESKTOP_VERSION]);
+  });
+
+  it('declares the visibility version for package download authorization', async () => {
+    const versions: (string | null)[] = [];
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example', appVersion: 'webui-dev',
+      authContextGetter: () => ({ accessToken: 'test-token', realUserID: 'test-user' }),
+      fetchImpl: async (input) => {
+        const version = new URL(String(input)).searchParams.get('desktop_version');
+        versions.push(version);
+        return Response.json(version === MARKETPLACE_VISIBILITY_DESKTOP_VERSION
+          ? { authorization: { download_url: 'https://example.invalid/package.zip', expires_at_ms: 123,
+              package: { name: 'minimax-bot', version: '0.7.9', archive_sha256: 'a'.repeat(64),
+                content_digest: `sha256-tree-v1:${'b'.repeat(64)}` } } }
+          : { base_resp: { status_code: 1406010011 } });
+      },
+    });
+    const client = new PluginRegistryClient(transport, MARKETPLACE_VISIBILITY_DESKTOP_VERSION);
+    await expect(client.authorizeDownload('minimax-bot', '0.7.9')).resolves.toMatchObject({
+      package: { name: 'minimax-bot', version: '0.7.9' },
+    });
+    expect(versions).toEqual([MARKETPLACE_VISIBILITY_DESKTOP_VERSION]);
+  });
+
+  it('declares the visibility version for an installation', async () => {
+    const versions: (string | null)[] = [];
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example',
+      appVersion: 'webui-dev',
+      authContextGetter: () => ({ accessToken: 'test-token', realUserID: 'test-user' }),
+      fetchImpl: async (input) => {
+        const version = new URL(String(input)).searchParams.get('desktop_version');
+        versions.push(version);
+        return Response.json(version === MARKETPLACE_VISIBILITY_DESKTOP_VERSION
+          ? { source: 1, install_exists: true, enabled: true }
+          : { base_resp: { status_code: 1406010011 } });
+      },
+    });
+    const client = new PluginRegistryClient(transport, MARKETPLACE_VISIBILITY_DESKTOP_VERSION);
+    await expect(client.mutate('minimax-bot', 'install')).resolves.toMatchObject({ installExists: true });
+    expect(versions).toEqual([MARKETPLACE_VISIBILITY_DESKTOP_VERSION]);
+  });
+
+  it('declares the visibility version for the marketplace requests and only those', async () => {
+    const versions: (string | null)[] = [];
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example',
+      appVersion: 'webui-dev',
+      fetchImpl: async (input) => {
+        versions.push(new URL(String(input)).searchParams.get('desktop_version'));
+        return Response.json({ plugins: [], base_resp: { status_code: 0 } });
+      },
+      authContextGetter: () => ({ accessToken: 'test-token', realUserID: 'test-user' }),
+    });
+    const client = new PluginRegistryClient(transport, MARKETPLACE_VISIBILITY_DESKTOP_VERSION);
+    // The marketplace reads, and the install the catalogue decides on, declare
+    // the visibility version. The rest act on what the client already has and
+    // keep the host's own version.
+    await client.listMarketplace({ source: 1 }).catch(() => undefined);
+    await client.getMarketplace({ pluginName: 'board', source: 1 }).catch(() => undefined);
+    await client.getFullState().catch(() => undefined);
+    await client.mutate('board', 'install').catch(() => undefined);
+    await client.authorizeDownload('board', '1.0.0').catch(() => undefined);
+    await client.mutate('board', 'enable').catch(() => undefined);
+    await client.listEnabled().catch(() => undefined);
+    expect(versions).toEqual([
+      MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+      'webui-dev',
+      'webui-dev',
+    ]);
+  });
+
+  it('counts a refusal of the declared version and names the version it declared', async () => {
+    const metrics = { incr: vi.fn(), gauge: vi.fn(), latency: vi.fn() };
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example',
+      appVersion: 'webui-dev',
+      authContextGetter: () => ({ accessToken: 'test-token', realUserID: 'test-user' }),
+      fetchImpl: async () => Response.json({ base_resp: { status_code: 1406010011 } }),
+    });
+    const client = new PluginRegistryClient(transport, MARKETPLACE_VISIBILITY_DESKTOP_VERSION, metrics);
+    await expect(client.listMarketplace({ source: 1 })).rejects.toMatchObject({
+      code: 'CLIENT_VERSION_REJECTED',
+    });
+    expect(metrics.incr).toHaveBeenCalledWith('plugin_marketplace_version_rejected_total', {
+      version: MARKETPLACE_VISIBILITY_DESKTOP_VERSION,
+    });
+  });
+
+  it('preserves the category definition and plugin tag from the cloud response', async () => {
+    const transport = new PluginSystemCloudTransport({
+      baseUrl: 'https://agent.example',
+      fetchImpl: async () => Response.json({
+        plugins: [{ name: 'board', capabilities: { app_count: 0, mcp_server_count: 0, skill_count: 0 }, install_exists: false, enabled: false,
+          tags: [{ key: 'miniapp', display_name: 'Mini App' }] }],
+        tag_definitions: [{ key: 'miniapp', display_name: 'Mini App' }],
+      }),
+      authContextGetter: () => undefined,
+    });
+    const result = await new PluginRegistryClient(transport).listMarketplace({ source: 1 });
+    expect(result.tagDefinitions).toEqual([{ key: 'miniapp', displayName: 'Mini App' }]);
+    expect(result.plugins[0]?.tags).toEqual([{ key: 'miniapp', displayName: 'Mini App' }]);
+  });
+});
 
 afterEach(async () => {
   for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true });

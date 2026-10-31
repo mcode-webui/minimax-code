@@ -14,14 +14,17 @@ import {
   type PluginAppInfo,
   type PluginMarketplaceDetail,
   type PluginMarketplaceSummary,
+  type PluginMarketplaceTag,
   type PluginInstallationPolicy as PluginInstallationPolicyType,
   type SkillHubItem,
 } from '@mavis/protocol/local';
 
 import {
+  CLIENT_VERSION_REJECTED,
   PluginSystemCloudTransport,
   PluginSystemCloudTransportError,
 } from '../../cloud-transport.js';
+import type { PluginServiceMetrics } from '../../contracts.js';
 
 const CLOUD_BASE = '/minimax-cloud/api/v1';
 const ARCHIVE_SHA = /^[0-9a-f]{64}$/u;
@@ -57,10 +60,49 @@ export type PluginMutationAction = 'install' | 'uninstall' | 'enable' | 'disable
 
 /** Typed CloudPluginService client. It never calls the Desktop HTTP front door. */
 export class PluginRegistryClient {
-  constructor(private readonly transport: PluginSystemCloudTransport) {}
+  constructor(
+    private readonly transport: PluginSystemCloudTransport,
+    /**
+     * The desktop version the marketplace is filtered by, when the host
+     * declares one. The client attaches it to the marketplace requests and to
+     * nothing else.
+     */
+    private readonly marketplaceVisibilityVersion?: string,
+    private readonly metrics?: PluginServiceMetrics,
+  ) {}
+
+  /**
+   * The marketplace requests, and only those, declare the visibility version.
+   *
+   * The cloud filters the catalogue by the desktop version a client declares,
+   * so a request that reads or changes what the marketplace offers has to
+   * declare the same one — a listing that declares one and a detail that
+   * declares another are two different clients to the cloud. Every other
+   * request keeps the host's own version: it is not about what the
+   * marketplace shows.
+   *
+   * The refusal is counted here because this is the only place that knows
+   * both the declared version and that the cloud refused it.
+   */
+  private async requestMarketplaceVisibility(
+    request: Parameters<PluginSystemCloudTransport['request']>[0],
+  ): Promise<unknown> {
+    const declared = this.marketplaceVisibilityVersion;
+    try {
+      return await this.transport.request({
+        ...request,
+        ...(declared ? { appVersion: declared } : {}),
+      });
+    } catch (error) {
+      if (declared && error instanceof PluginSystemCloudTransportError && error.code === CLIENT_VERSION_REJECTED) {
+        this.metrics?.incr('plugin_marketplace_version_rejected_total', { version: declared });
+      }
+      throw error;
+    }
+  }
 
   async listMarketplace(req: ListMarketplacePluginsInput): Promise<ListMarketplacePluginsResult> {
-    const payload = await this.transport.request({
+    const payload = await this.requestMarketplaceVisibility({
       method: 'GET',
       path: `${CLOUD_BASE}/marketplace/plugins`,
       query: marketplaceQuery(req),
@@ -74,7 +116,7 @@ export class PluginRegistryClient {
 
   async getMarketplace(req: GetMarketplacePluginInput): Promise<GetMarketplacePluginResult> {
     const pluginName = pathSegment(req.pluginName, 'Plugin name');
-    const payload = await this.transport.request({
+    const payload = await this.requestMarketplaceVisibility({
       method: 'GET',
       path: `${CLOUD_BASE}/marketplace/plugins/${pluginName}`,
       query: { source: req.source },
@@ -103,7 +145,7 @@ export class PluginRegistryClient {
   }
 
   async getFullState(signal?: AbortSignal): Promise<PluginFullState> {
-    const payload = await this.transport.request({
+    const payload = await this.requestMarketplaceVisibility({
       method: 'GET',
       path: `${CLOUD_BASE}/plugins/full-state`,
       auth: 'required',
@@ -114,11 +156,18 @@ export class PluginRegistryClient {
 
   async mutate(pluginName: string, action: PluginMutationAction): Promise<MutatePluginResult> {
     const name = pathSegment(pluginName, 'Plugin name');
-    const payload = await this.transport.request({
-      method: 'POST',
+    const request = {
+      method: 'POST' as const,
       path: `${CLOUD_BASE}/plugins/${name}/${action}`,
-      auth: 'required',
-    });
+      auth: 'required' as const,
+    };
+    // Only installing is a marketplace question: the catalogue decides what a
+    // client may install. Enabling, disabling and uninstalling act on what the
+    // client already has, so they keep the host's own version.
+    const payload =
+      action === 'install'
+        ? await this.requestMarketplaceVisibility(request)
+        : await this.transport.request(request);
     return readMutationResponse(payload);
   }
 
@@ -129,7 +178,7 @@ export class PluginRegistryClient {
   ): Promise<PluginDownloadAuthorization> {
     const name = pathSegment(pluginName, 'Plugin name');
     const packageVersion = pathSegment(version, 'Plugin version');
-    const payload = await this.transport.request({
+    const payload = await this.requestMarketplaceVisibility({
       method: 'POST',
       path: `${CLOUD_BASE}/plugins/${name}/versions/${packageVersion}/download-authorization`,
       auth: 'required',
@@ -174,6 +223,7 @@ function readMarketplaceResponse(value: unknown): ListMarketplacePluginsResult {
   const record = requireRecord(value, 'Marketplace response');
   return {
     plugins: readArray(record, 'plugins', 'plugins').map(readMarketplaceSummary),
+    ...optionalArrayProjection(record, ['tag_definitions', 'tagDefinitions'], 'tagDefinitions', readMarketplaceTag),
     ...optionalStringProjection(record, 'next_cursor', 'nextCursor', 'nextCursor'),
     ...optionalBooleanProjection(record, 'has_more', 'hasMore', 'hasMore'),
     ...optionalNumberProjection(record, 'plugin_total', 'pluginTotal', 'pluginTotal'),
@@ -240,6 +290,7 @@ function readMarketplaceSummary(value: unknown): PluginMarketplaceSummary {
   const record = requireRecord(value, 'Plugin Marketplace summary');
   return {
     name: requireString(record, 'name', 'name'),
+    ...optionalArrayProjection(record, ['tags', 'tags'], 'tags', readMarketplaceTag),
     ...optionalStringProjection(record, 'version', 'version', 'version'),
     ...optionalStringProjection(record, 'display_name', 'displayName', 'displayName'),
     ...optionalStringProjection(record, 'description', 'description', 'description'),
@@ -252,6 +303,11 @@ function readMarketplaceSummary(value: unknown): PluginMarketplaceSummary {
     ...optionalNumberProjection(record, 'category', 'category', 'category'),
     installationPolicy: readInstallationPolicy(record),
   };
+}
+
+function readMarketplaceTag(value: unknown): PluginMarketplaceTag {
+  const record = requireRecord(value, 'Plugin tag');
+  return { key: requireString(record, 'key', 'key'), displayName: requireString(record, 'display_name', 'displayName') };
 }
 
 function readInstalledResponse(value: unknown): ListInstalledPluginsResult {

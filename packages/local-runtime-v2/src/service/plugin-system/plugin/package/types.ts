@@ -104,6 +104,9 @@ export interface MiniAppContribution {
   readonly surface: { readonly path: string };
   readonly mcpEndpoints: readonly MiniAppMcpEndpoint[];
   readonly hostConnectorAccess?: { readonly providers: readonly string[] };
+  readonly agentAccess?: readonly ('session.run' | 'session.read')[];
+  /** Agent runs of this Mini App at once; absent means the Host default. */
+  readonly agentConcurrency?: number;
 }
 
 type ScannedMiniAppContribution = MiniAppContribution & {

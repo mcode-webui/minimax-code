@@ -1,12 +1,24 @@
+import { timingSafeEqual } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
+import http from 'node:http';
 import path from 'node:path';
+import type { Duplex } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import type { MiniAppHostConnectorPolicy } from '../../contracts.js';
+import {
+  MINIAPP_AGENT_MAX_CONCURRENCY,
+  MINIAPP_LOOPBACK_HEALTH_PATH,
+  MINIAPP_LOOPBACK_TOKEN_HEADER,
+  type MiniAppAgentPolicy,
+  type MiniAppHostConnectorPolicy,
+  type MiniAppIpcMessage,
+  type MiniAppIpcTransport,
+} from '../../contracts.js';
 import { boundMiniAppRuntimeErrorText } from '../../errors.js';
 import {
   createMiniAppHostConnectorRuntimeClient,
   type HostConnectorClient,
+  type MiniAppAgentClient,
   type MiniAppHostConnectorRuntimeClient,
 } from '../host-connector/host-connector.js';
 
@@ -43,7 +55,11 @@ export interface MiniAppRunnerInitMessage {
   readonly dataDir: string;
   readonly listen: { readonly host: '127.0.0.1'; readonly port: number };
   readonly readiness: { readonly startupToken: string; readonly nodeDigest: string };
+  /** Per-process loopback credential. Consumed by the HTTP guard; never enters plugin context. */
+  readonly loopbackToken: string;
   readonly hostConnectorPolicy: MiniAppHostConnectorPolicy;
+  /** Absent policy is deny-all: the child then receives no `agent` context. */
+  readonly agentPolicy: MiniAppAgentPolicy;
 }
 
 export type MiniAppRunnerChildMessage =
@@ -92,6 +108,7 @@ interface MiniAppStartContext {
     error(message: string, fields?: Readonly<Record<string, unknown>>): void;
   };
   readonly hostConnector?: HostConnectorClient;
+  readonly agent?: MiniAppAgentClient;
 }
 
 type StartResult = void | {
@@ -111,12 +128,16 @@ export async function startMiniAppModule(
       readonly processGeneration: string;
       readonly policy: MiniAppHostConnectorPolicy;
     }) => HostConnectorClient | undefined;
+    readonly createAgent?: () => MiniAppAgentClient | undefined;
   } = {},
 ): Promise<RunningMiniAppModule> {
   const resolveRealPath = options.resolveRealPath ?? realpath;
   const packageRoot = await resolveRealPath(init.packageRoot);
+  // Must precede loading the entry: plugin servers inherit the guard from the patched prototype.
+  installMiniAppLoopbackGuard({ port: init.listen.port, token: init.loopbackToken });
   const start = await loadStartFunction(init, packageRoot, resolveRealPath, options.loadModule);
   assertConnectorAvailable(init, options.createHostConnector);
+  assertAgentAvailable(init, options.createAgent);
   const abortController = new AbortController();
   const logger = createLogger(options.emit);
   const hostConnector = options.createHostConnector?.({
@@ -124,6 +145,7 @@ export async function startMiniAppModule(
     processGeneration: init.processGeneration,
     policy: init.hostConnectorPolicy,
   });
+  const agent = init.agentPolicy.kind === 'allowlist' ? options.createAgent?.() : undefined;
   const context = Object.freeze<MiniAppStartContext>({
     pluginId: init.pluginId,
     pluginRoot: packageRoot,
@@ -133,6 +155,7 @@ export async function startMiniAppModule(
     signal: abortController.signal,
     logger,
     ...(hostConnector ? { hostConnector } : {}),
+    ...(agent ? { agent } : {}),
   });
   let result: StartResult;
   try {
@@ -197,6 +220,18 @@ function assertConnectorAvailable(
   }
 }
 
+function assertAgentAvailable(
+  init: MiniAppRunnerInitMessage,
+  create: (() => MiniAppAgentClient | undefined) | undefined,
+): void {
+  if (init.agentPolicy.kind === 'allowlist' && !create) {
+    throw new MiniAppRunnerError(
+      'HOST_CONNECTOR_UNAVAILABLE',
+      'Mini App Agent access requires a Host-owned client',
+    );
+  }
+}
+
 function readDispose(
   result: StartResult,
   abortController: AbortController,
@@ -240,11 +275,15 @@ interface RunnerProcess {
   exitCode?: number;
   on(event: string, listener: (...args: unknown[]) => void): this;
   once(event: string, listener: (...args: unknown[]) => void): this;
-  send?(message: MiniAppRunnerChildMessage, callback?: (error: Error | null) => void): boolean;
+  removeListener(event: string, listener: (...args: unknown[]) => void): this;
+  send?(
+    message: MiniAppRunnerChildMessage | MiniAppIpcMessage,
+    callback?: (error: Error | null) => void,
+  ): boolean;
   disconnect?(): void;
 }
 
-/** Child executable entry. IPC controls lifecycle; stdio is reserved for Host Connector wire. */
+/** Child executable entry. IPC routes lifecycle and Connector messages; stdio carries logs. */
 export function runMiniAppHostRunner(
   options: {
     readonly process?: RunnerProcess;
@@ -269,7 +308,8 @@ export function runMiniAppHostRunner(
       // A concurrent parent disconnect already releases the IPC handle.
     }
   };
-  const start = options.start ?? ((init) => startWithStdioConnector(init, send));
+  const transport = runnerIpcTransport(processPort);
+  const start = options.start ?? ((init) => startWithIpcConnector(init, send, transport));
   let running: RunningMiniAppModule | undefined;
   let initialized = false;
   let stopping: Promise<void> | undefined;
@@ -293,6 +333,8 @@ export function runMiniAppHostRunner(
     runnerObservations.add(observed);
   };
   processPort.on('message', (message: unknown) => {
+    // Connector responses must be delivered while start(context) is awaiting list().
+    if (isConnectorMessage(message)) return;
     dispatch(
       (async () => {
         if (isStopMessage(message)) {
@@ -365,29 +407,25 @@ async function dispatchOperation(
   }
 }
 
-async function startWithStdioConnector(
+async function startWithIpcConnector(
   init: MiniAppRunnerInitMessage,
   emit: (message: MiniAppRunnerChildMessage) => void,
+  transport: MiniAppIpcTransport,
 ): Promise<RunningMiniAppModule> {
   let connector: MiniAppHostConnectorRuntimeClient | undefined;
+  const channel = () => {
+    connector ??= createMiniAppHostConnectorRuntimeClient({ transport });
+    return connector;
+  };
   const closeConnector = () => {
-    if (!connector) return;
-    connector.close();
-    process.stdin.pause();
+    connector?.close();
   };
   try {
     const running = await startMiniAppModule(init, {
       emit,
       createHostConnector:
-        init.hostConnectorPolicy.kind === 'allowlist'
-          ? () => {
-              connector = createMiniAppHostConnectorRuntimeClient({
-                input: process.stdin,
-                output: process.stdout,
-              });
-              return connector.client;
-            }
-          : undefined,
+        init.hostConnectorPolicy.kind === 'allowlist' ? () => channel().client : undefined,
+      createAgent: init.agentPolicy.kind === 'allowlist' ? () => channel().agent : undefined,
     });
     return {
       async stop() {
@@ -404,6 +442,77 @@ async function startWithStdioConnector(
   }
 }
 
+const GUARDED_REQUEST_EVENTS: ReadonlySet<string> = new Set([
+  'request',
+  'checkContinue',
+  'checkExpectation',
+]);
+const GUARDED_SOCKET_EVENTS: ReadonlySet<string> = new Set(['upgrade', 'connect']);
+
+/**
+ * Authenticates every `node:http` server in this process before plugin code can observe a request.
+ * Only the Host-issued credential on the exact loopback Host passes; `GET /__mavis/health` is
+ * answered here so readiness proves the guard is in the path rather than merely that a socket accepts.
+ */
+function installMiniAppLoopbackGuard(input: { readonly port: number; readonly token: string }): void {
+  const prototype = http.Server.prototype;
+  const originalEmit = prototype.emit;
+  const expectedHost = `127.0.0.1:${input.port}`;
+  const expectedToken = Buffer.from(input.token, 'utf8');
+  const authorized = (request: http.IncomingMessage) =>
+    request.headers.host === expectedHost &&
+    tokenMatches(request.headers[MINIAPP_LOOPBACK_TOKEN_HEADER], expectedToken);
+  prototype.emit = function guardedEmit(
+    this: http.Server,
+    event: string | symbol,
+    ...args: unknown[]
+  ) {
+    if (typeof event === 'string' && GUARDED_REQUEST_EVENTS.has(event)) {
+      const [request, response] = args as [http.IncomingMessage, http.ServerResponse];
+      if (!authorized(request)) {
+        response.writeHead(401).end();
+        return true;
+      }
+      if (isHealthRequest(request)) {
+        response.writeHead(204).end();
+        return true;
+      }
+      stripLoopbackToken(request);
+    } else if (typeof event === 'string' && GUARDED_SOCKET_EVENTS.has(event)) {
+      const [request, socket] = args as [http.IncomingMessage, Duplex];
+      if (!authorized(request)) {
+        socket.destroy();
+        return true;
+      }
+      stripLoopbackToken(request);
+    }
+    return Reflect.apply(originalEmit, this, [event, ...args]) as boolean;
+  } as typeof prototype.emit;
+}
+
+function tokenMatches(value: string | string[] | undefined, expected: Buffer): boolean {
+  if (typeof value !== 'string') return false;
+  const actual = Buffer.from(value, 'utf8');
+  return actual.byteLength === expected.byteLength && timingSafeEqual(actual, expected);
+}
+
+/** Application code never needs the credential; removing it keeps proxies and header dumps clean. */
+function stripLoopbackToken(request: http.IncomingMessage): void {
+  delete request.headers[MINIAPP_LOOPBACK_TOKEN_HEADER];
+  const raw = request.rawHeaders;
+  for (let index = raw.length - 2; index >= 0; index -= 2) {
+    if (raw[index]?.toLowerCase() === MINIAPP_LOOPBACK_TOKEN_HEADER) raw.splice(index, 2);
+  }
+}
+
+function isHealthRequest(request: http.IncomingMessage): boolean {
+  const url = request.url ?? '';
+  return (
+    request.method === 'GET' &&
+    (url === MINIAPP_LOOPBACK_HEALTH_PATH || url.startsWith(`${MINIAPP_LOOPBACK_HEALTH_PATH}?`))
+  );
+}
+
 export function isMiniAppRunnerInitMessage(value: unknown): value is MiniAppRunnerInitMessage {
   if (!isRecord(value)) return false;
   const keys = [
@@ -416,7 +525,9 @@ export function isMiniAppRunnerInitMessage(value: unknown): value is MiniAppRunn
     'dataDir',
     'listen',
     'readiness',
+    'loopbackToken',
     'hostConnectorPolicy',
+    'agentPolicy',
   ];
   if (!hasExactKeys(value, keys)) return false;
   return (
@@ -425,8 +536,34 @@ export function isMiniAppRunnerInitMessage(value: unknown): value is MiniAppRunn
     hasStringIdentityFields(value) &&
     isListenAddress(value.listen) &&
     isReadinessIdentity(value.readiness) &&
-    isConnectorPolicy(value.hostConnectorPolicy)
+    isLoopbackToken(value.loopbackToken) &&
+    isConnectorPolicy(value.hostConnectorPolicy) &&
+    isAgentPolicy(value.agentPolicy)
   );
+}
+
+function isAgentPolicy(value: unknown): value is MiniAppAgentPolicy {
+  if (!isRecord(value)) return false;
+  return value.kind === 'deny-all'
+    ? hasExactKeys(value, ['kind'])
+    : value.kind === 'allowlist' &&
+        hasExactKeys(value, ['kind', 'capabilities', 'maxConcurrent']) &&
+        Array.isArray(value.capabilities) &&
+        value.capabilities.every((capability) => capability === 'session.run' || capability === 'session.read') &&
+        isAgentConcurrency(value.maxConcurrent);
+}
+
+function isAgentConcurrency(value: unknown): boolean {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= MINIAPP_AGENT_MAX_CONCURRENCY
+  );
+}
+
+function isLoopbackToken(value: unknown): boolean {
+  return typeof value === 'string' && value.length > 0;
 }
 
 function hasStringIdentityFields(value: Record<string, unknown>): boolean {
@@ -472,6 +609,10 @@ function nativeProcessPort(): RunnerProcess {
       process.once(event, listener);
       return this;
     },
+    removeListener(event, listener) {
+      process.removeListener(event, listener);
+      return this;
+    },
     send(message, callback) {
       if (!process.send) {
         callback?.(new Error('Runner IPC channel is unavailable'));
@@ -493,6 +634,27 @@ function isConnectorPolicy(value: unknown): value is MiniAppHostConnectorPolicy 
         hasExactKeys(value, ['kind', 'providers']) &&
         Array.isArray(value.providers) &&
         value.providers.every((provider) => typeof provider === 'string');
+}
+
+function runnerIpcTransport(processPort: RunnerProcess): MiniAppIpcTransport {
+  return {
+    get connected() {
+      return processPort.connected;
+    },
+    send(message, callback) {
+      if (!processPort.send) {
+        callback(new Error('Runner IPC channel is unavailable'));
+        return false;
+      }
+      return processPort.send(message, callback);
+    },
+    on: (event, listener) => processPort.on(event, listener),
+    removeListener: (event, listener) => processPort.removeListener(event, listener),
+  };
+}
+
+function isConnectorMessage(value: unknown): boolean {
+  return isRecord(value) && value.type === 'miniapp:connector';
 }
 
 function isStopMessage(value: unknown): boolean {

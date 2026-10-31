@@ -30,7 +30,7 @@
       "import": "./dist/plugin-hooks/index.js"
     },
     "./matrix": {
-      "types": "./dist/cloud/matrix-tools/index.d.ts",
+      "types": "./src/cloud/matrix-tools/index.ts",
       "import": "./dist/cloud/matrix-tools/index.js"
     }
   },

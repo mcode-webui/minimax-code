@@ -12,6 +12,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import { restoreAcceptanceRecords } from "./lib/acceptance-records.mjs";
+
 // Single definition of the full verification pipeline. GitHub CI runs `pnpm verify`
 // so a local run executes the same gates in the same order; previously the order
 // only existed inside the workflow file and could not be reproduced locally.
@@ -54,6 +56,41 @@ const steps = [
   { name: "typecheck", script: "typecheck", fullOnly: true },
   { name: "build", script: "build", windows: true },
   { name: "check:standalone", script: "check:standalone", windows: true },
+  { name: "typecheck:webui", script: "typecheck:webui" },
+  // There is deliberately no second WebUI typecheck program. There used to be
+  // one — a `test-full` config that held the whole test tree and the client
+  // sources under `strict` while the ordinary `typecheck:test` named four test
+  // files — and having the complete one behind a separate name meant the gate an
+  // author ran locally did not see most of the package. `tsconfig.test.json` now
+  // carries the full program, so this one step checks every source and every
+  // test file on every platform.
+  //
+  // Source-level direction check: it must surface before the build and the
+  // metafile check, because `import type` edges never reach build output.
+  { name: "check:webui-dependency", script: "check:webui-dependency" },
+  // Coverage of the presentation layer: the source-level check above proves
+  // where a module may sit, this one proves that every client UI module has
+  // been classified against the shared layer (ADR 0028).
+  { name: "check:webui-presentation", script: "check:webui-presentation" },
+  { name: "check:webui-motion", script: "check:webui-motion" },
+  { name: "check:webui-overlays", script: "check:webui-overlays" },
+  { name: "check:webui-feedback", script: "check:webui-feedback" },
+  { name: "build:webui", script: "build:webui" },
+  { name: "check:webui-boundary", script: "check:webui-boundary" },
+  { name: "test:webui-package", script: "test:webui-package", platforms: ["linux", "darwin"] },
+  // The WebUI integration suites drive a real Chromium: the loopback host
+  // test opens the built client in one and submits through it. The browser
+  // used to arrive with the `test:webui-browser` gate, which runs *after*
+  // this one, so a suite that needs a browser depended on a later gate
+  // having run first. Install it before, so a gate never depends on a later
+  // gate. The Linux browser gate still installs with its system dependencies;
+  // the fonts the visual baselines need no longer come from there, because
+  // the gate loads the font files committed under
+  // `packages/webui/test/browser/fonts/` (see
+  // `scripts/lib/webui-font-environment.mjs`).
+  { name: "install:webui-browsers", script: "install:webui-browsers" },
+  { name: "test:webui", script: "test:webui" },
+  { name: "test:webui-browser", script: "test:webui-browser", platforms: ["linux"] },
   { name: "test:artifact", script: "test:artifact", windows: true },
   { name: "test:capabilities", script: "test:capabilities" },
   { name: "test:windows", script: "test:windows", platforms: ["win32"], windows: true },
@@ -229,6 +266,22 @@ try {
   }
   report.status = failed ? "FAIL" : "PASS";
 } finally {
+  // The browser acceptance records are tracked files that a test run rewrites,
+  // and the release packaging runs in a separate process after this one and
+  // refuses to run with a dirty tree. Put them back before the run is over, so
+  // a verification run leaves the checkout the way it found it. A failure to
+  // restore is reported rather than thrown: the gate that failed is the
+  // interesting one, and the packaging step says so plainly if the tree is
+  // still dirty.
+  try {
+    const restored = restoreAcceptanceRecords(root);
+    if (restored.length > 0)
+      console.log(`acceptance records restored: ${restored.length} file(s)`);
+  } catch (error) {
+    console.error(
+      `could not restore the acceptance records: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   rmSync(temporary, { recursive: true, force: true });
   for (const gate of report.gates)
     if (gate.status === "NOT_RUN")

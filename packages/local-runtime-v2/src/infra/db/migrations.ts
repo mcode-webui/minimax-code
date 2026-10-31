@@ -5,6 +5,7 @@ import { migration as m0031 } from './migrations/canvas/migration-0031-repair-ca
 import { migration as m0002 } from './migrations/cron/migration-0002-copy-legacy-cron-data.js';
 import { migration as m0004 } from './migrations/cron/migration-0004-copy-legacy-cron-run-history.js';
 import { migration as m0036 } from './migrations/cron/migration-0036-repair-cron-manual-request-index.js';
+import { migration as m0054 } from './migrations/cron/migration-0054-cron-run-claim-owner.js';
 import { migration as m0005 } from './migrations/plugin/migration-0005-adopt-plugin-state.js';
 import { migration as m0023 } from './migrations/miniapp/migration-0023-create-miniapp-state.js';
 import { migration as m0030 } from './migrations/miniapp/migration-0030-repair-liveboard-state-version-collision.js';
@@ -71,4 +72,5 @@ export const ALL_MIGRATIONS: readonly MigrationEntry[] = [
   m0034,
   m0035,
   m0036,
+  m0054,
 ];

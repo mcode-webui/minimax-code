@@ -131,7 +131,7 @@ export async function decideAndRespond(
     const web = Readable.toWeb(shim) as ReadableStream<Uint8Array>;
     const [a, b] = web.tee();
     forCallback = a;
-    forUpstream = Readable.fromWeb(b);
+    forUpstream = Readable.fromWeb(b as import("node:stream/web").ReadableStream);
     const upstreamBranch = forUpstream;
     // The caller only wires its own 'error' handler after this function
     // resolves; a client abort during the filterRequest await must not

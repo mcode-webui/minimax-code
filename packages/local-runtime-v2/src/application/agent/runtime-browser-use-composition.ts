@@ -1,4 +1,8 @@
 import {
+  ownsElectronRuntimeCapabilities,
+  type RuntimeOwnerPolicy,
+} from '@mavis/local-runtime';
+import {
   initializeBrowserUseService,
   type BrowserUseService,
 } from '../../service/browser-use/index.js';
@@ -13,6 +17,8 @@ interface RuntimeBrowserUseBetaConfig {
 export interface RuntimeBrowserUseOptions {
   readonly browserUse?: Pick<BrowserUseServiceOptions, 'adapter' | 'toolExposure'>;
   readonly runtimeOwnerKind?: string;
+  /** Policy resolved once by the composition root; absent for direct test callers. */
+  readonly ownerPolicy?: RuntimeOwnerPolicy;
   readonly compatibility: {
     readonly agentHost: {
       readonly preparation: {
@@ -36,13 +42,19 @@ export interface RuntimeBrowserUseComposition {
   close(): void;
 }
 
-export function ownsElectronRuntimeCapabilities(runtimeOwnerKind: string | undefined): boolean {
-  return runtimeOwnerKind === undefined || runtimeOwnerKind === 'electron';
-}
+// Re-exported from the policy module rather than re-implemented, so the desktop
+// service gates and the compatibility gate cannot disagree about what an absent
+// owner means.
+export { ownsElectronRuntimeCapabilities };
 
 export function createRuntimeBrowserUseComposition(
   options: RuntimeBrowserUseOptions,
 ): RuntimeBrowserUseComposition {
+  const activationMode =
+    options.ownerPolicy?.wiring.browserActivation ??
+    (ownsElectronRuntimeCapabilities(options.runtimeOwnerKind)
+      ? 'desktop-plugin'
+      : 'explicit-config');
   const service = initializeBrowserUseService({
     ...(options.browserUse?.adapter ? { adapter: options.browserUse.adapter } : {}),
     ...(options.browserUse?.toolExposure ? { toolExposure: options.browserUse.toolExposure } : {}),
@@ -59,9 +71,7 @@ export function createRuntimeBrowserUseComposition(
     },
     compressScreenshot: options.compatibility.generatedAssets.compressModelImage,
     registerGeneratedAsset: options.compatibility.generatedAssets.registerGeneratedAsset,
-    activationMode: ownsElectronRuntimeCapabilities(options.runtimeOwnerKind)
-      ? 'desktop-plugin'
-      : 'explicit-config',
+    activationMode,
   });
   options.compatibility.questionnaires.bindRequestAdmission((input) =>
     service.admitQuestionnaireRequest(input),

@@ -1,0 +1,213 @@
+/*
+ * Tailwind entry for the WebUI shell.
+ *
+ * Three layers are layered into one stylesheet:
+ *   1. tokens.css   — primitive ramps, opacity, scale tokens, and the 211
+ *                     semantic tokens with light and dark bindings.
+ *   2. Tailwind base/components/utilities layers — preflight plus the
+ *                     token-derived utilities declared in tailwind.config.cjs.
+ *   3. The preflight typography (font-family) is also supplied via
+ *      tailwind.config.cjs, so the sans/mono Chinese fallbacks flow from
+ *      `font-sans` / `font-mono` rather than from a separate rule.
+ *
+ * The compiled output is the single stylesheet consumed by both the Vite
+ * development server and the packaged esbuild artifact (ADR 0010).
+ */
+
+@import "./tokens.css";
+/* Motion foundations (ADR 0028 § Shared contracts): the four named families and
+ * the reduced-motion policy. It comes right after the tokens, because every
+ * surface below it moves by reading one of these values. */
+@import "./motion.css";
+/* The field contract's arrangement (ADR 0028 § Shared contracts): a label, a
+ * description, an error and a control, stacked or in a row. */
+@import "./field.css";
+/* The feedback family's arrangement (ADR 0028 § Shared contracts): empty, error,
+ * skeleton, progress, busy and announcement. */
+@import "./feedback.css";
+@import "./shell.css";
+/* The shared menu-item contract (ADR 0028 § Shared contracts): the row, its
+ * two slots and its states. It comes after the shell so a business that reads
+ * one of its widths finds the property already declared. */
+@import "./menu-item.css";
+/* The layout threshold contract (ADR 0025): the widths the client adapts at,
+ * and the shell skeleton's own rules — the conversation column's floor and the
+ * rail's form. It comes before the feature rules so a business that reads one
+ * of its widths finds the property already declared. */
+@import "./layout.css";
+@import "@xterm/xterm/css/xterm.css";
+/* The shared dropdown surface: the look, the motion and the shape every
+ * floating popup in the client shares. It comes before the feature rules, so a
+ * feature that needs something specific about its own popup can still say so. */
+@import "./dropdown.css";
+@import "./dialog.css";
+/* Feature rules follow their business. Each file holds that business's rules
+ * out of the old monolith, in their original relative order, and every one of
+ * them is still inside `@layer components` — Tailwind collects that layer and
+ * emits it at the `@tailwind components` directive below, so what the split had
+ * to preserve is the rules' order relative to each other. */
+@import "../features/plugins/ui/plugins.css";
+@import "./button.css";
+@import "../features/settings/ui/settings.css";
+@import "../features/models/ui/models.css";
+@import "../features/interactions/ui/interactions.css";
+@import "../features/composer/ui/composer.css";
+@import "../features/transcript/ui/transcript.css";
+@import "../features/sessions/ui/sessions.css";
+@import "../features/workspace/ui/workspace.css";
+@import "../features/workspace/ui/workspace-progress.css";
+@import "../features/browser/ui/browser.css";
+@import "../features/goal/ui/goal.css";
+@import "../features/account/ui/account.css";
+@import "../features/transcript/ui/transcript-widgets.css";
+@import "../features/interactions/ui/plan-mode.css";
+@import "katex/dist/katex.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Global scrollbar shape.
+ *
+ * Without this every scrollable surface in the shell renders the platform's
+ * default bar: a wide grey trough, plus a pair of arrow buttons on the
+ * platforms that still draw them. That is heavier than most of the surfaces it
+ * sits on — a settings list, a plugin panel, a queue popover. This pins one
+ * shape for all of them: a hairline rounded thumb on a transparent track, in the
+ * `--utility_scrollbar` ramp the shell previously
+ * left unreferenced.
+ *
+ * `scrollbar-width` / `scrollbar-color` carry Firefox and the `::-webkit-`
+ * pseudo-elements carry Chromium and WebKit, so both halves are needed.
+ * Firefox ignores the webkit pseudo-elements outright, and setting only the
+ * webkit pair leaves Firefox on the default bar.
+ *
+ * This is a base-layer rule, not a component one: it is `*`-scoped, so it
+ * belongs with preflight rather than in `shell.css`'s components block.
+ *
+ * `scrollbar-gutter: stable` is part of the same policy, for the same reason.
+ * A custom `::-webkit-scrollbar` is a *classic* bar: it takes width out of the
+ * content box instead of floating over it (which is what the platform default
+ * does on macOS, and why this reflow is invisible there and new everywhere
+ * else). Any container whose content height crosses its overflow threshold —
+ * the plugin marketplace as a search narrows it, the transcript as a turn
+ * finishes or a session is cleared, a `pre` code view as you move between a
+ * short file and a long one — then re-lays-out horizontally, and centred
+ * content moves by half the bar's width. Reserving the gutter makes the
+ * content box identical in both states, so nothing moves.
+ *
+ * The reservation is scoped to the container elements listed below instead of
+ * staying on `*`. `scrollbar-gutter` is meant for scroll containers, but an
+ * `overflow: hidden` box is one too — and that includes every inline `<svg>`
+ * root, which the UA stylesheet gives `overflow: hidden`. The bar here is
+ * classic, so on a box narrower than the bar the gutter is *wider* than the
+ * content box and collapses it to zero. That is how the 14px check mark inside
+ * the 22px day dot of the daily check-in row disappeared: the ring still drew,
+ * the check had nowhere left to paint. CSS cannot select on a computed
+ * property, so the policy is expressed over the element types this shell
+ * actually scrolls in. `:where()` keeps specificity at zero, so components
+ * still win. The layout effect is inert on `html`/`body`: the shell mounts at
+ * `h-screen`, so the document itself never scrolls. The four sideways-only
+ * scrollers opt back out in `shell.css`, where a vertical gutter would be dead
+ * space.
+ *
+ * The surfaces that deliberately show no bar are unaffected.
+ * `.scrollbar-hide` and the `scrollbar-width: none` rules in `shell.css` are
+ * class selectors, so they outrank both this `*` element rule and the
+ * `*::-webkit-scrollbar` pair, and the hide rules reach `display: none` on a
+ * property this block does not set.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--utility_scrollbar) transparent;
+  }
+
+  /* Containers only — see the note above on why this is not `*`. */
+  :where(
+    html,
+    body,
+    div,
+    main,
+    section,
+    aside,
+    header,
+    footer,
+    nav,
+    ul,
+    ol,
+    pre,
+    textarea,
+    select
+  ) {
+    scrollbar-gutter: stable;
+  }
+
+  /* Chromium/WebKit ignore the legacy scrollbar pseudo-elements whenever
+   * scrollbar-width is set to a value other than auto. Use those pseudo-
+   * elements there so the custom track and hidden arrow buttons take effect;
+   * browsers without them keep the standard thin scrollbar above. */
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* The transparent border insets the 4px thumb inside the 6px track, so the
+   * bar breathes against the surface edge instead of touching it. */
+  *::-webkit-scrollbar-thumb {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--utility_scrollbar);
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--text_default_tertiary);
+    background-clip: padding-box;
+  }
+
+  /* The corner is only painted when both axes overflow; left as the default it
+   * draws a filled square against an otherwise invisible track. */
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Controls share one quiet response curve; component utilities can still
+   * override the properties they need for a particular interaction. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    transition: color 120ms ease-out, background-color 120ms ease-out,
+      border-color 120ms ease-out, opacity 120ms ease-out,
+      box-shadow 120ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-webui-shell],
+    [data-webui-shell] *,
+    [data-webui-shell] *::before,
+    [data-webui-shell] *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

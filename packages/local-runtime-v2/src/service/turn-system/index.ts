@@ -78,6 +78,8 @@ export type {
 } from './production-composition.js';
 export type { ToolResultCompactionConfig } from './compaction/contracts.js';
 export type { AgentHostRuntimeLifecycle } from './agent-host/native-production-dependencies.js';
+/** Mini App approval routing consumed by the turn owner; implemented by the Mini App gateway. */
+export type { LocalTurnMiniAppApprovalRouter } from './agent-host/index.js';
 export {
   ModelRouteAvailabilityError,
   createSessionModelRepair,

@@ -235,11 +235,18 @@ describe("Frozen Session deletion continuity", () => {
     );
     const profileSource = createV2AgentProfileSource(
       agentService,
-      () => ({ dataDir }) as never,
-      "electron",
-      undefined,
+      () => ({ dataDir, memory: { enabled: true } }) as never,
+      "tui",
+      "cli",
     );
-    const read = async () => {
+    const cliProfileSource = createV2AgentProfileSource(
+      agentService,
+      () => ({ dataDir, memory: { enabled: true } }) as never,
+      "cli",
+      "cli",
+    );
+    const renderFrozenProfile = vi.spyOn(agentService, "renderFrozenProfile");
+    const read = async (sourceToRead = profileSource) => {
       const session = await records.requireSession("frozen-task-session");
       const agent = await readSessionAgentExecutionSnapshot(source, session);
       if (!agent) throw new Error("snapshot missing");
@@ -248,7 +255,7 @@ describe("Frozen Session deletion continuity", () => {
       );
       if (!binding) throw new Error("Task binding missing");
       expect(binding.definition).toEqual(savedDefinition);
-      return profileSource.render({
+      return sourceToRead.render({
         session,
         agent,
         agentBinding: binding,
@@ -256,6 +263,17 @@ describe("Frozen Session deletion continuity", () => {
       });
     };
     const beforeDelete = await read();
+    expect(renderFrozenProfile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ memoryEnabled: false, cronEnabled: false }),
+      expect.anything(),
+    );
+    renderFrozenProfile.mockClear();
+    await read(cliProfileSource);
+    expect(renderFrozenProfile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ memoryEnabled: false, cronEnabled: false }),
+      expect.anything(),
+    );
+    renderFrozenProfile.mockClear();
     await agentService.delete("agent:snapshot-owner");
     expect(await repository.get("snapshot-owner")).toBeUndefined();
     const afterDelete = await read();

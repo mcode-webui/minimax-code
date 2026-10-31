@@ -13,3 +13,10 @@ export {
   type RuntimeMiniAppServiceOptions,
   type RuntimeMiniAppServices,
 } from './composition.js';
+
+export * from './agent/index.js';
+export { deriveMiniAppNodePort } from './process/node-runtime/node-runtime.js';
+export {
+  probeMiniAppPortOwnership,
+  type MiniAppPortOwnership,
+} from './process/node-runtime/loopback-ownership.js';

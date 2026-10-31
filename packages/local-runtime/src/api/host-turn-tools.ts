@@ -16,6 +16,17 @@ import { shouldEnableLocalTaskTool } from './local-task-tool-policy.js';
 import type { LocalRuntimeApiHost } from './host.js';
 import type { DesktopTurnCapabilityView } from '../runtime/desktop-turn-capabilities.js';
 
+/**
+ * Owner kinds that get the native `web_search` tool.
+ *
+ * The native tool is the managed client's own search tool, so every managed
+ * client owns it: Electron, the terminal client and the browser client. The
+ * Matrix MCP search only serves the clients that do not.
+ */
+export function isNativeWebSearchOwnerKind(kind: string): boolean {
+  return ['electron', 'tui', 'cli', 'webui'].includes(kind);
+}
+
 export type BuildOwnerTurnToolSourcesInput = {
   session: LocalSessionRecord;
   resourceAgentName: string;
@@ -79,7 +90,9 @@ export async function buildLocalTurnToolSourcesForHost(
     authContext: input.host.authContextGetter?.(),
     routingContextGetter: input.host.routingContextGetter,
     fetchImpl: input.host.fetchImpl,
-    nativeWebSearchEnabled: ['electron', 'tui', 'cli'].includes(input.host.getRuntimeOwnerKind()),
+    nativeWebSearchEnabled: isNativeWebSearchOwnerKind(
+      input.host.getRuntimeOwnerKind(),
+    ),
     mcpService: input.host.mcpService,
     threadGoal: input.host.threadGoal,
     questionnaireContext: input.host.supportsInteraction('questionnaireReply')

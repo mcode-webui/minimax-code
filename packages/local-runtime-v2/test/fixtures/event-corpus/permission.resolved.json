@@ -1,0 +1,9 @@
+{
+  "frame": {
+    "eventJson": "{\"type\":\"permission.resolved\",\"timestamp\":2,\"source\":\"harness\",\"payload\":{\"sessionId\":\"s1\",\"requestId\":\"p1\",\"decision\":\"deny\"}}"
+  },
+  "expected": {
+    "sessionId": "s1",
+    "permissionRequestId": null
+  }
+}

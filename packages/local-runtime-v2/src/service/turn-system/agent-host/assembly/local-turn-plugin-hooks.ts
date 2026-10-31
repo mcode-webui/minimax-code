@@ -26,7 +26,7 @@ export {
 };
 
 type LocalPluginHookEventReporter = TurnEventReporter & {
-  readonly terminalSequenceSurface?: 'tui';
+  readonly executesTerminalControl?: boolean;
 };
 const sessionReporters = new Map<
   string,
@@ -59,7 +59,7 @@ export function createLocalPluginHookEventReporter(input: {
   readonly writer: PiEventWriter;
   readonly sessionId: string;
   readonly turnId: string;
-  readonly terminalSequenceSurface?: 'tui';
+  readonly executesTerminalControl?: boolean;
 }): LocalPluginHookEventReporter {
   let eventSequence = 0;
   let runtimeSequence = 0;
@@ -67,8 +67,8 @@ export function createLocalPluginHookEventReporter(input: {
     nextEventId: (kind) => `evt_${input.turnId}_${kind}_${++eventSequence}`,
     nextRuntimeSeq: () => ++runtimeSequence,
     appendEvents: async (events) => input.writer.appendEvents(events),
-    ...(input.terminalSequenceSurface
-      ? { terminalSequenceSurface: input.terminalSequenceSurface }
+    ...(input.executesTerminalControl === true
+      ? { executesTerminalControl: true }
       : {}),
   };
 }
@@ -95,7 +95,7 @@ export async function emitLocalPluginHookWarnings(input: {
     }
     if (decision?.terminalSequence) {
       warningCandidates.push(
-        reporter.terminalSequenceSurface === 'tui'
+        reporter.executesTerminalControl === true
           ? {
               category: 'terminal-control',
               message: '',

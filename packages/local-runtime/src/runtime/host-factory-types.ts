@@ -44,6 +44,15 @@ export interface LocalRuntimeProductHostOptions {
    * CLI passes its build define; dev/test hosts fall back to `'unknown'`.
    */
   appVersion?: string;
+  /**
+   * The desktop version this host declares to the cloud marketplace.
+   *
+   * The cloud filters the marketplace by the desktop version a client
+   * declares, so a host that is not the desktop declares one to see the
+   * entries a desktop would see. The runtime only carries it: the host owns
+   * the value, because the runtime does not know which client it runs for.
+   */
+  readonly marketplaceVisibilityVersion?: string;
   capabilities?: Partial<LocalRuntimeCapabilities>;
   /**
    * Shell family actually used by the local command executor. Omit when the

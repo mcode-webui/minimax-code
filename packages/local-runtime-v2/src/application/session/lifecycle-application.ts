@@ -550,6 +550,7 @@ const LIFECYCLE_FAILURES: Readonly<
   "workspace-required": { status: 400, key: "WORKSPACE_REQUIRED" },
   "parent-not-found": { status: 404, key: "SESSION_PARENT_NOT_FOUND" },
   "invalid-session-kind": { status: 400, key: "INVALID_SESSION_KIND" },
+  "purpose-reserved": { status: 400, key: "SESSION_PURPOSE_RESERVED" },
   "parent-required": { status: 400, key: "SESSION_PARENT_REQUIRED" },
   "session-not-found": { status: 404, key: "SESSION_NOT_FOUND" },
   "session-busy": { status: 409, key: "SESSION_BUSY" },

@@ -1,5 +1,9 @@
 import { ConnectorGatewayError } from '../../../host-connector-system/index.js';
 
+export class HostConnectorProtocolError extends Error {
+  override readonly name = 'HostConnectorProtocolError';
+}
+
 export type HostConnectorDisposition =
   | 'not_dispatched'
   | 'provider_reported'

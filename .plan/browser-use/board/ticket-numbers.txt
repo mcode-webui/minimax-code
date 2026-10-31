@@ -1,0 +1,18 @@
+t01 177 Validate the Browser Use technical contracts and pin the capability matrix
+t02 178 Four independent browser authorization switches, default off
+t03 179 Isolated Chromium provider starts under authorization and exposes its targets
+t04 180 Browser panel shows the isolated Chromium's live page
+t05 181 User pointer and keyboard input reach the same isolated page
+t06 182 Agent browser operations act on the page the panel shows
+t07 183 Target generations invalidate stale element references
+t08 184 Full CDP access is a separate gate in the runtime/provider path
+t09 185 Browser extension package, dedicated loopback admission and challenge-response pairing
+t10 186 External browser tabs become targets the panel follows
+t11 187 Live page images from the external browser reach the panel
+t12 188 User input reaches the external browser tab
+t13 189 Agent operations run against an external tab through the bridge
+t14 190 Per-browser pairing credential lifecycle: revoke on disable, fresh pairing on enable
+t15 191 Bounded reconnect during an operation, background reconnect while enabled
+t16 192 Extension worker termination and restart recover the bridge
+t17 193 Edge and Chrome parity, store builds and real-browser acceptance
+t18 194 Security hardening, adversarial coverage, packaging review and documentation

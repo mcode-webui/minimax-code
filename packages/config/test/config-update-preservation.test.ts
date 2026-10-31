@@ -184,4 +184,51 @@ describe("valid local config updates", () => {
       permissionMode: "default",
     });
   });
+
+  /**
+   * The memory switches reach the config through `put`, not through the
+   * `preparedCommitPayload` argument. That argument is a shallow
+   * `Object.assign`, so `{ memory: { enabled, proactive } }` through it would
+   * replace the whole `memory` subtree and silently delete `dailyDigest` from
+   * the user's config — a setting they enabled, with no error and no trace.
+   *
+   * This is the only place that failure would be visible: the WebUI reports
+   * the two booleans it wrote, and it has no reason to look at a sibling key.
+   */
+  it("keeps sibling keys of a subtree when writing through put", async () => {
+    const source = {
+      memory: {
+        enabled: true,
+        dailyDigest: { enabled: true, customRetention: 7 },
+      },
+    };
+    fs.writeFileSync(configPath, yaml.dump(source));
+
+    await updateLocalConfigFile({
+      field: "memory",
+      put: { proactive: true },
+    });
+
+    expect(yaml.load(fs.readFileSync(configPath, "utf8"))).toEqual({
+      memory: {
+        enabled: true,
+        dailyDigest: { enabled: true, customRetention: 7 },
+        proactive: true,
+      },
+    });
+  });
+
+  it("refuses a field the whitelist does not carry, without touching the file", async () => {
+    // The WebUI's operation frame is two booleans, but the writer is shared by
+    // every caller — the whitelist is what stops a general payload from
+    // reaching the API-key roots through this same code path.
+    const source = `minimax_api:\n  apiKey: ${secret}\n`;
+    fs.writeFileSync(configPath, source);
+
+    await expect(
+      updateLocalConfigFile({ field: "minimax_api", put: { apiKey: "other" } }),
+    ).rejects.toThrow(/cannot update config field/u);
+
+    expect(fs.readFileSync(configPath, "utf8")).toBe(source);
+  });
 });

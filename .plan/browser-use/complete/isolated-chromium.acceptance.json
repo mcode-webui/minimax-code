@@ -1,0 +1,44 @@
+[
+  {
+    "surface": "isolated-chromium",
+    "browser": "chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the isolated Chromium delivers text input to the page it is showing",
+    "settings": {
+      "surface": "isolated-chromium",
+      "isolatedChromium": true,
+      "edge": "not carried by the isolated surface",
+      "chrome": "not carried by the isolated surface",
+      "fullCdp": "not exercised by this case",
+      "allowlist": "not applicable",
+      "build": "not applicable"
+    },
+    "observed": "a pointer click and a text input both arrived in the page the provider was driving",
+    "result": "pass",
+    "at": "2026-10-31T04:30:12.529Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "isolated-chromium"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the isolated Chromium refuses an input recorded against the page a navigation replaced",
+    "settings": {
+      "surface": "isolated-chromium",
+      "isolatedChromium": true,
+      "edge": "not carried by the isolated surface",
+      "chrome": "not carried by the isolated surface",
+      "fullCdp": "not exercised by this case",
+      "allowlist": "not applicable",
+      "build": "not applicable"
+    },
+    "observed": "the stale identity was refused with browser_target_stale and the page that replaced it received nothing",
+    "result": "pass",
+    "at": "2026-10-31T04:30:14.043Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "isolated-chromium"
+  }
+]

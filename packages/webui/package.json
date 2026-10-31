@@ -1,0 +1,62 @@
+{
+  "name": "@mavis/webui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WebUI client and loopback service for the process-local harness layer.",
+  "engines": {
+    "node": ">=22.19 <23 || >=24.2 <27"
+  },
+  "scripts": {
+    "dev": "vite",
+    "predev": "pnpm build:styles",
+    "dev:server": "node ../../scripts/run-webui-server.mjs",
+    "gen:host-events": "node scripts/host-event-catalogue.mjs --write",
+    "check:host-events": "node scripts/host-event-catalogue.mjs",
+    "typecheck:server": "pnpm check:host-events && tsc -p tsconfig.server.json --noEmit",
+    "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
+    "typecheck:test": "node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc -p tsconfig.test.json --noEmit",
+    "build:styles": "node ../../scripts/build-webui-styles.mjs",
+    "test": "node ../../scripts/run-vitest-suite.mjs webui"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@mavis/browser-core": "workspace:^",
+    "@mavis/config": "workspace:*",
+    "@mavis/local-runtime-v2": "workspace:*",
+    "@mavis/mcode-tools-host": "workspace:*",
+    "@mavis/oauth-core": "workspace:0.2.1-beta.7",
+    "@mavis/protocol": "workspace:*",
+    "@mavis/shared": "workspace:^",
+    "@tabler/icons-react": "^3.49.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "highlight.js": "10.7.3",
+    "katex": "0.18.7",
+    "lottie-web": "^5.13.0",
+    "marked": "18.0.12",
+    "mermaid": "12.1.0",
+    "node-pty": "1.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "ws": "8.21.3",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "8.18.1",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.5.28",
+    "postcss-import": "15.1.0",
+    "tailwindcss": "3.4.17",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  },
+  "license": "MIT"
+}

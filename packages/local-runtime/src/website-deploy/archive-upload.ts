@@ -151,7 +151,7 @@ export async function uploadArchive(input: UploadArchiveInput): Promise<Uploaded
   await runDeployStage(uploadStage, input.signal, () =>
     input.gateway.putBytes(
       putUrl,
-      archive,
+      new Uint8Array(archive),
       { 'Content-Type': ARCHIVE_MIME },
       input.signal,
       input.timeoutMs,

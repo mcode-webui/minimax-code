@@ -37,7 +37,7 @@ export interface ProcessLocalApplicationOptions {
     readonly application: Pick<ModelProviderApplication, 'list' | 'select'>;
     readonly providers: LocalModelProviderService;
     readonly listProviderPresets: ModelSystemOwner['listProviderPresets'];
-    readonly oauth: Pick<CodexOAuthManager, 'getStatus' | 'startLogin' | 'cancelLogin'>;
+    readonly oauth: Pick<CodexOAuthManager, 'getStatus' | 'startLogin' | 'cancelLogin' | 'refreshModels'>;
     readonly favorites?: Pick<ModelFavoritesPreference, 'list' | 'set'>;
   };
   readonly peripherals: Required<
@@ -79,6 +79,12 @@ export function createProcessLocalApplication(
     skills: {
       listSkills: (input) => options.skills.listSkills(input),
       listRuntimeSkills: (input) => options.skills.listRuntimeSkills(input),
+      setSkillEnabled: (input, enabled) => options.skills.setSkillEnabled(input, enabled),
+      deleteSkill: (input) => options.skills.deleteSkill(input),
+      createSkill: (input) => options.skills.createSkill(input),
+      getSkill: (input, readOptions) => options.skills.getSkill(input, readOptions),
+      listSkillHub: (input) => options.skills.listSkillHub(input),
+      installSkill: (input) => options.skills.installSkill(input),
     },
     plugins: options.plugins,
     ...(options.miniApps ? { miniApps: options.miniApps } : {}),
@@ -134,6 +140,7 @@ export function createProcessLocalApplication(
       getCodexOAuthStatus: async () => options.modelProvider.oauth.getStatus(),
       startCodexOAuthLogin: (input) => options.modelProvider.oauth.startLogin(input),
       cancelCodexOAuthLogin: async (loginId) => options.modelProvider.oauth.cancelLogin(loginId),
+      refreshModels: () => options.modelProvider.oauth.refreshModels(),
       listUser: async () =>
         options.modelProvider.providers.listUserProviders().map(toProviderRecord),
       getMiniMaxApiKeyStatus: async () => options.modelProvider.providers.getMinimaxApiKeyStatus(),
@@ -144,11 +151,15 @@ export function createProcessLocalApplication(
       },
       upsertMiniMaxApiKey: async (request) =>
         options.modelProvider.providers.upsertMinimaxApiKey(request),
+      revealModelProviderApiKey: ({ providerId }) =>
+        options.modelProvider.providers.revealModelProviderApiKey({ providerId }),
       create: async ({ models, ...request }) =>
         options.modelProvider.providers.createUserProvider({
           ...request,
           ...(models ? { models: toUserModelInputs(models) } : {}),
         }),
+      testUserModelCandidate: ({ candidate, modelId }) =>
+        options.modelProvider.providers.testUserModelCandidate(candidate, modelId),
       discoverCandidate: (candidate) =>
         options.modelProvider.providers.discoverUserModelsCandidate(candidate),
       saveCandidate: async ({ candidate: { models, ...candidate }, ...request }) => {
@@ -172,8 +183,11 @@ export function createProcessLocalApplication(
         }),
       delete: ({ providerId }) =>
         options.modelProvider.providers.deleteUserProvider({ providerId }),
-      testProvider: async ({ providerId }) => {
-        const outcome = await options.modelProvider.providers.testProvider(providerId);
+      testProvider: async ({ providerId, apiKey }) => {
+        const outcome = await options.modelProvider.providers.testProvider(
+          providerId,
+          apiKey ? { apiKeyOverride: apiKey } : undefined,
+        );
         return { success: outcome.ok, status: outcome.status };
       },
       testModel: async ({ providerId, modelId }) => {

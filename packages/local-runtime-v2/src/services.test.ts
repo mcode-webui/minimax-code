@@ -8,9 +8,10 @@ import { createAgentRuntime, type AgentExtension } from "@mavis/agent-runtime";
 import { baseCtx } from "../../agent-runtime/src/testing/fixtures.js";
 import type { RuntimeTool } from "@mavis/agent-core/tools";
 import { LocalSkillToolDef } from "@mavis/agent-tools/desktop";
-import type {
-  DatabaseLike,
-  QuestionnaireOwnedActionHandler,
+import {
+  resolveRuntimeOwnerPolicy,
+  type DatabaseLike,
+  type QuestionnaireOwnedActionHandler,
 } from "@mavis/local-runtime";
 import type {
   GlobalEvent,
@@ -1555,18 +1556,33 @@ describe("runtime services composition", () => {
       eventBus: new EventBus<GlobalEvent>(),
       compatibility: defaultCompatibility(),
       agentService: localAgentService,
+      ownerPolicy: resolveRuntimeOwnerPolicy({
+        kind: "webui",
+        cliEmbedded: false,
+        electronHost: false,
+        capabilityProfile: undefined,
+      }),
       miniApp: {},
     });
 
     expect(services.miniApp).toBe(mocked.miniAppSupervisor);
     assertProcessLocalMiniAppComposition();
     expect(mocked.miniAppOptions).toMatchObject({
+      ownerClient: "webui",
       db: {},
       connectorGateway: mocked.hostConnectorGateway,
       verifyCandidate: expect.any(Function),
       materializePackage: expect.any(Function),
       resolvePluginDataDir: expect.any(Function),
     });
+    // The child IPC connector registers its arena against this same gateway, so the Supervisor
+    // must receive the instance the runtime created rather than a second one.
+    expect(mocked.miniAppOptions?.["agentGateway"]).toMatchObject({
+      registerArena: expect.any(Function),
+      run: expect.any(Function),
+      reply: expect.any(Function),
+    });
+
     expect(mocked.events).toContain("plugin:attach-miniapp");
     expect(mocked.events.indexOf("plugin:attach-miniapp")).toBeLessThan(
       mocked.events.indexOf("turn:create"),
@@ -1858,6 +1874,13 @@ async function assertRuntimeServicesComposition() {
     sessionPorts: expect.any(Object),
     modelSelection: { resolve: expect.any(Function) },
     nowMs,
+    // ADR 0027 R4: the claim is attributed to this host's runtime-owner identity, recovery asks
+    // that identity whether a claimant is alive, and the sweep scope follows the owner kind.
+    recovery: {
+      claimOwnerId: expect.stringMatching(/^cron-run:\d+:/u),
+      isClaimantAlive: expect.any(Function),
+      reclaimUnattributedRuns: false,
+    },
     recoverPendingRuns: true,
   });
   expect(mocked.sessionOptions).toMatchObject({
@@ -3144,6 +3167,10 @@ describe("runtime Browser services lifecycle", () => {
 
   it("clears V2 Browser receipts only for committed context-reset rewinds", async () => {
     const compatibility = defaultCompatibility();
+    const browserExecute = vi.fn(async () => ({
+      success: true,
+      transcript: "browser result",
+    }));
     Object.assign(compatibility.agentHost.preparation.configBuilder, {
       config: () => ({
         provider: {},
@@ -3158,7 +3185,7 @@ describe("runtime Browser services lifecycle", () => {
       scheduler: {} as SchedulerClient,
       eventBus: new EventBus<GlobalEvent>(),
       compatibility,
-      browserUse: { adapter: { execute: vi.fn() } },
+      browserUse: { adapter: { execute: browserExecute } },
       agentService: localAgentService,
       runtimeOwnerKind: "cli",
     });
@@ -3235,15 +3262,23 @@ describe("runtime Browser services lifecycle", () => {
       isError: true,
       details: { code: "SKILL_REQUIRED" },
     });
-    await expect(
-      browser.impl.execute(
-        { sessionId: "session-ui-only", turnId: "turn-a" },
-        {
-          action: "inspect",
-          input: {},
-        },
-      ),
-    ).resolves.toMatchObject({ details: { action: "inspect" } });
+    const browserResult = await browser.impl.execute(
+      { sessionId: "session-ui-only", turnId: "turn-a" },
+      {
+        action: "inspect",
+        input: {},
+      },
+    );
+    expect(browserResult).toMatchObject({
+      details: { action: "inspect", result: { transcript: "browser result" } },
+      text: expect.stringContaining("browser result"),
+    });
+    expect(browserExecute).toHaveBeenCalledWith(
+      { sessionId: "session-ui-only", turnId: "turn-a" },
+      "inspect",
+      {},
+      expect.any(AbortSignal),
+    );
     expect(
       services.browserUse.turnContext.read("session-reset", "turn-reset"),
     ).toEqual({

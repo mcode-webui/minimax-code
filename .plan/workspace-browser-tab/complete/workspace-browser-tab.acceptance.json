@@ -1,0 +1,268 @@
+[
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the Agent opens a tab",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the run's selection points at the page the Agent opened, the runtime publishes it, and the strip's reconciliation makes it the active panel tab",
+    "result": "pass",
+    "at": "2026-10-31T04:29:00.631Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the Agent navigates after opening",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the page is at the requested url and the frame stream follows the page it opened",
+    "result": "pass",
+    "at": "2026-10-31T04:29:01.794Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the Agent acts on a page it did not open",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the action runs on the run's selection, and a reference recorded before the page moved is refused",
+    "result": "pass",
+    "at": "2026-10-31T04:29:02.669Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a person opens a tab while the Agent works",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the Agent's page and the person's page are different, and each shows its own picture",
+    "result": "pass",
+    "at": "2026-10-31T04:29:02.717Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a person opens a tab while the run has no selection",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the run's selection becomes the person's page, so the Agent can act on it",
+    "result": "pass",
+    "at": "2026-10-31T04:29:03.614Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a person types into their own tab while the Agent works",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the input reaches the person's page, not the Agent's",
+    "result": "pass",
+    "at": "2026-10-31T04:29:04.422Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a person types a url in the launcher",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the tab becomes that page, and the url is shown read-only in the toolbar",
+    "result": "pass",
+    "at": "2026-10-31T04:29:04.443Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a person closes a web tab",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the page is released, and the runtime's page set follows the strip",
+    "result": "pass",
+    "at": "2026-10-31T04:29:05.219Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "back and forward",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the page moves through its own history, and the generation follows",
+    "result": "pass",
+    "at": "2026-10-31T04:29:07.856Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "the surface's switch is off",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "the Agent's open_tab and the person's launcher path are both refused with browser_surface_not_authorized",
+    "result": "pass",
+    "at": "2026-10-31T04:29:07.857Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a run with no selection acts",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "every action except open_tab is refused with browser_target_unknown",
+    "result": "pass",
+    "at": "2026-10-31T04:29:07.877Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a session ends",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "its pages are released and no page is left behind",
+    "result": "pass",
+    "at": "2026-10-31T04:29:08.663Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a second web tab in one session",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "both are addressable, and the strip shows both",
+    "result": "pass",
+    "at": "2026-10-31T04:29:09.589Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  },
+  {
+    "surface": "isolated-chromium",
+    "browser": "google-chrome",
+    "browserVersion": "Google Chrome 152.0.7977.82",
+    "entry": "development",
+    "case": "a page navigates",
+    "settings": {
+      "isolatedChromium": true,
+      "edge": false,
+      "chrome": false,
+      "fullCdp": true,
+      "runId": "run-1"
+    },
+    "observed": "its generation advances, and a reference recorded against the old generation is refused — on every tab, not only the first",
+    "result": "pass",
+    "at": "2026-10-31T04:29:10.515Z",
+    "os": "linux 7.0.0-38-generic",
+    "suite": "workspace-browser-tab"
+  }
+]

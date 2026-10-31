@@ -6,6 +6,7 @@ import {
   ensureCurrentLocalRuntimeDataMigratedToV2OrThrow,
   isLocalRuntimeStartupExecutionEnabled,
   resolveAgentBashEnvPolicy,
+  resolveRuntimeOwnerPolicy,
   type DeferredLocalAgentRuntimePort,
   type CreatedLocalRuntimeHost as V1CreatedLocalRuntimeHost,
 } from "@mavis/local-runtime";
@@ -23,6 +24,7 @@ import {
   type V1RuntimeCompatibility,
 } from "./compat/v1/runtime.js";
 import { createV2AgentRuntimeManagementPort } from "./local/agent-runtime-port.js";
+import { createCliManagementApplication } from "./application/cli-management-application.js";
 import { DatabaseClient } from "./infra/db/client.js";
 import {
   initializeDatabase,
@@ -296,7 +298,15 @@ async function createLocalRuntimeHostV2Internal(
       bindAskUserSuppressionProbe(v1.apiHost, ownerRuntime.services.turnSystem);
     }
     const cliService = ownerRuntime
-      ? createCliService(ownerRuntime.services)
+      ? createCliService({
+          ...ownerRuntime.services,
+          management: createCliManagementApplication({
+            application: ownerRuntime.services.application,
+            canvas: ownerRuntime.services.canvas,
+            mcp: ownerRuntime.services.mcp,
+            agentManagementPort: v1.apiHost.agentRuntimePort,
+          }),
+        })
       : undefined;
 
     const close = createSharedClose({
@@ -524,13 +534,12 @@ function runtimeOwnerErrorCode(error: unknown): string {
 }
 
 function isV2RuntimeOwner(options: CreateLocalRuntimeHostOptions): boolean {
-  return (
-    (options.runtimeOwnerKind === "electron" &&
-      options.capabilities?.electronHost === true) ||
-    ((options.runtimeOwnerKind === "cli" ||
-      options.runtimeOwnerKind === "tui") &&
-      options.capabilities?.cliEmbedded === true)
-  );
+  return resolveRuntimeOwnerPolicy({
+    kind: options.runtimeOwnerKind,
+    cliEmbedded: options.capabilities?.cliEmbedded === true,
+    electronHost: options.capabilities?.electronHost === true,
+    capabilityProfile: options.capabilityProfile,
+  }).wiring.ownsV2Runtime;
 }
 
 export { createLocalRuntimeHostV2 as createLocalRuntimeHost };
@@ -833,15 +842,24 @@ async function initializeOwnerRuntime(input: {
     const startupExecutionEnabled = isLocalRuntimeStartupExecutionEnabled(
       options.startupExecutionPolicy,
     );
-    const electronOwner = options.runtimeOwnerKind === "electron";
+    const ownerPolicy = resolveRuntimeOwnerPolicy({
+      kind: options.runtimeOwnerKind,
+      cliEmbedded: options.capabilities?.cliEmbedded === true,
+      electronHost: options.capabilities?.electronHost === true,
+      capabilityProfile: options.capabilityProfile,
+    });
     background = await createBackgroundRuntime({
       db: database.db,
       dataDir: v1.dataDir,
       logger,
       metrics: v1.metricsClient,
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
-      restorePersistedJobExecution: startupExecutionEnabled,
-      enableScheduler: electronOwner,
+      // ADR 0027 R1: arming persisted scheduled tasks follows the owner policy's scheduler-host
+      // cell, not the cold-start execution policy. The quarantined cold start keeps governing
+      // session and turn recovery (`recoverPersistedState` below), which is ADR 0002's guarantee;
+      // it no longer decides whether cron jobs are armed.
+      restorePersistedJobExecution: ownerPolicy.wiring.schedulerHost,
+      enableScheduler: ownerPolicy.wiring.schedulerHost,
     });
     services = await createRuntimeServices({
       db: database.db,
@@ -862,8 +880,9 @@ async function initializeOwnerRuntime(input: {
       ...(options.configSource ? { configSource: options.configSource } : {}),
       ...(options.nowMs ? { nowMs: options.nowMs } : {}),
       recoverPersistedState: startupExecutionEnabled,
-      greetingEnabled: electronOwner && startupExecutionEnabled,
+      greetingEnabled: options.runtimeOwnerKind === "electron" && startupExecutionEnabled,
       runtimeOwnerKind: options.runtimeOwnerKind,
+      ownerPolicy,
       browserUse: createBrowserUseServiceOptions(options),
       ...(options.promptConfigKey
         ? { promptConfigKey: options.promptConfigKey }

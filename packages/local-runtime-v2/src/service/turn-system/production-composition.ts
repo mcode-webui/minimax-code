@@ -53,6 +53,7 @@ import {
   type LocalTurnRawToolSources,
   type LocalTurnInputPreparerOptions,
   type LocalTurnPermissionGateOptions,
+  type LocalTurnMiniAppApprovalRouter,
   type LocalAgentPreparationService,
   type NativeAgentPreparationOptions,
   type NativeLocalAgentPreparationOptions,
@@ -204,6 +205,11 @@ export interface CreateLocalAgentHostOptions<
   readonly turnFacts: RequiredAgentEventProjector;
   readonly pluginHookSessionOwnership: TurnSystemHostCapabilities['pluginHookSessionOwnership'];
   readonly toolPolicyGuard?: LocalTurnToolPolicyGuard;
+  /**
+   * Mini App approval routing: the gateway that knows whether any listener or open panel can answer a
+   * plugin-owned session's ask. Absent when this runtime has no Mini App service.
+   */
+  readonly miniAppApprovals?: LocalTurnMiniAppApprovalRouter;
   /** Binds the Goal verifier child's opt-in attempt cap to its provider requests. */
   readonly outputTokenCap?: LocalTurnOutputTokenCapResolver;
   readonly normalExtensions?: readonly AgentExtension[];
@@ -334,6 +340,7 @@ function createHostPermissionPolicy<TAgent extends AgentExecutionSnapshot>(
         return session ? session.purpose !== 'peek_btw_session' && isPeekSession(session) : false;
       },
     },
+    ...(options.miniAppApprovals ? { miniAppApprovals: options.miniAppApprovals } : {}),
   };
 }
 

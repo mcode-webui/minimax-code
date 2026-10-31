@@ -15,6 +15,10 @@ const alias = packageExportEntries(root, packageRoots).map(
 );
 export default defineConfig({
   resolve: { alias },
+  esbuild: {
+    jsx: "automatic",
+    jsxImportSource: "react",
+  },
   test: {
     environment: "node",
     include: allSuiteFiles(root),

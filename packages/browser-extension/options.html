@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MiniMax Code Browser Bridge — options</title>
+    <style>
+      body {
+        font: 14px/1.5 system-ui, sans-serif;
+        margin: 2rem;
+        max-width: 40rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+      input {
+        width: 100%;
+        padding: 0.4rem;
+        font-family: ui-monospace, monospace;
+      }
+      .row {
+        margin-top: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      #stored {
+        color: #555;
+      }
+      #status:empty {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Browser Bridge</h1>
+    <p>
+      Paste the installation key shown in the WebUI Settings for this browser.
+      It is stored in this browser only, and is never shown again in full.
+    </p>
+    <label for="installation-key">Installation key</label>
+    <input id="installation-key" type="password" autocomplete="off" spellcheck="false" />
+    <div class="row">
+      <button id="save" type="button">Save</button>
+      <button id="clear" type="button">Clear</button>
+    </div>
+    <p id="stored"></p>
+    <p id="status" role="status"></p>
+    <script type="module" src="./src/options.ts"></script>
+  </body>
+</html>

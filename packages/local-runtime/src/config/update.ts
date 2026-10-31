@@ -27,6 +27,7 @@ const LOCAL_CONFIG_MUTABLE_FIELDS = new Set([
   'review',
   'worktreeRefreshBeforeCreate',
   'agents',
+  'browser',
 ]);
 
 const LOCAL_CONFIG_DOTTED_MUTABLE_ROOTS = new Set([
@@ -38,6 +39,7 @@ const LOCAL_CONFIG_DOTTED_MUTABLE_ROOTS = new Set([
   'thinking',
   'memory',
   'agents',
+  'browser',
 ]);
 
 const LOCAL_PERMISSION_MODES = new Set([
@@ -412,6 +414,9 @@ function validateLocalConfigValue(field: string, value: unknown): unknown {
     if (typeof value === 'boolean') return value;
     throw new LocalConfigValidationError('Invalid worktreeRefreshBeforeCreate');
   }
+  if (field === 'browser' || field.startsWith('browser.')) {
+    return validateBrowserConfigValue(field, value);
+  }
   if (field === 'review.mode') {
     return validateReviewMode(value);
   }
@@ -438,6 +443,51 @@ function validateReviewConfigRecord(value: Record<string, unknown>): Record<stri
   return Object.prototype.hasOwnProperty.call(value, 'mode')
     ? { mode: validateReviewMode(value.mode) }
     : {};
+}
+
+/**
+ * The browser configuration keys that may be written, and nothing else.
+ *
+ * `chromePath` is deliberately absent: it names an executable on this machine
+ * and is not a user-facing switch, so the Settings surface cannot set it.
+ */
+const LOCAL_BROWSER_MUTABLE_SWITCHES = new Set([
+  'isolatedChromium',
+  'edge',
+  'chrome',
+  'fullCdp',
+]);
+
+/**
+ * Validates a browser configuration write.
+ *
+ * A switch is a boolean and nothing else. An unknown key is refused rather
+ * than merged through, because a misspelled switch that was accepted would
+ * leave the person believing a browser was authorized when it was not.
+ */
+function validateBrowserConfigValue(field: string, value: unknown): unknown {
+  if (field === 'browser') {
+    if (!isPlainRecord(value)) {
+      throw new LocalConfigValidationError('Invalid browser config');
+    }
+    for (const [key, entry] of Object.entries(value)) {
+      if (!LOCAL_BROWSER_MUTABLE_SWITCHES.has(key)) {
+        throw new LocalConfigValidationError(`Invalid browser config key "${key}"`);
+      }
+      if (typeof entry !== 'boolean') {
+        throw new LocalConfigValidationError(`Invalid browser config value for "${key}"`);
+      }
+    }
+    return value;
+  }
+  const key = field.slice('browser.'.length);
+  if (!LOCAL_BROWSER_MUTABLE_SWITCHES.has(key)) {
+    throw new LocalConfigValidationError(`Invalid browser config key "${key}"`);
+  }
+  if (typeof value !== 'boolean') {
+    throw new LocalConfigValidationError(`Invalid browser config value for "${key}"`);
+  }
+  return value;
 }
 
 function validateReviewMode(value: unknown): 'inline' | 'subagent' {

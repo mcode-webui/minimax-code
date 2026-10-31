@@ -1,0 +1,88 @@
+# Desktop source: ../minimax-webui/app/out/assets/img/ (27 files)
+../minimax-webui/app/out/assets/logo/favicon_v2.png -> img/minimax-code-agent-icon.png
+../minimax-webui/app/out/_next/static/media/light.d3fbb1aa.svg -> img/light.d3fbb1aa.svg
+../minimax-webui/app/out/_next/static/media/dark.14c569ba.svg -> img/dark.14c569ba.svg
+../minimax-webui/app/out/_next/static/media/system.aba90841.svg -> img/system.aba90841.svg
+img/beian.png
+img/breakDown.png
+img/computer_use.png
+img/desktop_im.png
+img/desktop_im_dark.png
+img/discord.jpg
+img/emptypicture.png
+img/feishu-feedback-group.png
+img/feishu.png
+img/pic_1.png
+img/pic_1_cn.png
+img/pic_2.png
+img/pic_2_cn.png
+img/pic_3.png
+img/pic_windows.png
+img/remote_control_phone_en.png
+img/remote_control_phone_zh.png
+img/share_wechat_friends.png
+img/wechat.png
+# Signin corner artwork source -> canonical destination (2 files)
+../minimax-webui/app/out/_next/static/media/corner-light.908854e4.svg -> img/corner-light.svg
+../minimax-webui/app/out/_next/static/media/corner-dark.fcf516da.svg -> img/corner-dark.svg
+# KaTeX source -> canonical destination (60 files)
+../minimax-webui/app/out/_next/static/media/KaTeX_AMS-Regular.ttf -> fonts/KaTeX_AMS-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_AMS-Regular.woff -> fonts/KaTeX_AMS-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_AMS-Regular.woff2 -> fonts/KaTeX_AMS-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Bold.ttf -> fonts/KaTeX_Caligraphic-Bold.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Bold.woff -> fonts/KaTeX_Caligraphic-Bold.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Bold.woff2 -> fonts/KaTeX_Caligraphic-Bold.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Regular.ttf -> fonts/KaTeX_Caligraphic-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Regular.woff -> fonts/KaTeX_Caligraphic-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Caligraphic-Regular.woff2 -> fonts/KaTeX_Caligraphic-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Bold.ttf -> fonts/KaTeX_Fraktur-Bold.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Bold.woff -> fonts/KaTeX_Fraktur-Bold.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Bold.woff2 -> fonts/KaTeX_Fraktur-Bold.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Regular.ttf -> fonts/KaTeX_Fraktur-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Regular.woff -> fonts/KaTeX_Fraktur-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Fraktur-Regular.woff2 -> fonts/KaTeX_Fraktur-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Bold.ttf -> fonts/KaTeX_Main-Bold.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Bold.woff -> fonts/KaTeX_Main-Bold.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Bold.woff2 -> fonts/KaTeX_Main-Bold.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-BoldItalic.ttf -> fonts/KaTeX_Main-BoldItalic.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-BoldItalic.woff -> fonts/KaTeX_Main-BoldItalic.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-BoldItalic.woff2 -> fonts/KaTeX_Main-BoldItalic.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Italic.ttf -> fonts/KaTeX_Main-Italic.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Italic.woff -> fonts/KaTeX_Main-Italic.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Italic.woff2 -> fonts/KaTeX_Main-Italic.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Regular.ttf -> fonts/KaTeX_Main-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Regular.woff -> fonts/KaTeX_Main-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Main-Regular.woff2 -> fonts/KaTeX_Main-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-BoldItalic.ttf -> fonts/KaTeX_Math-BoldItalic.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-BoldItalic.woff -> fonts/KaTeX_Math-BoldItalic.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-BoldItalic.woff2 -> fonts/KaTeX_Math-BoldItalic.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-Italic.ttf -> fonts/KaTeX_Math-Italic.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-Italic.woff -> fonts/KaTeX_Math-Italic.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Math-Italic.woff2 -> fonts/KaTeX_Math-Italic.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Bold.ttf -> fonts/KaTeX_SansSerif-Bold.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Bold.woff -> fonts/KaTeX_SansSerif-Bold.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Bold.woff2 -> fonts/KaTeX_SansSerif-Bold.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Italic.ttf -> fonts/KaTeX_SansSerif-Italic.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Italic.woff -> fonts/KaTeX_SansSerif-Italic.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Italic.woff2 -> fonts/KaTeX_SansSerif-Italic.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Regular.ttf -> fonts/KaTeX_SansSerif-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Regular.woff -> fonts/KaTeX_SansSerif-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_SansSerif-Regular.woff2 -> fonts/KaTeX_SansSerif-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Script-Regular.ttf -> fonts/KaTeX_Script-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Script-Regular.woff -> fonts/KaTeX_Script-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Script-Regular.woff2 -> fonts/KaTeX_Script-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Size1-Regular.ttf -> fonts/KaTeX_Size1-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Size1-Regular.woff -> fonts/KaTeX_Size1-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Size1-Regular.woff2 -> fonts/KaTeX_Size1-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Size2-Regular.ttf -> fonts/KaTeX_Size2-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Size2-Regular.woff -> fonts/KaTeX_Size2-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Size2-Regular.woff2 -> fonts/KaTeX_Size2-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Size3-Regular.ttf -> fonts/KaTeX_Size3-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Size3-Regular.woff -> fonts/KaTeX_Size3-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Size3-Regular.woff2 -> fonts/KaTeX_Size3-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Size4-Regular.ttf -> fonts/KaTeX_Size4-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Size4-Regular.woff -> fonts/KaTeX_Size4-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Size4-Regular.woff2 -> fonts/KaTeX_Size4-Regular.woff2
+../minimax-webui/app/out/_next/static/media/KaTeX_Typewriter-Regular.ttf -> fonts/KaTeX_Typewriter-Regular.ttf
+../minimax-webui/app/out/_next/static/media/KaTeX_Typewriter-Regular.woff -> fonts/KaTeX_Typewriter-Regular.woff
+../minimax-webui/app/out/_next/static/media/KaTeX_Typewriter-Regular.woff2 -> fonts/KaTeX_Typewriter-Regular.woff2

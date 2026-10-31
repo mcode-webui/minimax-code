@@ -8,6 +8,9 @@ import type {
   LocalTurnExecutionPreparationSource,
 } from '../execution/executor.js';
 import { LocalTurnPermissionGate } from '../runner/policy/local-turn-permission-gate.js';
+import type { LocalTurnSessionLineage } from '../runner/policy/local-turn-permission-gate.js';
+import type { SessionRecord } from '../../../session-system/index.js';
+import { MINIAPP_AGENT_PURPOSE_PREFIX } from '../../../miniapp/contracts.js';
 import { LocalTurnInputPreparer } from './local-turn-input-preparation.js';
 import { readTrustedBuiltinAgentProfileIdentity } from './local-turn-tool-catalog-source.js';
 import {
@@ -102,6 +105,7 @@ export class NativeLocalTurnExecutionPreparationSource<
             toolContext,
             trustedExactWritePaths: context.trustedExactWritePaths,
             signal: signal ?? input.execution.lease.signal,
+            sessionLineage: readMiniAppLineage(input.execution.session),
             preToolPermission: input.execution.pluginApprovalRequests?.get(toolContext.toolCall.id),
             ...(prepared.channelContext ? { channelContext: prepared.channelContext } : {}),
             ...(input.execution.pluginHooks?.length
@@ -118,6 +122,18 @@ export class NativeLocalTurnExecutionPreparationSource<
 type PluginPermissionRequestHook = NonNullable<
   Parameters<LocalTurnPermissionGate['beforeToolCall']>[0]['beforeApproval']
 >;
+
+/**
+ * Mini App lineage of the asking Session, read from the trusted SessionRecord the turn already holds.
+ * The ownership label is written only by the runtime's own Mini App session creation, never echoed from
+ * a client request.
+ */
+function readMiniAppLineage(session: SessionRecord): LocalTurnSessionLineage {
+  return {
+    miniApp: session.purpose?.startsWith(MINIAPP_AGENT_PURPOSE_PREFIX) === true,
+    parentSessionId: session.parentSessionId ?? null,
+  };
+}
 
 function createPluginPermissionRequestHook(
   execution: LocalTurnExecutionInput,

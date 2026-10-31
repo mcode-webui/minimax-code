@@ -1,3 +1,4 @@
+import type { RuntimeOwnerPolicy } from '@mavis/local-runtime';
 import type { AgentExecutionProfile } from '../../service/agent/index.js';
 import type { InitializedMcpService } from '../../service/mcp/index.js';
 import type { InitializedPluginService } from '../../service/plugin-system/index.js';
@@ -27,6 +28,8 @@ interface TaskAgentBindingCaptureRuntimeInput {
   readonly options: {
     readonly runtimeOwnerKind?: string;
     readonly capabilityProfile?: 'cli';
+    /** Forwarded, not re-derived: a pass-through is not a new effect. */
+    readonly ownerPolicy: RuntimeOwnerPolicy;
   };
 }
 
@@ -62,6 +65,7 @@ export function bindTaskAgentBindingCapture(
       ...(input.options.capabilityProfile
         ? { capabilityProfile: input.options.capabilityProfile }
         : {}),
+      ownerPolicy: input.options.ownerPolicy,
     }),
   );
 }

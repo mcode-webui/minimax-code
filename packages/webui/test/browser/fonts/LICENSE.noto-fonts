@@ -1,0 +1,16 @@
+The font files in this directory are subsets of Noto Sans CJK SC and
+Noto Sans Mono CJK SC, distributed under the SIL Open Font License, Version 1.1.
+
+They are committed here so the WebUI browser gate renders the same glyphs on
+every machine. The visual baselines compare pixels, and a glyph rasterized
+from a host's installed font moves thousands of pixels when the installed set
+changes, even though no WebUI source changed. The gate therefore loads only
+the files in this directory; see
+`scripts/lib/webui-font-environment.mjs`.
+
+Upstream: https://github.com/notofonts/noto-cjk
+License: https://github.com/notofonts/noto-cjk/blob/main/LICENSE
+
+These are subsets. Each file keeps only the glyphs the WebUI client can
+render, so the committed size stays small. The subsets were produced with
+fontTools from the upstream release; the upstream licence above governs them.

@@ -395,6 +395,28 @@ export async function applyLocalTurnDiffSnapshotMutation(
   }
   const sourceKey = action === 'revert' ? 'after' : 'before';
   const targetKey = action === 'revert' ? 'before' : 'after';
+
+  /* Full precheck, before the first write.
+   *
+   * The path-safety and snapshot-completeness checks used to sit inside the
+   * write loop, so a refused entry left the run half-applied: earlier entries
+   * had already been written or `fs.rm`'d when a later one was judged unsafe.
+   * Resolving and validating every target up front makes the operation
+   * all-or-nothing — a refusal now touches nothing on disk.
+   *
+   * Safety first, ahead of the conflict check below: an operation that would
+   * write outside the workspace is refused without even reading the files. */
+  const targets: string[] = [];
+  for (const undo of record.undo) {
+    const absolute = resolveMutationTargetPath(record.workspaceDir, undo.file);
+    if (!absolute) return { success: false, reason: 'unsafe_path' };
+    const target = undo[targetKey];
+    if (target.exists && target.content === undefined) {
+      return { success: false, reason: 'not_undoable' };
+    }
+    targets.push(absolute);
+  }
+
   for (const undo of record.undo) {
     const current = await snapshotCapturedFile(record.workspaceDir, undo.file);
     if (snapshotHash(current) !== snapshotHash(undo[sourceKey])) {
@@ -402,19 +424,51 @@ export async function applyLocalTurnDiffSnapshotMutation(
     }
   }
 
-  for (const undo of record.undo) {
-    const absolute = safeCapturedPath(record.workspaceDir, undo.file);
-    if (!absolute) return { success: false, reason: 'unsafe_path' };
+  for (const [index, undo] of record.undo.entries()) {
+    const absolute = targets[index]!;
     const target = undo[targetKey];
     if (!target.exists) {
       await fs.rm(absolute, { force: true });
       continue;
     }
-    if (target.content === undefined) return { success: false, reason: 'not_undoable' };
     await fs.mkdir(path.dirname(absolute), { recursive: true });
-    await fs.writeFile(absolute, target.content, 'utf8');
+    await fs.writeFile(absolute, target.content!, 'utf8');
   }
   return { success: true };
+}
+
+/**
+ * Resolve an undo entry's path to an absolute path inside the workspace, or
+ * refuse with `undefined`.
+ *
+ * `normalizeCapturePath` hands back the *absolute* path for anything that
+ * resolves outside the workspace — that return is how the capture layer
+ * records out-of-workspace writes — so a truthy result is NOT proof of
+ * containment and the mutation has to check it. It returns `undefined` for
+ * the in-workspace paths the capture layer filters (`.git/`,
+ * `node_modules/`, the root itself), which is also a refusal here. The
+ * containment re-check after `path.resolve` is deliberate: this is a
+ * security boundary, so it does not rely on `normalizeCapturePath`'s
+ * contract holding forever.
+ *
+ * Known boundary (lexical containment only): a contained path that is a
+ * symlink pointing outside the workspace still resolves outside. Closing
+ * that needs `realpath` on every target with careful handling of
+ * not-yet-existing files, which is a larger change than this refusal.
+ */
+function resolveMutationTargetPath(
+  workspaceDir: string,
+  file: string,
+): string | undefined {
+  const normalized = normalizeCapturePath(workspaceDir, file);
+  if (!normalized) return undefined;
+  if (path.isAbsolute(normalized) || path.win32.isAbsolute(normalized)) {
+    return undefined;
+  }
+  const root = path.resolve(workspaceDir);
+  const absolute = path.resolve(root, normalized);
+  const prefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return absolute === root || absolute.startsWith(prefix) ? absolute : undefined;
 }
 
 function makeCaptureId(): string {

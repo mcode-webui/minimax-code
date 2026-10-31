@@ -1,0 +1,397 @@
+/* workspace — moved out of styles/shell.css; rules kept in their original relative order. */
+@layer components {
+
+  /* No `min-width` here: the shared `.webui-workspace-menu` rule already sets
+   * 220px, and that is the width the panel actually rendered before the
+   * split. This rule's 240px never won the cascade in the pre-split sheet — the
+   * engine reports the pre-split panel at min-width: 220px and width: 220px —
+   * but after the split it started winning, which widened the panel by
+   * 20px. The dead declaration is removed rather than left to change
+   * behaviour. */
+  .webui-workspace-menu--desktop {
+    display: flex;
+    max-width: 320px;
+    padding: var(--spacing_4);
+    border-radius: var(--radius_12);
+  }
+  .webui-workspace-menu--desktop
+    [data-webui-workspace-action="add-new"]
+    + [data-webui-workspace-action="no-project"] {
+    margin-top: var(--spacing_2);
+  }
+
+
+  /* The project row under the composer. It is a LAYOUT element only — the
+   * light surface comes from `.message-input-home-container`, the scrim box
+   * that already wraps the card, so the card and this row read as one
+   * continuous band with no seam. Giving the row its own fill, radius or
+   * shadow is what reintroduced the seam: two greys meeting along one line.
+   * Vertical padding only; the container owns the rounding and the bleed. */
+  .webui-workspace-bar {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--spacing_12);
+    padding: var(--spacing_6) var(--spacing_8) var(--spacing_2);
+  }
+
+  .webui-workspace-bar-trigger {
+    display: flex;
+    min-width: 0;
+    max-width: 260px;
+    min-height: 28px;
+    align-items: center;
+    gap: var(--spacing_8);
+    border: 0;
+    border-radius: var(--radius_8);
+    background: transparent;
+    padding: 0 var(--spacing_8);
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+
+  .webui-workspace-bar-trigger:hover:not(:disabled) {
+    background: var(--bg_interaction_tertiary_hover);
+  }
+
+  /* The picker's own subhead, the rule under it, and the selection check.
+   * The header is a label rather than a row: it is not actionable, so it
+   * carries no hit area and the rule below it does the visual separation. */
+  .webui-workspace-menu-header {
+    padding: var(--spacing_4) 10px var(--spacing_4);
+    color: var(--text_default_tertiary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_16, 16px);
+  }
+
+  .webui-workspace-menu-separator {
+    height: 1px;
+    margin: var(--spacing_4) 0;
+    background: var(--border_default);
+  }
+
+  .webui-workspace-option-check {
+    width: var(--size_16);
+    height: var(--size_16);
+    flex: 0 0 var(--size_16);
+    color: var(--icon_default_secondary);
+  }
+
+  /* Footer placement stays with this chooser; its actions use the shared button contract. */
+  .webui-workspace-browser-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing_8);
+    margin-top: var(--spacing_4);
+    border-top: 1px solid var(--border_default);
+    padding-top: var(--spacing_8);
+  }
+
+  /* Workspace panel, progress overview and workspace review surfaces. */
+  /*
+   * The panel has two forms, and the form is chosen by the surface's tier
+   * rather than by a viewport breakpoint (ADR 0025). The panel measures the
+   * surface it shares with the conversation column and reports the tier on
+   * itself; the stylesheet owns what each form looks like.
+   *
+   * The base is the column form: the panel beside the conversation. The
+   * overlay form overrides it when the surface cannot hold both the panel's
+   * floor and the conversation column's floor.
+   *
+   * `max-width` is the shell's guarantee and not the resize logic's: the
+   * panel can never claim the space the conversation column needs, so a width
+   * that arrives by any route — a drag, a stale value, a restored session —
+   * cannot squeeze the conversation to nothing.
+   */
+  .webui-workspace-panel { position: relative; display: flex; width: 50%; min-width: var(--webui-panel-min); min-height: 0; flex: 0 1 50%; max-width: calc(100% - var(--webui-conversation-min)); flex-direction: column; overflow: hidden; scrollbar-gutter: auto; border-left: 1px solid var(--border_default); background: var(--bg_default_primary); color: var(--text_default_primary); animation: webui-panel-enter-right 180ms cubic-bezier(.2, .7, .2, 1) both; container: webui-workspace-panel / inline-size; }
+
+  /* The progress panel's gutter.
+   *
+   * The panel is a card that floats over the conversation's right edge, so the
+   * conversation keeps a gutter for it and the card lands in that gutter
+   * instead of on top of the text. The card is anchored to the window rather
+   * than to the surface, so the gutter is measured against the window too.
+   */
+  .webui-session-has-progress-panel { box-sizing: border-box; padding-right: 312px; }
+
+  /* Below this width the conversation cannot spare the gutter, and the panel
+   * closes itself rather than floating over the conversation's corner and
+   * covering the text. This rule is the backstop for that decision: the panel
+   * is not open at these widths, so the gutter is not there either — and if it
+   * ever were, the conversation keeps its full width rather than being
+   * squeezed to make room for a card.
+   *
+   * 1079 is one pixel below the contract's `progressPanelMinWidth`, which is
+   * the convention the composer's own narrow forms use as well. */
+  @media (max-width: 1079px) {
+    .webui-session-has-progress-panel {
+      padding-right: 0;
+    }
+  }
+
+  .webui-workspace-panel[data-webui-surface-tier="overlay"]:not(.is-expanded) { position: absolute; inset: 0 0 0 auto; width: min(100%, var(--webui-panel-overlay-max)); max-width: none; flex: none; z-index: 40; }
+  /* The overlay's width belongs to the stylesheet, so there is nothing to drag. */
+  .webui-workspace-panel[data-webui-surface-tier="overlay"] .webui-workspace-panel-resize-handle { display: none; }
+  .webui-workspace-panel.is-expanded { position: absolute; inset: 0; z-index: 70; width: auto; max-width: none; flex: none; }
+  .webui-workspace-panel.is-expanded { animation: webui-workspace-panel-expand 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-expanding { animation: webui-workspace-panel-expand 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-collapsing { animation: webui-workspace-panel-collapse 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel.is-closing { pointer-events: none; animation: webui-workspace-panel-exit 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-panel-resize-handle { position: absolute; top: 0; bottom: 0; left: 0; z-index: 5; width: 8px; cursor: col-resize; touch-action: none; }
+  .webui-workspace-panel-resize-handle:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -2px; }
+  .webui-workspace-panel.is-expanded .webui-workspace-panel-resize-handle { display: none; }
+  .webui-workspace-panel.is-expanded .webui-workspace-file-tree-panel { width: min(360px, 34vw); flex-basis: min(360px, 34vw); }
+  /* The panel grows from the right edge just like the navigation rail grows
+   * from its fixed edge. Width is composited by layout without the expensive
+   * clip-path redraw that made the old top-to-bottom reveal stutter.
+   *
+   * The reserved gutter is the floating progress panel's own width plus its
+   * offset, read from one place rather than restated here — a reservation that
+   * no longer matches the panel it reserves room for is a panel that either
+   * overlaps the text or steals space it does not need. The panel is capped
+   * by what the surface can afford, so the gutter and the panel cannot
+   * disagree about how much room there is. */
+
+  @keyframes webui-workspace-panel-expand { from { opacity: .88; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes webui-workspace-panel-collapse { from { opacity: .88; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes webui-workspace-panel-exit { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(18px); } }
+  .webui-workspace-panel-header, .webui-workspace-panel-actions, .webui-workspace-tabs, .webui-workspace-tab { display: flex; align-items: center; }
+  .webui-workspace-panel-header { position: relative; z-index: 2; min-height: 42px; flex: 0 0 42px; justify-content: space-between; gap: var(--spacing_8); border-bottom: 1px solid var(--border_default); background: var(--bg_default_secondary); padding: 0 var(--spacing_8); }
+  .webui-workspace-tabs { min-width: 0; flex: 1 1 auto; align-self: stretch; gap: var(--spacing_8); overflow: visible; }
+  .webui-workspace-tab-list { display: flex; min-width: 0; flex: 1 1 0; align-items: center; gap: var(--spacing_2); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .webui-workspace-tab-list::-webkit-scrollbar { display: none; }
+  .webui-workspace-tab { position: relative; max-width: 144px; min-width: 88px; height: 32px; flex: 0 1 144px; gap: var(--spacing_4); border: 1px solid transparent; border-bottom: 1px solid transparent; border-radius: 12px 12px 0 0; background: var(--bg_default_secondary); color: var(--text_default_secondary); transition: background-color 100ms ease; }
+  .webui-workspace-tab.is-active { border-color: var(--border_default); border-bottom-color: var(--bg_default_primary); background: var(--bg_default_primary); color: var(--text_default_primary); }
+  .webui-workspace-tab:not(.is-active)::after { position: absolute; top: 50%; right: -2px; width: 1px; height: 20px; transform: translateY(-50%); background: var(--border_default); content: ""; }
+  .webui-workspace-tab:not(.is-active):hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
+  .webui-workspace-tab-control { display: inline-flex; width: 100%; min-width: 0; height: 100%; align-items: center; justify-content: flex-start; gap: var(--spacing_8); overflow: hidden; padding: var(--spacing_8) 28px var(--spacing_8) var(--spacing_8); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-tab-label { min-width: 0; overflow: hidden; font-size: var(--size_14); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-tab-file-icon { width: 18px; height: 18px; flex: 0 0 18px; }
+  /* The strip owns the per-tab glyphs for the new kinds. */
+  .webui-workspace-tab-glyph { width: 18px; height: 18px; flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--size_14); line-height: 1; color: var(--icon_default_primary); }
+  .webui-workspace-web-glyph { color: var(--icon_default_primary); }
+  .webui-workspace-web-glyph img { display: block; width: 18px; height: 18px; object-fit: contain; }
+  .webui-workspace-web-glyph img[hidden] { display: none; }
+  .webui-workspace-filetype-badge { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; line-height: 1; }
+  .webui-workspace-filetype-badge.is-markdown { color: var(--text_default_accent); }
+  .webui-workspace-filetype-badge.is-javascript { border-radius: 2px; background: #f4d54e; color: #403600; }
+  .webui-workspace-filetype-badge.is-typescript { border-radius: 2px; background: #3178c6; color: #fff; }
+  .webui-workspace-filetype-badge.is-json { color: #b88900; font-size: 11px; }
+  .webui-workspace-filetype-badge.is-css { color: #7e57c2; font-size: 7px; }
+  .webui-workspace-filetype-badge.is-html { color: #e44d26; font-size: 11px; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-java { color: #e76f00; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-python { color: #3472a5; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-rust { color: #b7410e; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-shell { color: #555; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-sql { color: #d97706; font-size: 8px; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-go { color: #00add8; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-xml { color: #e37933; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-yaml { color: #cb171e; font-weight: 700; }
+  .webui-workspace-filetype-badge.is-code { color: #3178c6; font-weight: 700; }
+  /* 22px was below the 24px a pointer may be asked to hit (WCAG 2.2 AA). */
+  .webui-workspace-tab-close { position: absolute; top: 50%; right: 4px; width: 24px; height: 24px; transform: translateY(-50%); border-radius: 5px; padding: 0; opacity: .72; }
+  .webui-workspace-tab:hover .webui-workspace-tab-close, .webui-workspace-tab.is-active .webui-workspace-tab-close { opacity: 1; }
+  /* The strip's "+" opens a fresh new tab page. It used to sit beside the add
+   * menu's "+", which opened a tool tab behind a dropdown; the menu's four
+   * entries are the launcher's tiles now, and this is the only way in. */
+  .webui-workspace-new-tab-trigger { display: inline-flex; width: 36px; height: 36px; flex: 0 0 36px; align-items: center; justify-content: center; border-radius: 8px; padding: 0; }
+  .webui-workspace-panel-actions { flex: 0 0 auto; gap: var(--spacing_8); padding-left: var(--spacing_4); }
+  .webui-workspace-panel-action { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; padding: 0; }
+  .webui-workspace-panel-body { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden; }
+  /* A web tab's content is a window: the browser panel fills the body, or the
+   * page sits at the top of it with the panel's own surface underneath. */
+  .webui-workspace-web-tab { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; }
+  .webui-workspace-view { position: relative; display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: auto; }
+  .webui-workspace-web-tab[data-inactive="true"] { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
+  .webui-workspace-file-toolbar { display: flex; min-height: 48px; flex: 0 0 48px; align-items: center; gap: var(--spacing_8); border-bottom: 1px solid var(--border_default); padding: 0 var(--spacing_16); }
+  .webui-workspace-file-breadcrumb { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: var(--spacing_8); overflow: hidden; color: var(--text_default_tertiary); font-size: var(--size_14); white-space: nowrap; }
+  .webui-workspace-file-breadcrumb > span { display: inline-flex; min-width: 0; align-items: center; gap: var(--spacing_8); overflow: hidden; text-overflow: ellipsis; }
+  .webui-workspace-file-breadcrumb .is-current { color: var(--text_default_primary); }
+  .webui-workspace-file-mode { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--spacing_2); border-radius: 8px; background: var(--bg_default_secondary); padding: 2px; }
+  .webui-workspace-file-mode-button { min-height: 28px; border-radius: 6px; padding: 0 10px; font-size: var(--size_12); }
+  .webui-workspace-edit-action { width: 34px; height: 34px; flex: 0 0 34px; }
+  .webui-workspace-tree-toggle { width: 34px; height: 34px; flex: 0 0 34px; }
+  .webui-workspace-file-tree-panel { display: flex; width: clamp(200px, 38cqi, 288px); flex: 0 0 clamp(200px, 38cqi, 288px); min-height: 0; flex-direction: column; border-left: 1px solid var(--border_default); background: var(--bg_default_primary); animation: webui-panel-enter-right 180ms cubic-bezier(.2, .7, .2, 1) both; }
+  .webui-workspace-file-search { flex: 0 0 40px; margin: var(--spacing_8) var(--spacing_12); }
+  .webui-workspace-file-tree-scroll { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 0 var(--spacing_12) var(--spacing_12); }
+  .webui-workspace-file-tree-scroll > [role="status"], .webui-workspace-file-tree-scroll > [role="alert"], .webui-workspace-tree-empty { padding: var(--spacing_8); color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-file-tree-children { padding-left: var(--spacing_12); }
+  .webui-file-tree-children > [role="status"], .webui-file-tree-children > [role="alert"], .webui-file-tree-children > p { margin: 0; padding: 2px var(--spacing_12) 6px; color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-workspace-files-empty { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing_8); color: var(--text_default_tertiary); }
+  .webui-workspace-files-empty strong { color: var(--text_default_secondary); font-size: var(--size_16); font-weight: var(--weight_medium); }
+  .webui-workspace-files-empty p { margin: 0; font-size: var(--size_14); }
+  .webui-workspace-file-document { min-width: 0; min-height: 0; flex: 1 1 auto; overflow: auto; }
+  .webui-workspace-file-document > p { margin: var(--spacing_16); color: var(--text_default_tertiary); }
+  .webui-workspace-file-document > .webui-markdown { max-width: 960px; margin: 0 auto; padding: 32px clamp(24px, 7vw, 64px); }
+  .webui-workspace-miniapp-tab { box-sizing: border-box; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: auto; padding: 24px clamp(16px, 3cqi, 32px); }
+  .webui-workspace-miniapp-tab.webui-workspace-miniapp-tab--view { display: flex; min-height: 0; flex-direction: column; overflow: hidden; padding: 0; }
+  .webui-workspace-miniapp-tab--view > .webui-miniapp-view { width: 100%; height: auto; }
+  .webui-workspace-miniapp-tab:not(.webui-workspace-miniapp-tab--view) { display: flex; flex-direction: column; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker { width: min(100%, 480px); margin: auto; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: var(--spacing_12); margin: 0 0 16px; color: var(--text_default_primary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading h1 { margin: 0; font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
+  .webui-workspace-miniapp-tab .webui-plugin-list { width: 100%; max-width: none; margin: 0; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-row { display: grid; min-width: 0; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--spacing_12); padding: var(--spacing_12) 0; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon { display: flex; width: 48px; height: 48px; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: var(--radius_12); background: var(--bg_default_primary); color: var(--icon_default_primary); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon > svg { width: 22px; height: 22px; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy { min-width: 0; grid-area: auto; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy h2 { overflow: hidden; margin: 0 0 var(--spacing_2); color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_20); text-overflow: ellipsis; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-status { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions { display: flex; flex: 0 0 auto; grid-area: auto; align-items: center; gap: var(--spacing_8); }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-create { width: 100%; margin-top: var(--spacing_8); }
+  .webui-workspace-image-preview { display: block; max-width: 100%; max-height: calc(100vh - 180px); margin: 24px auto; object-fit: contain; }
+  .webui-file-code { min-width: max-content; min-height: 100%; margin: 0; overflow: auto; background: var(--bg_default_primary); padding: 20px 0; color: var(--text_default_primary); font-family: Hack, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre; }
+  .webui-file-code code { display: block; min-width: 100%; }
+  .webui-file-code-line { position: relative; display: block; min-height: 1.65em; padding: 0 24px 0 68px; }
+  .webui-file-code-line::before { position: absolute; left: 0; width: 48px; padding-right: 12px; color: var(--text_default_tertiary); content: attr(data-line-number); text-align: right; user-select: none; }
+  .webui-file-code-line.webui-file-preview-line-active { background: var(--bg_interaction_tertiary_selected); }
+  .webui-file-code .hljs-comment, .webui-file-code .hljs-quote { color: var(--text_default_tertiary); font-style: italic; }
+  .webui-file-code .hljs-keyword, .webui-file-code .hljs-meta .hljs-keyword { color: var(--text_label_accent_default); }
+  .webui-file-code .hljs-string, .webui-file-code .hljs-doctag { color: var(--text_label_positive_secondary_default); }
+  .webui-file-code .hljs-number, .webui-file-code .hljs-literal { color: var(--text_label_warning_secondary_default); }
+  .webui-file-code .hljs-title, .webui-file-code .hljs-title.function_, .webui-file-code .hljs-function, .webui-file-code .hljs-section { color: var(--text_label_accent_default); }
+  .webui-file-code .hljs-type, .webui-file-code .hljs-built_in, .webui-file-code .hljs-title.class_ { color: var(--text_label_danger_secondary_default); }
+  .webui-file-code .hljs-attr, .webui-file-code .hljs-variable, .webui-file-code .hljs-property { color: var(--text_default_secondary); }
+  /* The new tab page: the tiles it opens a view from, and the URL box that
+   * opens a page. It is a tab's content, so it fills the body of the panel
+   * rather than sitting in the strip. */
+  .webui-workspace-launcher { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; padding: var(--spacing_24); background: var(--bg_default_primary); color: var(--text_default_primary); }
+  .webui-workspace-launcher-content { display: flex; width: 100%; flex-direction: column; align-items: center; transform: translateY(-24px); }
+  .webui-workspace-launcher-brand { display: flex; min-height: clamp(72px, 10vw, 112px); flex: 0 0 auto; align-items: center; justify-content: center; margin-bottom: clamp(24px, 4vw, 48px); }
+  .webui-workspace-launcher-wordmark { font-family: "Century Gothic", "Arial Rounded MT Bold", "Segoe UI", sans-serif; font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+  .webui-workspace-launcher-wordmark span { display: inline-block; }
+  .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-mini { font-size: 0.88em; }
+  .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-max { font-size: 1.08em; }
+  .webui-workspace-launcher-wordmark .is-lower { font-size: 0.76em; font-weight: 600; }
+  .webui-workspace-launcher-wordmark .is-final { transform: rotate(-9deg) translateY(-3px); transform-origin: 50% 70%; }
+  .webui-workspace-launcher-wordmark .is-blue { color: #4285f4; }
+  .webui-workspace-launcher-wordmark .is-red { color: #ea4335; }
+  .webui-workspace-launcher-wordmark .is-yellow { color: #fbbc05; }
+  .webui-workspace-launcher-wordmark .is-green { color: #34a853; }
+  /* The address box, in the middle of the page, the way a browser's new tab
+   * page is built: a wide rounded field with the url in it, and the mark that
+   * says what the field is for at its left. */
+  .webui-workspace-launcher-omnibox { display: flex; width: 100%; max-width: 936px; align-items: center; gap: var(--spacing_12); height: 60px; flex: 0 0 60px; margin-bottom: 20px; padding: 0 var(--spacing_16); border: 1px solid var(--border_default); border-radius: 30px; background: var(--bg_default_primary); box-shadow: 0 2px 6px rgb(0 0 0 / 10%); }
+  .webui-workspace-launcher-omnibox:focus-within { border-color: var(--border_default); box-shadow: 0 2px 8px rgb(0 0 0 / 14%); }
+  .webui-workspace-launcher-omnibox-glyph { color: var(--icon_default_primary); }
+  .webui-workspace-launcher-omnibox-submit { display: inline-flex; width: 32px; height: 32px; flex: 0 0 32px; align-items: center; justify-content: center; border-radius: 50%; padding: 0; }
+  /* The shortcuts, under the address box and in a row: a mark in a round
+   * plate with its name under it, which is the shape a browser's own
+   * shortcuts have. */
+  .webui-workspace-launcher-tiles { display: flex; width: 100%; min-width: 0; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: var(--spacing_24); overflow: hidden; }
+  .webui-workspace-launcher-tile { display: flex; width: 112px; flex-direction: column; align-items: center; gap: var(--spacing_8); border-radius: var(--radius_12); padding: var(--spacing_8); }
+  .webui-workspace-launcher-tile { flex: 0 0 112px; }
+  .webui-workspace-launcher-tile-icon { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border: 1px solid var(--border_default); border-radius: 50%; background: var(--bg_default_secondary); color: var(--icon_default_primary); }
+  .webui-workspace-launcher-tile:hover .webui-workspace-launcher-tile-icon { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
+  .webui-workspace-launcher-tile-label { font-size: var(--size_12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .webui-workspace-launcher-more { flex: 0 0 112px; }
+  .webui-workspace-launcher-overflow-menu { min-width: 176px; padding: var(--spacing_6); }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the launcher's own arrangement: its rows are a
+   * little taller than the contract's default. */
+  .webui-workspace-launcher-overflow-item {
+    min-height: 36px;
+    padding: 0 var(--spacing_8);
+  }
+  .webui-workspace-launcher-unavailable, .webui-workspace-launcher-error { max-width: 520px; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }
+
+  .webui-turn-review { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; overflow: auto; }
+  .webui-turn-review-summary { min-height: 48px; flex: 0 0 48px; border-bottom: 1px solid var(--border_default); padding: 0 var(--spacing_16); color: var(--text_default_primary); font-size: var(--size_14); }
+  .webui-turn-review-files { min-width: 0; flex: 1 1 auto; overflow: auto; }
+  .webui-turn-review-file { min-width: 0; border-bottom: 1px solid var(--border_default); }
+  .webui-turn-review-file-heading { position: sticky; top: 0; z-index: 1; display: flex; width: 100%; min-width: 0; min-height: 40px; align-items: center; gap: var(--spacing_8); padding: 0 var(--spacing_12); text-align: left; }
+  .webui-turn-review-chevron { width: 12px; height: 12px; flex: 0 0 12px; color: var(--icon_default_tertiary); transition: transform 120ms ease; }
+  .webui-turn-review-file[data-expanded="true"] > .webui-turn-review-file-heading > .webui-turn-review-chevron { transform: rotate(90deg); }
+  .webui-turn-review-file-heading:hover { background: var(--bg_default_secondary); }
+  .webui-turn-review-file-heading .webui-diff-file-icon { width: 18px; height: 18px; }
+  .webui-turn-review-file-heading .webui-diff-file-icon .webui-workspace-filetype-badge { width: 18px; height: 18px; }
+  .webui-turn-review-file-path { min-width: 0; flex: 1; overflow: hidden; font-size: var(--size_14); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-turn-review-code { width: max-content; min-width: 100%; margin: 0; padding: 0; overflow: auto; background: var(--bg_default_primary); font-size: var(--size_12); line-height: 1.65; white-space: pre; overflow-wrap: normal; }
+  .webui-turn-review-code code { display: block; min-width: max-content; }
+  .webui-turn-review-line { display: grid; min-width: max-content; grid-template-columns: 48px 48px 20px minmax(0, 1fr); }
+  .webui-turn-review-line--addition { background: var(--bg_status_positive); color: #17251d; }
+  .webui-turn-review-line--deletion { background: var(--bg_status_error); color: #302022; }
+  .webui-turn-review-line--hunk { background: var(--bg_grouped_secondary); color: var(--text_default_tertiary); }
+  /* The no-newline marker: it renders as its own row with no gutter
+     numbers and neutral text, because it records a fact about the line above
+     rather than being a line of the file. */
+  .webui-turn-review-line--noNewline { grid-column: 1 / -1; padding: 1px var(--spacing_12); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text_default_tertiary); }
+  .webui-turn-review-line-number { border-right: 1px solid var(--border_light); padding: 0 8px 0 4px; color: var(--text_default_tertiary); text-align: right; user-select: none; }
+  .webui-turn-review-line--addition .webui-turn-review-line-number { color: var(--text_status_success); }
+  .webui-turn-review-line--deletion .webui-turn-review-line-number { color: var(--text_status_error); }
+  .webui-turn-review-marker { color: var(--text_default_tertiary); text-align: center; user-select: none; }
+  .webui-turn-review-line--addition .webui-turn-review-marker { color: var(--text_status_success); }
+  .webui-turn-review-line--deletion .webui-turn-review-marker { color: var(--text_status_error); }
+  .webui-turn-review-source { min-width: max-content; padding-right: var(--spacing_16); }
+  .webui-turn-review-hunk { grid-column: 1 / -1; padding: 1px var(--spacing_12); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .webui-turn-review-unavailable, .webui-turn-review-empty { padding: var(--spacing_16); color: var(--text_default_tertiary); font-size: var(--size_14); }
+  .webui-workspace-review-status { flex: 0 0 auto; margin: 0; border-bottom: 1px solid var(--border_light); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-workspace-review-search { display: flex; flex: 0 0 auto; gap: var(--spacing_8); border-bottom: 1px solid var(--border_light); padding: var(--spacing_8) var(--spacing_12); }
+  .webui-file-preview-line-active { display: inline-block; width: 100%; background: var(--bg_interaction_tertiary_selected); }
+
+  /* The panel controls live in the session header row now.
+   *
+   * They used to float over the conversation's top-right corner on their own,
+   * which is another pair of coordinates that had to agree with something
+   * else — the header the conversation has no part in. In the header row they
+   * are simply the last thing in it (ADR 0025). */
+  .webui-workspace-panel-controls { position: static; display: flex; align-items: center; gap: var(--spacing_4); }
+  /* The progress toggle is unavailable while the window is too narrow for the
+   * card to have a gutter of its own. It keeps its place in the row and says
+   * why, so the control does not vanish and leave a gap nobody explains. */
+  .webui-workspace-panel-close { border-radius: var(--radius_8); }
+
+  .webui-file-tree-row { display: flex; width: 100%; min-height: 32px; align-items: center; gap: var(--spacing_8); overflow: hidden; padding: 0 var(--spacing_4); text-overflow: ellipsis; white-space: nowrap; font-size: var(--size_14); }
+  .webui-expandable-motion { display: grid; min-height: 0; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 180ms cubic-bezier(.2, .7, .2, 1), opacity 140ms ease-out; }
+  .webui-expandable-motion > * { min-height: 0; overflow: hidden; }
+  .webui-expandable-motion.is-open { grid-template-rows: 1fr; opacity: 1; }
+  .file-tab { display: flex; align-items: center; gap: var(--spacing_4); overflow: hidden; padding: 0 var(--spacing_8); font-size: var(--size_12); white-space: nowrap; }
+
+  .webui-canvas-content { position: relative; display: flex; min-height: 300px; height: calc(100% - 180px); flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing_8); padding: var(--spacing_16); color: var(--text_default_secondary); text-align: center; }
+  .webui-canvas-content p { margin: 0; color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-canvas-stage { display: flex; min-width: 160px; min-height: 100px; align-items: center; justify-content: center; gap: var(--spacing_8); transform-origin: center; }
+  .webui-canvas-node { border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_grouped_secondary); padding: var(--spacing_8); font-size: var(--size_12); }
+  .webui-canvas-zoom { position: absolute; right: var(--spacing_8); bottom: var(--spacing_8); font-size: var(--size_12); }
+  .webui-terminal-content { position: relative; display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; background: var(--bg_default_primary); padding: var(--spacing_16); }
+  /* The terminal's own status line, placed over the terminal surface. It is
+     the shared feedback family's channel now, so the line names itself
+     rather than being found by the element it happens to be. */
+  .webui-terminal-content > .webui-terminal-status { position: absolute; z-index: 1; top: var(--spacing_16); left: var(--spacing_16); margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); }
+  /* The failure line keeps the terminal's own size; the colour is the shared
+     family's, because a failure is the one thing on this surface that must
+     read as a failure. */
+  .webui-terminal-content > .webui-terminal-status .webui-feedback-title { font-size: var(--size_14); line-height: var(--line_height_20); }
+  .webui-xterm-host { width: 100%; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden; background: var(--bg_default_primary); text-align: left; }
+  .webui-xterm-host .xterm { height: 100%; }
+  .webui-xterm-host .xterm-viewport { background: var(--bg_default_primary) !important; }
+
+  /* Keep the existing surfaces fluid as the browser window narrows.
+   * These rules change only available space and panel placement; typography,
+   * colors, radii and component styling continue to come from the same tokens.
+   *
+   * The panel's own form is chosen by its surface's tier (ADR 0025) rather than
+   * by a viewport width, so there is no viewport breakpoint here any more. What
+   * is left is the panel's interior: the file tree is a column of its own
+   * inside the panel, and it is the panel's width — not the window's — that
+   * decides whether the tree or the document it serves has the room. */
+  @container webui-workspace-panel (max-width: 520px) {
+    .webui-workspace-file-tree-panel {
+      width: 180px;
+      flex-basis: 180px;
+    }
+  }
+
+  @container webui-workspace-panel (max-width: 860px) {
+    .webui-workspace-miniapp-tab { padding: var(--spacing_16); }
+    .webui-workspace-miniapp-tab .webui-plugin-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "copy copy" "status actions"; gap: var(--spacing_8) var(--spacing_12); padding: var(--spacing_16) var(--spacing_8); }
+    .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-row { grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: none; gap: var(--spacing_12); padding: var(--spacing_12) 0; }
+    .webui-workspace-miniapp-tab .webui-plugin-copy { grid-area: copy; }
+    .webui-workspace-miniapp-tab .webui-plugin-row > span { grid-area: status; align-self: center; }
+    .webui-workspace-miniapp-tab .webui-plugin-actions { grid-area: actions; }
+  }
+}

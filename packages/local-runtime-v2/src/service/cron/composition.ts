@@ -19,6 +19,18 @@ import {
 } from './contracts.js';
 import { toCronSchedule } from './orchestration/schedule.js';
 
+/**
+ * ADR 0027 R4: how a claim is attributed and how recovery may take one back.
+ *
+ * Kept as one option group because the three fields only make sense together: recording a claimant
+ * without a liveness answer would let a dead run block its definition forever.
+ */
+export interface CronClaimRecoveryOptions {
+  readonly claimOwnerId?: string;
+  readonly isClaimantAlive?: (claimOwnerId: string) => boolean | undefined;
+  readonly reclaimUnattributedRuns?: boolean;
+}
+
 export interface CronCompositionOptions {
   readonly db: AppDb;
   readonly scheduler: SchedulerClient;
@@ -27,6 +39,7 @@ export interface CronCompositionOptions {
   readonly executionLogger?: CronExecutionLogger;
   readonly metrics?: CronMetrics;
   readonly modelSelection?: CronModelSelectionPort;
+  readonly recovery?: CronClaimRecoveryOptions;
 }
 
 export interface CronComposition {
@@ -91,6 +104,15 @@ export function composeCronService(options: CronCompositionOptions): CronComposi
     nowMs,
     logger: options.executionLogger ?? NOOP_EXECUTION_LOGGER,
     metrics,
+    ...(options.recovery?.claimOwnerId === undefined
+      ? {}
+      : { claimOwnerId: options.recovery.claimOwnerId }),
+    ...(options.recovery?.isClaimantAlive === undefined
+      ? {}
+      : { isClaimantAlive: options.recovery.isClaimantAlive }),
+    ...(options.recovery?.reclaimUnattributedRuns === undefined
+      ? {}
+      : { reclaimUnattributedRuns: options.recovery.reclaimUnattributedRuns }),
   });
 
   options.scheduler.registerHandler(CRON_SCHEDULER_HANDLER_KEY, (schedulerId) => {

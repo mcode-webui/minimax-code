@@ -2,6 +2,168 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { LocalRuntimeApplication } from "./process-local-application-contract.js";
 import { createProcessLocalApplication } from "./process-local-application.js";
+import { composeProcessLocalApplication } from "./process-local-composition.js";
+import { toSessionMessageView } from "./content-application.js";
+
+describe("composeProcessLocalApplication workspace ownership", () => {
+  it("routes environment reads and review through the V2 WorkspaceGitService", async () => {
+    const workspaceGit = {
+      getMetadata: vi.fn(async () => ({ branch: "v2-main" })),
+      getChanges: vi.fn(async () => ({ changedFiles: 2 })),
+      getBranches: vi.fn(async () => ({ current: "v2-main", branches: [] })),
+      getBranchPicker: vi.fn(async () => ({ current: "v2-main", branches: [], worktrees: [] })),
+      getDefaultBranch: vi.fn(async () => ({ branch: "v2-main" })),
+      probe: vi.fn(async () => ({ isGitRepo: true })),
+      listWorktrees: vi.fn(async () => ({ worktrees: [] })),
+      checkout: vi.fn(async () => ({ success: true })),
+      getReviewSummary: vi.fn(),
+      listReviewFileDiffs: vi.fn(),
+      getReviewFileContent: vi.fn(),
+      searchReviewDiffs: vi.fn(),
+    };
+    const legacyWorkspaceGit = {
+      getMetadata: vi.fn(async () => ({ branch: "legacy-main" })),
+      getChanges: vi.fn(async () => ({ changedFiles: 0 })),
+    };
+    const application = composeProcessLocalApplication({
+      eventBus: { subscribe: vi.fn(() => () => undefined) },
+      usageCommits: undefined,
+      workspaceGit: workspaceGit as never,
+      compatibility: {
+        skills: { listSkills: vi.fn(), listRuntimeSkills: vi.fn() },
+        peripherals: { workspace: { git: legacyWorkspaceGit } },
+      } as never,
+      listRuntimeSkills: vi.fn(),
+      plugins: {} as never,
+      pluginControl: {} as never,
+      miniApp: undefined,
+      planEntryEnabled: () => false,
+      mcp: {} as never,
+      modelProvider: {
+        application: {} as never,
+        providers: {} as never,
+        listProviderPresets: vi.fn(),
+        oauth: {} as never,
+      },
+    });
+
+    expect(application.workspace?.git.getReviewSummary).toBeDefined();
+    await expect(application.workspace?.git.getMetadata("/repo")).resolves.toEqual({ branch: "v2-main" });
+    await expect(application.workspace?.git.getChanges?.("/repo", "full")).resolves.toEqual({ changedFiles: 2 });
+    expect(workspaceGit.getMetadata).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.getChanges).toHaveBeenCalledWith("/repo", "full");
+    await application.workspace?.git.getBranches?.("/repo", true);
+    await application.workspace?.git.getBranchPicker?.("/repo");
+    await application.workspace?.git.getDefaultBranch?.("/repo");
+    await application.workspace?.git.probe?.("/repo");
+    await application.workspace?.git.listWorktrees?.("/repo");
+    await application.workspace?.git.checkout?.("/repo", "feature");
+    expect(workspaceGit.getBranches).toHaveBeenCalledWith("/repo", true);
+    expect(workspaceGit.getBranchPicker).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.getDefaultBranch).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.probe).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.listWorktrees).toHaveBeenCalledWith("/repo");
+    expect(workspaceGit.checkout).toHaveBeenCalledWith("/repo", "feature");
+    expect(legacyWorkspaceGit.getMetadata).not.toHaveBeenCalled();
+    expect(legacyWorkspaceGit.getChanges).not.toHaveBeenCalled();
+    await application.workspace?.git.getReviewSummary?.("/repo", { type: "workspace" });
+    expect(workspaceGit.getReviewSummary).toHaveBeenCalledWith("/repo", { type: "workspace" });
+  });
+});
+
+describe("composeProcessLocalApplication Mini App agent exposure", () => {
+  function compose(miniAppAgent: unknown) {
+    return composeProcessLocalApplication({
+      eventBus: { subscribe: vi.fn(() => () => undefined) },
+      usageCommits: undefined,
+      workspaceGit: {
+        getMetadata: vi.fn(),
+        getChanges: vi.fn(),
+        getReviewSummary: vi.fn(),
+        listReviewFileDiffs: vi.fn(),
+        getReviewFileContent: vi.fn(),
+        searchReviewDiffs: vi.fn(),
+      } as never,
+      compatibility: {
+        skills: { listSkills: vi.fn(), listRuntimeSkills: vi.fn() },
+        peripherals: {},
+      } as never,
+      listRuntimeSkills: vi.fn(),
+      plugins: {} as never,
+      pluginControl: {} as never,
+      miniApp: undefined,
+      miniAppAgent: miniAppAgent as never,
+      planEntryEnabled: () => false,
+      mcp: {} as never,
+      modelProvider: {
+        application: {} as never,
+        providers: {} as never,
+        listProviderPresets: vi.fn(),
+        oauth: {} as never,
+      },
+    });
+  }
+
+  function gatewayDouble() {
+    return {
+      bind: vi.fn(),
+      registerArena: vi.fn(),
+      panelOpened: vi.fn(async () => undefined),
+      panelClosed: vi.fn(async () => undefined),
+      subscribePermissionAsks: vi.fn(),
+      run: vi.fn(async () => ({ sessionId: "s", status: "finished" as const })),
+      models: vi.fn(async () => ({ models: [], default: { providerId: "p", modelId: "m" } })),
+      agents: vi.fn(async () => ({ agents: [] })),
+      session: vi.fn(async () => undefined),
+      sessions: vi.fn(async () => ({ sessions: [] })),
+      create: vi.fn(async () => ({ sessionId: "s" })),
+      reply: vi.fn(async () => undefined),
+      answer: vi.fn(async () => ({ sessionId: "s", status: "finished" as const })),
+      open: vi.fn(async () => ({ sessionId: "s", hostSessionId: "chat" })),
+    };
+  }
+
+  it("publishes the client operations without the gateway or its ports", () => {
+    const application = compose(gatewayDouble());
+
+    expect(Object.keys(application.miniAppAgent ?? {}).sort()).toEqual([
+      "agents",
+      "answer",
+      "create",
+      "models",
+      "open",
+      "panelClosed",
+      "panelOpened",
+      "reply",
+      "run",
+      "session",
+      "sessions",
+    ]);
+    for (const internal of ["bind", "registerArena", "ports", "subscribePermissionAsks"]) {
+      expect(application.miniAppAgent).not.toHaveProperty(internal);
+    }
+    // Nothing else on the facade grew a hole into the gateway.
+    expect(JSON.stringify(application)).not.toContain("registerArena");
+  });
+
+  it("publishes no agent API when the runtime has no gateway", () => {
+    const application = compose(undefined);
+
+    expect(application.miniAppAgent).toBeUndefined();
+  });
+});
+
+describe("SessionContentApplication history message serialization", () => {
+  it("keeps ordered activity parts in the opaque rawJson channel", () => {
+    const parts = [
+      { id: "think-1", type: "thinking", content: "reasoning" },
+      { id: "tool-1", type: "tool_call", tool_call: { name: "bash", status: 1 } },
+      { id: "text-1", type: "text", content: "finished" },
+    ];
+    const view = toSessionMessageView({ msg_id: "history-1", role: "assistant", parts });
+    expect(JSON.parse(view.rawJson ?? "{}").parts).toEqual(parts);
+  });
+});
 
 describe("createProcessLocalApplication account and usage", () => {
   it("uses the recovered model route for account login checks while preserving live token presence", async () => {
@@ -164,6 +326,8 @@ describe("createProcessLocalApplication capabilities", () => {
         provider: { providerId: "custom_provider:openai" },
       })),
       updateUserProvider: vi.fn(),
+      testUserModelCandidate: vi.fn(async () => ({ ok: true, status: { state: "available" } })),
+      revealModelProviderApiKey: vi.fn(() => "sk-revealed"),
       deleteUserProvider: vi.fn(),
       testProvider: vi.fn(async () => ({
         ok: true,
@@ -197,6 +361,7 @@ describe("createProcessLocalApplication capabilities", () => {
         providerId: "openai-codex" as const,
         authUrl: "https://auth.example",
       })),
+      refreshModels: vi.fn(async () => ({ models: [{ modelId: "gpt-5.6" }] })),
     };
 
     const application = createProcessLocalApplication({
@@ -258,6 +423,14 @@ describe("createProcessLocalApplication capabilities", () => {
     expect(listProviderPresets).toHaveBeenCalledOnce();
     expect(oauth.getStatus).toHaveBeenCalledOnce();
     expect(oauth.startLogin).toHaveBeenCalledWith({ method: "device_code" });
+    await expect(application.modelProviders?.refreshModels()).resolves.toEqual({ models: [{ modelId: "gpt-5.6" }] });
+    expect(oauth.refreshModels).toHaveBeenCalledOnce();
+    expect(application.modelProviders?.revealModelProviderApiKey({ providerId: "custom_provider:work" })).toBe("sk-revealed");
+    expect(modelProviders.revealModelProviderApiKey).toHaveBeenCalledWith({ providerId: "custom_provider:work" });
+    await expect(application.modelProviders?.testUserModelCandidate({ candidate: { baseUrl: "https://models.example/v1" }, modelId: "model-1" })).resolves.toMatchObject({ ok: true });
+    expect(modelProviders.testUserModelCandidate).toHaveBeenCalledWith({ baseUrl: "https://models.example/v1" }, "model-1");
+    await application.modelProviders?.testProvider({ providerId: "custom_provider:work", apiKey: "sk-unsaved" });
+    expect(modelProviders.testProvider).toHaveBeenCalledWith("custom_provider:work", { apiKeyOverride: "sk-unsaved" });
     await application.modelProviders?.cancelCodexOAuthLogin("attempt-1");
     expect(oauth.cancelLogin).toHaveBeenCalledWith("attempt-1");
     await expect(

@@ -60,6 +60,16 @@ const BINARY_EXTENSIONS = new Set([
   '.xlsx',
   '.zip',
 ]);
+const IMAGE_MIME_TYPES: Readonly<Record<string, string>> = {
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+  '.gif': 'image/gif',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
 
 interface WorkspaceFileReadOutcome {
   value: WorkspaceFileContent;
@@ -85,6 +95,23 @@ async function readWorkspaceFileOutcome(
     };
   }
   const ext = extname(filePath).toLowerCase();
+  const imageMimeType = IMAGE_MIME_TYPES[ext];
+  if (imageMimeType) {
+    try {
+      const bytes = await readFile(absolute);
+      return {
+        value: {
+          type: 'binary',
+          content: '',
+          mimeType: imageMimeType,
+          previewDataUrl: `data:${imageMimeType};base64,${bytes.toString('base64')}`,
+        },
+        readSucceeded: true,
+      };
+    } catch {
+      return { value: { type: 'binary', content: '', mimeType: imageMimeType, error: 'Unable to read image file' }, readSucceeded: false };
+    }
+  }
   if (BINARY_EXTENSIONS.has(ext) && !TEXT_EXTENSIONS.has(ext)) {
     return { value: { type: 'binary', content: '' }, readSucceeded: true };
   }

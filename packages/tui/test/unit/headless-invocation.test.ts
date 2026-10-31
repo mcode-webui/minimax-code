@@ -535,4 +535,3 @@ describe('System prompt overrides', () => {
     ).rejects.toMatchObject({ kind: 'invocation' });
   });
 });
-

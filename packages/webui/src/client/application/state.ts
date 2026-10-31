@@ -1,0 +1,80 @@
+// The WebUI application state container.
+//
+// This module declares the *shape* of the state the application owns and the
+// initial value. It is deliberately free of React (the layer matrix forbids
+// `application` from importing the presentation host) and of any concrete
+// transport: the store that mutates it and the coordinators that decide *when*
+// live in sibling modules.
+//
+// Write authority lives with the store, not here; this file only says what a
+// session's application state is. The session's live execution facts reuse the
+// existing mechanism/view types (`WebuiStreamState`) and the existing domain
+// activity map (`WebuiSessionActivityMap`) rather than re-declaring them, which
+// is what keeps a single projection of each fact.
+
+import type { WebuiGoal } from "../../shared/contracts/goal.js";
+import type {
+  WebuiPendingPermission,
+  WebuiQuestionnaireRequest,
+} from "../../shared/contracts/interactions.js";
+import type { WebuiSessionActivityMap } from "../features/sessions/projection/session-activity.js";
+import { initialWebuiSessionActivity } from "../features/sessions/projection/session-activity.js";
+import type { WebuiSessionCatalogState } from "../features/sessions/application/session-catalog.public.js";
+import { initialWebuiSessionCatalogState } from "../features/sessions/application/session-catalog.public.js";
+import { initialWebuiStreamState } from "../features/turn/projection/stream-state.js";
+import type { WebuiStreamState } from "../features/turn/projection/stream-state.js";
+import type { WebuiClientMessagePage } from "../features/transcript/contracts/message-view.js";
+
+export interface WebuiApplicationTranscriptState {
+  readonly generation: number;
+  readonly page: WebuiClientMessagePage;
+  readonly loading: boolean;
+  readonly error?: string;
+}
+
+/**
+ * The application's per-session record: the slices the effect reducer already
+ * owns (`WebuiEffectState`) plus the `sending` flag the composer renders from.
+ * The effect coordinator writes all of these through the store's writers, so
+ * one session has exactly one writer of record.
+ */
+export interface WebuiApplicationSessionState {
+  readonly stream: WebuiStreamState;
+  readonly sending: boolean;
+  readonly permissions: readonly WebuiPendingPermission[];
+  readonly questionnaire: WebuiQuestionnaireRequest | undefined;
+  readonly goal: WebuiGoal | undefined;
+  readonly transcript: WebuiApplicationTranscriptState;
+}
+
+export const initialWebuiApplicationSessionState: WebuiApplicationSessionState =
+  {
+    stream: initialWebuiStreamState,
+    sending: false,
+    permissions: [],
+    questionnaire: undefined,
+    goal: undefined,
+    transcript: { generation: 0, page: {}, loading: true },
+  };
+
+/**
+ * The whole application snapshot. `sessions` is the single map of per-session
+ * runtime state — the store never keeps a second copy — and `activity` is the
+ * retained domain reduction over the process-event stream.
+ */
+export interface WebuiApplicationState {
+  readonly sessions: ReadonlyMap<string, WebuiApplicationSessionState>;
+  readonly activity: WebuiSessionActivityMap;
+  /** The one session entity catalog. */
+  readonly catalog: WebuiSessionCatalogState;
+  readonly selectedSessionId?: string;
+}
+
+export const initialWebuiApplicationState: WebuiApplicationState = {
+  sessions: new Map(),
+  activity: initialWebuiSessionActivity,
+  catalog: initialWebuiSessionCatalogState,
+};
+
+/** Key a turn started on the home screen uses until its session exists. */
+export const WEBUI_HOME_SESSION_KEY = "__webui-home__";

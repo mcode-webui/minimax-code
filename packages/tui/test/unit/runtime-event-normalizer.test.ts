@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { normalizeTuiRuntimeEvent } from "../../src/runtime/event-normalizer.js";
+import {
+  normalizeTuiRuntimeEvent,
+  type RawTuiRuntimeEvent,
+} from "../../src/runtime/event-normalizer.js";
 
 describe("normalizeTuiRuntimeEvent", () => {
   it("normalizes actionable LLM retry metadata without exposing provider messages", () => {
@@ -784,6 +788,167 @@ describe("normalizeTuiRuntimeEvent", () => {
       oldSessionId: "session-old",
       newSessionId: "session-new",
       reason: "context-limit",
+    });
+  });
+});
+
+// ADR 0011 wires the TUI normalizer against the shared event corpus owned by
+// @mavis/local-runtime-v2. The corpus documents the expected projection
+// outcome for each harness wire shape, so a harness protocol change lights
+// up regressions in whichever client lags. The TUI and WebUI clients each
+// carry their own assertions; the per-fixture outcomes documented in the
+// fixture JSON files describe the logical projection (e.g. the resolved
+// permission id) rather than the exact client-side shape, and each client's
+// reducer maps that logical content onto its own output structure.
+//
+// Usage is intentionally not represented by a fixture here — the shared
+// global-event registry has no usage-bearing wire event (there is no
+// `turn.finished`), and both clients derive usage from completed message
+// arrays. Coverage of usage semantics therefore lives in
+// `packages/tui/src/application/response-usage.ts`, not here.
+describe("normalizeTuiRuntimeEvent (shared event corpus, ADR 0011)", () => {
+  interface CorpusFixture {
+    readonly frame: { readonly eventJson: string };
+    readonly expected: Record<string, unknown>;
+  }
+
+  function loadCorpusFixture(name: string): CorpusFixture {
+    return JSON.parse(
+      readFileSync(
+        new URL(
+          `../../../local-runtime-v2/test/fixtures/event-corpus/${name}.json`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as CorpusFixture;
+  }
+
+  function decodeCorpusFrame(fixture: CorpusFixture): RawTuiRuntimeEvent {
+    return JSON.parse(fixture.frame.eventJson) as RawTuiRuntimeEvent;
+  }
+
+  it("permission.ask: derives the same request id as the corpus documents", () => {
+    const fixture = loadCorpusFixture("permission.ask");
+    const event = decodeCorpusFrame(fixture);
+    const result = normalizeTuiRuntimeEvent(event);
+
+    // The corpus's expected.permissionRequestId is the logical id of the
+    // pending permission; the TUI normalizer surfaces it under request.requestId.
+    expect(result).toMatchObject({
+      type: "permission.ask",
+      timestampMs: 1,
+      source: "harness",
+      sessionId: fixture.expected.sessionId,
+      request: { requestId: fixture.expected.permissionRequestId },
+    });
+  });
+
+  it("permission.resolved: derives the same resolved request id as the corpus documents", () => {
+    const fixture = loadCorpusFixture("permission.resolved");
+    const event = decodeCorpusFrame(fixture);
+    const result = normalizeTuiRuntimeEvent(event);
+
+    // The corpus's expected.permissionRequestId === null describes the post-resolution
+    // state (the permission is cleared in the WebUI reducer). The TUI normalizer
+    // surfaces the per-event resolution: requestId carries the id of the permission
+    // being resolved, not the post-resolution state. The logical content (which
+    // permission id is being cleared) is therefore preserved as result.requestId.
+    expect(result).toMatchObject({
+      type: "permission.resolved",
+      timestampMs: 2,
+      source: "harness",
+      sessionId: fixture.expected.sessionId,
+      requestId: "p1",
+      decision: "deny",
+    });
+  });
+
+  it("questionnaire.ask: normalizes the typed request with the same id as the corpus documents", () => {
+    const fixture = loadCorpusFixture("questionnaire.ask");
+    const event = decodeCorpusFrame(fixture);
+    const result = normalizeTuiRuntimeEvent(event);
+
+    // The corpus's expected.questionnaireRequestId is the logical id of the
+    // pending questionnaire; the TUI normalizer surfaces it under request.id
+    // after parsing payload.request into a typed TuiQuestionnaireRequest.
+    expect(result).toMatchObject({
+      type: "questionnaire.ask",
+      timestampMs: 4,
+      source: "harness",
+      sessionId: fixture.expected.sessionId,
+      request: {
+        schemaVersion: 2,
+        id: fixture.expected.questionnaireRequestId,
+        mode: "questionnaire",
+        presentation: {
+          replaceComposer: true,
+          showProgress: true,
+          allowBackNavigation: false,
+        },
+        steps: [
+          expect.objectContaining({
+            id: "step-1",
+            question: "Choose an option",
+            selectionMode: "single",
+            options: [
+              expect.objectContaining({ id: "option-1", label: "Option 1" }),
+            ],
+            allowOther: true,
+            otherPlaceholder: "Others...",
+            required: true,
+          }),
+        ],
+      },
+    });
+  });
+
+  it("questionnaire.dismissed: derives the same dismissed request id as the corpus documents", () => {
+    const fixture = loadCorpusFixture("questionnaire.dismissed");
+    const event = decodeCorpusFrame(fixture);
+    const result = normalizeTuiRuntimeEvent(event);
+
+    // The fixture records the dismiss event with type "questionnaire.dismiss"
+    // (the value the normalizer handles); the file name keeps the human-readable
+    // "dismissed" label. The corpus's expected.questionnaireRequestId === null
+    // describes the post-dismiss state in the WebUI reducer; the TUI normalizer
+    // surfaces the per-event requestId of the dismissed questionnaire.
+    expect(result).toMatchObject({
+      type: "questionnaire.dismiss",
+      timestampMs: 5,
+      source: "harness",
+      sessionId: fixture.expected.sessionId,
+      requestId: "q1",
+    });
+  });
+
+  it("compaction.completed: normalizes the typed compaction event with the same id as the corpus documents", () => {
+    const fixture = loadCorpusFixture("compaction.completed");
+    const event = decodeCorpusFrame(fixture);
+    const result = normalizeTuiRuntimeEvent(event);
+
+    // The corpus's expected.compaction.state === 'completed' / lastAt === 3
+    // describes the WebUI reducer's projection. The TUI normalizer emits a
+    // per-event session.compaction.completed carrying the same logical content
+    // (type indicates the completed state; timestampMs is the event time).
+    expect(result).toMatchObject({
+      type: "session.compaction.completed",
+      timestampMs: 3,
+      source: "harness",
+      sessionId: fixture.expected.sessionId,
+      compactionId: "compact-1",
+      messagesBefore: 10,
+      messagesAfter: 3,
+      tokensBefore: 1000,
+      tokensAfter: 300,
+      tokenUsage: {
+        inputTokens: 1000,
+        outputTokens: 300,
+        cacheReadTokens: 20,
+        cacheWriteTokens: 5,
+        totalTokens: 1325,
+        incomplete: true,
+      },
     });
   });
 });

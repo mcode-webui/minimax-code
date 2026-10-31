@@ -19,6 +19,7 @@ import { TUI_DISABLED_BUILTIN_SKILL_NAMES } from "./lib/builtin-skills.mjs";
 import { copyMcodeToolsArtifact } from './lib/mcode-tools-artifact.mjs';
 import { readExtraction } from "./lib/release-metadata.mjs";
 import { cliBuildVersion, cliExternalModules } from './lib/cli-release.mjs';
+import { createWorkspaceSourcesPlugin } from "./lib/workspace-sources-plugin.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const metadata = readExtraction(root);
@@ -37,43 +38,7 @@ mkdirSync(outdir, { recursive: true });
 
 // Bundle checked-in workspace sources and resolve npm dependencies from each importer.
 // Native and optional platform integrations keep their installed module locations.
-const sourcePlugin = {
-  name: "standalone-workspace-sources",
-  setup(bundler) {
-    bundler.onResolve({ filter: /^[^./]/ }, ({ path: specifier }) => {
-      const parts = specifier.split("/");
-      const name = specifier.startsWith("@")
-        ? parts.slice(0, 2).join("/")
-        : parts[0];
-      const pkg = packages.get(name);
-      if (!pkg) return undefined;
-      const subpath =
-        specifier === name ? "." : `.${specifier.slice(name.length)}`;
-      const exports = pkg.manifest.exports;
-      const exported =
-        exports?.[subpath] ?? (subpath === "." ? exports : undefined);
-      const target =
-        (typeof exported === "string"
-          ? exported
-          : (exported?.types ?? exported?.import ?? exported?.default)) ??
-        (subpath === "." ? pkg.manifest.types : undefined);
-      if (typeof target !== "string" || !target.startsWith("./"))
-        throw new Error(`Unmapped workspace export: ${specifier}`);
-      const source = target
-        .replace(/^\.\/dist\//, "./src/")
-        .replace(/\.d\.ts$/, ".ts")
-        .replace(/\.js$/, ".ts");
-      const directory = path.join(root, pkg.directory);
-      const resolved = path.resolve(directory, source);
-      if (
-        path.relative(directory, resolved).startsWith("..") ||
-        !existsSync(resolved)
-      )
-        throw new Error(`Missing workspace source: ${specifier}`);
-      return { path: resolved };
-    });
-  },
-};
+const sourcePlugin = createWorkspaceSourcesPlugin(packages, root);
 const version = cliBuildVersion(root);
 const result = await build({
   absWorkingDir: root,

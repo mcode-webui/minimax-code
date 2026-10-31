@@ -10,6 +10,9 @@ import {
   type SessionLifecycleApplicationOptions,
 } from "./session/lifecycle-application.js";
 import { SessionQueryApplication } from "./session/query-application.js";
+import { PinApplication } from "./session/pin-application.js";
+import type { PinService } from "../service/pin/index.js";
+import { SessionTransferApplication } from "./session/transfer-application.js";
 import {
   SessionRootApplication,
   SessionRootEventProjector,
@@ -26,16 +29,19 @@ import {
 export interface RuntimeApplications {
   readonly session: {
     readonly query: SessionQueryApplication;
+    readonly pin: PinApplication;
     readonly content: SessionContentApplication;
     readonly lifecycle: SessionLifecycleApplication;
     readonly root: SessionRootApplication;
     readonly diff: SessionDiffApplication;
     readonly conversationMutation: SessionConversationMutationApplication;
+    readonly transfer: SessionTransferApplication;
   };
   readonly queue: QueueApplication;
 }
 
 export interface InitializeApplicationsOptions {
+  readonly pinService: Pick<PinService, "getOrder" | "putOrder" | "pinSession">;
   readonly sessionSystem: InitializedSessionApplicationSystem;
   readonly compatibility: V1SessionCompatibility;
   readonly attachmentRegistration: LocalAttachmentRegistrationPort;
@@ -122,7 +128,9 @@ export const initializeApplications: InitializeApplications = (options) => {
   });
   const query = new SessionQueryApplication({
     service: options.sessionSystem.session.query,
+    projects: options.sessionSystem.project,
   });
+  const pin = new PinApplication({ service: options.pinService, publishGlobalEvent: options.publishGlobalEvent });
   const content = new SessionContentApplication({
     messages: options.sessionSystem.messages.query,
     sources: options.sessionSystem.messages.sources,
@@ -149,8 +157,14 @@ export const initializeApplications: InitializeApplications = (options) => {
     options.conversationMutationPort,
     options.conversationMutationWorkflow,
   );
+  const transfer = new SessionTransferApplication({
+    messages: options.sessionSystem.repositories.messages,
+    historyMutation: options.sessionSystem.session.historyMutation,
+    sessions: options.sessionSystem.repositories.sessions,
+    now: options.nowMs ?? Date.now,
+  });
   return {
-    session: { query, content, lifecycle, root, diff, conversationMutation },
+    session: { query, pin, content, lifecycle, root, diff, conversationMutation, transfer },
     queue,
   };
 };

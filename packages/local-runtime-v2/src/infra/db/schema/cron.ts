@@ -62,6 +62,15 @@ export const cronRuns = sqliteTable(
     status: text('status', { enum: ['pending', 'delivered', 'failed'] }).notNull(),
     createdAtMs: integer('created_at_ms').notNull(),
     executionClaimedAtMs: integer('execution_claimed_at_ms'),
+    /**
+     * ADR 0027 R4: the runtime-owner identity that claimed this run, or null.
+     *
+     * Holds the identity's owner id (`kind:pid:instance.token`) rather than a bare instance id,
+     * because recovery proves the claimant dead through `RuntimeOwnerIdentity.isOwnerAlive`, and
+     * that answer needs the pid as well as the lease. Null means no host recorded a claim owner —
+     * an unmodified Desktop writes nothing here.
+     */
+    ownerInstanceId: text('owner_instance_id'),
     deliveredAtMs: integer('delivered_at_ms'),
     failedAtMs: integer('failed_at_ms'),
     errorCode: text('error_code'),

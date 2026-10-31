@@ -1,0 +1,103 @@
+{
+  "$comment": "Every client source that produces a floating layer, with the decision the coordinator migration took for it. `pnpm check:webui-overlays` fails on a surface that is not listed, on a `managed` entry whose source never registers, and on an exception without its interaction boundary. `--strict` fails while any entry is pending.",
+  "dispositions": {
+    "managed": "registers with the coordinator and attaches no listener",
+    "borrows-role": "renders role=\"dialog\" for labelling, is not a layer",
+    "exception": "cannot join; its interaction boundary is stated",
+    "pending": "not migrated yet; the reason is recorded"
+  },
+  "files": {
+    "features/account/ui/AccountLoginDialog.tsx": {
+      "disposition": "managed",
+      "note": "the sign-in panel uses the shared WebuiDialog modal frame and coordinator registration"
+    },
+    "features/account/ui/UserMenu.tsx": {
+      "disposition": "managed",
+      "note": "the account menu layers on the shared dropdown and closes its fly-outs on every close; the two fly-outs borrow role=dialog for labelling only and live inside that layer, and the portalled settings modal registers its own layer"
+    },
+    "features/account/ui/UserMenuUsage.tsx": {
+      "disposition": "borrows-role",
+      "note": "renders role=dialog for labelling only: it is a hover/focus fly-out inside the account menu's layer and is dismissed by that menu, not by itself"
+    },
+    "features/composer/ui/ComposerEditorStaging.tsx": {
+      "disposition": "managed",
+      "note": "the mention and command menus; the composer region carries both layer ids"
+    },
+    "features/composer/ui/ComposerPermissionControl.tsx": {
+      "disposition": "managed",
+      "note": "the permission menu"
+    },
+    "features/composer/ui/ComposerProjectRow.tsx": {
+      "disposition": "managed",
+      "note": "the project menu layers on the shared dropdown, and the directory browser it opens is a modal layer of its own, so the coordinator dismisses it and it holds no listener"
+    },
+    "features/composer/ui/ContextUsageIndicator.tsx": {
+      "disposition": "managed",
+      "note": "the context usage popover"
+    },
+    "features/composer/ui/WebuiComposer.tsx": {
+      "disposition": "managed",
+      "note": "the composer's tool menu"
+    },
+    "features/goal/ui/GoalBanner.public.tsx": {
+      "disposition": "managed",
+      "note": "the delete-goal confirmation uses WebuiDialog with shared scrim, fixed actions and a deferred dismissal policy while deletion is in flight"
+    },
+    "features/models/ui/ModelPicker.public.tsx": {
+      "disposition": "managed",
+      "note": "one layer with a ladder of its own: request-close walks list to panel, a press outside closes"
+    },
+    "features/models/ui/ProviderFormPanel.public.tsx": {
+      "disposition": "managed",
+      "note": "provider editor and delete confirmation use WebuiDialog; the preset and format pickers remain nested managed popovers"
+    },
+    "features/plugins/ui/PluginCatalogue.tsx": {
+      "disposition": "managed",
+      "note": "the catalogue's filter menu"
+    },
+    "features/plugins/ui/PluginImportDialog.tsx": {
+      "disposition": "managed",
+      "note": "a modal layer; a dismissal closes it"
+    },
+    "features/plugins/ui/PluginItemDialog.tsx": {
+      "disposition": "managed",
+      "note": "the plugin editor and the MCP dialog, one layer each mount"
+    },
+    "features/settings/ui/MemoryManagerDialog.tsx": {
+      "disposition": "managed",
+      "note": "the parent and nested confirmation use the shared WebuiDialog shell; the menu names the parent directly, so dialog, menu and confirmation stay one nested path"
+    },
+    "features/settings/ui/SettingsModal.public.tsx": {
+      "disposition": "managed",
+      "note": "full-page settings host keeps its page-like layout as a documented visual exception and provides a managed parent boundary to nested dialogs"
+    },
+    "features/settings/ui/settings-atoms.tsx": {
+      "disposition": "managed",
+      "note": "the settings dialog adapter renders the shared WebuiDialog shell; its close policy is passed to the shared coordinator registration"
+    },
+    "features/transcript/ui/MessageActions.tsx": {
+      "disposition": "managed",
+      "note": "rewind preview uses WebuiDialog and its fixed shared actions slot"
+    },
+    "features/transcript/ui/MessageItem.tsx": {
+      "disposition": "managed",
+      "note": "fork dialog uses WebuiDialog and mounts only while active"
+    },
+    "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": {
+      "disposition": "managed",
+      "note": "the tab strip's overflow menu"
+    },
+    "features/workspace/ui/WorkspaceProgressPanel.tsx": {
+      "disposition": "managed",
+      "note": "commit dialog uses WebuiDialog with shared actions slot"
+    },
+    "ui/ContextMenu.tsx": {
+      "disposition": "managed",
+      "note": "opened at a point; a press anywhere else ends it"
+    },
+    "ui/dialog.tsx": {
+      "disposition": "managed",
+      "note": "the shared public modal shell portals into the document body, registers with the coordinator, and delegates inertness/focus containment and restoration to the browser platform"
+    }
+  }
+}

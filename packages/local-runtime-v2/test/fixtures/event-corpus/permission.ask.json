@@ -1,0 +1,9 @@
+{
+  "frame": {
+    "eventJson": "{\"type\":\"permission.ask\",\"timestamp\":1,\"source\":\"harness\",\"payload\":{\"sessionId\":\"s1\",\"requestId\":\"p1\",\"agentName\":\"main\",\"toolName\":\"shell\",\"ruleContents\":[],\"reason\":\"needs approval\",\"allowAlwaysSupported\":true,\"createdAt\":1}}"
+  },
+  "expected": {
+    "sessionId": "s1",
+    "permissionRequestId": "p1"
+  }
+}

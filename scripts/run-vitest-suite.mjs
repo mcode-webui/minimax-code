@@ -36,8 +36,14 @@ const result = spawnSync(
     "vitest.oss.config.mjs",
     // These suites create many SQLite databases and watched directories. On
     // Windows, concurrent files can exhaust the 5s test budget through I/O
-    // contention. Serialize files without relaxing individual test deadlines.
-    ...(process.platform === "win32" ? ["--maxWorkers", "1"] : []),
+    // contention. The WebUI group drives real browsers as well: two of its
+    // files launch a browser of their own, and two browsers on one runner
+    // take the machine from each other. The case that drives the browser
+    // panel then runs past its own deadline — a failure that says nothing
+    // about the code under test. Serialize the files rather than relax any
+    // deadline: every file gets the machine to itself, and the deadlines stay
+    // the ones the cases were written against.
+    ...(process.platform === "win32" || name === "webui" ? ["--maxWorkers", "1"] : []),
     ...files,
   ],
   { stdio: "inherit", cwd: repositoryRoot, env: environment },

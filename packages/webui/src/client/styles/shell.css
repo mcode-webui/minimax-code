@@ -1,0 +1,611 @@
+/*
+ * Shell-level component styles.
+ *
+ * Tailwind's @layer components slot sits between preflight (base) and the
+ * generated utilities (utilities). Rules here carry the parts of a component a
+ * utility composition cannot state — a state hook, a compound shape, a
+ * descendant — while geometry already expressed as utilities stays a utility,
+ * so a class composition reads the same here.
+ *
+ * Every token referenced below must resolve to a definition in tokens.css — the
+ * compiled-stylesheet closure check in webui-design-tokens.test.ts enforces that
+ * contract. Values that are plain geometry the token scale does not carry (the
+ * `rounded-[10px]` pills, the 3px grip) are written literally.
+ *
+ * Rail, composer card and type hierarchy come from
+ * `minimax-code-webui-work/webui-visual-align-spec.md`.
+ */
+
+@layer components {
+  .webui-rail-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .webui-rail-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Bottom fade for the rail's scroll region. */
+  .webui-scroll-fade {
+    background-image: linear-gradient(
+      to top,
+      var(--bg_default_scrim),
+      transparent
+    );
+  }
+
+  /* The hero avatar's soft halo. It is written as a literal
+   * `rgba(10,10,10,0.08)`; `--shadow_default` (#0a0a0a14) carries the same
+   * colour and keeps the value closed against tokens.css. Shadows belong in this
+   * layer rather than in an arbitrary-value utility: the utility form compiles
+   * the token's underscore into a space (an invalid custom-property reference)
+   * and emits a shadow-colour reference that this stylesheet never defines. */
+  .webui-hero-avatar {
+    box-shadow: 0 0 20px 0 var(--shadow_default);
+  }
+
+  /* Resizer affordance: a 48px pill that appears on rail hover. */
+  .webui-rail-grip {
+    width: 3px;
+    height: var(--spacing_48);
+    border-radius: var(--radius_full);
+    background-color: var(--text_default_tertiary);
+  }
+
+  /* The context menu is a dropdown now: the shared layer places it at the
+   * pointer, gives it the surface and the motion, and dismisses it. What is
+   * left here is the menu's own box — its width, its rows and its rhythm. */
+  .webui-context-menu {
+    display: flex;
+    width: 208px;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px;
+  }
+  .webui-context-menu-item-wrap { position: relative; }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the context menu's own box: the chevron it puts in
+   * the trailing slot, and the width of the popup. */
+  .webui-context-menu-chevron { flex: 0 0 16px; }
+  /* The submenu is a fly-out that opens on hover rather than on a click, so it
+   * is not a dropdown — but it is the same surface, and it says so by carrying
+   * the shared surface class. What is left here is its own box. */
+  .webui-context-menu-submenu {
+    position: absolute;
+    top: -7px;
+    left: calc(100% + 5px);
+    z-index: 121;
+    display: flex;
+    width: 190px;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px;
+  }
+  /* The model menu is a dropdown now: the shared layer places it against the
+   * trigger, gives it the surface and the motion and dismisses it. What is
+   * left here is only what the list itself needs — and NOT the positioning:
+   * the popup is placed in viewport coordinates, so a `right`/`bottom` offset
+   * here would fight the placement instead of describing the panel. */
+  .webui-model-menu {
+    display: flex;
+    min-width: 220px;
+    flex-direction: column;
+  }
+  .webui-workspace-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + var(--spacing_8));
+    z-index: 70;
+    display: flex;
+    min-width: 220px;
+    max-height: 320px;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--spacing_4);
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_12);
+    background: var(--bg_default_primary);
+    box-shadow: 0 8px 24px var(--shadow_default);
+    transform-origin: bottom left;
+    animation: webui-menu-enter 150ms cubic-bezier(.2, .7, .2, 1) both;
+  }
+  .webui-model-menu--two-column {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.4fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: var(--spacing_12);
+    min-width: 460px;
+    max-width: 560px;
+    height: min(320px, calc(100dvh - 112px));
+    max-height: min(320px, calc(100dvh - 112px));
+    padding: var(--spacing_8);
+    overflow: visible;
+  }
+  .webui-model-menu-detail {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    flex-direction: column;
+    gap: 0;
+    padding: var(--spacing_4);
+    overflow-y: auto;
+  }
+  .webui-model-context-option.is-active {
+    background: transparent;
+  }
+  .webui-model-option,
+  .webui-workspace-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: var(--spacing_8);
+    border-radius: var(--radius_8);
+    padding: var(--spacing_8) var(--spacing_12);
+    color: var(--text_default_primary);
+    text-align: left;
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+    /* Hover ownership changes on every pointer move. A fade leaves the
+     * previous row painted while the next row is entering, which reads as
+     * two adjacent hover states. */
+    transition: none;
+  }
+  .webui-workspace-menu--desktop .webui-workspace-option--desktop {
+    border-radius: var(--radius_8);
+    background: transparent;
+    padding: 8px 10px;
+    line-height: var(--line_height_20);
+  }
+  .webui-model-option:hover,
+  .webui-workspace-option:hover,
+  .webui-model-option[aria-selected="true"],
+  .webui-workspace-option[aria-selected="true"] {
+    background-color: var(--bg_interaction_tertiary_hover);
+  }
+  @keyframes message-appear {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* The session title, in the header row.
+   *
+   * The title used to sit in its own row that carried a left padding chosen
+   * to clear the floating toolbar: two literals describing one geometry, and
+   * they disagreed — in the rail's drawer form the toolbar still sat where the
+   * rail's column used to be, on top of the title. The title now sits in a
+   * row with the buttons themselves, so it starts after them by construction
+   * and gives way by truncating (ADR 0025). */
+  .webui-session-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text_default_primary);
+    font-size: var(--size_14);
+    font-weight: var(--weight_medium);
+    line-height: var(--line_height_20);
+  }
+  .webui-session-scroll-viewport {
+    min-height: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    align-items: stretch;
+  }
+  .webui-user-menu-quota-row--first {
+    padding-top: 8px;
+  }
+  .webui-user-menu-quota-row--last,
+  .webui-user-menu-quota-row--solo {
+    padding-bottom: 8px;
+  }
+  @keyframes webui-user-menu-usage-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+  .signin-card-collapsing {
+    transform-origin: bottom left;
+    pointer-events: none;
+    animation: signin-card-collapse 0.24s ease-in forwards;
+  }
+  @keyframes signin-day-claimed {
+    0% {
+      transform: scale(0.8);
+    }
+    60% {
+      transform: scale(1.15);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  @keyframes signin-card-collapse {
+    0% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+    }
+  }
+  .webui-signin-credits-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 120;
+    width: max-content;
+    /* 250, not the 340 this used to carry. The value follows antd's
+     * `Tooltip`, whose documented `maxWidth` default is 250, and it is never
+     * overridden — only `.ant-tooltip-inner` typography is touched. The 6px
+     * radius and the 8/12 padding on
+     * the next two rules are antd's `borderRadius` / `paddingSM`+`paddingXS`
+     * defaults for the same reason, so 340 was the one number on this bubble
+     * that came from nowhere. Unlike its two siblings below, this one wraps
+     * (`white-space: normal`), so the width is live and the old value was
+     * showing. */
+    max-width: 250px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    white-space: normal;
+    text-align: left;
+    pointer-events: auto;
+  }
+  .webui-signin-credits-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.85);
+  }
+  @keyframes webui-signin-claim-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .webui-plugin-categories {
+    max-width: 960px;
+    margin: 0 auto 24px;
+    background: transparent;
+  }
+  .webui-plugin-market-skill-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .webui-plugin-market-skill-grid article {
+    min-width: 0;
+    position: relative;
+    min-height: 100px;
+    border: 1px solid var(--border_default);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .webui-plugin-market-skill-grid article > div {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--bg_grouped_secondary);
+    color: var(--text_default_secondary);
+  }
+  .webui-plugin-market-skill-grid h3 {
+    overflow: hidden;
+    margin: 10px 0 3px;
+    font-size: 14px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .webui-plugin-market-skill-grid p {
+    overflow: hidden;
+    margin: 0;
+    color: var(--text_default_tertiary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .webui-plugin-market-skill-grid button {
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    border: 1px solid var(--border_default);
+    border-radius: 8px;
+    background: var(--bg_default_primary);
+    padding: 5px 11px;
+    color: var(--text_default_primary);
+  }
+  .webui-plugin-toolbar {
+    max-width: 960px;
+    justify-content: flex-end;
+    margin: 0 auto 12px;
+  }
+  .webui-agent-prompt-field {
+    grid-column: 1 / -1;
+  }
+  .webui-agent-prompt {
+    height: min(300px, 38vh);
+    min-height: 180px;
+    max-height: 38vh;
+    overflow-y: auto;
+    resize: vertical;
+    white-space: pre-wrap;
+    line-height: 1.55;
+    scrollbar-width: none;
+  }
+  .webui-agent-prompt::-webkit-scrollbar {
+    display: none;
+  }
+  .webui-agent-prompt::placeholder {
+    color: var(--text_default_tertiary);
+  }
+  .webui-plugin-json {
+    box-sizing: border-box;
+    width: calc(100% - 60px);
+    min-height: 340px;
+    margin: 18px 30px;
+    border: 1px solid var(--border_default);
+    border-radius: 9px;
+    background: var(--bg_default_secondary);
+    padding: 12px;
+    color: var(--text_default_primary);
+    font:
+      13px/1.55 ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+    resize: vertical;
+  }
+  .webui-mcp-json-panel {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 14px;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    padding: 18px 30px 0;
+  }
+  .webui-mcp-json-panel > p {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--text_default_secondary);
+    font-size: 13px;
+  }
+  .webui-mcp-json-panel code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .webui-mcp-json-editor {
+    width: 100%;
+    min-height: 300px;
+    flex: 1 1 auto;
+    margin: 0;
+    border-radius: 12px;
+    background: var(--bg_default_primary);
+    padding: 18px 20px;
+    line-height: 1.6;
+    resize: vertical;
+  }
+  .webui-mcp-enabled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 66px;
+    box-sizing: border-box;
+    border: 1px solid var(--border_default);
+    border-radius: 14px;
+    padding: 10px 14px;
+  }
+  .webui-mcp-enabled > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .webui-mcp-enabled strong,
+  .webui-mcp-advanced strong {
+    color: var(--text_default_primary);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .webui-mcp-enabled > div > span {
+    color: var(--text_default_tertiary);
+    font-size: 13px;
+  }
+  .webui-mcp-advanced > button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    border: 0;
+    background: transparent;
+    padding: 2px 0;
+    cursor: pointer;
+  }
+  .webui-mcp-advanced > button > span {
+    color: var(--text_default_secondary);
+    font-size: 20px;
+    line-height: 1;
+  }
+  .webui-mcp-advanced-fields {
+    padding: 16px 0 0;
+  }
+  .webui-mcp-advanced-fields textarea {
+    min-height: 100px;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* The settings page skeleton: the one frame every settings page renders in.
+   *
+   * This block is shared rather than business-owned because the settings panel
+   * shows pages from more than one business — the settings pages and the code
+   * review page — and the point of the skeleton is that they cannot drift
+   * apart again. The general page's look is the reference: a centred 704px
+   * column, a 14px medium section title, and a grouped-surface card with a
+   * 16px radius.
+   *
+   * The content inside a card is the page's own business. What lives here is
+   * only the frame: the column, the title row, the card, the row and the
+   * hairline between two rows. */
+  .webui-settings-page { display: flex; width: 100%; min-height: 0; max-width: 704px; flex: 1; margin: 0 auto; flex-direction: column; gap: var(--spacing_16); padding: 0 0 var(--spacing_32); }
+  .webui-settings-section { display: flex; width: 100%; flex-direction: column; gap: var(--spacing_12); }
+  .webui-settings-section-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
+  .webui-settings-section-title { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); }
+  .webui-settings-section-title h3 { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
+  .webui-settings-section-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
+  /* The card is the grouped surface the rows sit on. A section whose content
+   * brings its own surface — a row of mode cards, a form — opts out of it
+   * with `is-bare` rather than nesting a second surface inside a third. */
+  .webui-settings-card { display: flex; width: 100%; flex-direction: column; border-radius: var(--radius_16); background: var(--bg_grouped_tertiary); padding: var(--spacing_4); }
+  .webui-settings-card.is-bare { background: transparent; padding: 0; }
+  .webui-settings-row { display: flex; width: 100%; min-height: 56px; flex-direction: column; align-items: stretch; justify-content: center; gap: var(--spacing_4); overflow: hidden; border-radius: var(--radius_12); padding: var(--spacing_8) var(--spacing_8) var(--spacing_8) var(--spacing_12); }
+  .webui-settings-row-main { display: flex; width: 100%; min-width: 0; align-items: center; justify-content: space-between; gap: var(--spacing_24); }
+  .webui-settings-row.is-disabled { opacity: 0.5; }
+  .webui-settings-row-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
+  .webui-settings-row-copy strong { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); overflow: hidden; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_regular); line-height: var(--line_height_20); text-overflow: ellipsis; white-space: nowrap; }
+  .webui-settings-row-copy span { color: var(--text_default_secondary); font-size: var(--size_12); font-weight: var(--weight_regular); line-height: var(--line_height_16); }
+  .webui-settings-row-body { display: flex; width: 100%; min-width: 0; flex-direction: column; }
+  .webui-settings-row-control { display: flex; flex: none; align-items: center; }
+  .webui-settings-divider { display: flex; width: 100%; align-items: center; justify-content: center; padding: 6px var(--spacing_12); }
+  .webui-settings-divider span { display: block; width: 100%; height: 1px; background: var(--border_light); }
+  /* The section title's help affordance. A real bubble rather than a native
+   * `title`: `title` cannot match the dark bubble with an arrow this hangs
+   * above the glyph — the browser draws its own surface, delays it about a
+   * second, and paints no arrow. The shape itself is not new —
+   * `.webui-signin-credits-tooltip` and `.webui-context-usage-label` already
+   * carry it, and this is another call site against the same object rather
+   * than another design. */
+  .webui-settings-info-hint-anchor { position: relative; display: inline-flex; flex: none; }
+  /* Reset as a button: a native one brings a border, a background and its own
+   * font, and this control is a 14px circle drawn over the section title. */
+  .webui-settings-info-hint { display: inline-flex; width: 14px; height: 14px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: 50%; background: transparent; padding: 0; color: var(--text_default_tertiary); font-size: 9px; font-style: normal; font-weight: var(--weight_medium); line-height: 1; cursor: help; }
+  .webui-settings-info-hint:hover { border-color: var(--border_accent); color: var(--text_default_secondary); }
+  .webui-settings-info-hint:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  /* The dark bubble with an arrow is the shell's existing tooltip shape (see
+   * `.webui-signin-credits-tooltip`); its 6px
+   * radius, 8/12 padding and 18px line height are the same three numbers, so
+   * this is a third call site on one shape rather than a third shape.
+   *
+   * The hardcoded `rgb(0 0 0 / 85%)` / `#fff` is DELIBERATE and must not be
+   * rebound to a token. These values are antd's `Tooltip` colours, sourced
+   * from the `colorBgSpotlight` and `colorTextLightSolid`
+   * global tokens — documented defaults `rgba(0,0,0,0.85)` and `#fff` — and
+   * they are theme-independent: the bubble is black under BOTH
+   * `.light` and `.dark`. The same source
+   * explains the 6px radius and the 250px max width, which are antd's
+   * `borderRadius` and Tooltip `maxWidth` defaults rather than measurements.
+   * Everything else on this surface is token-driven because it *should* follow
+   * the theme; this bubble should not, so a token binding here would be a
+   * fidelity regression dressed up as a fix.
+   *
+   * The 250 is antd's `Tooltip` `maxWidth` default, which is not
+   * overridden — so all three of these bubbles now share one width, and the 340
+   * that used to sit on `.webui-signin-credits-tooltip` is gone. Two more
+   * labels still read 220, but both are under `white-space: nowrap` where the
+   * ceiling cannot shape anything; see the note on `.webui-context-usage-label`.
+   *
+   * `position: absolute` against the anchor, NOT `fixed`: absolute travels
+   * with the section when the panel scrolls, which is what a tooltip attached
+   * to a heading has to do. `pointer-events: none` for the same reason the
+   * context-usage label is — otherwise the pointer leaving the glyph toward
+   * the bubble drops the hover that is showing it. */
+  .webui-settings-info-hint-bubble { position: absolute; bottom: calc(100% + var(--spacing_8)); left: 50%; z-index: 60; width: max-content; max-width: 250px; padding: var(--spacing_8) var(--spacing_12); border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); box-shadow: 0 6px 16px rgb(0 0 0 / 18%); color: #fff; font-size: var(--size_12); line-height: var(--line_height_18); white-space: normal; text-align: left; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
+  .webui-settings-info-hint-bubble::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
+  .webui-settings-info-hint-anchor:hover .webui-settings-info-hint-bubble,
+  .webui-settings-info-hint:focus-visible ~ .webui-settings-info-hint-bubble { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
+
+  @keyframes webui-overlay-enter { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes webui-modal-enter { from { opacity: 0; transform: translateY(8px) scale(.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes webui-panel-enter-right { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes webui-popover-enter { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes webui-menu-enter { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  /* The Mini App view (ADR 0020).
+   *
+   * The frame takes the height its host gives it and nothing else: the workspace
+   * tab and the standalone page are both column hosts, and an iframe with no size
+   * of its own collapses to the browser's 300x150 default instead of showing the
+   * page a person came for. `min-height: 0` is what lets the flex item shrink
+   * below its content in both hosts. */
+  .webui-miniapp-view {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--spacing_8);
+    min-height: 0;
+    height: 100%;
+  }
+  .webui-miniapp-view-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    background: var(--bg_grouped_secondary);
+  }
+  .webui-miniapp-view-status,
+  .webui-miniapp-view-stopped,
+  .webui-miniapp-view-detached {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing_8);
+    margin: 0;
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_20);
+  }
+  /* The Mini App's toolbar: what the runtime is doing, the refresh that
+   * reloads the page, the stop that ends the run, and the move to a tab of its
+   * own. One row, so the controls never take height the page needs. */
+  .webui-miniapp-view-move {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing_8);
+  }
+  .webui-miniapp-view-badge {
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_20);
+  }
+
+  /* The standalone page: one Mini App and nothing else, so the document is the
+   * host — full viewport, with the session notice (if any) above the frame. */
+  .webui-miniapp-standalone {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    min-height: 0;
+    background: var(--bg_default_scrim);
+  }
+  .webui-miniapp-standalone-notice {
+    margin: 0;
+    padding: var(--spacing_8) var(--spacing_12);
+    border-bottom: 1px solid var(--border_light);
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    line-height: var(--line_height_20);
+  }
+}
+

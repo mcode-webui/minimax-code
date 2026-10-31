@@ -343,6 +343,10 @@ describe("real host over the loopback service", () => {
       await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
       const dialog = page.getByRole("dialog", { name: "MCP Server" });
       await browserExpect(dialog).toBeVisible();
+      // The shared dialog enters over 200ms, and the entrance moves it. The
+      // geometry is the dialog's own geometry only once the entrance has
+      // settled, so the measurement waits for it.
+      await dialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
       const geometry = await dialog.evaluate((node) => {
         const backdrop = node.parentElement!;
         const backdropRect = backdrop.getBoundingClientRect();

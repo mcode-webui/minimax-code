@@ -577,12 +577,16 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await persistedSourceActions.getByRole("button", { name: "回退" }).click();
     const persistedSourceRewindDialog = page.getByTestId("rewind-preview-dialog");
     await browserExpect(persistedSourceRewindDialog).toBeVisible();
+    // The shared dialog enters over 200ms, and the entrance moves it. The
+    // geometry is the dialog's own geometry only once the entrance has
+    // settled, so the measurement waits for it.
+    await persistedSourceRewindDialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const rewindGeometry = await persistedSourceRewindDialog.evaluate((node) => {
       const viewportWidth = document.body.clientWidth;
       const viewportHeight = document.body.clientHeight;
       const dialog = node.getBoundingClientRect();
-      const surface = node.querySelector(".webui-message-dialog-surface")!.getBoundingClientRect();
-      const buttons = [...node.querySelectorAll<HTMLButtonElement>(".webui-message-dialog-actions button")];
+      const surface = node.querySelector(".webui-dialog-surface")!.getBoundingClientRect();
+      const buttons = [...node.querySelectorAll<HTMLButtonElement>(".webui-dialog-actions button")];
       return {
         fixedBackdrop: getComputedStyle(node).position === "fixed",
         backdropCoversViewport: dialog.left <= 0 && dialog.top <= 0 &&
@@ -1193,6 +1197,10 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
     const mcpDialog = page.getByRole("dialog", { name: "MCP Server" });
     await browserExpect(mcpDialog).toBeVisible();
+    // The shared dialog enters over 200ms, and the entrance moves it. The
+    // geometry is the dialog's own geometry only once the entrance has
+    // settled, so the measurement waits for it.
+    await mcpDialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const mcpGeometry = await mcpDialog.evaluate((node) => {
       const backdrop = node.parentElement;
       const rect = node.getBoundingClientRect();

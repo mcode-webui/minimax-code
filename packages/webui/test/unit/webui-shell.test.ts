@@ -948,8 +948,11 @@ describe("WebUI shell", () => {
       /\.webui-session-leading-marker\s*\{([^}]*)\}/u,
     );
     expect(leadingMarkerRule, "session leading marker rule is missing").not.toBeNull();
-    expect(leadingMarkerRule![1]).toMatch(/width:\s*18px/u);
-    expect(leadingMarkerRule![1]).toMatch(/flex:\s*0\s+0\s+18px/u);
+    // The column is 24px wide because the disclosure inside it is a 24px
+    // target; an 18px column clipped the one place a session row is opened
+    // from. The stylesheet says so where the rule is written.
+    expect(leadingMarkerRule![1]).toMatch(/width:\s*24px/u);
+    expect(leadingMarkerRule![1]).toMatch(/flex:\s*0\s+0\s+24px/u);
   });
 
   it("keeps subagent sessions visibly nested under their parent session", () => {

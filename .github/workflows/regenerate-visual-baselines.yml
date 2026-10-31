@@ -1,0 +1,31 @@
+name: Regenerate visual baselines (temporary)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to record the baselines from"
+        required: true
+        type: string
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:webui
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test packages/webui/test/browser/visual-baselines.spec.mjs --update-snapshots -g "layout baseline"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: linux-visual-baselines
+          path: packages/webui/test/browser/visual-baselines.spec.mjs-snapshots

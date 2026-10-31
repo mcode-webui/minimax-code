@@ -96,7 +96,7 @@ describe('a host declared as webui', () => {
   );
 
   it(
-    'reports cron native and the channel bridge unsupported in its diagnostics',
+    'reports cron native and the channel bridge native in its diagnostics',
     async () => {
       const host = await bootWebuiHost();
       // Phase 2's correction, observed end to end: the surface table no longer claims
@@ -106,7 +106,11 @@ describe('a host declared as webui', () => {
         | Record<string, { status?: string }>
         | undefined;
       expect(surfaces?.cron?.status).toBe('native');
-      expect(surfaces?.channelBridge?.status).toBe('unsupported');
+      // The WebUI row of the owner policy assembles the channel service: the
+      // browser client's remote page carries the channel tab, so a browser
+      // owner has a screen to bind and manage a channel with. The surface
+      // table reports the bridge it assembled, which is a native one.
+      expect(surfaces?.channelBridge?.status).toBe('native');
     },
     120_000,
   );

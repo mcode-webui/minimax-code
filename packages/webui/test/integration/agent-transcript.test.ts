@@ -582,8 +582,13 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     // settled, so the measurement waits for it.
     await persistedSourceRewindDialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const rewindGeometry = await persistedSourceRewindDialog.evaluate((node) => {
-      const viewportWidth = document.body.clientWidth;
-      const viewportHeight = document.body.clientHeight;
+      // The mask is `position: fixed; inset: 0`, so it spans the viewport and
+      // the surface is centred inside it. The viewport is `innerWidth` and not
+      // `document.body.clientWidth`: the body box excludes the scrollbar the
+      // mask covers, and comparing a fixed element against a smaller box makes
+      // a centred surface look 3px off-centre.
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
       const dialog = node.getBoundingClientRect();
       // The shared dialog carries its test id on the surface; the scrim it
       // sits in is the mask around it.

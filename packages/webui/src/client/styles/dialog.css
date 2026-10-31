@@ -108,7 +108,11 @@
    * line. The width follows the label instead of a minimum, which is how the
    * Desktop `取消` lands on 76px and `添加服务器` on 118px. */
   .webui-dialog-actions > .webui-mavis-button,
-  .webui-dialog-footer > .webui-mavis-button {
+  .webui-dialog-footer > .webui-mavis-button,
+  /* A surface may wrap its actions in a row of its own (the memory manager's
+   * `webui-memory-manager-actions`), and a direct-child selector left those
+   * buttons at the plain `regular` size while their neighbours were 37px. */
+  .webui-dialog-footer .webui-mavis-button {
     min-width: 0;
     height: 37px;
     border-radius: var(--radius_8);

@@ -4360,6 +4360,15 @@
       "home": "outside"
     },
     {
+      "path": "runtime/remote-control/device-name.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
       "path": "runtime/remote-control/global-events.ts",
       "layers": [
         "runtime"

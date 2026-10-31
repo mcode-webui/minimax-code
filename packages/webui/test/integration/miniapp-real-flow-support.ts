@@ -67,7 +67,13 @@ export async function closeAllBootedHosts(): Promise<void> {
 export async function bootRealHost(
   options: { readonly dev?: boolean; readonly serveBuiltClient?: boolean } = {},
 ): Promise<Booted> {
-  const dataDir = await mkdtemp(join(tmpdir(), "webui-miniapp-flow-"));
+  // The Mini App's owner socket sits four directories below the data
+  // directory, and a unix socket path has a hard limit — 104 bytes on macOS.
+  // macOS's own temporary directory is already long enough that the socket path
+  // overflows it, and the bind fails with `EINVAL`, so the fixture's data
+  // directory goes to the short temporary root instead. Windows names the
+  // endpoint with a pipe, so its path does not matter there.
+  const dataDir = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "wmf-"));
   const workspaceDir = join(dataDir, "workspace");
   await mkdir(workspaceDir, { recursive: true });
   // A config file that already exists stops `ensureConfigFile()` from copying the

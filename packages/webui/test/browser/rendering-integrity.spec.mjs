@@ -99,8 +99,10 @@ async function seed(page, data) {
 
 const settingsDialog = (page) => page.locator('[role="dialog"][aria-label="设置"]');
 const customPanel = (page) => page.locator('[data-testid="settings-custom-models-panel"]');
-const formDialog = (page) =>
-  page.locator('[role="dialog"][aria-label="添加模型"], [role="dialog"][aria-label="编辑提供商"]');
+// By accessible name, not by an `aria-label` attribute: the shared dialog frame
+// names itself with `aria-labelledby` pointing at its heading, so an attribute
+// selector would test the frame's implementation instead of what a reader hears.
+const formDialog = (page) => page.getByRole("dialog", { name: /添加模型|编辑提供商/u });
 
 /** Opens settings the way a user does, then the Usage page's custom-model tab. */
 async function openCustomModels(page) {

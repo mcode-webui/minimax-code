@@ -130,6 +130,22 @@ async function measure(page, surface, state) {
 
       const items = spec.itemSelector ? [...rootNode.querySelectorAll(spec.itemSelector)] : [];
       const itemBoxes = items.map((node) => node.getBoundingClientRect());
+      // Which items are outside, not just how many: a count sends the reader
+      // back to the browser to find out what the gate already knew.
+      const outsideItems = items
+        .map((node, index) => ({ node, box: itemBoxes[index] }))
+        .filter(
+          ({ box }) =>
+            box.left < rootBox.left - 1 ||
+            box.right > rootBox.right + 1 ||
+            box.top < rootBox.top - 1 ||
+            box.bottom > rootBox.bottom + 1,
+        )
+        .slice(0, 8)
+        .map(
+          ({ node, box }) =>
+            `${node.tagName.toLowerCase()}.${String(node.className ?? "").split(" ").filter(Boolean).slice(0, 2).join(".")} @${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)}`,
+        );
       const itemHeights = itemBoxes.map((box) => Math.round(box.height));
 
       const texts = spec.textSelector
@@ -176,6 +192,7 @@ async function measure(page, surface, state) {
           minHeight: itemHeights.length ? Math.min(...itemHeights) : 0,
           maxHeight: itemHeights.length ? Math.max(...itemHeights) : 0,
           zeroSized: itemBoxes.filter((box) => box.width <= 0 || box.height <= 0).length,
+          outsideRootItems: outsideItems,
           outsideRoot: itemBoxes.filter(
             (box) =>
               box.left < rootBox.left - 1 ||
@@ -222,7 +239,10 @@ export async function captureSurface(page, surface, state) {
   );
   expect(facts.root.clipped, `${surface.id}/${state.id}: the surface clips its own content`).toBe(false);
   expect(facts.items.zeroSized, `${surface.id}/${state.id}: an item rendered with no size`).toBe(0);
-  expect(facts.items.outsideRoot, `${surface.id}/${state.id}: an item sits outside its surface`).toBe(0);
+  expect(
+    facts.items.outsideRoot,
+    `${surface.id}/${state.id}: an item sits outside its surface — ${(facts.items.outsideRootItems ?? []).join(" | ")}`,
+  ).toBe(0);
   // Text extent is recorded rather than required to be perfect on the first
   // recording: a rail row ellipsizes a long title by design, and treating the
   // design's own truncation as a defect at record time would leave no honest

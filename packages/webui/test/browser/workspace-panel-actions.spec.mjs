@@ -111,8 +111,8 @@ test("an open preview tab survives leaving the session and coming back", async (
   // so the panel re-renders from a store that never asked the runtime again.
   await expect(preview).toBeVisible();
   await expect(preview).toContainText("export const answer = 42;");
-  await expect(page.getByRole("tab", { name: /a\.ts/u })).toHaveAttribute(
-    "aria-selected",
+  await expect(page.getByRole("button", { name: "a.ts", exact: true })).toHaveAttribute(
+    "aria-pressed",
     "true",
   );
   expect(

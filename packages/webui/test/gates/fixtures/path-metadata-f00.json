@@ -2155,6 +2155,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/settings/projection/settings-locale.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
       "path": "client/features/settings/projection/settings-shortcuts.ts",
       "layers": [
         "view"

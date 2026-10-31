@@ -265,7 +265,7 @@ test("history is per session — B's submissions do not leak into A", async ({ p
 test("attaching a file and an image renders chips that can be removed", async ({ page }) => {
   await openApp(page, "#session=A");
 
-  const fileInput = page.locator('input.webui-composer-hidden-file-input[aria-label="添加文件或图片"]');
+  const fileInput = page.locator('input.webui-file-input[aria-label="添加文件或图片"]');
   await fileInput.setInputFiles([
     { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello attachment") },
     { name: "pixel.png", mimeType: "image/png", buffer: TINY_PNG },
@@ -295,7 +295,7 @@ test("the directory input accepts a folder selection and renders its chips", asy
     mkdirSync(path.join(folder, "src"));
     writeFileSync(path.join(folder, "root.txt"), "root");
     writeFileSync(path.join(folder, "src", "main.ts"), "export {};\n");
-    const folderInput = page.locator('input.webui-composer-hidden-file-input[aria-label="添加本地文件夹"]');
+    const folderInput = page.locator('input.webui-file-input[aria-label="添加本地文件夹"]');
     await folderInput.setInputFiles(folder);
     const chips = page.locator('[data-webui-composer-attachments="true"]');
     await expect(chips).toBeVisible();

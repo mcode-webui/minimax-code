@@ -9,14 +9,14 @@ not claim. A number in this document is a number some gate produced.
 
 | Question | Count |
 | --- | --- |
-| Client UI modules classified | 131 |
+| Client UI modules classified | 133 |
 | Modules with a pending contract decision | 0 |
-| Floating layers inventoried | 22 |
-| Floating layers managed by the coordinator | 21 |
+| Floating layers inventoried | 23 |
+| Floating layers managed by the coordinator | 22 |
 | Business-authored alerts left (all exempt) | 2 |
-| Motion distinct effects with a recorded reason | 24 |
+| Motion distinct effects with a recorded reason | 25 |
 | Accessibility findings recorded as debt | 0 |
-| Accessibility exceptions | 26 |
+| Accessibility exceptions | 0 |
 | Accessibility manual reviews open | 0 |
 
 ## Every entry still pending, and why
@@ -56,11 +56,11 @@ Not verified by any browser check:
 - `features/account/ui/UserMenuUsage.tsx` — borrows the dialog role for labelling only: renders role=dialog for labelling only: it is a hover/focus fly-out inside the account menu's layer and is dismissed by that menu, not by itself. Owner: the account menu. Removal: when the fly-out becomes a layer of its own.
 ### The accessibility scan
 
-- 26 reviewed exceptions, each carrying rule, surface, state, target, reason, owner and removal condition in `accessibility-exceptions.json`.
+- 0 reviewed exceptions, each carrying rule, surface, state, target, reason, owner and removal condition in `accessibility-exceptions.json`.
 
 ### The motion inventory
 
-- 24 durations and one keyframe are recorded as distinct effects, each with the reason it is not one of the four families (`docs/design/motion-inventory.json`).
+- 25 durations and one keyframe are recorded as distinct effects, each with the reason it is not one of the four families (`docs/design/motion-inventory.json`).
 
 ## Families whose contract is still partly a business's own
 

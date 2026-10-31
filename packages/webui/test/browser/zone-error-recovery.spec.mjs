@@ -61,7 +61,7 @@ for (const zone of ["workspace", "settings", "plugins"]) {
     await page.evaluate(() => { window.__syntheticZoneFault = undefined; });
     await retry.click();
     await expect(retry).toHaveCount(0);
-    if (zone === "settings") await page.getByRole("button", { name: "返回" , exact: true }).click();
+    if (zone === "settings") await page.locator(".webui-settings-back").click();
     if (zone === "plugins") {
       await page.locator('[data-webui-session-link="B"]').click({ position: { x: 20, y: 15 } });
       await expect(composer).toBeVisible();

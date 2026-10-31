@@ -39,6 +39,26 @@ export const THEMES = ["light", "dark"];
 export const EXTREMES = ["empty", "one", "maximum", "longest"];
 
 /** Load the recorded measurements, or an empty manifest when none exists yet. */
+/**
+ * Wait for the surface to stop moving.
+ *
+ * The shared dialog enters over 200ms and the surfaces fade in. A scan that
+ * runs while an entrance is still playing measures a surface the reader never
+ * sees: the dialog's own backdrop is still transparent, and a contrast
+ * finding is the difference between a settled background and a moving one.
+ * The wait is for the animations that are running now, and it gives up
+ * rather than hanging on one that never finishes.
+ */
+export async function settledSurface(page) {
+  await page.evaluate(async () => {
+    const running = document.getAnimations().filter((animation) => animation.playState === "running");
+    await Promise.race([
+      Promise.all(running.map((animation) => animation.finished.catch(() => undefined))),
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+    ]);
+  });
+}
+
 export function loadManifest() {
   try {
     return JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
@@ -130,17 +150,43 @@ async function measure(page, surface, state) {
 
       const items = spec.itemSelector ? [...rootNode.querySelectorAll(spec.itemSelector)] : [];
       const itemBoxes = items.map((node) => node.getBoundingClientRect());
+
+      // A surface may scroll its own content: a modal with a fixed header and a
+      // scrolling body puts what it shows below the fold, and that content is
+      // reachable by scrolling — the contract a scroll boundary states, and the
+      // same contract the clipped check above already honours. Only an item
+      // that no scroll boundary can bring back into view is outside the
+      // surface.
+      const scrollsOn = (node, axis) => {
+        const style = getComputedStyle(node);
+        const value = axis === "x" ? style.overflowX : style.overflowY;
+        return value === "auto" || value === "scroll" || value === "overlay";
+      };
+      // The nearest scroll boundary between the item and the root, on one
+      // axis. A boundary inside the surface can bring the item back into
+      // view; one outside it moves the surface along with the item, so it
+      // cannot.
+      const scrollBoundary = (node, axis) => {
+        for (let current = node.parentElement; current; current = current.parentElement) {
+          if (current === rootNode) return scrollsOn(current, axis) ? current : null;
+          if (scrollsOn(current, axis)) return current;
+        }
+        return null;
+      };
+      const escapes = (node, box) => {
+        const sideways = box.left < rootBox.left - 1 || box.right > rootBox.right + 1;
+        const downwards = box.top < rootBox.top - 1 || box.bottom > rootBox.bottom + 1;
+        if (sideways && !scrollBoundary(node, "x")) return true;
+        if (downwards && !scrollBoundary(node, "y")) return true;
+        return false;
+      };
+
       // Which items are outside, not just how many: a count sends the reader
       // back to the browser to find out what the gate already knew.
-      const outsideItems = items
+      const escaping = items
         .map((node, index) => ({ node, box: itemBoxes[index] }))
-        .filter(
-          ({ box }) =>
-            box.left < rootBox.left - 1 ||
-            box.right > rootBox.right + 1 ||
-            box.top < rootBox.top - 1 ||
-            box.bottom > rootBox.bottom + 1,
-        )
+        .filter(({ node, box }) => escapes(node, box));
+      const outsideItems = escaping
         .slice(0, 8)
         .map(
           ({ node, box }) =>
@@ -193,13 +239,7 @@ async function measure(page, surface, state) {
           maxHeight: itemHeights.length ? Math.max(...itemHeights) : 0,
           zeroSized: itemBoxes.filter((box) => box.width <= 0 || box.height <= 0).length,
           outsideRootItems: outsideItems,
-          outsideRoot: itemBoxes.filter(
-            (box) =>
-              box.left < rootBox.left - 1 ||
-              box.right > rootBox.right + 1 ||
-              box.top < rootBox.top - 1 ||
-              box.bottom > rootBox.bottom + 1,
-          ).length,
+          outsideRoot: escaping.length,
         },
         texts: {
           count: texts.length,

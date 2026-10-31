@@ -96,7 +96,7 @@ describe('a host declared as webui', () => {
   );
 
   it(
-    'reports cron native and the channel bridge unsupported in its diagnostics',
+    'reports cron and the channel bridge native in its diagnostics',
     async () => {
       const host = await bootWebuiHost();
       // Phase 2's correction, observed end to end: the surface table no longer claims
@@ -106,7 +106,12 @@ describe('a host declared as webui', () => {
         | Record<string, { status?: string }>
         | undefined;
       expect(surfaces?.cron?.status).toBe('native');
-      expect(surfaces?.channelBridge?.status).toBe('unsupported');
+      // The WebUI row assembles the channel service: the browser client's 远程 page
+      // carries the 接入 IM tab, so a browser owner has a screen to bind and manage
+      // an IM channel with, and the service is assembled for it the way it is for
+      // the desktop one. A host that declares the command-line capability profile
+      // still reads the other answer there.
+      expect(surfaces?.channelBridge?.status).toBe('native');
     },
     120_000,
   );

@@ -262,11 +262,11 @@ test("the strip shows the page the runtime published, and the panel follows it",
 
   // Two pages, two rows in the strip. The rows are the workspace's own tabs,
   // so they are found by the page's title -- which is what a person reads.
-  await expect(page.getByRole("tab", { name: "Example Domain" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Another Page" })).toBeVisible();
+  await expect(page.getByTestId("workspace-tab-strip").getByRole("button", { name: "Example Domain", exact: true })).toBeVisible();
+  await expect(page.getByTestId("workspace-tab-strip").getByRole("button", { name: "Another Page", exact: true })).toBeVisible();
 
   // Choosing one brings its page to the front, and the address bar names it.
-  await page.getByRole("tab", { name: "Another Page" }).click();
+  await page.getByTestId("workspace-tab-strip").getByRole("button", { name: "Another Page", exact: true }).click();
   await expect(page.getByTestId("browser-toolbar-url")).toHaveValue("https://another.test/");
   await expect(page.getByTestId("browser-panel-frame")).toBeVisible();
 });
@@ -305,7 +305,7 @@ test("a gesture names the page in front, not the page the Agent is on", async ({
   });
   await openApp(page);
   await openPanel(page);
-  await page.getByRole("tab", { name: "Person page" }).click();
+  await page.getByTestId("workspace-tab-strip").getByRole("button", { name: "Person page", exact: true }).click();
   await expect(page.getByTestId("browser-toolbar-url")).toHaveValue("https://person.test/");
 
   await page.getByTestId("browser-panel-frame").click();

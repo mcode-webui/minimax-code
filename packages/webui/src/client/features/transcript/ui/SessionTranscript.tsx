@@ -47,6 +47,7 @@ import {
 } from "../bindings/use-transcript-scroll.js";
 import { WebuiButton } from "../../../ui/button.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 const EMPTY_TRANSCRIPT_PAGE: WebuiClientMessagePage = {};
 
 // --- TurnNavigator integration ------------------------------------------------
@@ -328,18 +329,16 @@ export function WebuiSessionTranscript({
         ) : null}
         {!turnLive && loading && items.length === 0 ? <ChatSkeleton /> : null}
         {showEmptyState ? (
-          <p
-            className="webui-transcript-empty-state text-text_default_secondary text-size_14 leading-line_height_20"
-            data-testid="transcript-empty-state"
-          >
-            当前会话暂无消息
-          </p>
+          <FeedbackEmpty
+            className="webui-transcript-empty-state"
+            title="当前会话暂无消息"
+            testId="transcript-empty-state"
+          />
         ) : null}
         {loadOlder ? (
           <WebuiInline align="stretch" justify="center" className="w-full py-1">
             <WebuiButton variant="grouped" size="pill" onClick={loadOlder}
               disabled={loading}
-              className="text-size_14 leading-line_height_20"
               aria-label={loading ? "正在加载更早消息" : "加载更早消息"}
             >
               <IconChevronUp aria-hidden="true" className="size-4 flex-none" size={16} stroke={1.7} />

@@ -258,12 +258,12 @@ beforeAll(() => {
 });
 
 describe("W0 · the section save button's three states", () => {
-  it("is the desktop's black primary, 76x30, fading to half on disable", () => {
-    // Both personalization headers pass `variant: "black"`, a filled primary
-    // — not the light `gray` fill this
-    // button used to draw. `black` has no disabled override of its own, so the
-    // generic rule is the whole disabled state: the fill and the label stay put
-    // and the control goes half-transparent.
+  it("is the desktop's black primary, 76x30, and takes its states from the contract", () => {
+    // Both personalization headers pass `variant: "black"`, a filled primary.
+    // Its fill, its disabled state and its hover belong to the variant in
+    // `client/styles/button.css`; the settings stylesheet used to restate all
+    // three, which is the drift the shared contract removes. The assertions
+    // moved with the declarations.
     const black = winning(".webui-mavis-button-black").body;
     expect(declaration(black, "background")).toBe(
       "var(--bg_interaction_primary_default)",
@@ -272,6 +272,7 @@ describe("W0 · the section save button's three states", () => {
       "var(--text_label_primary_default)",
     );
 
+    // The caller keeps the box: 76x30, no padding, the label centred.
     const geometry = winning(".webui-section-save-button").body;
     expect(declaration(geometry, "width")).toBe("76px");
     expect(declaration(geometry, "min-width")).toBe("76px");
@@ -280,30 +281,26 @@ describe("W0 · the section save button's three states", () => {
     expect(declaration(geometry, "text-align")).toBe("center");
     expect(declaration(geometry, "line-height")).toBe("var(--line_height_20)");
 
-    // `opacity: .5` is the `.mavis-button.disabled` value, not the
-    // shared `.6`. The shared rule also pins `cursor: default` and wins the
-    // cascade unless this button restates it, so the cursor is asserted too.
-    const disabled = winning(".webui-section-save-button:disabled").body;
-    expect(declaration(disabled, "opacity")).toBe(".5");
-    expect(declaration(disabled, "cursor")).toBe("not-allowed");
-    // A black variant has no disabled fill to override, so none is declared
-    // here. One appearing would be a leftover from the grey version.
-    expect(declaration(disabled, "background")).toBeUndefined();
-    expect(declaration(disabled, "color")).toBeUndefined();
-
-    // The live state's hover lifts the fill to 80% black. There is deliberately
-    // no hover on the disabled state — a control that cannot act must not look
-    // like one that can.
-    const hover = winning(".webui-section-save-button:not(:disabled):hover").body;
-    expect(declaration(hover, "background")).toBe(
-      "var(--bg_interaction_primary_hover)",
+    // The disabled state is the variant's, measured on the Desktop: the fill
+    // swaps to the inactive grey, the label stays and the control keeps its
+    // opacity. The settings stylesheet's half-transparent override is gone.
+    const disabled = winning(".webui-mavis-button-black:disabled").body;
+    expect(declaration(disabled, "background")).toBe(
+      "var(--bg_interaction_primary_inactive)",
     );
-    expect(declaration(hover, "color")).toBeUndefined();
+    expect(declaration(disabled, "opacity")).toBe("1");
+    expect(declaration(disabled, "cursor")).toBe("not-allowed");
 
-    // The dark theme fades the whole control instead of restating the fill.
-    const dark = winning(".dark .webui-section-save-button:not(:disabled):hover")
+    // The live state lifts the fill; the dark theme dims the whole control.
+    // There is deliberately no hover on a disabled control: it cannot act, so
+    // it must not look like one that can.
+    const hover = winning(".webui-mavis-button-black:hover:not(:disabled)").body;
+    expect(declaration(hover, "background")).toBe(
+      "var(--bg_interaction_primary_hover) !important",
+    );
+    const dark = winning(".dark .webui-mavis-button-black:hover:not(:disabled)")
       .body;
-    expect(declaration(dark, "opacity")).toBe(".8");
+    expect(declaration(dark, "opacity")).toBe("0.8 !important");
   });
 });
 
@@ -446,21 +443,19 @@ describe("W0 · the memory manager's header controls", () => {
     expect(declaration(hover, "border-color")).toBe("var(--border_heavy)");
     expect(declaration(hover, "box-shadow")).toBe("none");
 
-    // The focus ring is an outline outside the box, and the border goes back to
-    // its resting colour. Drawing the blue as the border instead costs the
-    // content 1px and leaves the text sitting against the ring; `outline` paints
-    // on the border edge without taking layout, so the content box is the same
-    // focused and unfocused. The blue itself is the app's `blue_500`, measured
-    // 1:1 off the dialog, not the `border_heavy` the tokens name.
-    const focus = winning(
-      ".webui-memory-manager-editor .webui-personalization-textarea:focus",
-    ).body;
-    expect(declaration(focus, "outline")).toBe("1px solid var(--blue_500)");
-    expect(declaration(focus, "border-color")).toBe("var(--border_default)");
-    expect(declaration(focus, "box-shadow")).toBe("none");
-    // The ring must not be drawn as the border: that is the 1px it would cost
-    // the content, and the reason this is asserted as a pair.
-    expect(declaration(focus, "border-color")).not.toBe("var(--blue_500)");
+    // The focus ring is the shared field contract's: an outline outside the box
+    // with the border switched to the accent colour, so the ring costs the
+    // content no layout and the text never sits against it. The dialog used to
+    // restate this with a 1px `--blue_500` outline; that was the field
+    // contract's state written a second time, and a primitive ramp standing in
+    // for a semantic token.
+    const focus = winning(".webui-control:focus-visible").body;
+    expect(declaration(focus, "outline")).toBe("2px solid var(--border_accent)");
+    expect(declaration(focus, "border-color")).toBe("var(--border_accent)");
+    expect(declaration(focus, "outline-offset")).toBe("1px");
+    // The ring must not be drawn as a border width change: that is the 1px it
+    // would cost the content, and the reason this is asserted as a pair.
+    expect(declaration(focus, "border-width")).toBeUndefined();
 
     // The shared rule is the `mavis-personalization-editor` half. `resize: none`
     // is global (`.mavis-textarea textarea{resize:none!important}`

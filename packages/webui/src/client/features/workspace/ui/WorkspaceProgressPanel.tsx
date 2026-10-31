@@ -14,6 +14,7 @@ import { WebuiButton } from "../../../ui/button.js";
 import { WebuiDialog, WebuiDialogActions } from "../../../ui/dialog.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 const PROGRESS_COPY = {
   environment: "环境信息",
   progress: "进度",
@@ -63,7 +64,7 @@ export function WebuiProgressPanel({ todos, showProgress = true, showEmptyState 
     ? `${completedCount}/${todos.length} 已完成 · ${Math.round((completedCount / todos.length) * 100)}%`
     : null;
   return <WorkspaceProgressSection kind="progress" className="webui-progress-panel" title={PROGRESS_COPY.progress} titleMeta={completionSummary === null ? undefined : <span className="ml-2 shrink-0 text-caption-base text-text_default_tertiary">{completionSummary}</span>} collapsed={collapsed} onToggle={onToggle}>
-        {todos.length === 0 ? <div className="webui-progress-scroll"><p className="webui-progress-empty">{PROGRESS_COPY.progressEmpty}</p></div> : <div className="webui-progress-scroll">
+        {todos.length === 0 ? <div className="webui-progress-scroll"><FeedbackEmpty className="webui-progress-empty" title={PROGRESS_COPY.progressEmpty} /></div> : <div className="webui-progress-scroll">
           {todos.map((todo, index) => <div className={`webui-progress-row webui-progress-row--${todo.status}`} key={`${todo.content}-${index}`}>
             <span className="webui-progress-marker">{todo.status === "completed" ? <WebuiIconCheck className="size-3" /> : index + 1}</span>
             <span className={`min-w-0 flex-1 truncate ${todo.status === "completed" ? "line-through text-text_default_tertiary" : ""}`}>{todo.content}</span>

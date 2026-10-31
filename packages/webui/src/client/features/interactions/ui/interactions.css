@@ -26,7 +26,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--spacing_8);
   }
 
   .webui-questionnaire-content {
@@ -39,7 +39,7 @@
   .webui-questionnaire-sub {
     margin: 0;
     color: var(--text_default_secondary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
   }
 
@@ -56,7 +56,7 @@
     padding: 10px 8px;
     border-radius: 10px;
     color: var(--text_default_primary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     cursor: pointer;
   }
@@ -94,11 +94,11 @@
   .webui-questionnaire-other-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing_8);
     margin-top: 4px;
     padding: 8px;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: var(--size_14);
     cursor: pointer;
   }
 
@@ -117,7 +117,7 @@
     border-radius: 6px;
     background: var(--bg_interaction_secondary_default);
     color: var(--text_default_secondary);
-    font-size: 14px;
+    font-size: var(--size_14);
   }
 
   .webui-questionnaire-other-row[data-selected]
@@ -130,13 +130,13 @@
   .webui-questionnaire-countdown,
   .webui-questionnaire-multi-hint {
     color: var(--text_default_tertiary);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-questionnaire-progress {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--spacing_4);
     margin-left: auto;
   }
 

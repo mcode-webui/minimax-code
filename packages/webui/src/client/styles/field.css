@@ -216,4 +216,41 @@
     align-items: center;
     gap: 8px;
   }
+  /* The toggle switch: the shared control's own appearance.
+   *
+   * These rules lived in `features/settings/ui/settings.css`, which meant a
+   * shared component was painted by one business's stylesheet. They moved here
+   * with the declarations they had; the three literal colours became the tokens
+   * that already held those values (`--opacity_black_1_8` is `#0a0a0a14`,
+   * `--blue_400` is `#0094fc`). */
+  .webui-toggle-switch {
+    position: relative;
+    display: inline-flex;
+    width: 40px;
+    height: 20px;
+    flex: 0 0 40px;
+    align-items: center;
+    border: 0;
+    border-radius: var(--radius_full);
+    background: var(--opacity_black_1_8);
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 200ms ease;
+  }
+  .webui-toggle-switch > span {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    display: block;
+    width: 18px;
+    height: 10px;
+    border-radius: var(--radius_full);
+    background: #fff;
+    box-shadow: none;
+    transition: transform 200ms ease;
+  }
+  .webui-toggle-switch.is-checked { background: var(--blue_400); }
+  .webui-toggle-switch.is-checked > span { transform: translateX(12px); }
+  .webui-toggle-switch:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
+  .webui-toggle-switch:disabled { cursor: default; opacity: 0.6; }
 }

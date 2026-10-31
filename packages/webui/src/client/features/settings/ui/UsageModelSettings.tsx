@@ -279,7 +279,7 @@ export function DisabledBillingActions(): ReactElement {
       <DesktopGrayAction label="去充值" {...disabledProps} />
       <DesktopGrayAction label="管理" dropdown {...disabledProps} />
       <DesktopGrayAction label="明细" {...disabledProps} />
-      <ToggleSwitch checked={false} label={unavailable} className="disabled:opacity-60" {...disabledProps} />
+      <ToggleSwitch checked={false} label={unavailable}  {...disabledProps} />
     </WebuiInline>
     <WebuiInline justify="center" className="w-full px-3 py-1.5"><div className="h-px w-full bg-border_light" /></WebuiInline>
     <WebuiInline gap="small" justify="end" className="w-full overflow-hidden rounded-[12px] py-2 pl-3 pr-2"><DesktopGrayAction label="申请" external {...disabledProps} /></WebuiInline>

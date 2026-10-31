@@ -352,7 +352,8 @@ export function WorkspaceCanvas({ sessionId }: {
       <WebuiTextInput
         controlSize="dense"
         appearance="boxed"
-        className="w-[180px] text-size_12 text-left"
+        textSize="small"
+        className="w-[180px]"
         aria-label={DESKTOP_COPY.canvasAddLabel}
         placeholder={DESKTOP_COPY.canvasAddPlaceholder}
         value={draftPath}

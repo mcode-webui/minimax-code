@@ -1181,13 +1181,10 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(styles).toMatch(/line-height:\s*var\(--line_height_16\)/u);
 
     expect(html).toMatch(/webui-nav-item/u);
-    expect(html).toMatch(/webui-textarea/u);
-    // The workspace trigger moved off the generic `webui-pill` onto the
-    // purpose-built bar class, because it now sits inside the grey band that
-    // carries the project context rather than floating as its own pill.
-    // `webui-pill` is still live — SessionRail's project chips use it — but the
-    // rail is not part of this render, so asserting it here would only pass by
-    // accident of composition.
+    expect(html).toMatch(/webui-composer-input/u);
+    // The workspace trigger moved off a generic pill onto the purpose-built bar
+    // class, because it now sits inside the grey band that carries the project
+    // context rather than floating as its own pill.
     expect(html).toMatch(/webui-workspace-bar/u);
     expect(html).toMatch(/webui-workspace-bar-trigger/u);
   });
@@ -1385,7 +1382,7 @@ describe("WebUI shell — desktop anatomy", () => {
       "utf8",
     );
     const composerFocusRule = styles.match(
-      /\.webui-textarea\.webui-composer-input:focus,\s*\.webui-textarea\.webui-composer-input:focus-visible\s*\{([^}]*)\}/u,
+      /\.webui-composer-input:focus,\s*\.webui-composer-input:focus-visible\s*\{([^}]*)\}/u,
     );
     expect(composerFocusRule, "composer focus override is missing").not.toBeNull();
     expect(composerFocusRule![1]).toMatch(/border:\s*0/u);
@@ -1431,8 +1428,11 @@ describe("WebUI shell — desktop anatomy", () => {
         initialMessages: { messages: [], hasMore: false },
       }),
     );
-    expect(transcript).toMatch(/text-size_/u);
-    expect(transcript).toMatch(/leading-line_height_/u);
+    // The transcript's empty state is the shared feedback family's: its type
+    // scale is `webui-feedback-title`'s, so the call site no longer carries a
+    // `text-size_*` / `leading-line_height_*` utility pair of its own.
+    expect(transcript).toMatch(/webui-feedback--empty/u);
+    expect(transcript).not.toMatch(/text-size_[0-9]/u);
     // Spacing in the transcript is the layout primitives' now: the call site
     // states a named step and the primitive emits the class, so the utility
     // form of the same token no longer appears there.

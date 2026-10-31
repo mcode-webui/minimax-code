@@ -107,11 +107,11 @@
    * of the marketplace it reads oversized. Explicit button sizing keeps the
    * track compact regardless of the inherited line-height. */
   .webui-plugin-management.is-marketplace .webui-plugin-header-tabs {
-    gap: 2px;
+    gap: var(--spacing_2);
     padding: 3px;
   }
   .webui-plugin-management.is-marketplace .webui-plugin-create-anchor {
-    gap: 8px;
+    gap: var(--spacing_8);
   }
   .webui-plugin-create-anchor {
     position: relative;
@@ -146,7 +146,7 @@
   }
   .webui-plugin-header h1 {
     margin: 0 auto;
-    font-size: 24px;
+    font-size: var(--size_24);
     font-weight: 650;
   }
   .webui-plugin-header-tabs,
@@ -158,7 +158,7 @@
      * container to read against. */
     background: var(--bg_grouped_tertiary);
     padding: 4px;
-    gap: 4px;
+    gap: var(--spacing_4);
   }
   /* The selected segment reads as a card lifted off the track. Only the header
    * control gets it: the category filter sits on a transparent track, where a
@@ -187,7 +187,7 @@
   .webui-plugin-management.is-marketplace .webui-plugin-category-filter {
     max-width: none;
     justify-content: flex-start;
-    gap: 4px;
+    gap: var(--spacing_4);
     margin-bottom: 10px;
   }
   .webui-plugin-management.is-managing .webui-plugin-management-discovery {
@@ -199,17 +199,17 @@
   .webui-plugin-management.is-managing .webui-plugin-management-discovery .webui-plugin-category-filter {
     max-width: none;
     justify-content: flex-start;
-    gap: 4px;
+    gap: var(--spacing_4);
     margin: 0 0 10px;
   }
   .webui-plugin-management.is-marketplace .webui-plugin-grid {
     max-width: 768px;
-    row-gap: 12px;
+    row-gap: var(--spacing_12);
   }
   .webui-plugin-market-heading {
     max-width: 768px;
     margin: 40px auto 12px;
-    font-size: 16px;
+    font-size: var(--size_16);
     font-weight: 600;
     line-height: 26px;
   }
@@ -222,7 +222,7 @@
    * while hovered or keyboard-focused. */
   .webui-plugin-management.is-marketplace .webui-plugin-grid .webui-plugin-row {
     min-height: 60px;
-    gap: 12px;
+    gap: var(--spacing_12);
     border-radius: 12px;
     background: transparent;
     padding: 8px 12px;
@@ -261,13 +261,13 @@
   }
   .webui-plugin-row {
     min-height: 84px;
-    gap: 20px;
+    gap: var(--spacing_20);
     border-bottom: 1px solid var(--border_default);
     padding: 12px 0;
   }
   .webui-plugin-management.is-managing .webui-plugin-row {
     min-height: 64px;
-    gap: 12px;
+    gap: var(--spacing_12);
     padding: 8px 0;
   }
   .webui-plugin-grid {
@@ -328,30 +328,30 @@
   }
   .webui-plugin-copy h2 {
     margin: 0 0 3px;
-    font-size: 16px;
+    font-size: var(--size_16);
     font-weight: 500;
   }
   .webui-plugin-management.is-managing .webui-plugin-copy h2 {
     margin-bottom: 2px;
-    font-size: 14px;
+    font-size: var(--size_14);
   }
   .webui-plugin-copy p {
     overflow: hidden;
     margin: 0;
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .webui-plugin-management.is-managing .webui-plugin-copy p,
   .webui-plugin-management.is-managing .webui-plugin-row > span {
-    font-size: 12px;
+    font-size: var(--size_12);
   }
   .webui-plugin-actions {
-    gap: 8px;
+    gap: var(--spacing_8);
   }
   .webui-plugin-management.is-managing .webui-plugin-actions {
-    gap: 6px;
+    gap: var(--spacing_6);
   }
   .webui-plugin-empty {
     margin: 72px auto;
@@ -368,7 +368,7 @@
     width: min(960px, 100%);
     min-height: 560px;
     grid-template-columns: 250px minmax(0, 1fr);
-    gap: 32px;
+    gap: var(--spacing_32);
     margin: 0 auto;
   }
   .webui-plugin-management.is-managing .webui-agent-editor {
@@ -388,12 +388,12 @@
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing_2);
   }
   .webui-agent-list-heading {
     margin: 0 0 8px 10px;
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
   }
   .webui-agent-detail {
     display: flex;
@@ -411,7 +411,7 @@
     flex-direction: column;
     gap: 10px;
     color: var(--text_default_primary);
-    font-size: 14px;
+    font-size: var(--size_14);
   }
   .webui-agent-prompt {
     width: 100%;
@@ -438,7 +438,7 @@
   .webui-agent-avatar--small {
     width: 32px;
     height: 32px;
-    font-size: 20px;
+    font-size: var(--size_20);
   }
   .webui-agent-avatar--large {
     width: 64px;
@@ -576,7 +576,7 @@
       min-height: 240px;
     }
     .webui-mcp-form {
-      gap: 16px;
+      gap: var(--spacing_16);
     }
     .webui-mcp-form-fields {
       grid-template-columns: 1fr;

@@ -19,7 +19,7 @@
   .webui-environment-panel + .webui-progress-panel { border-top: 1px solid var(--border_light); }
   .webui-progress-panel + .webui-subagents-panel { border-top: 1px solid var(--border_light); }
   .webui-environment-body { min-height: 0; padding: 0 6px 6px; }
-  .webui-environment-loading { display: flex; min-height: 132px; box-sizing: border-box; flex-direction: column; justify-content: center; gap: 8px; overflow: hidden; padding: 0 6px 6px; color: var(--text_default_tertiary); font-size: var(--size_12); }
+  .webui-environment-loading { display: flex; min-height: 132px; box-sizing: border-box; flex-direction: column; justify-content: center; gap: var(--spacing_8); overflow: hidden; padding: 0 6px 6px; color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-environment-skeleton { position: relative; display: block; overflow: hidden; border-radius: 6px; background: var(--bg_grouped_tertiary); }
   .webui-environment-skeleton::after { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgb(255 255 255 / 36%), transparent); animation: webui-progress-skeleton 1.3s ease-in-out infinite; content: ""; }
   .webui-environment-skeleton--branch { width: 52%; height: 14px; margin: 0 0 2px 4px; }
@@ -49,7 +49,7 @@
   .webui-progress-row--cancelled .webui-progress-marker { background: var(--bg_default_secondary); color: var(--text_default_tertiary); }
   .webui-subagent-row { display: flex; min-height: 32px; width: 100%; align-items: center; gap: var(--spacing_8); padding: 0 var(--spacing_4); }
   .webui-subagent-avatar { display: inline-flex; width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
-  .webui-subagent-status { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; border-radius: 50%; color: var(--text_default_tertiary); font-size: 14px; font-weight: var(--weight_medium); }
+  .webui-subagent-status { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; border-radius: 50%; color: var(--text_default_tertiary); font-size: var(--size_14); font-weight: var(--weight_medium); }
   .webui-subagent-status--completed { background: var(--icon_default_secondary); color: var(--text_default_inverted); }
   .webui-subagent-status--error { color: var(--text_label_danger_secondary_default); }
   .webui-expandable-motion > .webui-progress-scroll { overflow-y: auto; overflow-x: hidden; }

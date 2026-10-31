@@ -27,6 +27,7 @@ import { FeedbackError } from "../../../ui/feedback.js";
 import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 import { WebuiStack } from "../../../ui/layout-primitives.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 /** Project rows consume rail-owned display state and return named view actions. */
 export function ProjectList({
   projects,

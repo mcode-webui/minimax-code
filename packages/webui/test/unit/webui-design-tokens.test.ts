@@ -347,16 +347,19 @@ describe("WebUI compiled stylesheet", () => {
   it("emits every component class the new shell references", () => {
     // The new shell's markup carries the shared button contract's
     // `.webui-mavis-button-accent` and `.webui-mavis-button-grouped`,
-    // `.webui-textarea`, `.webui-input`, `.webui-nav-item`,
-    // and `.webui-empty-state`, and the @layer
+    // `.webui-control`, `.webui-composer-input`, `.webui-nav-item`,
+    // and `.webui-project-empty`, and the @layer
     // components block in `shell.css` emits the matching styles. The component
     // classes only carry meaning if Tailwind actually compiles them — assert each
     // one lands in the output rather than silently degrading to a no-op.
     const required = [
       /\.webui-mavis-button-accent\s*\{/u,
       /\.webui-mavis-button-grouped\s*\{/u,
-      /\.webui-input,\s*\n?\s*\.webui-textarea\s*\{/u,
-      /\.webui-textarea\s*\{/u,
+      // The field contract's control and the composer's own field geometry.
+      // They replaced the business stylesheet's generic `.webui-input` and
+      // `.webui-textarea` names, which no element carried.
+      /\.webui-control\s*\{/u,
+      /\.webui-composer-input\s*\{/u,
       /\.webui-nav-item\s*\{/u,
       /\.webui-nav-item\[data-webui-nav-active="true"\]\s*\{/u,
       // The rail's empty state, renamed from `.webui-empty-state` when the
@@ -364,8 +367,7 @@ describe("WebUI compiled stylesheet", () => {
       // glyph, and the old class went with it.
       /\.webui-project-empty\s*\{/u,
       /\.webui-transcript-empty-state\s*\{/u,
-      /\.webui-input:focus-visible/u,
-      /\.webui-textarea:focus-visible/u,
+      /\.webui-control:focus-visible/u,
       /\.webui-mavis-button-accent:focus-visible/u,
       /\.webui-mavis-button-grouped:focus-visible/u,
       // The conversation surface: the message blocks, the user bubble, the

@@ -207,7 +207,6 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
         <WebuiButton variant="outline" size="inline-dense" type="submit"
           data-webui-ssh-form-submit="true"
           disabled={props.busy}
-          className="disabled:opacity-50"
         >
           保存
         </WebuiButton>

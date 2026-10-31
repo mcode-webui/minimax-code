@@ -32,6 +32,7 @@ import { SettingsButton, SettingsDialog } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
 import { WebuiInline } from "../../../ui/layout-primitives.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 /**
  * The reset-card state and its phase, read off the account owner's published
  * snapshot type. The owner is another business's, so its application module is
@@ -354,12 +355,11 @@ function ResetCardHistoryDialog({
             }
           />
         ) : history.items.length === 0 ? (
-          <p
-            data-testid="settings-usage-reset-card-history-empty"
+          <FeedbackEmpty
             className="webui-settings-dialog-empty"
-          >
-            {WEBUI_RESET_CARD_COPY.historyEmpty}
-          </p>
+            testId="settings-usage-reset-card-history-empty"
+            title={WEBUI_RESET_CARD_COPY.historyEmpty}
+          />
         ) : (
           <div className="webui-settings-dialog-list" data-testid="settings-usage-reset-card-history-list">
             {history.items.map((flow) => (

@@ -33,6 +33,7 @@ import type {
 } from "../contracts/model-view.js";
 import { modelKey } from "../projection/model-picker-rows.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 export interface WebuiModelListPanelProps {
   readonly groups: readonly WebuiModelProviderGroup[];
   /** The model in use, which carries the tick. */
@@ -56,7 +57,7 @@ export function WebuiModelListPanel({
       </div>
       <WebuiStack gap="medium" className="webui-model-list-groups">
         {groups.length === 0 ? (
-          <p className="webui-model-list-empty">没有可用模型</p>
+          <FeedbackEmpty className="webui-model-list-empty" title={"没有可用模型"} />
         ) : null}
         {groups.map((group) => (
           <WebuiStack

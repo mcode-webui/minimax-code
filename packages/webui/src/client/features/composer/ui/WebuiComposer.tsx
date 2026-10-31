@@ -1199,7 +1199,7 @@ export function WebuiComposer({
                   })}
                   disabled={!canCompose && !canQueue}
                   placeholder={goalMode ? "描述你想完成的目标" : planMode ? "描述需要规划的任务..." : "输入消息…（输入 / 唤起命令）"}
-                  className="webui-textarea webui-composer-input text-text_default_primary"
+                  className="webui-composer-input"
                   data-webui-composer-input="true"
                 />
                 <WebuiComposerEditorStaging

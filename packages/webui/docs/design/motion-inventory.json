@@ -153,10 +153,6 @@
           "reason": "the settings dialog's backdrop fade is behind a modal and must not pull the eye"
         },
         {
-          "value": "120ms",
-          "family": "feedback"
-        },
-        {
           "value": "180ms",
           "family": "surface"
         }
@@ -266,11 +262,6 @@
     "features/workspace/ui/workspace.css": {
       "durations": [
         {
-          "value": "80ms",
-          "family": "distinct",
-          "reason": "the workspace panel's own hover tint, short enough to read as immediate on a dense list"
-        },
-        {
           "value": "120ms",
           "family": "feedback"
         },
@@ -313,6 +304,21 @@
       ],
       "keyframes": []
     },
+    "styles/dialog.css": {
+      "durations": [
+        {
+          "value": "160ms",
+          "family": "disclosure",
+          "reason": "the scrim that reveals the surface: a region fading in, so it takes the disclosure token rather than the slower surface one"
+        },
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the dialog surface settles behind the scrim; the shared surface enter is 180ms and a modal reads slower than a popover"
+        }
+      ],
+      "keyframes": []
+    },
     "styles/dropdown.css": {
       "durations": [],
       "keyframes": [
@@ -333,6 +339,25 @@
           "family": "surface"
         }
       ]
+    },
+    "styles/feedback.css": {
+      "durations": [],
+      "keyframes": [
+        {
+          "name": "webui-feedback-spin",
+          "family": "loading"
+        }
+      ]
+    },
+    "styles/field.css": {
+      "durations": [
+        {
+          "value": "200ms",
+          "family": "distinct",
+          "reason": "the toggle's knob slides and its track fills on a press; it was recorded under the settings stylesheet until the control's appearance moved to the shared layer, and 200ms is the speed the control was measured at"
+        }
+      ],
+      "keyframes": []
     },
     "styles/index.css": {
       "durations": [
@@ -419,15 +444,6 @@
         {
           "name": "webui-user-menu-usage-pulse",
           "family": "feedback"
-        }
-      ]
-    },
-    "styles/feedback.css": {
-      "durations": [],
-      "keyframes": [
-        {
-          "name": "webui-feedback-spin",
-          "family": "loading"
         }
       ]
     }

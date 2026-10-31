@@ -77,6 +77,7 @@ export type WebuiButtonSize =
   | "inline-tiny"
   | "action"
   | "pill"
+  | "pill-compact"
   | "rail"
   | "option"
   | "content"
@@ -144,6 +145,8 @@ const SIZE_CLASS: Record<WebuiButtonSize, string> = {
   action: "webui-mavis-button-action",
   // The grouped pill's geometry; it pairs with the `grouped` variant.
   pill: "webui-mavis-button-pill",
+  // The grouped pill with a 12px label, for a row action inside a menu.
+  "pill-compact": "webui-mavis-button-pill-compact",
   rail: "webui-mavis-button-rail",
   option: "webui-mavis-button-option",
   content: "webui-mavis-button-content",

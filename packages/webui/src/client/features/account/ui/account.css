@@ -58,7 +58,7 @@
     max-width: 135px;
     flex: 1 1 auto;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing_2);
     margin-left: 8px;
     overflow: hidden;
   }
@@ -69,12 +69,12 @@
     white-space: nowrap;
   }
   .webui-user-menu-identity > span {
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
   }
   .webui-user-menu-identity > small {
     color: var(--text_default_tertiary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
   }
   .webui-user-menu-bell {
@@ -104,7 +104,7 @@
     border-radius: 6px;
     padding: 0 6px;
     color: var(--text_default_tertiary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
     white-space: nowrap;
   }
@@ -125,7 +125,7 @@
   }
   .webui-user-menu-shortcut {
     color: var(--text_default_tertiary);
-    font-size: 12px;
+    font-size: var(--size_12);
     opacity: 0;
     transition: opacity 120ms ease;
   }
@@ -153,7 +153,7 @@
     min-height: 154px;
     padding: 12px;
     color: var(--text_default_primary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
   }
 
@@ -167,7 +167,7 @@
     /* Flex so the 登录 button sits beside the copy, not under it. */
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing_8);
     margin: 0;
     color: var(--text_default_secondary);
     font-size: 13px;
@@ -191,14 +191,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     font-weight: 400;
     color: var(--text_default_primary);
   }
   .webui-user-menu-quota-value {
     flex: 0 0 auto;
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     font-weight: 400;
     color: var(--text_default_primary);
@@ -208,7 +208,7 @@
   }
   .webui-user-menu-quota-meta {
     color: var(--text_default_secondary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
   }
   .webui-user-menu-credits-row {
@@ -216,9 +216,9 @@
     height: 32px;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--spacing_8);
     overflow: hidden;
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     color: var(--text_default_primary);
   }
@@ -226,7 +226,7 @@
     min-width: 0;
   }
   .webui-user-menu-usage-error-title {
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     font-weight: 500;
     color: var(--text_default_primary);
@@ -334,7 +334,7 @@
   .signin-progress {
     display: flex;
     align-items: flex-start;
-    gap: 4px;
+    gap: var(--spacing_4);
     min-width: 214px;
     padding: 0 8px;
   }
@@ -347,7 +347,7 @@
   .signin-day {
     flex: 0 0 22px;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--spacing_8);
   }
   .signin-day-dot {
     position: relative;

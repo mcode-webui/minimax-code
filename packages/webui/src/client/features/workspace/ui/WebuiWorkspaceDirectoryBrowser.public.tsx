@@ -13,6 +13,7 @@ import { FeedbackError } from "../../../ui/feedback.js";
 import { WebuiButton } from "../../../ui/button.js";
 import { WebuiField, WebuiTextInput } from "../../../ui/field.js";
 import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 import {
   useWebuiWorkspaceFiles,
   useWebuiWorkspaceQueriesState,
@@ -142,7 +143,7 @@ export function WebuiWorkspaceDirectoryBrowser({
         <FeedbackError message={error} className="webui-commit-dialog-error" />
       ) : null}
       {loading ? (
-        <p className="webui-composer-menu-empty">正在读取目录…</p>
+        <FeedbackEmpty className="webui-composer-menu-empty" title={"正在读取目录…"} />
       ) : listing?.entries.length ? (
         listing.entries.map((entry) => (
           <WebuiButton
@@ -161,10 +162,10 @@ export function WebuiWorkspaceDirectoryBrowser({
           </WebuiButton>
         ))
       ) : (
-        <p className="webui-composer-menu-empty">此目录下没有子目录</p>
+        <FeedbackEmpty className="webui-composer-menu-empty" title={"此目录下没有子目录"} />
       )}
       {listing?.truncated ? (
-        <p className="webui-composer-menu-empty">子目录过多，仅显示前若干项</p>
+        <FeedbackEmpty className="webui-composer-menu-empty" title={"子目录过多，仅显示前若干项"} />
       ) : null}
       <div className="webui-workspace-browser-actions">
         <WebuiButton

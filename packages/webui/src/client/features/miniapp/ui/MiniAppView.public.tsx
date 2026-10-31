@@ -54,6 +54,7 @@ import { createWebuiMiniAppAgentBridge } from "../application/miniapp-agent-brid
 import { sessionHash } from "../../../projection/common/router.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 import {
   webuiMiniAppRefusalText,
   webuiMiniAppWindowName,
@@ -480,7 +481,7 @@ export function MiniAppView({
         <FeedbackError message={webuiMiniAppRefusalText({ code: refusal.code, message: refusal.message, rows: state.listing.rows, })} className="webui-plugin-error" testId="miniapp-view-refusal" />
       ) : null}
       {presentation === undefined && !refusal && state.unavailable ? (
-        <p className="webui-plugin-empty">{state.unavailable}</p>
+        <FeedbackEmpty className="webui-plugin-empty" title={state.unavailable} />
       ) : null}
     </div>
   );

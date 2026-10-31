@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import {
-  IconArchive, IconArrowUp, IconBell, IconBug, IconCirclePlus,
+  IconAlertTriangle, IconArchive, IconArrowUp, IconBell, IconBug, IconCirclePlus,
   IconCalendarEvent, IconCaretRightFilled, IconChartBar, IconCheck, IconChevronDown, IconChevronLeft,
   IconChevronRight, IconClipboard, IconCode, IconCopy, IconDeviceMobile, IconDots,
   IconDownload, IconEdit, IconFile, IconFileCode, IconFileImport, IconFolder, IconFolderPlus,
@@ -28,6 +28,9 @@ function glyph(Icon: IconComponent, className?: string, size = 18): ReactElement
   return <Icon aria-hidden="true" className={className} size={size} stroke={1.7} />;
 }
 
+// The runtime warning triangle: a hand-drawn glyph in the transcript until it became
+// part of the icon vocabulary, at the 14px the call site draws it.
+export function WebuiIconAlertTriangle({ className }: WebuiIconProps): ReactElement { return glyph(IconAlertTriangle, className, 14); }
 export function WebuiIconCheck({ className }: WebuiIconProps): ReactElement { return glyph(IconCheck, className, 16); }
 export function WebuiIconChevronLeft({ className }: WebuiIconProps): ReactElement { return glyph(IconChevronLeft, className, 16); }
 export function WebuiIconChevronRight({ className }: WebuiIconProps): ReactElement { return glyph(IconChevronRight, className, 16); }

@@ -65,7 +65,7 @@ export function WebuiQueuePanel({
                     * back out. The button appears on a running or finished row
                     * it would look operable and do nothing. */}
                 {item.status === "queued" && onRemove ? (
-                  <WebuiButton variant="grouped" size="pill" className="text-size_12"
+                  <WebuiButton variant="grouped" size="pill-compact"
                     onClick={() => onRemove(item)}
                     data-webui-remove-queue-item={item.itemId}
                   >

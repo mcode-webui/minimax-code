@@ -90,7 +90,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text_default_primary);
-  font-size: 14px;
+  font-size: var(--size_14);
   font-weight: var(--weight_medium);
   line-height: var(--line_height_20);
   text-overflow: ellipsis;
@@ -99,7 +99,7 @@
 
 .webui-plan-review-description {
   color: var(--text_status_warning);
-  font-size: 12px;
+  font-size: var(--size_12);
   line-height: var(--line_height_16);
 }
 
@@ -195,7 +195,7 @@
   overflow: hidden;
   padding-left: var(--spacing_8);
   color: var(--text_default_primary);
-  font-size: 14px;
+  font-size: var(--size_14);
   font-weight: var(--weight_medium);
   line-height: var(--line_height_20);
   text-overflow: ellipsis;
@@ -231,7 +231,7 @@
   border-radius: 5px;
   background-color: var(--bg_interaction_tertiary_hover);
   color: var(--text_default_secondary);
-  font-size: 14px;
+  font-size: var(--size_14);
   line-height: 24px;
 }
 
@@ -240,7 +240,7 @@
   flex: 1;
   overflow: hidden;
   color: var(--text_default_primary);
-  font-size: 14px;
+  font-size: var(--size_14);
   line-height: var(--line_height_20);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -316,7 +316,7 @@
 .webui-plan-card-error {
   padding: 0 var(--spacing_16) var(--spacing_12);
   color: var(--text_status_error);
-  font-size: 12px;
+  font-size: var(--size_12);
   line-height: var(--line_height_16);
 }
 

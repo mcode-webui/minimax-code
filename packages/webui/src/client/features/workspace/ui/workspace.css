@@ -161,7 +161,7 @@
   .webui-workspace-panel-header, .webui-workspace-panel-actions, .webui-workspace-tabs, .webui-workspace-tab { display: flex; align-items: center; }
   .webui-workspace-panel-header { position: relative; z-index: 2; min-height: 42px; flex: 0 0 42px; justify-content: space-between; gap: var(--spacing_8); border-bottom: 1px solid var(--border_default); background: var(--bg_default_secondary); padding: 0 var(--spacing_8); }
   .webui-workspace-tabs { min-width: 0; flex: 1 1 auto; align-self: stretch; gap: var(--spacing_8); overflow: visible; }
-  .webui-workspace-tab-list { display: flex; min-width: 0; flex: 1 1 0; align-items: center; gap: 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .webui-workspace-tab-list { display: flex; min-width: 0; flex: 1 1 0; align-items: center; gap: var(--spacing_2); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
   .webui-workspace-tab-list::-webkit-scrollbar { display: none; }
   .webui-workspace-tab { position: relative; max-width: 144px; min-width: 88px; height: 32px; flex: 0 1 144px; gap: var(--spacing_4); border: 1px solid transparent; border-bottom: 1px solid transparent; border-radius: 12px 12px 0 0; background: var(--bg_default_secondary); color: var(--text_default_secondary); transition: background-color 100ms ease; }
   .webui-workspace-tab.is-active { border-color: var(--border_default); border-bottom-color: var(--bg_default_primary); background: var(--bg_default_primary); color: var(--text_default_primary); }
@@ -171,7 +171,7 @@
   .webui-workspace-tab-label { min-width: 0; overflow: hidden; font-size: var(--size_14); text-overflow: ellipsis; white-space: nowrap; }
   .webui-workspace-tab-file-icon { width: 18px; height: 18px; flex: 0 0 18px; }
   /* The strip owns the per-tab glyphs for the new kinds. */
-  .webui-workspace-tab-glyph { width: 18px; height: 18px; flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; color: var(--icon_default_primary); }
+  .webui-workspace-tab-glyph { width: 18px; height: 18px; flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--size_14); line-height: 1; color: var(--icon_default_primary); }
   .webui-workspace-web-glyph { color: var(--icon_default_primary); }
   .webui-workspace-web-glyph img { display: block; width: 18px; height: 18px; object-fit: contain; }
   .webui-workspace-web-glyph img[hidden] { display: none; }
@@ -191,7 +191,8 @@
   .webui-workspace-filetype-badge.is-xml { color: #e37933; font-weight: 700; }
   .webui-workspace-filetype-badge.is-yaml { color: #cb171e; font-weight: 700; }
   .webui-workspace-filetype-badge.is-code { color: #3178c6; font-weight: 700; }
-  .webui-workspace-tab-close { position: absolute; top: 50%; right: 4px; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 5px; padding: 0; opacity: .72; }
+  /* 22px was below the 24px a pointer may be asked to hit (WCAG 2.2 AA). */
+  .webui-workspace-tab-close { position: absolute; top: 50%; right: 4px; width: 24px; height: 24px; transform: translateY(-50%); border-radius: 5px; padding: 0; opacity: .72; }
   .webui-workspace-tab:hover .webui-workspace-tab-close, .webui-workspace-tab.is-active .webui-workspace-tab-close { opacity: 1; }
   /* The strip's "+" opens a fresh new tab page. It used to sit beside the add
    * menu's "+", which opened a tool tab behind a dropdown; the menu's four
@@ -209,7 +210,7 @@
   .webui-workspace-file-breadcrumb { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: var(--spacing_8); overflow: hidden; color: var(--text_default_tertiary); font-size: var(--size_14); white-space: nowrap; }
   .webui-workspace-file-breadcrumb > span { display: inline-flex; min-width: 0; align-items: center; gap: var(--spacing_8); overflow: hidden; text-overflow: ellipsis; }
   .webui-workspace-file-breadcrumb .is-current { color: var(--text_default_primary); }
-  .webui-workspace-file-mode { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; border-radius: 8px; background: var(--bg_default_secondary); padding: 2px; }
+  .webui-workspace-file-mode { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--spacing_2); border-radius: 8px; background: var(--bg_default_secondary); padding: 2px; }
   .webui-workspace-file-mode-button { min-height: 28px; border-radius: 6px; padding: 0 10px; font-size: var(--size_12); }
   .webui-workspace-edit-action { width: 34px; height: 34px; flex: 0 0 34px; }
   .webui-workspace-tree-toggle { width: 34px; height: 34px; flex: 0 0 34px; }
@@ -339,7 +340,7 @@
    * which is another pair of coordinates that had to agree with something
    * else — the header the conversation has no part in. In the header row they
    * are simply the last thing in it (ADR 0025). */
-  .webui-workspace-panel-controls { position: static; display: flex; align-items: center; gap: 4px; }
+  .webui-workspace-panel-controls { position: static; display: flex; align-items: center; gap: var(--spacing_4); }
   /* The progress toggle is unavailable while the window is too narrow for the
    * card to have a gutter of its own. It keeps its place in the row and says
    * why, so the control does not vanish and leave a gap nobody explains. */

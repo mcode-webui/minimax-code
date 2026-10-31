@@ -26,6 +26,7 @@ import { WebuiIconChevronRight, WebuiIconSites } from "../../../shell/icons.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { WebuiButton } from "../../../ui/button.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 export interface MiniAppPickerProps {
   /** The session the chosen Mini App's view belongs to. */
   readonly sessionId?: string;
@@ -77,13 +78,13 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
           </WebuiButton>
         ) : null}
       </div>
-      {state.unavailable ? <p className="webui-plugin-empty">{state.unavailable}</p> : null}
+      {state.unavailable ? <FeedbackEmpty className="webui-plugin-empty" title={state.unavailable} /> : null}
       {loading && rows.length === 0 ? (
         // 加载中是一个要被听到的状态，播报通道交给共享契约。
         <FeedbackLiveRegion className="webui-plugin-empty">加载中…</FeedbackLiveRegion>
       ) : null}
       {!state.unavailable && !loading && rows.length === 0 ? (
-        <p className="webui-plugin-empty">暂无已安装的 Mini App</p>
+        <FeedbackEmpty className="webui-plugin-empty" title={"暂无已安装的 Mini App"} />
       ) : null}
       {/* A refused fourth start says which applications are using the capacity,
           and each of them carries the stop button that frees one. */}
@@ -169,7 +170,7 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
         创建 Mini App
       </WebuiButton>
       {sessionId ? null : (
-        <p className="webui-plugin-empty">当前没有会话，Mini App 会打开在第一个标签页里。</p>
+        <FeedbackEmpty className="webui-plugin-empty" title={"当前没有会话，Mini App 会打开在第一个标签页里。"} />
       )}
       {running.length > 0 ? (
         <p className="text-size_12 text-text_default_secondary" data-testid="miniapp-picker-running">

@@ -48,10 +48,11 @@ import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 import { WebuiStack } from "../../../ui/layout-primitives.js";
 import { WebuiDialog, WebuiDialogActions } from "../../../ui/dialog.js";
-import { WebuiCheckbox, WebuiField, WebuiFormActions, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiCheckbox, WebuiField, WebuiTextInput } from "../../../ui/field.js";
 import { IconButton, RefreshIcon } from "../../../ui/form-atoms.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 /** The attachment modalities, in Desktop's own words. */
 const ATTACHMENT_LABELS: Readonly<
   Record<(typeof WEBUI_MODEL_ATTACHMENT_MODALITIES)[number], string>
@@ -320,7 +321,7 @@ export function ProviderFormPanel({
           }}><SortableContext items={ids} strategy={verticalListSortingStrategy}><div className="w-full rounded-[16px] bg-bg_grouped_tertiary p-1">{models.map((model, index) => <SortableModelRow key={ids[index]} id={ids[index]!} model={model} onTest={() => void commands.testModel({ providerId: id, modelId: textOf(model.modelId) })} onToggle={(enabled) => void toggleModel(id, model, enabled)} />)}</div></SortableContext></DndContext> : null}
         </WebuiStack>;
       })}
-      <WebuiButton variant="plain" className="h-9 w-fit rounded-[8px] px-3" disabled={!commands.canManageProviders} onClick={() => void openProviderForm()}>添加模型</WebuiButton>
+      <WebuiButton variant="plain" className="h-9 w-fit px-3" disabled={!commands.canManageProviders} onClick={() => void openProviderForm()}>添加模型</WebuiButton>
       <WebuiDialog id="provider-form" open={showProviderForm} title={editingProvider ? "编辑提供商" : "添加模型"} onClose={() => editor.close()} dismissOnEscape portalTarget={portalTarget} width="standard" footer={<>
         <WebuiInline as="label" className="webui-provider-form-footer-leading"><WebuiCheckbox checked={skipTest} onChange={(event) => editor.setSkipConnectionTest(event.target.checked)} />跳过连通检测</WebuiInline>
         <WebuiDialogActions>
@@ -344,7 +345,7 @@ export function ProviderFormPanel({
           <WebuiField gap="small" label="API Key" required={!editingProvider} description={editingProvider ? "留空则保留原值" : undefined} control={(props) => <WebuiTextInput {...props} controlSize="compact" type="password" placeholder={editingProvider ? "留空保留原值" : "请输入API Key"} value={draftApiKey} onChange={(event) => editor.changeField("apiKey", event.target.value)} required={!editingProvider} />} />
           <WebuiStack gap="medium" className="webui-provider-form-models">
             <WebuiInline justify="between" gap="medium" className="webui-provider-form-models-header"><span className="text-[14px] font-medium leading-5 text-text_default_primary">模型</span><WebuiInline gap="small"><WebuiButton variant="outline-secondary" size="compact" onClick={() => editor.addModel()}>添加模型</WebuiButton><WebuiButton variant="quiet-highlight" size="compact" disabled={!snapshot.canDiscover || formBusy} onClick={() => void editor.discover()}>自动获取</WebuiButton></WebuiInline></WebuiInline>
-            {draftModels.length ? draftModels.map((model, index) => <ProviderModelCard key={model.id} model={model} index={index} busy={formBusy} onChange={(patch) => editor.changeModel(model.id, patch)} onTest={() => void editor.testModel(model.id)} onRemove={() => editor.removeModel(model.id)} />) : <p className="webui-provider-form-models-empty">请至少添加一个模型</p>}
+            {draftModels.length ? draftModels.map((model, index) => <ProviderModelCard key={model.id} model={model} index={index} busy={formBusy} onChange={(patch) => editor.changeModel(model.id, patch)} onTest={() => void editor.testModel(model.id)} onRemove={() => editor.removeModel(model.id)} />) : <FeedbackEmpty className="webui-provider-form-models-empty" title={"请至少添加一个模型"} />}
           </WebuiStack>
           <WebuiStack gap="small" className="webui-provider-form-headers"><div className="text-[13px] font-medium leading-5 text-text_default_primary">自定义 Headers</div>{draftHeaders.map((header) => <WebuiInline key={header.id} gap="small" className="webui-provider-form-header-row"><WebuiTextInput controlSize="dense" className="flex-1" aria-label="Header 名称" placeholder="Header 名称" value={header.name} onChange={(event) => editor.setHeaders(draftHeaders.map((item) => item.id === header.id ? { ...item, name: event.target.value } : item))} /><WebuiTextInput controlSize="dense" className="flex-1" aria-label="Header 值" placeholder={header.persistedName ? "留空保留原值" : "Header 值"} value={header.value} onChange={(event) => editor.setHeaders(draftHeaders.map((item) => item.id === header.id ? { ...item, value: event.target.value } : item))} /><IconButton label="移除 Header" onClick={() => editor.removeHeader(header.id)}><IconTrash aria-hidden="true" size={16} stroke={1.7} /></IconButton></WebuiInline>)}<WebuiButton variant="outline-secondary" size="compact" onClick={() => editor.addHeader()}><IconPlus aria-hidden="true" size={16} stroke={1.7} /> 添加 Header</WebuiButton></WebuiStack>
           {formError ? <FeedbackError message={formError} className="webui-provider-form-error" /> : null}

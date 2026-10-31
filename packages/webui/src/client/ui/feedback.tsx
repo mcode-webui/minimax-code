@@ -28,14 +28,17 @@ export function FeedbackEmpty({
   description,
   action,
   testId,
+  className,
 }: {
   readonly title: ReactNode;
   readonly description?: ReactNode;
   readonly action?: ReactNode;
   readonly testId?: string;
+  /** The caller's layout only — the empty state's own appearance stays shared. */
+  readonly className?: string;
 }): ReactElement {
   return (
-    <div className="webui-feedback webui-feedback--empty" data-testid={testId}>
+    <div className={`webui-feedback webui-feedback--empty${className ? ` ${className}` : ""}`} data-testid={testId}>
       <p className="webui-feedback-title">{title}</p>
       {description === undefined ? null : <p className="webui-feedback-description">{description}</p>}
       {action === undefined ? null : <div className="webui-feedback-action">{action}</div>}

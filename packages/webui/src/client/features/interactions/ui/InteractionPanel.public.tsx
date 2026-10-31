@@ -137,19 +137,19 @@ export function WebuiInteractionPanel({
             </span>
           ) : null}
           <WebuiInline gap="small" wrap>
-            <WebuiButton variant="accent" size="action" className="text-size_14"
+            <WebuiButton variant="accent" size="action"
               onClick={() => void onPermission(permission, "allowOnce")}
             >
               Allow once
             </WebuiButton>
             {permission.allowAlwaysSupported ? (
-              <WebuiButton variant="grouped" size="pill" className="text-size_14"
+              <WebuiButton variant="grouped" size="pill"
                 onClick={() => void onPermission(permission, "allowAlways")}
               >
                 Always allow
               </WebuiButton>
             ) : null}
-            <WebuiButton variant="grouped" size="pill" className="text-size_14"
+            <WebuiButton variant="grouped" size="pill"
               onClick={() => void onPermission(permission, "deny")}
             >
               Deny
@@ -423,9 +423,9 @@ export function WebuiInteractionPanel({
           </div>
           </div>
           <WebuiInline gap="small" wrap className="webui-questionnaire-actions">
-            {questionnaire.steps.length > 1 && currentStep > 0 ? <WebuiButton variant="grouped" size="pill" className="text-size_14" disabled={submitting} data-testid="questionnaire-back" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))}>上一步</WebuiButton> : null}
-            {questionnaire.steps.length > 1 && currentStep < questionnaire.steps.length - 1 ? <WebuiButton variant="accent" size="action" className="text-size_14" disabled={submitting || !activeStepValid} data-testid="questionnaire-next" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))}>下一步</WebuiButton> : null}
-            <WebuiButton variant="accent" size="action" className="text-size_14"
+            {questionnaire.steps.length > 1 && currentStep > 0 ? <WebuiButton variant="grouped" size="pill" disabled={submitting} data-testid="questionnaire-back" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))}>上一步</WebuiButton> : null}
+            {questionnaire.steps.length > 1 && currentStep < questionnaire.steps.length - 1 ? <WebuiButton variant="accent" size="action" disabled={submitting || !activeStepValid} data-testid="questionnaire-next" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))}>下一步</WebuiButton> : null}
+            <WebuiButton variant="accent" size="action"
               disabled={
                 submitting ||
                 currentStep < questionnaire.steps.length - 1 || !questionnaire.steps.every((step) => {
@@ -450,7 +450,7 @@ export function WebuiInteractionPanel({
             >
               提交
             </WebuiButton>
-            <WebuiButton variant="grouped" size="pill" className="text-size_14"
+            <WebuiButton variant="grouped" size="pill"
               disabled={submitting}
               onClick={() => {
                 setSubmitting(true);

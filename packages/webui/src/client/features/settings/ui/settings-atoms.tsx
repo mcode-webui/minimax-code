@@ -69,7 +69,9 @@ export function SettingsButton({
 }: {
   readonly children: ReactNode;
   readonly variant?: keyof typeof SETTINGS_BUTTON_VARIANT;
-  readonly size?: "regular" | "compact" | "header";
+  // The sizes the settings pages state: the page action, the row action, the
+  // header action, and the pill the account page's share action draws.
+  readonly size?: "regular" | "compact" | "header" | "pill";
   readonly disabled?: boolean;
   readonly onClick?: () => void;
   readonly testId?: string;

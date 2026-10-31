@@ -45,6 +45,7 @@ import { FolderIcon, SearchIcon } from "../../../ui/settings-glyphs.js";
 import { SettingsCard, SettingsPage } from "../../../ui/settings-layout.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 type WebuiReviewStateAction = Parameters<typeof reduceWebuiReviewState>[1];
 
 /** 「Review 审查模式」and「修复建议+跳转」.
@@ -217,13 +218,13 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
 }): ReactElement {
   const state = error ? "error" : loading ? "loading" : workspaces.length ? "ready" : "empty";
   return <SettingsPage testId="review-workspace-picker" dataAttributes={{ "data-webui-workspace-state": state }}>
-    <p className="webui-review-empty">选一个工作区来审查它的变更。</p>
+    <FeedbackEmpty className="webui-review-empty" title={"选一个工作区来审查它的变更。"} />
     {error ? <FeedbackError message={error} className="webui-review-error" testId="review-workspace-error" /> : null}
     {loading ? <FeedbackLiveRegion className="webui-review-loading">正在读取可审查的工作区…</FeedbackLiveRegion> : null}
     {!loading && !error && workspaces.length === 0 ? (
       /* Saying why matters more than saying that: an empty list under the same
        * heading reads as the bug this page is fixing. */
-      <p className="webui-review-empty" data-testid="review-workspace-empty">现在没有绑定项目目录的会话，所以没有可审查的工作区。在左栏给一个会话选好项目目录，再回到这里。</p>
+      <FeedbackEmpty className="webui-review-empty" title={"现在没有绑定项目目录的会话，所以没有可审查的工作区。在左栏给一个会话选好项目目录，再回到这里。"} testId="review-workspace-empty" />
     ) : null}
     <SettingsCard>
       <ul className="webui-review-workspace-list">
@@ -295,8 +296,8 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
       )
     ) : null}
     {workspaceDir ? <p className="webui-review-empty" data-testid="review-workspace">{workspaceDir}</p> : null}
-    {empty && !note ? <p className="webui-review-empty" data-testid="review-empty">{empty}</p> : null}
-    {state.status === "ready" && rows.length === 0 ? <p className="webui-review-empty" data-testid="review-empty">{filterActive ? "没有匹配的文件" : "没有可显示的文件"}</p> : null}
+    {empty && !note ? <FeedbackEmpty className="webui-review-empty" title={empty} testId="review-empty" /> : null}
+    {state.status === "ready" && rows.length === 0 ? <FeedbackEmpty className="webui-review-empty" title={filterActive ? "没有匹配的文件" : "没有可显示的文件"} testId="review-empty" /> : null}
     <SettingsCard>
       <ul className="webui-review-files">
         {rows.map((file) => {

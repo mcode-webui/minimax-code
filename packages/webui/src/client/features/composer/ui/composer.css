@@ -1,7 +1,6 @@
 /* composer — moved out of styles/shell.css; rules kept in their original relative order. */
 @layer components {
 
-
   /* The floating composer card. Same layer as `.webui-card`, at the 20px
    * radius, with the shadow added from `sm` upward. Same reason
    * as `.webui-hero-avatar` for living here instead of in the markup.
@@ -192,7 +191,7 @@
   .webui-composer-menu-empty {
     padding: 10px;
     color: var(--webui-color-text-tertiary, #999);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-composer-permission-wrap {
@@ -203,11 +202,6 @@
   .webui-composer-permission-button:hover:not(:disabled) {
     background: var(--bg_grouped_tertiary);
     color: var(--text_default_primary);
-  }
-
-  .webui-composer-permission-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
   }
 
   /* `完全访问权限` is the one mode whose own row is orange in the popover, so
@@ -281,15 +275,6 @@
     cursor: pointer;
   }
 
-  .webui-composer-permission-option:hover:not(:disabled) {
-    background: var(--bg_grouped_tertiary);
-  }
-
-  .webui-composer-permission-option:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
   .webui-composer-permission-header {
     display: flex;
     align-items: baseline;
@@ -324,7 +309,7 @@
     min-width: 0;
     flex: 1 1 auto;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing_2);
   }
 
   .webui-composer-permission-label {
@@ -372,7 +357,7 @@
   .webui-composer-mention-option {
     align-items: flex-start;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing_2);
   }
 
   .webui-composer-mention-option small {
@@ -403,7 +388,7 @@
     border-radius: 14px;
     background: var(--webui-color-bg-secondary, #f5f5f5);
     color: var(--webui-color-text-secondary, #666);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-composer-attachment.is-image {
@@ -441,7 +426,7 @@
   .webui-composer-attachment-loading {
     align-self: center;
     color: var(--webui-color-text-tertiary, #999);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-composer-url-reference {
@@ -449,7 +434,7 @@
     max-width: min(420px, 100%);
     min-height: 32px;
     align-items: center;
-    gap: 6px;
+    gap: var(--spacing_6);
     padding: 0 6px 0 10px;
     border-radius: 10px;
     background: var(--webui-color-bg-secondary, #f5f5f5);
@@ -483,17 +468,6 @@
    * this process can verify. The neutral tone is the honest one, and the label
    * beside it carries the truth. */
   .webui-thinking-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
-  .webui-thinking-trigger {
-    display: flex;
-    width: 28px;
-    height: 28px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    transition: background-color 120ms ease;
-  }
   /* The brain's hover bubble: the same dark shape with an arrow as
    * `.webui-context-usage-label` two controls away, so a tooltip here and a
    * tooltip there are one object rather than two. A native `title` was the
@@ -502,17 +476,6 @@
   .webui-thinking-label { position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 60; width: max-content; max-width: 220px; padding: 4px 8px; border-radius: 6px; transform: translateX(-50%) translateY(3px); transform-origin: bottom center; background: rgb(0 0 0 / 85%); color: #fff; font-size: var(--size_12); line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end; }
   .webui-thinking-label::after { position: absolute; top: 100%; left: 50%; border: 5px solid transparent; border-top-color: rgb(0 0 0 / 85%); content: ""; transform: translateX(-50%); }
   .webui-thinking-label[data-webui-thinking-label="true"] { opacity: 1; transform: translateX(-50%) translateY(0); visibility: visible; transition: opacity 120ms ease, transform 120ms ease, visibility 0s; }
-  .webui-thinking-trigger:hover:not(:disabled) {
-    background: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-thinking-trigger:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-  .webui-thinking-trigger:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 1px;
-  }
   .webui-thinking-brain {
     display: block;
     width: 18px;
@@ -638,58 +601,29 @@
     width: 28px;
     height: 28px;
   }
-  .webui-composer-add-button:hover:not(:disabled) {
-    color: var(--icon_default_primary);
-  }
 
   /* The composer field sits inside the card rather than on the surface: no
    * border of its own, no resize handle, and a floor so the card keeps its
-   * height while the field is empty. Compound with `.webui-textarea` so the
-   * override does not depend on rule order. */
-  .webui-textarea.webui-composer-input {
+   * height while the field is empty. The shared field contract owns the resting
+   * appearance and the placeholder, so these rules name this surface's class and
+   * nothing else. */
+  .webui-composer-input {
     width: 100%;
     min-height: 56px;
     border: 0;
-    background-color: transparent;
-    resize: none;
-    outline: none;
-  }
-
-  /* --------------------------------------------------------------- fields */
-
-  /* Inputs and textareas share the same shape: border, radius, padding,
-   * a background that contrasts the rail behind it, and an accent
-   * outline when the field is focused by the keyboard. */
-  .webui-input,
-  .webui-textarea {
-    background-color: var(--bg_default_primary);
-    color: var(--text_default_primary);
-    border-radius: var(--radius_8);
-    border: 1px solid var(--border_default);
-    padding: var(--spacing_8) var(--spacing_12);
-    line-height: var(--line_height_20);
-    transition: border-color 120ms ease, box-shadow 120ms ease;
-  }
-  .webui-textarea {
     border-radius: var(--radius_20);
+    background-color: transparent;
+    color: var(--text_default_primary);
     padding: var(--spacing_12) var(--spacing_16);
     line-height: var(--line_height_22);
-  }
-  .webui-input:focus-visible,
-  .webui-textarea:focus-visible {
-    border-color: var(--border_accent);
+    resize: none;
     outline: none;
-    box-shadow: 0 0 0 3px var(--bg_interaction_accent_focus_highlight);
-  }
-  .webui-input::placeholder,
-  .webui-textarea::placeholder {
-    color: var(--text_default_tertiary);
   }
   /* The composer is already framed by its card; do not add the generic blue
    * input focus ring around the message field. Keep focus styling on the
    * send/action controls where it remains useful. */
-  .webui-textarea.webui-composer-input:focus,
-  .webui-textarea.webui-composer-input:focus-visible {
+  .webui-composer-input:focus,
+  .webui-composer-input:focus-visible {
     border: 0;
     outline: none;
     box-shadow: none;

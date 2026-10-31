@@ -447,7 +447,7 @@ export function AccountUsageShareAction(): ReactElement | null {
                   </WebuiStack>
                   <SettingsButton
                     variant="black"
-                    className="!flex !h-9 !min-w-20 !items-center !justify-center !gap-1 !rounded-[32px] !px-4 !py-0"
+                    size="pill"
                     disabled={exporting}
                     onClick={() => void saveImage()}
                     testId="account-usage-share-save"

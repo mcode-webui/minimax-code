@@ -56,7 +56,7 @@ import {
   type WebuiChannelRow,
 } from "../projection/channel-panel.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiField, WebuiFormActions, WebuiFormLayout, WebuiTextInput } from "../../../ui/field.js";
 import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface ChannelConnectPanelProps {
@@ -136,7 +136,7 @@ function ChannelBindForm(props: {
   return (
     <form
       data-webui-channel-bind-form="true"
-      className="flex flex-col gap-3 py-3"
+      className="py-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (name.trim() === "") return;
@@ -147,61 +147,63 @@ function ChannelBindForm(props: {
         });
       }}
     >
-      <p className="text-sm leading-5 text-text_default_primary">绑定机器人</p>
-      <WebuiField
-        label="客户端名称"
-        control={(props) => (
-          <WebuiTextInput
-            {...props}
-            data-webui-channel-bind-name="true"
-            controlSize="compact"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        )}
-      />
-      <WebuiField
-        label="飞书 App ID"
-        control={(props) => (
-          <WebuiTextInput
-            {...props}
-            data-webui-channel-bind-app-id="true"
-            controlSize="compact"
-            value={appId}
-            onChange={(event) => setAppId(event.target.value)}
-          />
-        )}
-      />
-      <WebuiField
-        label="飞书 App Secret"
-        control={(props) => (
-          <WebuiTextInput
-            {...props}
-            data-webui-channel-bind-app-secret="true"
-            controlSize="compact"
-            type="password"
-            value={appSecret}
-            onChange={(event) => setAppSecret(event.target.value)}
-          />
-        )}
-      />
-      <p className="text-xs leading-4 text-text_default_tertiary">
-        {WEBUI_CHANNEL_SECTION_BIND_QR} · {WEBUI_CHANNEL_SECTION_BIND_QR_HINT}
-      </p>
-      <WebuiInline gap="small">
-        <WebuiButton variant="outline" size="inline" type="submit"
-          data-webui-channel-bind-submit="true"
+      <WebuiFormLayout>
+        <p className="text-sm leading-5 text-text_default_primary">绑定机器人</p>
+        <WebuiField
+          label="客户端名称"
+          control={(props) => (
+            <WebuiTextInput
+              {...props}
+              data-webui-channel-bind-name="true"
+              controlSize="compact"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          )}
+        />
+        <WebuiField
+          label="飞书 App ID"
+          control={(props) => (
+            <WebuiTextInput
+              {...props}
+              data-webui-channel-bind-app-id="true"
+              controlSize="compact"
+              value={appId}
+              onChange={(event) => setAppId(event.target.value)}
+            />
+          )}
+        />
+        <WebuiField
+          label="飞书 App Secret"
+          control={(props) => (
+            <WebuiTextInput
+              {...props}
+              data-webui-channel-bind-app-secret="true"
+              controlSize="compact"
+              type="password"
+              value={appSecret}
+              onChange={(event) => setAppSecret(event.target.value)}
+            />
+          )}
+        />
+        <p className="text-xs leading-4 text-text_default_tertiary">
+          {WEBUI_CHANNEL_SECTION_BIND_QR} · {WEBUI_CHANNEL_SECTION_BIND_QR_HINT}
+        </p>
+        <WebuiFormActions>
+          <WebuiButton variant="outline" size="inline" type="submit"
+            data-webui-channel-bind-submit="true"
 
-        >
-          绑定
-        </WebuiButton>
-        <WebuiButton variant="quiet-highlight" size="inline" data-webui-channel-bind-cancel="true"
-          onClick={props.onCancel}
+          >
+            绑定
+          </WebuiButton>
+          <WebuiButton variant="quiet-highlight" size="inline" data-webui-channel-bind-cancel="true"
+            onClick={props.onCancel}
 
-        >
-          取消
-        </WebuiButton>
-      </WebuiInline>
+          >
+            取消
+          </WebuiButton>
+        </WebuiFormActions>
+      </WebuiFormLayout>
     </form>
   );
 }

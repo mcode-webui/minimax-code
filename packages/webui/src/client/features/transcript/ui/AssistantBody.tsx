@@ -3,6 +3,7 @@
 
 import { useState, type ReactElement } from "react";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiIconAlertTriangle } from "../../../shell/icons.js";
 import { WebuiStack } from "../../../ui/layout-primitives.js";
 import { IconChevronDown } from "@tabler/icons-react";
 import { WebuiMarkdown } from "./markdown.public.js";
@@ -102,7 +103,7 @@ function renderActivityParts(
       index -= 1;
       rows.push({ messageId, element: <WebuiAgentJoinedGroup key={`${messageId}-joined-${index}`} agents={agents} /> });
     } else if (part.type === "runtime_warning") {
-      rows.push({ messageId, element: <div className="webui-runtime-warning" key={`${messageId}-runtime-warning-${index}`} data-webui-runtime-warning="true" role="note"><span className="webui-runtime-warning-title"><svg className="webui-runtime-warning-icon" aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5 15 14H1L8 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /><circle cx="8" cy="11.75" r="0.9" fill="currentColor" /></svg><span>{part.title}</span>{part.meta ? <span className="webui-runtime-warning-meta">{part.meta}</span> : null}</span><WebuiMarkdown source={part.text} onOpenFile={onOpenFile} workspaceDir={workspaceDir} /></div> });
+      rows.push({ messageId, element: <div className="webui-runtime-warning" key={`${messageId}-runtime-warning-${index}`} data-webui-runtime-warning="true" role="note"><span className="webui-runtime-warning-title"><WebuiIconAlertTriangle className="webui-runtime-warning-icon" /><span>{part.title}</span>{part.meta ? <span className="webui-runtime-warning-meta">{part.meta}</span> : null}</span><WebuiMarkdown source={part.text} onOpenFile={onOpenFile} workspaceDir={workspaceDir} /></div> });
     } else {
       rows.push({ messageId, element: <WebuiDeliveredAssets key={`${messageId}-assets-${index}`} assets={part.assets} workspaceDir={workspaceDir} onOpenFile={onOpenFile} /> });
     }

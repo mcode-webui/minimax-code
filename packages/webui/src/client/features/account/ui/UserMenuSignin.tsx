@@ -209,9 +209,9 @@ function SigninCreditsInfo({ onNavigateToUsage }: { readonly onNavigateToUsage: 
     <span className="webui-signin-credits-anchor">
       <WebuiIconButton
         tone="bare"
-        size="regular"
+        size="micro"
         label={SIGNIN.creditsAria}
-        className="size-4 shrink-0"
+        className="shrink-0"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}

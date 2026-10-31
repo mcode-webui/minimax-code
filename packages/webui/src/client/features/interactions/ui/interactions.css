@@ -15,70 +15,12 @@
 
   /* A quick-action chip: 32px, 8px radius, a hairline ring. */
 
-  /* ---------------------------------------------------------------- actions */
-
-  /* Primary action button: the accent fill for one
-   * restrained call to action on the page (Send). The
-   * hover/selected/focus states ride on the same token family. */
-  .webui-button-primary {
-    background-color: var(--bg_interaction_primary_default);
-    color: var(--text_default_inverted);
-    border-radius: var(--radius_12);
-    padding: var(--spacing_8) var(--spacing_16);
-    font-weight: var(--weight_medium);
-    line-height: var(--line_height_20);
-    border: 1px solid transparent;
-    transition: background-color 120ms ease, border-color 120ms ease;
-  }
-  .webui-button-primary:hover:not(:disabled) {
-    background-color: var(--bg_interaction_primary_hover);
-  }
-  /* Disabled primary. This used to swap in the inactive fill, but in the
-   * light theme that fill and the inactive label are the same gray — the
-   * label rendered at 1:1 against its own background and disappeared. A
-   * disabled primary keeps the primary surface and dims the label instead,
-   * which is the rule the secondary button below already uses, and it keeps
-   * the label legible in both themes: 7.99:1 on light, 5.74:1 on dark. */
-  .webui-button-primary:disabled {
-    color: var(--text_label_secondary_inactive);
-    cursor: not-allowed;
-  }
-  .webui-button-primary:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
-  }
-
-  /* Compact transcript pagination control. Keep it quiet until hover so
-   * older history is available without competing with the conversation. */
-  .webui-button-secondary {
-    display: inline-flex;
-    min-height: 36px;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing_6);
-    background-color: var(--bg_grouped_secondary);
-    color: var(--text_default_secondary);
-    border-radius: var(--radius_full);
-    padding: var(--spacing_6) var(--spacing_12);
-    line-height: var(--line_height_20);
-    border: 1px solid var(--border_default);
-    cursor: pointer;
-    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-  }
-  .webui-button-secondary:hover:not(:disabled) {
-    background-color: var(--bg_grouped_primary);
-    border-color: var(--border_heavy);
-    color: var(--text_default_primary);
-  }
-  .webui-button-secondary:disabled {
-    color: var(--text_default_tertiary);
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-  .webui-button-secondary:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
-  }
+  /* The accent action and the grouped pill used to be declared here, as
+   * `.webui-button-primary` and `.webui-button-secondary`. The account,
+   * transcript, composer, workspace and shell businesses rendered both, so the
+   * two appearances were the shared button contract's to own, and they are
+   * declared once in `client/styles/button.css` now. A caller renders
+   * `WebuiButton` with `variant="accent"` or `variant="grouped"`. */
 
   .webui-questionnaire-header {
     display: flex;

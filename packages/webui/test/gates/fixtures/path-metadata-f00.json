@@ -346,6 +346,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/account/ui/account.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "account",
+      "home": "target"
+    },
+    {
       "path": "client/features/account/ui/AccountLoginDialog.tsx",
       "layers": [
         "bindings"
@@ -383,15 +392,6 @@
     },
     {
       "path": "client/features/account/ui/UserMenuUsage.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "account",
-      "home": "target"
-    },
-    {
-      "path": "client/features/account/ui/account.css",
       "layers": [
         "bindings"
       ],
@@ -463,6 +463,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/browser/ui/browser.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "browser",
+      "home": "target"
+    },
+    {
       "path": "client/features/browser/ui/BrowserAuthorizationSwitches.public.tsx",
       "layers": [
         "bindings"
@@ -491,15 +500,6 @@
     },
     {
       "path": "client/features/browser/ui/BrowserSettingsPage.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "browser",
-      "home": "target"
-    },
-    {
-      "path": "client/features/browser/ui/browser.css",
       "layers": [
         "bindings"
       ],
@@ -778,6 +778,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/composer/ui/composer.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
       "path": "client/features/composer/ui/Composer.tsx",
       "layers": [
         "bindings"
@@ -850,6 +859,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/composer/ui/slash-palette.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "composer",
+      "home": "target"
+    },
+    {
       "path": "client/features/composer/ui/ThinkingTrigger.tsx",
       "layers": [
         "bindings"
@@ -860,24 +878,6 @@
     },
     {
       "path": "client/features/composer/ui/WebuiComposer.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "composer",
-      "home": "target"
-    },
-    {
-      "path": "client/features/composer/ui/composer.css",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "composer",
-      "home": "target"
-    },
-    {
-      "path": "client/features/composer/ui/slash-palette.ts",
       "layers": [
         "bindings"
       ],
@@ -994,7 +994,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/goal/ui/GoalBanner.public.tsx",
+      "path": "client/features/goal/ui/goal.css",
       "layers": [
         "bindings"
       ],
@@ -1003,7 +1003,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/goal/ui/goal.css",
+      "path": "client/features/goal/ui/GoalBanner.public.tsx",
       "layers": [
         "bindings"
       ],
@@ -1084,24 +1084,6 @@
       "home": "target"
     },
     {
-      "path": "client/features/interactions/ui/PlanModeCards.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "interactions",
-      "home": "target"
-    },
-    {
-      "path": "client/features/interactions/ui/PlanModeCards.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "interactions",
-      "home": "target"
-    },
-    {
       "path": "client/features/interactions/ui/interactions.css",
       "layers": [
         "bindings"
@@ -1112,6 +1094,24 @@
     },
     {
       "path": "client/features/interactions/ui/plan-mode.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/PlanModeCards.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "interactions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/interactions/ui/PlanModeCards.tsx",
       "layers": [
         "bindings"
       ],
@@ -1462,6 +1462,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/models/ui/models.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "models",
+      "home": "target"
+    },
+    {
       "path": "client/features/models/ui/ModelSettingsFlyout.tsx",
       "layers": [
         "bindings"
@@ -1472,15 +1481,6 @@
     },
     {
       "path": "client/features/models/ui/ProviderFormPanel.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "models",
-      "home": "target"
-    },
-    {
-      "path": "client/features/models/ui/models.css",
       "layers": [
         "bindings"
       ],
@@ -1624,7 +1624,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/plugins/ui/SkillForm.tsx",
+      "path": "client/features/plugins/ui/plugins.css",
       "layers": [
         "bindings"
       ],
@@ -1633,7 +1633,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/plugins/ui/plugins.css",
+      "path": "client/features/plugins/ui/SkillForm.tsx",
       "layers": [
         "bindings"
       ],
@@ -1696,7 +1696,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/remote/ui/RemotePage.public.tsx",
+      "path": "client/features/remote/ui/remote-tabs.tsx",
       "layers": [
         "bindings"
       ],
@@ -1705,7 +1705,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/remote/ui/remote-tabs.tsx",
+      "path": "client/features/remote/ui/RemotePage.public.tsx",
       "layers": [
         "bindings"
       ],
@@ -1813,7 +1813,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
+      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
       "layers": [
         "bindings"
       ],
@@ -1822,7 +1822,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/scheduling/ui/scheduling-editor.tsx",
+      "path": "client/features/scheduling/ui/SchedulingPanel.public.tsx",
       "layers": [
         "bindings"
       ],
@@ -1904,6 +1904,15 @@
     },
     {
       "path": "client/features/sessions/bindings/use-session-rail-overlays.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-bindings",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/bindings/use-session-rail-pins.ts",
       "layers": [
         "bindings"
       ],
@@ -2029,6 +2038,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/sessions/ui/project-expansion.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
       "path": "client/features/sessions/ui/ProjectList.tsx",
       "layers": [
         "bindings"
@@ -2038,7 +2056,34 @@
       "home": "target"
     },
     {
+      "path": "client/features/sessions/ui/rail-context-menu.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/rail-view-tabs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
       "path": "client/features/sessions/ui/RailRow.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "sessions",
+      "home": "target"
+    },
+    {
+      "path": "client/features/sessions/ui/session-activity-meta.tsx",
       "layers": [
         "bindings"
       ],
@@ -2066,42 +2111,6 @@
     },
     {
       "path": "client/features/sessions/ui/SessionRailRegion.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "sessions",
-      "home": "target"
-    },
-    {
-      "path": "client/features/sessions/ui/project-expansion.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "sessions",
-      "home": "target"
-    },
-    {
-      "path": "client/features/sessions/ui/rail-context-menu.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "sessions",
-      "home": "target"
-    },
-    {
-      "path": "client/features/sessions/ui/rail-view-tabs.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "sessions",
-      "home": "target"
-    },
-    {
-      "path": "client/features/sessions/ui/session-activity-meta.tsx",
       "layers": [
         "bindings"
       ],
@@ -2182,6 +2191,24 @@
       "home": "target"
     },
     {
+      "path": "client/features/settings/ui/account-usage-glyphs.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/account-usage-share-image.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
       "path": "client/features/settings/ui/AccountUsageSettings.tsx",
       "layers": [
         "bindings"
@@ -2219,6 +2246,24 @@
     },
     {
       "path": "client/features/settings/ui/PersonalizationSettings.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/settings-atoms.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/ui/settings.css",
       "layers": [
         "bindings"
       ],
@@ -2290,42 +2335,6 @@
       "home": "target"
     },
     {
-      "path": "client/features/settings/ui/account-usage-glyphs.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "settings",
-      "home": "target"
-    },
-    {
-      "path": "client/features/settings/ui/account-usage-share-image.ts",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "settings",
-      "home": "target"
-    },
-    {
-      "path": "client/features/settings/ui/settings-atoms.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "settings",
-      "home": "target"
-    },
-    {
-      "path": "client/features/settings/ui/settings.css",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "settings",
-      "home": "target"
-    },
-    {
       "path": "client/features/shell/application/boundary-error.ts",
       "layers": [
         "application"
@@ -2380,15 +2389,6 @@
       "home": "target"
     },
     {
-      "path": "client/features/ssh/ui/SshPanel.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "ssh",
-      "home": "target"
-    },
-    {
       "path": "client/features/ssh/ui/ssh-host-form.tsx",
       "layers": [
         "bindings"
@@ -2408,6 +2408,15 @@
     },
     {
       "path": "client/features/ssh/ui/ssh-terminal-view.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "ssh",
+      "home": "target"
+    },
+    {
+      "path": "client/features/ssh/ui/SshPanel.public.tsx",
       "layers": [
         "bindings"
       ],
@@ -2614,6 +2623,15 @@
       "home": "target"
     },
     {
+      "path": "client/features/transcript/ui/markdown.public.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
       "path": "client/features/transcript/ui/MessageActions.tsx",
       "layers": [
         "bindings"
@@ -2677,6 +2695,24 @@
       "home": "target"
     },
     {
+      "path": "client/features/transcript/ui/transcript-widgets.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
+      "path": "client/features/transcript/ui/transcript.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "transcript",
+      "home": "target"
+    },
+    {
       "path": "client/features/transcript/ui/Transcript.tsx",
       "layers": [
         "bindings"
@@ -2705,33 +2741,6 @@
     },
     {
       "path": "client/features/transcript/ui/TurnNavigator.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "transcript",
-      "home": "target"
-    },
-    {
-      "path": "client/features/transcript/ui/markdown.public.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "transcript",
-      "home": "target"
-    },
-    {
-      "path": "client/features/transcript/ui/transcript-widgets.css",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "transcript",
-      "home": "target"
-    },
-    {
-      "path": "client/features/transcript/ui/transcript.css",
       "layers": [
         "bindings"
       ],
@@ -3217,6 +3226,24 @@
       "home": "target"
     },
     {
+      "path": "client/features/workspace/ui/workspace-progress.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
+      "path": "client/features/workspace/ui/workspace.css",
+      "layers": [
+        "bindings"
+      ],
+      "role": "feature-ui",
+      "business": "workspace",
+      "home": "target"
+    },
+    {
       "path": "client/features/workspace/ui/WorkspaceArchiveView.tsx",
       "layers": [
         "bindings"
@@ -3281,24 +3308,6 @@
     },
     {
       "path": "client/features/workspace/ui/WorkspaceProgressPanel.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "workspace",
-      "home": "target"
-    },
-    {
-      "path": "client/features/workspace/ui/workspace-progress.css",
-      "layers": [
-        "bindings"
-      ],
-      "role": "feature-ui",
-      "business": "workspace",
-      "home": "target"
-    },
-    {
-      "path": "client/features/workspace/ui/workspace.css",
       "layers": [
         "bindings"
       ],
@@ -3514,6 +3523,15 @@
       "home": "current"
     },
     {
+      "path": "client/projection/common/overlay-order.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "projection-common",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/projection/common/paths.ts",
       "layers": [
         "view"
@@ -3595,6 +3613,15 @@
       "home": "target"
     },
     {
+      "path": "client/shell/icons.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
       "path": "client/shell/NotFound.tsx",
       "layers": [
         "bindings"
@@ -3605,42 +3632,6 @@
     },
     {
       "path": "client/shell/StartupFallback.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "shell",
-      "business": null,
-      "home": "target"
-    },
-    {
-      "path": "client/shell/WebuiClientFoundationApp.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "shell",
-      "business": null,
-      "home": "target"
-    },
-    {
-      "path": "client/shell/WebuiErrorBoundary.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "shell",
-      "business": null,
-      "home": "target"
-    },
-    {
-      "path": "client/shell/WebuiZoneBoundary.tsx",
-      "layers": [
-        "bindings"
-      ],
-      "role": "shell",
-      "business": null,
-      "home": "target"
-    },
-    {
-      "path": "client/shell/icons.tsx",
       "layers": [
         "bindings"
       ],
@@ -3694,7 +3685,61 @@
       "home": "target"
     },
     {
+      "path": "client/shell/WebuiClientFoundationApp.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/WebuiErrorBoundary.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/shell/WebuiZoneBoundary.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "shell",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/styles/button.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/styles/dropdown.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/feedback.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/field.css",
       "layers": [
         "unknown"
       ],
@@ -3721,6 +3766,24 @@
       "home": "current"
     },
     {
+      "path": "client/styles/menu-item.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/styles/motion.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/styles/shell.css",
       "layers": [
         "unknown"
@@ -3737,6 +3800,33 @@
       "role": "styles",
       "business": null,
       "home": "current"
+    },
+    {
+      "path": "client/ui/activity-phrase.ts",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/button.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/content-page.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
     },
     {
       "path": "client/ui/ContextMenu.tsx",
@@ -3757,7 +3847,7 @@
       "home": "target"
     },
     {
-      "path": "client/ui/ToggleSwitch.tsx",
+      "path": "client/ui/feedback.tsx",
       "layers": [
         "bindings"
       ],
@@ -3766,7 +3856,7 @@
       "home": "target"
     },
     {
-      "path": "client/ui/activity-phrase.ts",
+      "path": "client/ui/field.tsx",
       "layers": [
         "bindings"
       ],
@@ -3793,6 +3883,33 @@
       "home": "target"
     },
     {
+      "path": "client/ui/menu-item.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/overlay-coordinator.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/overlay-listeners.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
       "path": "client/ui/settings-glyphs.tsx",
       "layers": [
         "bindings"
@@ -3803,6 +3920,15 @@
     },
     {
       "path": "client/ui/settings-layout.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/ToggleSwitch.tsx",
       "layers": [
         "bindings"
       ],
@@ -4352,6 +4478,15 @@
     },
     {
       "path": "runtime/remote-control/command-router.ts",
+      "layers": [
+        "runtime"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "runtime/remote-control/device-name.ts",
       "layers": [
         "runtime"
       ],

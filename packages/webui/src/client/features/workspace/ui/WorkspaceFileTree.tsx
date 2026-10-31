@@ -6,7 +6,7 @@ import type { ReactElement } from "react";
 import type { WebuiWorkspaceFile } from "../../../../shared/contracts/workspace.js";
 import { WebuiIconChevronLeft, WebuiIconFile } from "../../../shell/icons.js";
 import { formatWorkspaceFileSize, formatWorkspaceFileModifiedAt } from "../projection/workspace-file-tree.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 // The pure tree helpers moved to `features/workspace/projection/workspace-file-tree.ts`
 // so the tree query owner merges with the same function the component walks with.
@@ -49,7 +49,9 @@ export function FileTree({ files, onOpen, expandedPaths, loadingPaths, directory
       </button>
       {file.type === "directory" ? <div className={`webui-expandable-motion${expanded ? " is-open" : ""}`} aria-hidden={!expanded} ref={(element) => element?.toggleAttribute("inert", !expanded)}>
         <div className="webui-file-tree-children">
-          {loadingPaths.has(file.path) ? <p role="status">正在加载目录…</p>
+          {/* 目录在读取中是一条播报；契约的 div 仍带 role="status"，
+              `.webui-file-tree-children > [role="status"]` 继续命中。 */}
+          {loadingPaths.has(file.path) ? <FeedbackLiveRegion>正在加载目录…</FeedbackLiveRegion>
             : directoryErrors[file.path] ? <FeedbackError message={directoryErrors[file.path]} />
               : file.children?.length ? <FileTree files={file.children} onOpen={onOpen} expandedPaths={expandedPaths} loadingPaths={loadingPaths} directoryErrors={directoryErrors} onToggle={onToggle} selectedPath={selectedPath} />
                 : <p>此文件夹为空。</p>}

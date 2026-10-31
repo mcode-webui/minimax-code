@@ -14,14 +14,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "../../../ui/overlay-coordinator.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { IconDots, IconMessageCirclePlus, IconTrash, IconX } from "@tabler/icons-react";
 import { basenamePath } from "../../../projection/common/paths.js";
 import type { WebuiAgentMemoryView, WebuiMemorySettingsView } from "../../../../shared/contracts/personalization.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
-import { SettingsButton } from "./settings-atoms.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiIconButton } from "../../../ui/button.js";
+import { WebuiMenuItem } from "../../../ui/menu-item.js";
+import { WebuiField } from "../../../ui/field.js";
+import { SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
+import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
 import {
   formatMemoryTimestamp,
   isMemorySaveable,
@@ -241,12 +245,11 @@ export function MemoryManagerDialog({
   }, [draft, filePath, fileSize, onClose, onCreateInSession]);
 
   /**
-   * Escape has to be heard on the document, and focus has to be moved in by
-   * hand. The dialog is portalled to `document.body`, so it is not a DOM
-   * descendant of the row that opened it: a `keydown` handler on the surface
-   * only ever sees keys typed after focus happens to land inside, and on open
-   * focus is still on 管理. Listening on the surface alone therefore left the
-   * one key every modal is expected to honour doing nothing.
+   * Focus is this surface's own job, and the shared layer says so in its own
+   * header: it decides who answers an event, and a layer that moves focus into
+   * itself and returns it on unmount keeps doing that itself. The dialog is
+   * portalled to `document.body`, so it is not a DOM descendant of the row that
+   * opened it, and nothing focuses it on its own.
    *
    * Unmount restores focus to whatever held it before, so closing with Escape
    * leaves the keyboard on the row the user came from.
@@ -255,19 +258,18 @@ export function MemoryManagerDialog({
   // nested path (ADR 0028 § Overlay coordination): each layer registers with the
   // one above it, so Escape sheds exactly the topmost one and a press outside
   // dismisses exactly the layer it landed outside of.
-  useOverlayLayer({
+  //
+  // The dialog itself registers through the shared `useDialogLayer`. While the
+  // menu above it is open it leaves the attempt unanswered, so one press sheds
+  // the menu and never the editor behind it.
+  const dialogLayerId = useDialogLayer({
     id: "memory-manager",
-    order: 0,
-    active: true,
-    // While the menu is open this layer consumes a dismissal: the menu has not
-    // migrated to the managed dropdown yet, so it still answers its own Escape and
-    // closing the editor behind it is not what one press means. Mixed path — the
-    // single-listener invariant is not claimed for it.
-    dismissal: menuOpen ? "blocked" : "dismissible",
-    onRoute: (route) => {
-      if (route === "request-close") onClose();
-    },
+    dismissible: !menuOpen,
+    onClose,
   });
+  // The two layers above it name their parent outright: `useDialogLayer` takes
+  // its parent from the React context, and these two are registered by the
+  // component that IS the layer they sit inside.
   useOverlayLayer({
     id: "memory-manager-menu",
     parentId: "memory-manager",
@@ -308,7 +310,7 @@ export function MemoryManagerDialog({
       <section
         ref={surfaceRef}
         tabIndex={-1}
-        data-overlay-layer="memory-manager"
+        data-overlay-layer={dialogLayerId}
         role="dialog"
         aria-modal="true"
         aria-label="记忆摘要"
@@ -332,29 +334,31 @@ export function MemoryManagerDialog({
               align="end"
               className="webui-memory-manager-menu"
               trigger={(triggerProps) => { const { ref, ...rest } = triggerProps; return (
-                <button
-                  type="button"
+                <WebuiIconButton
                   {...rest}
                   ref={ref}
-                  aria-label="更多操作"
+                  label="更多操作"
                   data-testid="agent-memory-menu"
-                  className="webui-settings-icon-button"
                 >
                   <IconDots aria-hidden="true" size={16} stroke={1.7} />
-                </button>
+                </WebuiIconButton>
               ); }}
             >
               {onCreateInSession ? (
-                <button type="button" role="menuitem" className="webui-memory-manager-menu-item" data-testid="agent-memory-create-in-session" onClick={handoff}>
-                  <IconMessageCirclePlus aria-hidden="true" size={14} stroke={1.7} className="webui-memory-manager-menu-icon" />
+                <WebuiMenuItem
+                  className="webui-memory-manager-menu-item"
+                  icon={<IconMessageCirclePlus aria-hidden="true" size={14} stroke={1.7} />}
+                  data-testid="agent-memory-create-in-session"
+                  onClick={handoff}
+                >
                   在会话中创建
-                </button>
+                </WebuiMenuItem>
               ) : null}
-              <button
-                type="button"
-                role="menuitem"
+              <WebuiMenuItem
+                danger
+                className="webui-memory-manager-menu-item"
+                icon={<IconTrash aria-hidden="true" size={14} stroke={1.7} />}
                 data-testid="agent-memory-delete"
-                className="webui-memory-manager-menu-item is-danger"
                 disabled={!setAgentMemory || draft === undefined}
                 onClick={() => {
                   // Shed the menu as it opens the confirmation: leaving it up
@@ -364,44 +368,46 @@ export function MemoryManagerDialog({
                   setConfirmingDelete(true);
                 }}
               >
-                <IconTrash aria-hidden="true" size={14} stroke={1.7} className="webui-memory-manager-menu-icon" />
                 删除记忆
-              </button>
+              </WebuiMenuItem>
             </WebuiDropdown>
-            <button
-              type="button"
-              aria-label="关闭"
+            <WebuiIconButton
+              label="关闭"
               data-testid="agent-memory-close"
-              className="webui-settings-icon-button"
               onClick={onClose}
             >
               <IconX aria-hidden="true" size={16} stroke={1.7} />
-            </button>
+            </WebuiIconButton>
           </div>
         </div>
         {loading ? (
-          <p data-testid="agent-memory-loading" className="webui-personalization-meta">
-            加载中…
-          </p>
+          <FeedbackBusy label="加载中…" testId="agent-memory-loading" />
         ) : draft === undefined ? null : (
-          <div className="webui-memory-manager-editor">
-            <textarea
-              data-testid="agent-memory-textarea"
-              className="webui-personalization-textarea"
-              value={draft}
-              spellCheck={false}
-              onChange={(event) => {
-                setDraft(event.target.value);
-                setSaved(false);
-              }}
-            />
-            <span data-testid="agent-memory-chars" className="webui-memory-manager-count">
-              {draft.length}
-            </span>
-          </div>
+          <WebuiField
+            className="webui-memory-manager-field"
+            label="记忆摘要"
+            control={(props) => (
+              <div className="webui-memory-manager-editor">
+                <textarea
+                  {...props}
+                  data-testid="agent-memory-textarea"
+                  className="webui-personalization-textarea"
+                  value={draft}
+                  spellCheck={false}
+                  onChange={(event) => {
+                    setDraft(event.target.value);
+                    setSaved(false);
+                  }}
+                />
+                <span data-testid="agent-memory-chars" className="webui-memory-manager-count">
+                  {draft.length}
+                </span>
+              </div>
+            )}
+          />
         )}
         {error ? (
-          <FeedbackError message=<>error</> className="webui-settings-error" testId="agent-memory-error" />
+          <FeedbackError message={error} className="webui-settings-error" testId="agent-memory-error" />
         ) : null}
         {error && draft === undefined && getAgentMemory ? (
           <SettingsButton
@@ -413,9 +419,7 @@ export function MemoryManagerDialog({
           </SettingsButton>
         ) : null}
         {saved && !saving ? (
-          <p data-testid="agent-memory-saved" className="webui-personalization-saved">
-            已保存
-          </p>
+          <SettingsSavedNotice message="已保存" testId="agent-memory-saved" />
         ) : null}
         <footer className="webui-memory-manager-footer">
           <span data-testid="agent-memory-updated" className="webui-personalization-meta">
@@ -480,15 +484,14 @@ export function MemoryManagerDialog({
         <h2 id="webui-memory-confirm-title" className="webui-memory-confirm-title">
           {MEMORY_DELETE_CONFIRM.title}
         </h2>
-        <button
-          type="button"
-          aria-label="关闭"
-          data-testid="agent-memory-delete-dismiss"
+        <WebuiIconButton
+          label="关闭"
           className="webui-memory-confirm-close"
+          data-testid="agent-memory-delete-dismiss"
           onClick={() => setConfirmingDelete(false)}
         >
           <IconX aria-hidden="true" size={16} stroke={1.7} />
-        </button>
+        </WebuiIconButton>
         <p className="webui-memory-confirm-body">{MEMORY_DELETE_CONFIRM.body}</p>
         <div className="webui-memory-confirm-actions">
           <SettingsButton

@@ -340,7 +340,7 @@ describe("real host over the loopback service", () => {
       )).toBe(true);
 
       await page.locator(".webui-plugin-create-trigger").click();
-      await page.getByRole("button", { name: "添加 MCP server" }).click();
+      await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
       const dialog = page.getByRole("dialog", { name: "MCP Server" });
       await browserExpect(dialog).toBeVisible();
       const geometry = await dialog.evaluate((node) => {
@@ -360,7 +360,10 @@ describe("real host over the loopback service", () => {
           fieldsGrid: getComputedStyle(fields).display === "grid",
           controlsAligned: controls.length >= 3 && controls.every((control) => {
             const input = control.getBoundingClientRect();
-            const label = control.closest("label")!.getBoundingClientRect();
+            // The field contract owns the label, so the label is the control's
+            // sibling rather than its ancestor: the field block holds both.
+            const field = control.closest(".webui-field")!;
+            const label = field.querySelector(".webui-field-label")!.getBoundingClientRect();
             return Math.abs(input.left - label.left) < 3 && Math.abs(input.width - label.width) < 3;
           }),
         };

@@ -193,17 +193,10 @@
     flex-direction: column;
     padding: 5px;
   }
-  .webui-plugin-create-menu button {
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    padding: 9px 12px;
-    text-align: left;
-    color: var(--text_default_primary);
-  }
-  .webui-plugin-create-menu button:hover {
-    background: var(--bg_interaction_tertiary_hover);
-  }
+  /* The rows in this menu are the shared menu-row contract's: it owns the row's
+   * fill, its hover, its focus ring and its arrangement. This stylesheet used to
+   * address them as `button` elements, which is how the menu looked different
+   * from the four other menus the same contract serves. */
   /* The back button is anchored to `webui-plugin-header-inner`, which is the
    * positioned row — the header itself is the sticky full-bleed bar. */
   .webui-plugin-management-back {
@@ -233,7 +226,6 @@
     gap: 4px;
   }
   .webui-plugin-header-tabs button,
-  .webui-plugin-categories button,
   .webui-plugin-category-filter button {
     border: 0;
     border-radius: 8px;
@@ -244,13 +236,12 @@
     white-space: nowrap;
   }
   .webui-plugin-header-tabs button[aria-pressed="true"],
-  .webui-plugin-categories button[aria-pressed="true"],
   .webui-plugin-category-filter button[aria-pressed="true"] {
     background: var(--bg_default_primary);
     color: var(--text_default_primary);
   }
   /* The selected segment reads as a card lifted off the track. Only the header
-   * control: `.webui-plugin-categories` sits on a transparent track, where a
+   * control gets it: the category filter sits on a transparent track, where a
    * shadow has nothing to fall on. */
   .webui-plugin-header-tabs button[aria-pressed="true"] {
     box-shadow: var(--shadow_default);
@@ -419,7 +410,6 @@
     border-radius: inherit;
     object-fit: cover;
   }
-  .webui-plugin-toolbar button,
   .webui-plugin-row > button,
   .webui-plugin-actions > button:not([role="switch"]) {
     border: 1px solid var(--border_default);

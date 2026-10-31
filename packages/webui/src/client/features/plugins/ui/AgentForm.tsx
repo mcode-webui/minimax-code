@@ -12,6 +12,7 @@ import {
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 
 export interface AgentFormProps {
   readonly editing: Row | undefined;
@@ -70,25 +71,34 @@ export function AgentForm({
 
   return (
     <div className="webui-plugin-form webui-agent-form">
-      <label>
-        <span>名称</span>
-        <input value={name} onChange={(event) => setName(event.currentTarget.value)} />
-      </label>
-      <label>
-        <span>描述</span>
-        <input value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
-      </label>
-      <label className="wide">
-        <span>系统提示词</span>
-        <textarea value={prompt} onChange={(event) => setPrompt(event.currentTarget.value)} />
-      </label>
+      <WebuiField
+        label="名称"
+        control={(props) => (
+          <input {...props} className="w-full" value={name} onChange={(event) => setName(event.currentTarget.value)} />
+        )}
+      />
+      <WebuiField
+        label="描述"
+        control={(props) => (
+          <input {...props} className="w-full" value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
+        )}
+      />
+      <WebuiField
+        className="wide"
+        label="系统提示词"
+        control={(props) => (
+          <textarea {...props} className="w-full" value={prompt} onChange={(event) => setPrompt(event.currentTarget.value)} />
+        )}
+      />
       {/* The model belongs to the initial definition, which only a new agent
           sends; an edit updates the agent's fields and leaves it alone. */}
       {editing ? null : (
-        <label>
-          <span>模型</span>
-          <input value={model} onChange={(event) => setModel(event.currentTarget.value)} />
-        </label>
+        <WebuiField
+          label="模型"
+          control={(props) => (
+            <input {...props} className="w-full" value={model} onChange={(event) => setModel(event.currentTarget.value)} />
+          )}
+        />
       )}
       <div className="webui-agent-form-actions">
         {editing && onChatWithAgent ? (

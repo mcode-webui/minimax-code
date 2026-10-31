@@ -24,6 +24,7 @@ import {
   parseInventory,
   recordReviewedSignatures,
   serializeInventory,
+  sharedHomeValueImports,
   surfaceSignature,
 } from "./lib/webui-presentation-coverage.mjs";
 
@@ -42,13 +43,14 @@ const { values } = parseArgs({
 const inventoryPath = path.resolve(root, values.inventory ?? INVENTORY_FILE);
 const clientRoot = path.resolve(root, values["client-root"] ?? path.join(CLIENT_SOURCE_DIRECTORY));
 
-const modules = discoverPresentationModules(clientRoot).map((relativePath) => ({
-  path: relativePath,
-  signature: surfaceSignature(
-    readFileSync(path.join(clientRoot, relativePath), "utf8"),
-    relativePath,
-  ),
-}));
+const modules = discoverPresentationModules(clientRoot).map((relativePath) => {
+  const source = readFileSync(path.join(clientRoot, relativePath), "utf8");
+  return {
+    path: relativePath,
+    signature: surfaceSignature(source, relativePath),
+    sharedHomeValues: sharedHomeValueImports(source, relativePath),
+  };
+});
 
 const inventory = parseInventory(readFileSync(inventoryPath, "utf8"));
 const { failures, reviews, summary } = evaluatePresentationCoverage({ modules, inventory });

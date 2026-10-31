@@ -107,7 +107,11 @@ describe("the form carries every model field", () => {
     // The API format is a choice among the formats the runtime accepts, and it
     // is a dropdown like every other one in the client.
     expect(form).toContain("webui-provider-format-menu");
-    expect(form).toContain('aria-label="API 格式"');
+    // The dropdown is named by the field's own label, and the trigger
+    // names itself by that label plus the value it shows; the format's own
+    // name reaches the dropdown through the shared contract's `ariaLabel`.
+    expect(form).toContain('ariaLabel="API 格式"');
+    expect(form).toContain("aria-labelledby={`${field.labelId} ${valueId}`}");
     expect(form).toContain("WebuiDropdown");
   });
 

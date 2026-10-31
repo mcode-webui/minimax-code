@@ -23,7 +23,7 @@ import {
   webuiMiniAppRunningRows,
 } from "../projection/miniapp-view.js";
 import { WebuiIconChevronRight, WebuiIconSites } from "../../../shell/icons.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface MiniAppPickerProps {
   /** The session the chosen Mini App's view belongs to. */
@@ -78,9 +78,8 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
       </div>
       {state.unavailable ? <p className="webui-plugin-empty">{state.unavailable}</p> : null}
       {loading && rows.length === 0 ? (
-        <p className="webui-plugin-empty" role="status">
-          加载中…
-        </p>
+        // 加载中是一个要被听到的状态，播报通道交给共享契约。
+        <FeedbackLiveRegion className="webui-plugin-empty">加载中…</FeedbackLiveRegion>
       ) : null}
       {!state.unavailable && !loading && rows.length === 0 ? (
         <p className="webui-plugin-empty">暂无已安装的 Mini App</p>

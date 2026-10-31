@@ -123,7 +123,7 @@ describe("workspace media preview", () => {
     // fires, so the message the element hands over to is asserted directly —
     // and the role is what makes it announced rather than merely visible.
     const failed = renderToStaticMarkup(
-      createElement(WorkspaceMediaNotice, { name: "demo.mp4", reason: "视频加载失败。", role: "alert" }),
+      createElement(WorkspaceMediaNotice, { name: "demo.mp4", reason: "视频加载失败。", failure: true }),
     );
     expect(failed).toContain('role="alert"');
     expect(failed).toContain("demo.mp4");

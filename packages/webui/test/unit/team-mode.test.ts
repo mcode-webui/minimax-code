@@ -1,6 +1,6 @@
 import { createWebuiMemoryStorage } from "./support/memory-storage.js";
 import { beforeEach, describe, expect, it } from "vitest";
-import { readSessionOverlay, toggleSessionOverlay } from "../../src/client/platform/storage.js";
+import { readSessionPins, toggleSessionPins } from "../../src/client/platform/storage.js";
 import {
   isTeamModeLocked,
 } from "../../src/client/platform/team-mode.js";
@@ -59,10 +59,10 @@ describe("team mode lock contract", () => {
   it("uses isolated v1 localStorage overlays for session row state", () => {
     localStorage.clear();
     const storage = createWebuiBrowserStorage(localStorage);
-    expect(toggleSessionOverlay("pins", "s1", storage)).toEqual({ s1: true });
-    expect(toggleSessionOverlay("archives", "s1", storage)).toEqual({ s1: true });
-    expect(readSessionOverlay("pins", storage)).toEqual({ s1: true });
-    expect(toggleSessionOverlay("pins", "s1", storage)).toEqual({});
+    expect(toggleSessionPins("pins", "s1", storage)).toEqual({ s1: true });
+    expect(toggleSessionPins("archives", "s1", storage)).toEqual({ s1: true });
+    expect(readSessionPins("pins", storage)).toEqual({ s1: true });
+    expect(toggleSessionPins("pins", "s1", storage)).toEqual({});
   });
 
   it("routes generic preferences through the injected storage adapter", () => {

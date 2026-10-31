@@ -18,7 +18,9 @@ import type {
   WebuiGoalStatus,
 } from "../../../../shared/contracts/goal.js";
 import type { WebuiGoalCommands } from "../contracts/goal-port.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import {
   WebuiIconCommandGoal,
   WebuiIconClose,
@@ -45,32 +47,52 @@ export function WebuiGoalClearDialog({
   readonly onCancel: () => void;
   readonly onConfirm: () => void;
 }): ReactElement {
+  /**
+   * The confirmation is a layer, so the coordinator answers Escape and the
+   * outside press for it (ADR 0028 § Overlay coordination). It used to answer
+   * both itself — a `window` keydown listener and a mask `onMouseDown` — which
+   * meant two listeners for one overlay and a dialog the overlay gate could
+   * not see, because it carried no `role="dialog"`.
+   *
+   * Not dismissible while the delete is in flight: the attempt is answered with
+   * "nothing to do" rather than consumed, so a press aimed at what the dialog
+   * holds still reaches it, and the dialog does not close under a delete that
+   * is still running.
+   */
+  const layerId = useDialogLayer({
+    id: "goal-clear-confirm",
+    dismissible: !busy,
+    onClose: onCancel,
+  });
   return (
     <div
       className="webui-message-dialog webui-goal-clear-dialog"
-      role="alertdialog"
+      role="dialog"
       aria-modal="true"
       aria-labelledby="goal-clear-confirm-title"
       aria-describedby="goal-clear-confirm-description"
       data-testid="goal-clear-confirm"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onCancel();
-      }}
+      data-overlay-layer={layerId}
     >
       <section className="webui-goal-clear-dialog-surface">
         <header className="webui-goal-clear-dialog-heading">
           <h2 id="goal-clear-confirm-title">删除目标？</h2>
-          <button type="button" aria-label="关闭" title="关闭" onClick={onCancel} disabled={busy}>
+          <WebuiIconButton label="关闭" onClick={onCancel} disabled={busy}>
             <WebuiIconClose />
-          </button>
+          </WebuiIconButton>
         </header>
         <p id="goal-clear-confirm-description">删除目标后，目标模式会关闭，转为普通模式继续。</p>
         {error ? <FeedbackError message={error} className="webui-goal-clear-dialog-error" testId="goal-clear-error" /> : null}
         <div className="webui-goal-clear-dialog-actions">
-          <button type="button" onClick={onCancel} disabled={busy}>取消</button>
-          <button type="button" data-testid="goal-clear-confirm-confirm" onClick={onConfirm} disabled={busy}>
+          <WebuiButton variant="secondary" onClick={onCancel} disabled={busy}>取消</WebuiButton>
+          <WebuiButton
+            variant="danger"
+            data-testid="goal-clear-confirm-confirm"
+            onClick={onConfirm}
+            disabled={busy}
+          >
             {busy ? "删除中…" : "删除"}
-          </button>
+          </WebuiButton>
         </div>
       </section>
     </div>
@@ -106,14 +128,6 @@ export function WebuiGoalBanner({
   useEffect(() => {
     setDismissedGoalKey(undefined);
   }, [goal?.sessionId, goal?.goalId]);
-  useEffect(() => {
-    if (!confirmClear) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) setConfirmClear(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmClear, busy]);
   useEffect(() => {
     if (!goal || goal.status !== "active" || goal.executionWait) {
       setElapsedSeconds(0);
@@ -164,11 +178,11 @@ export function WebuiGoalBanner({
     : null;
   const portalTarget = dom.portalTarget();
   return (
-    <section className="webui-goal-banner" data-testid="thread-goal-banner" data-goal-status={status} role="status" aria-live="polite">
+    <section className="webui-goal-banner" data-testid="thread-goal-banner" data-goal-status={status}>
       <div className="webui-goal-banner-row">
         <div className="webui-goal-banner-leading">
           <span className="webui-goal-banner-icon" aria-hidden="true"><WebuiIconCommandGoal /></span>
-          <span className="webui-goal-status" data-testid="thread-goal-banner-status">{statusCopy}</span>
+          <FeedbackLiveRegion className="webui-goal-status" testId="thread-goal-banner-status">{statusCopy}</FeedbackLiveRegion>
         </div>
         <div className="webui-goal-banner-content-row" data-testid="thread-goal-banner-content-row">
           <div className="webui-goal-banner-objective-group" data-testid="thread-goal-banner-objective-group">
@@ -184,12 +198,12 @@ export function WebuiGoalBanner({
           <span className="webui-goal-timer" data-testid="thread-goal-timer">{formatWebuiGoalDuration(goal.timeUsedSeconds + elapsedSeconds)}</span>
         </div>
         <div className="webui-goal-banner-actions-slot" data-testid="thread-goal-banner-actions-slot">
-          {goal.status === "blocked" || goal.status === "paused" || goal.status === "usage_limited" ? <button type="button" className="webui-goal-action" data-testid="thread-goal-banner-resume" aria-label="继续目标" title="继续目标" onClick={() => submitPatch({ status: "active" })} disabled={busy || interactionBlocked}><GoalResumeIcon /></button> : null}
-          {goal.status === "active" && !goal.executionWait ? <button type="button" className="webui-goal-action" data-testid="thread-goal-banner-pause" aria-label="暂停目标" title="暂停目标" onClick={() => submitPatch({ status: "paused" })} disabled={busy || interactionBlocked}><GoalPauseIcon /></button> : null}
-          {goal.status === "active" || goal.status === "paused" || goal.status === "blocked" ? <button type="button" className="webui-goal-action" data-testid="thread-goal-banner-edit-button" aria-label="编辑目标" title="编辑目标" onClick={() => onEditGoal(goal.objective)} disabled={busy || interactionBlocked}><WebuiIconContextRename /></button> : null}
+          {goal.status === "blocked" || goal.status === "paused" || goal.status === "usage_limited" ? <WebuiIconButton tone="bare" className="webui-goal-action" data-testid="thread-goal-banner-resume" label="继续目标" title="继续目标" onClick={() => submitPatch({ status: "active" })} disabled={busy || interactionBlocked}><GoalResumeIcon /></WebuiIconButton> : null}
+          {goal.status === "active" && !goal.executionWait ? <WebuiIconButton tone="bare" className="webui-goal-action" data-testid="thread-goal-banner-pause" label="暂停目标" title="暂停目标" onClick={() => submitPatch({ status: "paused" })} disabled={busy || interactionBlocked}><GoalPauseIcon /></WebuiIconButton> : null}
+          {goal.status === "active" || goal.status === "paused" || goal.status === "blocked" ? <WebuiIconButton tone="bare" className="webui-goal-action" data-testid="thread-goal-banner-edit-button" label="编辑目标" title="编辑目标" onClick={() => onEditGoal(goal.objective)} disabled={busy || interactionBlocked}><WebuiIconContextRename /></WebuiIconButton> : null}
           {goal.status === "complete"
-            ? <button type="button" className="webui-goal-action" data-testid="thread-goal-banner-close" aria-label="关闭完成标记" title="关闭完成标记" onClick={() => setDismissedGoalKey(goalKey)} disabled={busy}><WebuiIconClose /></button>
-            : <button type="button" className="webui-goal-action" data-testid="thread-goal-banner-clear" aria-label="清除目标" title="清除目标" onClick={() => setConfirmClear(true)} disabled={busy || interactionBlocked}><WebuiIconContextTrash /></button>}
+            ? <WebuiIconButton tone="bare" className="webui-goal-action" data-testid="thread-goal-banner-close" label="关闭完成标记" title="关闭完成标记" onClick={() => setDismissedGoalKey(goalKey)} disabled={busy}><WebuiIconClose /></WebuiIconButton>
+            : <WebuiIconButton tone="bare" className="webui-goal-action" data-testid="thread-goal-banner-clear" label="清除目标" title="清除目标" onClick={() => setConfirmClear(true)} disabled={busy || interactionBlocked}><WebuiIconContextTrash /></WebuiIconButton>}
         </div>
       </div>
       {objectiveExpanded ? <div className="webui-goal-objective-expanded" data-testid="thread-goal-objective-expanded">{goal.objective}</div> : null}

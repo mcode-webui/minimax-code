@@ -345,15 +345,16 @@ describe("WebUI compiled stylesheet", () => {
   });
 
   it("emits every component class the new shell references", () => {
-    // The new shell's markup carries `.webui-button-primary`,
-    // `.webui-button-secondary`, `.webui-textarea`, `.webui-input`, `.webui-nav-item`,
+    // The new shell's markup carries the shared button contract's
+    // `.webui-mavis-button-accent` and `.webui-mavis-button-grouped`,
+    // `.webui-textarea`, `.webui-input`, `.webui-nav-item`,
     // and `.webui-empty-state`, and the @layer
     // components block in `shell.css` emits the matching styles. The component
     // classes only carry meaning if Tailwind actually compiles them — assert each
     // one lands in the output rather than silently degrading to a no-op.
     const required = [
-      /\.webui-button-primary\s*\{/u,
-      /\.webui-button-secondary\s*\{/u,
+      /\.webui-mavis-button-accent\s*\{/u,
+      /\.webui-mavis-button-grouped\s*\{/u,
       /\.webui-input,\s*\n?\s*\.webui-textarea\s*\{/u,
       /\.webui-textarea\s*\{/u,
       /\.webui-nav-item\s*\{/u,
@@ -365,8 +366,8 @@ describe("WebUI compiled stylesheet", () => {
       /\.webui-transcript-empty-state\s*\{/u,
       /\.webui-input:focus-visible/u,
       /\.webui-textarea:focus-visible/u,
-      /\.webui-button-primary:focus-visible/u,
-      /\.webui-button-secondary:focus-visible/u,
+      /\.webui-mavis-button-accent:focus-visible/u,
+      /\.webui-mavis-button-grouped:focus-visible/u,
       // The conversation surface: the message blocks, the user bubble, the
       // process disclosure, and the markdown layer the assistant's replies
       // render through.

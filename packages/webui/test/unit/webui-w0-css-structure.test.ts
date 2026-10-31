@@ -322,30 +322,34 @@ describe("W0 · the memory manager's header controls", () => {
     const actions = winning(".webui-memory-manager-header-actions").body;
     expect(declaration(actions, "gap")).toBe("var(--spacing_8)");
 
-    const button = winning(
-      ".webui-memory-manager-header-actions .webui-settings-icon-button",
-    ).body;
-    expect(declaration(button, "width")).toBe("26px");
-    expect(declaration(button, "height")).toBe("26px");
-    expect(declaration(button, "border-radius")).toBe("var(--radius_8)");
-    expect(declaration(button, "background")).toBe(
+    // The icon button is the shared contract (styles/button.css), not a
+    // per-surface class string: the same 26px box, the same radius and the
+    // same tertiary fill every header in the client draws. The bare variant
+    // is a named sibling of the contract, so the box is read off the
+    // contract's own rule rather than off whichever rule happens to come
+    // last in the stylesheet.
+    expect(winningDeclaration(".webui-icon-button", "width")).toBe("26px");
+    expect(winningDeclaration(".webui-icon-button", "height")).toBe("26px");
+    expect(winningDeclaration(".webui-icon-button", "border-radius")).toBe(
+      "var(--radius_8)",
+    );
+    expect(winningDeclaration(".webui-icon-button", "background")).toBe(
       "var(--bg_interaction_tertiary_default)",
     );
 
-    const hover = winning(
-      ".webui-memory-manager-header-actions .webui-settings-icon-button:hover",
-    ).body;
-    expect(declaration(hover, "background")).toBe(
-      "var(--bg_interaction_tertiary_hover)",
-    );
+    expect(
+      winningDeclaration(".webui-icon-button:hover:not(:disabled)", "background"),
+    ).toBe("var(--bg_interaction_tertiary_hover)");
 
     // `tertiary_selected` is deliberately absent -- in the light theme it is the
     // same `--opacity_black_1_4` as `tertiary_hover`, so a selected fill would
-    // be indistinguishable from a hover.
+    // be indistinguishable from a hover. The goal dialog's own 24px box is a
+    // size this surface chose; it carries no fill of its own, so it does not
+    // add a resting fill to this list.
     const restFills = shellRules
       .filter(isCascading)
-      .filter((rule) => rule.selector.includes(".webui-settings-icon-button"))
-      .filter((rule) => !/:hover|:focus-visible|:active/u.test(rule.selector))
+      .filter((rule) => rule.selector.includes(".webui-icon-button"))
+      .filter((rule) => rule.selector === ".webui-icon-button")
       .map((rule) => declaration(rule.body, "background"))
       .filter((value) => value !== undefined && value !== "transparent");
     expect(restFills).toEqual(["var(--bg_interaction_tertiary_default)"]);
@@ -518,7 +522,15 @@ describe("W0 · stylesheet composition", () => {
     // the split harmless (every file wraps its rules in `@layer components`).
     expect(imports).toEqual([
       "./tokens.css",
+      // The shared contracts (ADR 0028): the motion foundations every surface
+      // animates with, the field's own arrangement, the feedback family's
+      // states, and the shell's own rules.
+      "./motion.css",
+      "./field.css",
+      "./feedback.css",
       "./shell.css",
+      // The shared menu-item contract: the row, its two slots and its states.
+      "./menu-item.css",
       // The layout threshold contract (ADR 0025): the widths the client adapts
       // at, and the shell skeleton's own rules.
       "./layout.css",
@@ -529,6 +541,8 @@ describe("W0 · stylesheet composition", () => {
       // floating popup in the client shares.
       "./dropdown.css",
       "../features/plugins/ui/plugins.css",
+      // The shared button contract: the base, the sizes and the variants.
+      "./button.css",
       "../features/settings/ui/settings.css",
       "../features/models/ui/models.css",
       "../features/interactions/ui/interactions.css",
@@ -863,14 +877,26 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       rule.context.some((entry) => entry.includes("prefers-reduced-motion")),
     );
 
-    // Seventeen rules across the stylesheets the shell imports. Deleting one of
+    // Nineteen rules across the stylesheets the shell imports. Deleting one of
     // these is the failure mode this assertion exists for: the base rule would
     // keep animating for a user who asked for reduced motion. The exact list
     // is the point -- adding an animated rule without registering its override
     // here is the same defect, in the other direction.
-    expect(reducedMotion).toHaveLength(17);
-    for (const rule of reducedMotion)
-      expect(rule.body).toMatch(/(?:animation|transition):\s*none/u);
+    expect(reducedMotion).toHaveLength(19);
+    for (const rule of reducedMotion) {
+      // Three ways to stop a motion, and all of them are the point. A rule
+      // that names the property disables it outright; the motion foundations
+      // instead collapse the duration tokens, which every surface that reads
+      // a token inherits; and a spinner that runs on a timer stops its
+      // iteration, which is the only way to stop an animation that must keep
+      // being drawn. A surface that hard-codes a duration escapes the token
+      // route, and the inventory gate is what covers it.
+      const disables =
+        /(?:animation|transition):\s*none/u.test(rule.body) ||
+        /--webui-motion-duration-[a-z-]+:\s*0\.01ms/u.test(rule.body) ||
+        /animation-iteration-count:\s*1/u.test(rule.body);
+      expect(disables, rule.selector).toBe(true);
+    }
 
     const selectors = reducedMotion.map((rule) => rule.selector).sort();
     expect(selectors).toEqual([
@@ -894,6 +920,10 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       // The model menu's list and panel slide in during the transition, so a
       // reader who asked for reduced motion would otherwise watch both move.
       ".webui-model-menu[data-webui-model-transitioning=\"true\"] .webui-model-list, .webui-model-menu[data-webui-model-transitioning=\"true\"] .webui-model-panel",
+      // The shared motion foundations collapse their own duration tokens, so
+      // every surface that reads them stops moving. The loading bar states
+      // itself as well: it is the one animation that runs on a timer.
+      ".webui-motion-loading",
       // Added with the project-first rail: the section that holds a project's
       // sessions opens and closes by transitioning its height, so a reader who
       // asked for reduced motion would otherwise watch the section slide.
@@ -923,6 +953,10 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       // the shell-wide override in `index.css` — which is scoped to
       // `[data-webui-shell] *` — does not reach it.
       ".webui-user-menu-signin-panel",
+      // The motion foundations' own tokens: a reader who asked for less motion
+      // gets durations near zero, which every surface that reads a duration
+      // token inherits.
+      ":root",
     ]);
   });
 
@@ -993,6 +1027,9 @@ describe("W0 · at-rules and animations W5/W6 must not remove", () => {
       "webui-dropdown-in-reverse",
       "webui-dropdown-out",
       "webui-dropdown-out-reverse",
+      // The shared feedback family's spinner: the busy state turns while it
+      // waits, so it is a declared animation of its own.
+      "webui-feedback-spin",
       "webui-menu-enter",
       "webui-modal-enter",
       // The model menu's list and panel each slide in from their own side.

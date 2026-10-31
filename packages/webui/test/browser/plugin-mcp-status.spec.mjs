@@ -147,7 +147,7 @@ test("a late Git preview cannot populate a replacement import dialog", async ({ 
   await page.getByRole("button", { name: "插件" }).first().click();
   await page.locator(".webui-plugin-manage-trigger").click();
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "从 Git 仓库导入插件" }).click();
+  await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/old/repository");
   await dialog.getByRole("button", { name: "预览" }).click();
@@ -159,7 +159,7 @@ test("a late Git preview cannot populate a replacement import dialog", async ({ 
 
   await dialog.getByRole("button", { name: "关闭" }).click();
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "从 Git 仓库导入插件" }).click();
+  await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const replacement = page.getByRole("dialog");
   await replacement.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/new/repository");
   const released = await page.evaluate(() =>
@@ -199,7 +199,7 @@ test("closing an import dialog does not cancel an accepted mutation settlement",
   await page.getByRole("button", { name: "插件" }).first().click();
   await page.locator(".webui-plugin-manage-trigger").click();
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "从 Git 仓库导入插件" }).click();
+  await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const initial = page.getByRole("dialog");
   await initial.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/owner/repository");
   await initial.getByRole("button", { name: "预览" }).click();
@@ -218,7 +218,7 @@ test("closing an import dialog does not cancel an accepted mutation settlement",
   );
   await initial.getByRole("button", { name: "关闭" }).click();
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "从 Git 仓库导入插件" }).click();
+  await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const replacement = page.getByRole("dialog");
 
   const released = await page.evaluate(() =>

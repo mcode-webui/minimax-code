@@ -13,6 +13,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import type {
   WebuiUsageHeatmapCell,
   WebuiUsageHeatmapModel,
@@ -70,6 +71,19 @@ export function UsageHeatmap({
   const { dom } = useWebuiBrowserCapabilities();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState<HoveredCell | null>(null);
+  /**
+   * The cell tooltip is a floating layer above the page (ADR 0028 § Overlay
+   * coordination), so it registers with the coordinator rather than floating
+   * outside the client's order. It has no way out of its own — it follows the
+   * cell under the pointer — so it leaves a dismissal unanswered, and it sits
+   * behind the page's own layers so it never takes a key away from them.
+   */
+  const tipLayerId = useDialogLayer({
+    id: "usage-heatmap-tip",
+    order: -10,
+    dismissible: false,
+    active: hovered !== null,
+  });
   const columns = model.columns.slice(-columnCount);
   const firstColumnIndex = columns[0]?.cells[0]?.columnIndex ?? 0;
   const width = 10 * columns.length + 4 * Math.max(0, columns.length - 1);
@@ -159,6 +173,7 @@ export function UsageHeatmap({
             <div
               className="webui-account-usage-cell-tip"
               style={{ left: hovered.left, top: hovered.top }}
+              data-overlay-layer={tipLayerId}
               role="presentation"
             >
               <div className="webui-account-usage-cell-tip-date">

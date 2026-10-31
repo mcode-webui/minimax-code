@@ -251,8 +251,10 @@ describe("context panel — hover names it, click opens it", () => {
     // listener of its own, because a second one would close the panel twice.
     expect(indicator).not.toContain("listenForPointerDown");
     expect(indicator).not.toContain("onKeyDown");
-    expect(dropdown).toContain("dom.listenForPointerDown");
-    expect(dropdown).toContain('if (event.key !== "Escape") return;');
+    // The shared dropdown owns the dismissal: it reads the press before the
+    // click reaches whatever was underneath, and Escape closes the panel and
+    // returns the focus to the ring that opened it.
+    expect(dropdown).toContain("useOverlayLayer({");
     expect(dropdown).toContain("triggerRef.current?.focus?.();");
   });
 });

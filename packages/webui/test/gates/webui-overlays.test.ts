@@ -33,6 +33,14 @@ describe("the overlay inventory", () => {
     expect(problems).toContain("a.tsx: says managed but no layer registers with the coordinator");
   });
 
+  it("fails when a surface that borrows the dialog role also registers a layer", () => {
+    const problems = compareOverlays(
+      { "a.tsx": { dropdowns: 0, dialogs: 1, managed: 1 } },
+      { files: { "a.tsx": { disposition: "borrows-role" } } },
+    );
+    expect(problems).toContain("a.tsx: says borrows-role but registers a layer — it is a managed surface");
+  });
+
   it("fails on an entry whose source has gone", () => {
     const problems = compareOverlays({ "a.tsx": { dropdowns: 1, dialogs: 0, managed: 1 } }, inventory);
     expect(problems).toContain("b.tsx: inventoried but produces no floating layer");

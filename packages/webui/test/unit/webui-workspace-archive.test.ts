@@ -998,7 +998,7 @@ describe("workspace archive view", () => {
     const failure = renderToStaticMarkup(
       createElement(WorkspaceArchiveNotice, {
         reason: "这不是可识别的 ZIP 压缩包",
-        role: "alert",
+        failure: true,
       }),
     );
     expect(failure).toContain('role="alert"');

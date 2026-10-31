@@ -250,6 +250,60 @@ contract.
   finding of accessibility — focus, keyboard reachability, motion and announcement order are
   verified by rendered interaction checks.
 
+## Adopted contracts
+
+`client/ui/` holds the contracts a caller adopts by rendering its component. Each one owns a control's
+applicable states and their appearance; the caller owns layout, meaning and lifetime.
+
+### The button contract
+
+`WebuiButton` renders a `<button>`; `WebuiIconButton` renders an icon-only button and takes the
+accessible name as its `label`; `WebuiButtonLink` renders an `<a>` that looks like a button, for the
+callers that navigate rather than act.
+
+A **variant** is a whole appearance: the fill, the border, the label colour and the states that belong
+to that appearance. A **size** is the geometry. They compose, and the size states no width — a
+caller's layout decides how wide the control may be.
+
+| Variant | Appearance | Paired size |
+| --- | --- | --- |
+| `secondary` | the filled grey action | `regular`, `compact`, `header` |
+| `surface` | the fill of the surface it sits on | `panel`, `dialog` |
+| `primary` | the filled call to action | `regular`, `header` |
+| `muted` | the filled-but-quiet save | `regular` |
+| `danger` | the destructive action | `regular`, `compact` |
+| `plain` | a button the surface already styles | `regular` |
+| `outline` | a hairline ring, primary label | `inline`, `inline-dense`, `inline-tiny` |
+| `outline-secondary` | a hairline ring, quieter label | `inline-dense`, `inline-tiny` |
+| `outline-highlight` | a hairline ring, quieter label that comes forward on hover | `inline` |
+| `quiet-highlight` | no ring, quieter label that comes forward on hover | `inline`, `inline-tiny` |
+| `quiet-secondary` | no ring, quieter label | `inline`, `inline-dense`, `inline-tiny` |
+| `quiet-subtle` | no ring, quietest label | `inline-tiny` |
+| `accent` | the filled call to action with the accent fill | `action` |
+| `grouped` | the grouped pill | `pill` |
+
+The `accent` and `grouped` appearances used to be declared by the interactions business as
+`.webui-button-primary` and `.webui-button-secondary`, and the account, transcript, composer, workspace
+and shell businesses rendered both. Two businesses writing the same call to action differently is the
+drift ADR 0028 exists to stop, so the two appearances became the shared contract's, and the class
+strings that named them are gone.
+
+The inline sizes state no height: their callers sized the control by its label, its padding and its
+border, and a stated height would squeeze the ringed ones by the two pixels their border takes.
+
+### The other contracts
+
+- **The menu row** — `WebuiMenuItem` and `WebuiMenuSeparator` own a `role="menuitem"` row's label, its
+  icon slot, its trailing slot and its disabled state.
+- **The field** — `WebuiField` owns the label, the description, the validation error and the wiring
+  between them: the control is named by `for`, described by `aria-describedby` and marked invalid by
+  `aria-invalid`. `WebuiFormLayout` and `WebuiFormActions` own the arrangement of a form.
+- **The feedback family** — `FeedbackEmpty`, `FeedbackError`, `FeedbackSkeleton`, `FeedbackProgress`,
+  `FeedbackBusy`, `FeedbackAnnouncement` and `FeedbackLiveRegion` own the announcement. The family is
+  the only place in the client that authors `role="alert"`, `role="status"`, `role="progressbar"` or
+  `aria-live`; a surface whose state *is* the thing being announced uses `FeedbackLiveRegion`, and a
+  message with no visual form uses `FeedbackAnnouncement`.
+
 ## The eight families
 
 `pnpm check:webui-presentation` classifies every client UI module against these eight families and

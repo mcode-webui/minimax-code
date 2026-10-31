@@ -64,7 +64,7 @@ import {
   webuiBrowserFrameDataUrl,
 } from "../projection/browser-state.js";
 import { webuiBrowserPicturePoint } from "../application/browser-commands.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 const PANEL_COPY = {
   title: "浏览器",
@@ -371,24 +371,34 @@ export function BrowserPanel({
 
   return (
     <section className="webui-browser-panel" data-testid="browser-panel" role="region" aria-label={PANEL_COPY.title}>
+      {/* 面板的这几种状态都要被听到：播报通道（role、aria-live、aria-atomic）
+          交给共享契约统一写，这里只留自己的类名和文案。 */}
       {capability === "absent" ? (
-        <p className="webui-browser-notice" role="status" data-testid="browser-panel-absent">
+        <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-absent">
           {PANEL_COPY.absent}
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
       {capability === "not-ready" ? (
-        <p className="webui-browser-notice" role="status" data-testid="browser-panel-not-ready">
+        <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-not-ready">
           {PANEL_COPY.notReady}
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
       {capability === "unknown" ? (
-        <p className="webui-browser-notice" role="status" data-testid="browser-panel-unknown">
+        <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-unknown">
           {PANEL_COPY.unknown}
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
 
       {state?.error ? (
-        <FeedbackError message={state.error.message} className="webui-browser-notice is-error" testId="browser-panel-error" />
+        <FeedbackError
+          message={state.error.message}
+          className="webui-browser-notice is-error"
+          testId="browser-panel-error"
+          // The stable code is what a caller or a test matches on; the message
+          // is for a person. Both come from the failure, so the surface keeps
+          // the code beside it.
+          dataAttributes={{ "data-error-code": state.error.code }}
+        />
       ) : null}
       {/*
         The unauthorized notice is about the *surface*, not about whether a tab
@@ -397,9 +407,9 @@ export function BrowserPanel({
         yet serve, is a different message and gets its own notice instead.
       */}
       {capability !== "absent" && capability !== "not-ready" && !authorized ? (
-        <p className="webui-browser-notice" role="status" data-testid="browser-panel-unauthorized">
+        <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-unauthorized">
           {PANEL_COPY.unauthorized}
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
 
       <div className="webui-browser-stage" ref={stageRef}>

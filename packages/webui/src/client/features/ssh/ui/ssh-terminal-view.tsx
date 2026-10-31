@@ -7,6 +7,7 @@ import { useState, type ReactElement } from "react";
 
 import type { WebuiSshTerminalSnapshot } from "../application/ssh-owner.js";
 import { WEBUI_SSH_NO_TERMINAL_TEXT } from "../projection/ssh-panel.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface SshTerminalViewProps {
   readonly terminal: WebuiSshTerminalSnapshot;
@@ -35,14 +36,12 @@ export function SshTerminalView(props: SshTerminalViewProps): ReactElement {
           {props.terminal.alias ?? ""}
           {props.terminal.error ? ` · ${props.terminal.error}` : ""}
         </span>
-        <button
-          type="button"
-          data-webui-ssh-terminal-close="true"
+        <WebuiButton variant="quiet-highlight" size="inline-tiny" data-webui-ssh-terminal-close="true"
           onClick={props.onClose}
-          className="rounded-[6px] px-2 py-0.5 text-xs text-text_default_secondary hover:text-text_default_primary"
+
         >
           关闭终端
-        </button>
+        </WebuiButton>
       </header>
       <pre
         data-webui-ssh-terminal-output="true"
@@ -66,14 +65,12 @@ export function SshTerminalView(props: SshTerminalViewProps): ReactElement {
             }}
             className="flex-1 bg-transparent font-mono text-xs text-text_default_primary outline-none"
           />
-          <button
-            type="button"
-            data-webui-ssh-terminal-send="true"
+          <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-terminal-send="true"
             onClick={send}
-            className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
           >
             发送
-          </button>
+          </WebuiButton>
         </div>
         : null}
     </section>

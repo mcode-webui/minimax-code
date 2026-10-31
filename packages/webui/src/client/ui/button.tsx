@@ -13,16 +13,39 @@
 // variant — `danger` and `primary` are the two the client actually needed —
 // rather than a per-caller class string.
 
-import { forwardRef, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from "react";
+import {
+  forwardRef,
+  type AnchorHTMLAttributes,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
-/** The variants the client's callers need today. */
+/**
+ * The variants the client's callers need today.
+ *
+ * A variant is a whole appearance: the fill, the border, the label colour and
+ * the states that belong to that appearance. A caller states one and the
+ * contract owns the rest — which is why a caller outside this directory may not
+ * spell the recipe instead.
+ */
 export type WebuiButtonVariant =
   | "secondary"
   | "surface"
   | "primary"
   | "muted"
   | "danger"
-  | "plain";
+  | "plain"
+  // The inline appearances: a hairline ring, or no ring at all.
+  | "outline"
+  | "outline-secondary"
+  | "outline-highlight"
+  | "quiet-highlight"
+  | "quiet-secondary"
+  | "quiet-subtle"
+  // The two appearances four businesses each used to declare for themselves.
+  | "accent"
+  | "grouped";
 
 /**
  * The sizes the client's callers need today.
@@ -31,8 +54,22 @@ export type WebuiButtonVariant =
  * and `header` the action that sits in a surface's header next to its title.
  * None of them carries a width: a caller's layout decides how wide the button is
  * allowed to be.
+ *
+ * The inline sizes state no height on purpose: their callers sized the control
+ * by its label, its padding and its border, and a stated height would squeeze
+ * the ringed ones by the two pixels their border takes.
  */
-export type WebuiButtonSize = "regular" | "compact" | "header" | "panel" | "dialog";
+export type WebuiButtonSize =
+  | "regular"
+  | "compact"
+  | "header"
+  | "panel"
+  | "dialog"
+  | "inline"
+  | "inline-dense"
+  | "inline-tiny"
+  | "action"
+  | "pill";
 
 const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   secondary: "webui-mavis-button-gray",
@@ -49,6 +86,26 @@ const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   // `plain` is the button a surface already styles as "a button, no fill" — the
   // contract owns its states (focus, disabled) and the caller owns the rest.
   plain: "webui-mavis-button-plain",
+  // The ringed inline action. Three businesses wrote this ring and its label
+  // as a utility class string each; the ring is the control's.
+  outline: "webui-mavis-button-outline",
+  // The same ring with the quieter label.
+  "outline-secondary": "webui-mavis-button-outline-secondary",
+  // The same ring with the quieter label that comes forward on hover.
+  "outline-highlight": "webui-mavis-button-outline-highlight",
+  // The ringless inline action whose quieter label comes forward on hover.
+  "quiet-highlight": "webui-mavis-button-quiet-highlight",
+  // The ringless inline action with the quieter label.
+  "quiet-secondary": "webui-mavis-button-quiet-secondary",
+  // The ringless inline action with the quietest label.
+  "quiet-subtle": "webui-mavis-button-quiet-subtle",
+  // The filled call to action: the interactions business's `.webui-button-primary`,
+  // which the account, transcript, composer, workspace and shell businesses also
+  // rendered.
+  accent: "webui-mavis-button-accent",
+  // The grouped pill: the interactions business's `.webui-button-secondary`, which
+  // the same five businesses also rendered.
+  grouped: "webui-mavis-button-grouped",
 };
 
 const SIZE_CLASS: Record<WebuiButtonSize, string> = {
@@ -59,7 +116,27 @@ const SIZE_CLASS: Record<WebuiButtonSize, string> = {
   // rather than one size two callers disagree about.
   panel: "webui-mavis-button-panel",
   dialog: "webui-mavis-button-dialog",
+  // The three inline scales.
+  inline: "webui-mavis-button-inline",
+  "inline-dense": "webui-mavis-button-inline-dense",
+  "inline-tiny": "webui-mavis-button-inline-tiny",
+  // The filled call to action's geometry; it pairs with the `accent` variant.
+  action: "webui-mavis-button-action",
+  // The grouped pill's geometry; it pairs with the `grouped` variant.
+  pill: "webui-mavis-button-pill",
 };
+
+/**
+ * The class string one appearance is rendered with.
+ *
+ * The button and the link that looks like one share it, which is what makes
+ * them the same control rather than two controls that agree today.
+ */
+function buttonClasses(variant: WebuiButtonVariant, size: WebuiButtonSize, className?: string): string {
+  return ["webui-mavis-button", VARIANT_CLASS[variant], SIZE_CLASS[size], className]
+    .filter((entry) => Boolean(entry && entry.length > 0))
+    .join(" ");
+}
 
 export interface WebuiButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
   readonly variant: WebuiButtonVariant;
@@ -82,15 +159,41 @@ export const WebuiButton = forwardRef<HTMLButtonElement, WebuiButtonProps>(funct
   { variant, size = "regular", className, children, type = "button", ...rest },
   ref,
 ): ReactElement {
-  const classes = ["webui-mavis-button", VARIANT_CLASS[variant], SIZE_CLASS[size], className]
-    .filter((entry) => Boolean(entry && entry.length > 0))
-    .join(" ");
+  const classes = buttonClasses(variant, size, className);
   return (
     <button ref={ref} type={type} className={classes} {...rest}>
       {children}
     </button>
   );
 });
+
+export interface WebuiButtonLinkProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "className"> {
+  readonly variant: WebuiButtonVariant;
+  readonly size?: WebuiButtonSize;
+  /** The caller's layout only — never the control's states or appearance. */
+  readonly className?: string;
+  readonly children?: ReactNode;
+}
+
+/**
+ * A link that looks like a button.
+ *
+ * It is the same contract and the same appearance: a caller that navigates
+ * cannot render a `<button>`, and a caller that acts cannot render an `<a>`.
+ * Two callers — the workspace's HTML preview and the shell's not-found page —
+ * reached for the same button appearance on an anchor, and each of them spelled
+ * it as the class string of a business that owned it.
+ */
+export const WebuiButtonLink = forwardRef<HTMLAnchorElement, WebuiButtonLinkProps>(
+  function WebuiButtonLink({ variant, size = "regular", className, children, ...rest }, ref): ReactElement {
+    return (
+      <a ref={ref} className={buttonClasses(variant, size, className)} {...rest}>
+        {children}
+      </a>
+    );
+  },
+);
 
 export interface WebuiIconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children"> {

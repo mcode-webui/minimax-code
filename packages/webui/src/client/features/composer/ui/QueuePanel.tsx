@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 
 import type { WebuiQueueItem } from "../../../../shared/contracts/queue.js";
+import { FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 /**
  * The messages waiting behind a running turn, and whether the queue is held.
@@ -35,9 +37,9 @@ export function WebuiQueuePanel({
   return (
     <section className="flex w-full flex-col gap-2" data-webui-queue-paused={paused ? "true" : undefined}>
       {paused ? (
-        <span role="status" className="text-text_default_secondary text-size_12">
+        <FeedbackLiveRegion className="text-text_default_secondary text-size_12">
           队列已暂停
-        </span>
+        </FeedbackLiveRegion>
       ) : null}
       {items.length > 0 ? (
         <div className="mt-3 flex w-full flex-col gap-2" data-webui-queue="true">
@@ -62,14 +64,12 @@ export function WebuiQueuePanel({
                     * back out. The button appears on a running or finished row
                     * it would look operable and do nothing. */}
                 {item.status === "queued" && onRemove ? (
-                  <button
-                    type="button"
-                    className="webui-button-secondary text-size_12"
+                  <WebuiButton variant="grouped" size="pill" className="text-size_12"
                     onClick={() => onRemove(item)}
                     data-webui-remove-queue-item={item.itemId}
                   >
                     移除
-                  </button>
+                  </WebuiButton>
                 ) : null}
               </li>
             ))}

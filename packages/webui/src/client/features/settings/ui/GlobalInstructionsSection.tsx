@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from "re
 import type { WebuiGlobalInstructionsView } from "../../../../shared/contracts/personalization.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
-import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
+import { PERSONALIZATION_SECTION_HINTS, SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
 
 const INSTRUCTIONS_PLACEHOLDER = [
@@ -183,9 +183,7 @@ export function GlobalInstructionsSection({
         <FeedbackError message=<>error</> className="webui-settings-error" testId="global-instructions-error" />
       ) : null}
       {saved && !dirty ? (
-        <p data-testid="global-instructions-saved" className="webui-personalization-saved">
-          已保存
-        </p>
+        <SettingsSavedNotice message="已保存" testId="global-instructions-saved" />
       ) : null}
       {!setGlobalInstructions ? (
         <p data-testid="global-instructions-unavailable" className="webui-settings-error">

@@ -9,7 +9,8 @@ import {
 } from "../../../bindings/use-query-state.js";
 import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, WebuiIconFile, WebuiIconRunLocation } from "../../../shell/icons.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiField } from "../../../ui/field.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 const PROGRESS_COPY = {
   environment: "环境信息",
@@ -117,7 +118,7 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }
   };
   return <div className="webui-commit-dialog" data-overlay-layer={layerId} role="dialog" aria-modal="true" aria-label={PROGRESS_COPY.commit}>
     <div className="webui-commit-dialog-header"><strong>{PROGRESS_COPY.commit}</strong><button type="button" aria-label={PROGRESS_COPY.close} onClick={onClose}><WebuiIconClose className="size-4" /></button></div>
-    {hasChanges ? <label className="webui-commit-dialog-label"><span>提交说明</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="输入提交说明" autoFocus /></label> : <p className="webui-commit-dialog-hint">当前没有未提交变更，将推送当前分支。</p>}
+    {hasChanges ? <WebuiField className="webui-commit-dialog-label" label="提交说明" control={(props) => <textarea {...props} className="w-full" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="输入提交说明" autoFocus />} /> : <p className="webui-commit-dialog-hint">当前没有未提交变更，将推送当前分支。</p>}
     {error ? <FeedbackError message={error} className="webui-commit-dialog-error" /> : null}
     <div className="webui-commit-dialog-actions">
       <button type="button" onClick={onClose} disabled={busy}>取消</button>
@@ -167,7 +168,8 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
   const hasLineChanges = Boolean(environment && environment.lineStatsStatus === "ready" && (environment.insertions > 0 || environment.deletions > 0));
   return <>
     <WorkspaceProgressSection kind="environment" className={`webui-environment-panel${pending ? " is-loading" : ""}`} title={PROGRESS_COPY.environment} collapsed={collapsed} onToggle={onToggle} busy={pending}>
-        {pending ? <div className="webui-environment-loading" role="status" aria-label="正在加载环境信息"><span className="webui-environment-skeleton webui-environment-skeleton--branch" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /></div> : environmentError ? <FeedbackError message=<>环境信息加载失败：{environmentError}</> className="webui-environment-loading" /> : environment ? <div className="webui-environment-body">
+        {/* 骨架屏是一个区域状态；播报通道交给共享契约，aria-label 留在承载骨架屏的元素上。 */}
+        {pending ? <FeedbackLiveRegion><div className="webui-environment-loading" aria-label="正在加载环境信息"><span className="webui-environment-skeleton webui-environment-skeleton--branch" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /></div></FeedbackLiveRegion> : environmentError ? <FeedbackError message=<>环境信息加载失败：{environmentError}</> className="webui-environment-loading" /> : environment ? <div className="webui-environment-body">
           <div className="webui-environment-workspace">{environment.branch || " "}</div>
           <div className="webui-environment-actions">
             <button type="button" className="webui-environment-action" onClick={onOpenChanges} disabled={!onOpenChanges}>

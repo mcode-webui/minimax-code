@@ -7,71 +7,64 @@
  * the field, which is why nothing here sets a border or a font.
  */
 
-.webui-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* The field owns the arrangement and not a failing colour. `inherit` was wrong in
- * practice: inside the provider dialog the row's colour is a secondary token that
- * measures under the threshold in the dark theme, so a label that inherited it
- * inherited the failure. The primary text token is the one every surface proves. */
-.webui-field-label {
-  color: var(--text_default_primary);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
-}
-
-.webui-field-required {
-  color: var(--text_status_error);
-}
-
-/* The surface's own text colour: `--text_default_secondary` measures under the
- * threshold on the dialog background in the dark theme, and a field that ships
- * its own failing colour would be the contract making a surface worse. */
-.webui-field-description {
-  color: var(--text_default_primary);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.webui-field-error {
-  color: var(--text_status_error);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.webui-field-control {
-  display: flex;
-  min-width: 0;
-}
-
-/* A settings row: the text on the left, the control on the right. */
-.webui-field--row {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.webui-field--row .webui-field-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.webui-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.webui-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+@layer components {
+  .webui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  /* The field owns the arrangement and not a failing colour. `inherit` was wrong in
+   * practice: inside the provider dialog the row's colour is a secondary token that
+   * measures under the threshold in the dark theme, so a label that inherited it
+   * inherited the failure. The primary text token is the one every surface proves. */
+  .webui-field-label {
+    color: var(--text_default_primary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+  .webui-field-required {
+    color: var(--text_status_error);
+  }
+  /* The surface's own text colour: `--text_default_secondary` measures under the
+   * threshold on the dialog background in the dark theme, and a field that ships
+   * its own failing colour would be the contract making a surface worse. */
+  .webui-field-description {
+    color: var(--text_default_primary);
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .webui-field-error {
+    color: var(--text_status_error);
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .webui-field-control {
+    display: flex;
+    min-width: 0;
+  }
+  /* A settings row: the text on the left, the control on the right. */
+  .webui-field--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .webui-field--row .webui-field-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .webui-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .webui-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }

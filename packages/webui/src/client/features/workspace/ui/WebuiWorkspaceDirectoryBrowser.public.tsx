@@ -10,6 +10,7 @@ import type { WebuiWorkspaceDirectoryListing } from "../../../../shared/contract
 import { looksLikeAbsoluteWorkspacePath } from "../../../projection/common/paths.js";
 import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiField } from "../../../ui/field.js";
 import {
   useWebuiWorkspaceFiles,
   useWebuiWorkspaceQueriesState,
@@ -67,23 +68,28 @@ export function WebuiWorkspaceDirectoryBrowser({
   if (!queries?.canBrowseWorkspaceDirs)
     return (
       <div className="flex flex-col gap-2" data-webui-workspace-manual="true">
-        <label className="webui-commit-dialog-label">
-          <span>项目绝对路径</span>
-          <input
-            value={manualPath}
-            autoFocus
-            placeholder="/home/you/projects/my-project"
-            onChange={(event) => {
-              setManualPath(event.target.value);
-              setLocalError(undefined);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              submitManualPath();
-            }}
-          />
-        </label>
+        <WebuiField
+          className="webui-commit-dialog-label"
+          label="项目绝对路径"
+          control={(props) => (
+            <input
+              {...props}
+              className="w-full"
+              value={manualPath}
+              autoFocus
+              placeholder="/home/you/projects/my-project"
+              onChange={(event) => {
+                setManualPath(event.target.value);
+                setLocalError(undefined);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                submitManualPath();
+              }}
+            />
+          )}
+        />
         {error ? (
           <FeedbackError message={error} className="webui-commit-dialog-error" />
         ) : null}

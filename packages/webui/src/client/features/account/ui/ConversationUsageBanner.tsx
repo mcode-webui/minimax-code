@@ -26,6 +26,8 @@
 import type { MouseEvent, ReactNode } from "react";
 import { IconAlertCircle, IconX } from "@tabler/icons-react";
 
+import { WebuiButton } from "../../../ui/button.js";
+
 export type ConversationUsageActionKind =
   | "buy_credits"
   | "subscribe_plan"
@@ -87,14 +89,23 @@ function DefaultActionButton(props: {
   onClick: () => void;
 }): React.JSX.Element {
   const { kind, label, variant, testId, onClick } = props;
-  const base =
-    "!inline-flex !h-8 !items-center !justify-center !rounded-lg !px-3 !py-0 !text-[14px] border-[0.5px]";
-  const styles =
-    variant === "black"
-      ? `${base} border-border_default bg-bg_interaction_primary_default text-text_default_inverted hover:bg-bg_interaction_primary_hover`
-      : `${base} border-border_default bg-bg_default_primary text-text_default_primary hover:bg-bg_interaction_tertiary_hover`;
+  // The filled call to action is the shared contract's accent: the fill, the
+  // inverted label and the hover are the accent's, so the contract owns them.
+  // The ringless surface button below has no variant of its own yet.
+  if (variant === "black") {
+    return (
+      <WebuiButton variant="accent" size="regular" className="!h-8" data-testid={testId} onClick={onClick}>
+        {label}
+      </WebuiButton>
+    );
+  }
   return (
-    <button type="button" className={styles} data-testid={testId} onClick={onClick}>
+    <button
+      type="button"
+      className="!inline-flex !h-8 !items-center !justify-center !rounded-lg !px-3 !py-0 !text-[14px] border-[0.5px] border-border_default bg-bg_default_primary text-text_default_primary hover:bg-bg_interaction_tertiary_hover"
+      data-testid={testId}
+      onClick={onClick}
+    >
       {label}
     </button>
   );

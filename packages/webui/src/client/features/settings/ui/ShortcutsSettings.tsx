@@ -8,7 +8,9 @@
 //
 // The capture owns the keyboard while it is open. A key press that names a
 // binding is consumed here instead of reaching the app, because the press is
-// the user naming a shortcut, not the user using one.
+// the user naming a shortcut, not the user using one. The one key the capture
+// does not consume is Escape: that one belongs to the overlay coordinator, and
+// the capture is a layer while it is open.
 
 import { Fragment, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
@@ -22,6 +24,7 @@ import { SettingsDivider, SettingsPage, SettingsRow, SettingsSection } from "../
 import { SettingsButton } from "./settings-atoms.js";
 import { shortcutActionTitle, shortcutSettingsRows } from "../projection/settings-shortcuts.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 
 export interface ShortcutsSettingsProps {
   readonly bindings: ShortcutBindings;
@@ -34,19 +37,36 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
   const [error, setError] = useState("");
   const rows = useMemo(() => shortcutSettingsRows(bindings), [bindings]);
 
+  /**
+   * The capture is a layer while it is open (ADR 0028 § Overlay coordination):
+   * the Escape that cancels it is answered by the coordinator, so the page
+   * keeps no listener of its own for that key. It sits above the settings
+   * modal because the capture owns the keyboard while it is open — a press
+   * outside it ends the capture rather than the page underneath.
+   */
+  const captureLayerId = useDialogLayer({
+    id: "shortcut-capture",
+    order: 20,
+    dismissible: true,
+    onClose: () => {
+      setCapturing(undefined);
+      setError("");
+    },
+    active: capturing !== undefined,
+  });
+
   useEffect(() => {
     if (!capturing) return;
     const onKeyDown = (event: KeyboardEvent): void => {
+      // Escape is the coordinator's: the capture answers it as a layer, and a
+      // second listener for the same key would be a second implementation of
+      // the same contract.
+      if (event.key === "Escape") return;
       // Tab keeps its own meaning while the capture is open: it is how the
       // user leaves the control, and a shortcut that swallows it would leave
       // them stuck on the button they are editing.
       if (event.key !== "Tab") event.preventDefault();
       event.stopPropagation();
-      if (event.key === "Escape") {
-        setCapturing(undefined);
-        setError("");
-        return;
-      }
       const shortcut = parseShortcut(event);
       // A modifier on its own names no combination, so it is not captured.
       if (!shortcut) return;
@@ -85,6 +105,7 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
                   type="button"
                   className={`mavis-settings-shortcut-key${capturing === row.actionId ? " is-capturing" : ""}`}
                   data-testid={row.testId}
+                  data-overlay-layer={capturing === row.actionId ? captureLayerId : undefined}
                   aria-label={`${row.title}的快捷键，当前为${row.label}`}
                   aria-pressed={capturing === row.actionId}
                   onClick={() => { setError(""); setCapturing(row.actionId); }}

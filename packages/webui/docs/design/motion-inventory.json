@@ -57,12 +57,7 @@
       "keyframes": []
     },
     "features/interactions/ui/interactions.css": {
-      "durations": [
-        {
-          "value": "120ms",
-          "family": "feedback"
-        }
-      ],
+      "durations": [],
       "keyframes": []
     },
     "features/interactions/ui/plan-mode.css": {
@@ -164,11 +159,6 @@
         {
           "value": "180ms",
           "family": "surface"
-        },
-        {
-          "value": "0.3s",
-          "family": "distinct",
-          "reason": "the settings dialog enters as a modal, which is heavier than a popup and reads slower"
         }
       ],
       "keyframes": [

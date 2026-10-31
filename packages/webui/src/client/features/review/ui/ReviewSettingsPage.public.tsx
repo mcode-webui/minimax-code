@@ -41,7 +41,7 @@ import {
 } from "../../../bindings/use-query-state.js";
 import { FolderIcon, SearchIcon } from "../../../ui/settings-glyphs.js";
 import { SettingsCard, SettingsPage } from "../../../ui/settings-layout.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 type WebuiReviewStateAction = Parameters<typeof reduceWebuiReviewState>[1];
 
@@ -217,7 +217,7 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
   return <SettingsPage testId="review-workspace-picker" dataAttributes={{ "data-webui-workspace-state": state }}>
     <p className="webui-review-empty">选一个工作区来审查它的变更。</p>
     {error ? <FeedbackError message={error} className="webui-review-error" testId="review-workspace-error" /> : null}
-    {loading ? <p className="webui-review-loading" role="status">正在读取可审查的工作区…</p> : null}
+    {loading ? <FeedbackLiveRegion className="webui-review-loading">正在读取可审查的工作区…</FeedbackLiveRegion> : null}
     {!loading && !error && workspaces.length === 0 ? (
       /* Saying why matters more than saying that: an empty list under the same
        * heading reads as the bug this page is fixing. */
@@ -277,8 +277,18 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
       />
       {filterActive ? <button type="button" className="webui-review-clear" data-testid="review-search-clear" onClick={() => onClearFilters?.()}>清除</button> : null}
     </div> : null}
-    {loading || state.searchPending ? <p className="webui-review-loading" role="status">{loading ? "正在读取待审查的变更…" : "正在搜索…"}</p> : null}
-    {note || state.error ? <p className={state.status === "error" ? "webui-review-error" : "webui-review-empty"} role={state.status === "error" ? "alert" : undefined} data-testid="review-note">{note ?? state.error}</p> : null}
+    {loading || state.searchPending ? <FeedbackLiveRegion className="webui-review-loading">{loading ? "正在读取待审查的变更…" : "正在搜索…"}</FeedbackLiveRegion> : null}
+    {note || state.error ? (
+      // A failure is announced; a note is not. The two are different states,
+      // so the error one carries the shared feedback family's alert and the
+      // note one stays a plain line of text. The family's own chrome would
+      // restyle this line, so the surface keeps its own class beside it.
+      state.status === "error" ? (
+        <FeedbackError message={state.error ?? ""} className="webui-review-error" testId="review-note" />
+      ) : (
+        <p className="webui-review-empty" data-testid="review-note">{note}</p>
+      )
+    ) : null}
     {workspaceDir ? <p className="webui-review-empty" data-testid="review-workspace">{workspaceDir}</p> : null}
     {empty && !note ? <p className="webui-review-empty" data-testid="review-empty">{empty}</p> : null}
     {state.status === "ready" && rows.length === 0 ? <p className="webui-review-empty" data-testid="review-empty">{filterActive ? "没有匹配的文件" : "没有可显示的文件"}</p> : null}
@@ -309,9 +319,10 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
               </span>
             </button>
             {expanded ? <div className="webui-review-file-body" data-testid="review-file-body">
-              {!withinWorkspace ? <p className="webui-review-file-error" role="status" data-testid="review-file-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p> : null}
-              {pending ? <p className="webui-review-loading" role="status">正在读取这个文件的补丁…</p> : null}
-              {diffError ? <p className="webui-review-file-error" role="status" data-testid="review-file-error">{diffError}</p> : null}
+              {/* 读取补丁的进展和结果都要被听到，播报通道交给共享契约。 */}
+              {!withinWorkspace ? <FeedbackLiveRegion className="webui-review-file-error" testId="review-file-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</FeedbackLiveRegion> : null}
+              {pending ? <FeedbackLiveRegion className="webui-review-loading">正在读取这个文件的补丁…</FeedbackLiveRegion> : null}
+              {diffError ? <FeedbackLiveRegion className="webui-review-file-error" testId="review-file-error">{diffError}</FeedbackLiveRegion> : null}
               {diff ? <ol className="webui-review-lines" data-testid="review-lines">
                 {projectWebuiReviewLines(diff).map((line, index) => {
                   const target = webuiReviewLineTarget(line);

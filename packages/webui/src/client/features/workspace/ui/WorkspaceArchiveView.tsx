@@ -4,7 +4,7 @@
 // what `readWorkspaceArchive` is willing to name and never invents a path.
 
 import { useCallback, useEffect, useState, type ReactElement } from "react";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import {
   useWebuiWorkspaceArchive,
   useWebuiWorkspaceQueriesState,
@@ -89,9 +89,9 @@ export function WorkspaceArchiveListing({
         : null}
       {truncated
         ? (
-            <p role="status" data-testid="workspace-archive-truncated">
+            <FeedbackLiveRegion testId="workspace-archive-truncated">
               {`压缩包共 ${totalEntries} 项，这里只显示了 ${entries.length} 项；其余条目未列出。`}
-            </p>
+            </FeedbackLiveRegion>
           )
         : null}
       {entries.length === 0
@@ -160,9 +160,9 @@ function ArchiveExtractControls({
       </button>
       {extractState.status === "done"
         ? (
-            <p role="status" data-testid="workspace-archive-extract-result">
+            <FeedbackLiveRegion testId="workspace-archive-extract-result">
               {`已解压 ${extractState.result.writtenFiles} 个文件到 ${extractState.result.destination}${extractState.result.truncated ? "（条目过多，仅解压了前一部分）" : ""}。`}
-            </p>
+            </FeedbackLiveRegion>
           )
         : null}
       {extractState.status === "error"
@@ -184,7 +184,11 @@ export function WorkspaceArchiveNotice({
   return failure ? (
     <FeedbackError message={reason} testId="workspace-archive-notice" />
   ) : (
-    <p role="status" data-testid="workspace-archive-notice">{reason}</p>
+    // 这个通知是文件正文的直接子元素，`.webui-workspace-file-document > p`
+    // 给过它间距与颜色；换掉元素名后这条选择器不再命中，等价样式留在里面的 p 上。
+    <FeedbackLiveRegion testId="workspace-archive-notice">
+      <p className="m-spacing_16 text-text_default_tertiary">{reason}</p>
+    </FeedbackLiveRegion>
   );
 }
 

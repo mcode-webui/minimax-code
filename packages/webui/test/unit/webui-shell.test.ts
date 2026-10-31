@@ -877,7 +877,7 @@ describe("WebUI shell", () => {
     expect(html).toContain("问题反馈");
     expect(html).toContain("删除");
     expect(html).toContain('aria-disabled="true"');
-    expect(html).toContain("webui-context-menu-divider");
+    expect(html).toContain("webui-menu-separator");
   });
 
   it("uses Desktop-sized SVGs and separate pinned and unpinned pin glyphs", () => {

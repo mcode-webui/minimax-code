@@ -132,7 +132,7 @@ export const WEBUI_OUTSIDE_CLOSE_POLICIES: {
     subscribedKinds: ["pointerdown"],
     usesContainerContains: true,
     notes:
-      "The workspace picker's DIRECTORY BROWSER listens to pointerdown only; its container is its own wrap — the trigger pill plus the browser dialog — so any other click dismisses it. No Escape handler: Escape was never wired for this surface. The picker's other half — the 最近 list — is a WebuiDropdown, and the shared skeleton dismisses that one.",
+      "The workspace picker's DIRECTORY BROWSER listens to pointerdown only; its container is its own wrap — the trigger pill plus the browser dialog — so any other click dismisses it. It had no Escape handler of its own: Escape was never wired for this surface. It is wired now, but not here — the browser is a managed layer, so the coordinator answers the Escape for it. This table records what each surface did while it answered its own events; it has no production caller left.",
   },
   slashPopover: {
     surface: "slashPopover",

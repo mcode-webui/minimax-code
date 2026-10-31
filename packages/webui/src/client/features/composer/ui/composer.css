@@ -165,7 +165,19 @@
     }
   }
 
-  .webui-composer-menu button,
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the composer's own arrangement: its menus are roomier
+   * than a context menu's, so the rows are taller, the gap is wider and the
+   * padding is deeper. */
+  .webui-composer-menu-item {
+    min-height: 38px;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+  }
+
+  /* The mention list is not a menu — its rows are options in a listbox, so it
+   * is the composer's own row rather than the shared menu row. */
   .webui-composer-mention-option {
     display: flex;
     width: 100%;
@@ -186,35 +198,9 @@
     cursor: pointer;
   }
 
-  /* The leading glyph for each row. Fixed-size and held at the icon ramp so
-   * the column of icons aligns; the label keeps the flexible half. */
-  .webui-composer-menu-icon {
-    width: var(--size_16);
-    height: var(--size_16);
-    flex: 0 0 var(--size_16);
-    color: var(--icon_default_secondary);
-  }
-
-  .webui-composer-menu button:hover .webui-composer-menu-icon,
-  .webui-composer-menu button:focus-visible .webui-composer-menu-icon {
-    color: var(--icon_default_primary);
-  }
-
-  .webui-composer-menu button:hover,
   .webui-composer-mention-option:hover,
   .webui-composer-mention-option[aria-selected="true"] {
     background: var(--webui-color-bg-secondary, #f5f5f5);
-  }
-
-  .webui-composer-menu button > span:last-child {
-    margin-left: auto;
-    color: var(--webui-color-text-tertiary, #999);
-  }
-
-  .webui-composer-menu [role="separator"] {
-    height: 1px;
-    margin: 5px 4px;
-    background: var(--webui-color-border-light, #eee);
   }
 
   .webui-composer-menu-back {
@@ -710,23 +696,16 @@
     max-height: 320px;
   }
 
-  /* A square icon control: 28px, 8px radius. */
-  .webui-icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* The composer's own size for the shared icon-button contract
+     (styles/button.css): a 28px square rather than the contract's 26px.
+     The contract owns the surface, the states and the name; the size is this
+     surface's own. */
+  .webui-composer-add-button {
     width: 28px;
     height: 28px;
-    flex-shrink: 0;
-    border-radius: var(--radius_8);
-    transition: background-color 120ms ease, color 120ms ease;
   }
-  .webui-icon-button:hover:not(:disabled) {
-    background-color: var(--bg_interaction_tertiary_hover);
+  .webui-composer-add-button:hover:not(:disabled) {
     color: var(--icon_default_primary);
-  }
-  .webui-icon-button:disabled {
-    cursor: default;
   }
 
   /* The composer's call to action: a filled blue disc carrying an inverted

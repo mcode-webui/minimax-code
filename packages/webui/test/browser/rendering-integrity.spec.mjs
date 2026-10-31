@@ -211,7 +211,7 @@ async function openMcpForm(page, name) {
   // The management surface's create control opens the chooser; "添加 MCP server"
   // is one option in it, not a button on the management list.
   await page.locator(".webui-plugin-create-trigger").click();
-  await page.getByRole("button", { name: "添加 MCP server" }).click();
+  await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
   const dialog = page.getByRole("dialog", { name: "MCP Server" });
   await expect(dialog).toBeVisible();
   if (name.length > 0) await dialog.getByLabel("名称").fill(name);
@@ -844,6 +844,12 @@ test.describe("rendering integrity of the migrated surfaces", () => {
     void unexcepted;
     // Decided over the whole run: an exception scoped to every state matches in
     // the state that renders its node and nowhere else.
+    if (process.env.DUMP_EXCEPTION_CONTRAST) {
+      console.log("== measured contrast for every colour exception, worst state ==");
+      for (const [target, value] of [...EXCEPTION_CONTRAST.entries()].sort((a, b) => a[1].min - b[1].min)) {
+        console.log(`  ${String(value.min).padStart(6)} : ${target}  (${value.count} node(s), ${value.state})`);
+      }
+    }
     expect(
       staleExceptions(findings, exceptions).map((exception) => `${exception.rule} ${exception.target}`),
       "exceptions whose finding has gone",

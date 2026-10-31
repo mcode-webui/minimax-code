@@ -31,6 +31,7 @@ import {
 } from "../projection/scheduling-panel.js";
 import { ContentPage } from "../../../ui/content-page.js";
 import { SchedulingEditor } from "./scheduling-editor.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface SchedulingPanelViewProps {
   readonly snapshot: WebuiSchedulingSnapshot;
@@ -73,31 +74,25 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
       title="定时任务"
       actions={
         <>
-          <button
-            type="button"
-            data-webui-scheduling-new="true"
+          <WebuiButton variant="outline" size="inline" data-webui-scheduling-new="true"
             onClick={props.onCreate}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+
           >
             新建
-          </button>
-          <button
-            type="button"
-            data-webui-scheduling-refresh="true"
+          </WebuiButton>
+          <WebuiButton variant="outline-highlight" size="inline" data-webui-scheduling-refresh="true"
             onClick={props.onRefresh}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+
           >
             刷新
-          </button>
-          <button
-            type="button"
-            data-webui-scheduling-close="true"
+          </WebuiButton>
+          <WebuiButton variant="quiet-highlight" size="inline" data-webui-scheduling-close="true"
             aria-label="关闭定时任务"
             onClick={props.onClose}
-            className="rounded-[6px] px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+
           >
             关闭
-          </button>
+          </WebuiButton>
         </>
       }
     >
@@ -148,83 +143,69 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
                 {row.holdLabel}
               </p>
               <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  data-webui-scheduling-edit={row.cronId}
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-edit={row.cronId}
                   onClick={() => {
                     const task = tasksById.get(row.cronId);
                     if (task) props.onEdit(task);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   编辑
-                </button>
-                <button
-                  type="button"
-                  data-webui-scheduling-toggle={row.cronId}
+                </WebuiButton>
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-toggle={row.cronId}
                   onClick={() => {
                     const task = tasksById.get(row.cronId);
                     if (task) props.onToggle(task);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   {row.enabled ? "停用" : "启用"}
-                </button>
-                <button
-                  type="button"
-                  data-webui-scheduling-run={row.cronId}
+                </WebuiButton>
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-run={row.cronId}
                   onClick={() => {
                     const task = tasksById.get(row.cronId);
                     if (task) props.onRunNow(task);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   立即执行
-                </button>
-                <button
-                  type="button"
-                  data-webui-scheduling-history={row.cronId}
+                </WebuiButton>
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-history={row.cronId}
                   onClick={() => {
                     const task = tasksById.get(row.cronId);
                     if (task) props.onToggleRuns(task);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   运行历史
-                </button>
+                </WebuiButton>
                 {props.confirmingDelete === row.cronId
                   ? <>
-                    <button
-                      type="button"
-                      data-webui-scheduling-delete-confirm={row.cronId}
+                    <WebuiButton variant="outline" size="inline-tiny" data-webui-scheduling-delete-confirm={row.cronId}
                       onClick={() => {
                         const task = tasksById.get(row.cronId);
                         if (task) props.onDelete(task);
                       }}
-                      className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_primary"
+
                     >
                       确认删除
-                    </button>
-                    <button
-                      type="button"
-                      data-webui-scheduling-delete-cancel={row.cronId}
+                    </WebuiButton>
+                    <WebuiButton variant="quiet-subtle" size="inline-tiny" data-webui-scheduling-delete-cancel={row.cronId}
                       onClick={props.onCancelDelete}
-                      className="rounded-[6px] px-2 py-0.5 text-xs text-text_default_tertiary"
+
                     >
                       取消
-                    </button>
+                    </WebuiButton>
                   </>
-                  : <button
-                    type="button"
-                    data-webui-scheduling-delete={row.cronId}
+                  : <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-delete={row.cronId}
                     onClick={() => {
                       const task = tasksById.get(row.cronId);
                       if (task) props.onRequestDelete(task);
                     }}
-                    className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                   >
                     删除
-                  </button>}
+                  </WebuiButton>}
               </div>
               {props.expandedRuns === row.cronId
                 ? <ul data-webui-scheduling-runs={row.cronId} className="mt-2 space-y-1 border-t-[0.5px] border-border_default pt-1">
@@ -242,14 +223,12 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
                         </span>
                         {run.sessionId === undefined
                           ? null
-                          : <button
-                            type="button"
-                            data-webui-scheduling-run-session={run.sessionId}
+                          : <WebuiButton variant="quiet-secondary" size="inline-tiny" data-webui-scheduling-run-session={run.sessionId}
                             onClick={() => props.onOpenSession(run.sessionId!)}
-                            className="rounded-[6px] px-2 py-0.5 text-xs text-text_default_primary underline"
+                            className="underline text-text_default_primary"
                           >
                             打开会话
-                          </button>}
+                          </WebuiButton>}
                       </li>
                     ))}
                 </ul>

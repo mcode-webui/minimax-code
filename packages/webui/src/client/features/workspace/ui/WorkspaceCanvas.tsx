@@ -48,7 +48,7 @@ import {
 } from "../../../bindings/use-query-state.js";
 import { DESKTOP_COPY, resolveCanvasPointerGesture, stepCanvasZoom, canvasPointerMoveLayout, canvasPointerResizeLayout, canvasArrowDirection, canvasKeyStep, nudgeCanvasLayout, resizeCanvasLayoutBy, canvasLayoutsEqual, buildCanvasUpdateLayoutMutation, buildCanvasAddFileMutation, buildCanvasRemoveNodeMutation, createCanvasOperationId, createCanvasNodeId, buildCanvasOperation, nextCanvasNodeLayout, describeCanvasError, parseCanvasNodes, applyCanvasLayoutPreview } from "../projection/canvas-projection.js";
 import type { CanvasNodeView, CanvasPointerGesture, CanvasLayoutPreview } from "../projection/canvas-projection.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface CanvasPan {
   readonly x: number;
@@ -364,8 +364,9 @@ export function WorkspaceCanvas({ sessionId }: {
         in-flight state, a notice and a failure can never overlap. */}
     <div style={{ position: "absolute", left: "var(--spacing_16)", bottom: "var(--spacing_8)", display: "flex", flexDirection: "column", gap: "var(--spacing_4)", alignItems: "flex-start", textAlign: "left" }}>
       {readOnly ? <p style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{DESKTOP_COPY.canvasReadOnly}</p> : null}
-      {busy ? <p role="status" style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{DESKTOP_COPY.canvasSaving}</p> : null}
-      {notice ? <p role="status" style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{notice}</p> : null}
+      {/* 保存中的状态与结果都要被听到；播报交给共享契约，内联样式留在承载文字的元素上。 */}
+      {busy ? <FeedbackLiveRegion><p style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{DESKTOP_COPY.canvasSaving}</p></FeedbackLiveRegion> : null}
+      {notice ? <FeedbackLiveRegion><p style={{ margin: 0, color: "var(--text_default_tertiary)", fontSize: "var(--size_12)" }}>{notice}</p></FeedbackLiveRegion> : null}
       {error ? <FeedbackError message={error} /> : null}
     </div>
   </div>;

@@ -25,7 +25,7 @@ import {
   useWebuiMiniAppWorkflowsState,
 } from "../bindings/use-miniapp-workflows.js";
 import { MiniAppView } from "./MiniAppView.public.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface MiniAppStandaloneProps {
   readonly pluginId: string;
@@ -68,18 +68,21 @@ export function MiniAppStandalone({
       data-session-id={sessionId}
     >
       {sessionEnded ? (
-        <p
+        // 会话状态是要被听到的状态，播报通道交给共享契约。
+        <FeedbackLiveRegion
           className="webui-miniapp-standalone-notice"
-          role="status"
-          data-testid="miniapp-standalone-session-ended"
+          testId="miniapp-standalone-session-ended"
         >
           该会话已结束，Mini App 仍在运行。
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
       {sessionUnresolved ? (
-        <p className="webui-miniapp-standalone-notice" role="status" data-testid="miniapp-standalone-session-lookup-unresolved">
+        <FeedbackLiveRegion
+          className="webui-miniapp-standalone-notice"
+          testId="miniapp-standalone-session-lookup-unresolved"
+        >
           无法确认会话状态，Mini App 仍在运行。
-        </p>
+        </FeedbackLiveRegion>
       ) : null}
       {state.standaloneFailure !== undefined ? (
         <FeedbackError message=<>无法确认会话状态：{state.standaloneFailure}</> className="webui-miniapp-standalone-notice" testId="miniapp-standalone-session-unresolved" />

@@ -65,29 +65,10 @@
     padding: 6px;
   }
   .webui-context-menu-item-wrap { position: relative; }
-  .webui-context-menu-item {
-    display: flex;
-    min-height: 30px;
-    width: 100%;
-    align-items: center;
-    gap: var(--spacing_8);
-    margin-block: 2px;
-    border: 0;
-    border-radius: var(--radius_8);
-    background: transparent;
-    padding: 4px 8px;
-    color: var(--text_default_primary);
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    text-align: left;
-  }
-  .webui-context-menu-item:not(:disabled):hover { background: var(--bg_interaction_tertiary_hover); }
-  .webui-context-menu-item:disabled { cursor: default; color: var(--text_default_tertiary); opacity: .68; }
-  .webui-context-menu-item.is-danger:not(:disabled) { color: var(--text_label_danger_secondary_default); }
-  .webui-context-menu-item-icon { display: flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; }
-  .webui-context-menu-item-label { min-width: 0; flex: 1; white-space: nowrap; }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the context menu's own box: the chevron it puts in
+   * the trailing slot, and the width of the popup. */
   .webui-context-menu-chevron { flex: 0 0 16px; }
-  .webui-context-menu-divider { height: 1px; margin: 5px 8px; background: var(--border_light); }
   /* The submenu is a fly-out that opens on hover rather than on a click, so it
    * is not a dropdown — but it is the same surface, and it says so by carrying
    * the shared surface class. What is left here is its own box. */
@@ -300,18 +281,6 @@
     margin: 0 auto 24px;
     background: transparent;
   }
-  .webui-plugin-categories input {
-    width: min(200px, 24vw);
-    height: 40px;
-    margin-left: auto;
-    border: 1px solid var(--border_default);
-    border-radius: 10px;
-    background: var(--bg_default_primary);
-    padding: 0 14px;
-    color: var(--text_default_primary);
-    outline: none;
-  }
-
   .webui-plugin-market-skill-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

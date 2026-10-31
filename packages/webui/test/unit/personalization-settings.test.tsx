@@ -125,7 +125,15 @@ describe("记忆摘要 save button states", () => {
     const markup = renderToStaticMarkup(
       <MemoryManagerDialog onClose={() => {}} />,
     );
-    const save = markup.slice(markup.indexOf('data-testid="agent-memory-save"'));
+    // The whole opening tag, not the slice from the test id onwards: where
+    // `disabled` lands inside the tag is the renderer's business, and a
+    // check that reads only the tail after `data-testid` fails on a
+    // perfectly correct button whose attributes happen to be ordered
+    // differently. The tag opens before the test id does, so the start is
+    // the last `<button` ahead of it.
+    const testIdAt = markup.indexOf('data-testid="agent-memory-save"');
+    const tagStart = markup.lastIndexOf("<button", testIdAt);
+    const save = markup.slice(tagStart);
     expect(save.slice(0, save.indexOf(">"))).toContain("disabled");
   });
 });
@@ -419,7 +427,7 @@ describe("PersonalizationSettings markup", () => {
 
     // `dirty` is false until a read resolves, so the first paint cannot offer
     // a save that would write an empty file over the user's AGENTS.md.
-    expect(markup).toMatch(/<button[^>]*data-testid="global-instructions-save"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="global-instructions-save")(?=[^>]*disabled="")[^>]*>/u);
   });
 });
 
@@ -462,22 +470,22 @@ describe("记忆 section markup", () => {
 
     // A read-only manager would open a body the user could not change, so the
     // entry point stays out of reach rather than leading somewhere useless.
-    expect(markup).toMatch(/<button[^>]*data-testid="agent-memory-load"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="agent-memory-load")(?=[^>]*disabled="")[^>]*>/u);
   });
 
   it("declines the memory surface instead of faking it when the transport is absent", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
     expect(markup).toContain("agent-memory-unavailable");
-    expect(markup).toMatch(/<button[^>]*data-testid="agent-memory-load"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="agent-memory-load")(?=[^>]*disabled="")[^>]*>/u);
   });
 
   it("declines the switches when the configuration capability is absent", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
     expect(markup).toContain("memory-settings-unavailable");
-    expect(markup).toMatch(/<button[^>]*data-testid="memory-enabled-switch"[^>]*disabled=""/u);
-    expect(markup).toMatch(/<button[^>]*data-testid="memory-proactive-switch"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="memory-enabled-switch")(?=[^>]*disabled="")[^>]*>/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="memory-proactive-switch")(?=[^>]*disabled="")[^>]*>/u);
   });
 
   it("keeps the switches out of reach until a read gives them a baseline", () => {
@@ -487,8 +495,8 @@ describe("记忆 section markup", () => {
     // state that still accepts a click is how a setting gets flipped by
     // accident: the user cannot see what they are changing, and the write
     // lands on top of a state nobody read.
-    expect(markup).toMatch(/<button[^>]*data-testid="memory-enabled-switch"[^>]*disabled=""/u);
-    expect(markup).toMatch(/<button[^>]*data-testid="memory-proactive-switch"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="memory-enabled-switch")(?=[^>]*disabled="")[^>]*>/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="memory-proactive-switch")(?=[^>]*disabled="")[^>]*>/u);
   });
 
   it("renders both switches off before any read resolves", () => {
@@ -648,7 +656,7 @@ describe("关于你 section markup", () => {
 
     // An unresolved read must not offer a save: the draft is empty, and
     // writing it would clear a profile the user never opened.
-    expect(markup).toMatch(/<button[^>]*data-testid="user-profile-save"[^>]*disabled=""/u);
+    expect(markup).toMatch(/<button(?=[^>]*data-testid="user-profile-save")(?=[^>]*disabled="")[^>]*>/u);
   });
 
   it("refuses to write a half-marked profile", () => {

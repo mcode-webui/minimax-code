@@ -12,8 +12,9 @@ import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface PluginImportDialogProps {
   readonly url: string;
@@ -36,10 +37,6 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
     <div
       className="webui-plugin-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget)
-          onClose();
-      }}
     >
       <section
         className="webui-plugin-dialog webui-plugin-import-dialog"
@@ -61,17 +58,21 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
           </button>
         </header>
         <div className="webui-plugin-form webui-plugin-import-body">
-          <label className="wide">
-            仓库 URL
-            <input
-              aria-label="仓库 URL"
-              value={url}
-              onChange={(event) => {
-                onUrlChange(event.currentTarget.value);
-              }}
-              placeholder="https://github.com/owner/repository"
-            />
-          </label>
+          <WebuiField
+            className="wide"
+            label="仓库 URL"
+            control={(props) => (
+              <input
+                {...props}
+                className="w-full"
+                value={url}
+                onChange={(event) => {
+                  onUrlChange(event.currentTarget.value);
+                }}
+                placeholder="https://github.com/owner/repository"
+              />
+            )}
+          />
           {preview ? (
             <div className="webui-plugin-import-preview">
               <strong>
@@ -94,25 +95,29 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
                 {String((preview.plugin as Row)?.mcpServerCount ?? 0)}
               </span>
               {preview.canImport !== true ? (
-                <ul className="webui-plugin-diagnostics" role="status">
-                  {Array.isArray(preview.diagnostics) &&
-                  preview.diagnostics.length > 0 ? (
-                    (preview.diagnostics as Row[]).map(
-                      (diagnostic, index) => (
-                        <li key={`${read(diagnostic, "code")}-${index}`}>
-                          {[
-                            read(diagnostic, "code"),
-                            read(diagnostic, "capability", "name"),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </li>
-                      ),
-                    )
-                  ) : (
-                    <li>当前插件包还不能导入，请检查仓库内容后重试。</li>
-                  )}
-                </ul>
+                /* 诊断清单是一个要被听到的状态，播报通道交给共享契约；
+                   列表本身仍是 ul，列表语义不丢。 */
+                <FeedbackLiveRegion>
+                  <ul className="webui-plugin-diagnostics">
+                    {Array.isArray(preview.diagnostics) &&
+                    preview.diagnostics.length > 0 ? (
+                      (preview.diagnostics as Row[]).map(
+                        (diagnostic, index) => (
+                          <li key={`${read(diagnostic, "code")}-${index}`}>
+                            {[
+                              read(diagnostic, "code"),
+                              read(diagnostic, "capability", "name"),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </li>
+                        ),
+                      )
+                    ) : (
+                      <li>当前插件包还不能导入，请检查仓库内容后重试。</li>
+                    )}
+                  </ul>
+                </FeedbackLiveRegion>
               ) : null}
             </div>
           ) : null}
@@ -127,8 +132,7 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
           {preview ? (
             <WebuiButton
               variant="primary"
-              size="dialog"
-              disabled={busy || preview.canImport !== true}
+              size="dialog" disabled={busy || preview.canImport !== true}
               onClick={() => onImport()}
             >
               导入插件
@@ -136,8 +140,7 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
           ) : (
             <WebuiButton
               variant="primary"
-              size="dialog"
-              disabled={busy || !url.trim()}
+              size="dialog" disabled={busy || !url.trim()}
               onClick={() => onPreview()}
             >
               预览

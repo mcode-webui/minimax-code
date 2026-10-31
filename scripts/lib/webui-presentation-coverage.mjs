@@ -27,6 +27,13 @@ const ts = require("typescript");
 /** Client source directory whose presentation modules this check covers. */
 export const CLIENT_SOURCE_DIRECTORY = "packages/webui/src/client";
 
+/**
+ * The shared home, relative to the client source directory.
+ *
+ * A module under it *is* the shared layer; a module outside it is a caller.
+ */
+export const SHARED_HOME_DIRECTORY = "ui";
+
 /** Suffixes that make a presentation module. Stylesheets are out of scope. */
 export const MODULE_SUFFIXES = Object.freeze([".ts", ".tsx"]);
 
@@ -209,6 +216,51 @@ function isPlainObject(value) {
  * vocabulary moved since it was classified must be looked at again, but a
  * green gate must not pretend it was.
  */
+/**
+ * The names a module imports from the shared home *as values*.
+ *
+ * A type-only import is a dependency on a shape, not on a contract: importing
+ * `WebuiContextMenuItem` tells you what a menu row looks like, it does not make
+ * the caller render one. The thin-adopter rule counts only the value imports,
+ * because a module that claims to have adopted a contract has to depend on
+ * something it can actually render or call.
+ *
+ * The shared home is found by resolving the import, not by looking for a
+ * `ui/` segment in the specifier: every business has a `ui/` directory of its
+ * own, and `features/transcript/ui/GreetingSkeleton.js` is not the shared
+ * layer.
+ */
+export function sharedHomeValueImports(source, filename) {
+  const sourceFile = ts.createSourceFile(
+    filename,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const directory = filename.split("/").slice(0, -1).join("/");
+  const names = [];
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const specifier = statement.moduleSpecifier.text;
+    if (!specifier.startsWith(".")) continue;
+    const resolved = path.posix.normalize(path.posix.join(directory, specifier));
+    if (!resolved.startsWith(`${SHARED_HOME_DIRECTORY}/`)) continue;
+    const clause = statement.importClause;
+    if (!clause) continue;
+    // `import { type X }` and `import type { X }` are shapes, not contracts.
+    if (clause.name) names.push(clause.name.text);
+    if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+      for (const element of clause.namedBindings.elements) {
+        if (element.isTypeOnly) continue;
+        names.push(element.name.text);
+      }
+    }
+  }
+  return names;
+}
+
 export function evaluatePresentationCoverage({ modules, inventory }) {
   const failures = [];
   const reviews = [];
@@ -226,6 +278,7 @@ export function evaluatePresentationCoverage({ modules, inventory }) {
   }
 
   const classifiedPaths = new Set();
+  const moduleByPath = new Map(modules.map((module) => [module.path, module]));
   for (const entry of inventoryEntries) {
     if (!isPlainObject(entry) || typeof entry.path !== "string") {
       failures.push({
@@ -290,6 +343,25 @@ export function evaluatePresentationCoverage({ modules, inventory }) {
         path: entryPath,
         detail: "an entry carries a non-empty `label`",
       });
+    }
+    // The thin-adopter rule. A module classified as having adopted a contract
+    // has to depend on the shared home with something it can render or call. A
+    // type-only import is a dependency on a shape: it tells the caller what a
+    // contract looks like without the caller rendering one, and a classification
+    // that claims adoption without it is a classification that is not true.
+    if (
+      entry.disposition === "newly-adopted-contract" &&
+      !entryPath.startsWith(`${SHARED_HOME_DIRECTORY}/`)
+    ) {
+      const adopted = moduleByPath.get(entryPath)?.sharedHomeValues ?? [];
+      if (adopted.length === 0) {
+        failures.push({
+          kind: "thin-adopter",
+          path: entryPath,
+          detail:
+            "classified as newly-adopted-contract but renders or calls nothing from the shared home — adopt the contract or record the module as a business exception or a composition",
+        });
+      }
     }
   }
 

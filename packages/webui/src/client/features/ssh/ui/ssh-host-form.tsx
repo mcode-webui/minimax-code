@@ -8,6 +8,8 @@
 import { useState, type ReactElement } from "react";
 
 import type { WebuiSshSaveConnectionRequest } from "../../../../shared/contracts/ssh.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 
 export interface SshHostFormProps {
   readonly onSubmit: (request: WebuiSshSaveConnectionRequest) => void;
@@ -95,76 +97,100 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
         </label>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <label className="col-span-2 text-xs text-text_default_secondary">
-          别名
-          <input
-            type="text"
-            data-webui-ssh-field="alias"
-            value={alias}
-            onChange={(event) => setAlias(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="col-span-2 text-xs text-text_default_secondary">
-          显示名称
-          <input
-            type="text"
-            data-webui-ssh-field="displayName"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="text-xs text-text_default_secondary">
-          主机
-          <input
-            type="text"
-            data-webui-ssh-field="host"
-            value={host}
-            onChange={(event) => setHost(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="text-xs text-text_default_secondary">
-          端口
-          <input
-            type="text"
-            data-webui-ssh-field="port"
-            value={port}
-            onChange={(event) => setPort(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="text-xs text-text_default_secondary">
-          用户名
-          <input
-            type="text"
-            data-webui-ssh-field="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="text-xs text-text_default_secondary">
-          私钥文件
-          <input
-            type="text"
-            data-webui-ssh-field="identityFile"
-            value={identityFile}
-            onChange={(event) => setIdentityFile(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
-        <label className="col-span-2 text-xs text-text_default_secondary">
-          密码（仅用于第一次握手，不会保存在浏览器里）
-          <input
-            type="password"
-            data-webui-ssh-field="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-0.5 w-full rounded-[6px] border border-stroke_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
-          />
-        </label>
+        <WebuiField
+          className="col-span-2"
+          label="别名"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="alias"
+              value={alias}
+              onChange={(event) => setAlias(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          className="col-span-2"
+          label="显示名称"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="displayName"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          label="主机"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="host"
+              value={host}
+              onChange={(event) => setHost(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          label="端口"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="port"
+              value={port}
+              onChange={(event) => setPort(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          label="用户名"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          label="私钥文件"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="text"
+              data-webui-ssh-field="identityFile"
+              value={identityFile}
+              onChange={(event) => setIdentityFile(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
+        <WebuiField
+          className="col-span-2"
+          label="密码（仅用于第一次握手，不会保存在浏览器里）"
+          control={(controlProps) => (
+            <input
+              {...controlProps}
+              type="password"
+              data-webui-ssh-field="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+            />
+          )}
+        />
       </div>
       {props.error
         ? <p data-webui-ssh-form-error="true" className="mt-2 text-xs text-text_default_secondary">
@@ -172,22 +198,19 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
         </p>
         : null}
       <div className="mt-2 flex items-center gap-2">
-        <button
-          type="submit"
+        <WebuiButton variant="outline" size="inline-dense" type="submit"
           data-webui-ssh-form-submit="true"
           disabled={props.busy}
-          className="rounded-[6px] border border-stroke_default px-2 py-1 text-xs text-text_default_primary disabled:opacity-50"
+          className="disabled:opacity-50"
         >
           保存
-        </button>
-        <button
-          type="button"
-          data-webui-ssh-form-cancel="true"
+        </WebuiButton>
+        <WebuiButton variant="quiet-secondary" size="inline-dense" data-webui-ssh-form-cancel="true"
           onClick={props.onCancel}
-          className="rounded-[6px] px-2 py-1 text-xs text-text_default_secondary"
+
         >
           取消
-        </button>
+        </WebuiButton>
       </div>
     </form>
   );

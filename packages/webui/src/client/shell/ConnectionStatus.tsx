@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { useWebuiSessionStream } from "../bindings/use-session-state.js";
 import { useWebuiEventChannelDegraded } from "../bindings/use-connection-health.js";
 import type { WebuiStreamState } from "../features/turn/projection/stream-state.js";
+import { FeedbackLiveRegion } from "../ui/feedback.js";
+import { WebuiButton } from "../ui/button.js";
 
 /**
  * The three states a user can act on.
@@ -131,11 +133,9 @@ export function ConnectionStatus({
   // rendering an empty line when a phase failed without a recorded reason.
   const reason = stream.refusal ?? stream.status;
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      data-testid="webui-connection-status"
-      data-connection-state={connection}
+    <FeedbackLiveRegion
+      testId="webui-connection-status"
+      dataAttributes={{ "data-connection-state": connection }}
       className={`flex items-center gap-spacing_8 text-size_12 ${copy.tone}${className ? ` ${className}` : ""}`}
     >
       <span data-testid="webui-connection-status-label">{copy.label}</span>
@@ -144,15 +144,12 @@ export function ConnectionStatus({
        * automatic loop already mid-attempt, and a button there would race the
        * recovery it duplicates. */}
       {connection === "failed" && onRetry ? (
-        <button
-          type="button"
-          data-testid="webui-connection-status-retry"
-          className="webui-button-secondary"
+        <WebuiButton variant="grouped" size="pill" data-testid="webui-connection-status-retry"
           onClick={onRetry}
         >
           {retryLabel}
-        </button>
+        </WebuiButton>
       ) : null}
-    </div>
+    </FeedbackLiveRegion>
   );
 }

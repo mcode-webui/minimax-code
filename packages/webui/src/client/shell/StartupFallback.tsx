@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { WebuiButton } from "../ui/button.js";
 
 /**
  * The boot-failure surface for `main.tsx`.
@@ -47,14 +48,11 @@ export function WebuiStartupFallback({
       >
         {reason}
       </p>
-      <button
-        type="button"
-        data-testid="webui-startup-fallback-reload"
-        className="webui-button-secondary"
+      <WebuiButton variant="grouped" size="pill" data-testid="webui-startup-fallback-reload"
         onClick={onReload}
       >
         {reloadLabel}
-      </button>
+      </WebuiButton>
     </section>
   );
 }

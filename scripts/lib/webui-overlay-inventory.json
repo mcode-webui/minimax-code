@@ -13,7 +13,7 @@
     },
     "features/account/ui/UserMenu.tsx": {
       "disposition": "managed",
-      "note": "the account menu layers on the shared dropdown and closes its fly-outs on every close"
+      "note": "the account menu layers on the shared dropdown and closes its fly-outs on every close; the two fly-outs borrow role=dialog for labelling only and live inside that layer, and the portalled settings modal registers its own layer"
     },
     "features/account/ui/UserMenuUsage.tsx": {
       "disposition": "borrows-role",
@@ -29,7 +29,7 @@
     },
     "features/composer/ui/ComposerProjectRow.tsx": {
       "disposition": "managed",
-      "note": "the project menu"
+      "note": "the project menu layers on the shared dropdown, and the directory browser it opens is a modal layer of its own, so the coordinator dismisses it and it holds no listener"
     },
     "features/composer/ui/ContextUsageIndicator.tsx": {
       "disposition": "managed",
@@ -38,6 +38,10 @@
     "features/composer/ui/WebuiComposer.tsx": {
       "disposition": "managed",
       "note": "the composer's tool menu"
+    },
+    "features/goal/ui/GoalBanner.public.tsx": {
+      "disposition": "managed",
+      "note": "the delete-goal confirmation registers through the shared useDialogLayer, so the coordinator answers its Escape and the press outside it, and it stays put while the delete is in flight"
     },
     "features/models/ui/ModelPicker.public.tsx": {
       "disposition": "managed",
@@ -61,7 +65,7 @@
     },
     "features/settings/ui/MemoryManagerDialog.tsx": {
       "disposition": "managed",
-      "note": "dialog, menu and confirmation register as one nested path"
+      "note": "the dialog registers through the shared useDialogLayer; the menu and the confirmation name their parent outright, so dialog, menu and confirmation stay one nested path"
     },
     "features/settings/ui/SettingsModal.public.tsx": {
       "disposition": "managed",
@@ -69,7 +73,7 @@
     },
     "features/settings/ui/settings-atoms.tsx": {
       "disposition": "managed",
-      "note": "the shared dialog primitive: dismissible when it offers a way out, deferred otherwise so a nested portal is not swallowed"
+      "note": "the shared dialog primitive registers through the shared useDialogLayer: dismissible when it offers a way out, deferred otherwise so a nested portal is not swallowed"
     },
     "features/transcript/ui/MessageActions.tsx": {
       "disposition": "managed",

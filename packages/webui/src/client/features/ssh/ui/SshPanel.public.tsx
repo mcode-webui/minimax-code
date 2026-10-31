@@ -35,6 +35,7 @@ import { SshHostForm } from "./ssh-host-form.js";
 import { SshProjectForm } from "./ssh-project-form.js";
 import { SshTerminalView } from "./ssh-terminal-view.js";
 import { ContentPage } from "../../../ui/content-page.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface SshPanelViewProps {
   readonly snapshot: WebuiSshSnapshot;
@@ -80,38 +81,30 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
       title="SSH"
       actions={
         <>
-          <button
-            type="button"
-            data-webui-ssh-new-host="true"
+          <WebuiButton variant="outline" size="inline" data-webui-ssh-new-host="true"
             onClick={props.onAddHost}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+
           >
             添加主机
-          </button>
-          <button
-            type="button"
-            data-webui-ssh-new-project="true"
+          </WebuiButton>
+          <WebuiButton variant="outline" size="inline" data-webui-ssh-new-project="true"
             onClick={props.onAddProject}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+
           >
             添加项目
-          </button>
-          <button
-            type="button"
-            data-webui-ssh-discover="true"
+          </WebuiButton>
+          <WebuiButton variant="outline-highlight" size="inline" data-webui-ssh-discover="true"
             onClick={props.onDiscoverHosts}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+
           >
             发现主机
-          </button>
-          <button
-            type="button"
-            data-webui-ssh-refresh="true"
+          </WebuiButton>
+          <WebuiButton variant="outline-highlight" size="inline" data-webui-ssh-refresh="true"
             onClick={props.onRefresh}
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+
           >
             刷新
-          </button>
+          </WebuiButton>
         </>
       }
     >
@@ -161,72 +154,60 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
                   {row.errorLabel}
                 </p>}
               <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  data-webui-ssh-toggle={row.alias}
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-toggle={row.alias}
                   onClick={() => {
                     const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
                     if (connection) props.onToggleHost(connection);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   {row.enabled ? "停用" : "启用"}
-                </button>
-                <button
-                  type="button"
-                  data-webui-ssh-probe={row.alias}
+                </WebuiButton>
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-probe={row.alias}
                   onClick={() => {
                     const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
                     if (connection) props.onProbeHost(connection);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   探测
-                </button>
-                <button
-                  type="button"
-                  data-webui-ssh-terminal={row.alias}
+                </WebuiButton>
+                <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-terminal={row.alias}
                   onClick={() => {
                     const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
                     if (connection) props.onOpenTerminal(connection);
                   }}
-                  className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                 >
                   打开终端
-                </button>
+                </WebuiButton>
                 {props.confirmingRemove === row.alias
                   ? <>
-                    <button
-                      type="button"
-                      data-webui-ssh-remove-confirm={row.alias}
+                    <WebuiButton variant="outline" size="inline-tiny" data-webui-ssh-remove-confirm={row.alias}
                       onClick={() => {
                         const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
                         if (connection) props.onRemoveHost(connection);
                       }}
-                      className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_primary"
+
                     >
                       确认删除
-                    </button>
-                    <button
-                      type="button"
-                      data-webui-ssh-remove-cancel={row.alias}
+                    </WebuiButton>
+                    <WebuiButton variant="quiet-subtle" size="inline-tiny" data-webui-ssh-remove-cancel={row.alias}
                       onClick={props.onCancelRemove}
-                      className="rounded-[6px] px-2 py-0.5 text-xs text-text_default_tertiary"
+
                     >
                       取消
-                    </button>
+                    </WebuiButton>
                   </>
-                  : <button
-                    type="button"
-                    data-webui-ssh-remove={row.alias}
+                  : <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-remove={row.alias}
                     onClick={() => {
                       const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
                       if (connection) props.onRequestRemove(connection);
                     }}
-                    className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                   >
                     删除
-                  </button>}
+                  </WebuiButton>}
               </div>
             </li>
           ))}
@@ -242,17 +223,15 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium text-text_default_primary">{row.displayName}</span>
-                  <button
-                    type="button"
-                    data-webui-ssh-project-remove={row.id}
+                  <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-project-remove={row.id}
                     onClick={() => {
                       const project = props.snapshot.projects.find((item) => item.id === row.id);
                       if (project) props.onRemoveProject(project);
                     }}
-                    className="rounded-[6px] border border-stroke_default px-2 py-0.5 text-xs text-text_default_secondary"
+
                   >
                     删除
-                  </button>
+                  </WebuiButton>
                 </div>
                 <p className="mt-1 font-mono text-xs text-text_default_secondary">
                   {row.alias} · {row.path}
@@ -391,9 +370,7 @@ export function SshPanel(props: SshPanelProps): ReactElement {
                   : <ul className="mt-1 space-y-0.5">
                     {webuiSshDiscoveredHostRows(snapshot.discovery).map((row) => (
                       <li key={row.alias}>
-                        <button
-                          type="button"
-                          data-webui-ssh-discovered-host={row.alias}
+                        <WebuiButton variant="quiet-highlight" size="inline-tiny" data-webui-ssh-discovered-host={row.alias}
                           onClick={() => {
                             const host = snapshot.discovery?.hosts.find((item) => item.alias === row.alias);
                             if (!host) return;
@@ -402,10 +379,10 @@ export function SshPanel(props: SshPanelProps): ReactElement {
                             setHostFormOpen(true);
                             setNotice(`已选择 ${host.alias}，请确认后保存。`);
                           }}
-                          className="w-full truncate rounded-[6px] px-2 py-0.5 text-left font-mono text-xs text-text_default_secondary hover:text-text_default_primary"
+                          className="w-full truncate text-left font-mono"
                         >
                           {row.alias} · {row.endpointLabel}
-                        </button>
+                        </WebuiButton>
                       </li>
                     ))}
                   </ul>}

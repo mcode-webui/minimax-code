@@ -10,6 +10,11 @@
 // strings are that module's implementation. It is the one place they are allowed
 // to appear, and the exemption is by path rather than by rule — a second file
 // that wants them is a defect, not a variation.
+//
+// The list covers every contract the shared layer owns, not only the button. A
+// contract that is not named here is a contract a caller may spell, which is the
+// hole this gate closes: each family below was adopted one surface at a time,
+// and each adoption left its class strings open to be re-derived.
 
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
@@ -22,15 +27,37 @@ const repoRoot = path.resolve(here, "../../../..");
 const clientRoot = path.join(repoRoot, "packages/webui/src/client");
 
 /**
- * The class names a call site may not spell.
+ * The class names a call site may not spell, per contract.
  *
  * They are prefixes on purpose: `webui-mavis-button-gray`, `-compact`,
  * `-header`, `-plain` and `webui-icon-button--bare` are all the same defect.
  */
-const SHARED_CONTROL_CLASSES = ["webui-mavis-button", "webui-icon-button"];
+export const SHARED_CONTROL_CLASSES = [
+  // The button contract.
+  "webui-mavis-button",
+  "webui-icon-button",
+  // The feedback family.
+  "webui-feedback",
+  // The field contract and its form arrangement.
+  "webui-field",
+  "webui-form",
+  // The menu-row contract.
+  "webui-menu-item",
+  "webui-menu-separator",
+];
 
-/** Files allowed to name them: the module that owns them. */
-const SHARED_HOME = ["packages/webui/src/client/ui/button.tsx"];
+/**
+ * The shared-home modules that own those class strings.
+ *
+ * The exemption is by path: a second file that wants the classes is a defect,
+ * not a variation.
+ */
+export const SHARED_HOME = [
+  "packages/webui/src/client/ui/button.tsx",
+  "packages/webui/src/client/ui/feedback.tsx",
+  "packages/webui/src/client/ui/field.tsx",
+  "packages/webui/src/client/ui/menu-item.tsx",
+];
 
 function listTsx(directory: string): string[] {
   const found: string[] = [];
@@ -60,8 +87,14 @@ describe("the adoption gate", () => {
   });
 
   it("keeps the shared home exempt, because the classes are its implementation", () => {
-    const sharedHome = path.join(repoRoot, SHARED_HOME[0] ?? "");
-    expect(readFileSync(sharedHome, "utf8")).toContain("webui-mavis-button");
+    for (const relative of SHARED_HOME) {
+      const sharedHome = path.join(repoRoot, relative);
+      const source = readFileSync(sharedHome, "utf8");
+      expect(
+        SHARED_CONTROL_CLASSES.some((name) => source.includes(name)),
+        `${relative} owns a shared class`,
+      ).toBe(true);
+    }
   });
 
   it("fails on a caller that spells the class instead of rendering the component", () => {
@@ -80,6 +113,37 @@ describe("the adoption gate", () => {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }
   });
+
+  // One negative fixture per contract: a family that is not named in the list is
+  // a family a caller may spell, and that is the hole the list closes.
+  const fixtures: ReadonlyArray<readonly [string, string]> = [
+    ["button", 'webui-mavis-button webui-mavis-button-gray'],
+    ["icon button", "webui-icon-button webui-icon-button--bare"],
+    ["feedback", "webui-feedback webui-feedback--error"],
+    ["field", "webui-field webui-field-label"],
+    ["form", "webui-form webui-form-actions"],
+    ["menu item", "webui-menu-item webui-menu-item-label"],
+    ["menu separator", "webui-menu-separator"],
+  ];
+
+  for (const [family, className] of fixtures) {
+    it(`fails on a caller that spells the ${family} contract's class`, () => {
+      const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "webui-adoption-family-"));
+      try {
+        mkdirSync(path.join(fixtureRoot, "features/synthetic/ui"), { recursive: true });
+        writeFileSync(
+          path.join(fixtureRoot, "features/synthetic/ui/Panel.tsx"),
+          `export const Panel = () => <div className="${className}">x</div>;\n`,
+          "utf8",
+        );
+        const offenders = findClassStringCallers(fixtureRoot, []);
+        expect(offenders).toHaveLength(1);
+        expect(offenders[0]).toContain("Panel.tsx");
+      } finally {
+        rmSync(fixtureRoot, { recursive: true, force: true });
+      }
+    });
+  }
 
   it("passes a caller that renders the component", () => {
     const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "webui-adoption-ok-"));

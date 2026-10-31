@@ -11,15 +11,14 @@
 // It owns the state only it uses (whether the directory browser is showing).
 // The recent list is a `WebuiDropdown`, so the shared skeleton dismisses it and
 // gives it the surface and the motion every other dropdown in the client has;
-// the directory browser it opens is a dialog, not a dropdown, and keeps its own
-// outside-close listener against this row's container. The menu's open state
-// stays a prop because the shell owns it.
+// the directory browser it opens is a dialog, not a dropdown, and registers as
+// a layer of its own, so the coordinator dismisses it and it keeps no listener.
+// The menu's open state stays a prop because the shell owns it.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
-import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
-import { evaluateOutsideClose } from "../../../projection/common/outside-close.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { workspaceProjectName } from "../../../features/workspace/projection/workspace-name.public.js";
 import { WebuiWorkspaceDirectoryBrowser } from "../../../features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.js";
 import { WebuiIconCheck, WebuiIconFolder } from "../../../shell/icons.js";
@@ -44,35 +43,21 @@ export function WebuiComposerProjectRow({
   onSelectProject,
 }: WebuiComposerProjectRowProps) {
   const [browserOpen, setBrowserOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement | null>(null);
-  const { dom } = useWebuiBrowserCapabilities();
 
-  // Its own listener rather than joining the composer's dismiss group: the
-  // picker is a separate surface with a separate container — the trigger-and-
-  // panel wrap — and it renders outside that group. The list is a dropdown now
-  // and the shared skeleton dismisses it; what is left here is the directory
-  // browser, which is a dialog and not one.
-  useEffect(() => {
-    if (!browserOpen) return undefined;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Node)) return;
-      if (
-        evaluateOutsideClose({
-          surface: "workspacePicker",
-          kind: "pointerdown",
-          insideContainer: pickerRef.current?.contains(event.target) === true,
-        }) !== "close"
-      ) {
-        return;
-      }
-      setBrowserOpen(false);
-    };
-    return dom.listenForPointerDown(onPointerDown);
-  }, [dom, browserOpen]);
+  // The directory browser is a dialog, and a dialog that floats above the
+  // composer is a layer (ADR 0028 § Overlay coordination): the coordinator
+  // answers the Escape and the press outside it, so the browser holds no
+  // listener of its own. It is active only while it is on screen.
+  const browserLayerId = useDialogLayer({
+    id: "composer-directory-browser",
+    dismissible: true,
+    onClose: () => setBrowserOpen(false),
+    active: browserOpen,
+  });
 
   return (
     <div className="webui-workspace-bar" data-webui-workspace-toolbar="true">
-      <div className="relative" ref={pickerRef}>
+      <div className="relative">
         <WebuiDropdown
           managed
           managedLayerId="composer-project-row"
@@ -174,6 +159,7 @@ export function WebuiComposerProjectRow({
           <div
             role="dialog"
             aria-label="选择项目目录"
+            data-overlay-layer={browserLayerId}
             data-webui-workspace-browser-dialog="true"
             className="webui-workspace-menu webui-workspace-menu--desktop"
           >

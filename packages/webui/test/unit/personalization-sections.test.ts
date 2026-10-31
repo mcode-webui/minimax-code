@@ -77,7 +77,10 @@ describe("the manager dialog keeps its own mount and dismissal", () => {
   });
 
   it("hears Escape on the document, sheds one layer at a time, and restores focus", () => {
-    expect(dialog).toContain('if (event.key !== "Escape") return;');
+    // Escape belongs to the shared dialog layer, not to this component: the
+    // dialog registers itself and the coordinator sheds exactly the topmost
+    // layer. A second handler here would close two layers on one press.
+    expect(dialog).toContain("useDialogLayer({");
     // Two layers above the editor: the delete confirmation is the topmost, and Escape inside it must
     // dismiss that rather than the whole manager.
     expect(dialog).toContain("const confirmOpenRef = useRef(false);");

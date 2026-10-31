@@ -55,6 +55,8 @@ import {
   webuiChannelRows,
   type WebuiChannelRow,
 } from "../projection/channel-panel.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 
 export interface ChannelConnectPanelProps {
   readonly owner: ReturnType<typeof createWebuiChannelOwner>;
@@ -109,7 +111,7 @@ function NotWired(): ReactElement {
   return (
     <span
       data-webui-channel-not-wired="true"
-      className="rounded-[6px] border border-stroke_default px-2 py-1 text-xs text-text_default_tertiary"
+      className="rounded-[6px] border border-border_default px-2 py-1 text-xs text-text_default_tertiary"
     >
       {WEBUI_CHANNEL_NOT_WIRED}
     </span>
@@ -145,53 +147,59 @@ function ChannelBindForm(props: {
       }}
     >
       <p className="text-sm leading-5 text-text_default_primary">绑定机器人</p>
-      <label className="flex flex-col gap-1 text-xs text-text_default_secondary">
-        <span>客户端名称</span>
-        <input
-          data-webui-channel-bind-name="true"
-          className="rounded-[6px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-text_default_secondary">
-        <span>飞书 App ID</span>
-        <input
-          data-webui-channel-bind-app-id="true"
-          className="rounded-[6px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
-          value={appId}
-          onChange={(event) => setAppId(event.target.value)}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-text_default_secondary">
-        <span>飞书 App Secret</span>
-        <input
-          data-webui-channel-bind-app-secret="true"
-          type="password"
-          className="rounded-[6px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
-          value={appSecret}
-          onChange={(event) => setAppSecret(event.target.value)}
-        />
-      </label>
+      <WebuiField
+        label="客户端名称"
+        control={(props) => (
+          <input
+            {...props}
+            data-webui-channel-bind-name="true"
+            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        )}
+      />
+      <WebuiField
+        label="飞书 App ID"
+        control={(props) => (
+          <input
+            {...props}
+            data-webui-channel-bind-app-id="true"
+            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
+            value={appId}
+            onChange={(event) => setAppId(event.target.value)}
+          />
+        )}
+      />
+      <WebuiField
+        label="飞书 App Secret"
+        control={(props) => (
+          <input
+            {...props}
+            data-webui-channel-bind-app-secret="true"
+            type="password"
+            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
+            value={appSecret}
+            onChange={(event) => setAppSecret(event.target.value)}
+          />
+        )}
+      />
       <p className="text-xs leading-4 text-text_default_tertiary">
         {WEBUI_CHANNEL_SECTION_BIND_QR} · {WEBUI_CHANNEL_SECTION_BIND_QR_HINT}
       </p>
       <div className="flex items-center gap-2">
-        <button
-          type="submit"
+        <WebuiButton variant="outline" size="inline" type="submit"
           data-webui-channel-bind-submit="true"
-          className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_default_primary"
+
         >
           绑定
-        </button>
-        <button
-          type="button"
-          data-webui-channel-bind-cancel="true"
+        </WebuiButton>
+        <WebuiButton variant="quiet-highlight" size="inline" data-webui-channel-bind-cancel="true"
           onClick={props.onCancel}
-          className="rounded-[6px] px-2 py-1 text-sm text-text_default_secondary hover:text-text_default_primary"
+
         >
           取消
-        </button>
+        </WebuiButton>
       </div>
     </form>
   );
@@ -220,15 +228,13 @@ function ChannelDetail(props: {
           <span className="text-xs leading-4 text-text_default_tertiary">
             {WEBUI_CHANNEL_SECTION_BIND_QR_HINT}
           </span>
-          <button
-            type="button"
-            disabled
+          <WebuiButton variant="outline" size="inline-dense" disabled
             data-webui-channel-bind-refresh="true"
-            className="flex items-center gap-1 rounded-[6px] border border-stroke_default px-2 py-1 text-xs text-text_default_tertiary"
+            className="flex items-center gap-1 text-text_default_tertiary"
           >
             <IconRefresh aria-hidden="true" size={14} stroke={1.5} />
             {WEBUI_CHANNEL_SECTION_BIND_QR_REFRESH}
-          </button>
+          </WebuiButton>
           <NotWired />
         </div>
       </DetailSection>
@@ -264,9 +270,7 @@ function ChannelDetail(props: {
         description={WEBUI_CHANNEL_SECTION_FILTER_DESCRIPTION}
       >
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            data-webui-channel-filter-mode="result"
+          <WebuiButton variant="outline" size="inline-dense" data-webui-channel-filter-mode="result"
             aria-pressed={filter?.mode !== "full"}
             onClick={() =>
               props.onUpdateFilter({
@@ -274,13 +278,11 @@ function ChannelDetail(props: {
                 filter: { mode: "result", includeToolSummary: filter?.includeToolSummary === true },
               })
             }
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-xs text-text_default_primary"
+
           >
             {WEBUI_CHANNEL_FILTER_MODE_RESULT}
-          </button>
-          <button
-            type="button"
-            data-webui-channel-filter-mode="full"
+          </WebuiButton>
+          <WebuiButton variant="outline" size="inline-dense" data-webui-channel-filter-mode="full"
             aria-pressed={filter?.mode === "full"}
             onClick={() =>
               props.onUpdateFilter({
@@ -288,10 +290,10 @@ function ChannelDetail(props: {
                 filter: { mode: "full", includeToolSummary: filter?.includeToolSummary === true },
               })
             }
-            className="rounded-[6px] border border-stroke_default px-2 py-1 text-xs text-text_default_primary"
+
           >
             {WEBUI_CHANNEL_FILTER_MODE_FULL}
-          </button>
+          </WebuiButton>
         </div>
         <span className="text-xs text-text_default_secondary">
           {filter === undefined ? "" : webuiChannelFilterModeLabel(filter.mode)}
@@ -303,14 +305,12 @@ function ChannelDetail(props: {
         title={WEBUI_CHANNEL_SECTION_DELETE}
         description={WEBUI_CHANNEL_SECTION_DELETE_DESCRIPTION}
       >
-        <button
-          type="button"
-          data-webui-channel-unbind="true"
+        <WebuiButton variant="outline" size="inline" data-webui-channel-unbind="true"
           onClick={() => props.onUnbind(props.row.name)}
-          className="rounded-[6px] border border-stroke_default px-2 py-1 text-sm text-text_status_error"
+          className="text-text_status_error"
         >
           {WEBUI_CHANNEL_SECTION_DELETE_ACTION}
-        </button>
+        </WebuiButton>
       </DetailSection>
     </>
   );

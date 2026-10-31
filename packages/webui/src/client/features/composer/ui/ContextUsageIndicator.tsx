@@ -23,6 +23,7 @@ import { readContextWindowUsage } from "../contracts/context-usage.js";
 import { isTokenPlanModel } from "../../models/projection/token-plan-model.public.js";
 import { formatUsageResetLabel } from "../../account/projection/usage.public.js";
 import { WebuiDropdown, type WebuiDropdownPlacementArgs } from "../../../ui/Dropdown.js";
+import { FeedbackProgress } from "../../../ui/feedback.js";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
 export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
@@ -207,15 +208,13 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
               </span>
             </span>
           </button>
-          <div
+          <FeedbackProgress
             className="webui-context-usage-bar"
-            role="progressbar"
-            aria-label="上下文窗口使用量"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            // A bar with no `aria-valuenow` is the indeterminate form: the
-            // window is unknown, so there is no share of it to report.
-            {...(windowKnown ? { "aria-valuenow": percent } : {})}
+            label="上下文窗口使用量"
+            value={percent}
+            // A bar with no value is the indeterminate form: the window is
+            // unknown, so there is no share of it to report.
+            indeterminate={!windowKnown}
           >
             {componentsTotal > 0 ? drawableRows.map((row) => (
               <span
@@ -224,7 +223,7 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
                 style={{ width: `${breakdownSegmentPercent(row, limit ?? 0)}%`, ...breakdownSwatchStyle(row) }}
               />
             )) : <span style={{ width: `${percent}%` }} />}
-          </div>
+          </FeedbackProgress>
           <div className="webui-context-usage-tokens">
             {windowKnown
               ? `${formatContextTokens(used)} / ${formatContextTokens(limit)} tokens`

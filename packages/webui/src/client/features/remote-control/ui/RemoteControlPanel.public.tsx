@@ -28,6 +28,7 @@
 import { Fragment, useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 
 import { WebuiIconGlobe, WebuiIconRemote, WebuiIconSession } from "../../../shell/icons.js";
+import { WebuiButton } from "../../../ui/button.js";
 import type {
   createWebuiRemoteControlOwner,
   WebuiRemoteControlSnapshot,
@@ -36,6 +37,7 @@ import {
   webuiRemoteControlPanelModel,
   type WebuiRemoteControlPanelModel,
 } from "../projection/remote-control-panel.js";
+import { FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface RemoteControlPanelViewProps {
   readonly snapshot: WebuiRemoteControlSnapshot;
@@ -96,13 +98,12 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
               ))}
             </div>
             {model.error ? (
-              <p
-                data-testid="rc-error"
+              <FeedbackLiveRegion
                 className="text-center text-sm text-text_default_secondary"
-                role="status"
+                testId="rc-error"
               >
                 {model.error}
-              </p>
+              </FeedbackLiveRegion>
             ) : null}
             {model.pairingCode ? (
               <div
@@ -144,14 +145,14 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                   >
                     确认解绑
                   </button>
-                  <button
-                    type="button"
+                  <WebuiButton
+                    variant="quiet-highlight"
+                    size="inline"
                     data-testid="rc-unbind-reject"
                     onClick={() => props.onResolveUnbind(false)}
-                    className="rounded-lg px-2 py-1 text-sm text-text_default_secondary transition-colors hover:text-text_default_primary"
                   >
                     取消
-                  </button>
+                  </WebuiButton>
                 </div>
               </div>
             ) : null}
@@ -166,30 +167,27 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                 {model.connectLabel}
               </button>
               {model.showsConnectedDevice ? (
-                <button
-                  type="button"
+                <WebuiButton
+                  variant="quiet-highlight"
+                  size="inline"
                   data-testid="rc-disconnect"
                   onClick={props.onDisconnect}
                   disabled={props.busy === true}
-                  className="rounded-lg px-2 py-1 text-sm text-text_default_secondary transition-colors hover:text-text_default_primary"
                 >
                   断开连接
-                </button>
+                </WebuiButton>
               ) : null}
-              <button
-                type="button"
+              <WebuiButton
+                variant={sshDisabled ? "quiet-subtle" : "quiet-highlight"}
+                size="inline"
+                className={sshDisabled ? "cursor-default" : undefined}
                 data-testid="remote-control-ssh-entry"
                 aria-label={model.sshAriaLabel}
                 aria-disabled={sshDisabled ? "true" : undefined}
                 onClick={sshDisabled ? undefined : props.onOpenSsh}
-                className={
-                  sshDisabled
-                    ? "cursor-default rounded-lg px-2 py-1 text-sm text-text_default_tertiary"
-                    : "rounded-lg px-2 py-1 text-sm text-text_default_secondary transition-colors hover:text-text_default_primary"
-                }
               >
                 {model.sshLabel}
-              </button>
+              </WebuiButton>
             </div>
           </div>
           <div

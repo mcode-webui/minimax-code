@@ -14,7 +14,7 @@ import type {
   WebuiUserProfileView,
 } from "../../../../shared/contracts/personalization.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
-import { PERSONALIZATION_SECTION_HINTS, SettingsButton } from "./settings-atoms.js";
+import { PERSONALIZATION_SECTION_HINTS, SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
 
 const PROFILE_PLACEHOLDER = "告诉 Agent 你的背景和长期偏好……";
@@ -250,9 +250,7 @@ export function UserProfileSection({
         <FeedbackError message=<>error</> className="webui-settings-error" testId="user-profile-error" />
       ) : null}
       {saved && !saving ? (
-        <p data-testid="user-profile-saved" className="webui-personalization-saved">
-          已保存
-        </p>
+        <SettingsSavedNotice message="已保存" testId="user-profile-saved" />
       ) : null}
       {!getUserProfile || !setUserProfile ? (
         <p data-testid="user-profile-unavailable" className="webui-settings-error">

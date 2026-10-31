@@ -83,7 +83,10 @@ an idle-state screenshot cannot see a missing indicator.
 carries no variant, no size default, no `type="button"` and no required accessible name, and it lets a caller
 re-derive the recipe the contract owns; the classes remain an implementation detail of `client/ui/`. A migration
 that renames classes is not a migration of the caller, and a gate fails when a `.tsx` file outside the shared home
-names a shared control's class. A caller that cannot use the component records why, at the call site and in the
+names a shared control's class. That gate names **every** family the shared layer owns — the button, the feedback
+family, the field and the menu row — because a family it does not name is a family a caller may spell, and the
+first version of it named two prefixes and let five businesses share one business's `.webui-button-primary` and
+`.webui-button-secondary` while it was green. A caller that cannot use the component records why, at the call site and in the
 inventory. The base class of a control states structure only: geometry belongs to a named size, because a floor in
 the base is a hazard once the caller has to remember it.
 
@@ -210,6 +213,23 @@ where an expression the UI gate cannot classify also fails unless a reviewed exc
 Its rules must have negative fixtures, and each rule's scope must be named so that a stylesheet
 serving both migrated and unmigrated surfaces is not caught wholesale.
 
+**The scopes are named, and naming them is what makes them mean.** Each rule below was a gate that
+passed while the escape it was written for was in the tree:
+
+- **The raw-control ratchet watches every business stylesheet.** It watched three of the fourteen, and
+  the eleven it did not watch held fifty-eight selectors between them. A stylesheet that is not in the
+  budget now fails the gate rather than passing it unseen.
+- **The adoption gate names every family the shared layer owns** — the button, the feedback family, the
+  field contract, the menu row. It named two prefixes, and four businesses kept rendering one
+  business's `.webui-button-primary` and `.webui-button-secondary` while it was green.
+- **The feedback budget watches every announcement channel**, not only `role="alert"`. A surface that
+  writes its own `aria-live` region announces without the family deciding how, when and how loudly, and
+  the gate that watched only the alert let nine of them through.
+- **A classification that claims adoption has to be true.** A module classified as
+  `newly-adopted-contract` must depend on the shared home with something it can render or call. A
+  type-only import is a dependency on a *shape*: it tells the caller what a contract looks like without
+  the caller rendering one. Such a module is a `composition`, and the gate says so.
+
 Accessibility is verified by an automated scan plus rendered checks. The client adopts a
 browser-side accessibility rule engine (`axe-core`) with the browser suite, so that every migrated
 surface is scanned in its enumerated rendered states, in both themes, including open overlays and
@@ -256,7 +276,11 @@ because four forced a lie:
 - **existing-shared-contract** — a module in the shared home that was there before this
   programme and is the home of a contract;
 - **newly-adopted-contract** — a contract this programme created (`content-page`,
-  `feedback`, `field`, `overlay-listeners`) or a business module that now renders one;
+  `feedback`, `field`, `overlay-listeners`) or a business module that now renders one. A
+  business module carries this disposition only when it renders or calls something from the
+  shared home itself. A module that imports a *type* from the shared home knows what a
+  contract looks like without rendering one, and its obligation is discharged by what it
+  mounts — that is a **composition**, and a gate fails when the two are confused;
 - **composition** — a module that renders no presentation surface of its own: a hook, a
   pure projection, a scaffold that only arranges other modules. Its obligation is
   discharged by what it mounts. Calling it a business exception would be wrong in the

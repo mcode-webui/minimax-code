@@ -23,6 +23,7 @@ import { UserMenu } from "../features/account/ui/UserMenu.js";
 import { readWebuiMemoryHandoffPrompt, type MemoryHandoff } from "../features/settings/contracts/memory-handoff.js";
 import { WebuiWorkspacePanel } from "../features/workspace/ui/WorkspacePanels.js";
 import { webuiRailIsDrawer, WEBUI_PROGRESS_PANEL_NARROW_QUERY } from "../ui/layout-thresholds.js";
+import { useOverlayLayer } from "../ui/overlay-coordinator.js";
 import { WebuiProgressOverviewPanel } from "../features/workspace/ui/WorkspaceProgressPanel.js";
 import {
   getWorkspacePanelSessionState,
@@ -912,14 +913,28 @@ export function WebuiClientFoundationApp(
     // A drawer that is closed by a wider window must not stay open.
     if (!railIsDrawer) setRailDrawerOpen(false);
   }, [railIsDrawer]);
-  useEffect(() => {
-    if (!railDrawerOpen) return;
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setRailDrawerOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [railDrawerOpen]);
+  /**
+   * The drawer is a floating layer above the conversation (ADR 0028 § Overlay
+   * coordination): it registers with the coordinator, which routes the Escape
+   * to it, so the shell holds no listener of its own. It is a layer only while
+   * it is a drawer — a wide window has a column, not a drawer.
+   *
+   * The scrim is the drawer's own way out: a press outside the drawer reaches
+   * the scrim, which closes it and swallows the click, so the content behind a
+   * drawer is not reachable by tapping it. So the drawer reads the event and
+   * answers only the Escape — the way the model picker's ladder does.
+   */
+  useOverlayLayer({
+    id: "rail-drawer",
+    order: 0,
+    active: railDrawerOpen && railIsDrawer,
+    dismissal: "dismissible",
+    onRoute: (route, event) => {
+      if (route !== "request-close") return;
+      if (event?.kind !== "escape") return;
+      setRailDrawerOpen(false);
+    },
+  });
   const railExpanded = railIsDrawer ? railDrawerOpen : !railCollapsed;
   const toggleRail = (): void => {
     if (railIsDrawer) {
@@ -1012,7 +1027,10 @@ export function WebuiClientFoundationApp(
 
         <div className="contents">
           {/* -------------------------------------------------------------- rail */}
-          <div className="relative h-full min-h-0 flex-shrink-0">
+          <div
+            className="relative h-full min-h-0 flex-shrink-0"
+            data-overlay-layer={railDrawerOpen && railIsDrawer ? "rail-drawer" : undefined}
+          >
             <LeftRail>
             <SessionRailRegion
               collapsed={railCollapsed}

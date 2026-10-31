@@ -21,7 +21,18 @@ import {
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+
+/**
+ * The text control's own box.
+ *
+ * The form's stylesheet used to address its controls through the `<label>`
+ * each of them sat in; the field contract owns that label now, so the control
+ * carries its own shape rather than borrowing it from an ancestor.
+ */
+const CONTROL_CLASS =
+  "w-full rounded-[9px] border border-border_default bg-bg_default_primary px-3 py-[9px] text-text_default_primary";
 
 export interface McpServerFormProps {
   /** The server being edited, or `undefined` for a new one. */
@@ -295,40 +306,52 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
         />
       ) : (
         <div className="webui-mcp-form-fields">
-          <label>
-            <span>名称</span>
-            <input value={name} onChange={(event) => setName(event.currentTarget.value)} />
-          </label>
-          <label>
-            <span>传输方式</span>
-            <select value={transport} onChange={(event) => setTransport(event.currentTarget.value)}>
-              <option value="stdio">stdio</option>
-              <option value="http">http</option>
-              <option value="streamable-http">streamable-http</option>
-              <option value="sse">sse</option>
-            </select>
-          </label>
+          <WebuiField
+            label="名称"
+            control={(props) => (
+              <input {...props} className={CONTROL_CLASS} value={name} onChange={(event) => setName(event.currentTarget.value)} />
+            )}
+          />
+          <WebuiField
+            label="传输方式"
+            control={(props) => (
+              <select {...props} className={CONTROL_CLASS} value={transport} onChange={(event) => setTransport(event.currentTarget.value)}>
+                <option value="stdio">stdio</option>
+                <option value="http">http</option>
+                <option value="streamable-http">streamable-http</option>
+                <option value="sse">sse</option>
+              </select>
+            )}
+          />
           {isStdio ? (
             <>
-              <label>
-                <span>命令</span>
-                <input value={command} onChange={(event) => setCommand(event.currentTarget.value)} />
-              </label>
-              <label>
-                <span>参数</span>
-                <input value={args} onChange={(event) => setArgs(event.currentTarget.value)} />
-              </label>
+              <WebuiField
+                label="命令"
+                control={(props) => (
+                  <input {...props} className={CONTROL_CLASS} value={command} onChange={(event) => setCommand(event.currentTarget.value)} />
+                )}
+              />
+              <WebuiField
+                label="参数"
+                control={(props) => (
+                  <input {...props} className={CONTROL_CLASS} value={args} onChange={(event) => setArgs(event.currentTarget.value)} />
+                )}
+              />
             </>
           ) : (
-            <label>
-              <span>地址</span>
-              <input value={url} onChange={(event) => setUrl(event.currentTarget.value)} />
-            </label>
+            <WebuiField
+              label="地址"
+              control={(props) => (
+                <input {...props} className={CONTROL_CLASS} value={url} onChange={(event) => setUrl(event.currentTarget.value)} />
+              )}
+            />
           )}
-          <label>
-            <span>描述</span>
-            <input value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
-          </label>
+          <WebuiField
+            label="描述"
+            control={(props) => (
+              <input {...props} className={CONTROL_CLASS} value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
+            )}
+          />
           <label>
             <span>启用</span>
             <input
@@ -343,23 +366,31 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
           {advancedOpen ? (
             <>
               {isStdio ? (
-                <label>
-                  <span>环境变量</span>
-                  <textarea value={env} onChange={(event) => setEnv(event.currentTarget.value)} />
-                </label>
-              ) : (
-                <label>
-                  <span>请求头</span>
-                  <textarea value={headers} onChange={(event) => setHeaders(event.currentTarget.value)} />
-                </label>
-              )}
-              <label>
-                <span>超时（毫秒）</span>
-                <input
-                  value={timeoutMs}
-                  onChange={(event) => setTimeoutMs(event.currentTarget.value)}
+                <WebuiField
+                  label="环境变量"
+                  control={(props) => (
+                    <textarea {...props} className={CONTROL_CLASS} value={env} onChange={(event) => setEnv(event.currentTarget.value)} />
+                  )}
                 />
-              </label>
+              ) : (
+                <WebuiField
+                  label="请求头"
+                  control={(props) => (
+                    <textarea {...props} className={CONTROL_CLASS} value={headers} onChange={(event) => setHeaders(event.currentTarget.value)} />
+                  )}
+                />
+              )}
+              <WebuiField
+                label="超时（毫秒）"
+                control={(props) => (
+                  <input
+                    {...props}
+                    className={CONTROL_CLASS}
+                    value={timeoutMs}
+                    onChange={(event) => setTimeoutMs(event.currentTarget.value)}
+                  />
+                )}
+              />
             </>
           ) : null}
         </div>

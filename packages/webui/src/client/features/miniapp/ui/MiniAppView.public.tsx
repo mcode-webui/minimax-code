@@ -52,7 +52,7 @@ import {
 } from "../application/miniapp-bridge.js";
 import { createWebuiMiniAppAgentBridge } from "../application/miniapp-agent-bridge.js";
 import { sessionHash } from "../../../projection/common/router.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import {
   webuiMiniAppRefusalText,
   webuiMiniAppWindowName,
@@ -394,13 +394,13 @@ export function MiniAppView({
       data-detached={detached ? "true" : "false"}
     >
       {presentation?.kind === "opening" && !detached ? (
-        <p className="webui-miniapp-view-status" role="status">
-          正在启动 {name}…
-        </p>
+        // 启动中是一个要被听到的状态，播报通道交给共享契约。
+        <FeedbackLiveRegion className="webui-miniapp-view-status">正在启动 {name}…</FeedbackLiveRegion>
       ) : null}
       {detached ? (
         <div className="webui-miniapp-view-detached" data-testid="miniapp-view-detached">
-          <p role="status">已在独立的浏览器标签页中打开。</p>
+          {/* 切换到独立标签页的事实要被听到，播报通道交给共享契约。 */}
+          <FeedbackLiveRegion>已在独立的浏览器标签页中打开。</FeedbackLiveRegion>
           <button type="button" data-testid="miniapp-switch-standalone" onClick={moveToStandalone}>
             切换到该标签页
           </button>

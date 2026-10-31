@@ -154,7 +154,7 @@ test("Skill add form is centered, usable and submits through plugin management",
     });
   });
   await openManagement(page);
-  await page.getByRole("button", { name: "录入技能" }).click();
+  await page.getByRole("menuitem", { name: "录入技能" }).click();
   const dialog = page.getByRole("dialog", { name: "技能" });
   await expectCenteredDialog(dialog, page, ".webui-skill-form");
   await expectMobileDialog(dialog, page, ".webui-skill-form");
@@ -192,7 +192,7 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
   // waits for the entry, so the click lands on the menu entry and never on
   // whatever else happens to carry the same name.
   const createMenu = page.getByRole("menu", { name: "创建" });
-  const createAgent = createMenu.getByRole("button", { name: "创建 Agent" });
+  const createAgent = createMenu.getByRole("menuitem", { name: "创建 Agent" });
   await expect(createAgent).toBeVisible();
   await createAgent.click();
   const dialog = page.getByRole("dialog", { name: "Agent" });
@@ -200,7 +200,11 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
   await expectMobileDialog(dialog, page, ".webui-agent-form");
   const alignment = await dialog.evaluate((node) => {
     const labels = [...node.querySelectorAll(".webui-agent-form label")];
-    const boxes = labels.map((label) => label.getBoundingClientRect());
+    // The field contract owns the label, so a label no longer wraps its
+    // control: the control is the field's own child, and the label is its
+    // sibling. The assertion is about the control's box, so it reads the
+    // controls directly.
+    const controls = [...node.querySelectorAll(".webui-agent-form input, .webui-agent-form textarea")];
     const prompt = node.querySelector("textarea").getBoundingClientRect();
     return {
       labelCount: labels.length,
@@ -208,10 +212,9 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
       promptWidth: prompt.width,
       formColumns: getComputedStyle(node.querySelector(".webui-agent-form")).gridTemplateColumns,
       dialogWidth: node.getBoundingClientRect().width,
-      labelInputsHaveUsableHeight: labels.every((label) => {
-        const control = label.querySelector("input, textarea");
-        return control && control.getBoundingClientRect().height >= 40;
-      }),
+      labelInputsHaveUsableHeight: controls.every(
+        (control) => control.getBoundingClientRect().height >= 40,
+      ),
       noHorizontalOverflow: node.scrollWidth <= node.clientWidth,
       labelBoxesInDialog: boxes.every((box) => box.left >= node.getBoundingClientRect().left && box.right <= node.getBoundingClientRect().right),
     };
@@ -253,7 +256,7 @@ test("MCP add form validates inputs, switches transport and sends advanced HTTP 
     });
   });
   await openManagement(page);
-  await page.getByRole("button", { name: "添加 MCP server" }).click();
+  await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
   const dialog = page.getByRole("dialog", { name: "MCP Server" });
   await expectCenteredDialog(dialog, page, ".webui-mcp-form-fields");
   await expectMobileDialog(dialog, page, ".webui-mcp-form-fields");
@@ -304,7 +307,7 @@ test("Git plugin import form is an accessible viewport overlay and previews loca
     });
   });
   await openManagement(page);
-  await page.getByRole("button", { name: "从 Git 仓库导入插件" }).click();
+  await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const dialog = page.getByRole("dialog", { name: "从 Git 仓库导入插件" });
   await expectCenteredDialog(dialog, page, ".webui-plugin-import-body");
   await expectMobileDialog(dialog, page, ".webui-plugin-import-body");

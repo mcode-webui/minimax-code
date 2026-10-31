@@ -160,29 +160,11 @@
     padding: 8px 0 0 8px;
   }
 
+  /* The icon-only control is the shared contract (styles/button.css); what is
+     left here is the goal banner's own size for it. */
   .webui-goal-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     width: 24px;
     height: 24px;
-    padding: 0;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--icon_default_tertiary);
-    cursor: pointer;
-  }
-
-  .webui-goal-action:hover:not(:disabled),
-  .webui-goal-action:focus-visible {
-    background: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_primary);
-  }
-
-  .webui-goal-action:disabled {
-    cursor: default;
-    opacity: 0.45;
   }
 
   .webui-goal-action svg {
@@ -238,28 +220,19 @@
     line-height: 32px;
   }
 
-  .webui-goal-clear-dialog-heading button {
-    display: grid;
+  /* The × is the shared icon-button contract (styles/button.css); what is left
+     here is this dialog's own size for it. */
+  .webui-goal-clear-dialog-heading .webui-icon-button {
     width: 24px;
     height: 24px;
     flex: 0 0 24px;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
     background: transparent;
     color: var(--icon_default_tertiary);
-    cursor: pointer;
   }
 
-  .webui-goal-clear-dialog-heading button:hover:not(:disabled) {
+  .webui-goal-clear-dialog-heading .webui-icon-button:hover:not(:disabled) {
     background: var(--bg_interaction_tertiary_hover);
     color: var(--text_default_primary);
-  }
-
-  .webui-goal-clear-dialog-heading button:disabled {
-    cursor: default;
-    opacity: 0.5;
   }
 
   .webui-goal-clear-dialog-heading svg {
@@ -287,35 +260,21 @@
     margin-top: 30px;
   }
 
-  .webui-goal-clear-dialog-actions button {
+  /* The actions are the shared button contract (styles/button.css); what is
+     left here is this dialog's own size for them. */
+  .webui-goal-clear-dialog-actions .webui-mavis-button {
     height: 46px;
     padding: 0 24px;
-    border: 0;
     border-radius: 12px;
-    font: inherit;
     font-size: 16px;
-    cursor: pointer;
   }
 
-  .webui-goal-clear-dialog-actions button:first-child {
+  .webui-goal-clear-dialog-actions .webui-mavis-button:first-child {
     min-width: 100px;
-    background: var(--bg_interaction_secondary_default);
-    color: var(--text_default_primary);
   }
 
-  .webui-goal-clear-dialog-actions button:last-child {
+  .webui-goal-clear-dialog-actions .webui-mavis-button:last-child {
     min-width: 75px;
-    background: var(--bg_interaction_danger_primary_default);
-    color: var(--text_label_danger_primary_default);
-  }
-
-  .webui-goal-clear-dialog-actions button:hover:not(:disabled) {
-    filter: brightness(0.96);
-  }
-
-  .webui-goal-clear-dialog-actions button:disabled {
-    cursor: default;
-    opacity: 0.55;
   }
 
   .webui-goal-mode-button {

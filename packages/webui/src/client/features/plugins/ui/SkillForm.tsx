@@ -9,6 +9,7 @@ import { useState, type ReactElement } from "react";
 
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField } from "../../../ui/field.js";
 
 export interface SkillFormProps {
   readonly onSubmit: (intent: WebuiPluginIntent) => Promise<boolean>;
@@ -39,21 +40,30 @@ export function SkillForm({ onSubmit, onClose }: SkillFormProps): ReactElement {
 
   return (
     <div className="webui-plugin-form webui-skill-form">
-      <label>
-        <span>名称</span>
-        <input value={name} onChange={(event) => setName(event.currentTarget.value)} />
-      </label>
-      <label>
-        <span>描述</span>
-        <input
-          value={description}
-          onChange={(event) => setDescription(event.currentTarget.value)}
-        />
-      </label>
-      <label className="wide">
-        <span>内容</span>
-        <textarea value={content} onChange={(event) => setContent(event.currentTarget.value)} />
-      </label>
+      <WebuiField
+        label="名称"
+        control={(props) => (
+          <input {...props} className="w-full" value={name} onChange={(event) => setName(event.currentTarget.value)} />
+        )}
+      />
+      <WebuiField
+        label="描述"
+        control={(props) => (
+          <input
+            {...props}
+            className="w-full"
+            value={description}
+            onChange={(event) => setDescription(event.currentTarget.value)}
+          />
+        )}
+      />
+      <WebuiField
+        className="wide"
+        label="内容"
+        control={(props) => (
+          <textarea {...props} className="w-full" value={content} onChange={(event) => setContent(event.currentTarget.value)} />
+        )}
+      />
       <div className="webui-agent-form-actions">
         <WebuiButton variant="surface" size="panel" onClick={onClose}>
           取消

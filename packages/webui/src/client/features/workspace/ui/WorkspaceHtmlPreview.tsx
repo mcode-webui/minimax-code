@@ -33,7 +33,8 @@ import { useEffect, useState, type ReactElement } from "react";
 import type { WebuiWorkspaceFileContent } from "../../../../shared/contracts/workspace.js";
 import { basenamePath } from "../../../projection/common/paths.js";
 import { hasRelativeDocumentReference } from "../projection/html-preview.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButtonLink } from "../../../ui/button.js";
 
 export type WorkspaceHtmlPreviewProps = {
   /** The file path the preview tab was opened with. */
@@ -115,10 +116,12 @@ export function WorkspaceHtmlPreview({ path, fileUrl, content }: WorkspaceHtmlPr
   }
 
   if (!fileUrl) {
-    return <div className="webui-workspace-files-empty" data-testid="workspace-html-preview-unavailable" role="status">
+    // 无法预览是一条播报；class 交给契约的 div，内部的 p 仍是后代，
+    // `.webui-workspace-files-empty p` 继续命中。
+    return <FeedbackLiveRegion className="webui-workspace-files-empty" testId="workspace-html-preview-unavailable">
       <strong>无法预览 HTML</strong>
       <p>缺少文件地址，面板没有可加载的文档。</p>
-    </div>;
+    </FeedbackLiveRegion>;
   }
 
   const relativeReference = content?.type === "text" ? hasRelativeDocumentReference(content.content) : false;
@@ -130,7 +133,7 @@ export function WorkspaceHtmlPreview({ path, fileUrl, content }: WorkspaceHtmlPr
     <p className="webui-workspace-review-status" data-testid="workspace-html-preview-isolation-note">
       {relativeReference ? HTML_PREVIEW_COPY.relativeDetected : HTML_PREVIEW_COPY.relativeUndetected}
       {" "}
-      <a className="webui-button-secondary" data-testid="workspace-html-preview-open-outside" href={fileUrl} target="_blank" rel="noreferrer noopener">{HTML_PREVIEW_COPY.openOutside}</a>
+      <WebuiButtonLink variant="grouped" size="pill" data-testid="workspace-html-preview-open-outside" href={fileUrl} target="_blank" rel="noreferrer noopener">{HTML_PREVIEW_COPY.openOutside}</WebuiButtonLink>
     </p>
     {/* No `sandbox` here: the server header is the one layer, and it is the
         only one that can be audited from the response. */}

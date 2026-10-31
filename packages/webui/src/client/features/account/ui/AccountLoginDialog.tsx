@@ -27,6 +27,7 @@ import {
 import { deriveWebuiAccountLoginPhase } from "../application/login-phase.js";
 import type { WebuiAccountLoginPhase } from "../application/login-phase.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export function AccountLoginPanel({
   phase,
@@ -106,14 +107,11 @@ export function AccountLoginPanel({
             等待授权中…完成页面上的登录后会自动继续
           </p>
           <div className="webui-account-login-actions">
-            <button
-              type="button"
-              className="webui-button-secondary"
-              data-testid="account-login-cancel"
+            <WebuiButton variant="grouped" size="pill" data-testid="account-login-cancel"
               onClick={onCancel}
             >
               取消
-            </button>
+            </WebuiButton>
           </div>
         </div>
       ) : null}
@@ -123,14 +121,11 @@ export function AccountLoginPanel({
             已登录。切换账号会先退出当前账号，再开始新的登录。
           </p>
           <div className="webui-account-login-actions">
-            <button
-              type="button"
-              className="webui-button-secondary"
-              data-testid="account-login-switch"
+            <WebuiButton variant="grouped" size="pill" data-testid="account-login-switch"
               onClick={onSwitch}
             >
               切换账号
-            </button>
+            </WebuiButton>
           </div>
         </div>
       ) : null}
@@ -140,14 +135,11 @@ export function AccountLoginPanel({
             登录未完成：{phase.error}
           </p>
           <div className="webui-account-login-actions">
-            <button
-              type="button"
-              className="webui-button-primary"
-              data-testid="account-login-retry"
+            <WebuiButton variant="accent" size="action" data-testid="account-login-retry"
               onClick={onRetry}
             >
               重新获取登录码
-            </button>
+            </WebuiButton>
           </div>
         </div>
       ) : null}
@@ -198,9 +190,6 @@ export function AccountLoginDialog({
     <div
       className="webui-account-login-mask"
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <AccountLoginPanel
         phase={phase}

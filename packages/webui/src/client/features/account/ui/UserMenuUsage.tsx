@@ -12,6 +12,7 @@ import type {
   WebuiUsageQuotaWindowView,
 } from "../../../../shared/contracts/usage-quota.js";
 import { formatUsageResetLabel } from "../projection/usage.public.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface UsageState {
   readonly status: "idle" | "loading" | "ready" | "error";
@@ -107,15 +108,12 @@ function UsageReady({
          * Keeping the focus where it was makes the first click land like
          * every later one. */}
         {onLogin ? (
-          <button
-            type="button"
-            className="webui-button-secondary"
-            data-testid="usage-sign-in-button"
+          <WebuiButton variant="grouped" size="pill" data-testid="usage-sign-in-button"
             onMouseDown={(event) => event.preventDefault()}
             onClick={onLogin}
           >
             登录
-          </button>
+          </WebuiButton>
         ) : null}
       </div>
     );

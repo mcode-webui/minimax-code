@@ -62,6 +62,7 @@ import {
   WebuiIconWorkspaceTerminal,
 } from "../../../shell/icons.js";
 import { WebuiDropdown, type WebuiDropdownTriggerProps } from "../../../ui/Dropdown.js";
+import { WebuiMenuItem } from "../../../ui/menu-item.js";
 
 const STRIP_COPY = {
   addTab: "新建标签页",
@@ -538,22 +539,18 @@ export function WebuiWorkspaceLauncher({
             ariaLabel="其他工具"
           >
             {overflowTiles.map(({ tile, command }) => (
-              <button
+              <WebuiMenuItem
                 key={tile.kind}
-                type="button"
                 className="webui-workspace-launcher-overflow-item"
-                role="menuitem"
+                icon={launcherTileGlyph(tile.kind)}
                 data-testid={`workspace-launcher-overflow-${tile.kind}`}
                 onClick={() => {
                   setOverflowOpen(false);
                   if (command) dispatch(command);
                 }}
               >
-                <span className="webui-workspace-launcher-overflow-icon" aria-hidden="true">
-                  {launcherTileGlyph(tile.kind)}
-                </span>
-                <span>{tile.label}</span>
-              </button>
+                {tile.label}
+              </WebuiMenuItem>
             ))}
           </WebuiDropdown>
         ) : null}

@@ -49,7 +49,7 @@ import { WebuiButton } from "../../../ui/button.js";
 import { WebuiField, WebuiFormActions } from "../../../ui/field.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { CloseIcon, IconButton, RefreshIcon } from "../../../ui/form-atoms.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 /** The attachment modalities, in Desktop's own words. */
 const ATTACHMENT_LABELS: Readonly<
@@ -129,7 +129,7 @@ function providerModels(provider?: WebuiModelProviderView): readonly WebuiModelP
  * a chevron while it is closed), and `其他` is pinned to the bottom of the list
  * behind a divider rather than scrolling with the presets.
  */
-function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { readonly presets: readonly Record<string, unknown>[]; readonly selected: string; readonly selectedName: string; readonly onSelect: (preset?: Record<string, unknown>) => void }): ReactElement {
+function ProviderPresetPicker({ controlId, presets, selected, selectedName, onSelect }: { readonly controlId?: string; readonly presets: readonly Record<string, unknown>[]; readonly selected: string; readonly selectedName: string; readonly onSelect: (preset?: Record<string, unknown>) => void }): ReactElement {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   /** The field's visible frame — the anchor the popup hangs off. */
@@ -147,7 +147,7 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
     role="listbox"
     ariaLabel="提供商列表"
     width="content"
-    wrapperClassName="webui-provider-picker"
+    wrapperClassName="webui-provider-picker w-full"
     className="webui-provider-picker-menu"
     testId="settings-provider-preset-picker"
     // The popup hangs off the FIELD'S FRAME, not off the text cursor inside
@@ -160,6 +160,7 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
       return <div ref={frameRef} className={`webui-provider-picker-trigger${open ? " webui-provider-picker-trigger-open" : ""}`}>
       <input
         {...inputProps}
+        {...(controlId === undefined ? {} : { id: controlId })}
         ref={ref}
         role="combobox"
         aria-label="提供商"
@@ -203,7 +204,10 @@ function ProviderPresetPicker({ presets, selected, selectedName, onSelect }: { r
         const name = textOf(preset.name) || id;
         const iconUrl = textOf(preset.iconUrl);
         return <button key={id} type="button" role="option" aria-selected={selected === id} className="webui-provider-picker-option" onClick={() => { onSelect(preset); setOpen(false); setQuery(""); }}><span className="webui-provider-picker-icon">{iconUrl ? <img src={iconUrl} alt="" /> : name.slice(0, 1)}</span><span className="webui-provider-picker-option-name">{name}</span>{selected === id ? <span className="webui-provider-picker-check" aria-hidden="true"><IconCheck size={14} stroke={1.7} /></span> : null}</button>;
-      }) : <p className="webui-provider-picker-empty" role="status">没有匹配的提供商</p>}
+      }) : (
+        // 没有匹配项是一个要被听到的状态，播报通道交给共享契约。
+        <FeedbackLiveRegion className="webui-provider-picker-empty">没有匹配的提供商</FeedbackLiveRegion>
+      )}
     </div>
     <div className="webui-provider-picker-other">
       <button type="button" role="option" aria-selected={selected === "__other__"} data-testid="settings-provider-other-option" onMouseDown={(event) => event.preventDefault()} onClick={() => { onSelect(); setOpen(false); setQuery(""); }}><span className="webui-provider-picker-other-icon" aria-hidden="true"><IconPlus size={16} stroke={1.7} /></span><span>其他</span></button>
@@ -324,7 +328,7 @@ export function ProviderFormPanel({
       {showProviderForm && portalTarget ? createPortal(<div data-overlay-layer={formLayerId} role="dialog" aria-modal="true" aria-label={editingProvider ? "编辑提供商" : "添加模型"} className="webui-provider-dialog-backdrop"><form className="webui-provider-form" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
         <header className="webui-provider-form-header"><h3>{editingProvider ? "编辑提供商" : "添加模型"}</h3><button type="button" aria-label="关闭" onClick={() => editor.close()}><CloseIcon /></button></header>
         <div className="webui-provider-form-body">
-          {!editingProvider ? <div className="webui-provider-form-provider-grid"><label className="webui-provider-form-field">提供商<ProviderPresetPicker presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); editor.changeField("name", ""); editor.changeField("baseUrl", ""); editor.changeField("apiFormat", "openai-completions"); editor.clearModels(); return; } setSelectedPresetId(textOf(preset.providerId)); editor.changeField("name", textOf(preset.name)); editor.changeField("baseUrl", textOf(preset.baseUrl)); editor.changeField("apiFormat", textOf(preset.apiFormat)); editor.clearModels(); }} /></label>{selectedPresetId === "__other__" ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}</div> : null}
+          {!editingProvider ? <div className="webui-provider-form-provider-grid"><WebuiField className="webui-provider-form-field" label="提供商" control={(props) => <ProviderPresetPicker controlId={props.id} presets={presets} selected={selectedPresetId ?? ""} selectedName={selectedPresetId && selectedPresetId !== "__other__" ? draftName : ""} onSelect={(preset) => { if (!preset) { setSelectedPresetId("__other__"); editor.changeField("name", ""); editor.changeField("baseUrl", ""); editor.changeField("apiFormat", "openai-completions"); editor.clearModels(); return; } setSelectedPresetId(textOf(preset.providerId)); editor.changeField("name", textOf(preset.name)); editor.changeField("baseUrl", textOf(preset.baseUrl)); editor.changeField("apiFormat", textOf(preset.apiFormat)); editor.clearModels(); }} />} />{selectedPresetId === "__other__" ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}</div> : null}
           {editingProvider ? <WebuiField className="webui-provider-form-field" label="提供商名称" required control={(props) => <input {...props} value={draftName} onChange={(event) => editor.changeField("name", event.target.value)} required />} /> : null}
           <div className="webui-provider-form-provider-grid"><WebuiField className="webui-provider-form-field" label="API 格式" control={(props, field) => <WebuiDropdown
           managed

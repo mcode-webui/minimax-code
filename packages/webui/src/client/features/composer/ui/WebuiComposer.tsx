@@ -1271,7 +1271,7 @@ export function WebuiComposer({
                       {...triggerProps}
                       label="添加附件或技能"
                       data-testid="composer-add-menu"
-                      className="text-icon_default_tertiary"
+                      className="webui-composer-add-button text-icon_default_tertiary"
                     >
                       <WebuiIconAttach />
                     </WebuiIconButton>

@@ -26,6 +26,10 @@
  * skeleton, progress, busy and announcement. */
 @import "./feedback.css";
 @import "./shell.css";
+/* The shared menu-item contract (ADR 0028 § Shared contracts): the row, its
+ * two slots and its states. It comes after the shell so a business that reads
+ * one of its widths finds the property already declared. */
+@import "./menu-item.css";
 /* The layout threshold contract (ADR 0025): the widths the client adapts at,
  * and the shell skeleton's own rules — the conversation column's floor and the
  * rail's form. It comes before the feature rules so a business that reads one

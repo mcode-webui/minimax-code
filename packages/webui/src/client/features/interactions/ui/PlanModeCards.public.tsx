@@ -28,7 +28,7 @@ import {
 import type {
   WebuiQuestionnaireRequest,
 } from "../../../../shared/contracts/interactions.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 /** Shared busy/error plumbing for every plan surface. */
 export interface WebuiPlanCardChrome {
@@ -105,9 +105,10 @@ export function WebuiPlanDeliveryCard({
               {title}
             </h4>
             {description ? (
-              <p className="webui-plan-review-description" data-testid="plan-review-description" role="status">
+              // 这段说明是评审时新增的内容，要被听到：播报通道交给共享契约。
+              <FeedbackLiveRegion className="webui-plan-review-description" testId="plan-review-description">
                 {description}
-              </p>
+              </FeedbackLiveRegion>
             ) : null}
           </div>
         </div>

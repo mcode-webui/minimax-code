@@ -400,10 +400,13 @@
   .webui-workspace-launcher-tile-label { font-size: var(--size_12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .webui-workspace-launcher-more { flex: 0 0 112px; }
   .webui-workspace-launcher-overflow-menu { min-width: 176px; padding: var(--spacing_6); }
-  .webui-workspace-launcher-overflow-item { display: flex; width: 100%; min-height: 36px; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_8); background: transparent; padding: 0 var(--spacing_8); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
-  .webui-workspace-launcher-overflow-item:hover { background: var(--bg_interaction_tertiary_hover); }
-  .webui-workspace-launcher-overflow-item:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -2px; }
-  .webui-workspace-launcher-overflow-icon { display: flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the launcher's own arrangement: its rows are a
+   * little taller than the contract's default. */
+  .webui-workspace-launcher-overflow-item {
+    min-height: 36px;
+    padding: 0 var(--spacing_8);
+  }
   .webui-workspace-launcher-unavailable, .webui-workspace-launcher-error { max-width: 520px; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }
 
   .webui-turn-review { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; overflow: auto; }

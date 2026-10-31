@@ -6,7 +6,7 @@ import { useState, type ReactElement } from "react";
 import type { WebuiWorkspaceFileContent } from "../../../../shared/contracts/workspace.js";
 import { basenamePath } from "../../../projection/common/paths.js";
 import { mediaKind, isMediaContent } from "../projection/media-preview.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export type WorkspaceMediaPreviewProps = {
   /** The file path the preview tab was opened with, used for `alt` text. */
@@ -54,9 +54,12 @@ export function WorkspaceMediaNotice({
   return failure ? (
     <FeedbackError message={message} />
   ) : (
-    <p role="status" style={{ margin: "var(--spacing_16)", color: "var(--text_default_tertiary)" }}>
-      {message}
-    </p>
+    // 不可用是一条播报；播报通道交给共享契约，内联样式留在承载文字的元素上。
+    <FeedbackLiveRegion>
+      <p style={{ margin: "var(--spacing_16)", color: "var(--text_default_tertiary)" }}>
+        {message}
+      </p>
+    </FeedbackLiveRegion>
   );
 }
 

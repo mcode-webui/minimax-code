@@ -25,6 +25,7 @@ import { AccountLoginDialog } from "./AccountLoginDialog.js";
 import type { MemoryHandoff } from "../../settings/contracts/memory-handoff.js";
 import type { WebuiVersionInfo } from "../../../../shared/contracts/version.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { WebuiMenuItem, WebuiMenuSeparator } from "../../../ui/menu-item.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { useWebuiAccountWorkflows, useWebuiAccountWorkflowsState } from "../bindings/use-account-workflows.public.js";
 import { SIGNIN, SigninCard, formatSigninError, type SigninState } from "./UserMenuSignin.js";
@@ -99,10 +100,6 @@ function UserMenuAvatar({
 
 function Chevron(): ReactElement {
   return <IconChevronRight className="webui-user-menu-chevron" size={16} stroke={1.7} aria-hidden="true" />;
-}
-
-function MenuDivider(): ReactElement {
-  return <div className="webui-user-menu-divider" role="separator" />;
 }
 
 /* ------------------------------------------------------------------ *
@@ -285,11 +282,11 @@ export function UserMenu({
       >
         <div className="webui-user-menu-uid" aria-label="用户 ID">UID : {uid ?? "—"}</div>
         <div className="webui-user-menu-list">
-          <button type="button" className="webui-user-menu-item" role="menuitem" data-testid="user-menu-settings" onClick={() => { setOpen(false); setSettingsOpen(true); }}><IconSettings aria-hidden="true" size={18} stroke={1.7} /><span>设置</span><span className="webui-user-menu-shortcut">Ctrl+,</span></button>
-          <button type="button" className="webui-user-menu-item" role="menuitem" data-testid="user-menu-account-login" onClick={() => { setOpen(false); setLoginOpen(true); }}><AccountGlyph /><span>账号与登录</span></button>
-          <MenuDivider />
+          <WebuiMenuItem className="webui-user-menu-item" icon={<IconSettings aria-hidden="true" size={18} stroke={1.7} />} trailing={<span className="webui-user-menu-shortcut">Ctrl+,</span>} data-testid="user-menu-settings" onClick={() => { setOpen(false); setSettingsOpen(true); }}>设置</WebuiMenuItem>
+          <WebuiMenuItem className="webui-user-menu-item" icon={<AccountGlyph />} data-testid="user-menu-account-login" onClick={() => { setOpen(false); setLoginOpen(true); }}>账号与登录</WebuiMenuItem>
+          <WebuiMenuSeparator />
           <div className="webui-user-menu-signin-anchor" onMouseEnter={() => { cancelPanelClose(); loadSignin(); }} onMouseLeave={schedulePanelClose} onFocus={() => { cancelPanelClose(); loadSignin(); }} onClick={(event) => { event.stopPropagation(); if (!signinOpen) loadSignin(); }}>
-            <button type="button" className="webui-user-menu-item" role="menuitem" aria-haspopup="dialog" aria-expanded={signinOpen} data-testid="user-menu-signin"><SigninGlyph /><span>每日签到</span><Chevron /></button>
+            <WebuiMenuItem className="webui-user-menu-item" icon={<SigninGlyph />} trailing={<Chevron />} aria-haspopup="dialog" aria-expanded={signinOpen} data-testid="user-menu-signin">每日签到</WebuiMenuItem>
             {signinOpen ? (
               <div className="webui-user-menu-signin-panel" role="dialog" aria-label={SIGNIN.title}>
                 <SigninCard
@@ -309,7 +306,7 @@ export function UserMenu({
             ) : null}
           </div>
           <div className="webui-user-menu-usage-anchor" onMouseEnter={() => { cancelPanelClose(); loadUsage(); }} onMouseLeave={schedulePanelClose} onFocus={() => { cancelPanelClose(); loadUsage(); }}>
-            <button type="button" className="webui-user-menu-item" role="menuitem" aria-haspopup="dialog" aria-expanded={usageOpen} data-testid="user-menu-usage" onClick={() => loadUsage()}><WebuiIconCommandUsage /><span>用量</span><Chevron /></button>
+            <WebuiMenuItem className="webui-user-menu-item" icon={<WebuiIconCommandUsage />} trailing={<Chevron />} aria-haspopup="dialog" aria-expanded={usageOpen} data-testid="user-menu-usage" onClick={() => loadUsage()}>用量</WebuiMenuItem>
             {usageOpen ? <UsagePanel state={usage} onRetry={() => loadUsage(true)} onLogin={() => { setOpen(false); setLoginOpen(true); }} /> : null}
           </div>
         </div>

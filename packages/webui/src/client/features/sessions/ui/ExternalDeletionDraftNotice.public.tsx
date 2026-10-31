@@ -17,6 +17,7 @@
 import type { ReactElement } from "react";
 
 import type { WebuiRetainedDeletionDraft } from "../application/session-workflows.js";
+import { FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface WebuiExternalDeletionNoticeProps {
   readonly drafts: readonly WebuiRetainedDeletionDraft[];
@@ -35,9 +36,8 @@ export function WebuiExternalDeletionNotice({
 }: WebuiExternalDeletionNoticeProps): ReactElement | null {
   if (drafts.length === 0) return null;
   return (
-    <div
-      role="status"
-      data-testid="external-deletion-notice"
+    <FeedbackLiveRegion
+      testId="external-deletion-notice"
       className="mx-auto w-full max-w-[743px] rounded-lg border border-border_default bg-bg_default_secondary px-spacing_8 py-spacing_4 text-size_12 leading-line_height_16"
     >
       {drafts.map((draft) => {
@@ -64,6 +64,6 @@ export function WebuiExternalDeletionNotice({
           </div>
         );
       })}
-    </div>
+    </FeedbackLiveRegion>
   );
 }

@@ -30,6 +30,7 @@ import {
   type PresentationModule,
   recordReviewedSignatures,
   serializeInventory,
+  sharedHomeValueImports,
   surfaceSignature,
 } from "../../../../scripts/lib/webui-presentation-coverage.mjs";
 
@@ -108,6 +109,10 @@ const modulesFor = (clientRoot: string): PresentationModule[] =>
   discoverPresentationModules(clientRoot).map((relativePath) => ({
     path: relativePath,
     signature: surfaceSignature(readFileSync(path.join(clientRoot, relativePath), "utf8"), relativePath),
+    sharedHomeValues: sharedHomeValueImports(
+      readFileSync(path.join(clientRoot, relativePath), "utf8"),
+      relativePath,
+    ),
   }));
 
 const entryFor = (relativePath: string, overrides: Partial<TestEntry> = {}): TestEntry => ({
@@ -242,6 +247,90 @@ describe("the classification", () => {
     expect(summary.dispositions["pending-contract-decision"]).toBe(3);
     expect(summary.inventoryComplete).toBe(true);
     expect(summary.unificationComplete).toBe(false);
+  });
+
+  // The thin-adopter rule: a classification that claims adoption has to be true.
+  // A module that only imports a type from the shared home knows what a contract
+  // looks like without rendering one, and calling that adoption is the defect
+  // this rule exists for.
+  describe("the thin-adopter rule", () => {
+    const adopter = `
+      import { WebuiButton } from "../../../ui/button.js";
+      export function Adopter(): JSX.Element {
+        return <WebuiButton variant="secondary">Save</WebuiButton>;
+      }
+    `;
+
+    const typeOnlyAdopter = `
+      import { type WebuiContextMenuItem } from "../../../ui/ContextMenu.js";
+      export function TypeOnlyAdopter(items: WebuiContextMenuItem[]): JSX.Element {
+        return <span>{items.length}</span>;
+      }
+    `;
+
+    it("fails on a module that claims adoption and renders nothing from the shared home", () => {
+      const clientRoot = buildClientTree({
+        "ui/Dropdown.tsx": SHARED_DROPDOWN,
+        "features/models/ui/TypeOnlyAdopter.tsx": typeOnlyAdopter,
+      });
+      const modules = modulesFor(clientRoot);
+      const inventory = withSignatures(modules);
+      const entry = inventory.entries.find((candidate) => candidate.path.endsWith("TypeOnlyAdopter.tsx"));
+      entry!.disposition = "newly-adopted-contract";
+      const { failures } = evaluatePresentationCoverage({ modules, inventory });
+      expect(failures.map((failure: { kind: string }) => failure.kind)).toEqual(["thin-adopter"]);
+      expect(failures[0].detail).toContain("newly-adopted-contract");
+    });
+
+    it("passes a module that renders the shared contract it claims", () => {
+      const clientRoot = buildClientTree({
+        "ui/Dropdown.tsx": SHARED_DROPDOWN,
+        "features/models/ui/Adopter.tsx": adopter,
+      });
+      const modules = modulesFor(clientRoot);
+      const inventory = withSignatures(modules);
+      const entry = inventory.entries.find((candidate) => candidate.path.endsWith("Adopter.tsx"));
+      entry!.disposition = "newly-adopted-contract";
+      const { failures } = evaluatePresentationCoverage({ modules, inventory });
+      expect(failures).toEqual([]);
+    });
+
+    it("does not hold the shared home itself to the rule", () => {
+      const clientRoot = buildClientTree({
+        "ui/Dropdown.tsx": SHARED_DROPDOWN,
+        "features/models/ui/Adopter.tsx": adopter,
+      });
+      const modules = modulesFor(clientRoot);
+      const inventory = withSignatures(modules);
+      const entry = inventory.entries.find((candidate) => candidate.path === "ui/Dropdown.tsx");
+      entry!.disposition = "newly-adopted-contract";
+      const { failures } = evaluatePresentationCoverage({ modules, inventory });
+      expect(failures).toEqual([]);
+    });
+
+    it("counts a value import and not a type import", () => {
+      expect(
+        sharedHomeValueImports(adopter, "features/models/ui/Adopter.tsx"),
+      ).toEqual(["WebuiButton"]);
+      expect(
+        sharedHomeValueImports(typeOnlyAdopter, "features/models/ui/TypeOnlyAdopter.tsx"),
+      ).toEqual([]);
+    });
+
+    it("does not mistake a business's own ui directory for the shared home", () => {
+      // Every business has a `ui/` directory of its own, so the shared home has
+      // to be found by resolving the import rather than by spotting a `ui/`
+      // segment in the specifier.
+      const businessModule = `
+        import { GreetingSkeleton } from "../features/transcript/ui/GreetingSkeleton.js";
+        export function Business(): JSX.Element {
+          return <GreetingSkeleton />;
+        }
+      `;
+      expect(
+        sharedHomeValueImports(businessModule, "features/account/ui/Business.tsx"),
+      ).toEqual([]);
+    });
   });
 
   it("reports every disposition and family the ADR defines", () => {

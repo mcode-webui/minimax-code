@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactElement, type ReactNode } from "react";
 import { describeWebuiBoundaryError } from "../features/shell/application/boundary-error.js";
+import { WebuiButton } from "../ui/button.js";
 
 /** Why the boundary holds the `Error` rather than a boolean: the fallback shows
  *  its message, and the same value is what reaches the console. A boolean would
@@ -75,14 +76,11 @@ export function WebuiErrorBoundaryFallback({
       >
         {error.message}
       </p>
-      <button
-        type="button"
-        data-testid="webui-error-boundary-retry"
-        className="webui-button-secondary"
+      <WebuiButton variant="grouped" size="pill" data-testid="webui-error-boundary-retry"
         onClick={onRetry}
       >
         {retryLabel}
-      </button>
+      </WebuiButton>
     </section>
   );
 }

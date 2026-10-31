@@ -34,8 +34,13 @@ export function scanSource(text) {
   const dialogs = (text.match(/role="dialog"/gu) ?? []).length;
   // A layer registers either through the dropdown's `managed` prop or by calling
   // the hook directly; both are the same fact.
+  //
+  // The prop is read as a prop and not as a line: `<WebuiDropdown managed />`
+  // written on one line registers exactly as much as the same call spread over
+  // three, and a check that only saw the spread-out one would call a managed
+  // surface unmanaged — or, worse, call a surface that registers nothing managed.
   const managed =
-    (text.match(/\n\s*managed\b/gu) ?? []).length +
+    (text.match(/(^|[\s{])managed(\s*[=:,]|\s|\/|>)/gmu) ?? []).length +
     (text.match(/useOverlayLayer\(/gu) ?? []).length +
     (text.match(/useDialogLayer\(/gu) ?? []).length;
   return { dropdowns, dialogs, managed };
@@ -70,6 +75,12 @@ export function compareOverlays(scanned, inventory) {
     }
     if (entry.disposition === "managed" && source.managed === 0) {
       problems.push(`${file}: says managed but no layer registers with the coordinator`);
+    }
+    // The other direction. A surface that borrows the dialog role for labelling
+    // and also registers a layer is a managed surface with the wrong label, and
+    // the label is what the inventory is read for.
+    if (entry.disposition === "borrows-role" && source.managed > 0) {
+      problems.push(`${file}: says borrows-role but registers a layer — it is a managed surface`);
     }
     if (entry.disposition === "exception" && !entry.boundary) {
       problems.push(`${file}: an exception needs its interaction boundary stated`);

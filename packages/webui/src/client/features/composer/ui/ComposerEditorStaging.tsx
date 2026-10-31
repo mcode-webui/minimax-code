@@ -28,6 +28,7 @@ import {
   type WebuiComposerUrlReference,
 } from "../projection/composer-interactions.js";
 import type { SlashCommandEntry } from "./slash-palette.js";
+import { FeedbackBusy } from "../../../ui/feedback.js";
 
 /** One row the `@` list can offer. */
 export type WebuiComposerMentionChoice =
@@ -176,7 +177,7 @@ export function WebuiComposerEditorStaging({
             </div>
           ))}
           {references("attached")}
-          {attachmentBusy ? <span className="webui-composer-attachment-loading" role="status">正在读取文件…</span> : null}
+          {attachmentBusy ? <FeedbackBusy label="正在读取文件…" className="webui-composer-attachment-loading" /> : null}
         </div>
       ) : urlReferences.length > 0 ? (
         <div className="webui-composer-attachments" data-webui-composer-attachments="true">{references("lone")}</div>

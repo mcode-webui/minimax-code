@@ -44,6 +44,7 @@ import {
   transcriptViewport,
   useWebuiTranscriptScroll,
 } from "../bindings/use-transcript-scroll.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 const EMPTY_TRANSCRIPT_PAGE: WebuiClientMessagePage = {};
 
@@ -334,16 +335,14 @@ export function WebuiSessionTranscript({
         ) : null}
         {loadOlder ? (
           <div className="flex w-full justify-center py-1">
-            <button
-              type="button"
-              onClick={loadOlder}
+            <WebuiButton variant="grouped" size="pill" onClick={loadOlder}
               disabled={loading}
-              className="webui-button-secondary text-size_14 leading-line_height_20"
+              className="text-size_14 leading-line_height_20"
               aria-label={loading ? "正在加载更早消息" : "加载更早消息"}
             >
               <IconChevronUp aria-hidden="true" className="size-4 flex-none" size={16} stroke={1.7} />
               <span>{loading ? "正在加载…" : "加载更早消息"}</span>
-            </button>
+            </WebuiButton>
           </div>
         ) : null}
         {groups.flatMap((group) => {

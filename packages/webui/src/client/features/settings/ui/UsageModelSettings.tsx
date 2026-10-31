@@ -14,7 +14,7 @@ import { useWebuiProviderEditor } from "../../../features/models/bindings/use-pr
 import type { WebuiProviderEditorCommands } from "../../../features/models/contracts/provider-editor.js";
 import { unavailableWebuiProviderOutcome } from "../../../features/models/contracts/provider-outcome.js";
 import type { WebuiModelProviderView } from "../../../../shared/contracts/models.js";
-import { FeedbackError } from "../../../ui/feedback.js";
+import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 type Props = {
   readonly sessionId?: string;
@@ -239,7 +239,8 @@ export function UsageModelSettings({ sessionId }: Props): ReactElement {
       <div className="flex items-center gap-2"><label className="text-[14px] font-medium leading-5 text-text_default_primary">API Key</label><span className={`rounded-[6px] px-1 py-0.5 text-[12px] leading-4 ${apiValid ? "bg-bg_status_positive text-icon_status_success" : "bg-[rgba(10,10,10,0.04)] text-[#666]"}`}>{apiValid ? "使用中" : "未启用"}</span></div>
       {apiLoading ? <p>加载中…</p> : apiError ? <FeedbackError message={apiError} className="flex items-center gap-3" action={<button type="button" onClick={() => void loadApiStatus()}>重试</button>} /> : <>
         <div className="flex items-center gap-3"><input aria-label="API Key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={apiValid ? textOf(apiStatus?.maskedApiKey) : "请输入API Key"} className="min-w-0 flex-[1_0_0] rounded-[8px] border border-border_default bg-bg_default_primary px-3 py-2 text-[14px]" /><IconButton label="测试连通性" disabled={testingKey || (!apiKey.trim() && !apiValid)} onClick={() => void testKey()}><RefreshIcon /></IconButton></div>
-        {keyResult ? <p role="status">{keyResult}</p> : null}<button type="button" disabled={!apiKey.trim() || savingKey} className="mt-1 h-9 w-[116px] rounded-[8px] bg-bg_interaction_tertiary_hover px-3 text-[14px] disabled:opacity-60" onClick={() => void saveKey()}>{savingKey ? "保存中…" : "保存并使用"}</button>
+        {/* 保存结果要被听到，播报通道交给共享契约。 */}
+        {keyResult ? <FeedbackLiveRegion>{keyResult}</FeedbackLiveRegion> : null}<button type="button" disabled={!apiKey.trim() || savingKey} className="mt-1 h-9 w-[116px] rounded-[8px] bg-bg_interaction_tertiary_hover px-3 text-[14px] disabled:opacity-60" onClick={() => void saveKey()}>{savingKey ? "保存中…" : "保存并使用"}</button>
       </>}
     </section> : null}
 

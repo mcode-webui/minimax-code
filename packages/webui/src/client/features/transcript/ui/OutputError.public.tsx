@@ -14,6 +14,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { IconAlertCircle } from "@tabler/icons-react";
+import { FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export type OutputErrorVariant = "output_retrying" | "output_rate_limited" | "output_error";
 
@@ -157,13 +158,16 @@ export function OutputError(props: OutputErrorProps): React.JSX.Element {
           data-testid="output-error-divider"
         />
       </div>
-      <div
-        data-testid={testId}
-        data-output-error-variant={variant}
-        title={title}
-        role={role}
-        aria-live={ariaLive}
+      <FeedbackLiveRegion
         className="flex min-h-8 w-fit items-center text-body-base !tracking-[0px] text-text_default_secondary"
+        testId={testId}
+        politeness={ariaLive === "assertive" ? "assertive" : "polite"}
+        dataAttributes={{
+          ...(testId ? { "data-testid": testId } : {}),
+          "data-output-error-variant": variant,
+          ...(title ? { title } : {}),
+          ...(role ? { role } : {}),
+        }}
       >
         <DefaultIcon tooltip={iconTooltip} {...(renderIconTooltip ? { renderIconTooltip } : {})} />
         <span
@@ -189,7 +193,7 @@ export function OutputError(props: OutputErrorProps): React.JSX.Element {
           </span>
         ) : null}
         <span className="ml-4">{retryNode}</span>
-      </div>
+      </FeedbackLiveRegion>
     </div>
   );
 }

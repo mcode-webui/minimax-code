@@ -73,7 +73,7 @@ export function SessionRailRegion(props: {
             data-webui-rail-search-input="true" aria-label="搜索会话" placeholder="搜索会话"
             value={props.searchQuery} onChange={(event) => props.setSearchQuery(event.target.value)}
             onKeyDown={(event) => { if (event.key !== "Escape") return; event.preventDefault(); props.closeSearch(); }}
-            className="w-full rounded-[8px] border border-stroke_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none placeholder:text-text_default_tertiary focus:border-stroke_strong"
+            className="w-full rounded-[8px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none placeholder:text-text_default_tertiary focus:border-border_accent"
           />
         </div> : null}
         <div className="relative min-h-0 flex-1">

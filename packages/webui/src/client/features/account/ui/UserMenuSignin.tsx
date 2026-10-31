@@ -15,6 +15,7 @@ import {
 } from "@mavis/shared/daily-signin";
 import type { WebuiSigninPanelView } from "../../../../shared/contracts/account.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface SigninState {
   readonly loading: boolean;
@@ -316,9 +317,10 @@ export function SigninCard({
               <SigninProgress days={panel.days} animatedDay={animatedDay} />
               <div className="relative mt-7">
                 {claimable ? (
-                  <button
-                    type="button"
-                    className="signin-claim-button mavis-button black h-8 w-full rounded-lg text-sm font-medium"
+                  <WebuiButton
+                    variant="accent"
+                    size="regular"
+                    className="signin-claim-button h-8 w-full"
                     disabled={claiming}
                     aria-label={buttonLabel}
                     onClick={onClaim}
@@ -337,7 +339,7 @@ export function SigninCard({
                         <span className="shrink-0">{points}</span>
                       </span>
                     )}
-                  </button>
+                  </WebuiButton>
                 ) : (
                   <button
                     type="button"

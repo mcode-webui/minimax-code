@@ -52,9 +52,6 @@ export function PluginItemDialog({
   const surface = (
     <div
       className="webui-plugin-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div
         className={`webui-plugin-dialog${dialog === "mcp" ? " webui-mcp-dialog" : ""}`}

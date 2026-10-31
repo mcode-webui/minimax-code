@@ -558,7 +558,8 @@
       "packages/webui/test/gates/webui-overlays.test.ts",
       "packages/webui/test/unit/content-page.test.ts",
       "packages/webui/test/unit/feedback.test.ts",
-      "packages/webui/test/gates/webui-feedback.test.ts"
+      "packages/webui/test/gates/webui-feedback.test.ts",
+      "packages/webui/test/unit/webui-button-contract.test.tsx"
     ]
   }
 }

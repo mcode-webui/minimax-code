@@ -294,9 +294,6 @@
      over: the capture gave centres, not boxes, and a centre distance cannot pin
      a box size without knowing the glyph inset. */
   .webui-memory-manager-header-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_8); }
-  .webui-memory-manager-header-actions .webui-settings-icon-button { display: flex; width: 26px; height: 26px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); padding: 0; background: var(--bg_interaction_tertiary_default); color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
-  .webui-memory-manager-header-actions .webui-settings-icon-button:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
-  .webui-memory-manager-header-actions .webui-settings-icon-button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   /* Pull the controls out to the surface's own padding so their right edge
      lines up with the editor's.
    *
@@ -322,11 +319,10 @@
   /* 记忆操作's surface and its hang off the ⋯ button's right edge come from the
    * shared dropdown layer; this rule only says what the menu holds. */
   .webui-memory-manager-menu { display: flex; min-width: 168px; flex-direction: column; padding: var(--spacing_4); }
-  .webui-memory-manager-menu-item { display: flex; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_4); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
-  .webui-memory-manager-menu-item:hover:not(:disabled) { background: var(--bg_interaction_tertiary_hover); }
-  .webui-memory-manager-menu-item:disabled { opacity: 0.4; }
-  .webui-memory-manager-menu-item.is-danger { color: var(--text_label_danger_secondary_default); }
-  .webui-memory-manager-menu-icon { flex: none; }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the memory manager's own arrangement: its rows are
+   * deeper than the contract's default. */
+  .webui-memory-manager-menu-item { padding: var(--spacing_8) var(--spacing_12); }
   /* 删除记忆's confirmation, measured in the reference layout.
    *
    * A second modal, not a panel inside the first: the editor is dimmed
@@ -350,9 +346,10 @@
   .webui-memory-confirm-mask { position: fixed; inset: 0; z-index: 140; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); }
   .webui-memory-confirm { position: relative; display: flex; width: min(480px, calc(100vw - 32px)); flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_20); background: var(--bg_grouped_secondary); padding: var(--spacing_24); outline: none; }
   .webui-memory-confirm-title { margin: 0; padding-right: var(--spacing_32); color: var(--text_default_primary); font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_22); }
-  .webui-memory-confirm-close { position: absolute; top: var(--spacing_12); right: var(--spacing_12); display: flex; width: 32px; height: 32px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); background: transparent; padding: 0; color: var(--text_default_tertiary); cursor: pointer; }
-  .webui-memory-confirm-close:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
-  .webui-memory-confirm-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
+  /* The × is the shared icon-button contract (styles/button.css); what is left
+     here is this confirmation's own placement: the button sits in the corner
+     above the title rather than in a header row. */
+  .webui-memory-confirm-close { position: absolute; top: var(--spacing_12); right: var(--spacing_12); width: 32px; height: 32px; }
   .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
   .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
   /* 关于你 is ONE control. The `personalization-profile-section`
@@ -429,19 +426,16 @@
    *
    * Both personalization sections render the same control -- the 关于你 header's
    * `action` and 自定义指令's save are identical down to the
-   * geometry overrides -- and both pass `variant: "black"`. That variant is a
-   * filled primary: `.mavis-button.black` is `bg_interaction_primary_default`
-   * with `text_label_primary_default`, and its hover is
-   * `bg_interaction_primary_hover` (80% black). We had been drawing them as
-   * `gray`, which is a light fill -- that is the 记忆摘要「管理」button's
-   * variant, not theirs.
+   * geometry overrides -- and both pass the filled-primary variant. That
+   * variant is `bg_interaction_primary_default` with
+   * `text_label_primary_default`. We had been drawing them as `gray`, which is a
+   * light fill -- that is the 记忆摘要「管理」button's variant, not theirs.
    *
-   * The disabled state needed no colour of its own, and there is no
-   * `.mavis-button.black.disabled` to copy: the generic
-   * `.mavis-button.disabled{opacity:.5;cursor:not-allowed}` is the whole rule.
-   * A disabled 保存 therefore keeps the black fill and the white label and goes
-   * half-transparent. Only the `gray` variant overrides its own disabled fill,
-   * which is why the earlier grey version could keep a fill here at all.
+   * The disabled state needed no colour of its own: the shared contract's own
+   * disabled state is the whole rule, and a disabled 保存 therefore keeps the
+   * fill and the label and goes half-transparent. Only the `gray` variant
+   * overrides its own disabled fill, which is why the earlier grey version could
+   * keep a fill here at all.
    *
    * The geometry comes from the same call site: `!h-[30px] !w-[76px]
    * !min-w-[76px] !px-0 !py-0 !text-center !font-medium !leading-5`, against a
@@ -482,31 +476,13 @@
   .dark .signin-corner-default {
     opacity: 0.2;
   }
-  .signin-claim-button.mavis-button {
+  /* The claim button's own box. It is the shared button contract now
+     (styles/button.css), so the size is stated here on the business's own
+     class rather than on a copy of the shared one. */
+  .signin-claim-button {
     min-height: 32px;
     padding-top: 0;
     padding-bottom: 0;
-  }
-  .mavis-button {
-    border-radius: 8px;
-    padding: 8px 24px;
-    font-size: 14px;
-    line-height: 18px;
-    transition: background-color 0.3s;
-  }
-  .mavis-button.black {
-    background-color: var(--bg_interaction_primary_default);
-    color: var(--text_label_primary_default);
-  }
-  .mavis-button.black:hover {
-    background: var(--bg_interaction_primary_hover) !important;
-  }
-  .dark .mavis-button.black {
-    background-color: var(--bg_interaction_primary_default);
-    color: var(--text_label_primary_default);
-  }
-  .dark .mavis-button.black:hover {
-    opacity: 0.8 !important;
   }
   .webui-plugin-form .wide {
     grid-column: 1 / -1;

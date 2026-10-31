@@ -16,6 +16,7 @@ import { useCallback, useState, type ReactElement } from "react";
 import { WebuiIconContextChevron } from "../shell/icons.js";
 import { placeWebuiContextMenu } from "../projection/common/context-menu.js";
 import { WebuiDropdown, type WebuiDropdownPlacementArgs } from "./Dropdown.js";
+import { WebuiMenuItem, WebuiMenuSeparator } from "./menu-item.js";
 
 export type WebuiContextMenuItem =
   | { readonly kind: "divider"; readonly key: string }
@@ -77,7 +78,7 @@ export function WebuiContextMenu({
   const renderItems = (menuItems: readonly WebuiContextMenuItem[]) =>
     menuItems.map((item) => {
       if (item.kind === "divider") {
-        return <div key={item.key} className="webui-context-menu-divider" role="separator" />;
+        return <WebuiMenuSeparator key={item.key} />;
       }
       const hasSubmenu = Boolean(item.submenu?.length);
       return (
@@ -87,11 +88,12 @@ export function WebuiContextMenu({
           onMouseEnter={() => hasSubmenu && setOpenSubmenu(item.key)}
           onMouseLeave={() => hasSubmenu && setOpenSubmenu(undefined)}
         >
-          <button
-            type="button"
-            className={`webui-context-menu-item${item.danger ? " is-danger" : ""}`}
+          <WebuiMenuItem
+            className="webui-context-menu-item"
+            icon={item.icon}
+            danger={item.danger}
             disabled={item.disabled}
-            aria-disabled={item.disabled ? "true" : undefined}
+            trailing={hasSubmenu ? <WebuiIconContextChevron className="webui-context-menu-chevron" /> : null}
             onClick={() => {
               if (hasSubmenu) {
                 setOpenSubmenu((current) => (current === item.key ? undefined : item.key));
@@ -101,10 +103,8 @@ export function WebuiContextMenu({
               void item.onSelect?.();
             }}
           >
-            <span className="webui-context-menu-item-icon">{item.icon ?? null}</span>
-            <span className="webui-context-menu-item-label">{item.label}</span>
-            {hasSubmenu ? <WebuiIconContextChevron className="webui-context-menu-chevron" /> : null}
-          </button>
+            {item.label}
+          </WebuiMenuItem>
           {hasSubmenu && openSubmenu === item.key ? (
             <div className="webui-context-menu-submenu webui-dropdown-surface" role="menu">
               {renderItems(item.submenu ?? [])}

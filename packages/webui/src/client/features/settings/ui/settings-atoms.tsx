@@ -19,8 +19,9 @@
 // than which feature happens to use it.
 
 import { useId, type ReactElement, type ReactNode } from "react";
-import { useOverlayLayer } from "../../../ui/overlay-coordinator.js";
+import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { FeedbackAnnouncement } from "../../../ui/feedback.js";
 
 export const PERSONALIZATION_SECTION_HINTS = {
   globalInstructions:
@@ -90,6 +91,43 @@ export function SettingsButton({
 }
 
 /**
+ * The settings pages' confirmation that a write landed.
+ *
+ * Three settings surfaces say 已保存 after a write, and each of them said it in
+ * its own paragraph. Two problems came with that. The paragraph was a plain
+ * `<p>`, so a screen reader never heard it: it appeared silently, and the user
+ * who cannot see the green text has no idea the write landed. And each surface
+ * wrote the same words in the same place, so the confirmation drifted with the
+ * surfaces rather than with the shared family.
+ *
+ * So the confirmation lives here. The words are the settings pages' own — a
+ * tooltip is text the user reads, and a paraphrase that reads fine still means
+ * two surfaces stop saying the same thing about the same event.
+ *
+ * The live region is always in the DOM and its content changes when the state
+ * changes. A live region that is inserted together with its text is announced
+ * inconsistently across screen readers; one that is already there and then
+ * changes is announced reliably. That is why `message` is empty when there is
+ * nothing to say rather than the whole element being absent.
+ */
+export function SettingsSavedNotice({
+  message,
+  testId,
+}: {
+  readonly message: ReactNode;
+  readonly testId?: string;
+}): ReactElement {
+  return (
+    <>
+      <p data-testid={testId} className="webui-personalization-saved" aria-hidden="true">
+        {message}
+      </p>
+      <FeedbackAnnouncement message={message} />
+    </>
+  );
+}
+
+/**
  * The settings pages' dialog: a scrim, a surface, a header with a close
  * button, and a body the caller fills.
  *
@@ -134,19 +172,15 @@ export function SettingsDialog({
   // that offers a way out answers a dismissal by closing; one that does not — a
   // preview with no close button — consumes the attempt instead, so the press
   // cannot reach whatever is behind it.
-  const layerId = `settings-dialog-${useId()}`;
-  useOverlayLayer({
-    id: layerId,
-    order: 0,
-    active: true,
-    // `deferred` rather than `blocked`: a dialog that offers no way out still must
-    // not swallow presses aimed at what it holds (a nested dialog is a portal with
-    // no layer of its own), so the attempt is answered with "nothing to do" instead
-    // of being consumed.
-    dismissal: dismissOnMaskClick ? "dismissible" : "deferred",
-    onRoute: (route) => {
-      if (route === "request-close") onClose();
-    },
+  //
+  // `deferred` rather than `blocked`: a dialog that offers no way out still must
+  // not swallow presses aimed at what it holds (a nested dialog is a portal with
+  // no layer of its own), so the attempt is answered with "nothing to do" instead
+  // of being consumed. `dismissible: false` is that policy.
+  const layerId = useDialogLayer({
+    id: `settings-dialog-${useId()}`,
+    dismissible: dismissOnMaskClick,
+    onClose,
   });
 
   return (

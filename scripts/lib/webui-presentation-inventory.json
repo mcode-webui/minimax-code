@@ -1,1332 +1,187 @@
 {
   "version": 1,
   "entries": [
-    {
-      "path": "features/account/ui/AccountLoginDialog.tsx",
-      "label": "AccountLoginDialog",
-      "kind": "surface",
-      "families": [
-        "overlays",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract",
-      "_hit": [
-        "overlay-listeners"
-      ]
-    },
-    {
-      "path": "features/account/ui/ConversationUsageBanner.tsx",
-      "label": "ConversationUsageBanner",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content",
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "the cloud-quota banner: it states a business fact about quota, not a failure or an empty collection"
-    },
-    {
-      "path": "features/account/ui/UserMenu.tsx",
-      "label": "UserMenu",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/account/ui/UserMenuSignin.tsx",
-      "label": "UserMenuSignin",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/account/ui/UserMenuUsage.tsx",
-      "label": "UserMenuUsage",
-      "kind": "surface",
-      "families": [
-        "overlays",
-        "surfaces-and-content"
-      ],
-      "disposition": "business-exception",
-      "reason": "the account menu's quota fly-out: it borrows the shared surface for its look and is dismissed by the menu that owns it"
-    },
-    {
-      "path": "features/browser/ui/BrowserAuthorizationSwitches.public.tsx",
-      "label": "BrowserAuthorizationSwitches",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/browser/ui/BrowserPanel.public.tsx",
-      "label": "BrowserPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/browser/ui/BrowserPanelHost.public.tsx",
-      "label": "BrowserPanelHost",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "composition",
-      "reason": "host for the browser panel: it mounts the owner's surface and renders none itself"
-    },
-    {
-      "path": "features/browser/ui/BrowserSettingsPage.public.tsx",
-      "label": "BrowserSettingsPage",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/channel/ui/ChannelConnectPanel.public.tsx",
-      "label": "ChannelConnectPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the \u63a5\u5165 IM pane: it composes the channel's own sections and rows, none of which is a page, panel or feedback surface"
-    },
-    {
-      "path": "features/composer/ui/Composer.tsx",
-      "label": "Composer",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "composition",
-      "reason": "layout wrapper: it arranges the composer's parts and renders no surface of its own"
-    },
-    {
-      "path": "features/composer/ui/ComposerEditorStaging.tsx",
-      "label": "ComposerEditorStaging",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/ComposerMenus.tsx",
-      "label": "ComposerMenus",
-      "kind": "surface",
-      "families": [
-        "overlays",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/ComposerPermissionControl.tsx",
-      "label": "ComposerPermissionControl",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/ComposerProjectRow.tsx",
-      "label": "ComposerProjectRow",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/ComposerSubmissionControls.tsx",
-      "label": "ComposerSubmissionControls",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the toolbar's mode pills and the send-or-stop button: controls, not fields, and the conversation family owns the composer's toolbar"
-    },
-    {
-      "path": "features/composer/ui/ContextUsageIndicator.tsx",
-      "label": "ContextUsageIndicator",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content",
-        "feedback-and-recovery"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/QueuePanel.tsx",
-      "label": "QueuePanel",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the queued-turn list shown inside the composer: part of the conversation surface (ADR 0022), not a page or a feedback surface"
-    },
-    {
-      "path": "features/composer/ui/WebuiComposer.tsx",
-      "label": "WebuiComposer",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/composer/ui/slash-palette.ts",
-      "label": "slash-palette",
-      "kind": "concern",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "features/goal/ui/GoalBanner.public.tsx",
-      "label": "GoalBanner",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/interactions/ui/InteractionPanel.public.tsx",
-      "label": "InteractionPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/interactions/ui/PlanModeCards.public.tsx",
-      "label": "PlanModeCards",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/interactions/ui/PlanModeCards.tsx",
-      "label": "PlanModeCards",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/miniapp/ui/MiniAppAppsList.public.tsx",
-      "label": "MiniAppAppsList",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/miniapp/ui/MiniAppPicker.public.tsx",
-      "label": "MiniAppPicker",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/miniapp/ui/MiniAppStandalone.public.tsx",
-      "label": "MiniAppStandalone",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/miniapp/ui/MiniAppView.public.tsx",
-      "label": "MiniAppView",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/models/ui/ModelEffortSlider.tsx",
-      "label": "ModelEffortSlider",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "business-exception",
-      "reason": "the thinking scale: a control whose values are a model's reasoning levels, which no shared control expresses"
-    },
-    {
-      "path": "features/models/ui/ModelListPanel.tsx",
-      "label": "ModelListPanel",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "business-exception",
-      "reason": "the picker's catalogue state: it renders the provider-grouped list the picker owns, not a generic list contract"
-    },
-    {
-      "path": "features/models/ui/ModelPanel.tsx",
-      "label": "ModelPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the picker's first state: the model in use and its scale, shaped by the model catalogue"
-    },
-    {
-      "path": "features/models/ui/ModelPicker.public.tsx",
-      "label": "ModelPicker",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/models/ui/ProviderFormPanel.public.tsx",
-      "label": "ProviderFormPanel",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition",
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/AgentForm.tsx",
-      "label": "AgentForm",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/McpServerForm.tsx",
-      "label": "McpServerForm",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/PluginCatalogue.tsx",
-      "label": "PluginCatalogue",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/PluginImportDialog.tsx",
-      "label": "PluginImportDialog",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/PluginItemDialog.tsx",
-      "label": "PluginItemDialog",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract",
-      "_hit": [
-        "overlay-listeners"
-      ]
-    },
-    {
-      "path": "features/plugins/ui/PluginManagementList.tsx",
-      "label": "PluginManagementList",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/PluginMarketplace.tsx",
-      "label": "PluginMarketplace",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/plugins/ui/SkillForm.tsx",
-      "label": "SkillForm",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/remote-control/ui/RemoteControlPanel.public.tsx",
-      "label": "RemoteControlPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the \u8fdc\u7a0b\u63a7\u5236 tab body: it renders the remote control's own layout, which ADR 0025 keeps with the remote feature"
-    },
-    {
-      "path": "features/remote/ui/RemotePage.public.tsx",
-      "label": "RemotePage",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/remote/ui/remote-tabs.tsx",
-      "label": "remote-tabs",
-      "kind": "concern",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "composition",
-      "reason": "renders the \u8fdc\u7a0b page's bodies and switches between them; the bodies own their surfaces"
-    },
-    {
-      "path": "features/review/ui/ReviewSettingsPage.public.tsx",
-      "label": "ReviewSettingsPage",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/scheduling/ui/SchedulingPanel.public.tsx",
-      "label": "SchedulingPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/scheduling/ui/scheduling-editor.tsx",
-      "label": "scheduling-editor",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "business-exception",
-      "reason": "the scheduled-task editor: it renders one task's fields and history, shaped by the schedule's model"
-    },
-    {
-      "path": "features/sessions/ui/ExternalDeletionDraftNotice.public.tsx",
-      "label": "ExternalDeletionDraftNotice",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "a notice about one session's fate, rendered where that session was: it is a state of the rail, not a feedback surface"
-    },
-    {
-      "path": "features/sessions/ui/LeftRail.tsx",
-      "label": "LeftRail",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "business-exception",
-      "reason": "the rail's column: it arranges the rail's regions and owns no surface of its own"
-    },
-    {
-      "path": "features/sessions/ui/ProjectList.tsx",
-      "label": "ProjectList",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/sessions/ui/RailRow.tsx",
-      "label": "RailRow",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "business-exception",
-      "reason": "one rail row: a row is the navigation family's own leaf here, shaped by what it lists"
-    },
-    {
-      "path": "features/sessions/ui/SessionRail.tsx",
-      "label": "SessionRail",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "newly-adopted-contract",
-      "_hit": [
-        "ContextMenu"
-      ]
-    },
-    {
-      "path": "features/sessions/ui/SessionRailRegion.tsx",
-      "label": "SessionRailRegion",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "business-exception",
-      "reason": "the session rail region: it composes the rail's list, groups and menus and owns the rail's own layout"
-    },
-    {
-      "path": "features/sessions/ui/project-expansion.tsx",
-      "label": "project-expansion",
-      "kind": "concern",
-      "families": [
-        "navigation-and-selection",
-        "structure"
-      ],
-      "disposition": "composition",
-      "reason": "a projection extracted from the session rail: expansion state, no markup of its own"
-    },
-    {
-      "path": "features/sessions/ui/rail-context-menu.tsx",
-      "label": "rail-context-menu",
-      "kind": "concern",
-      "families": [
-        "navigation-and-selection",
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract",
-      "_hit": [
-        "ContextMenu"
-      ]
-    },
-    {
-      "path": "features/sessions/ui/session-activity-meta.tsx",
-      "label": "session-activity-meta",
-      "kind": "concern",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "composition",
-      "reason": "a projection extracted from the session rail: the activity line's data, no surface"
-    },
-    {
-      "path": "features/settings/ui/AccountUsageSettings.tsx",
-      "label": "AccountUsageSettings",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/GlobalInstructionsSection.tsx",
-      "label": "GlobalInstructionsSection",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/MemoryManagerDialog.tsx",
-      "label": "MemoryManagerDialog",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/MemorySection.tsx",
-      "label": "MemorySection",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/PersonalizationSettings.tsx",
-      "label": "PersonalizationSettings",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/SettingsModal.public.tsx",
-      "label": "SettingsModal",
-      "kind": "surface",
-      "families": [
-        "overlays",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/SettingsModal.tsx",
-      "label": "SettingsModal",
-      "kind": "surface",
-      "families": [
-        "overlays",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/ShortcutsSettings.tsx",
-      "label": "ShortcutsSettings",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/UsageHeatmap.tsx",
-      "label": "UsageHeatmap",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "business-exception",
-      "reason": "the usage heat map: a data visualisation whose geometry is its content"
-    },
-    {
-      "path": "features/settings/ui/UsageModelSettings.tsx",
-      "label": "UsageModelSettings",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/UsageResetCards.tsx",
-      "label": "UsageResetCards",
-      "kind": "surface",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/UserProfileSection.tsx",
-      "label": "UserProfileSection",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/settings/ui/account-usage-glyphs.tsx",
-      "label": "account-usage-glyphs",
-      "kind": "concern",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "composition",
-      "reason": "the account page's icon set; icons are the foundations vocabulary, not a surface"
-    },
-    {
-      "path": "features/settings/ui/account-usage-share-image.ts",
-      "label": "account-usage-share-image",
-      "kind": "concern",
-      "families": [
-        "surfaces-and-content"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "features/settings/ui/settings-atoms.tsx",
-      "label": "settings-atoms",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/ssh/ui/SshPanel.public.tsx",
-      "label": "SshPanel",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/ssh/ui/ssh-host-form.tsx",
-      "label": "ssh-host-form",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition",
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "an implicit label that wraps its own control: the association already exists in the markup, and these fields carry no description or error for the field contract to place"
-    },
-    {
-      "path": "features/ssh/ui/ssh-project-form.tsx",
-      "label": "ssh-project-form",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "business-exception",
-      "reason": "the host picker is a `<select>` inside its own label: the association is in the markup, and no description or error is shown beside it"
-    },
-    {
-      "path": "features/ssh/ui/ssh-terminal-view.tsx",
-      "label": "ssh-terminal-view",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "a terminal: it owns every pixel of its viewport and scrollback, which no shared frame can express"
-    },
-    {
-      "path": "features/transcript/ui/ActivityIndicator.tsx",
-      "label": "ActivityIndicator",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the conversation's own thinking pulse: the feedback family's busy indicator would put a generic spinner where the transcript shows its own rhythm"
-    },
-    {
-      "path": "features/transcript/ui/AssistantBody.tsx",
-      "label": "AssistantBody",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "renders an assistant message's content (text, diffs, widgets); ADR 0022 keeps the transcript's body layout with the conversation family"
-    },
-    {
-      "path": "features/transcript/ui/DiffCard.tsx",
-      "label": "DiffCard",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/transcript/ui/MessageActions.tsx",
-      "label": "MessageActions",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/transcript/ui/MessageAttachments.tsx",
-      "label": "MessageAttachments",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "renders the attachments under an assistant message as part of that message, inside the conversation family's layout"
-    },
-    {
-      "path": "features/transcript/ui/MessageItem.tsx",
-      "label": "MessageItem",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/transcript/ui/OutputError.public.tsx",
-      "label": "OutputError",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "an error footer inside the last assistant turn: it is part of the message, not a surface that reports its own failure"
-    },
-    {
-      "path": "features/transcript/ui/PlanDelivery.tsx",
-      "label": "PlanDelivery",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the transcript's plan-delivery card: a message-shaped surface owned by the conversation family"
-    },
-    {
-      "path": "features/transcript/ui/QuestionnaireResponse.tsx",
-      "label": "QuestionnaireResponse",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "a historical questionnaire answer rendered as a message; it is content, not a live control"
-    },
-    {
-      "path": "features/transcript/ui/SessionTranscript.tsx",
-      "label": "SessionTranscript",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/transcript/ui/Transcript.tsx",
-      "label": "Transcript",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "composition",
-      "reason": "layout wrapper: the real transcript is `WebuiSessionTranscript`, which owns the rendering"
-    },
-    {
-      "path": "features/transcript/ui/TranscriptPrimitives.tsx",
-      "label": "TranscriptPrimitives",
-      "kind": "surface",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the transcript's presentation leaves; they exist precisely because the conversation family keeps its own markup"
-    },
-    {
-      "path": "features/transcript/ui/TranscriptSkeletons.tsx",
-      "label": "TranscriptSkeletons",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the transcript's first-paint placeholder, shaped like a message rather than like a generic skeleton"
-    },
-    {
-      "path": "features/transcript/ui/TurnNavigator.tsx",
-      "label": "TurnNavigator",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "the transcript's turn tick strip and hover preview: navigation that belongs to the conversation's own geometry"
-    },
-    {
-      "path": "features/transcript/ui/markdown.public.tsx",
-      "label": "markdown",
-      "kind": "concern",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "markdown rendering for message content; it has no surface of its own and no family contract to adopt"
-    },
-    {
-      "path": "features/transcript/ui/webui-mermaid.tsx",
-      "label": "webui-mermaid",
-      "kind": "concern",
-      "families": [
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "business-exception",
-      "reason": "mermaid rendering for message content, inside the conversation family's layout"
-    },
-    {
-      "path": "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx",
-      "label": "WebuiWorkspaceDirectoryBrowser",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx",
-      "label": "WebuiWorkspaceTabStrip",
-      "kind": "surface",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceArchiveView.tsx",
-      "label": "WorkspaceArchiveView",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceCanvas.tsx",
-      "label": "WorkspaceCanvas",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceFileTree.tsx",
-      "label": "WorkspaceFileTree",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceHtmlPreview.tsx",
-      "label": "WorkspaceHtmlPreview",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceMediaPreview.tsx",
-      "label": "WorkspaceMediaPreview",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspacePanelControls.tsx",
-      "label": "WorkspacePanelControls",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition",
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the workspace panel's own control strip: it is part of the panel's header, not a page or panel frame"
-    },
-    {
-      "path": "features/workspace/ui/WorkspacePanels.tsx",
-      "label": "WorkspacePanels",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "features/workspace/ui/WorkspaceProgressPanel.tsx",
-      "label": "WorkspaceProgressPanel",
-      "kind": "surface",
-      "families": [
-        "structure",
-        "feedback-and-recovery"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "shell/ArchonPage.tsx",
-      "label": "ArchonPage",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the application root's page: it composes the shell's regions and owns the client's frame (ADR 0016)"
-    },
-    {
-      "path": "shell/ArchonShell.tsx",
-      "label": "ArchonShell",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "composition",
-      "reason": "layout wrapper: the two-column shell is assembled inline in the application root"
-    },
-    {
-      "path": "shell/ConnectionStatus.tsx",
-      "label": "ConnectionStatus",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "the shell's connection indicator: it reports transport state, which the feedback family has no contract for"
-    },
-    {
-      "path": "shell/ConversationSurface.tsx",
-      "label": "ConversationSurface",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the shell's conversation column: it arranges the transcript, composer and panels (ADR 0016)"
-    },
-    {
-      "path": "shell/NotFound.tsx",
-      "label": "NotFound",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the client's not-found page: a route outcome, rendered once, outside every business surface"
-    },
-    {
-      "path": "shell/StartupFallback.tsx",
-      "label": "StartupFallback",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "renders when the client never mounted: it must not depend on the family that failed to mount"
-    },
-    {
-      "path": "shell/WebuiClientFoundationApp.tsx",
-      "label": "WebuiClientFoundationApp",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "the shell itself: rail, main column and session wiring (ADR 0016)"
-    },
-    {
-      "path": "shell/WebuiErrorBoundary.tsx",
-      "label": "WebuiErrorBoundary",
-      "kind": "surface",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "business-exception",
-      "reason": "the last-resort boundary: it must not depend on the family that threw"
-    },
-    {
-      "path": "shell/WebuiZoneBoundary.tsx",
-      "label": "WebuiZoneBoundary",
-      "kind": "surface",
-      "families": [
-        "structure"
-      ],
-      "disposition": "business-exception",
-      "reason": "a zone boundary: it catches a region's failure and reports it in place, shaped to that zone"
-    },
-    {
-      "path": "shell/icons.tsx",
-      "label": "icons",
-      "kind": "concern",
-      "families": [
-        "foundations"
-      ],
-      "disposition": "composition",
-      "reason": "the shared icon vocabulary itself: it is the foundations asset every other module reads"
-    },
-    {
-      "path": "shell/use-new-task-workspace.ts",
-      "label": "use-new-task-workspace",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "shell/use-selected-session.ts",
-      "label": "use-selected-session",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "shell/use-session-rail-actions.ts",
-      "label": "use-session-rail-actions",
-      "kind": "concern",
-      "families": [
-        "navigation-and-selection"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "shell/use-shell-activity-wiring.ts",
-      "label": "use-shell-activity-wiring",
-      "kind": "concern",
-      "families": [
-        "structure",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "shell/use-workspace-panel-session.ts",
-      "label": "use-workspace-panel-session",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "composition"
-    },
-    {
-      "path": "ui/ContextMenu.tsx",
-      "label": "ContextMenu",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/Dropdown.tsx",
-      "label": "Dropdown",
-      "kind": "surface",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/ToggleSwitch.tsx",
-      "label": "ToggleSwitch",
-      "kind": "surface",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/activity-phrase.ts",
-      "label": "activity-phrase",
-      "kind": "concern",
-      "families": [
-        "foundations",
-        "conversation-and-workspace-interaction"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/button.tsx",
-      "label": "button",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared button and icon-button contract (ADR 0028 \u00a7 Shared contracts): it owns the applicable states and their appearance, and a caller owns layout, meaning and lifetime"
-    },
-    {
-      "path": "ui/content-page.tsx",
-      "label": "ContentPage / PanelFrame",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "ui/feedback.tsx",
-      "label": "Feedback family",
-      "kind": "concern",
-      "families": [
-        "feedback-and-recovery"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "ui/field.tsx",
-      "label": "WebuiField",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "ui/form-atoms.tsx",
-      "label": "form-atoms",
-      "kind": "concern",
-      "families": [
-        "controls-and-form-composition"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/layout-thresholds.ts",
-      "label": "layout-thresholds",
-      "kind": "concern",
-      "families": [
-        "structure"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/overlay-coordinator.tsx",
-      "label": "overlay-coordinator",
-      "kind": "concern",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract",
-      "reason": "the coordinator the shared presentation layer adopts for managed overlays (ADR 0028 \u00a7 Overlay coordination); it owns registration and routing, and no business state"
-    },
-    {
-      "path": "ui/overlay-listeners.tsx",
-      "label": "Overlay listener host",
-      "kind": "concern",
-      "families": [
-        "overlays"
-      ],
-      "disposition": "newly-adopted-contract"
-    },
-    {
-      "path": "ui/settings-glyphs.tsx",
-      "label": "settings-glyphs",
-      "kind": "concern",
-      "families": [
-        "foundations"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    },
-    {
-      "path": "ui/settings-layout.tsx",
-      "label": "settings-layout",
-      "kind": "concern",
-      "families": [
-        "structure",
-        "surfaces-and-content"
-      ],
-      "disposition": "existing-shared-contract",
-      "reason": "the shared presentation home; this module is one of the contracts the rest of the client is classified against"
-    }
+    {"path":"features/account/ui/AccountLoginDialog.tsx","label":"AccountLoginDialog","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/account/ui/ConversationUsageBanner.tsx","label":"ConversationUsageBanner","kind":"surface","families":["surfaces-and-content","feedback-and-recovery"],"disposition":"business-exception","reason":"the cloud-quota banner: it states a business fact about quota, not a failure or an empty collection"},
+    {"path":"features/account/ui/UserMenu.tsx","label":"UserMenu","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/account/ui/UserMenuSignin.tsx","label":"UserMenuSignin","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/account/ui/UserMenuUsage.tsx","label":"UserMenuUsage","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"business-exception","reason":"the account menu's quota fly-out: it borrows the shared surface for its look and is dismissed by the menu that owns it"},
+    {"path":"features/browser/ui/BrowserAuthorizationSwitches.public.tsx","label":"BrowserAuthorizationSwitches","kind":"surface","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
+    {"path":"features/browser/ui/BrowserPanel.public.tsx","label":"BrowserPanel","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/browser/ui/BrowserPanelHost.public.tsx","label":"BrowserPanelHost","kind":"surface","families":["structure"],"disposition":"composition","reason":"host for the browser panel: it mounts the owner's surface and renders none itself"},
+    {"path":"features/browser/ui/BrowserSettingsPage.public.tsx","label":"BrowserSettingsPage","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/channel/ui/ChannelConnectPanel.public.tsx","label":"ChannelConnectPanel","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the 接入 IM pane: it composes the channel's own sections and rows, none of which is a page, panel or feedback surface"},
+    {"path":"features/composer/ui/Composer.tsx","label":"Composer","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"composition","reason":"layout wrapper: it arranges the composer's parts and renders no surface of its own"},
+    {"path":"features/composer/ui/ComposerEditorStaging.tsx","label":"ComposerEditorStaging","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/ComposerMenus.tsx","label":"ComposerMenus","kind":"surface","families":["overlays","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/ComposerPermissionControl.tsx","label":"ComposerPermissionControl","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/ComposerProjectRow.tsx","label":"ComposerProjectRow","kind":"surface","families":["navigation-and-selection","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/ComposerSubmissionControls.tsx","label":"ComposerSubmissionControls","kind":"surface","families":["controls-and-form-composition","conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the toolbar's mode pills and the send-or-stop button: controls, not fields, and the conversation family owns the composer's toolbar"},
+    {"path":"features/composer/ui/ContextUsageIndicator.tsx","label":"ContextUsageIndicator","kind":"surface","families":["surfaces-and-content","feedback-and-recovery"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/QueuePanel.tsx","label":"QueuePanel","kind":"surface","families":["structure","conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the queued-turn list shown inside the composer: part of the conversation surface (ADR 0022), not a page or a feedback surface"},
+    {"path":"features/composer/ui/WebuiComposer.tsx","label":"WebuiComposer","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/composer/ui/slash-palette.ts","label":"slash-palette","kind":"concern","families":["navigation-and-selection"],"disposition":"composition"},
+    {"path":"features/goal/ui/GoalBanner.public.tsx","label":"GoalBanner","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/interactions/ui/InteractionPanel.public.tsx","label":"InteractionPanel","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/interactions/ui/PlanModeCards.public.tsx","label":"PlanModeCards","kind":"surface","families":["surfaces-and-content","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/interactions/ui/PlanModeCards.tsx","label":"PlanModeCards","kind":"surface","families":["surfaces-and-content","conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/miniapp/ui/MiniAppAppsList.public.tsx","label":"MiniAppAppsList","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/miniapp/ui/MiniAppPicker.public.tsx","label":"MiniAppPicker","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/miniapp/ui/MiniAppStandalone.public.tsx","label":"MiniAppStandalone","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/miniapp/ui/MiniAppView.public.tsx","label":"MiniAppView","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/models/ui/ModelEffortSlider.tsx","label":"ModelEffortSlider","kind":"surface","families":["controls-and-form-composition"],"disposition":"business-exception","reason":"the thinking scale: a control whose values are a model's reasoning levels, which no shared control expresses"},
+    {"path":"features/models/ui/ModelListPanel.tsx","label":"ModelListPanel","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"business-exception","reason":"the picker's catalogue state: it renders the provider-grouped list the picker owns, not a generic list contract"},
+    {"path":"features/models/ui/ModelPanel.tsx","label":"ModelPanel","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the picker's first state: the model in use and its scale, shaped by the model catalogue"},
+    {"path":"features/models/ui/ModelPicker.public.tsx","label":"ModelPicker","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/models/ui/ProviderFormPanel.public.tsx","label":"ProviderFormPanel","kind":"surface","families":["controls-and-form-composition","structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/AgentForm.tsx","label":"AgentForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/McpServerForm.tsx","label":"McpServerForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/PluginCatalogue.tsx","label":"PluginCatalogue","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/PluginImportDialog.tsx","label":"PluginImportDialog","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/PluginItemDialog.tsx","label":"PluginItemDialog","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/PluginManagementList.tsx","label":"PluginManagementList","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/PluginMarketplace.tsx","label":"PluginMarketplace","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/plugins/ui/SkillForm.tsx","label":"SkillForm","kind":"surface","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
+    {"path":"features/remote-control/ui/RemoteControlPanel.public.tsx","label":"RemoteControlPanel","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the 远程控制 tab body: it renders the remote control's own layout, which ADR 0025 keeps with the remote feature"},
+    {"path":"features/remote/ui/RemotePage.public.tsx","label":"RemotePage","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/remote/ui/remote-tabs.tsx","label":"remote-tabs","kind":"concern","families":["navigation-and-selection"],"disposition":"composition","reason":"renders the 远程 page's bodies and switches between them; the bodies own their surfaces"},
+    {"path":"features/review/ui/ReviewSettingsPage.public.tsx","label":"ReviewSettingsPage","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/scheduling/ui/SchedulingPanel.public.tsx","label":"SchedulingPanel","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/scheduling/ui/scheduling-editor.tsx","label":"scheduling-editor","kind":"concern","families":["controls-and-form-composition"],"disposition":"business-exception","reason":"the scheduled-task editor: it renders one task's fields and history, shaped by the schedule's model"},
+    {"path":"features/sessions/ui/ExternalDeletionDraftNotice.public.tsx","label":"ExternalDeletionDraftNotice","kind":"surface","families":["feedback-and-recovery"],"disposition":"business-exception","reason":"a notice about one session's fate, rendered where that session was: it is a state of the rail, not a feedback surface"},
+    {"path":"features/sessions/ui/LeftRail.tsx","label":"LeftRail","kind":"surface","families":["navigation-and-selection"],"disposition":"business-exception","reason":"the rail's column: it arranges the rail's regions and owns no surface of its own"},
+    {"path":"features/sessions/ui/ProjectList.tsx","label":"ProjectList","kind":"surface","families":["navigation-and-selection","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/sessions/ui/RailRow.tsx","label":"RailRow","kind":"surface","families":["navigation-and-selection"],"disposition":"business-exception","reason":"one rail row: a row is the navigation family's own leaf here, shaped by what it lists"},
+    {"path":"features/sessions/ui/SessionRail.tsx","label":"SessionRail","kind":"surface","families":["navigation-and-selection"],"disposition":"composition","reason":"A scaffold that arranges ProjectList, RailRow and RailContextMenu. The shared menu it mounts belongs to rail-context-menu.tsx, which is where that adoption is recorded."},
+    {"path":"features/sessions/ui/SessionRailRegion.tsx","label":"SessionRailRegion","kind":"surface","families":["navigation-and-selection"],"disposition":"business-exception","reason":"the session rail region: it composes the rail's list, groups and menus and owns the rail's own layout"},
+    {"path":"features/sessions/ui/project-expansion.tsx","label":"project-expansion","kind":"concern","families":["navigation-and-selection","structure"],"disposition":"composition","reason":"a projection extracted from the session rail: expansion state, no markup of its own"},
+    {"path":"features/sessions/ui/rail-context-menu.tsx","label":"rail-context-menu","kind":"concern","families":["navigation-and-selection","overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/sessions/ui/session-activity-meta.tsx","label":"session-activity-meta","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"composition","reason":"a projection extracted from the session rail: the activity line's data, no surface"},
+    {"path":"features/settings/ui/AccountUsageSettings.tsx","label":"AccountUsageSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/GlobalInstructionsSection.tsx","label":"GlobalInstructionsSection","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/MemoryManagerDialog.tsx","label":"MemoryManagerDialog","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/MemorySection.tsx","label":"MemorySection","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/PersonalizationSettings.tsx","label":"PersonalizationSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/SettingsModal.public.tsx","label":"SettingsModal","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/SettingsModal.tsx","label":"SettingsModal","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/ShortcutsSettings.tsx","label":"ShortcutsSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/UsageHeatmap.tsx","label":"UsageHeatmap","kind":"surface","families":["surfaces-and-content"],"disposition":"business-exception","reason":"the usage heat map: a data visualisation whose geometry is its content"},
+    {"path":"features/settings/ui/UsageModelSettings.tsx","label":"UsageModelSettings","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/UsageResetCards.tsx","label":"UsageResetCards","kind":"surface","families":["surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/UserProfileSection.tsx","label":"UserProfileSection","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/settings/ui/account-usage-glyphs.tsx","label":"account-usage-glyphs","kind":"concern","families":["surfaces-and-content"],"disposition":"composition","reason":"the account page's icon set; icons are the foundations vocabulary, not a surface"},
+    {"path":"features/settings/ui/account-usage-share-image.ts","label":"account-usage-share-image","kind":"concern","families":["surfaces-and-content"],"disposition":"composition"},
+    {"path":"features/settings/ui/settings-atoms.tsx","label":"settings-atoms","kind":"concern","families":["controls-and-form-composition","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/ssh/ui/SshPanel.public.tsx","label":"SshPanel","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/ssh/ui/ssh-host-form.tsx","label":"ssh-host-form","kind":"concern","families":["controls-and-form-composition","structure"],"disposition":"business-exception","reason":"an implicit label that wraps its own control: the association already exists in the markup, and these fields carry no description or error for the field contract to place"},
+    {"path":"features/ssh/ui/ssh-project-form.tsx","label":"ssh-project-form","kind":"concern","families":["controls-and-form-composition"],"disposition":"business-exception","reason":"the host picker is a `<select>` inside its own label: the association is in the markup, and no description or error is shown beside it"},
+    {"path":"features/ssh/ui/ssh-terminal-view.tsx","label":"ssh-terminal-view","kind":"concern","families":["structure"],"disposition":"business-exception","reason":"a terminal: it owns every pixel of its viewport and scrollback, which no shared frame can express"},
+    {"path":"features/transcript/ui/ActivityIndicator.tsx","label":"ActivityIndicator","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the conversation's own thinking pulse: the feedback family's busy indicator would put a generic spinner where the transcript shows its own rhythm"},
+    {"path":"features/transcript/ui/AssistantBody.tsx","label":"AssistantBody","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"renders an assistant message's content (text, diffs, widgets); ADR 0022 keeps the transcript's body layout with the conversation family"},
+    {"path":"features/transcript/ui/DiffCard.tsx","label":"DiffCard","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/transcript/ui/MessageActions.tsx","label":"MessageActions","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/transcript/ui/MessageAttachments.tsx","label":"MessageAttachments","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"renders the attachments under an assistant message as part of that message, inside the conversation family's layout"},
+    {"path":"features/transcript/ui/MessageItem.tsx","label":"MessageItem","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/transcript/ui/OutputError.public.tsx","label":"OutputError","kind":"surface","families":["feedback-and-recovery"],"disposition":"business-exception","reason":"an error footer inside the last assistant turn: it is part of the message, not a surface that reports its own failure"},
+    {"path":"features/transcript/ui/PlanDelivery.tsx","label":"PlanDelivery","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the transcript's plan-delivery card: a message-shaped surface owned by the conversation family"},
+    {"path":"features/transcript/ui/QuestionnaireResponse.tsx","label":"QuestionnaireResponse","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"a historical questionnaire answer rendered as a message; it is content, not a live control"},
+    {"path":"features/transcript/ui/SessionTranscript.tsx","label":"SessionTranscript","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"newly-adopted-contract"},
+    {"path":"features/transcript/ui/Transcript.tsx","label":"Transcript","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"composition","reason":"layout wrapper: the real transcript is `WebuiSessionTranscript`, which owns the rendering"},
+    {"path":"features/transcript/ui/TranscriptPrimitives.tsx","label":"TranscriptPrimitives","kind":"surface","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the transcript's presentation leaves; they exist precisely because the conversation family keeps its own markup"},
+    {"path":"features/transcript/ui/TranscriptSkeletons.tsx","label":"TranscriptSkeletons","kind":"surface","families":["feedback-and-recovery","conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the transcript's first-paint placeholder, shaped like a message rather than like a generic skeleton"},
+    {"path":"features/transcript/ui/TurnNavigator.tsx","label":"TurnNavigator","kind":"surface","families":["navigation-and-selection","conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"the transcript's turn tick strip and hover preview: navigation that belongs to the conversation's own geometry"},
+    {"path":"features/transcript/ui/markdown.public.tsx","label":"markdown","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"markdown rendering for message content; it has no surface of its own and no family contract to adopt"},
+    {"path":"features/transcript/ui/webui-mermaid.tsx","label":"webui-mermaid","kind":"concern","families":["conversation-and-workspace-interaction"],"disposition":"business-exception","reason":"mermaid rendering for message content, inside the conversation family's layout"},
+    {"path":"features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx","label":"WebuiWorkspaceDirectoryBrowser","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx","label":"WebuiWorkspaceTabStrip","kind":"surface","families":["navigation-and-selection"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceArchiveView.tsx","label":"WorkspaceArchiveView","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceCanvas.tsx","label":"WorkspaceCanvas","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceFileTree.tsx","label":"WorkspaceFileTree","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceHtmlPreview.tsx","label":"WorkspaceHtmlPreview","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceMediaPreview.tsx","label":"WorkspaceMediaPreview","kind":"surface","families":["structure","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspacePanelControls.tsx","label":"WorkspacePanelControls","kind":"surface","families":["controls-and-form-composition","structure"],"disposition":"business-exception","reason":"the workspace panel's own control strip: it is part of the panel's header, not a page or panel frame"},
+    {"path":"features/workspace/ui/WorkspacePanels.tsx","label":"WorkspacePanels","kind":"surface","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"features/workspace/ui/WorkspaceProgressPanel.tsx","label":"WorkspaceProgressPanel","kind":"surface","families":["structure","feedback-and-recovery"],"disposition":"newly-adopted-contract"},
+    {"path":"shell/ArchonPage.tsx","label":"ArchonPage","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the application root's page: it composes the shell's regions and owns the client's frame (ADR 0016)"},
+    {"path":"shell/ArchonShell.tsx","label":"ArchonShell","kind":"surface","families":["structure"],"disposition":"composition","reason":"layout wrapper: the two-column shell is assembled inline in the application root"},
+    {"path":"shell/ConnectionStatus.tsx","label":"ConnectionStatus","kind":"surface","families":["feedback-and-recovery"],"disposition":"business-exception","reason":"the shell's connection indicator: it reports transport state, which the feedback family has no contract for"},
+    {"path":"shell/ConversationSurface.tsx","label":"ConversationSurface","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the shell's conversation column: it arranges the transcript, composer and panels (ADR 0016)"},
+    {"path":"shell/NotFound.tsx","label":"NotFound","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the client's not-found page: a route outcome, rendered once, outside every business surface"},
+    {"path":"shell/StartupFallback.tsx","label":"StartupFallback","kind":"surface","families":["feedback-and-recovery"],"disposition":"business-exception","reason":"renders when the client never mounted: it must not depend on the family that failed to mount"},
+    {"path":"shell/WebuiClientFoundationApp.tsx","label":"WebuiClientFoundationApp","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"the shell itself: rail, main column and session wiring (ADR 0016)"},
+    {"path":"shell/WebuiErrorBoundary.tsx","label":"WebuiErrorBoundary","kind":"surface","families":["feedback-and-recovery"],"disposition":"business-exception","reason":"the last-resort boundary: it must not depend on the family that threw"},
+    {"path":"shell/WebuiZoneBoundary.tsx","label":"WebuiZoneBoundary","kind":"surface","families":["structure"],"disposition":"business-exception","reason":"a zone boundary: it catches a region's failure and reports it in place, shaped to that zone"},
+    {"path":"shell/icons.tsx","label":"icons","kind":"concern","families":["foundations"],"disposition":"composition","reason":"the shared icon vocabulary itself: it is the foundations asset every other module reads"},
+    {"path":"shell/use-new-task-workspace.ts","label":"use-new-task-workspace","kind":"concern","families":["structure"],"disposition":"composition"},
+    {"path":"shell/use-selected-session.ts","label":"use-selected-session","kind":"concern","families":["structure"],"disposition":"composition"},
+    {"path":"shell/use-session-rail-actions.ts","label":"use-session-rail-actions","kind":"concern","families":["navigation-and-selection"],"disposition":"composition"},
+    {"path":"shell/use-shell-activity-wiring.ts","label":"use-shell-activity-wiring","kind":"concern","families":["structure","conversation-and-workspace-interaction"],"disposition":"composition"},
+    {"path":"shell/use-workspace-panel-session.ts","label":"use-workspace-panel-session","kind":"concern","families":["structure"],"disposition":"composition"},
+    {"path":"ui/ContextMenu.tsx","label":"ContextMenu","kind":"surface","families":["overlays"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/Dropdown.tsx","label":"Dropdown","kind":"surface","families":["overlays"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/ToggleSwitch.tsx","label":"ToggleSwitch","kind":"surface","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/activity-phrase.ts","label":"activity-phrase","kind":"concern","families":["foundations","conversation-and-workspace-interaction"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/button.tsx","label":"button","kind":"concern","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared button and icon-button contract (ADR 0028 § Shared contracts): it owns the applicable states and their appearance, and a caller owns layout, meaning and lifetime"},
+    {"path":"ui/content-page.tsx","label":"ContentPage / PanelFrame","kind":"concern","families":["structure"],"disposition":"newly-adopted-contract"},
+    {"path":"ui/feedback.tsx","label":"Feedback family","kind":"concern","families":["feedback-and-recovery"],"disposition":"newly-adopted-contract"},
+    {"path":"ui/field.tsx","label":"WebuiField","kind":"concern","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract"},
+    {"path":"ui/form-atoms.tsx","label":"form-atoms","kind":"concern","families":["controls-and-form-composition"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/layout-thresholds.ts","label":"layout-thresholds","kind":"concern","families":["structure"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/menu-item.tsx","label":"WebuiMenuItem","kind":"concern","families":["controls-and-form-composition"],"disposition":"newly-adopted-contract","reason":"the shared menu-row contract (ADR 0028 § Shared contracts): four businesses each declared the same row in their own stylesheet, so the row is now stated once, with its glyph slot, its label and its trailing affordance named"},
+    {"path":"ui/overlay-coordinator.tsx","label":"overlay-coordinator","kind":"concern","families":["overlays"],"disposition":"newly-adopted-contract","reason":"the coordinator the shared presentation layer adopts for managed overlays (ADR 0028 § Overlay coordination); it owns registration and routing, and no business state"},
+    {"path":"ui/overlay-listeners.tsx","label":"Overlay listener host","kind":"concern","families":["overlays"],"disposition":"newly-adopted-contract"},
+    {"path":"ui/settings-glyphs.tsx","label":"settings-glyphs","kind":"concern","families":["foundations"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"},
+    {"path":"ui/settings-layout.tsx","label":"settings-layout","kind":"concern","families":["structure","surfaces-and-content"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"}
   ],
   "reviewed": {
-    "features/account/ui/AccountLoginDialog.tsx": "acee4bda441eb71d",
-    "features/account/ui/ConversationUsageBanner.tsx": "fd47e5ea2fd8ba97",
-    "features/account/ui/UserMenu.tsx": "a49569194c91cb20",
-    "features/account/ui/UserMenuSignin.tsx": "179da60a60454130",
-    "features/account/ui/UserMenuUsage.tsx": "b2ada46fee9cfa84",
+    "features/account/ui/AccountLoginDialog.tsx": "85f2a6ef7ac34dd7",
+    "features/account/ui/ConversationUsageBanner.tsx": "bec9e19ba6195b36",
+    "features/account/ui/UserMenu.tsx": "0d1138186373bff9",
+    "features/account/ui/UserMenuSignin.tsx": "df7c104622e2086c",
+    "features/account/ui/UserMenuUsage.tsx": "80e5b941868a0faa",
     "features/browser/ui/BrowserAuthorizationSwitches.public.tsx": "095547605ed8c922",
-    "features/browser/ui/BrowserPanel.public.tsx": "00863201bceeda43",
+    "features/browser/ui/BrowserPanel.public.tsx": "7735ddb23145af99",
     "features/browser/ui/BrowserPanelHost.public.tsx": "2505c0863be5eb9b",
     "features/browser/ui/BrowserSettingsPage.public.tsx": "e85c39ba256266c7",
-    "features/channel/ui/ChannelConnectPanel.public.tsx": "b5687ff46b597059",
+    "features/channel/ui/ChannelConnectPanel.public.tsx": "85ca4ba5d5e26a7d",
     "features/composer/ui/Composer.tsx": "8407f757f441a706",
-    "features/composer/ui/ComposerEditorStaging.tsx": "03c6d39dd79f035b",
-    "features/composer/ui/ComposerMenus.tsx": "791a4d32fa3c591a",
+    "features/composer/ui/ComposerEditorStaging.tsx": "d4085dd387d95f18",
+    "features/composer/ui/ComposerMenus.tsx": "c221b26a52157279",
     "features/composer/ui/ComposerPermissionControl.tsx": "769388e03594533e",
     "features/composer/ui/ComposerProjectRow.tsx": "c782aaedeab88d85",
     "features/composer/ui/ComposerSubmissionControls.tsx": "2a9d6d2981e05b78",
-    "features/composer/ui/ContextUsageIndicator.tsx": "dc9f19c423653d83",
-    "features/composer/ui/QueuePanel.tsx": "642dc9465f40f34b",
+    "features/composer/ui/ContextUsageIndicator.tsx": "0aefc2f16a2e3295",
+    "features/composer/ui/QueuePanel.tsx": "0e3854d005d925f9",
     "features/composer/ui/WebuiComposer.tsx": "1ef2cb65ccfa3a13",
     "features/composer/ui/slash-palette.ts": "b1201099fcd9afd6",
-    "features/goal/ui/GoalBanner.public.tsx": "f3a9566e44de63cf",
-    "features/interactions/ui/InteractionPanel.public.tsx": "c06f645291fdd854",
-    "features/interactions/ui/PlanModeCards.public.tsx": "357c57e8a8d2e88e",
+    "features/goal/ui/GoalBanner.public.tsx": "e4e05ce8ebb904cd",
+    "features/interactions/ui/InteractionPanel.public.tsx": "1ffc6b78b6ff91d7",
+    "features/interactions/ui/PlanModeCards.public.tsx": "14f4c988a6814a2c",
     "features/interactions/ui/PlanModeCards.tsx": "244ebba8f1745840",
     "features/miniapp/ui/MiniAppAppsList.public.tsx": "6b0b79e9f1310553",
-    "features/miniapp/ui/MiniAppPicker.public.tsx": "dd8452124ad02769",
-    "features/miniapp/ui/MiniAppStandalone.public.tsx": "e8178195eb8a0478",
-    "features/miniapp/ui/MiniAppView.public.tsx": "03ff505d2b80dddf",
+    "features/miniapp/ui/MiniAppPicker.public.tsx": "1632c2e88b9dfe20",
+    "features/miniapp/ui/MiniAppStandalone.public.tsx": "c336b6b95e10d895",
+    "features/miniapp/ui/MiniAppView.public.tsx": "394c1441928bcef6",
     "features/models/ui/ModelEffortSlider.tsx": "775b366b7342ba35",
     "features/models/ui/ModelListPanel.tsx": "81638e92be88b02f",
     "features/models/ui/ModelPanel.tsx": "d93411552a39da72",
     "features/models/ui/ModelPicker.public.tsx": "eac831780660e8c3",
-    "features/models/ui/ProviderFormPanel.public.tsx": "68bea911700cd36e",
-    "features/plugins/ui/AgentForm.tsx": "668b8758d413b099",
-    "features/plugins/ui/McpServerForm.tsx": "a4c853f112507b2f",
-    "features/plugins/ui/PluginCatalogue.tsx": "c13568446bda919f",
-    "features/plugins/ui/PluginImportDialog.tsx": "07f3bf11df025eb3",
+    "features/models/ui/ProviderFormPanel.public.tsx": "6e726da7784c00e5",
+    "features/plugins/ui/AgentForm.tsx": "e0582f3f61a9a4d3",
+    "features/plugins/ui/McpServerForm.tsx": "7c258b8d2acd109f",
+    "features/plugins/ui/PluginCatalogue.tsx": "095f203b9f9c281c",
+    "features/plugins/ui/PluginImportDialog.tsx": "264ff54b28e0e660",
     "features/plugins/ui/PluginItemDialog.tsx": "5b6a1e25a8e810fb",
     "features/plugins/ui/PluginManagementList.tsx": "c0ff625aa30686c7",
     "features/plugins/ui/PluginMarketplace.tsx": "e6c1a4a78d864c6c",
-    "features/plugins/ui/SkillForm.tsx": "19440e19afbbb70e",
-    "features/remote-control/ui/RemoteControlPanel.public.tsx": "dce5884d8b4e7b2f",
+    "features/plugins/ui/SkillForm.tsx": "f926f72624fdd490",
+    "features/remote-control/ui/RemoteControlPanel.public.tsx": "4535717fce2aa67d",
     "features/remote/ui/RemotePage.public.tsx": "0147a69da5fdc681",
     "features/remote/ui/remote-tabs.tsx": "3e4e1569494fd7a3",
-    "features/review/ui/ReviewSettingsPage.public.tsx": "51bed477727551f6",
-    "features/scheduling/ui/SchedulingPanel.public.tsx": "b64745427b995d51",
-    "features/scheduling/ui/scheduling-editor.tsx": "b6da3f975950d2be",
-    "features/sessions/ui/ExternalDeletionDraftNotice.public.tsx": "e0a56a8708ea8322",
+    "features/review/ui/ReviewSettingsPage.public.tsx": "24b9ae49d8a6006e",
+    "features/scheduling/ui/SchedulingPanel.public.tsx": "7754dbc9997da478",
+    "features/scheduling/ui/scheduling-editor.tsx": "0db304ecc5b6d800",
+    "features/sessions/ui/ExternalDeletionDraftNotice.public.tsx": "198b594ba36d5740",
     "features/sessions/ui/LeftRail.tsx": "8e4c7409afe527f9",
     "features/sessions/ui/ProjectList.tsx": "a0c01303dfea24fb",
     "features/sessions/ui/RailRow.tsx": "5f3cdf41e67b3639",
@@ -1334,60 +189,60 @@
     "features/sessions/ui/SessionRailRegion.tsx": "45f5ea97e2ede331",
     "features/sessions/ui/project-expansion.tsx": "ecabb3041aff5d97",
     "features/sessions/ui/rail-context-menu.tsx": "54fb305466b77042",
-    "features/sessions/ui/session-activity-meta.tsx": "8632a154f5614d41",
+    "features/sessions/ui/session-activity-meta.tsx": "76e31df5099e5582",
     "features/settings/ui/AccountUsageSettings.tsx": "59da3d27a8741d52",
-    "features/settings/ui/GlobalInstructionsSection.tsx": "836dd6de9f6893d9",
-    "features/settings/ui/MemoryManagerDialog.tsx": "30a738097ac30b0d",
+    "features/settings/ui/GlobalInstructionsSection.tsx": "e4070f47dc4da728",
+    "features/settings/ui/MemoryManagerDialog.tsx": "9cda0ecc1cbe16a1",
     "features/settings/ui/MemorySection.tsx": "42fbba6163a81a65",
     "features/settings/ui/PersonalizationSettings.tsx": "41086f96abe60f66",
-    "features/settings/ui/SettingsModal.public.tsx": "0bba1e9ff7eabad1",
+    "features/settings/ui/SettingsModal.public.tsx": "c5a2441b54782ee0",
     "features/settings/ui/SettingsModal.tsx": "6d61892c2e71fb20",
     "features/settings/ui/ShortcutsSettings.tsx": "2824ab0f992d4b2c",
     "features/settings/ui/UsageHeatmap.tsx": "94f42a0ac40b12b7",
-    "features/settings/ui/UsageModelSettings.tsx": "52c5377bd3f2501e",
+    "features/settings/ui/UsageModelSettings.tsx": "ffdf2980edf311de",
     "features/settings/ui/UsageResetCards.tsx": "00d1085b4b66565e",
-    "features/settings/ui/UserProfileSection.tsx": "982318ed0e76bb52",
+    "features/settings/ui/UserProfileSection.tsx": "4424c975ae866931",
     "features/settings/ui/account-usage-glyphs.tsx": "42d9ecdccaae8b0f",
     "features/settings/ui/account-usage-share-image.ts": "0ce21d4877accf82",
-    "features/settings/ui/settings-atoms.tsx": "3e3cecfd1d68a6ff",
-    "features/ssh/ui/SshPanel.public.tsx": "f7c5289e7b27c553",
-    "features/ssh/ui/ssh-host-form.tsx": "405072fe513ebdfe",
-    "features/ssh/ui/ssh-project-form.tsx": "fc979db7028804d9",
-    "features/ssh/ui/ssh-terminal-view.tsx": "83478279354543b1",
+    "features/settings/ui/settings-atoms.tsx": "5013c45fcd4d0894",
+    "features/ssh/ui/SshPanel.public.tsx": "4ef8ca83b2a53f46",
+    "features/ssh/ui/ssh-host-form.tsx": "54a3efcf6cc2f942",
+    "features/ssh/ui/ssh-project-form.tsx": "f9838f708507625c",
+    "features/ssh/ui/ssh-terminal-view.tsx": "3355856bea0e7c1b",
     "features/transcript/ui/ActivityIndicator.tsx": "7bb998ffd635bd9f",
     "features/transcript/ui/AssistantBody.tsx": "105617299abbf9dc",
     "features/transcript/ui/DiffCard.tsx": "8840895132d56a44",
     "features/transcript/ui/MessageActions.tsx": "88569b9604dfbb08",
     "features/transcript/ui/MessageAttachments.tsx": "6cd54506baebc504",
     "features/transcript/ui/MessageItem.tsx": "fdd14a1bdf1090e8",
-    "features/transcript/ui/OutputError.public.tsx": "f063c24b282232b8",
+    "features/transcript/ui/OutputError.public.tsx": "c171378f2ebf4670",
     "features/transcript/ui/PlanDelivery.tsx": "c620e52a916f7af5",
     "features/transcript/ui/QuestionnaireResponse.tsx": "ca83cd35995eb365",
-    "features/transcript/ui/SessionTranscript.tsx": "45d0abad30bb0cb8",
+    "features/transcript/ui/SessionTranscript.tsx": "284012e6f0d24a43",
     "features/transcript/ui/Transcript.tsx": "410260aa5350a80d",
     "features/transcript/ui/TranscriptPrimitives.tsx": "c7cfc22587a53da9",
     "features/transcript/ui/TranscriptSkeletons.tsx": "afe0b67cf3b446f8",
     "features/transcript/ui/TurnNavigator.tsx": "7afcfbf99d0ede27",
     "features/transcript/ui/markdown.public.tsx": "125a314c717770f5",
     "features/transcript/ui/webui-mermaid.tsx": "fc1aab96c48f3a3d",
-    "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx": "a2b972364737c608",
-    "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": "9ee50fa25bc88da4",
-    "features/workspace/ui/WorkspaceArchiveView.tsx": "e24d97a2787eb48b",
-    "features/workspace/ui/WorkspaceCanvas.tsx": "4d39be9635dfd15d",
-    "features/workspace/ui/WorkspaceFileTree.tsx": "22dd25afe3b32bc0",
-    "features/workspace/ui/WorkspaceHtmlPreview.tsx": "e3ae84beb4225127",
-    "features/workspace/ui/WorkspaceMediaPreview.tsx": "b796dd8159bba778",
+    "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx": "2f07c4524f1b330c",
+    "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": "6fe1049a34e5522c",
+    "features/workspace/ui/WorkspaceArchiveView.tsx": "72b9c4ea43cb4a7d",
+    "features/workspace/ui/WorkspaceCanvas.tsx": "059b324d9fa60569",
+    "features/workspace/ui/WorkspaceFileTree.tsx": "2c0c170d0e2e1498",
+    "features/workspace/ui/WorkspaceHtmlPreview.tsx": "68a80150200a3a3d",
+    "features/workspace/ui/WorkspaceMediaPreview.tsx": "cbeadd98697a96c9",
     "features/workspace/ui/WorkspacePanelControls.tsx": "95902ad884193aea",
-    "features/workspace/ui/WorkspacePanels.tsx": "90b0b0c0fe3d1595",
-    "features/workspace/ui/WorkspaceProgressPanel.tsx": "b2fd9a33fd01eb65",
+    "features/workspace/ui/WorkspacePanels.tsx": "700d174157e6491b",
+    "features/workspace/ui/WorkspaceProgressPanel.tsx": "a178042d0e588e8b",
     "shell/ArchonPage.tsx": "ce4b452ba9bb68ac",
     "shell/ArchonShell.tsx": "3dfc406588433f84",
-    "shell/ConnectionStatus.tsx": "a7d12eef5c80554a",
+    "shell/ConnectionStatus.tsx": "2dc4fed50664bb83",
     "shell/ConversationSurface.tsx": "2dc74e151186352b",
-    "shell/NotFound.tsx": "0d2bb95590ffed83",
-    "shell/StartupFallback.tsx": "68edc4bc5009174e",
+    "shell/NotFound.tsx": "0f798465bd890f7c",
+    "shell/StartupFallback.tsx": "7e94e166133439d6",
     "shell/WebuiClientFoundationApp.tsx": "b2b49f36dd4f550c",
-    "shell/WebuiErrorBoundary.tsx": "3145b960ebbfc247",
+    "shell/WebuiErrorBoundary.tsx": "d737ae81eb6f26ce",
     "shell/WebuiZoneBoundary.tsx": "b7370dd481ca6053",
     "shell/icons.tsx": "eb2ca40e4d2bb471",
     "shell/use-new-task-workspace.ts": "651f64ccfac81235",
@@ -1395,16 +250,17 @@
     "shell/use-session-rail-actions.ts": "27233581400a7865",
     "shell/use-shell-activity-wiring.ts": "4b37860ae343a598",
     "shell/use-workspace-panel-session.ts": "3cd8508a4a7cca67",
-    "ui/ContextMenu.tsx": "c5f7ffdee48d1e6b",
+    "ui/ContextMenu.tsx": "cd8e1ca12e91ad38",
     "ui/Dropdown.tsx": "7abf96bc40ded34b",
     "ui/ToggleSwitch.tsx": "4751e59a495e429e",
     "ui/activity-phrase.ts": "21f2b9886f325996",
-    "ui/button.tsx": "6c6101527845032a",
+    "ui/button.tsx": "0fb64c71163cd976",
     "ui/content-page.tsx": "165f87386861727b",
-    "ui/feedback.tsx": "23904a82c9781f01",
+    "ui/feedback.tsx": "2198a65978b92e0f",
     "ui/field.tsx": "ff67cd2369c65fe8",
     "ui/form-atoms.tsx": "ef7a88d700d63a9e",
     "ui/layout-thresholds.ts": "b3bec466ad8cce38",
+    "ui/menu-item.tsx": "086f3bf5bbd0e8da",
     "ui/overlay-coordinator.tsx": "ed3d94391cdde3a7",
     "ui/overlay-listeners.tsx": "86696d33c0fe4f73",
     "ui/settings-glyphs.tsx": "e5b21c9f9bb243c5",

@@ -12,8 +12,9 @@ document: [`browser-suite.md`](browser-suite.md).
 | --- | --- | --- |
 | `pnpm typecheck:webui` | Every source file and every test file compiles under `strict`: the server/runtime/shared config, the client config, and one test program whose `include` is the whole `test/` and `src/` tree | A port member without its stub, a missing binding, a wrong DTO, a test fixture that no longer matches the signature it calls |
 | `pnpm check:webui-dependency` | Import direction and role ownership over the resolved source graph, including `import type` edges | A forbidden direction, a role violation, a business holding one role in two homes, a private cross-business import, or an unclassified source |
-| `pnpm check:webui-presentation` | Every client UI source module (`features/*/ui/`, `shell/`, the shared `ui/`) is classified in `scripts/lib/webui-presentation-inventory.json`, and the inventory agrees with the modules on disk | An unclassified module, an entry whose module is gone, an undefined disposition, kind or family, a business exception without a reason |
+| `pnpm check:webui-presentation` | Every client UI source module (`features/*/ui/`, `shell/`, the shared `ui/`) is classified in `scripts/lib/webui-presentation-inventory.json`, and the inventory agrees with the modules on disk | An unclassified module, an entry whose module is gone, an undefined disposition, kind or family, a business exception without a reason, a module classified as newly-adopted-contract that renders or calls nothing from the shared home |
 | `pnpm check:webui-overlays` | Every client source that produces a floating layer is inventoried in `scripts/lib/webui-overlay-inventory.json` as `managed`, `borrows-role` or a reviewed exception, and `--strict` fails while any entry is still pending | An unlisted dialog or dropdown, a `managed` entry whose source registers nothing, an exception without its interaction boundary, a pending entry without its reason |
+| `pnpm check:webui-feedback` | Every client source that still authors its own announcement is recorded in `scripts/lib/webui-feedback-budget.json`, per file and per channel | A source that starts authoring `role="alert"`, `role="status"`, `role="log"`, `role="progressbar"` or `aria-live`, or a migration that lands without lowering the entry |
 | `pnpm check:webui-motion` | Every duration and every `@keyframes` in the client's 17 stylesheets is inventoried in `docs/design/motion-inventory.json` against a named family (feedback, surface, disclosure, loading) or recorded as a distinct effect with its reason | A new raw duration or keyframe, a recorded entry that has gone, a value that claims a family but is not that family's token, a distinct effect with no reason |
 | `pnpm build:webui` | The client and server bundles build, and prints input counts | A module that is written but not wired (counts do not move) |
 | `pnpm check:webui-boundary` | The combined client/server build graph contains required entries and inputs within declared package roots; direct WebUI workspace imports use exported subpaths; the artifact integrity record matches current inputs and outputs | A retired source path, the terminal renderer, a private direct workspace import, a forbidden internal reference, or a stale/modified build artifact |
@@ -45,6 +46,36 @@ It fails on an unclassified module, on an entry whose module no longer exists, a
 kind or family the ADR does not define. Negative fixtures for each of those three failures live in
 `packages/webui/test/gates/webui-presentation-coverage.test.ts`; the fixtures are built in a
 temporary directory, so they never enter the source inventory.
+
+**It also fails on a classification that is not true.** A module classified as
+`newly-adopted-contract` has to depend on the shared home with something it can render or call. A
+type-only import is a dependency on a *shape* — it tells the caller what a contract looks like
+without the caller rendering one — and a module that claims adoption without it is claiming
+something it does not do. Such a module is a `composition` (a scaffold that arranges other modules)
+or a `business-exception` (an element the shared layer cannot express), and the gate says so rather
+than letting the label stand.
+
+## What the adoption gate proves
+
+`packages/webui/test/gates/webui-shared-control-adoption.test.ts` fails when a client source outside
+the shared home names a shared control's class. It watches **every** family the shared layer owns —
+the button (`webui-mavis-button`, `webui-icon-button`), the feedback family (`webui-feedback`), the
+field contract (`webui-field`, `webui-form`) and the menu row (`webui-menu-item`,
+`webui-menu-separator`) — with one negative fixture per family, because a family that is not named
+is a family a caller may spell.
+
+The first version of this gate watched two prefixes, which is how the interactions business's
+`.webui-button-primary` and `.webui-button-secondary` survived in five businesses' stylesheets while
+the gate was green.
+
+## What the raw-control ratchet proves
+
+`packages/webui/test/gates/webui-raw-control-ratchet.test.ts` fails when a business stylesheet
+takes on a selector that names a raw `button`, `input`, `select` or `textarea`, and fails too when a
+recorded selector has gone. It watches **every** business stylesheet: the first version listed three
+of the fourteen, and the eleven it did not list held fifty-eight selectors between them. A stylesheet
+that is absent from `scripts/lib/webui-raw-control-budget.json` now fails the gate rather than
+passing it unseen.
 
 **It proves the inventory, not the unification.** Two limits are deliberate:
 

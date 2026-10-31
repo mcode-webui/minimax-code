@@ -9,6 +9,9 @@
 /** Client source directory whose presentation modules the check covers. */
 export const CLIENT_SOURCE_DIRECTORY: string;
 
+/** The shared home, relative to the client source directory. */
+export const SHARED_HOME_DIRECTORY: string;
+
 /** Suffixes that make a presentation module. */
 export const MODULE_SUFFIXES: readonly string[];
 
@@ -39,6 +42,13 @@ export function discoverPresentationModules(clientRoot: string): string[];
  */
 export function surfaceSignature(source: string, filename: string): string;
 
+/**
+ * The names a module imports from the shared home as values.
+ *
+ * A type-only import is a dependency on a shape, not on a contract.
+ */
+export function sharedHomeValueImports(source: string, filename: string): string[];
+
 /** One recorded classification. */
 export interface PresentationEntry {
   readonly path: string;
@@ -60,6 +70,8 @@ export interface PresentationInventory {
 export interface PresentationModule {
   readonly path: string;
   readonly signature: string;
+  /** The shared-home names the module imports as values, when they were read. */
+  readonly sharedHomeValues?: readonly string[];
 }
 
 /** One condition that makes the classification untrue. */

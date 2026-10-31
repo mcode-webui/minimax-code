@@ -138,33 +138,18 @@
     display: flex;
     flex-direction: column;
   }
+  /* The row itself is the shared menu-item contract (styles/menu-item.css).
+   * What is left here is the user menu's own arrangement: its rows are a
+   * little shorter than the contract's default and sit flush with the menu's
+   * own padding, and the shortcut hint appears only while the row is under
+   * the pointer. */
   .webui-user-menu-item {
     position: relative;
-    display: flex;
-    width: 100%;
     height: 32px;
-    align-items: center;
-    gap: 8px;
-    border-radius: 8px;
     padding: 0 6px;
-    color: var(--text_default_primary);
-    font-size: 14px;
-    line-height: 20px;
-    text-align: left;
     white-space: nowrap;
   }
-  .webui-user-menu-item:hover,
-  .webui-user-menu-item[data-active="true"] {
-    background-color: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-user-menu-item > svg {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    color: var(--icon_default_primary);
-  }
   .webui-user-menu-shortcut {
-    margin-left: auto;
     color: var(--text_default_tertiary);
     font-size: 12px;
     opacity: 0;
@@ -175,23 +160,7 @@
     opacity: 1;
   }
   .webui-user-menu-chevron {
-    margin-left: auto;
     color: var(--icon_default_secondary);
-  }
-  .webui-user-menu-divider {
-    height: 8px;
-    flex: 0 0 auto;
-    pointer-events: none;
-    position: relative;
-  }
-  .webui-user-menu-divider::after {
-    content: "";
-    position: absolute;
-    top: 4px;
-    right: 0;
-    left: 0;
-    height: 1px;
-    background-color: var(--border_default);
   }
   .webui-user-menu-usage-anchor {
     position: relative;

@@ -197,7 +197,7 @@
     "features/settings/ui/MemoryManagerDialog.tsx": "10314870490de1d3",
     "features/settings/ui/MemorySection.tsx": "42fbba6163a81a65",
     "features/settings/ui/PersonalizationSettings.tsx": "41086f96abe60f66",
-    "features/settings/ui/SettingsModal.public.tsx": "2c5ff3016f19ee0a",
+    "features/settings/ui/SettingsModal.public.tsx": "8e580b7c89301c34",
     "features/settings/ui/SettingsModal.tsx": "43b6a45c45734d45",
     "features/settings/ui/ShortcutsSettings.tsx": "e5788708a196618d",
     "features/settings/ui/UsageHeatmap.tsx": "78e2c4d7d667e273",

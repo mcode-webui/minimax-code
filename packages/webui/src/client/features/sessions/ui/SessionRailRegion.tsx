@@ -53,7 +53,6 @@ export function SessionRailRegion(props: {
             <WebuiButton
               variant="plain"
               size="regular"
-              aria-label="新建任务 MiniMax Code 新建"
               title="新建任务"
               onClick={() => props.startNewTask()}
               className="webui-nav-item webui-brand-create-button"
@@ -61,7 +60,10 @@ export function SessionRailRegion(props: {
               data-webui-nav-active={props.homeMode && !props.pluginManagementOpen ? "true" : "false"}
             >
               <WebuiIconBrand className="webui-brand-create-mark" />
-              <span className="webui-brand-create-wordmark">
+              {/* The wordmark is the mark, not the name: the button is named "new task",
+                  and reading the brand into the label made the visible text disagree
+                  with it. Hiding it here is what lets the name stay the name. */}
+              <span className="webui-brand-create-wordmark" aria-hidden="true">
                 <span>MiniMax</span><span>Code</span>
               </span>
               <span className="webui-brand-create-action">

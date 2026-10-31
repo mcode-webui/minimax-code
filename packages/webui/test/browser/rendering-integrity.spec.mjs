@@ -770,6 +770,18 @@ test.describe("rendering integrity of the migrated surfaces", () => {
 
     // The accessibility half of the same enumeration (ADR 0028 § Accessibility).
     const exceptions = loadExceptions().exceptions ?? [];
+    // Colour is measurable, so it takes no exception. A contrast exemption is
+    // always either an unfixed value or a reason that describes a different
+    // failure than the one in front of it — the memory editor's text was excused
+    // as "secondary and tertiary tokens" while it used the primary one, and its
+    // own bubble sat at 1.04:1 in the dark theme for as long as the exemption
+    // stood. Fix the value, or fix the token.
+    expect(
+      exceptions
+        .filter((exception) => exception.rule === "color-contrast")
+        .map((exception) => exception.target),
+      "contrast exceptions are not accepted: fix the colour and delete the exemption",
+    ).toEqual([]);
     const dispositions = loadReview().dispositions ?? [];
     const unexcepted = [];
     for (const surface of SURFACES) {

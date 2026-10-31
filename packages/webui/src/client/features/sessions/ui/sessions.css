@@ -1,7 +1,6 @@
 /* sessions — moved out of styles/shell.css; rules kept in their original relative order. */
 @layer components {
 
-
   /* --------------------------------------------------------------- rail rows */
 
   /* Navigation rows. The row's geometry is a utility
@@ -39,10 +38,6 @@
     background: var(--bg_interaction_accent_hover);
   }
   .webui-brand-create-button:active { background: var(--bg_interaction_accent_press); }
-  .webui-brand-create-button:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 1px;
-  }
   .webui-brand-create-mascot {
     position: absolute;
     z-index: 1;
@@ -59,7 +54,7 @@
     min-width: 0;
     flex: 1;
     align-items: baseline;
-    gap: 4px;
+    gap: var(--spacing_4);
     overflow: hidden;
     color: var(--text_default_primary);
     font-size: 13px;
@@ -138,7 +133,6 @@
   @media (prefers-reduced-motion: reduce) {
     .webui-rail-spinner { animation: none; }
   }
-
 
   /* The home rail is project-first. A project row uses the same quiet
    * navigation treatment as the fixed rows, but keeps the folder glyph and
@@ -299,9 +293,11 @@
   }
   .webui-session-leading-marker {
     display: flex;
-    width: 18px;
+    /* The disclosure inside it is a 24px target; an 18px column clipped the one
+       place a session row is opened from. */
+    width: 24px;
     height: 30px;
-    flex: 0 0 18px;
+    flex: 0 0 24px;
     align-items: center;
     justify-content: center;
     color: var(--icon_default_tertiary);
@@ -313,9 +309,16 @@
   }
   .webui-session-disclosure {
     display: flex;
-    width: 18px;
+    /* 24px is the smallest target a pointer may be asked to hit (WCAG 2.2 AA);
+       18px was below it in the one place a session row is opened from. */
+    width: 24px;
     height: 30px;
-    flex: 0 0 18px;
+    min-width: 24px;
+    min-height: 24px;
+    flex: 0 0 24px;
+    /* The row it opens sits directly beside it; the margin is the space the
+       target rule asks for when two targets touch. */
+    margin-right: 2px;
     align-items: center;
     justify-content: center;
   }
@@ -392,26 +395,6 @@
   }
 
   /* ---------------------------------------------------------------- composer */
-
-  /* A pill control in the composer toolbar and the workspace row: 32px, 10px
-   * radius, fill on hover. */
-  .webui-pill {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing_4);
-    height: 32px;
-    padding: 0 var(--spacing_8);
-    border-radius: 10px;
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    transition: background-color 120ms ease;
-  }
-  .webui-pill:hover:not(:disabled) {
-    background-color: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-pill:disabled {
-    cursor: default;
-  }
 
   .webui-project-empty {
     display: flex;

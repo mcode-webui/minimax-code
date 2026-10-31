@@ -48,6 +48,7 @@ import { useOverlayCoordinator } from "../../../ui/overlay-coordinator.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 
+import { FeedbackEmpty } from "../../../ui/feedback.js";
 const ICONS = {
   desktop: IconLayoutDashboard,
   browser: IconBrowser,
@@ -229,7 +230,7 @@ export function SettingsModal({ open, onClose, dataDir, version, sessionId, work
       <ManagedOverlayBoundary layerId={layerId}>
         <section ref={surfaceRef} tabIndex={-1} className="webui-settings-modal" data-overlay-layer={layerId} role="dialog" aria-modal="true" aria-label="设置">
           <aside className="webui-settings-sidebar">
-            <WebuiButton variant="quiet-secondary" size="header" type="button" aria-label="返回" className="webui-settings-back" onClick={onClose}>
+            <WebuiButton variant="quiet-secondary" size="header" type="button" className="webui-settings-back" onClick={onClose}>
               <Icon name="back" />
               <span>返回应用</span>
             </WebuiButton>
@@ -520,7 +521,7 @@ function ArchivedSessionsPage({ sessions, canDelete, canUnarchive, onDelete, onU
           </SettingsSection>
         ))
       ) : (
-        <p className="webui-archived-empty">{sessions.length ? "没有符合条件的聊天" : "暂无已归档聊天"}</p>
+        <FeedbackEmpty className="webui-archived-empty" title={sessions.length ? "没有符合条件的聊天" : "暂无已归档聊天"} />
       )}
     </SettingsPage>
   );

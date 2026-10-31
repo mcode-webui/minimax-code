@@ -361,8 +361,8 @@
   --text_default_primary: var(--gray_1000);
   --text_default_quaternary: var(--gray_200);
   --text_default_secondary: var(--gray_500);
-  --text_default_tertiary: var(--gray_300);
-  --text_label_accent_default: var(--blue_400);
+  --text_default_tertiary: #6b6b6b;
+  --text_label_accent_default: var(--blue_600);
   --text_label_accent_hover: var(--blue_300);
   --text_label_accent_inactive: var(--blue_200);
   --text_label_accent_press: var(--blue_500);
@@ -576,8 +576,8 @@
   --text_default_primary: var(--gray_1000);
   --text_default_quaternary: var(--gray_200);
   --text_default_secondary: var(--gray_500);
-  --text_default_tertiary: var(--gray_300);
-  --text_label_accent_default: var(--blue_400);
+  --text_default_tertiary: #6b6b6b;
+  --text_label_accent_default: var(--blue_600);
   --text_label_accent_hover: var(--blue_300);
   --text_label_accent_inactive: var(--blue_200);
   --text_label_accent_press: var(--blue_500);
@@ -794,8 +794,8 @@
   --text_default_primary: var(--gray_100);
   --text_default_quaternary: var(--gray_600);
   --text_default_secondary: var(--gray_400);
-  --text_default_tertiary: var(--gray_500);
-  --text_label_accent_default: var(--blue_500);
+  --text_default_tertiary: #8f8f8f;
+  --text_label_accent_default: var(--blue_400);
   --text_label_accent_hover: var(--blue_400);
   --text_label_accent_inactive: var(--blue_700);
   --text_label_accent_press: var(--blue_500);

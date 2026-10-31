@@ -4,11 +4,9 @@
   /* The 5px rhythm belongs to the transcript's placeholder lines. */
   .webui-transcript-skeleton-lines { gap: 5px; }
 
-
   .webui-context-usage-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
   .webui-context-usage-trigger { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon_default_tertiary); }
   .webui-context-usage-trigger:hover, .webui-context-usage-trigger[aria-expanded="true"] { background: var(--bg_interaction_tertiary_hover); color: var(--icon_default_secondary); }
-  .webui-context-usage-trigger:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
   .webui-context-usage-trigger svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
   /* Hover label: the ring's NAME, and the whole of what hovering produces.
    * The dark bubble with an arrow is the shell's existing tooltip shape (see
@@ -47,13 +45,13 @@
    * over the rail, which is what makes it a panel rather than a card. */
   .webui-context-usage-popover { width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 520px); overflow: auto; padding: 16px 18px; color: var(--text_default_primary); transform-origin: bottom right; }
   .webui-context-usage-popover::before { position: absolute; top: -10px; right: 0; left: 0; height: 10px; content: ""; }
-  .webui-context-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--size_14); line-height: 20px; }
+  .webui-context-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_12); font-size: var(--size_14); line-height: 20px; }
   /* The heading doubles as the panel's disclosure control, so it is a real
    * button and has to be reset as one: a native button brings a border, a
    * background and its own font, and the panel's heading is a line of text. */
   .webui-context-usage-disclosure { width: 100%; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .webui-context-usage-disclosure:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; border-radius: 4px; }
-  .webui-context-usage-heading-value { display: inline-flex; align-items: center; gap: 4px; }
+  .webui-context-usage-heading-value { display: inline-flex; align-items: center; gap: var(--spacing_4); }
   /* A rotation rather than two glyphs: the same arrow is both the promise that
    * there is more below and the report that there now is. */
   .webui-context-usage-chevron { display: inline-flex; width: 16px; height: 16px; color: var(--icon_default_tertiary); transform: rotate(0deg); transition: transform 150ms cubic-bezier(.2, .7, .2, 1); }
@@ -71,12 +69,12 @@
    * accessibility tree AND on screen, folded in the markup only. */
   .webui-context-usage-components[hidden] { display: none; }
   .webui-context-usage-component, .webui-context-usage-component-label { display: flex; align-items: center; }
-  .webui-context-usage-component { justify-content: space-between; gap: 12px; font-size: var(--size_14); line-height: 20px; }
+  .webui-context-usage-component { justify-content: space-between; gap: var(--spacing_12); font-size: var(--size_14); line-height: 20px; }
   .webui-context-usage-component-label { min-width: 0; gap: 7px; }
   .webui-context-usage-swatch { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 3px; background: var(--text_default_accent); }
   .webui-context-usage-divider { height: 1px; margin: 16px 0; background: var(--border_default); }
   .webui-context-usage-plan { margin-bottom: 8px; color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; }
-  .webui-context-usage-quota { display: flex; flex-direction: column; gap: 6px; padding: 7px 0; }
+  .webui-context-usage-quota { display: flex; flex-direction: column; gap: var(--spacing_6); padding: 7px 0; }
   .webui-context-usage-quota .webui-context-usage-heading { font-size: var(--size_14); }
   .webui-context-usage-quota-bar { height: 4px; overflow: hidden; border-radius: 999px; background: var(--border_light); }
   .webui-context-usage-quota-bar span { display: block; height: 100%; border-radius: inherit; background: var(--text_default_accent); transition: width 180ms ease; }
@@ -225,6 +223,12 @@
     background-color: #e8f3fe;
     text-align: left;
   }
+  /* The text token follows the theme; the bubble did not, so in the dark theme the
+     user's own message was pale grey on pale blue — 1.04:1, invisible. The bubble
+     takes a dark tint of the same blue instead. */
+  .dark .webui-user-bubble {
+    background-color: #1f2a37;
+  }
   .webui-user-text {
     margin: 0;
     font-size: 15px;
@@ -238,7 +242,7 @@
     display: inline-flex;
     align-items: center;
     vertical-align: middle;
-    gap: 4px;
+    gap: var(--spacing_4);
     margin-right: 6px;
     color: var(--icon_default_accent);
     font-weight: 500;
@@ -274,7 +278,7 @@
     flex-direction: column;
     gap: var(--spacing_16);
     color: var(--text_default_primary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
   }
   .webui-assistant-answer {
@@ -300,7 +304,7 @@
     align-items: center;
     gap: var(--spacing_8);
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     font-weight: 400;
     line-height: 22px;
   }
@@ -326,7 +330,7 @@
     gap: var(--spacing_8);
     cursor: pointer;
     color: var(--text_default_secondary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 22px;
     transition: color 120ms ease;
   }
@@ -384,7 +388,7 @@
   .timeline-connector { margin-left: 7.5px; height: 8px; width: 1px; background: var(--border_light); }
   .activity-group-content { min-width: 0; }
 
-  .text-activity-body-small { font-size: 12px; line-height: 16px; }
+  .text-activity-body-small { font-size: var(--size_12); line-height: 16px; }
   .webui-thinking-chevron,
   .webui-tool-chevron {
     width: 14px;
@@ -402,7 +406,7 @@
     border-left: 0.5px solid var(--border_default);
     padding: var(--spacing_12) 0 var(--spacing_4) var(--spacing_16);
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
   }
   /* The live "推理中…" row trails the streamed thinking detail (or the tool
@@ -417,7 +421,7 @@
     margin-top: var(--spacing_16);
     gap: var(--spacing_8);
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 22px;
   }
   .webui-thinking-detail-heading {
@@ -427,7 +431,7 @@
     gap: var(--spacing_8);
     margin: 0 0 var(--spacing_8) -24px;
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
   }
   .webui-thinking-detail-content {
@@ -453,7 +457,7 @@
     text-align: left;
   }
   .webui-thinking-detail .webui-markdown {
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     color: var(--text_default_tertiary);
   }
@@ -473,7 +477,7 @@
   .webui-tool-row {
     min-width: 0;
     color: var(--text_default_tertiary);
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 22px;
   }
   .webui-tool-row-summary {
@@ -495,7 +499,7 @@
     align-items: center;
     justify-content: center;
     color: var(--text_default_tertiary);
-    font-size: 16px;
+    font-size: var(--size_16);
     line-height: 16px;
   }
   .webui-tool-icon > svg { width: 16px; height: 16px; }
@@ -504,26 +508,26 @@
   .webui-tool-icon--web, .webui-tool-icon--browser, .webui-tool-icon--command { color: var(--text_default_secondary); }
   .webui-tool-row[data-webui-tool-status="error"] .webui-tool-icon { color: var(--text_status_error); }
   .webui-tool-detail-section { min-width: 0; }
-  .webui-tool-detail-label { overflow: hidden; color: var(--text_default_tertiary); font-size: 14px; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+  .webui-tool-detail-label { overflow: hidden; color: var(--text_default_tertiary); font-size: var(--size_14); line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
   .webui-tool-detail-label.is-error { color: var(--text_status_error); }
-  .webui-tool-detail-section pre { max-height: 180px; overflow: auto; margin: 0; color: var(--text_default_secondary); font-size: 14px; line-height: 20px; white-space: pre-wrap; word-break: break-all; }
-  .webui-runtime-warning { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--orange_200); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: 14px; line-height: 20px; }
-  .webui-runtime-warning-title { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--spacing_4); color: var(--orange_500); font-size: 14px; line-height: 20px; }
+  .webui-tool-detail-section pre { max-height: 180px; overflow: auto; margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; white-space: pre-wrap; word-break: break-all; }
+  .webui-runtime-warning { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--orange_200); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; }
+  .webui-runtime-warning-title { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--spacing_4); color: var(--orange_500); font-size: var(--size_14); line-height: 20px; }
   .webui-runtime-warning-icon { flex: 0 0 14px; }
-  .webui-runtime-warning-meta { color: var(--text_default_tertiary); font-size: 12px; line-height: 16px; }
-  .webui-agent-delegation { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--border_default); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: 14px; line-height: 20px; }
-  .webui-agent-delegation-summary { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); color: var(--text_default_tertiary); font-size: 14px; line-height: 20px; }
+  .webui-runtime-warning-meta { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 16px; }
+  .webui-agent-delegation { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_4); border-left: 1px solid var(--border_default); padding-left: var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; }
+  .webui-agent-delegation-summary { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); color: var(--text_default_tertiary); font-size: var(--size_14); line-height: 20px; }
   .webui-agent-delegation-avatar { display: inline-flex; width: 16px; height: 16px; flex: 0 0 16px; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg_default_tertiary); color: var(--text_default_secondary); font-size: 10px; }
-  .webui-agent-activity-title { color: var(--text_default_tertiary); font-size: 12px; line-height: 16px; }
+  .webui-agent-activity-title { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 16px; }
   .webui-agent-joined-group { width: 100%; max-width: 524px; max-height: 240px; overflow: hidden; border: 0.5px solid var(--border_default); border-radius: 16px; padding: 12px 8px; }
-  .webui-agent-joined-toggle { display: flex; width: 100%; height: 20px; align-items: center; border-radius: 8px; padding: 0 10px; color: var(--text_default_primary); text-align: left; font-size: 14px; line-height: 20px; }
-  .webui-agent-joined-chevron { margin-left: auto; color: var(--icon_default_tertiary); font-size: 16px; line-height: 16px; transition: transform 200ms ease-out; }
+  .webui-agent-joined-toggle { display: flex; width: 100%; height: 20px; align-items: center; border-radius: 8px; padding: 0 10px; color: var(--text_default_primary); text-align: left; font-size: var(--size_14); line-height: 20px; }
+  .webui-agent-joined-chevron { margin-left: auto; color: var(--icon_default_tertiary); font-size: var(--size_16); line-height: 16px; transition: transform 200ms ease-out; }
   .webui-agent-joined-chevron.is-collapsed { transform: rotate(-90deg); }
-  .webui-agent-joined-list { display: flex; max-height: 188px; flex-direction: column; gap: 8px; overflow-y: auto; margin-top: 8px; padding-right: 8px; }
-  .webui-agent-joined-row { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 2px; border-radius: 12px; background: var(--bg_default_scrim); padding: 10px; text-align: left; }
-  .webui-agent-joined-avatar { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 999px; background: var(--bg_grouped_secondary); color: var(--text_default_secondary); font-size: 12px; line-height: 16px; }
-  .webui-agent-joined-name { display: flex; height: 24px; align-items: center; gap: 6px; color: var(--text_default_secondary); font-size: 14px; line-height: 20px; }
-  .webui-agent-joined-title { padding-left: 26px; color: var(--text_default_primary); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .webui-agent-joined-list { display: flex; max-height: 188px; flex-direction: column; gap: var(--spacing_8); overflow-y: auto; margin-top: 8px; padding-right: 8px; }
+  .webui-agent-joined-row { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: var(--spacing_2); border-radius: 12px; background: var(--bg_default_scrim); padding: 10px; text-align: left; }
+  .webui-agent-joined-avatar { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 999px; background: var(--bg_grouped_secondary); color: var(--text_default_secondary); font-size: var(--size_12); line-height: 16px; }
+  .webui-agent-joined-name { display: flex; height: 24px; align-items: center; gap: var(--spacing_6); color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; }
+  .webui-agent-joined-title { padding-left: 26px; color: var(--text_default_primary); font-size: var(--size_14); line-height: 20px; overflow-wrap: anywhere; white-space: pre-wrap; }
   .webui-tool-label {
     min-width: 0;
     overflow: hidden;
@@ -558,7 +562,7 @@
     color: var(--text_default_secondary);
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas,
       Liberation Mono, monospace;
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
   }
   .webui-tool-detail-title {
@@ -580,7 +584,7 @@
     margin: 0;
     color: var(--text_default_secondary);
     font-family: inherit;
-    font-size: 14px;
+    font-size: var(--size_14);
     line-height: 20px;
     white-space: pre-wrap;
     word-break: break-all;
@@ -609,7 +613,7 @@
   .webui-delivered-asset { color: var(--text_default_secondary); }
   .webui-delivered-asset-icon { margin-right: 5px; }
   .webui-delivered-asset-caption { color: var(--text_default_secondary); }
-  .webui-delivered-asset-deleted { margin-left: var(--spacing_8); color: var(--text_default_tertiary); font-size: 12px; }
+  .webui-delivered-asset-deleted { margin-left: var(--spacing_8); color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-markdown > * {
     min-width: 0;
     margin-block-start: 0;
@@ -635,7 +639,7 @@
   }
   .webui-markdown h1,
   .webui-markdown h2 {
-    font-size: 20px;
+    font-size: var(--size_20);
     font-weight: 600;
     line-height: 26px;
     margin-block-start: var(--spacing_12);
@@ -648,13 +652,13 @@
   }
   .webui-markdown h4,
   .webui-markdown h5 {
-    font-size: 16px;
+    font-size: var(--size_16);
     font-weight: 500;
     line-height: 22px;
     margin-block-start: var(--spacing_8);
   }
   .webui-markdown h6 {
-    font-size: 14px;
+    font-size: var(--size_14);
     font-weight: 500;
     line-height: 22px;
     margin-block-start: var(--spacing_8);
@@ -859,7 +863,7 @@
   .webui-turn-elapsed {
     margin: 0;
     color: var(--text_default_secondary);
-    font-size: 12px;
+    font-size: var(--size_12);
     line-height: 16px;
     font-variant-numeric: tabular-nums;
   }
@@ -878,13 +882,13 @@
   .webui-diff-card--neutral {
     min-height: 48px;
     justify-content: center;
-    gap: 4px;
+    gap: var(--spacing_4);
     padding: 8px 12px;
   }
 
   .webui-diff-neutral-copy {
     color: var(--text_default_tertiary);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-diff-icon {
@@ -907,7 +911,7 @@
   .webui-diff-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--spacing_12);
     min-height: 70px;
     padding: 12px 16px;
     transition: background-color 120ms ease;
@@ -922,7 +926,7 @@
     min-width: 0;
     flex: 1;
     align-items: center;
-    gap: 12px;
+    gap: var(--spacing_12);
     padding-right: 12px;
     text-align: left;
   }
@@ -932,7 +936,7 @@
     min-width: 0;
     flex: 1;
     align-items: center;
-    gap: 4px;
+    gap: var(--spacing_4);
   }
 
   .webui-diff-header-divider {
@@ -947,7 +951,7 @@
     flex: 1;
     overflow: hidden;
     color: var(--text_default_primary);
-    font-size: 14px;
+    font-size: var(--size_14);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -957,9 +961,9 @@
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
-    gap: 4px;
+    gap: var(--spacing_4);
     color: var(--text_default_primary);
-    font-size: 12px;
+    font-size: var(--size_12);
     font-variant-numeric: tabular-nums;
   }
 
@@ -983,7 +987,7 @@
   .webui-diff-file {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing_8);
     min-height: 36px;
     padding: 0 12px;
     border-bottom: 0.5px solid var(--border_default);
@@ -1038,7 +1042,7 @@
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    gap: 8px;
+    gap: var(--spacing_8);
   }
 
   .webui-diff-review,
@@ -1059,7 +1063,7 @@
     padding: 8px 12px;
     border-top: 0.5px solid var(--border_default);
     color: var(--text_default_secondary);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-diff-review-panel pre {
@@ -1082,11 +1086,11 @@
   .webui-diff-error {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--spacing_12);
     padding: 8px 12px;
     border-top: 0.5px solid var(--border_default);
     background: var(--bg_interaction_secondary_default);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-diff-error-copy {
@@ -1094,7 +1098,7 @@
     flex: 1;
     min-width: 0;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing_2);
   }
 
   .webui-diff-error-title {
@@ -1116,7 +1120,7 @@
   .webui-message-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--spacing_6);
     min-height: 28px;
     margin-top: 4px;
     color: var(--text_default_tertiary);
@@ -1124,11 +1128,6 @@
     line-height: 19.5px;
     opacity: 0;
     transition: opacity 120ms ease;
-  }
-
-  /* The action row is glyph-only; it keeps a 26px square per control and
-     paints the revealed state on the row, not on each button. */
-  .webui-message-action:hover:not(:disabled) {
   }
 
   .webui-message-action svg {
@@ -1167,7 +1166,7 @@
     border: 0;
     background: transparent;
     color: inherit;
-    font-size: 12px;
+    font-size: var(--size_12);
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
   }
@@ -1177,21 +1176,9 @@
     color: var(--text_default_primary);
   }
 
-  .webui-message-action:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
-    background: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_primary);
-  }
-
-  .webui-message-action:disabled {
-    cursor: default;
-    opacity: 0.45;
-  }
-
   .webui-message-feedback {
     display: inline-flex;
-    gap: 2px;
+    gap: var(--spacing_2);
     margin-left: 2px;
     padding-left: 4px;
     border-left: 1px solid var(--border_default);
@@ -1211,23 +1198,23 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--spacing_8);
   }
 
   .webui-rewind-file-row {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--spacing_12);
     padding: 6px 0;
     border-top: 1px solid var(--border_default);
     color: var(--text_default_secondary);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   .webui-message-mutation-error {
     margin: 4px 0 0;
     color: var(--text_status_error);
-    font-size: 12px;
+    font-size: var(--size_12);
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -29,7 +29,7 @@ const openTerminalTab = async (page) => {
     .getByTestId("workspace-panel-controls")
     .getByRole("button", { name: "浏览器" })
     .click();
-  const existing = page.getByTestId("workspace-panel").getByRole("tab", { name: "终端" });
+  const existing = page.getByTestId("workspace-panel").getByRole("button", { name: "终端", exact: true });
   if (await existing.count()) {
     await existing.click();
     return;

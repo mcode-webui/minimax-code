@@ -67,7 +67,16 @@ export async function closeAllBootedHosts(): Promise<void> {
 export async function bootRealHost(
   options: { readonly dev?: boolean; readonly serveBuiltClient?: boolean } = {},
 ): Promise<Booted> {
-  const dataDir = await mkdtemp(join(tmpdir(), "webui-miniapp-flow-"));
+  // The host's unix socket path is built from this directory: the plugin's
+  // own data directory sits under it, and the socket file under that. A unix
+  // socket path may not exceed 104 characters, and the macOS runner's
+  // temporary directory alone is 44 characters deep, so a fixture directory
+  // under it leaves too little room for the rest of the path. On the
+  // platforms that use a unix socket the fixture therefore lives directly
+  // under /tmp; Windows uses a named pipe and keeps the temporary directory.
+  const dataDir = await mkdtemp(
+    join(process.platform === "win32" ? tmpdir() : "/tmp", "webui-mf-"),
+  );
   const workspaceDir = join(dataDir, "workspace");
   await mkdir(workspaceDir, { recursive: true });
   // A config file that already exists stops `ensureConfigFile()` from copying the

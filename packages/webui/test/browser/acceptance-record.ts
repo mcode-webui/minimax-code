@@ -21,6 +21,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { release } from "node:os";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** What one acceptance case observed. */
 export interface AcceptanceObservation {
@@ -153,7 +154,7 @@ export interface AcceptanceRecords {
  * about the process.
  */
 export function acceptanceRecordsFor(plan: WebuiAcceptancePlan): AcceptanceRecords {
-  const recordDir = resolve(new URL(PLAN_DIRECTORIES[plan], import.meta.url).pathname);
+  const recordDir = fileURLToPath(new URL(PLAN_DIRECTORIES[plan], import.meta.url));
   /** The suites of this plan that have written a record in this process. */
   const started = new Set<string>();
 

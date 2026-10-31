@@ -107,7 +107,7 @@ test("steps forward and back, gating every required step", async ({ page }) => {
 
   // Custom answer on the final step, then the gate opens for submit.
   await page.locator('[data-testid="questionnaire-next"]').click();
-  const other = page.locator('[data-webui-questionnaire-other="s3"] input[type="text"]');
+  const other = page.locator('[data-webui-questionnaire-other="s3"] input.webui-control');
   await other.click();
   await other.fill("我的自定义答案");
   await expect(page.locator('[data-webui-questionnaire-other="s3"]')).toHaveAttribute("data-selected", "true");

@@ -577,16 +577,29 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await persistedSourceActions.getByRole("button", { name: "回退" }).click();
     const persistedSourceRewindDialog = page.getByTestId("rewind-preview-dialog");
     await browserExpect(persistedSourceRewindDialog).toBeVisible();
+    // The shared dialog enters over 200ms, and the entrance moves it. The
+    // geometry is the dialog's own geometry only once the entrance has
+    // settled, so the measurement waits for it.
+    await persistedSourceRewindDialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const rewindGeometry = await persistedSourceRewindDialog.evaluate((node) => {
-      const viewportWidth = document.body.clientWidth;
-      const viewportHeight = document.body.clientHeight;
+      // The mask is `position: fixed; inset: 0`, so it spans the viewport and
+      // the surface is centred inside it. The viewport is `innerWidth` and not
+      // `document.body.clientWidth`: the body box excludes the scrollbar the
+      // mask covers, and comparing a fixed element against a smaller box makes
+      // a centred surface look 3px off-centre.
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
       const dialog = node.getBoundingClientRect();
-      const surface = node.querySelector(".webui-message-dialog-surface")!.getBoundingClientRect();
-      const buttons = [...node.querySelectorAll<HTMLButtonElement>(".webui-message-dialog-actions button")];
+      // The shared dialog carries its test id on the surface; the scrim it
+      // sits in is the mask around it.
+      const backdrop = node.parentElement!;
+      const backdropRect = backdrop.getBoundingClientRect();
+      const surface = dialog;
+      const buttons = [...node.querySelectorAll<HTMLButtonElement>(".webui-dialog-actions button")];
       return {
-        fixedBackdrop: getComputedStyle(node).position === "fixed",
-        backdropCoversViewport: dialog.left <= 0 && dialog.top <= 0 &&
-          dialog.right >= viewportWidth && dialog.bottom >= viewportHeight,
+        fixedBackdrop: getComputedStyle(backdrop).position === "fixed",
+        backdropCoversViewport: backdropRect.left <= 0 && backdropRect.top <= 0 &&
+          backdropRect.right >= viewportWidth && backdropRect.bottom >= viewportHeight,
         centered: Math.abs(surface.left + surface.width / 2 - viewportWidth / 2) < 3 &&
           Math.abs(surface.top + surface.height / 2 - viewportHeight / 2) < 3,
         surfaceWithinViewport: surface.left >= 0 && surface.top >= 0 &&
@@ -597,9 +610,9 @@ it("a real agent turn resumes after refresh and drains a queued message in order
             rect.top >= 0 && rect.bottom <= viewportHeight && !button.disabled;
         }),
         portalClientBox: { width: viewportWidth, height: viewportHeight },
-        backdropRect: { left: dialog.left, top: dialog.top, right: dialog.right, bottom: dialog.bottom },
+        backdropRect: { left: backdropRect.left, top: backdropRect.top, right: backdropRect.right, bottom: backdropRect.bottom },
         surfaceRect: { left: surface.left, top: surface.top, right: surface.right, bottom: surface.bottom },
-        grid: { display: getComputedStyle(node).display, placeItems: getComputedStyle(node).placeItems },
+        grid: { display: getComputedStyle(backdrop).display, placeItems: getComputedStyle(backdrop).placeItems },
       };
     });
     expect(rewindGeometry, JSON.stringify(rewindGeometry)).toMatchObject({
@@ -1028,7 +1041,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     expect(modelRequests.some((request) => request.body.includes("Create a task checklist.") &&
       request.body.includes("todowrite"))).toBe(true);
 
-    const attachmentInput = page.locator('input.webui-composer-hidden-file-input[aria-label="添加文件或图片"]');
+    const attachmentInput = page.locator('input.webui-file-input[aria-label="添加文件或图片"]');
     await attachmentInput.setInputFiles({
       name: "runtime-note.txt",
       mimeType: "text/plain",
@@ -1193,6 +1206,10 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
     const mcpDialog = page.getByRole("dialog", { name: "MCP Server" });
     await browserExpect(mcpDialog).toBeVisible();
+    // The shared dialog enters over 200ms, and the entrance moves it. The
+    // geometry is the dialog's own geometry only once the entrance has
+    // settled, so the measurement waits for it.
+    await mcpDialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     const mcpGeometry = await mcpDialog.evaluate((node) => {
       const backdrop = node.parentElement;
       const rect = node.getBoundingClientRect();

@@ -36,7 +36,7 @@ async function openSettings(page) {
 
 /** Leaves the settings the way a user does: the 返回应用 button. */
 async function closeSettings(page) {
-  await page.locator('[aria-label="返回"]').click();
+  await page.locator(".webui-settings-back").click();
   await expect(settingsDialog(page)).toHaveCount(0);
 }
 

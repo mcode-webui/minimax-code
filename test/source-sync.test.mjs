@@ -1329,7 +1329,10 @@ function filesWritingVersion(repositoryRoot, version) {
       const full = path.join(directory, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (/\.(?:ts|tsx|mts|mjs|cjs|js|jsx)$/u.test(entry.name) && readFileSync(full, 'utf8').includes(version)) {
-        offenders.push(path.relative(repositoryRoot, full));
+        // path.relative returns backslashes on Windows, and the offender is
+        // named by a forward-slash path. The comparison below reads the
+        // offender's own name, so the separator has to be the same one.
+        offenders.push(path.relative(repositoryRoot, full).split(path.sep).join("/"));
       }
     }
   };

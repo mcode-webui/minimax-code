@@ -286,7 +286,7 @@ export function WebuiWorkspaceTabStrip({
   const tabListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     tabListRef.current
-      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.querySelector<HTMLElement>('[aria-pressed="true"]')
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [state.activeTabId]);
 
@@ -335,8 +335,7 @@ export function WebuiWorkspaceTabStrip({
             variant="plain"
             size="regular"
             className="webui-workspace-tab-control"
-            role="tab"
-            aria-selected={state.activeTabId === item.id}
+            aria-pressed={state.activeTabId === item.id}
             data-testid={`workspace-tab-${item.id}`}
             onClick={() => dispatch({ type: "select-tab", tabId: item.id })}
           >

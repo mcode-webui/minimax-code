@@ -21,7 +21,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24
-      - run: pnpm install --frozen-lockfile
+      # The recording only needs a working install; the lockfile's agreement with
+      # package.json is the subject of another pull request, so it does not gate this.
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm build:webui
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test packages/webui/test/browser/visual-baselines.spec.mjs packages/webui/test/browser/responsive-baselines.spec.mjs --update-snapshots

@@ -13,12 +13,10 @@
 // in it. A stylesheet that is not in the budget now fails the gate rather than
 // passing it unseen.
 //
-// Why a budget and not zero: the selectors that remain belong to surfaces whose
-// own tickets have not migrated them yet. Each is a named entry with its
-// selector text, so the list is a statement of what is left rather than a rule
-// that was quietly waived. The ratchet is symmetric: a new selector fails, and a
-// recorded selector that has gone fails too, so the budget can only shrink. A
-// migration that removes one updates the file in the same commit.
+// The budget records selector exceptions while a surface still has a raw
+// control style to migrate. Every exception is named by selector and stylesheet;
+// the ratchet rejects both new selectors and stale entries. The current budget
+// is zero, and the gate remains to prevent those selectors from returning.
 
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";

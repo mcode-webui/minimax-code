@@ -18,6 +18,8 @@ import type { ReactElement } from "react";
 
 import type { WebuiRetainedDeletionDraft } from "../application/session-workflows.js";
 import { FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface WebuiExternalDeletionNoticeProps {
   readonly drafts: readonly WebuiRetainedDeletionDraft[];
@@ -50,17 +52,17 @@ export function WebuiExternalDeletionNotice({
               {draft.draft ? <span data-testid="external-deletion-draft-text">{draft.draft}</span> : null}
               {staged > 0 ? <span data-testid="external-deletion-draft-attachments">（{staged} 个附件）</span> : null}
             </p>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => onCopy(draft.sessionId)}>
+            <WebuiInline gap="small">
+              <WebuiButton variant="quiet-secondary" size="inline" onClick={() => onCopy(draft.sessionId)}>
                 复制文本
-              </button>
-              <button type="button" onClick={() => onTransfer(draft.sessionId)}>
+              </WebuiButton>
+              <WebuiButton variant="quiet-secondary" size="inline" onClick={() => onTransfer(draft.sessionId)}>
                 转移到当前任务
-              </button>
-              <button type="button" onClick={() => onDiscard(draft.sessionId)}>
+              </WebuiButton>
+              <WebuiButton variant="danger" size="inline" onClick={() => onDiscard(draft.sessionId)}>
                 丢弃
-              </button>
-            </div>
+              </WebuiButton>
+            </WebuiInline>
           </div>
         );
       })}

@@ -30,6 +30,7 @@
 // anyway.
 
 import { useCallback, useState, type ReactElement } from "react";
+import { WebuiTextInput } from "../../../ui/field.js";
 import {
   WEBUI_BROWSER_AUTHORIZATION_DEFAULT,
   type WebuiBrowserAuthorization,
@@ -42,6 +43,7 @@ import type {
 } from "../contracts/browser-port.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { SettingsRow, SettingsSection } from "../../../ui/settings-layout.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 const SURFACE_ROWS: readonly { readonly surface: WebuiBrowserSurface; readonly title: string; readonly description: string }[] = [
   {
@@ -207,8 +209,9 @@ export function BrowserInstallationKey({ readKey }: BrowserInstallationKeyProps)
           }
           testId={`browser-installation-key-${surface}-row`}
         >
-          <button
-            type="button"
+          <WebuiButton
+            variant="quiet-secondary"
+            size="inline"
             data-testid={`browser-installation-key-${surface}-reveal`}
             disabled={!readKey || busy}
             onClick={() => {
@@ -216,7 +219,7 @@ export function BrowserInstallationKey({ readKey }: BrowserInstallationKeyProps)
             }}
           >
             查看密钥
-          </button>
+          </WebuiButton>
         </SettingsRow>
       ))}
       {revealed ? (
@@ -225,7 +228,12 @@ export function BrowserInstallationKey({ readKey }: BrowserInstallationKeyProps)
           description="粘贴到扩展的选项页后即可配对。密钥只保存在这台浏览器的本地存储中。"
           testId="browser-installation-key-value-row"
         >
-          <input
+          <WebuiTextInput
+            appearance="bare"
+            controlSize="dense"
+            textSize="small"
+            textTone="secondary"
+            className="w-auto font-mono"
             readOnly
             data-testid="browser-installation-key-value"
             value={revealed.key}

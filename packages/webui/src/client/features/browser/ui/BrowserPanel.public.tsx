@@ -65,6 +65,7 @@ import {
 } from "../projection/browser-state.js";
 import { webuiBrowserPicturePoint } from "../application/browser-commands.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 const PANEL_COPY = {
   title: "浏览器",
@@ -370,7 +371,7 @@ export function BrowserPanel({
   );
 
   return (
-    <section className="webui-browser-panel" data-testid="browser-panel" role="region" aria-label={PANEL_COPY.title}>
+    <WebuiStack as="section" gap="none" className="webui-browser-panel" data-testid="browser-panel" role="region" aria-label={PANEL_COPY.title}>
       {/* 面板的这几种状态都要被听到：播报通道（role、aria-live、aria-atomic）
           交给共享契约统一写，这里只留自己的类名和文案。 */}
       {capability === "absent" ? (
@@ -437,7 +438,7 @@ export function BrowserPanel({
           <div data-testid="browser-panel-frame-empty" aria-hidden="true" />
         )}
       </div>
-    </section>
+    </WebuiStack>
   );
 }
 

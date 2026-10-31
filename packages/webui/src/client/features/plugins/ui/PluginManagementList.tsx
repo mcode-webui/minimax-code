@@ -5,6 +5,8 @@ import { readWebuiPluginRow as read } from "../contracts/plugin-rows.js";
 import type { WebuiPluginCatalogueRow } from "../projection/catalogue-view.js";
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { FeedbackEmpty } from "../../../ui/feedback.js";
+import { WebuiSearchField } from "../../../ui/field.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export type PluginManagementArea =
   | "plugins"
@@ -48,7 +50,9 @@ export function PluginManagementFilters({
     <div className="webui-plugin-market-discovery webui-plugin-management-discovery">
       <nav className="webui-plugin-category-filter" aria-label="插件管理分类">
         {categories.map((item) => (
-          <button
+          <WebuiButton
+            variant="segmented"
+            size="compact"
             key={item.id}
             aria-pressed={area === item.id}
             onClick={() => onAreaChange(item.id)}
@@ -57,18 +61,10 @@ export function PluginManagementFilters({
             {area === item.id ? (
               <span className="webui-plugin-count">{rowCount}</span>
             ) : null}
-          </button>
+          </WebuiButton>
         ))}
       </nav>
-      <label className="webui-plugin-market-search">
-        <IconSearch aria-hidden="true" size={18} stroke={1.5} />
-        <input
-          aria-label={`搜索${noun}`}
-          placeholder={`搜索${noun}...`}
-          value={query}
-          onChange={(event) => onQueryChange(event.currentTarget.value)}
-        />
-      </label>
+      <WebuiSearchField icon={<IconSearch size={18} stroke={1.5} />} label={`搜索${noun}`} placeholder={`搜索${noun}...`} value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
     </div>
   );
 }
@@ -163,8 +159,10 @@ export function PluginManagementList({
                   ) : null}
                 </div>
                 <div className="webui-plugin-actions">
-                  <button onClick={() => onPrepareMcp(item)}>编辑</button>
-                  <button
+                  <WebuiButton variant="secondary" size="compact" onClick={() => onPrepareMcp(item)}>编辑</WebuiButton>
+                  <WebuiButton
+                    variant="danger"
+                    size="compact"
                     onClick={() =>
                       onConfirmMutation("删除 MCP server", {
                         kind: "deleteMcpServer",
@@ -173,7 +171,7 @@ export function PluginManagementList({
                     }
                   >
                     删除
-                  </button>
+                  </WebuiButton>
                   <ToggleSwitch
                     checked={isOn}
                     label={`启用 ${name}`}
@@ -210,7 +208,9 @@ export function PluginManagementList({
                   }
                 />
                 {area === "plugins" ? (
-                  <button
+                  <WebuiButton
+                    variant="danger"
+                    size="compact"
                     onClick={() =>
                       onConfirmMutation("卸载插件", {
                         kind: "uninstallPlugin",
@@ -222,9 +222,11 @@ export function PluginManagementList({
                     }
                   >
                     卸载
-                  </button>
+                  </WebuiButton>
                 ) : area === "skills" ? (
-                  <button
+                  <WebuiButton
+                    variant="danger"
+                    size="compact"
                     onClick={() =>
                       onConfirmMutation("删除技能", {
                         kind: "deleteSkill",
@@ -236,7 +238,7 @@ export function PluginManagementList({
                     }
                   >
                     删除
-                  </button>
+                  </WebuiButton>
                 ) : null}
               </div>
             )}

@@ -14,38 +14,12 @@
     padding: var(--spacing_4);
     border-radius: var(--radius_12);
   }
-  .webui-workspace-menu--desktop .webui-workspace-option--desktop {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: var(--spacing_8, 8px);
-    padding: 8px 10px;
-    border-radius: var(--radius_8, 8px);
-    background: transparent;
-    color: var(--text_default_primary);
-    font-size: var(--size_14, 14px);
-    line-height: var(--line_height_20, 20px);
-    cursor: pointer;
-    border: none;
-    transition: background-color 80ms ease;
-  }
-  .webui-workspace-menu--desktop .webui-workspace-option--desktop:hover {
-    background: var(--bg_interaction_tertiary_hover, rgba(0, 0, 0, 0.06));
-  }
   .webui-workspace-menu--desktop
     [data-webui-workspace-action="add-new"]
     + [data-webui-workspace-action="no-project"] {
     margin-top: var(--spacing_2);
   }
 
-  /* These rows carry no `:focus-visible`, so keyboard focus fell through to the
-   * browser's default blue ring — a raw box that matched nothing around it.
-   * Same treatment the send button, the primary/secondary buttons and the
-   * toggle rows already use. */
-  .webui-workspace-option--desktop:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: -2px;
-  }
 
   /* The project row under the composer. It is a LAYOUT element only — the
    * light surface comes from `.message-input-home-container`, the scrim box
@@ -105,23 +79,7 @@
     color: var(--icon_default_secondary);
   }
 
-  /* The directory browser's 取消 / 使用此目录 pair.
-   *
-   * These used to borrow `.webui-commit-dialog-actions`, which is sized for the
-   * 420px centred modal: 8/12 padding and a heavy dark fill read oversized
-   * inside a 240–320px popover, and clashed with the directory rows directly
-   * above them, which are 8/10 on `--radius_8`. They now take the rows' scale
-   * and radius and the project's primary/secondary colours, so the whole panel
-   * reads as one language.
-   *
-   * Geometry is declared once on the shared class rather than reusing
-   * `.webui-button-primary` (8/16) and `.webui-button-secondary` (6/12): those
-   * two differ by 4px of vertical padding, which would render this side-by-side
-   * pair at two different heights. The colours, the hover ramp and the
-   * `:focus-visible` ring are kept from those buttons unchanged.
-   *
-   * The rule above the pair separates it from the directory list, mirroring
-   * the separator the quick menu uses between `最近` and the commands. */
+  /* Footer placement stays with this chooser; its actions use the shared button contract. */
   .webui-workspace-browser-actions {
     display: flex;
     align-items: center;
@@ -130,50 +88,6 @@
     margin-top: var(--spacing_4);
     border-top: 1px solid var(--border_default);
     padding-top: var(--spacing_8);
-  }
-
-  .webui-workspace-browser-action {
-    display: inline-flex;
-    min-height: 28px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border_default);
-    border-radius: var(--radius_8);
-    background: transparent;
-    padding: var(--spacing_4) var(--spacing_12);
-    color: var(--text_default_secondary);
-    font-size: var(--size_14);
-    line-height: var(--line_height_18);
-    cursor: pointer;
-    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-  }
-
-  .webui-workspace-browser-action:hover:not(:disabled) {
-    border-color: var(--border_heavy);
-    background: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_primary);
-  }
-
-  .webui-workspace-browser-action--primary {
-    border-color: transparent;
-    background: var(--bg_interaction_primary_default);
-    color: var(--text_default_inverted);
-  }
-
-  .webui-workspace-browser-action--primary:hover:not(:disabled) {
-    border-color: transparent;
-    background: var(--bg_interaction_primary_hover);
-    color: var(--text_default_inverted);
-  }
-
-  .webui-workspace-browser-action:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  .webui-workspace-browser-action:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
   }
 
   /* Workspace panel, progress overview and workspace review surfaces. */
@@ -253,9 +167,7 @@
   .webui-workspace-tab.is-active { border-color: var(--border_default); border-bottom-color: var(--bg_default_primary); background: var(--bg_default_primary); color: var(--text_default_primary); }
   .webui-workspace-tab:not(.is-active)::after { position: absolute; top: 50%; right: -2px; width: 1px; height: 20px; transform: translateY(-50%); background: var(--border_default); content: ""; }
   .webui-workspace-tab:not(.is-active):hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
-  .webui-workspace-tab button, .webui-workspace-panel-actions button { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; padding: var(--spacing_8); color: inherit; }
-  .webui-workspace-tab button:first-child { width: 100%; min-width: 0; height: 100%; justify-content: flex-start; gap: var(--spacing_8); overflow: hidden; padding-right: 28px; text-overflow: ellipsis; white-space: nowrap; }
-  .webui-workspace-tab button:first-child:focus-visible, .webui-workspace-tab button:last-child:focus-visible { outline: 2px solid var(--border_accent); outline-offset: -3px; }
+  .webui-workspace-tab-control { display: inline-flex; width: 100%; min-width: 0; height: 100%; align-items: center; justify-content: flex-start; gap: var(--spacing_8); overflow: hidden; padding: var(--spacing_8) 28px var(--spacing_8) var(--spacing_8); text-overflow: ellipsis; white-space: nowrap; }
   .webui-workspace-tab-label { min-width: 0; overflow: hidden; font-size: var(--size_14); text-overflow: ellipsis; white-space: nowrap; }
   .webui-workspace-tab-file-icon { width: 18px; height: 18px; flex: 0 0 18px; }
   /* The strip owns the per-tab glyphs for the new kinds. */
@@ -279,17 +191,14 @@
   .webui-workspace-filetype-badge.is-xml { color: #e37933; font-weight: 700; }
   .webui-workspace-filetype-badge.is-yaml { color: #cb171e; font-weight: 700; }
   .webui-workspace-filetype-badge.is-code { color: #3178c6; font-weight: 700; }
-  .webui-workspace-tab button:last-child { position: absolute; top: 50%; right: 4px; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 5px; padding: 0; color: var(--icon_default_tertiary); opacity: .72; }
-  .webui-workspace-tab:hover button:last-child, .webui-workspace-tab.is-active button:last-child { opacity: 1; }
-  .webui-workspace-panel-actions button:hover { background: var(--bg_interaction_tertiary_hover); }
+  .webui-workspace-tab-close { position: absolute; top: 50%; right: 4px; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 5px; padding: 0; opacity: .72; }
+  .webui-workspace-tab:hover .webui-workspace-tab-close, .webui-workspace-tab.is-active .webui-workspace-tab-close { opacity: 1; }
   /* The strip's "+" opens a fresh new tab page. It used to sit beside the add
    * menu's "+", which opened a tool tab behind a dropdown; the menu's four
    * entries are the launcher's tiles now, and this is the only way in. */
-  .webui-workspace-new-tab-trigger { display: inline-flex; width: 36px; height: 36px; flex: 0 0 36px; align-items: center; justify-content: center; border-radius: 8px; background: transparent; color: var(--icon_default_secondary, #5b6473); font-size: 22px; font-weight: var(--weight_regular); line-height: 1; }
-  .webui-workspace-new-tab-trigger:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
+  .webui-workspace-new-tab-trigger { display: inline-flex; width: 36px; height: 36px; flex: 0 0 36px; align-items: center; justify-content: center; border-radius: 8px; padding: 0; }
   .webui-workspace-panel-actions { flex: 0 0 auto; gap: var(--spacing_8); padding-left: var(--spacing_4); }
-  .webui-workspace-panel-actions button { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; color: var(--icon_default_secondary); }
-  .webui-workspace-panel-close { color: var(--icon_default_secondary); }
+  .webui-workspace-panel-action { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; padding: 0; }
   .webui-workspace-panel-body { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: hidden; }
   /* A web tab's content is a window: the browser panel fills the body, or the
    * page sits at the top of it with the panel's own surface underneath. */
@@ -301,17 +210,11 @@
   .webui-workspace-file-breadcrumb > span { display: inline-flex; min-width: 0; align-items: center; gap: var(--spacing_8); overflow: hidden; text-overflow: ellipsis; }
   .webui-workspace-file-breadcrumb .is-current { color: var(--text_default_primary); }
   .webui-workspace-file-mode { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; border-radius: 8px; background: var(--bg_default_secondary); padding: 2px; }
-  .webui-workspace-file-mode button { min-height: 28px; border: 0; border-radius: 6px; background: transparent; padding: 0 10px; color: var(--text_default_secondary); font-size: var(--size_12); }
-  .webui-workspace-file-mode button[aria-pressed="true"] { background: var(--bg_default_primary); color: var(--text_default_primary); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
-  .webui-workspace-edit-action { display: inline-flex; width: 34px; height: 34px; flex: 0 0 34px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--icon_default_secondary); }
-  .webui-workspace-edit-action:disabled { cursor: default; color: var(--icon_default_tertiary); opacity: .72; }
-  .webui-workspace-edit-action:not(:disabled):hover { background: var(--bg_interaction_tertiary_hover); }
-  .webui-workspace-tree-toggle { display: inline-flex; width: 34px; height: 34px; flex: 0 0 34px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--icon_default_secondary); }
-  .webui-workspace-tree-toggle:hover, .webui-workspace-tree-toggle[aria-pressed="true"] { background: var(--bg_interaction_tertiary_selected); color: var(--icon_default_primary); }
+  .webui-workspace-file-mode-button { min-height: 28px; border-radius: 6px; padding: 0 10px; font-size: var(--size_12); }
+  .webui-workspace-edit-action { width: 34px; height: 34px; flex: 0 0 34px; }
+  .webui-workspace-tree-toggle { width: 34px; height: 34px; flex: 0 0 34px; }
   .webui-workspace-file-tree-panel { display: flex; width: clamp(200px, 38cqi, 288px); flex: 0 0 clamp(200px, 38cqi, 288px); min-height: 0; flex-direction: column; border-left: 1px solid var(--border_default); background: var(--bg_default_primary); animation: webui-panel-enter-right 180ms cubic-bezier(.2, .7, .2, 1) both; }
-  .webui-workspace-file-search { display: flex; height: 40px; flex: 0 0 40px; align-items: center; gap: var(--spacing_8); margin: var(--spacing_8) var(--spacing_12); border: 1px solid var(--border_default); border-radius: 10px; padding: 0 var(--spacing_8); color: var(--icon_default_tertiary); }
-  .webui-workspace-file-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text_default_primary); font-size: var(--size_14); }
-  .webui-workspace-file-search input::placeholder { color: var(--text_default_tertiary); }
+  .webui-workspace-file-search { flex: 0 0 40px; margin: var(--spacing_8) var(--spacing_12); }
   .webui-workspace-file-tree-scroll { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 0 var(--spacing_12) var(--spacing_12); }
   .webui-workspace-file-tree-scroll > [role="status"], .webui-workspace-file-tree-scroll > [role="alert"], .webui-workspace-tree-empty { padding: var(--spacing_8); color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-file-tree-children { padding-left: var(--spacing_12); }
@@ -329,8 +232,6 @@
   .webui-workspace-miniapp-tab .webui-miniapp-picker { width: min(100%, 480px); margin: auto; }
   .webui-workspace-miniapp-tab .webui-miniapp-picker-heading { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: var(--spacing_12); margin: 0 0 16px; color: var(--text_default_primary); }
   .webui-workspace-miniapp-tab .webui-miniapp-picker-heading h1 { margin: 0; font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading > button { display: inline-flex; align-items: center; gap: var(--spacing_2); border: 0; background: transparent; padding: 0; color: var(--text_default_accent); font-size: var(--size_14); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker-heading > button:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 3px; }
   .webui-workspace-miniapp-tab .webui-plugin-list { width: 100%; max-width: none; margin: 0; }
   .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-row { display: grid; min-width: 0; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--spacing_12); padding: var(--spacing_12) 0; }
   .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-miniapp-picker-icon { display: flex; width: 48px; height: 48px; align-items: center; justify-content: center; border: 1px solid var(--border_light); border-radius: var(--radius_12); background: var(--bg_default_primary); color: var(--icon_default_primary); }
@@ -341,13 +242,7 @@
   .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-copy p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_20); text-overflow: ellipsis; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
   .webui-workspace-miniapp-tab .webui-miniapp-picker-status { color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
   .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions { display: flex; flex: 0 0 auto; grid-area: auto; align-items: center; gap: var(--spacing_8); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button { min-height: 36px; border-radius: var(--radius_12); padding: 0 var(--spacing_12); font-size: var(--size_14); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:first-child { min-width: 80px; border: 0; background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:first-child:not(:disabled):hover { background: var(--bg_interaction_tertiary_press); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker .webui-plugin-actions > button:last-child:not(:first-child) { border: 0; background: transparent; color: var(--text_default_tertiary); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker-create { width: 100%; min-height: 44px; margin-top: var(--spacing_8); border: 0; border-radius: var(--radius_12); background: var(--bg_interaction_primary_default); color: var(--text_label_primary_default); font-size: var(--size_14); font-weight: var(--weight_medium); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker-create:not(:disabled):hover { background: var(--bg_interaction_primary_hover); }
-  .webui-workspace-miniapp-tab .webui-miniapp-picker-create:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
+  .webui-workspace-miniapp-tab .webui-miniapp-picker-create { width: 100%; margin-top: var(--spacing_8); }
   .webui-workspace-image-preview { display: block; max-width: 100%; max-height: calc(100vh - 180px); margin: 24px auto; object-fit: contain; }
   .webui-file-code { min-width: max-content; min-height: 100%; margin: 0; overflow: auto; background: var(--bg_default_primary); padding: 20px 0; color: var(--text_default_primary); font-family: Hack, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.65; tab-size: 2; white-space: pre; }
   .webui-file-code code { display: block; min-width: 100%; }
@@ -383,19 +278,14 @@
   .webui-workspace-launcher-omnibox { display: flex; width: 100%; max-width: 936px; align-items: center; gap: var(--spacing_12); height: 60px; flex: 0 0 60px; margin-bottom: 20px; padding: 0 var(--spacing_16); border: 1px solid var(--border_default); border-radius: 30px; background: var(--bg_default_primary); box-shadow: 0 2px 6px rgb(0 0 0 / 10%); }
   .webui-workspace-launcher-omnibox:focus-within { border-color: var(--border_default); box-shadow: 0 2px 8px rgb(0 0 0 / 14%); }
   .webui-workspace-launcher-omnibox-glyph { color: var(--icon_default_primary); }
-  .webui-workspace-launcher-omnibox-input { min-width: 0; flex: 1 1 auto; height: 100%; border: 0; outline: 0; background: transparent; padding: 0; color: var(--text_default_primary); font-size: var(--size_16); }
-  .webui-workspace-launcher-omnibox-input::placeholder { color: var(--text_default_tertiary); }
-  .webui-workspace-launcher-omnibox-submit { display: inline-flex; width: 32px; height: 32px; flex: 0 0 32px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon_default_primary); font-size: var(--size_12); }
-  .webui-workspace-launcher-omnibox-submit:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
-  .webui-workspace-launcher-omnibox-submit:disabled { opacity: 0.5; }
+  .webui-workspace-launcher-omnibox-submit { display: inline-flex; width: 32px; height: 32px; flex: 0 0 32px; align-items: center; justify-content: center; border-radius: 50%; padding: 0; }
   /* The shortcuts, under the address box and in a row: a mark in a round
    * plate with its name under it, which is the shape a browser's own
    * shortcuts have. */
   .webui-workspace-launcher-tiles { display: flex; width: 100%; min-width: 0; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: var(--spacing_24); overflow: hidden; }
-  .webui-workspace-launcher-tile { display: flex; width: 112px; flex-direction: column; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_12); background: transparent; padding: var(--spacing_8); color: var(--text_default_secondary); }
+  .webui-workspace-launcher-tile { display: flex; width: 112px; flex-direction: column; align-items: center; gap: var(--spacing_8); border-radius: var(--radius_12); padding: var(--spacing_8); }
   .webui-workspace-launcher-tile { flex: 0 0 112px; }
   .webui-workspace-launcher-tile-icon { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border: 1px solid var(--border_default); border-radius: 50%; background: var(--bg_default_secondary); color: var(--icon_default_primary); }
-  .webui-workspace-launcher-tile:hover { background: var(--bg_default_secondary); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile:hover .webui-workspace-launcher-tile-icon { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
   .webui-workspace-launcher-tile-label { font-size: var(--size_12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .webui-workspace-launcher-more { flex: 0 0 112px; }
@@ -410,10 +300,10 @@
   .webui-workspace-launcher-unavailable, .webui-workspace-launcher-error { max-width: 520px; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }
 
   .webui-turn-review { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; overflow: auto; }
-  .webui-turn-review-summary { display: flex; min-height: 48px; flex: 0 0 48px; align-items: center; justify-content: space-between; gap: var(--spacing_12); border-bottom: 1px solid var(--border_default); padding: 0 var(--spacing_16); color: var(--text_default_primary); font-size: var(--size_14); }
+  .webui-turn-review-summary { min-height: 48px; flex: 0 0 48px; border-bottom: 1px solid var(--border_default); padding: 0 var(--spacing_16); color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-turn-review-files { min-width: 0; flex: 1 1 auto; overflow: auto; }
   .webui-turn-review-file { min-width: 0; border-bottom: 1px solid var(--border_default); }
-  .webui-turn-review-file-heading { position: sticky; top: 0; z-index: 1; display: flex; width: 100%; min-width: 0; min-height: 40px; align-items: center; gap: var(--spacing_8); border: 0; background: var(--bg_default_primary); padding: 0 var(--spacing_12); color: var(--text_default_primary); cursor: pointer; font: inherit; text-align: left; }
+  .webui-turn-review-file-heading { position: sticky; top: 0; z-index: 1; display: flex; width: 100%; min-width: 0; min-height: 40px; align-items: center; gap: var(--spacing_8); padding: 0 var(--spacing_12); text-align: left; }
   .webui-turn-review-chevron { width: 12px; height: 12px; flex: 0 0 12px; color: var(--icon_default_tertiary); transition: transform 120ms ease; }
   .webui-turn-review-file[data-expanded="true"] > .webui-turn-review-file-heading > .webui-turn-review-chevron { transform: rotate(90deg); }
   .webui-turn-review-file-heading:hover { background: var(--bg_default_secondary); }
@@ -441,8 +331,6 @@
   .webui-turn-review-unavailable, .webui-turn-review-empty { padding: var(--spacing_16); color: var(--text_default_tertiary); font-size: var(--size_14); }
   .webui-workspace-review-status { flex: 0 0 auto; margin: 0; border-bottom: 1px solid var(--border_light); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-workspace-review-search { display: flex; flex: 0 0 auto; gap: var(--spacing_8); border-bottom: 1px solid var(--border_light); padding: var(--spacing_8) var(--spacing_12); }
-  .webui-workspace-review-search input { min-width: 0; flex: 1; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_default_primary); padding: 0 var(--spacing_8); color: var(--text_default_primary); font-size: var(--size_14); }
-  .webui-workspace-review-search button { flex: 0 0 auto; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_default_primary); padding: 0 var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-file-preview-line-active { display: inline-block; width: 100%; background: var(--bg_interaction_tertiary_selected); }
 
   /* The panel controls live in the session header row now.
@@ -452,26 +340,16 @@
    * else — the header the conversation has no part in. In the header row they
    * are simply the last thing in it (ADR 0025). */
   .webui-workspace-panel-controls { position: static; display: flex; align-items: center; gap: 4px; }
-  .webui-workspace-icon-button { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--icon_default_secondary); }
-  .webui-workspace-icon-button:not(:disabled):hover, .webui-workspace-icon-button.is-active { background: var(--bg_interaction_tertiary_selected); color: var(--icon_default_primary); }
-  .webui-workspace-icon-button:disabled { cursor: default; opacity: .72; }
   /* The progress toggle is unavailable while the window is too narrow for the
    * card to have a gutter of its own. It keeps its place in the row and says
    * why, so the control does not vanish and leave a gap nobody explains. */
-  .webui-workspace-icon-button[aria-disabled="true"] { cursor: default; opacity: .72; }
-  .webui-workspace-icon-button[aria-disabled="true"]:hover { background: transparent; color: var(--icon_default_secondary); }
-  .webui-workspace-panel-close { display: flex; width: 32px; height: 32px; flex: 0 0 32px; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); background: transparent; color: var(--icon_default_tertiary); }
-  .webui-workspace-panel-close:hover { background: var(--bg_interaction_tertiary_hover); color: var(--icon_default_primary); }
+  .webui-workspace-panel-close { border-radius: var(--radius_8); }
 
-  .webui-file-tree-row { display: flex; width: 100%; min-height: 32px; align-items: center; gap: var(--spacing_8); overflow: hidden; border: 0; border-radius: 6px; background: transparent; padding: 0 var(--spacing_4); color: var(--text_default_secondary); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: var(--size_14); transition: background-color 120ms ease-out, color 120ms ease-out; }
+  .webui-file-tree-row { display: flex; width: 100%; min-height: 32px; align-items: center; gap: var(--spacing_8); overflow: hidden; padding: 0 var(--spacing_4); text-overflow: ellipsis; white-space: nowrap; font-size: var(--size_14); }
   .webui-expandable-motion { display: grid; min-height: 0; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 180ms cubic-bezier(.2, .7, .2, 1), opacity 140ms ease-out; }
   .webui-expandable-motion > * { min-height: 0; overflow: hidden; }
   .webui-expandable-motion.is-open { grid-template-rows: 1fr; opacity: 1; }
-  .webui-file-tree-row:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_primary); }
-  .webui-file-tree-row.is-selected { background: var(--bg_interaction_tertiary_selected); color: var(--text_default_primary); }
-
   .file-tab { display: flex; align-items: center; gap: var(--spacing_4); overflow: hidden; padding: 0 var(--spacing_8); font-size: var(--size_12); white-space: nowrap; }
-  .file-tab button { margin-left: auto; border: 0; background: transparent; color: inherit; }
 
   .webui-canvas-content { position: relative; display: flex; min-height: 300px; height: calc(100% - 180px); flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing_8); padding: var(--spacing_16); color: var(--text_default_secondary); text-align: center; }
   .webui-canvas-content p { margin: 0; color: var(--text_default_tertiary); font-size: var(--size_12); }

@@ -24,6 +24,7 @@ import {
 } from "../projection/miniapp-view.js";
 import { WebuiIconChevronRight, WebuiIconSites } from "../../../shell/icons.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface MiniAppPickerProps {
   /** The session the chosen Mini App's view belongs to. */
@@ -67,13 +68,13 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
     <div className="webui-miniapp-picker" data-testid="miniapp-picker">
       <div className="webui-miniapp-picker-heading">
         <h1>我的 Mini App</h1>
-        <button type="button" onClick={onManage} disabled={!onManage}>
+        <WebuiButton variant="quiet-highlight" size="inline" type="button" onClick={onManage} disabled={!onManage}>
           管理 <WebuiIconChevronRight />
-        </button>
+        </WebuiButton>
         {onClose ? (
-          <button type="button" onClick={onClose}>
+          <WebuiButton variant="secondary" size="compact" type="button" onClick={onClose}>
             取消
-          </button>
+          </WebuiButton>
         ) : null}
       </div>
       {state.unavailable ? <p className="webui-plugin-empty">{state.unavailable}</p> : null}
@@ -133,7 +134,9 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
                 ) : null}
               </div>
               <div className="webui-plugin-actions">
-                <button
+                <WebuiButton
+                  variant="secondary"
+                  size="compact"
                   type="button"
                   data-testid={`miniapp-picker-open-${row.pluginId}`}
                   aria-label="打开"
@@ -146,23 +149,25 @@ export function MiniAppPicker({ sessionId, onOpened, onClose, onManage }: MiniAp
                   }}
                 >
                   {row.ownedElsewhere ? `其他客户端运行中${row.ownerClient ? `（${row.ownerClient}）` : ""}` : "使用"}
-                </button>
+                </WebuiButton>
                 {row.running || row.status === "starting" ? (
-                  <button
+                  <WebuiButton
+                    variant="quiet-subtle"
+                    size="compact"
                     type="button"
                     onClick={() => void workflows?.stop(row.pluginId)}
                   >
                     停止
-                  </button>
+                  </WebuiButton>
                 ) : null}
               </div>
             </article>
           );
         })}
       </div>
-      <button className="webui-miniapp-picker-create" type="button" onClick={onManage} disabled={!onManage}>
+      <WebuiButton variant="primary" size="panel" className="webui-miniapp-picker-create" type="button" onClick={onManage} disabled={!onManage}>
         创建 Mini App
-      </button>
+      </WebuiButton>
       {sessionId ? null : (
         <p className="webui-plugin-empty">当前没有会话，Mini App 会打开在第一个标签页里。</p>
       )}

@@ -28,6 +28,11 @@
   .webui-feedback--error .webui-feedback-title {
     color: var(--text_status_error);
   }
+  .webui-feedback--inline {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing_12);
+  }
   .webui-feedback--empty {
     align-items: flex-start;
     padding: 16px 0;

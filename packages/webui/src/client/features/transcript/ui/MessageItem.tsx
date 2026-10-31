@@ -11,7 +11,6 @@
 // composer while active), but the DOM for either role is produced here.
 
 import { useRef, useState, type ReactElement } from "react";
-import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import type {
   WebuiGetSessionForkOptionsResult,
@@ -39,8 +38,11 @@ import {
   buildWebuiRewindRequest,
   webuiClientRequestId,
 } from "../../sessions/projection/action-requests.public.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiDialog, WebuiDialogActions } from "../../../ui/dialog.js";
+import { WebuiTextarea, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 /**
  * The single message renderer shared by persisted history and the live turn.
@@ -185,28 +187,15 @@ export function MessageItem({
   };
   // The dialog is rendered conditionally, so the layer is only active while it is
   // on screen: an inactive layer casts no vote.
-  const forkLayerId = useDialogLayer({
-    id: "fork-dialog",
-    active: forkOpen,
-    onClose: () => setForkOpen(false),
-  });
   const forkDialog = forkOpen ? (
-    <div className="webui-message-dialog" data-overlay-layer={forkLayerId} role="dialog" aria-modal="true" data-testid="fork-dialog">
-      <div className="webui-message-dialog-surface">
-        <h3>复制为新会话</h3>
-        <p>{forkOptions?.unavailableReason ?? "保留当前上下文，在新会话中继续"}</p>
-        <input aria-label="会话名称" value={forkTitle} onChange={(event) => { forkTitleEdited.current = true; setForkTitle(event.target.value); }} placeholder="使用简短且不同的名称，便于识别" disabled={forkOptions?.canFork === false} />
-        <div className="webui-message-dialog-actions">
-          <button type="button" onClick={() => setForkOpen(false)} disabled={mutationBusy}>取消</button>
-          <button type="button" onClick={confirmFork} disabled={mutationBusy || forkOptions?.canFork === false}>复制并进入</button>
-        </div>
-      </div>
-    </div>
+    <WebuiDialog id="fork-dialog" title="复制为新会话" description={forkOptions?.unavailableReason ?? "保留当前上下文，在新会话中继续"} onClose={() => setForkOpen(false)} dismissOnEscape portalTarget={dom.portalTarget()} testId="fork-dialog" width="compact" footer={<WebuiDialogActions>
+      <WebuiButton variant="secondary" onClick={() => setForkOpen(false)} disabled={mutationBusy}>取消</WebuiButton>
+      <WebuiButton variant="primary" onClick={confirmFork} disabled={mutationBusy || forkOptions?.canFork === false}>复制并进入</WebuiButton>
+    </WebuiDialogActions>}>
+        <WebuiTextInput aria-label="会话名称" value={forkTitle} onChange={(event) => { forkTitleEdited.current = true; setForkTitle(event.target.value); }} placeholder="使用简短且不同的名称，便于识别" disabled={forkOptions?.canFork === false} />
+    </WebuiDialog>
   ) : null;
-  const portalTarget = dom.portalTarget();
-  const renderedForkDialog = forkDialog && portalTarget
-    ? createPortal(forkDialog, portalTarget)
-    : forkDialog;
+  const renderedForkDialog = forkDialog;
   if (role === "user") {
     return (
       <div
@@ -220,13 +209,13 @@ export function MessageItem({
         data-webui-goal-message={isGoal ? "true" : undefined}
         data-message-timestamp={timestamp}
       >
-        <div className="flex w-full justify-end">
-          <div className="flex w-full flex-col items-end gap-spacing_8">
+        <WebuiInline align="stretch" justify="end" className="w-full">
+          <WebuiStack gap="small" align="end" className="w-full">
             {editing ? (
-              <div className="webui-user-inline-editor" data-testid="user-message-inline-editor">
-                <textarea aria-label="编辑" value={editText} onChange={(event) => setEditText(event.target.value)} autoFocus />
-                <div className="webui-inline-editor-actions"><button type="button" onClick={() => setEditing(false)} disabled={mutationBusy}>取消</button><button type="button" onClick={submitEdit} disabled={mutationBusy || !editText.trim()}>发送</button></div>
-              </div>
+              <WebuiStack gap="medium" className="webui-user-inline-editor" data-testid="user-message-inline-editor">
+                <WebuiTextarea aria-label="编辑" className="webui-user-inline-editor-control" value={editText} onChange={(event) => setEditText(event.target.value)} autoFocus />
+                <div className="webui-inline-editor-actions"><WebuiButton variant="secondary" onClick={() => setEditing(false)} disabled={mutationBusy}>取消</WebuiButton><WebuiButton variant="primary" onClick={submitEdit} disabled={mutationBusy || !editText.trim()}>发送</WebuiButton></div>
+              </WebuiStack>
             ) : <div
               className="webui-user-bubble rounded-[16px] px-3 py-2 max-w-[80%]"
               data-webui-user-bubble="true"
@@ -249,8 +238,8 @@ export function MessageItem({
             </div>}
             {!editing ? <WebuiMessageActions {...actionProps} /> : null}
             {rewindOpen ? <WebuiRewindDialog messageId={messageId} preview={rewindPreview} loading={rewindLoading} error={mutationError} busy={mutationBusy} onClose={() => setRewindOpen(false)} onConfirm={confirmRewind} /> : null}
-          </div>
-        </div>
+          </WebuiStack>
+        </WebuiInline>
       </div>
     );
   }

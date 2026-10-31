@@ -12,10 +12,8 @@
 // one caller of that contract, not its owner.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useOverlayLayer } from "../../../ui/overlay-coordinator.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
-import { IconDots, IconMessageCirclePlus, IconTrash, IconX } from "@tabler/icons-react";
+import { IconDots, IconMessageCirclePlus, IconTrash } from "@tabler/icons-react";
 import { basenamePath } from "../../../projection/common/paths.js";
 import type { WebuiAgentMemoryView, WebuiMemorySettingsView } from "../../../../shared/contracts/personalization.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
@@ -23,9 +21,10 @@ import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiIconButton } from "../../../ui/button.js";
 import { WebuiMenuItem } from "../../../ui/menu-item.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiTextarea } from "../../../ui/field.js";
 import { SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
 import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 import {
   formatMemoryTimestamp,
   isMemorySaveable,
@@ -259,17 +258,8 @@ export function MemoryManagerDialog({
   // one above it, so Escape sheds exactly the topmost one and a press outside
   // dismisses exactly the layer it landed outside of.
   //
-  // The dialog itself registers through the shared `useDialogLayer`. While the
-  // menu above it is open it leaves the attempt unanswered, so one press sheds
-  // the menu and never the editor behind it.
-  const dialogLayerId = useDialogLayer({
-    id: "memory-manager",
-    dismissible: !menuOpen,
-    onClose,
-  });
-  // The two layers above it name their parent outright: `useDialogLayer` takes
-  // its parent from the React context, and these two are registered by the
-  // component that IS the layer they sit inside.
+  // The shared WebuiDialog owns the parent layer; the menu names that parent
+  // directly so one outside press sheds only the topmost nested surface.
   useOverlayLayer({
     id: "memory-manager-menu",
     parentId: "memory-manager",
@@ -280,46 +270,8 @@ export function MemoryManagerDialog({
       if (route === "request-close") setMenuOpen(false);
     },
   });
-  useOverlayLayer({
-    id: "memory-manager-confirm",
-    parentId: "memory-manager",
-    order: 20,
-    active: confirmingDelete,
-    dismissal: "dismissible",
-    onRoute: (route) => {
-      if (route === "request-close") setConfirmingDelete(false);
-    },
-  });
-
-  const surfaceRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const restoreTo = dom.getActiveElement();
-    surfaceRef.current?.focus();
-    // Who answers Escape, and in what order, is the coordinator's decision (see
-    // the registrations above): this effect only moves focus in and puts it back.
-    return () => {
-      restoreTo?.focus();
-    };
-  }, [dom, onClose]);
-
-  const dialog = (
-    <div
-      data-testid="agent-memory-manager"
-      className="webui-memory-manager-mask"
-    >
-      <section
-        ref={surfaceRef}
-        tabIndex={-1}
-        data-overlay-layer={dialogLayerId}
-        role="dialog"
-        aria-modal="true"
-        aria-label="记忆摘要"
-        className="webui-memory-manager-surface"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="webui-personalization-header">
-          <h3>记忆摘要</h3>
-          <div className="webui-memory-manager-header-actions">
+  const menu = (
+    <div className="webui-memory-manager-header-actions">
             <WebuiDropdown
               open={menuOpen}
               onOpen={() => setMenuOpen(true)}
@@ -371,15 +323,40 @@ export function MemoryManagerDialog({
                 删除记忆
               </WebuiMenuItem>
             </WebuiDropdown>
-            <WebuiIconButton
-              label="关闭"
-              data-testid="agent-memory-close"
-              onClick={onClose}
+    </div>
+  );
+
+  const dialog = (
+    <WebuiDialog
+      id="memory-manager"
+      title="记忆摘要"
+      headerActions={menu}
+      closeTestId="agent-memory-close"
+      onClose={onClose}
+      dismissOnEscape={!menuOpen}
+      dismissOnBackdrop
+      portalTarget={dom.portalTarget()}
+      testId="agent-memory-manager"
+      footerClassName="webui-memory-manager-footer"
+      footer={
+        <>
+          <span data-testid="agent-memory-updated" className="webui-personalization-meta">
+            {formatMemoryTimestamp(updatedAt)}
+          </span>
+          <div className="webui-memory-manager-actions">
+            <SettingsButton onClick={onClose}>取消</SettingsButton>
+            <SettingsButton
+              variant="black"
+              testId="agent-memory-save"
+              disabled={!saveable || !setAgentMemory}
+              onClick={() => void save()}
             >
-              <IconX aria-hidden="true" size={16} stroke={1.7} />
-            </WebuiIconButton>
+              {saving ? "保存中…" : "保存"}
+            </SettingsButton>
           </div>
-        </div>
+        </>
+      }
+    >
         {loading ? (
           <FeedbackBusy label="加载中…" testId="agent-memory-loading" />
         ) : draft === undefined ? null : (
@@ -388,7 +365,7 @@ export function MemoryManagerDialog({
             label="记忆摘要"
             control={(props) => (
               <div className="webui-memory-manager-editor">
-                <textarea
+                <WebuiTextarea
                   {...props}
                   data-testid="agent-memory-textarea"
                   className="webui-personalization-textarea"
@@ -421,24 +398,7 @@ export function MemoryManagerDialog({
         {saved && !saving ? (
           <SettingsSavedNotice message="已保存" testId="agent-memory-saved" />
         ) : null}
-        <footer className="webui-memory-manager-footer">
-          <span data-testid="agent-memory-updated" className="webui-personalization-meta">
-            {formatMemoryTimestamp(updatedAt)}
-          </span>
-          <div className="webui-memory-manager-actions">
-            <SettingsButton onClick={onClose}>取消</SettingsButton>
-            <SettingsButton
-              variant="black"
-              testId="agent-memory-save"
-              disabled={!saveable || !setAgentMemory}
-              onClick={() => void save()}
-            >
-              {saving ? "保存中…" : "保存"}
-            </SettingsButton>
-          </div>
-        </footer>
-      </section>
-    </div>
+    </WebuiDialog>
   );
 
   /**
@@ -448,52 +408,29 @@ export function MemoryManagerDialog({
    * × and a right-aligned footer. Rendering it inline — which is what this used
    * to do — cannot get there: an inline block cannot dim what is behind it, and
    * a scrim over the editor has to be portalled for the same reason the editor
-   * is. The scrim sits above `.webui-memory-manager-mask` (120) because it is a
-   * layer above that dialog rather than part of it.
+   * is. The shared WebuiDialog owns the second scrim and parent relationship.
    *
    * Focus moves in on open and back out on close for the same portal reason as
    * the editor above: the confirm is not a DOM descendant of the button that
    * opened it, so nothing focuses it and the keyboard stays on a menu item that
    * has since unmounted.
    */
-  const confirmRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!confirmingDelete) return;
-    const restoreTo = dom.getActiveElement();
-    confirmRef.current?.focus();
-    return () => {
-      if (restoreTo?.isConnected) restoreTo.focus();
-    };
-  }, [confirmingDelete, dom]);
-
   const confirm = confirmingDelete ? (
-    <div
-      className="webui-memory-confirm-mask"
-      data-testid="agent-memory-delete-confirm"
-    >
-      <div
-        ref={confirmRef}
-        data-overlay-layer="memory-manager-confirm"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="webui-memory-confirm-title"
-        tabIndex={-1}
-        className="webui-memory-confirm"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <h2 id="webui-memory-confirm-title" className="webui-memory-confirm-title">
-          {MEMORY_DELETE_CONFIRM.title}
-        </h2>
-        <WebuiIconButton
-          label="关闭"
-          className="webui-memory-confirm-close"
-          data-testid="agent-memory-delete-dismiss"
-          onClick={() => setConfirmingDelete(false)}
-        >
-          <IconX aria-hidden="true" size={16} stroke={1.7} />
-        </WebuiIconButton>
-        <p className="webui-memory-confirm-body">{MEMORY_DELETE_CONFIRM.body}</p>
-        <div className="webui-memory-confirm-actions">
+    <WebuiDialog
+      id="memory-manager-confirm"
+      parentLayerId="memory-manager"
+      title={MEMORY_DELETE_CONFIRM.title}
+      description={MEMORY_DELETE_CONFIRM.body}
+      role="alertdialog"
+      closeTestId="agent-memory-delete-dismiss"
+      onClose={() => setConfirmingDelete(false)}
+      dismissOnEscape
+      dismissOnBackdrop
+      width="compact"
+      portalTarget={dom.portalTarget()}
+      testId="agent-memory-delete-confirm"
+      footer={
+        <>
           <SettingsButton
             testId="agent-memory-delete-cancel"
             onClick={() => setConfirmingDelete(false)}
@@ -508,18 +445,11 @@ export function MemoryManagerDialog({
           >
             {saving ? "删除中…" : MEMORY_DELETE_CONFIRM.confirm}
           </SettingsButton>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <></>
+    </WebuiDialog>
   ) : null;
-
-  /**
-   * Portalled to the body on purpose. The settings shell is a `z-index: 100`
-   * fixed overlay, and anything with a position and a z-index becomes a
-   * stacking context — a dialog rendered inside it can never paint above the
-   * shell no matter how large its own z-index is. The same reason
-   * `UserMenu` portals the settings modal itself out of the rail.
-   */
-  const portalTarget = dom.portalTarget();
-  return portalTarget ? createPortal(<>{dialog}{confirm}</>, portalTarget) : dialog;
+  return <>{dialog}{confirm}</>;
 }

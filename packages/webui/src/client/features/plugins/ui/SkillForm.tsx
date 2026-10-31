@@ -9,7 +9,8 @@ import { useState, type ReactElement } from "react";
 
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiDialogActions } from "../../../ui/dialog.js";
+import { WebuiField, WebuiTextarea, WebuiTextInput } from "../../../ui/field.js";
 
 export interface SkillFormProps {
   readonly onSubmit: (intent: WebuiPluginIntent) => Promise<boolean>;
@@ -43,15 +44,14 @@ export function SkillForm({ onSubmit, onClose }: SkillFormProps): ReactElement {
       <WebuiField
         label="名称"
         control={(props) => (
-          <input {...props} className="w-full" value={name} onChange={(event) => setName(event.currentTarget.value)} />
+          <WebuiTextInput {...props} value={name} onChange={(event) => setName(event.currentTarget.value)} />
         )}
       />
       <WebuiField
         label="描述"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
-            className="w-full"
             value={description}
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
@@ -61,17 +61,17 @@ export function SkillForm({ onSubmit, onClose }: SkillFormProps): ReactElement {
         className="wide"
         label="内容"
         control={(props) => (
-          <textarea {...props} className="w-full" value={content} onChange={(event) => setContent(event.currentTarget.value)} />
+          <WebuiTextarea {...props} controlSize="large" className="webui-plugin-form-content" value={content} onChange={(event) => setContent(event.currentTarget.value)} />
         )}
       />
-      <div className="webui-agent-form-actions">
-        <WebuiButton variant="surface" size="panel" onClick={onClose}>
+      <WebuiDialogActions>
+        <WebuiButton variant="secondary" size="dialog" onClick={onClose}>
           取消
         </WebuiButton>
-        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
+        <WebuiButton variant="primary" size="dialog" onClick={() => void save()}>
           保存
         </WebuiButton>
-      </div>
+      </WebuiDialogActions>
     </div>
   );
 }

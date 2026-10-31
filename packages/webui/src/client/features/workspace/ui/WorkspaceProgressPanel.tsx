@@ -8,9 +8,11 @@ import {
   useWebuiWorkspaceQueriesState,
 } from "../../../bindings/use-query-state.js";
 import { WebuiIconAgent, WebuiIconCheck, WebuiIconChevronDown, WebuiIconClose, WebuiIconFile, WebuiIconRunLocation } from "../../../shell/icons.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiTextarea } from "../../../ui/field.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiDialog, WebuiDialogActions } from "../../../ui/dialog.js";
+import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 
 const PROGRESS_COPY = {
   environment: "环境信息",
@@ -35,11 +37,11 @@ function WorkspaceProgressSection({ kind, className, title, titleMeta, collapsed
   readonly busy?: boolean;
 }): ReactElement {
   return <section {...{ [`data-webui-${kind}-panel`]: "true" }} className={`webui-progress-section ${className}${collapsed ? " is-collapsed" : ""}`} data-workspace-section="true" aria-busy={busy || undefined}>
-    <button type="button" className="webui-workspace-section-title" onClick={onToggle} aria-expanded={!collapsed}>
+    <WebuiButton variant="quiet-secondary" size="header" className="webui-workspace-section-title" onClick={onToggle} aria-expanded={!collapsed}>
       <span data-workspace-section-title="true">{title}</span>
       {titleMeta}
       <WebuiIconChevronDown className={`webui-progress-section-chevron${collapsed ? " is-collapsed" : ""}`} />
-    </button>
+    </WebuiButton>
     <div className={`webui-expandable-motion${collapsed ? "" : " is-open"}`} aria-hidden={collapsed} ref={(element) => element?.toggleAttribute("inert", collapsed)}>
       {children}
     </div>
@@ -81,13 +83,13 @@ export function WebuiSubagentsPanel({ subagents, collapsed = false, onToggle, on
       <div className="webui-subagents-scroll">
         {subagents.map((subagent) => {
           const label = subagent.title?.trim() || subagent.agentName;
-          return <button type="button" className="webui-subagent-row" key={subagent.sessionId} onClick={() => onMemberClick?.(subagent)}>
+          return <WebuiButton variant="selectable-row" size="rail" className="webui-subagent-row" key={subagent.sessionId} onClick={() => onMemberClick?.(subagent)}>
             <WebuiIconAgent className="webui-subagent-avatar" />
             <span className="min-w-0 flex-1 truncate text-left">{label}</span>
             <span className={`webui-subagent-status webui-subagent-status--${subagent.status}`} aria-label={subagent.status}>
               {subagent.status === "completed" ? <WebuiIconCheck className="size-3" /> : subagent.status === "error" ? "!" : "·"}
             </span>
-          </button>;
+          </WebuiButton>;
         })}
       </div>
   </WorkspaceProgressSection>;
@@ -99,8 +101,7 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }
   readonly mutateGit: (request: WebuiWorkspaceGitMutationRequest) => Promise<Record<string, unknown>>;
   readonly onClose: () => void;
 }): ReactElement {
-  // A modal layer: the commit dialog answers its own dismissal.
-  const layerId = useDialogLayer({ id: "workspace-commit-dialog", onClose });
+  const { dom } = useWebuiBrowserCapabilities();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -116,16 +117,14 @@ function WorkspaceCommitDialog({ environment, workspaceDir, mutateGit, onClose }
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setBusy(false));
   };
-  return <div className="webui-commit-dialog" data-overlay-layer={layerId} role="dialog" aria-modal="true" aria-label={PROGRESS_COPY.commit}>
-    <div className="webui-commit-dialog-header"><strong>{PROGRESS_COPY.commit}</strong><button type="button" aria-label={PROGRESS_COPY.close} onClick={onClose}><WebuiIconClose className="size-4" /></button></div>
-    {hasChanges ? <WebuiField className="webui-commit-dialog-label" label="提交说明" control={(props) => <textarea {...props} className="w-full" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="输入提交说明" autoFocus />} /> : <p className="webui-commit-dialog-hint">当前没有未提交变更，将推送当前分支。</p>}
+  return <WebuiDialog id="workspace-commit-dialog" title={PROGRESS_COPY.commit} onClose={onClose} dismissOnEscape portalTarget={dom.portalTarget()} width="compact" footer={<WebuiDialogActions>
+    <WebuiButton variant="secondary" onClick={onClose} disabled={busy}>取消</WebuiButton>
+    {hasChanges ? <WebuiButton variant="secondary" onClick={() => submit("commit")} disabled={busy || !message.trim()}>提交</WebuiButton> : null}
+    <WebuiButton variant="primary" onClick={() => submit(hasChanges ? "commitAndPush" : "push")} disabled={busy || (hasChanges && !message.trim())}>{hasChanges ? "提交并推送" : "推送"}</WebuiButton>
+  </WebuiDialogActions>}>
+    {hasChanges ? <WebuiField className="webui-commit-dialog-label" label="提交说明" control={(props) => <WebuiTextarea {...props} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="输入提交说明" autoFocus />} /> : <p className="webui-commit-dialog-hint">当前没有未提交变更，将推送当前分支。</p>}
     {error ? <FeedbackError message={error} className="webui-commit-dialog-error" /> : null}
-    <div className="webui-commit-dialog-actions">
-      <button type="button" onClick={onClose} disabled={busy}>取消</button>
-      {hasChanges ? <button type="button" onClick={() => submit("commit")} disabled={busy || !message.trim()}>提交</button> : null}
-      <button type="button" onClick={() => submit(hasChanges ? "commitAndPush" : "push")} disabled={busy || (hasChanges && !message.trim())}>{hasChanges ? "提交并推送" : "推送"}</button>
-    </div>
-  </div>;
+  </WebuiDialog>;
 }
 
 export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false, workspaceEnvironment, loading = false, queries: queriesProp, collapsed = false, onToggle, onOpenChanges, onOpenTerminal }: {
@@ -172,15 +171,15 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
         {pending ? <FeedbackLiveRegion><div className="webui-environment-loading" aria-label="正在加载环境信息"><span className="webui-environment-skeleton webui-environment-skeleton--branch" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /><span className="webui-environment-skeleton webui-environment-skeleton--action" /></div></FeedbackLiveRegion> : environmentError ? <FeedbackError message=<>环境信息加载失败：{environmentError}</> className="webui-environment-loading" /> : environment ? <div className="webui-environment-body">
           <div className="webui-environment-workspace">{environment.branch || " "}</div>
           <div className="webui-environment-actions">
-            <button type="button" className="webui-environment-action" onClick={onOpenChanges} disabled={!onOpenChanges}>
+            <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={onOpenChanges} disabled={!onOpenChanges}>
               <WebuiIconRunLocation className="size-5" /><span>{PROGRESS_COPY.changes}</span>{hasLineChanges ? <small aria-label={`新增 ${environment.insertions} 行，删除 ${environment.deletions} 行`}><span className="webui-diff-additions">+{environment.insertions}</span><span className="webui-diff-deletions">-{environment.deletions}</span></small> : null}
-            </button>
-            <button type="button" className="webui-environment-action" onClick={() => setCommitOpen(true)} disabled={!canMutate}>
+            </WebuiButton>
+            <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={() => setCommitOpen(true)} disabled={!canMutate}>
               <WebuiIconFile className="size-5" /><span>{PROGRESS_COPY.commit}</span>
-            </button>
-            <button type="button" className="webui-environment-action" onClick={onOpenTerminal} disabled={!onOpenTerminal}>
+            </WebuiButton>
+            <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={onOpenTerminal} disabled={!onOpenTerminal}>
               <WebuiIconRunLocation className="size-5" /><span>{PROGRESS_COPY.openTerminal}</span>
-            </button>
+            </WebuiButton>
           </div>
         </div> : null}
     </WorkspaceProgressSection>

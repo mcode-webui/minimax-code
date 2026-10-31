@@ -8,6 +8,8 @@ import { useState, type ReactElement } from "react";
 import type { WebuiSshTerminalSnapshot } from "../application/ssh-owner.js";
 import { WEBUI_SSH_NO_TERMINAL_TEXT } from "../projection/ssh-panel.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 export interface SshTerminalViewProps {
   readonly terminal: WebuiSshTerminalSnapshot;
@@ -50,9 +52,11 @@ export function SshTerminalView(props: SshTerminalViewProps): ReactElement {
         {props.terminal.output || (open ? "" : WEBUI_SSH_NO_TERMINAL_TEXT)}
       </pre>
       {open
-        ? <div className="flex items-center gap-2 border-t-[0.5px] border-border_default px-3 py-1.5">
-          <input
-            type="text"
+        ? <WebuiInline gap="small" className="border-t-[0.5px] border-border_default px-3 py-1.5">
+          <WebuiTextInput
+            appearance="bare"
+            textSize="small"
+            className="min-w-0 flex-1 font-mono"
             aria-label="终端输入"
             data-webui-ssh-terminal-input="true"
             value={input}
@@ -63,7 +67,6 @@ export function SshTerminalView(props: SshTerminalViewProps): ReactElement {
                 send();
               }
             }}
-            className="flex-1 bg-transparent font-mono text-xs text-text_default_primary outline-none"
           />
           <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-terminal-send="true"
             onClick={send}
@@ -71,7 +74,7 @@ export function SshTerminalView(props: SshTerminalViewProps): ReactElement {
           >
             发送
           </WebuiButton>
-        </div>
+        </WebuiInline>
         : null}
     </section>
   );

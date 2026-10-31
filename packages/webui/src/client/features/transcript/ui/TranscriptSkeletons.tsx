@@ -18,6 +18,7 @@
 // animation interval stays in lockstep with the rest of the WebUI shell.
 
 import type { CSSProperties } from "react";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 /**
  * Matches `.webui-session-layout .message-list`'s `max-width` in `shell.css`.
@@ -65,52 +66,52 @@ function ShimmerBar(props: { width: string | number; height: number; rounded?: s
 
 export function ChatSkeleton(): React.JSX.Element {
   return (
-    <div className="flex-1 overflow-hidden" data-testid="chat-skeleton">
-      <div
+    <WebuiStack className="flex-1 overflow-hidden" data-testid="chat-skeleton">
+      <WebuiStack
         className="mx-auto"
         style={{ maxWidth: `${SKELETON_CONTENT_MAX_WIDTH_PX}px` }}
       >
-        <div className="flex justify-end">
+        <WebuiInline justify="end">
           <ShimmerBar width={280} height={48} rounded="1rem" />
-        </div>
-        <div className="mt-5">
-          <div className="flex flex-col gap-[5px]">
+        </WebuiInline>
+        <WebuiStack className="mt-5">
+          <WebuiStack className="webui-transcript-skeleton-lines">
             {LINE_WIDTHS.map((width, index) => (
               <ShimmerBar key={`a${index}`} width={width} height={22} />
             ))}
-          </div>
-          <div className="mt-2 flex flex-col gap-2" style={gradientMask}>
+          </WebuiStack>
+          <WebuiStack gap="small" className="mt-2" style={gradientMask}>
             {SECONDARY_WIDTHS.map((width, index) => (
               <ShimmerBar key={`b${index}`} width={width} height={24} />
             ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          </WebuiStack>
+        </WebuiStack>
+      </WebuiStack>
+    </WebuiStack>
   );
 }
 
 export function GreetingSkeleton(): React.JSX.Element {
   return (
-    <div className="flex-1 overflow-hidden" data-testid="greeting-skeleton">
-      <div
+    <WebuiStack className="flex-1 overflow-hidden" data-testid="greeting-skeleton">
+      <WebuiStack
         className="mx-auto"
         style={{ maxWidth: `${SKELETON_CONTENT_MAX_WIDTH_PX}px` }}
       >
         <ShimmerBar width={40} height={40} rounded="9999px" />
-        <div className="mt-4">
-          <div className="flex flex-col gap-[5px]">
+        <WebuiStack className="mt-4">
+          <WebuiStack className="webui-transcript-skeleton-lines">
             {LINE_WIDTHS.map((width, index) => (
               <ShimmerBar key={`a${index}`} width={width} height={22} />
             ))}
-          </div>
-          <div className="mt-2 flex flex-col gap-2" style={gradientMask}>
+          </WebuiStack>
+          <WebuiStack gap="small" className="mt-2" style={gradientMask}>
             {SECONDARY_WIDTHS.map((width, index) => (
               <ShimmerBar key={`b${index}`} width={width} height={24} />
             ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          </WebuiStack>
+        </WebuiStack>
+      </WebuiStack>
+    </WebuiStack>
   );
 }

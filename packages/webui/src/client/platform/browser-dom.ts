@@ -9,6 +9,67 @@ import type {
 
 export type { WebuiBrowserCanvas, WebuiBrowserImage };
 
+/**
+ * The last element to hold focus outside every modal surface.
+ *
+ * A dialog opened from a menu item cannot give focus back to that item: the menu
+ * unmounts while the dialog is open, so the recorded element is gone by the time
+ * the dialog closes and focus would drop onto the document body. Tracking the
+ * last element focused outside a modal keeps the return target meaningful there,
+ * and the tracker is installed per document the first time a modal activates.
+ */
+const outsideModalFocusByDocument = new WeakMap<Document, HTMLElement[]>();
+const OUTSIDE_MODAL_FOCUS_HISTORY = 8;
+
+function recordOutsideModalFocus(ownerDocument: Document, element: HTMLElement): void {
+  const history = outsideModalFocusByDocument.get(ownerDocument);
+  if (!history) return;
+  const previous = history.indexOf(element);
+  if (previous >= 0) history.splice(previous, 1);
+  history.push(element);
+  if (history.length > OUTSIDE_MODAL_FOCUS_HISTORY) history.shift();
+}
+
+function trackOutsideModalFocus(ownerDocument: Document): HTMLElement {
+  const history = outsideModalFocusByDocument.get(ownerDocument);
+  if (history) return history[history.length - 1] ?? ownerDocument.body;
+  const active = ownerDocument.activeElement;
+  // The adapter is also constructed against an injected document in the unit
+  // suite, where the DOM globals do not exist; the guard keeps the tracker
+  // usable there instead of throwing on the constructor reference.
+  const initial = typeof HTMLElement !== "undefined" && active instanceof HTMLElement
+    ? active
+    : ownerDocument.body;
+  outsideModalFocusByDocument.set(ownerDocument, [initial]);
+  ownerDocument.addEventListener("focusin", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest("[data-webui-dialog-mask], .webui-settings-mask, [data-overlay-layer]")) return;
+    recordOutsideModalFocus(ownerDocument, target);
+  }, true);
+  return initial;
+}
+
+/**
+ * The element focus returns to when the control that opened the modal is gone.
+ *
+ * A menu item unmounts with its menu, so the single most recent target is often
+ * disconnected by the time the dialog closes. The history is walked newest
+ * first and the first target that is still in the document, still focusable and
+ * not inside a modal wins.
+ */
+function connectedOutsideModalFocus(ownerDocument: Document): HTMLElement | null {
+  const history = outsideModalFocusByDocument.get(ownerDocument) ?? [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const element = history[index];
+    if (!element?.isConnected) continue;
+    if (element.hasAttribute("disabled") || element.getAttribute("aria-hidden") === "true") continue;
+    return element;
+  }
+  return null;
+}
+
+
 export interface WebuiBrowserDom {
   readonly portalTarget: () => HTMLElement | null;
   readonly listenForMouseDown: (listener: (event: MouseEvent) => void) => () => void;
@@ -66,6 +127,8 @@ export interface WebuiBrowserDom {
   readonly listenForContextWindowUsageChange: (listener: () => void) => () => void;
   readonly getElementById: (id: string) => HTMLElement | null;
   readonly getActiveElement: () => HTMLElement | null;
+  /** Makes a modal surface exclusive to keyboard and assistive technology. */
+  readonly activateModalSurface: (surface: HTMLElement, mask: HTMLElement, allowedPortalLayerIds: () => ReadonlySet<string>) => () => void;
   readonly updateDocumentAppearance: (theme: "dark" | "light", language: string) => void;
   /**
    * The theme the document is currently showing.
@@ -149,6 +212,10 @@ export function createWebuiBrowserDom(
     return () => documentObject.removeEventListener(type, handler, capture);
   };
 
+  // Installed at composition time, not on the first modal: the element a dialog
+  // should hand focus back to is focused before the dialog exists.
+  if (documentObject) trackOutsideModalFocus(documentObject);
+
   return {
     portalTarget: () => documentObject?.body ?? null,
     listenForMouseDown: (listener) => listen("mousedown", listener),
@@ -195,6 +262,66 @@ export function createWebuiBrowserDom(
       return activeElement && typeof (activeElement as HTMLElement).focus === "function"
         ? activeElement as HTMLElement
         : null;
+    },
+    activateModalSurface: (surface, mask, allowedPortalLayerIds) => {
+      const ownerDocument = surface.ownerDocument;
+      const restoreTo = ownerDocument.activeElement instanceof HTMLElement
+        ? ownerDocument.activeElement
+        : null;
+      const changed = [...(mask.parentElement?.children ?? [])]
+        .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== mask)
+        .map((element) => ({ element, inert: element.inert }));
+      for (const { element } of changed) element.inert = true;
+      const focusable = () => [...surface.querySelectorAll<HTMLElement>(
+        'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => !element.hasAttribute("hidden") && element.getAttribute("aria-hidden") !== "true");
+      const containFocus = (event: FocusEvent) => {
+        if (event.target instanceof Node && !surface.contains(event.target)) {
+          const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-overlay-layer]") : null;
+          const targetIds = target?.dataset.overlayLayer?.split(/\s+/u) ?? [];
+          if (targetIds.some((id) => allowedPortalLayerIds().has(id))) return;
+          (focusable()[0] ?? surface).focus();
+        }
+      };
+      const containTab = (event: KeyboardEvent) => {
+        if (event.key !== "Tab") return;
+        const allowedIds = allowedPortalLayerIds();
+        const elements = [
+          ...focusable(),
+          ...[...(mask.ownerDocument.body?.querySelectorAll<HTMLElement>(
+            'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+          ) ?? [])].filter((element) => {
+            if (surface.contains(element)) return false;
+            const layer = element.closest<HTMLElement>("[data-overlay-layer]");
+            return layer?.dataset.overlayLayer?.split(/\s+/u).some((id) => allowedIds.has(id)) ?? false;
+          }),
+        ];
+        const first = elements[0];
+        const last = elements.at(-1);
+        if (!first || !last) {
+          event.preventDefault();
+          surface.focus();
+        } else if (event.shiftKey && ownerDocument.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && ownerDocument.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      ownerDocument.addEventListener("focusin", containFocus, true);
+      ownerDocument.addEventListener("keydown", containTab, true);
+      return () => {
+        ownerDocument.removeEventListener("focusin", containFocus, true);
+        ownerDocument.removeEventListener("keydown", containTab, true);
+        for (const { element, inert } of changed) element.inert = inert;
+        // The control that opened the dialog may be gone by now — a menu item
+        // unmounts with its menu — so fall back to the newest element focused
+        // outside a modal that is still in the document rather than leaving
+        // focus on the document body.
+        const target = restoreTo?.isConnected ? restoreTo : connectedOutsideModalFocus(ownerDocument);
+        target?.focus();
+      };
     },
     updateDocumentAppearance: (theme, language) => {
       if (!documentObject) return;

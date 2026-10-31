@@ -26,6 +26,7 @@ import {
   useWebuiAccountWorkflowsState,
 } from "../../account/bindings/use-account-workflows.public.js";
 import { SettingsPage } from "../../../ui/settings-layout.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 import { SettingsButton, SettingsDialog } from "./settings-atoms.js";
 import { formatPlanName } from "../projection/usage-plan.js";
 import {
@@ -140,18 +141,18 @@ export function AccountUsageSettings(): ReactElement {
 
   return (
     <SettingsPage testId="settings-account-page">
-      <div className="flex w-full flex-col gap-6" data-testid="account-usage-settings">
-        <section className="flex flex-col items-center" data-testid="account-usage-profile">
+      <WebuiStack gap="large" className="w-full" data-testid="account-usage-settings">
+        <WebuiStack as="section" align="center" data-testid="account-usage-profile">
           <AccountUsageAvatar
             avatarUrl={view.avatarUrl}
             displayName={view.displayName}
             testId="account-usage-avatar"
           />
-          <div className="mt-5 flex max-w-full flex-col items-center gap-1">
+          <WebuiStack gap="tight" align="center" className="mt-5 max-w-full">
             <div className="max-w-full truncate text-[16px] font-semibold leading-[24.89px] text-text_default_primary">
               {view.displayName}
             </div>
-            <div className="flex max-w-full items-center gap-1 text-[13px] leading-[18.57px] text-text_default_tertiary">
+            <WebuiInline gap="tight" className="max-w-full text-[13px] leading-[18.57px] text-text_default_tertiary">
               {view.contacts.map((contact) => (
                 <span key={contact} className="contents">
                   <span aria-hidden="true">·</span>
@@ -162,18 +163,21 @@ export function AccountUsageSettings(): ReactElement {
               <span className="shrink-0 rounded-[6px] border border-border_default px-1 py-0.5 text-xs leading-4 text-text_default_secondary">
                 {view.planLabel}
               </span>
-            </div>
-          </div>
-        </section>
-        <div className="flex flex-col gap-6">
+            </WebuiInline>
+          </WebuiStack>
+        </WebuiStack>
+        <WebuiStack gap="large">
           <section
             className="grid h-[70px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)] items-center gap-4 rounded-2xl bg-bg_grouped_tertiary px-5 py-4"
             data-testid="account-usage-metrics"
           >
             {ACCOUNT_USAGE_METRICS.map((metric, index) => (
               <div key={metric.id} className="contents">
-                <div
-                  className="flex flex-col items-center justify-center gap-0.5 text-center"
+                <WebuiStack
+                  gap="micro"
+                  align="center"
+                  justify="center"
+                  className="text-center"
                   data-testid="account-usage-metric"
                 >
                   <div className="text-[13px] font-normal leading-[18.57px] text-text_default_primary">
@@ -185,19 +189,18 @@ export function AccountUsageSettings(): ReactElement {
                         })[metric.id]
                       : "—"}
                   </div>
-                  <div className="flex items-center justify-center gap-1 text-xs leading-4 text-text_default_secondary">
+                  <WebuiInline justify="center" gap="tight" className="text-xs leading-4 text-text_default_secondary">
                     <span>{metric.label}</span>
                     {metric.id === "account-ranking" ? (
-                      <span
-                        className="flex size-4 items-center justify-center text-icon_default_tertiary"
+                      <WebuiInline as="span" justify="center" className="size-4 text-icon_default_tertiary"
                         aria-label={ACCOUNT_USAGE_RANKING_INFO}
                         title={ACCOUNT_USAGE_RANKING_INFO}
                       >
                         <AccountUsageInfoIcon />
-                      </span>
+                      </WebuiInline>
                     ) : null}
-                  </div>
-                </div>
+                  </WebuiInline>
+                </WebuiStack>
                 {index < 2 ? (
                   <span
                     aria-hidden="true"
@@ -208,41 +211,40 @@ export function AccountUsageSettings(): ReactElement {
               </div>
             ))}
           </section>
-          <section className="flex min-h-[150px] flex-col" data-testid="account-usage-activity">
-            <div className="flex h-5 items-center gap-1">
+          <WebuiStack as="section" className="min-h-[150px]" data-testid="account-usage-activity">
+            <WebuiInline as="div" gap="tight" className="h-5">
               <h2 className="text-[13px] font-normal leading-[18.57px] text-text_default_primary">Token 用量</h2>
               {view.heatmap?.trackingStartDate ? (
-                <span
-                  className="flex size-4 items-center justify-center text-icon_default_tertiary"
+                <WebuiInline as="span" justify="center" className="size-4 text-icon_default_tertiary"
                   aria-label={ACCOUNT_USAGE_TRACKING_SINCE}
                   title={ACCOUNT_USAGE_TRACKING_SINCE}
                 >
                   <AccountUsageInfoIcon />
-                </span>
+                </WebuiInline>
               ) : null}
-            </div>
+            </WebuiInline>
             <div className="mt-3">
               {view.loading ? (
                 <div className="mx-auto h-[118px] w-[696px] max-w-full animate-pulse rounded-[8px] bg-bg_grouped_tertiary" />
               ) : view.failed ? (
-                <div className="flex h-[118px] flex-col items-center justify-center gap-3">
+                <WebuiStack gap="medium" align="center" justify="center" className="h-[118px]">
                   <span className="text-[13px] leading-[18.57px] text-text_default_secondary">用量数据暂时不可用</span>
                   <SettingsButton variant="gray" onClick={retry}>
-                    <span className="flex items-center gap-2">
+                    <WebuiInline as="span" gap="small">
                       <AccountUsageRefreshIcon size={16} />
                       重试
-                    </span>
+                    </WebuiInline>
                   </SettingsButton>
-                </div>
+                </WebuiStack>
               ) : view.heatmap ? (
                 <UsageHeatmap model={view.heatmap} align="start" />
               ) : (
                 <div className="mx-auto h-[118px] w-[696px] max-w-full rounded-[8px] bg-bg_grouped_tertiary" />
               )}
             </div>
-          </section>
-        </div>
-      </div>
+          </WebuiStack>
+        </WebuiStack>
+      </WebuiStack>
     </SettingsPage>
   );
 }
@@ -294,9 +296,9 @@ function AccountUsageAvatar({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center rounded-full bg-bg_grouped_tertiary text-2xl font-semibold text-text_default_accent">
+        <WebuiInline align="center" justify="center" className="h-full w-full rounded-full bg-bg_grouped_tertiary text-2xl font-semibold text-text_default_accent">
           {initial}
-        </div>
+        </WebuiInline>
       )}
     </div>
   );
@@ -363,10 +365,10 @@ export function AccountUsageShareAction(): ReactElement | null {
         onClick={() => setOpen(true)}
         testId="account-usage-share-button"
       >
-        <span className="flex items-center gap-1">
+        <WebuiInline as="span" gap="tight">
           <AccountUsageShareIcon size={18} />
           分享
-        </span>
+        </WebuiInline>
       </SettingsButton>
       {portalTarget && open
         ? createPortal(
@@ -378,43 +380,46 @@ export function AccountUsageShareAction(): ReactElement | null {
                 onClose={() => setOpen(false)}
                 testId="account-usage-share-preview"
               >
-                <div
-                  className="relative flex h-[350px] w-[392px] max-w-full flex-col items-center gap-6"
+                <WebuiStack
+                  gap="large"
+                  align="center"
+                  className="relative h-[350px] w-[392px] max-w-full"
                   data-testid="account-usage-share-preview-content"
                 >
-                  <div
-                    className="webui-account-usage-share-card flex h-[290px] w-[392px] max-w-full shrink-0 flex-col rounded-[20px] bg-bg_default_primary p-4"
+                  <WebuiStack
+                    gap="none"
+                    className="webui-account-usage-share-card h-[290px] w-[392px] max-w-full shrink-0 rounded-[20px] bg-bg_default_primary p-4"
                     data-testid="account-usage-share-card"
                   >
-                    <div className="flex h-[210px] flex-col gap-3">
-                      <div className="flex h-[50px] items-center gap-3">
+                    <WebuiStack gap="medium" className="h-[210px]">
+                      <WebuiInline gap="medium" className="h-[50px]">
                         <AccountUsageShareAvatar
                           {...(view.avatarUrl ? { avatarUrl: view.avatarUrl } : {})}
                           displayName={view.displayName}
                         />
-                        <div className="flex min-w-0 flex-col justify-center gap-0.5">
+                        <WebuiStack gap="micro" justify="center" className="min-w-0">
                           <div className="truncate text-[13px] font-medium leading-[18.57px] text-text_default_primary">
                             {view.displayName}
                           </div>
                           <div className="truncate text-xs leading-4 text-text_default_tertiary">
                             {view.planLabel}
                           </div>
-                        </div>
-                      </div>
+                        </WebuiStack>
+                      </WebuiInline>
                       <div className="flex h-[42px] items-start gap-[54px]">
                         {[
                           { label: "累计 Token", value: formatSpacedToken(view.metrics.totalToken) },
                           { label: "单日峰值", value: formatSpacedToken(view.metrics.peakToken) },
                           { label: "用量排名", value: view.metrics.usageRanking },
                         ].map((metric) => (
-                          <div key={metric.label} className="flex min-w-0 flex-col items-start gap-1">
+                          <WebuiStack key={metric.label} gap="tight" align="start" className="min-w-0">
                             <div className="whitespace-nowrap text-[16px] font-medium leading-[23px] text-text_default_primary">
                               {metric.value}
                             </div>
                             <div className="whitespace-nowrap text-[11px] leading-[15px] text-text_default_secondary">
                               {metric.label}
                             </div>
-                          </div>
+                          </WebuiStack>
                         ))}
                       </div>
                       {view.heatmap ? (
@@ -428,8 +433,8 @@ export function AccountUsageShareAction(): ReactElement | null {
                           />
                         </div>
                       ) : null}
-                    </div>
-                    <div className="mt-5 flex h-7 items-center gap-1.5">
+                    </WebuiStack>
+                    <WebuiInline gap="compact" className="mt-5 h-7">
                       <WebuiIconBrand className="size-7 rounded-[7.656px]" />
                       <span
                         role="img"
@@ -438,8 +443,8 @@ export function AccountUsageShareAction(): ReactElement | null {
                       >
                         <span className="text-sm font-medium leading-5">MiniMax Code</span>
                       </span>
-                    </div>
-                  </div>
+                    </WebuiInline>
+                  </WebuiStack>
                   <SettingsButton
                     variant="black"
                     className="!flex !h-9 !min-w-20 !items-center !justify-center !gap-1 !rounded-[32px] !px-4 !py-0"
@@ -447,28 +452,30 @@ export function AccountUsageShareAction(): ReactElement | null {
                     onClick={() => void saveImage()}
                     testId="account-usage-share-save"
                   >
-                    <span className="flex items-center gap-1">
+                    <WebuiInline as="span" gap="tight">
                       {exporting ? (
-                        <span className="flex size-4 shrink-0 items-center justify-center leading-none">
+                        <WebuiInline as="span" justify="center" className="size-4 shrink-0 leading-none">
                           <AccountUsageRefreshIcon size={16} />
-                        </span>
+                        </WebuiInline>
                       ) : (
-                        <span
-                          className="flex size-4 shrink-0 items-center justify-center leading-none"
+                        <WebuiInline
+                          as="span"
+                          justify="center"
+                          className="size-4 shrink-0 leading-none"
                           data-testid="account-usage-share-download-icon"
                         >
                           <AccountUsageDownloadIcon size={16} />
-                        </span>
+                        </WebuiInline>
                       )}
                       保存图片
-                    </span>
+                    </WebuiInline>
                   </SettingsButton>
                   {exportError ? (
                     <div className="absolute -bottom-6 text-center text-xs text-text_status_error">
                       图片保存失败，请重试。
                     </div>
                   ) : null}
-                </div>
+                </WebuiStack>
               </SettingsDialog>
             </>,
             portalTarget,
@@ -500,8 +507,8 @@ function AccountUsageShareAvatar({
     );
   }
   return (
-    <div className="flex size-[50px] shrink-0 items-center justify-center rounded-full bg-bg_grouped_tertiary text-lg font-semibold text-text_default_accent">
+    <WebuiInline align="center" justify="center" className="size-[50px] shrink-0 rounded-full bg-bg_grouped_tertiary text-lg font-semibold text-text_default_accent">
       {initial}
-    </div>
+    </WebuiInline>
   );
 }

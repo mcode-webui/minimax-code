@@ -66,7 +66,7 @@ describe("workspace file tree metadata column", () => {
       { expandedPaths: new Set(["src"]), selectedPath: "src" },
     );
 
-    expect(markup).toContain('<button type="button" class="webui-file-tree-row is-selected"');
+    expect(markup).toMatch(/<button[^>]*class="[^"]*webui-file-tree-row[^"]*"[^>]*aria-current="true"/u);
     expect(markup).toContain('aria-current="true"');
     expect(markup).toContain('aria-expanded="true"');
     expect(markup).toContain("webui-expandable-motion is-open");

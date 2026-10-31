@@ -18,7 +18,6 @@
 // start on open, poll while pending, stop on close.
 
 import { useEffect, useRef, type ReactElement } from "react";
-import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import {
   useWebuiAccountWorkflows,
@@ -26,15 +25,14 @@ import {
 } from "../bindings/use-account-workflows.public.js";
 import { deriveWebuiAccountLoginPhase } from "../application/login-phase.js";
 import type { WebuiAccountLoginPhase } from "../application/login-phase.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 
 export function AccountLoginPanel({
   phase,
   onRetry,
   onCancel,
   onSwitch,
-  onClose,
 }: {
   readonly phase: WebuiAccountLoginPhase;
   /** Error → start a fresh device flow. */
@@ -43,32 +41,9 @@ export function AccountLoginPanel({
   readonly onCancel: () => void;
   /** Authenticated → sign out, then start a fresh device flow. */
   readonly onSwitch: () => void;
-  readonly onClose: () => void;
 }): ReactElement {
-  // A modal layer (ADR 0028 § Overlay coordination): one dismissal closes it.
-  const layerId = useDialogLayer({ id: "account-login", onClose });
   return (
-    <div
-      className="webui-account-login"
-      data-overlay-layer={layerId}
-      role="dialog"
-      aria-modal="true"
-      aria-label="账号登录"
-      data-testid="account-login-dialog"
-      data-webui-account-login-phase={phase.kind}
-    >
-      <header className="webui-account-login-header">
-        <strong>账号登录</strong>
-        <button
-          type="button"
-          aria-label="关闭登录"
-          className="webui-account-login-close"
-          data-testid="account-login-close"
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </header>
+    <div className="webui-account-login-content">
       {phase.kind === "loading" ? (
         <p className="webui-account-login-status" data-testid="account-login-status">
           正在获取登录码…
@@ -186,12 +161,21 @@ export function AccountLoginDialog({
   }, [authenticatedAt, onAuthenticated]);
 
   if (!open) return null;
-  const dialog = (
-    <div
-      className="webui-account-login-mask"
-      role="presentation"
-    >
-      <AccountLoginPanel
+  const portalTarget = dom.portalTarget();
+  return (
+      <WebuiDialog
+        id="account-login"
+        title="账号登录"
+        onClose={onClose}
+        dismissOnEscape
+        width="compact"
+        portalTarget={portalTarget}
+        testId="account-login-dialog"
+        closeLabel="关闭登录"
+        closeTestId="account-login-close"
+        dataAttributes={{ "data-webui-account-login-phase": phase.kind }}
+      >
+        <AccountLoginPanel
         phase={phase}
         onRetry={() => {
           void workflows?.beginLogin();
@@ -205,12 +189,7 @@ export function AccountLoginDialog({
           // a fresh device flow, in the same surface.
           void workflows?.switchAccount();
         }}
-        onClose={onClose}
       />
-    </div>
+      </WebuiDialog>
   );
-  const portalTarget = dom.portalTarget();
-  return portalTarget
-    ? createPortal(dialog, portalTarget)
-    : dialog;
 }

@@ -153,6 +153,12 @@
      * two adjacent hover states. */
     transition: none;
   }
+  .webui-workspace-menu--desktop .webui-workspace-option--desktop {
+    border-radius: var(--radius_8);
+    background: transparent;
+    padding: 8px 10px;
+    line-height: var(--line_height_20);
+  }
   .webui-model-option:hover,
   .webui-workspace-option:hover,
   .webui-model-option[aria-selected="true"],

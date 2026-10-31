@@ -16,7 +16,9 @@ import type {
   WebuiQuestionnaireAnswer,
   WebuiQuestionnaireRequest,
 } from "../../../../shared/contracts/interactions.js";
-import { WebuiButton } from "../../../ui/button.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiCheckbox, WebuiRadio, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export function WebuiInteractionPanel({
   sessionId,
@@ -104,8 +106,9 @@ export function WebuiInteractionPanel({
     otherTexts[activeStep?.id ?? ""] ?? "",
   );
   return (
-    <div
-      className="mt-3 flex w-full flex-col gap-3"
+    <WebuiStack
+      gap="medium"
+      className="mt-3 w-full"
       data-webui-interactions={sessionId}
       data-webui-composer-replaced={
         // `presentation` is optional on the wire: the runtime's own event
@@ -133,7 +136,7 @@ export function WebuiInteractionPanel({
               {permission.toolDescription}
             </span>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <WebuiInline gap="small" wrap>
             <WebuiButton variant="accent" size="action" className="text-size_14"
               onClick={() => void onPermission(permission, "allowOnce")}
             >
@@ -151,7 +154,7 @@ export function WebuiInteractionPanel({
             >
               Deny
             </WebuiButton>
-          </div>
+          </WebuiInline>
         </article>
       ))}
       {/* Plan mode arrives on the same questionnaire channel. Only the DECISION
@@ -195,12 +198,12 @@ export function WebuiInteractionPanel({
                 questionnaire.steps[0]?.question ??
                 "Questionnaire"}
             </strong>
-            <button
-              type="button"
-              aria-label="关闭问卷"
+            <WebuiIconButton
+              tone="bare"
+              size="compact"
+              label="关闭问卷"
               data-webui-dismiss-questionnaire="true"
               data-testid="questionnaire-close"
-              className="webui-questionnaire-close"
               disabled={submitting}
               onClick={() => {
                 setSubmitting(true);
@@ -210,7 +213,7 @@ export function WebuiInteractionPanel({
               }}
             >
               ×
-            </button>
+            </WebuiIconButton>
           {/* `presentation` is optional at the reader: the wire type marks it
            * required, but the runtime's view builder materialises it with a
            * spread (`{...request.presentation}`), which yields `{}` — not a
@@ -223,9 +226,9 @@ export function WebuiInteractionPanel({
            * block — the render died before the boundary existed. */}
           {questionnaire.steps.length > 1 && (questionnaire.presentation?.showProgress ?? true) ? (
               <span className="webui-questionnaire-progress" data-testid="questionnaire-progress" aria-label={`${currentStep + 1}/${questionnaire.steps.length}`}>
-                <button type="button" data-testid="questionnaire-progress-prev" aria-label="上一步" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))} disabled={submitting || !(questionnaire.presentation?.allowBackNavigation ?? true) || currentStep === 0}>‹</button>
+                <WebuiIconButton tone="bare" size="compact" label="上一步" data-testid="questionnaire-progress-prev" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))} disabled={submitting || !(questionnaire.presentation?.allowBackNavigation ?? true) || currentStep === 0}>‹</WebuiIconButton>
                 <span>{currentStep + 1}/{questionnaire.steps.length}</span>
-                <button type="button" data-testid="questionnaire-progress-next" aria-label="下一步" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))} disabled={submitting || currentStep >= questionnaire.steps.length - 1}><IconChevronRight aria-hidden="true" size={16} stroke={1.7} /></button>
+                <WebuiIconButton tone="bare" size="compact" label="下一步" data-testid="questionnaire-progress-next" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))} disabled={submitting || currentStep >= questionnaire.steps.length - 1}><IconChevronRight aria-hidden="true" size={16} stroke={1.7} /></WebuiIconButton>
               </span>
             ) : null}
           </header>
@@ -279,14 +282,14 @@ export function WebuiInteractionPanel({
                 {sortWebuiQuestionnaireOptions(step.options ?? []).map((option, optionIndex) => {
                   const checked = selected.includes(option.id);
                   return (
-                    <label
+                    <WebuiInline
+                      as="label"
                       key={option.id}
                       className="webui-questionnaire-option"
                       data-selected={checked || undefined}
                       data-webui-questionnaire-option={option.id}
                     >
-                      <input
-                        type={multiple ? "checkbox" : "radio"}
+                      {multiple ? <WebuiCheckbox
                         name={`${questionnaire.id}-${step.id}`}
                         className="sr-only"
                         checked={checked}
@@ -303,7 +306,15 @@ export function WebuiInteractionPanel({
                               }));
                           }
                         }
-                      />
+                      /> : <WebuiRadio
+                        name={`${questionnaire.id}-${step.id}`}
+                        className="sr-only"
+                        checked={checked}
+                        onChange={() => {
+                          setSelections((current) => ({ ...current, [step.id]: [option.id] }));
+                          setOtherSelections((current) => ({ ...current, [step.id]: false }));
+                        }}
+                      />}
                       <span className="webui-questionnaire-letter" aria-hidden="true">
                         {String.fromCharCode(65 + optionIndex)}
                       </span>
@@ -325,18 +336,18 @@ export function WebuiInteractionPanel({
                           </small>
                         ) : null}
                       </span>
-                    </label>
+                    </WebuiInline>
                   );
                 })}
                 </div>
                 {step.allowOther ? (
-                  <label
+                  <WebuiInline
+                    as="label"
                     className="webui-questionnaire-other-row"
                     data-selected={selectedOther || undefined}
                     data-webui-questionnaire-other={step.id}
                   >
-                    <input
-                      type={multiple ? "checkbox" : "radio"}
+                    {multiple ? <WebuiCheckbox
                       name={`${questionnaire.id}-${step.id}`}
                       className="sr-only"
                       checked={selectedOther}
@@ -352,7 +363,15 @@ export function WebuiInteractionPanel({
                             [step.id]: [],
                           }));
                       }}
-                    />
+                    /> : <WebuiRadio
+                      name={`${questionnaire.id}-${step.id}`}
+                      className="sr-only"
+                      checked={selectedOther}
+                      onChange={() => {
+                        setOtherSelections((current) => ({ ...current, [step.id]: true }));
+                        setSelections((current) => ({ ...current, [step.id]: [] }));
+                      }}
+                    />}
                     <span
                       className="webui-questionnaire-other-toggle"
                       aria-hidden="true"
@@ -360,8 +379,9 @@ export function WebuiInteractionPanel({
                       +
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <input
-                        type="text"
+                      <WebuiTextInput
+                        appearance="bare"
+                        className="w-full"
                         value={otherTexts[step.id] ?? ""}
                         placeholder={
                           selectedOther
@@ -388,10 +408,9 @@ export function WebuiInteractionPanel({
                             [step.id]: event.target.value,
                           }))
                         }
-                        className="webui-questionnaire-other-input"
                       />
                     </span>
-                  </label>
+                  </WebuiInline>
                 ) : null}
               </fieldset>
             );
@@ -403,7 +422,7 @@ export function WebuiInteractionPanel({
           ) : null}
           </div>
           </div>
-          <div className="webui-questionnaire-actions flex flex-wrap gap-2">
+          <WebuiInline gap="small" wrap className="webui-questionnaire-actions">
             {questionnaire.steps.length > 1 && currentStep > 0 ? <WebuiButton variant="grouped" size="pill" className="text-size_14" disabled={submitting} data-testid="questionnaire-back" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))}>上一步</WebuiButton> : null}
             {questionnaire.steps.length > 1 && currentStep < questionnaire.steps.length - 1 ? <WebuiButton variant="accent" size="action" className="text-size_14" disabled={submitting || !activeStepValid} data-testid="questionnaire-next" onClick={() => setCurrentStep((value) => Math.min(questionnaire.steps.length - 1, value + 1))}>下一步</WebuiButton> : null}
             <WebuiButton variant="accent" size="action" className="text-size_14"
@@ -442,12 +461,12 @@ export function WebuiInteractionPanel({
             >
               跳过
             </WebuiButton>
-          </div>
+          </WebuiInline>
         </article>
       ) : null}
           {interactionError ? (
         <FeedbackError message="Unable to answer interaction: {interactionError}" className="text-text_default_secondary text-size_12" testId="questionnaire-error" />
       ) : null}
-    </div>
+    </WebuiStack>
   );
 }

@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type { WebuiQueueItem } from "../../../../shared/contracts/queue.js";
 import { FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 /**
  * The messages waiting behind a running turn, and whether the queue is held.
@@ -35,14 +36,14 @@ export function WebuiQueuePanel({
   // exists.
   if (items.length === 0 && !paused) return null;
   return (
-    <section className="flex w-full flex-col gap-2" data-webui-queue-paused={paused ? "true" : undefined}>
+    <WebuiStack as="section" gap="small" className="w-full" data-webui-queue-paused={paused ? "true" : undefined}>
       {paused ? (
         <FeedbackLiveRegion className="text-text_default_secondary text-size_12">
           队列已暂停
         </FeedbackLiveRegion>
       ) : null}
       {items.length > 0 ? (
-        <div className="mt-3 flex w-full flex-col gap-2" data-webui-queue="true">
+        <WebuiStack gap="small" className="mt-3 w-full" data-webui-queue="true">
           <strong
             aria-label="排队消息"
             className="text-size_14"
@@ -50,7 +51,7 @@ export function WebuiQueuePanel({
           >
             排队消息（{items.length}）
           </strong>
-          <ul role="list" className="flex w-full flex-col gap-2">
+          <WebuiStack as="ul" gap="small" className="w-full" role="list">
             {items.map((item) => (
               <li
                 key={item.itemId}
@@ -73,9 +74,9 @@ export function WebuiQueuePanel({
                 ) : null}
               </li>
             ))}
-          </ul>
-        </div>
+          </WebuiStack>
+        </WebuiStack>
       ) : null}
-    </section>
+    </WebuiStack>
   );
 }

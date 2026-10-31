@@ -22,6 +22,8 @@
 // accepts `onTickHover`, `onTickActivate`, `onMaskTopClick`, `onMaskBottomClick`.
 
 import { useState, type CSSProperties, type MouseEvent } from "react";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export type TurnState = "default" | "active" | "running" | "completed" | "error";
 
@@ -122,8 +124,9 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
       data-hidden={hidden ? "true" : "false"}
       style={previewStyle}
     >
-      <div
-        className="relative flex h-full w-full flex-col items-center"
+      <WebuiStack
+        align="center"
+        className="relative h-full w-full"
         data-testid="message-turn-navigator-strip"
         style={stripStyle}
       >
@@ -136,8 +139,9 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
             onMouseEnter={(event) => onTickHover?.(turn.id, event)}
             onMouseLeave={(event) => onTickLeave?.(turn.id, event)}
           >
-            <button
-              type="button"
+            <WebuiButton
+              variant="plain"
+              size="regular"
               className={`${tickBase} ${STATE_CLASS[turn.state]}`}
               data-testid="message-turn-navigator-tick"
               data-turn-id={turn.id}
@@ -161,7 +165,7 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
             onClick={onMaskBottomClick}
           />
         ) : null}
-      </div>
+      </WebuiStack>
 
       {preview ? (
         <div
@@ -209,24 +213,23 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
           ) : null}
 
           {preview.fileChangeCount || (preview.artefacts && preview.artefacts.length > 0) ? (
-            <div
-              className="flex h-5 items-center"
+            <WebuiInline
+              align="center"
+              className="h-5"
               data-testid="message-turn-navigator-preview-divider"
             >
               <div className="h-px w-full bg-border_default" />
-            </div>
+            </WebuiInline>
           ) : null}
 
           {preview.artefacts && preview.artefacts.length > 0 ? (
-            <div
-              className="pointer-events-auto scrollbar-hide flex flex-nowrap items-center gap-3 overflow-x-auto overflow-y-hidden"
+            <WebuiInline
+              gap="medium"
+              className="pointer-events-auto scrollbar-hide flex-nowrap overflow-x-auto overflow-y-hidden"
               data-testid="message-turn-navigator-preview-artifacts"
             >
               {preview.artefacts.map((artefact) => (
-                <div
-                  key={artefact.id}
-                  className="flex shrink-0 items-center gap-2"
-                >
+                <WebuiInline key={artefact.id} gap="small" className="shrink-0">
                   <span
                     className="flex size-5 shrink-0 items-center justify-center rounded bg-bg_grouped_primary_elevated"
                     data-testid="message-turn-navigator-preview-artifact-icon"
@@ -239,14 +242,16 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
                   >
                     {artefact.label}
                   </span>
-                </div>
+                </WebuiInline>
               ))}
-            </div>
+            </WebuiInline>
           ) : null}
 
           {preview.fileChangeCount ? (
-            <div
-              className="mt-1 inline-flex shrink-0 items-center gap-2 text-sm leading-5 text-text_default_secondary"
+            <WebuiInline
+              inline
+              gap="small"
+              className="mt-1 shrink-0 text-sm leading-5 text-text_default_secondary"
               data-testid="message-turn-navigator-preview-file-change-count"
             >
               <span className="flex size-5 shrink-0 items-center justify-center rounded bg-bg_grouped_tertiary">
@@ -255,7 +260,7 @@ export function TurnNavigator(props: TurnNavigatorProps): React.JSX.Element {
               <span>
                 +{preview.fileChangeCount.additions} / -{preview.fileChangeCount.deletions}
               </span>
-            </div>
+            </WebuiInline>
           ) : null}
 
           {preview.nextQuery ? (

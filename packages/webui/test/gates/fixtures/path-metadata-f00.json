@@ -3721,6 +3721,15 @@
       "home": "current"
     },
     {
+      "path": "client/styles/dialog.css",
+      "layers": [
+        "unknown"
+      ],
+      "role": "styles",
+      "business": null,
+      "home": "current"
+    },
+    {
       "path": "client/styles/dropdown.css",
       "layers": [
         "unknown"
@@ -3838,6 +3847,15 @@
       "home": "target"
     },
     {
+      "path": "client/ui/dialog.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
       "path": "client/ui/Dropdown.tsx",
       "layers": [
         "bindings"
@@ -3866,6 +3884,15 @@
     },
     {
       "path": "client/ui/form-atoms.tsx",
+      "layers": [
+        "bindings"
+      ],
+      "role": "ui",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "client/ui/layout-primitives.tsx",
       "layers": [
         "bindings"
       ],

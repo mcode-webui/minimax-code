@@ -5,6 +5,7 @@
 import type { ReactElement } from "react";
 import type { WebuiWorkspaceFile } from "../../../../shared/contracts/workspace.js";
 import { WebuiIconChevronLeft, WebuiIconFile } from "../../../shell/icons.js";
+import { WebuiButton } from "../../../ui/button.js";
 import { formatWorkspaceFileSize, formatWorkspaceFileModifiedAt } from "../projection/workspace-file-tree.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
@@ -43,10 +44,10 @@ export function FileTree({ files, onOpen, expandedPaths, loadingPaths, directory
   return <div className="webui-file-tree">{files.map((file) => {
     const expanded = expandedPaths.has(file.path);
     return <div key={file.path}>
-      <button type="button" className={`webui-file-tree-row ${file.path === selectedPath ? "is-selected" : ""}`} aria-current={file.path === selectedPath ? "true" : undefined} aria-expanded={file.type === "directory" ? expanded : undefined} aria-busy={file.type === "directory" && loadingPaths.has(file.path) ? "true" : undefined} onClick={() => file.type === "directory" ? onToggle(file) : onOpen(file)}>
+      <WebuiButton variant="selectable-row" size="regular" className="webui-file-tree-row" aria-current={file.path === selectedPath ? "true" : undefined} aria-expanded={file.type === "directory" ? expanded : undefined} aria-busy={file.type === "directory" && loadingPaths.has(file.path) ? "true" : undefined} onClick={() => file.type === "directory" ? onToggle(file) : onOpen(file)}>
         {file.type === "directory" ? <WebuiIconChevronLeft className={`inline size-3 transition-transform duration-[180ms] ease-out ${expanded ? "rotate-90" : ""}`} /> : <WebuiIconFile className="inline size-3" />} <span className="min-w-0 flex-1 truncate">{file.name}</span>
         <FileTreeRowMeta file={file} />
-      </button>
+      </WebuiButton>
       {file.type === "directory" ? <div className={`webui-expandable-motion${expanded ? " is-open" : ""}`} aria-hidden={!expanded} ref={(element) => element?.toggleAttribute("inert", !expanded)}>
         <div className="webui-file-tree-children">
           {/* 目录在读取中是一条播报；契约的 div 仍带 role="status"，

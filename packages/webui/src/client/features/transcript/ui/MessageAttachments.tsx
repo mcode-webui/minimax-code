@@ -18,6 +18,8 @@
 
 import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { IconEye, IconFileText, IconPhoto } from "@tabler/icons-react";
+import { WebuiIconButton } from "../../../ui/button.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 // The attachment shape lives in contracts.ts (so projection/message-projection.ts
 // can return it without importing the React component). Re-export it under the
@@ -64,13 +66,15 @@ function AttachmentImage(props: {
 
   if (errored || !src) {
     return (
-      <div
-        className={`flex items-center justify-center rounded-xl bg-bg_default_tertiary border-[0.5px] border-border_default ${
+      <WebuiInline
+        align="center"
+        justify="center"
+        className={`rounded-xl bg-bg_default_tertiary border-[0.5px] border-border_default ${
           isSingle ? "w-[120px] h-[80px]" : "w-20 h-20"
         }`}
         data-testid="message-attachment-image-placeholder"
       >
-        <div className="flex flex-col items-center gap-1">
+        <WebuiStack gap="tight" align="center">
           <IconPhoto className="text-text_default_quaternary" width={20} height={20} aria-hidden="true" focusable="false" stroke={1.6} />
           <span
             className="max-w-[100px] truncate text-[10px] text-text_default_quaternary"
@@ -78,8 +82,8 @@ function AttachmentImage(props: {
           >
             {attachment.file_name}
           </span>
-        </div>
-      </div>
+        </WebuiStack>
+      </WebuiInline>
     );
   }
 
@@ -120,10 +124,10 @@ function AttachmentFile(props: {
       className="w-60 rounded-xl border-[0.5px] border-border_default bg-bg_default_secondary p-2 transition-colors hover:bg-bg_interaction_tertiary_hover"
       data-testid="message-attachment-file"
     >
-      <div className="flex items-start gap-2">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-bg_grouped_primary_elevated">
+      <WebuiInline align="start" gap="small">
+        <WebuiInline justify="center" className="size-9 shrink-0 rounded-md bg-bg_grouped_primary_elevated">
           <IconFileText width={18} height={18} aria-hidden="true" focusable="false" className="text-icon_default_secondary" stroke={1.6} />
-        </div>
+        </WebuiInline>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium leading-5 text-text_default_primary">
             {attachment.file_name}
@@ -135,20 +139,21 @@ function AttachmentFile(props: {
           ) : null}
         </div>
         {href ? (
-          <button
-            type="button"
+          <WebuiIconButton
+            tone="surface"
+            size="compact"
             onClick={(event: MouseEvent<HTMLButtonElement>) => {
               event.stopPropagation();
               activate(attachment, onPreview);
             }}
             className="flex size-7 shrink-0 items-center justify-center rounded-md text-icon_default_secondary hover:bg-bg_interaction_tertiary_hover"
             data-testid="message-attachment-file-preview"
-            aria-label={`Preview ${attachment.file_name}`}
+            label={`Preview ${attachment.file_name}`}
           >
             <IconEye width={14} height={14} aria-hidden="true" focusable="false" stroke={1.6} />
-          </button>
+          </WebuiIconButton>
         ) : null}
-      </div>
+      </WebuiInline>
     </div>
   );
 }
@@ -192,11 +197,11 @@ export function MessageAttachments(props: MessageAttachmentsProps): React.JSX.El
         </div>
       ) : null}
       {files.length > 0 ? (
-        <div className="mb-2 flex flex-wrap gap-2">
+        <WebuiInline gap="small" wrap className="mb-2">
           {files.map((file) => (
             <AttachmentFile key={file.id} attachment={file} onPreview={onPreview} />
           ))}
-        </div>
+        </WebuiInline>
       ) : null}
     </div>
   );

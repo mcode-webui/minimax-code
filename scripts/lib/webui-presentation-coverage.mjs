@@ -290,6 +290,7 @@ export function evaluatePresentationCoverage({ modules, inventory }) {
     }
     const { path: entryPath } = entry;
     const reason = typeof entry.reason === "string" ? entry.reason.trim() : "";
+    const revisit = typeof entry.revisit === "string" ? entry.revisit.trim() : "";
     if (!modulePaths.has(entryPath)) {
       failures.push({
         kind: "stale",
@@ -306,12 +307,23 @@ export function evaluatePresentationCoverage({ modules, inventory }) {
         detail: `invalid disposition ${JSON.stringify(entry.disposition)} — one of ${DISPOSITIONS.join(", ")}`,
       });
     }
-    if (entry.disposition === "business-exception" && reason.length === 0) {
-      failures.push({
-        kind: "invalid-disposition",
-        path: entryPath,
-        detail: "a business exception carries a recorded reason",
-      });
+    // An exception is a reviewed decision, so it states both halves of the
+    // decision: the reason it is exempt today, and the condition that reopens
+    // it. Without the condition the exemption can only be re-litigated by
+    // whoever notices it again, which is how a reviewed exception turns into
+    // permanent drift. Both halves are reported as one failure per entry, so a
+    // row missing both names both instead of appearing twice in the report.
+    if (entry.disposition === "business-exception") {
+      const missing = [];
+      if (reason.length === 0) missing.push("a recorded reason");
+      if (revisit.length === 0) missing.push("the condition under which it is revisited");
+      if (missing.length > 0) {
+        failures.push({
+          kind: "invalid-disposition",
+          path: entryPath,
+          detail: `a business exception carries ${missing.join(" and ")}`,
+        });
+      }
     }
     if (!KINDS.includes(entry.kind)) {
       failures.push({

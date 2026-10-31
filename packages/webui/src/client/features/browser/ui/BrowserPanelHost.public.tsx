@@ -88,6 +88,8 @@ import {
   webuiBrowserFrameDataUrl,
 } from "../projection/browser-state.js";
 import { BrowserPanel } from "./BrowserPanel.public.js";
+import { WebuiTextInput } from "../../../ui/field.js";
+import { WebuiIconButton } from "../../../ui/button.js";
 
 /**
  * The history buttons a web tab's toolbar can send.
@@ -600,33 +602,39 @@ export function WebuiBrowserToolbar({
       data-testid="browser-toolbar"
     >
       {WEBUI_BROWSER_TOOLBAR_COMMANDS.map((command) => (
-        <button
+        <WebuiIconButton
           key={command}
-          type="button"
+          tone="bare"
+          size="compact"
           className="webui-browser-toolbar-command"
-          aria-label={TOOLBAR_COPY.commands[command]}
+          label={TOOLBAR_COPY.commands[command]}
           data-testid={`browser-toolbar-${command}`}
           disabled={disabled || navigationDisabled || (command === "back" ? canGoBack === false : command === "forward" ? canGoForward === false : false)}
           onClick={() => onCommand?.(command)}
         >
           {TOOLBAR_GLYPHS[command]}
-        </button>
+        </WebuiIconButton>
       ))}
-      <button
-        type="button"
+      <WebuiIconButton
+        tone="bare"
+        size="compact"
         className="webui-browser-toolbar-command"
-        aria-label={TOOLBAR_COPY.commands.home}
+        label={TOOLBAR_COPY.commands.home}
         data-testid="browser-toolbar-home"
         disabled={disabled || navigationDisabled || !onReturnToNewTab}
         onClick={onReturnToNewTab}
       >
         <WebuiIconHome className="size-3" />
-      </button>
+      </WebuiIconButton>
       {/* The URL field is editable in web tabs and on the new tab page. */}
       <form className="webui-browser-omnibox" data-testid="browser-toolbar-omnibox" onSubmit={submitAddress}>
         <WebuiIconGlobe className="webui-browser-omnibox-glyph size-3 shrink-0" />
-        <input
-          className="webui-browser-omnibox-url"
+        <WebuiTextInput
+          appearance="bare"
+          controlSize="dense"
+          textSize="small"
+          textTone="secondary"
+          className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
           type="text"
           aria-label={TOOLBAR_COPY.urlLabel}
           data-testid="browser-toolbar-url"

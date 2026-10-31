@@ -204,7 +204,7 @@ test("the account panel's 分享 action opens the share preview", async ({ page 
   // out: a click outside the card dismisses it. The click has to land on the
   // scrim itself, which is why the position is the corner rather than the
   // centre — the centre of the scrim is the card.
-  await page.locator(".webui-settings-dialog-mask").click({ position: { x: 8, y: 8 } });
+  await page.locator(".webui-dialog-mask").click({ position: { x: 8, y: 8 } });
   await expect(page.locator('[data-testid="account-usage-share-preview"]')).toHaveCount(0);
 });
 

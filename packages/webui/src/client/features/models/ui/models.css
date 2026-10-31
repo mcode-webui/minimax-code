@@ -1,25 +1,14 @@
 /* models — moved out of styles/shell.css; rules kept in their original relative order. */
 @layer components {
 
-  .webui-provider-dialog-backdrop { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; background: rgb(10 10 10 / 24%); padding: 24px; }
-  .webui-provider-form { display: flex; width: min(600px, 100%); max-height: 86vh; min-height: 0; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--bg_default_primary); padding: 24px; color: var(--text_default_primary); box-shadow: 0 0 48px -12px var(--shadow_default); }
-  .webui-provider-form-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .webui-provider-form-header h3 { margin: 0; font-size: 18px; font-weight: var(--weight_medium); line-height: 26px; }
-  .webui-provider-form-header > button { display: flex; width: 24px; height: 24px; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--icon_default_tertiary); }
-  .webui-provider-form-header > button svg { width: 18px; height: 18px; }
-  .webui-provider-form-body { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 16px; overflow-y: auto; padding: 0 8px 4px 0; }
+  .webui-provider-form { display: contents; }
+  .webui-provider-form-body { min-height: 0; }
   .webui-provider-form-provider-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-  .webui-provider-form-field { display: flex; min-width: 0; flex-direction: column; gap: 8px; color: var(--text_default_primary); font-size: 14px; line-height: 20px; }
-  .webui-provider-form-field input, .webui-provider-form-field textarea { width: 100%; min-width: 0; height: 40px; border: 1px solid var(--border_default); border-radius: 8px; background: var(--bg_default_primary); padding: 0 12px; color: var(--text_default_primary); font: inherit; outline: none; }
-  .webui-provider-form-field textarea { height: 88px; resize: vertical; padding: 9px 12px; }
-  .webui-provider-form-field input:focus, .webui-provider-form-field textarea:focus { border-color: var(--border_accent); }
   .webui-provider-picker { position: relative; min-width: 0; }
   /* The field is both the selection and the search: it shows the chosen
      provider, and typing in it filters the list. */
   .webui-provider-picker-trigger { display: flex; width: 100%; height: 40px; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_primary); text-align: left; }
   .webui-provider-picker-trigger-open { border-color: var(--border_accent); }
-  .webui-provider-picker-trigger > input { min-width: 0; flex: 1; border: 0; background: transparent; color: var(--text_default_primary); font: inherit; outline: none; }
-  .webui-provider-picker-trigger > input::placeholder { color: var(--text_default_quaternary); }
   .webui-provider-picker-suffix { display: flex; width: 20px; height: 20px; flex: 0 0 20px; align-items: center; justify-content: center; color: var(--icon_default_tertiary); }
   /* The popup's placement and its surface are the shared skeleton's; this
      states only the list's own width and padding. */
@@ -28,15 +17,13 @@
   /* The API format: the same skeleton, with a trigger that shows the choice
      rather than a field that searches for it. */
   .webui-provider-format { width: 100%; }
-  .webui-provider-format-trigger { display: flex; width: 100%; height: 40px; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_primary); font: inherit; font-size: 14px; text-align: left; }
+  .webui-provider-format-trigger { width: 100%; height: 40px; justify-content: space-between; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_primary); font: inherit; font-size: 14px; text-align: left; }
   .webui-provider-format-trigger:focus-visible { border-color: var(--border_accent); outline: none; }
   .webui-provider-format-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .webui-provider-format-trigger > svg { flex: 0 0 auto; color: var(--icon_default_tertiary); }
   .webui-provider-format-menu { padding: 4px; }
-  .webui-provider-format-option { display: flex; width: 100%; height: 32px; align-items: center; margin-block: 2px; border: 0; border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_primary); font: inherit; font-size: 14px; text-align: left; }
-  .webui-provider-format-option:hover, .webui-provider-format-option[aria-selected="true"] { background: var(--bg_interaction_tertiary_hover); }
-  .webui-provider-picker-option { display: flex; width: 100%; height: 36px; align-items: center; gap: 8px; margin-block: 2px; border: 0; border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_primary); font-size: 14px; text-align: left; }
-  .webui-provider-picker-option:hover, .webui-provider-picker-option[aria-selected="true"] { background: var(--bg_interaction_tertiary_hover); }
+  .webui-provider-format-option { width: 100%; height: 32px; margin-block: 2px; padding-inline: 12px; text-align: left; }
+  .webui-provider-picker-option { width: 100%; height: 36px; margin-block: 2px; padding-inline: 12px; text-align: left; }
   .webui-provider-picker-option-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* The provider's mark in its own bordered tile, as Desktop draws it. */
   .webui-provider-picker-icon { display: flex; width: 24px; height: 24px; flex: 0 0 24px; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border_default); border-radius: 6px; background: var(--text_default_inverted_static); color: var(--text_default_primary); font-size: 12px; }
@@ -45,41 +32,27 @@
   .webui-provider-picker-empty { margin: 0; padding: 12px; color: var(--text_default_quaternary); font-size: 14px; line-height: 20px; }
   /* `其他` is pinned below the list, behind a divider. */
   .webui-provider-picker-other { flex: 0 0 auto; margin-top: 4px; border-top: 1px solid var(--border_default); padding: 4px 0; }
-  .webui-provider-picker-other button { display: flex; width: 100%; height: 32px; align-items: center; gap: 8px; border: 0; border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_secondary); font-size: 14px; line-height: 20px; text-align: left; }
-  .webui-provider-picker-other button:hover { background: var(--bg_interaction_tertiary_hover); }
+  .webui-provider-picker-other-option { width: 100%; height: 32px; padding-inline: 12px; color: var(--text_default_secondary); text-align: left; }
   .webui-provider-picker-other-icon { display: flex; width: 24px; height: 24px; flex: 0 0 24px; align-items: center; justify-content: center; }
-  .webui-provider-form-headers { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
-  .webui-provider-form-header-row { display: flex; align-items: center; gap: 8px; }
-  .webui-provider-form-header-row input { height: 36px; min-width: 0; flex: 1; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 10px; color: var(--text_default_primary); }
-  .webui-provider-form-add-header { width: fit-content; height: 32px; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 10px; color: var(--text_default_secondary); }
+  .webui-provider-form-headers { padding-top: 8px; }
+  .webui-provider-form-header-row { min-width: 0; }
   /* The model list: one card per model, each carrying its own fields. */
-  .webui-provider-form-models { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
-  .webui-provider-form-models-header { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: 12px; }
-  .webui-provider-form-models-actions { display: flex; align-items: center; gap: 8px; }
-  .webui-provider-form-add-model { height: 32px; border: 1px solid var(--border_default); border-radius: 8px; background: transparent; padding: 0 12px; color: var(--text_default_secondary); font-size: 13px; }
-  .webui-provider-form-discover { height: 32px; border: 0; border-radius: 8px; background: transparent; padding: 0 8px; color: var(--text_default_accent); font-size: 13px; }
-  .webui-provider-form-discover:disabled { opacity: .55; }
+  .webui-provider-form-models { padding-top: 8px; }
+  .webui-provider-form-models-header { min-height: 32px; }
   .webui-provider-form-models-empty { margin: 0; color: var(--text_default_tertiary); font-size: 13px; }
-  .webui-provider-form-model { display: flex; flex-direction: column; gap: 10px; }
+  .webui-provider-form-model { min-width: 0; }
   .webui-provider-form-model-header { display: flex; height: 32px; align-items: center; justify-content: space-between; padding: 0 4px; }
   .webui-provider-form-model-tools { display: flex; align-items: center; gap: 4px; }
-  .webui-provider-form-model-body { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border_light); border-radius: 16px; background: var(--bg_grouped_secondary); padding: 12px; }
-  .webui-provider-form-hint { margin: 0; color: var(--text_default_tertiary); font-size: 12px; line-height: 18px; }
+  .webui-provider-form-model-body { min-width: 0; border: 1px solid var(--border_light); border-radius: 16px; background: var(--bg_grouped_secondary); padding: 12px; }
   .webui-provider-form-effort { display: flex; min-height: 40px; flex-wrap: wrap; align-items: center; gap: 6px; border: 1px solid var(--border_default); border-radius: 8px; background: var(--bg_default_primary); padding: 4px 8px; }
   .webui-provider-form-effort:focus-within { border-color: var(--border_accent); }
-  .webui-provider-form-effort input { height: 30px; min-width: 120px; flex: 1; border: 0; background: transparent; padding: 0 4px; color: var(--text_default_primary); font: inherit; outline: none; }
   .webui-provider-form-chip { display: inline-flex; height: 24px; align-items: center; gap: 4px; border-radius: 6px; background: var(--bg_interaction_tertiary_default); padding: 0 4px 0 8px; color: var(--text_default_primary); font-size: 12px; }
-  .webui-provider-form-chip button { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--icon_default_tertiary); font-size: 13px; line-height: 1; }
-  .webui-provider-form-chip button:hover { background: var(--bg_interaction_tertiary_hover); color: var(--icon_default_secondary); }
   .webui-provider-form-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
   .webui-provider-form-attachment { display: flex; align-items: center; gap: 6px; color: var(--text_default_primary); font-size: 14px; }
-  .webui-provider-form-field select { width: 100%; min-width: 0; height: 40px; border: 1px solid var(--border_default); border-radius: 8px; background: var(--bg_default_primary); padding: 0 12px; color: var(--text_default_primary); font: inherit; outline: none; }
-  .webui-provider-form-field select:focus { border-color: var(--border_accent); }
   .webui-provider-form-error { margin: 0; color: var(--text_status_error); font-size: 12px; }
-  .webui-provider-form-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; border-top: 1px solid var(--border_light); margin-top: 16px; padding-top: 16px; }
-  .webui-provider-form-actions > label { display: flex; align-items: center; gap: 8px; color: var(--text_default_secondary); font-size: 14px; }
-  .webui-provider-form-actions > span { flex: 1; }
-  @media (max-width: 720px) { .webui-provider-form-provider-grid { grid-template-columns: minmax(0, 1fr); } .webui-provider-form-actions { flex-wrap: wrap; } }
+  .webui-provider-form-footer-leading { margin-inline-end: auto; }
+  .webui-dialog-footer .webui-provider-form-footer-leading { display: flex; align-items: center; gap: 8px; color: var(--text_default_secondary); font-size: 14px; }
+  @media (max-width: 720px) { .webui-provider-form-provider-grid { grid-template-columns: minmax(0, 1fr); } }
   /* --------------------------------------------------------------- surfaces */
 
   /* Match the navigation rail while keeping the main surface roomy. The rail's
@@ -93,9 +66,7 @@
     transition: width 180ms cubic-bezier(.2, .7, .2, 1);
   }
   .webui-model-selector-trigger {
-    display: flex;
     width: fit-content;
-    align-items: center;
     min-width: 0;
     max-width: 100%;
     flex: 0 1 auto;
@@ -212,9 +183,7 @@
   }
   /* ---- the panel state ---- */
   .webui-model-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing_8);
+    min-width: 0;
   }
   .webui-model-panel-head {
     position: relative;
@@ -233,23 +202,6 @@
   .webui-model-panel-reset {
     position: absolute;
     right: 0;
-    display: flex;
-    width: var(--spacing_24);
-    height: var(--spacing_24);
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: var(--radius_full);
-    background: transparent;
-    color: var(--icon_default_tertiary);
-  }
-  .webui-model-panel-reset:hover:not(:disabled) {
-    background: var(--bg_interaction_tertiary_hover);
-    color: var(--icon_default_secondary);
-  }
-  .webui-model-panel-reset:disabled {
-    cursor: default;
-    opacity: 0.4;
   }
   /* The model name opens the list state. It is the one thing in the panel that
    * leads somewhere else, so it is the one thing that reads as a control. */
@@ -259,17 +211,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--spacing_4);
-    border: 0;
-    border-radius: var(--radius_full);
-    background: transparent;
     padding: var(--spacing_4);
-    color: var(--text_default_primary);
-    font: inherit;
-    font-size: var(--size_16);
-    line-height: var(--line_height_22);
-  }
-  .webui-model-panel-model:hover {
-    background: var(--bg_interaction_tertiary_hover);
   }
   .webui-model-panel-model-name {
     min-width: 0;
@@ -304,21 +246,10 @@
     height: var(--spacing_24);
     align-items: center;
     gap: var(--spacing_4);
-    border: 1px solid var(--border_default);
-    border-radius: var(--radius_8);
-    background: transparent;
     padding: 0 var(--spacing_8);
-    color: var(--text_default_secondary);
     font-size: var(--size_12);
     line-height: var(--line_height_16);
     font-variant-numeric: tabular-nums;
-  }
-  .webui-model-panel-context-option:hover {
-    background: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-model-panel-context-option.is-active {
-    border-color: var(--border_accent);
-    color: var(--text_default_primary);
   }
   /* The catalog's word for the window that bills as the heavier choice. It is
    * metadata about the size, not the size itself, so it is quieter than the
@@ -435,11 +366,8 @@
   }
   /* ---- the list state ---- */
   .webui-model-list {
-    display: flex;
     min-height: 0;
     flex: 1 1 auto;
-    flex-direction: column;
-    gap: var(--spacing_12);
   }
   .webui-model-list-head {
     display: flex;
@@ -453,10 +381,7 @@
     line-height: var(--line_height_22);
   }
   .webui-model-list-groups {
-    display: flex;
     min-height: 0;
-    flex-direction: column;
-    gap: var(--spacing_12);
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -465,9 +390,6 @@
     display: none;
   }
   .webui-model-list-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing_4);
     padding-bottom: var(--spacing_12);
   }
   .webui-model-list-group + .webui-model-list-group {
@@ -478,10 +400,6 @@
    * header is two lines because the second line is the part that tells two
    * same-named groups apart. */
   .webui-model-list-group-header {
-    display: flex;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
     padding: 0 var(--spacing_12) var(--spacing_4);
     text-align: left;
   }
@@ -497,23 +415,12 @@
     line-height: var(--line_height_16);
   }
   .webui-model-list-row {
-    display: flex;
     width: 100%;
     min-height: var(--spacing_40);
-    align-items: center;
-    gap: var(--spacing_8);
-    border: 0;
-    border-radius: 0;
-    background: transparent;
     padding: 0 var(--spacing_12);
-    color: var(--text_default_primary);
-    font: inherit;
     font-size: var(--size_16);
     line-height: var(--line_height_22);
     text-align: left;
-  }
-  .webui-model-list-row:hover {
-    background: var(--bg_interaction_tertiary_hover);
   }
   .webui-model-list-row-name {
     min-width: 0;

@@ -964,8 +964,17 @@ describe("WebUI shell", () => {
       /\.webui-project-child-session-card\s*\{([^}]*)\}/gu,
     )].find((match) => /height:\s*30px/u.test(match[1]));
     expect(childListRule, "child session list rule is missing").not.toBeNull();
-    expect(childListRule![1]).toMatch(/gap:\s*2px/u);
+    // The 2px rhythm is the shared layout primitive's `micro` step, so the
+    // feature stylesheet keeps only the indent and the call site states the gap.
     expect(childListRule![1]).toMatch(/padding-top:\s*1px/u);
+    expect(childListRule![1]).not.toMatch(/gap:/u);
+    const childListSource = readFileSync(
+      new URL("../../src/client/features/sessions/ui/project-expansion.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(childListSource).toMatch(
+      /<WebuiStack\s+as="ul"\s+gap="micro"\s+className="webui-project-child-session-list"/u,
+    );
     expect(childCardRule, "child session card rule is missing").not.toBeNull();
     expect(childCardRule![1]).toMatch(/height:\s*30px/u);
     expect(childCardRule![1]).toMatch(/padding-left:\s*34px/u);
@@ -977,7 +986,17 @@ describe("WebUI shell", () => {
     expect(sessionTypographyRule![1]).toMatch(
       /line-height:\s*var\(--line_height_16\)/u,
     );
-    expect(styles).toMatch(/\.webui-project-card:hover\s*\{/u);
+    // The project card's hover is the shared `selectable-row` variant's now: the
+    // feature stylesheet keeps the row's arrangement, and the state belongs to
+    // the control contract.
+    const buttonStyles = readFileSync(
+      new URL("../../src/client/styles/button.css", import.meta.url),
+      "utf8",
+    );
+    expect(buttonStyles).toMatch(
+      /\.webui-mavis-button-selectable-row:hover:not\(:disabled\)\s*\{/u,
+    );
+    expect(styles).not.toMatch(/\.webui-project-card:hover/u);
     expect(styles).not.toMatch(
       /\.webui-project-card\[data-webui-project-active="true"\]/u,
     );
@@ -1205,8 +1224,13 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(html).toMatch(/rounded-lg/u);
     expect(html).toMatch(/text-sm/u);
     expect(html).toMatch(/h-12/u);
-    expect(html).toMatch(/webui-user-menu-trigger/u);
     expect(html).toMatch(/webui-user-menu-anchor/u);
+    // The trigger is the shared button now, so what it keeps from the desktop
+    // anatomy is the identity row's hook and its accessible name, not a local
+    // button class: `sidebar-user-menu-trigger` is the element a keyboard user
+    // lands on and what the browser suite drives.
+    expect(html).toMatch(/data-testid="sidebar-user-menu-trigger"/u);
+    expect(html).not.toMatch(/class="webui-user-menu-trigger/u);
   });
 
   it("never leaves a control operable but unbound", () => {
@@ -1294,7 +1318,7 @@ describe("WebUI shell — desktop anatomy", () => {
     expect(field).not.toMatch(/(?:^|\s)disabled(?:=|\s|>)/u);
 
     // The send action stays unavailable until there is something to send.
-    const sendAt = html.indexOf("webui-send-button");
+    const sendAt = html.indexOf('data-testid="composer-send"');
     const send = html.slice(
       html.lastIndexOf("<button", sendAt),
       html.indexOf(">", sendAt) + 1,
@@ -1377,7 +1401,10 @@ describe("WebUI shell — desktop anatomy", () => {
     // The session column is the header row plus the conversation, so the
     // conversation takes the rest of the column's height rather than all of
     // it (ADR 0025).
-    expect(html).toMatch(/webui-session-layout relative flex min-h-0 w-full flex-1 flex-col/u);
+    // The session column is the shared stack now: the feature class names the
+    // layout, and the primitive owns the column direction and its spacing.
+    expect(html).toMatch(/webui-session-layout flex-1/u);
+    expect(html).toMatch(/webui-stack webui-stack--gap-small webui-stack--align-center/u);
     expect(html).toMatch(/data-webui-session-transcript-scroll="true"/u);
     expect(html).toMatch(/data-webui-session-composer="true"/u);
     expect(html).toMatch(/webui-session-transcript-scroll/u);
@@ -1404,10 +1431,12 @@ describe("WebUI shell — desktop anatomy", () => {
         initialMessages: { messages: [], hasMore: false },
       }),
     );
-    expect(transcript).toMatch(/p-spacing_/u);
-    expect(transcript).toMatch(/gap-spacing_/u);
     expect(transcript).toMatch(/text-size_/u);
     expect(transcript).toMatch(/leading-line_height_/u);
+    // Spacing in the transcript is the layout primitives' now: the call site
+    // states a named step and the primitive emits the class, so the utility
+    // form of the same token no longer appears there.
+    expect(transcript).toMatch(/webui-(stack|inline)--gap-/u);
     // `webui-button-secondary` belongs to the "Load older" control, which only
     // renders once a second page is known to exist; that the class reaches the
     // compiled stylesheet is asserted in webui-design-tokens.test.ts.

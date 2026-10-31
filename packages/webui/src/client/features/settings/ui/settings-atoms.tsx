@@ -19,9 +19,10 @@
 // than which feature happens to use it.
 
 import { useId, type ReactElement, type ReactNode } from "react";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 import { FeedbackAnnouncement } from "../../../ui/feedback.js";
+import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 
 export const PERSONALIZATION_SECTION_HINTS = {
   globalInstructions:
@@ -168,44 +169,48 @@ export function SettingsDialog({
    */
   readonly dismissOnMaskClick?: boolean;
 }): ReactElement {
-  // One layer in the client's order (ADR 0028 § Overlay coordination). A dialog
-  // that offers a way out answers a dismissal by closing; one that does not — a
-  // preview with no close button — consumes the attempt instead, so the press
-  // cannot reach whatever is behind it.
-  //
-  // `deferred` rather than `blocked`: a dialog that offers no way out still must
-  // not swallow presses aimed at what it holds (a nested dialog is a portal with
-  // no layer of its own), so the attempt is answered with "nothing to do" instead
-  // of being consumed. `dismissible: false` is that policy.
-  const layerId = useDialogLayer({
-    id: `settings-dialog-${useId()}`,
-    dismissible: dismissOnMaskClick,
-    onClose,
-  });
+  const { dom } = useWebuiBrowserCapabilities();
+  const dialogId = useId();
+  if (variant === "preview") {
+    return (
+      <SettingsPreviewDialog title={title} onClose={onClose} testId={testId}>
+        {children}
+      </SettingsPreviewDialog>
+    );
+  }
 
   return (
-    <div
-      className={`webui-settings-dialog-mask${variant === "preview" ? " is-overlay" : ""}`}
+    <WebuiDialog
+      id={`settings-dialog-${dialogId}`}
+      title={title}
+      onClose={onClose}
+      width={width === "wide" ? "standard" : "compact"}
+      dismissOnEscape={dismissOnMaskClick}
+      dismissOnBackdrop={dismissOnMaskClick}
+      portalTarget={dom.portalTarget()}
+      testId={testId}
+      footer={footer}
     >
-      <div
-        data-overlay-layer={layerId}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        data-testid={testId}
-        className={`webui-settings-dialog-surface${width === "wide" ? " is-wide" : ""}${variant === "preview" ? " is-preview" : ""}`}
-      >
-        {variant === "preview" ? null : (
-          <header className="webui-settings-dialog-header">
-            <h3>{title}</h3>
-            <button type="button" aria-label="关闭" className="webui-settings-dialog-close" onClick={onClose}>
-              ×
-            </button>
-          </header>
-        )}
-        <div className="webui-settings-dialog-body">{children}</div>
-        {footer ? <footer className="webui-settings-dialog-footer">{footer}</footer> : null}
-      </div>
-    </div>
+      {children}
+    </WebuiDialog>
+  );
+}
+
+function SettingsPreviewDialog({
+  title,
+  children,
+  onClose,
+  testId,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+  readonly onClose: () => void;
+  readonly testId?: string;
+}): ReactElement {
+  const { dom } = useWebuiBrowserCapabilities();
+  return (
+    <WebuiDialog id="settings-preview" title={title} onClose={onClose} dismissOnEscape dismissOnBackdrop portalTarget={dom.portalTarget()} width="standard" testId={testId}>
+      {children}
+    </WebuiDialog>
   );
 }

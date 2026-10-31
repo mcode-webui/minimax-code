@@ -282,8 +282,13 @@ describe("SigninCard desktop parity", () => {
   it("renders the claimed-today state as the disabled desktop button", () => {
     const html = renderCard({ panel: CLAIMED_PANEL });
     expect(html).toContain("今日已签到");
-    expect(html).toContain("bg-bg_interaction_primary_inactive");
-    expect(html).not.toContain("signin-claim-button");
+    // The claimed-today state is the shared accent button in its disabled
+    // state; the fill is the button contract's, not a page utility.
+    expect(html).toMatch(/<button[^>]*class="[^"]*webui-mavis-button-accent[^"]*"[^>]*disabled/u);
+    // The two states are the same shared control: what distinguishes the
+    // claimed one is its disabled state and its label, not a second button class.
+    expect(html).toContain('aria-label="今日已签到"');
+    expect(html).not.toContain('aria-label="签到得 1,000"');
     expect(html).toContain(">3</span> 天");
   });
 

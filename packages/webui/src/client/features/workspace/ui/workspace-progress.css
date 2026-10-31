@@ -30,23 +30,14 @@
   @media (prefers-reduced-motion: reduce) { .webui-environment-skeleton::after { animation: none; } .webui-progress-content-enter { animation: none; } }
   .webui-environment-workspace { overflow: hidden; padding: 0 0 4px; color: var(--text_default_tertiary); font-size: var(--size_12); line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
   .webui-environment-actions { display: flex; flex-direction: column; gap: 1px; }
-  .webui-environment-action { display: flex; min-height: 34px; width: 100%; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_8); background: transparent; padding: 0 2px; color: var(--text_default_primary); font-size: var(--size_14); text-align: left; }
+  .webui-environment-action { display: flex; min-height: 34px; width: 100%; align-items: center; gap: var(--spacing_8); padding: 0 2px; }
   .webui-environment-action small { display: inline-flex; flex-shrink: 0; gap: var(--spacing_8); margin-left: auto; font-size: var(--size_12); }
   .webui-environment-action small .webui-diff-additions { color: var(--text_label_positive_secondary_default); }
   .webui-environment-action small .webui-diff-deletions { color: var(--text_label_danger_secondary_default); }
-  .webui-environment-action:not(:disabled):hover { background: var(--bg_interaction_tertiary_hover); }
-  .webui-environment-action:disabled { cursor: default; color: var(--text_default_tertiary); opacity: .72; }
-  .webui-commit-dialog { position: fixed; top: 50%; left: 50%; z-index: 100; display: flex; width: min(420px, calc(100vw - 32px)); transform: translate(-50%, -50%); flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_12); background: var(--bg_grouped_secondary_elevated); padding: var(--spacing_16); box-shadow: 0 12px 40px rgb(0 0 0 / 18%); color: var(--text_default_primary); }
-  .webui-commit-dialog-header, .webui-commit-dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_8); }
-  .webui-commit-dialog-header button { border: 0; background: transparent; color: var(--icon_default_tertiary); }
   .webui-commit-dialog-label { display: flex; flex-direction: column; gap: var(--spacing_4); color: var(--text_default_secondary); font-size: var(--size_12); }
-  .webui-commit-dialog-label textarea { min-height: 88px; resize: vertical; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: var(--bg_default_primary); padding: var(--spacing_8); color: var(--text_default_primary); font: inherit; outline: 0; }
   .webui-commit-dialog-hint, .webui-commit-dialog-error { margin: 0; color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-commit-dialog-error { color: var(--text_label_danger_secondary_default); }
-  .webui-commit-dialog-actions { justify-content: flex-end; }
-  .webui-commit-dialog-actions button { border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_primary); }
-  .webui-commit-dialog-actions button:last-child { border-color: var(--border_accent); background: var(--bg_interaction_primary_default); color: var(--text_default_inverted); }
-  .webui-workspace-section-title { display: flex; height: 28px; width: 100%; box-sizing: border-box; flex: 0 0 28px; align-self: stretch; align-items: center; justify-content: space-between; border: 0; background: transparent; padding: 0 var(--spacing_6); color: var(--text_default_secondary); font-size: var(--size_14); line-height: 20px; text-align: left; cursor: pointer; }
+  .webui-workspace-section-title { display: flex; height: 28px; width: 100%; box-sizing: border-box; flex: 0 0 28px; align-self: stretch; align-items: center; justify-content: space-between; padding: 0 var(--spacing_6); text-align: left; }
   .webui-progress-section-chevron { width: 16px; height: 16px; flex: 0 0 16px; color: var(--icon_default_tertiary); transition: transform 180ms cubic-bezier(.2, .7, .2, 1); }
   .webui-progress-section-chevron.is-collapsed { transform: rotate(-90deg); }
   .webui-workspace-section-title > [data-workspace-section-title] { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -56,8 +47,7 @@
   .webui-progress-row--in_progress .webui-progress-marker { background: var(--bg_grouped_tertiary); color: var(--text_default_primary); }
   .webui-progress-row--pending .webui-progress-marker { background: var(--bg_default_secondary); color: var(--text_default_tertiary); }
   .webui-progress-row--cancelled .webui-progress-marker { background: var(--bg_default_secondary); color: var(--text_default_tertiary); }
-  .webui-subagent-row { display: flex; min-height: 32px; width: 100%; align-items: center; gap: var(--spacing_8); border: 0; border-radius: var(--radius_8); background: transparent; padding: 0 var(--spacing_4); color: var(--text_default_primary); font-size: var(--size_14); }
-  .webui-subagent-row:hover { background: var(--bg_interaction_tertiary_hover); }
+  .webui-subagent-row { display: flex; min-height: 32px; width: 100%; align-items: center; gap: var(--spacing_8); padding: 0 var(--spacing_4); }
   .webui-subagent-avatar { display: inline-flex; width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
   .webui-subagent-status { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; align-items: center; justify-content: center; border-radius: 50%; color: var(--text_default_tertiary); font-size: 14px; font-weight: var(--weight_medium); }
   .webui-subagent-status--completed { background: var(--icon_default_secondary); color: var(--text_default_inverted); }

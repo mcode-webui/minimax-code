@@ -18,6 +18,7 @@
 import { useState } from "react";
 
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { WebuiButton } from "../../../ui/button.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
 import { workspaceProjectName } from "../../../features/workspace/projection/workspace-name.public.js";
 import { WebuiWorkspaceDirectoryBrowser } from "../../../features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.js";
@@ -77,7 +78,7 @@ export function WebuiComposerProjectRow({
           wrapperClassName="webui-workspace-picker"
           className="webui-workspace-picker-menu"
           trigger={(triggerProps) => (
-            <button
+            <WebuiButton variant="plain" size="compact"
               type="button"
               {...triggerProps}
               data-webui-workspace-picker="true"
@@ -89,7 +90,7 @@ export function WebuiComposerProjectRow({
               <span className="min-w-0 flex-1 truncate whitespace-nowrap leading-5">
                 {projectDir ? workspaceProjectName(projectDir) : "选择文件夹"}
               </span>
-            </button>
+            </WebuiButton>
           )}
         >
           {/* A `最近` group of workspaces the user has actually
@@ -104,7 +105,7 @@ export function WebuiComposerProjectRow({
               {recentDirs.map((dir) => {
                 const active = dir === projectDir;
                 return (
-                  <button
+                  <WebuiButton variant="plain" size="regular"
                     key={dir}
                     type="button"
                     role="option"
@@ -119,13 +120,13 @@ export function WebuiComposerProjectRow({
                       {workspaceProjectName(dir)}
                     </span>
                     {active ? <WebuiIconCheck className="webui-workspace-option-check" /> : null}
-                  </button>
+                  </WebuiButton>
                 );
               })}
               <div className="webui-workspace-menu-separator" role="separator" />
             </>
           ) : null}
-          <button
+          <WebuiButton variant="plain" size="regular"
             type="button"
             role="option"
             aria-selected={false}
@@ -140,8 +141,8 @@ export function WebuiComposerProjectRow({
             <span className="min-w-0 flex-1 truncate text-left">
               选择新项目
             </span>
-          </button>
-          <button
+          </WebuiButton>
+          <WebuiButton variant="plain" size="regular"
             type="button"
             role="option"
             aria-selected={projectDir === undefined}
@@ -153,7 +154,7 @@ export function WebuiComposerProjectRow({
             <span className="min-w-0 flex-1 truncate text-left">
               不需要项目
             </span>
-          </button>
+          </WebuiButton>
         </WebuiDropdown>
         {browserOpen ? (
           <div

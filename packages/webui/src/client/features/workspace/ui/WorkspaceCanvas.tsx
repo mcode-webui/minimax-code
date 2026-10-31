@@ -31,6 +31,8 @@ import {
   type ReactElement,
   type WheelEvent as ReactWheelEvent,
 } from "react";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiTextInput } from "../../../ui/field.js";
 import type { WebuiCanvasDocument } from "../../../../shared/contracts/canvas.js";
 
 /** Backing box for the stage; nodes are placed inside it in canvas units. */
@@ -326,13 +328,14 @@ export function WorkspaceCanvas({ sessionId }: {
           }}
         >
           <span style={{ display: "block", padding: "var(--spacing_8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.label}</span>
-          <button
-            type="button"
+          <WebuiButton
+            variant="outline-secondary"
+            size="inline-tiny"
             data-canvas-gesture="control"
             disabled={readOnly || busy}
             onClick={() => applyMutations([buildCanvasRemoveNodeMutation(node.id)])}
-            style={{ position: "absolute", top: "var(--spacing_8)", right: "var(--spacing_8)", border: "1px solid var(--border_default)", borderRadius: "var(--radius_8)", background: "var(--bg_grouped_secondary)", color: "inherit", padding: "2px var(--spacing_8)", fontSize: "var(--size_12)", cursor: "pointer" }}
-          >{DESKTOP_COPY.canvasNodeRemove}</button>
+            className="absolute right-2 top-2"
+          >{DESKTOP_COPY.canvasNodeRemove}</WebuiButton>
           <div
             aria-hidden="true"
             data-canvas-gesture="resize"
@@ -346,19 +349,22 @@ export function WorkspaceCanvas({ sessionId }: {
       onSubmit={handleAddSubmit}
       style={{ position: "absolute", left: "var(--spacing_16)", top: "var(--spacing_16)", display: "flex", gap: "var(--spacing_8)", alignItems: "center" }}
     >
-      <input
+      <WebuiTextInput
+        controlSize="dense"
+        appearance="boxed"
+        className="w-[180px] text-size_12 text-left"
         aria-label={DESKTOP_COPY.canvasAddLabel}
         placeholder={DESKTOP_COPY.canvasAddPlaceholder}
         value={draftPath}
         disabled={readOnly}
         onChange={(event) => setDraftPath(event.target.value)}
-        style={{ border: "1px solid var(--border_default)", borderRadius: "var(--radius_8)", background: "var(--bg_grouped_secondary)", color: "var(--text_default_primary)", padding: "var(--spacing_8)", fontSize: "var(--size_12)", textAlign: "left" }}
       />
-      <button
+      <WebuiButton
+        variant="outline"
+        size="inline-dense"
         type="submit"
         disabled={readOnly || busy}
-        style={{ border: "1px solid var(--border_default)", borderRadius: "var(--radius_8)", background: "transparent", color: "var(--text_default_primary)", padding: "var(--spacing_8) var(--spacing_12)", fontSize: "var(--size_12)", cursor: "pointer" }}
-      >{DESKTOP_COPY.canvasAddSubmit}</button>
+      >{DESKTOP_COPY.canvasAddSubmit}</WebuiButton>
     </form>
     {/* Status text is stacked in one column so the read-only note, the
         in-flight state, a notice and a failure can never overlap. */}

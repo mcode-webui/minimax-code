@@ -24,6 +24,8 @@ import {
 import { ProjectExpansion } from "./project-expansion.js";
 import { SessionActivityMeta } from "./session-activity-meta.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 /** Project rows consume rail-owned display state and return named view actions. */
 export function ProjectList({
@@ -111,7 +113,7 @@ export function ProjectList({
   readonly projectLoadError?: string;
 }): ReactElement {
   const renderProjects = (items: readonly WebuiProjectGroup[]) => (
-    <ul className="space-y-px" data-webui-project-list-items="true">
+    <WebuiStack as="ul" gap="hairline" data-webui-project-list-items="true">
       {items.map((project) => {
         const expanded = expandedProjects.has(project.key);
         const projectName = projectNames?.[project.key] ?? project.name;
@@ -126,8 +128,9 @@ export function ProjectList({
         return (
           <li key={project.key}>
             <div className="webui-project-row group/project">
-              <button
-                type="button"
+              <WebuiButton
+                variant="selectable-row"
+                size="rail"
                 aria-expanded={expanded}
                 onClick={() => {
                   onProjectSelect?.(project.workspaceDir);
@@ -136,32 +139,32 @@ export function ProjectList({
                 onContextMenu={(event) => onOpenProjectMenu(event, project)}
                 data-webui-project-link={project.key}
                 title={project.workspaceDir}
-                className="webui-project-card text-left text-text_default_primary"
+                className="webui-project-card"
               >
                 <WebuiIconFolder className="webui-project-folder-icon flex-shrink-0" />
                 <span className="min-w-0 flex-1 truncate text-sm leading-5">
                   {projectName}
                 </span>
-              </button>
+              </WebuiButton>
               <div className="webui-project-row-actions" aria-hidden="false">
                 {project.workspaceDir &&
                 (onRenameProject || onToggleProjectPin || onArchiveProject) ? (
-                  <button
-                    type="button"
-                    aria-label={`${projectName} 项目操作`}
+                  <WebuiIconButton
+                    tone="bare"
+                    size="rail"
+                    label={`${projectName} 项目操作`}
                     title="项目操作"
-                    className="webui-rail-action"
                     onClick={(event) => onOpenProjectMenu(event, project)}
                   >
                     <WebuiIconMore />
-                  </button>
+                  </WebuiIconButton>
                 ) : null}
                 {onCreateTaskInProject ? (
-                  <button
-                    type="button"
-                    aria-label={`在 ${projectName} 中新建任务`}
+                  <WebuiIconButton
+                    tone="bare"
+                    size="rail"
+                    label={`在 ${projectName} 中新建任务`}
                     title="新建任务"
-                    className="webui-rail-action"
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -169,7 +172,7 @@ export function ProjectList({
                     }}
                   >
                     <WebuiIconProjectAdd />
-                  </button>
+                  </WebuiIconButton>
                 ) : null}
               </div>
             </div>
@@ -194,7 +197,7 @@ export function ProjectList({
           </li>
         );
       })}
-    </ul>
+    </WebuiStack>
   );
 
   return (
@@ -212,7 +215,7 @@ export function ProjectList({
       >
         <div className="webui-project-section-content-inner" data-webui-pinned-section="true">
           {pinnedSessions.length > 0 ? (
-            <ul className="space-y-px" data-webui-pinned-sessions="true">
+            <WebuiStack as="ul" gap="hairline" data-webui-pinned-sessions="true">
               {pinnedSessions.map((session) => (
                 <li key={session.sessionId}>
                   <div
@@ -243,11 +246,12 @@ export function ProjectList({
                     </a>
                     <div className="webui-session-row-actions">
                       {onToggleSessionPin ? (
-                        <button
-                          type="button"
-                          aria-label={`取消置顶：${sessionLabel(session)}`}
+                        <WebuiIconButton
+                          tone="bare"
+                          size="rail"
+                          label={`取消置顶：${sessionLabel(session)}`}
                           title="取消置顶"
-                          className="webui-rail-action"
+                          data-webui-rail-action="pin"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -255,14 +259,14 @@ export function ProjectList({
                           }}
                         >
                           <WebuiIconContextPin pinned />
-                        </button>
+                        </WebuiIconButton>
                       ) : null}
                       {onArchiveSession ? (
-                        <button
-                          type="button"
-                          aria-label={`归档：${sessionLabel(session)}`}
+                        <WebuiIconButton
+                          tone="bare"
+                          size="rail"
+                          label={`归档：${sessionLabel(session)}`}
                           title="归档"
-                          className="webui-rail-action"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -270,22 +274,22 @@ export function ProjectList({
                           }}
                         >
                           <WebuiIconContextArchive />
-                        </button>
+                        </WebuiIconButton>
                       ) : null}
-                      <button
-                        type="button"
-                        aria-label={`${sessionLabel(session)} 更多操作`}
+                      <WebuiIconButton
+                        tone="bare"
+                        size="rail"
+                        label={`${sessionLabel(session)} 更多操作`}
                         title="更多操作"
-                        className="webui-rail-action"
                         onClick={(event) => onSessionContextMenu(event, session)}
                       >
                         <WebuiIconMore />
-                      </button>
+                      </WebuiIconButton>
                     </div>
                   </div>
                 </li>
               ))}
-            </ul>
+            </WebuiStack>
           ) : null}
           {renderProjects(pinnedProjectGroups)}
         </div>
@@ -319,15 +323,16 @@ export function ProjectList({
               {renderProjects(projects.slice(0, visibleProjectCount))}
               {hasMoreProjects ? (
                 <div className="px-1 pt-px">
-                  <button
-                    type="button"
+                  <WebuiButton
+                    variant="selectable-row"
+                    size="compact"
                     className="webui-project-session-more text-text_default_secondary"
                     onClick={onShowMoreProjects}
                     disabled={projectLoading}
                     aria-label="显示更多项目"
                   >
                     {projectLoading ? "加载中…" : "更多"}
-                  </button>
+                  </WebuiButton>
                 </div>
               ) : null}
             </>
@@ -350,9 +355,10 @@ function RailSectionHeader({
   readonly testId: string;
 }): ReactElement {
   return (
-    <button
-      type="button"
-      className="webui-project-section-toggle text-text_default_tertiary"
+    <WebuiButton
+      variant="quiet-subtle"
+      size="rail"
+      className="webui-project-section-toggle"
       aria-expanded={expanded}
       data-webui-rail-section-header="true"
       data-webui-rail-section-id={testId}
@@ -360,6 +366,6 @@ function RailSectionHeader({
     >
       <span>{label}</span>
       <WebuiIconSessionDisclosure className={expanded ? "is-expanded" : undefined} />
-    </button>
+    </WebuiButton>
   );
 }

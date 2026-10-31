@@ -114,7 +114,7 @@ test("the slider sets the level, and the chip names it", async ({ page }) => {
   const slider = page.locator("[data-webui-model-effort-slider]");
   await expect(slider).toBeVisible();
   const selectorBox = await chip(page).boundingBox();
-  const sendBox = await page.locator(".webui-send-button").boundingBox();
+  const sendBox = await page.locator('[data-testid="composer-send"]').boundingBox();
   expect(selectorBox).toBeTruthy();
   expect(sendBox).toBeTruthy();
   expect(sendBox.x - (selectorBox.x + selectorBox.width)).toBeLessThan(16);

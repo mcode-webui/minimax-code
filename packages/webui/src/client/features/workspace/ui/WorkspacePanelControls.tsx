@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { IconBrowser, IconLayoutSidebarRightCollapse } from "@tabler/icons-react";
+import { WebuiIconButton } from "../../../ui/button.js";
 
 /** Entry controls for the independent workspace and progress panels. */
 export function WebuiWorkspacePanelControls({ browserPanelOpen, progressPanelOpen, progressPanelAvailable = true, onOpenBrowser, onToggleProgressPanel }: {
@@ -18,16 +19,16 @@ export function WebuiWorkspacePanelControls({ browserPanelOpen, progressPanelOpe
   readonly onToggleProgressPanel: () => void;
 }): ReactElement {
   return <div className="webui-workspace-panel-controls" data-testid="workspace-panel-controls">
-    <button type="button" className={`webui-workspace-icon-button ${browserPanelOpen ? "is-active" : ""}`} aria-label="浏览器" aria-pressed={browserPanelOpen} onClick={onOpenBrowser}><IconBrowser className="size-5" stroke={1.6} aria-hidden="true" /></button>
-    <button
-      type="button"
+    <WebuiIconButton tone="bare" size="panel" label="浏览器" aria-pressed={browserPanelOpen} onClick={onOpenBrowser}><IconBrowser className="size-5" stroke={1.6} aria-hidden="true" /></WebuiIconButton>
+    <WebuiIconButton
+      tone="bare"
+      size="panel"
+      label="环境信息与进度"
       data-webui-progress-toggle="true"
-      className={`webui-workspace-icon-button ${progressPanelOpen ? "is-active" : ""}`}
-      aria-label="环境信息与进度"
       aria-pressed={progressPanelOpen}
       aria-disabled={progressPanelAvailable ? undefined : "true"}
       title={progressPanelAvailable ? undefined : "窗口宽度不足，进度面板已收起"}
       onClick={onToggleProgressPanel}
-    ><IconLayoutSidebarRightCollapse className="size-5" stroke={1.6} aria-hidden="true" /></button>
+    ><IconLayoutSidebarRightCollapse className="size-5" stroke={1.6} aria-hidden="true" /></WebuiIconButton>
   </div>;
 }

@@ -201,7 +201,117 @@ test("the model picker's Escape ladder steps from its list to its panel, then cl
 
 test("closing the dialog returns focus to the control that opened it", async ({ page }) => {
   const opener = await openManager(page);
+  await expect.poll(() => page.getByTestId("agent-memory-manager").evaluate((surface) =>
+    [...(surface.parentElement?.parentElement?.children ?? [])]
+      .filter((element) => element !== surface.parentElement)
+      .every((element) => element.inert),
+  )).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toHaveCount(0);
   await expect(opener).toBeFocused();
+  await expect.poll(() => page.locator("#webui-root").evaluate((element) => element.inert)).toBe(true);
+});
+
+test("the shared modal frame keeps its header and actions fixed around a scrolling body", async ({ page }, testInfo) => {
+  await page.evaluate(() => window.__fixture.setResponse("getAgentMemory", {
+    agentName: "main",
+    path: "memory.md",
+    exists: true,
+    sizeBytes: 20_000,
+    content: Array.from({ length: 500 }, (_, index) => `记忆条目 ${index + 1}：用于验证长内容不会把标题和操作按钮推出弹窗。`).join("\n"),
+  }));
+  await openManager(page);
+  await expect.poll(() => page.getByTestId("agent-memory-manager").evaluate((surface) => Math.round(surface.getBoundingClientRect().width))).toBe(640);
+
+  const geometry = await page.getByTestId("agent-memory-manager").evaluate((surface) => {
+    const bounds = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height };
+    };
+    const header = surface.querySelector(".webui-dialog-header");
+    const body = surface.querySelector(".webui-dialog-body");
+    const footer = surface.querySelector(".webui-dialog-footer");
+    if (!header || !body || !footer) return null;
+    return {
+      surface: bounds(surface),
+      header: bounds(header),
+      body: bounds(body),
+      footer: bounds(footer),
+      bodyOverflowY: getComputedStyle(body).overflowY,
+      bodyClientHeight: body.clientHeight,
+      bodyScrollHeight: body.scrollHeight,
+      scrim: getComputedStyle(surface.parentElement).backgroundColor,
+    };
+  });
+  expect(geometry, "the shared frame has all three regions").not.toBeNull();
+  expect(geometry?.surface.width).toBeCloseTo(640, 0);
+  expect(geometry?.surface.height ?? 0).toBeLessThanOrEqual(765);
+  expect(geometry?.bodyOverflowY).toBe("auto");
+  expect(geometry?.bodyScrollHeight ?? 0).toBeGreaterThan(geometry?.bodyClientHeight ?? 0);
+  expect(geometry?.header.top).toBeGreaterThanOrEqual(geometry?.surface.top ?? 0);
+  expect(Math.abs((geometry?.footer.bottom ?? 0) - (geometry?.surface.bottom ?? 0))).toBeLessThanOrEqual(2);
+  // The scrim is the shared modal token, and the Desktop's colorBgMask binds it
+  // to utility_overlay: black at 25% in the light palette.
+  expect(geometry?.scrim).toBe("rgba(0, 0, 0, 0.25)");
+
+  await page.getByTestId("agent-memory-manager").locator(".webui-dialog-body").evaluate((body) => {
+    body.scrollTop = body.scrollHeight;
+  });
+  await expect(page.getByTestId("agent-memory-save")).toBeVisible();
+  await testInfo.attach("shared-modal-desktop-long-content", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.setViewportSize({ width: 390, height: 844 });
+  const narrow = await page.getByTestId("agent-memory-manager").evaluate((surface) => {
+    const rect = surface.getBoundingClientRect();
+    const footer = surface.querySelector(".webui-dialog-footer")?.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      footerBottom: footer?.bottom,
+      scrim: getComputedStyle(surface.parentElement).backgroundColor,
+    };
+  });
+  expect(narrow.left).toBeGreaterThanOrEqual(11);
+  expect(narrow.right).toBeLessThanOrEqual(379);
+  expect(Math.abs((narrow.footerBottom ?? 0) - narrow.bottom)).toBeLessThanOrEqual(2);
+  // The dark palette binds utility_overlay to #0000003d, so the same token dims
+  // the page a shade less than it does in the light theme.
+  expect(narrow.scrim).toBe("rgba(0, 0, 0, 0.24)");
+  await testInfo.attach("shared-modal-mobile-dark", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+});
+
+test("closing a modal returns focus to the control that opened it, never the body", async ({ page }) => {
+  // The settings sheet is opened from an entry inside the user menu. Focus has
+  // to come back to that entry — a keyboard user who closes the sheet resumes
+  // where they were, not at the top of the document. The platform keeps a short
+  // history of what was focused outside a modal precisely because an opener that
+  // lives in a popup is not guaranteed to survive the modal it opened.
+  await page.getByTestId("sidebar-user-menu-trigger").click();
+  await page.getByTestId("user-menu-settings").click();
+  await expect(page.getByRole("dialog", { name: "设置" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "设置" })).toHaveCount(0);
+
+  const focused = await page.evaluate(() => {
+    const element = document.activeElement;
+    return {
+      tag: element?.tagName ?? "",
+      testId: element?.getAttribute("data-testid") ?? "",
+      isBody: element === document.body,
+      connected: Boolean(element?.isConnected),
+    };
+  });
+  expect(focused.isBody).toBe(false);
+  expect(focused.connected).toBe(true);
+  expect(focused.tag).toBe("BUTTON");
+  expect(focused.testId).toBe("user-menu-settings");
 });

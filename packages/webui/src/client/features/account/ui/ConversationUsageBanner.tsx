@@ -26,7 +26,8 @@
 import type { MouseEvent, ReactNode } from "react";
 import { IconAlertCircle, IconX } from "@tabler/icons-react";
 
-import { WebuiButton } from "../../../ui/button.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 export type ConversationUsageActionKind =
   | "buy_credits"
@@ -89,25 +90,24 @@ function DefaultActionButton(props: {
   onClick: () => void;
 }): React.JSX.Element {
   const { kind, label, variant, testId, onClick } = props;
-  // The filled call to action is the shared contract's accent: the fill, the
-  // inverted label and the hover are the accent's, so the contract owns them.
-  // The ringless surface button below has no variant of its own yet.
+  // Both actions use shared button appearances; callers only provide the
+  // banner-specific placement and dimensions.
   if (variant === "black") {
     return (
-      <WebuiButton variant="accent" size="regular" className="!h-8" data-testid={testId} onClick={onClick}>
+      <WebuiButton variant="accent" size="header" data-testid={testId} onClick={onClick}>
         {label}
       </WebuiButton>
     );
   }
   return (
-    <button
-      type="button"
-      className="!inline-flex !h-8 !items-center !justify-center !rounded-lg !px-3 !py-0 !text-[14px] border-[0.5px] border-border_default bg-bg_default_primary text-text_default_primary hover:bg-bg_interaction_tertiary_hover"
+    <WebuiButton
+      variant="outline"
+      size="header"
       data-testid={testId}
       onClick={onClick}
     >
       {label}
-    </button>
+    </WebuiButton>
   );
 }
 
@@ -143,9 +143,7 @@ export function ConversationUsageBanner(props: ConversationUsageBannerProps): Re
       : `${messageText} ${formatResetAt(notice.resetAtMs)}`;
 
   const canDismiss = notice.dismissable !== false;
-  const dismissClass = mobileLayout
-    ? "absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-lg text-icon_default_tertiary hover:bg-bg_interaction_tertiary_hover"
-    : "flex h-8 w-8 items-center justify-center rounded-lg text-icon_default_tertiary hover:bg-bg_interaction_tertiary_hover";
+  const dismissClass = mobileLayout ? "absolute right-1 top-1 z-10" : "flex-none";
 
   const containerClass = mobileLayout
     ? "relative mb-2 flex min-h-16 flex-col gap-3 rounded-2xl border-[0.5px] border-border_default bg-bg_grouped_secondary_elevated p-2 transcript-shadow-banner-soft"
@@ -166,35 +164,31 @@ export function ConversationUsageBanner(props: ConversationUsageBannerProps): Re
       data-testid="conversation-usage-banner"
       data-notice-kind={notice.kind}
     >
-      <div
-        className={
-          mobileLayout
-            ? "flex min-w-0 items-center gap-2 pr-9"
-            : "flex min-w-[240px] flex-1 items-center gap-2"
-        }
+      <WebuiInline
+        gap="small"
+        className={mobileLayout ? "min-w-0 pr-9" : "min-w-[240px] flex-1"}
       >
         <NoticeIcon />
         <p className="min-w-0 flex-1 text-[14px] leading-5 text-text_default_primary">
           {composedMessage}
         </p>
-      </div>
+      </WebuiInline>
       {mobileLayout && canDismiss ? (
-        <button
-          type="button"
+        <WebuiIconButton
+          tone="bare"
+          size="compact"
           onClick={handleDismiss}
-          aria-label={dismissLabel}
+          label={dismissLabel}
           data-testid="conversation-usage-banner-dismiss"
           className={dismissClass}
         >
           <CloseIcon />
-        </button>
+        </WebuiIconButton>
       ) : null}
-      <div
-        className={
-          mobileLayout
-            ? "flex items-center justify-end gap-2"
-            : "ml-auto flex flex-none items-center gap-2"
-        }
+      <WebuiInline
+        gap="small"
+        justify="end"
+        className={mobileLayout ? "" : "ml-auto flex-none"}
       >
         {notice.actions.map((kind) => {
           const variant = kind === "buy_credits" ? "gray" : "black";
@@ -220,17 +214,18 @@ export function ConversationUsageBanner(props: ConversationUsageBannerProps): Re
           );
         })}
         {!mobileLayout && canDismiss ? (
-          <button
-            type="button"
+          <WebuiIconButton
+            tone="bare"
+            size="compact"
             onClick={handleDismiss}
-            aria-label={dismissLabel}
+            label={dismissLabel}
             data-testid="conversation-usage-banner-dismiss"
             className={dismissClass}
           >
             <CloseIcon />
-          </button>
+          </WebuiIconButton>
         ) : null}
-      </div>
+      </WebuiInline>
     </div>
   );
 }

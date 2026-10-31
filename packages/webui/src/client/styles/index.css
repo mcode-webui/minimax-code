@@ -40,6 +40,7 @@
  * floating popup in the client shares. It comes before the feature rules, so a
  * feature that needs something specific about its own popup can still say so. */
 @import "./dropdown.css";
+@import "./dialog.css";
 /* Feature rules follow their business. Each file holds that business's rules
  * out of the old monolith, in their original relative order, and every one of
  * them is still inside `@layer components` — Tailwind collects that layer and

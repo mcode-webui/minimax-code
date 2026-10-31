@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
+import { WebuiSearchField, WebuiTextInput } from "../../../ui/field.js";
 import { Terminal } from "@xterm/xterm";
 import { IconEdit } from "@tabler/icons-react";
 import { FitAddon } from "@xterm/addon-fit";
@@ -148,13 +151,13 @@ export function WebuiDiffFileSection({ file, selected, loading = false, error, o
   const lines = projectWebuiUnifiedDiffLines(diff);
   const language = webuiFileLanguage(file.file);
   return <section className="webui-turn-review-file" data-expanded={expanded} data-testid="turn-review-diff-file">
-    <button type="button" className="webui-turn-review-file-heading" aria-current={selected ? "true" : undefined} aria-expanded={expanded} onClick={() => { onSelect?.(); setExpanded((value) => !value); }}>
+    <WebuiButton variant="plain" size="regular" type="button" className="webui-turn-review-file-heading" aria-current={selected ? "true" : undefined} aria-expanded={expanded} onClick={() => { onSelect?.(); setExpanded((value) => !value); }}>
       <WebuiIconChevronRight className="webui-turn-review-chevron" />
       <span className="webui-diff-file-icon"><WebuiIconDiffFile fileName={file.file} /></span>
       <span className="webui-turn-review-file-path">{file.file}</span>
       <span className="webui-diff-add">+{file.additions}</span>
       {file.deletions > 0 ? <span className="webui-diff-del">-{file.deletions}</span> : null}
-    </button>
+    </WebuiButton>
     <div className={`webui-expandable-motion${expanded ? " is-open" : ""}`} aria-hidden={!expanded}>
       <div>
         {!file.withinWorkspace
@@ -752,8 +755,8 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
         <WebuiWorkspaceTabStrip state={state} dispatch={panelDispatch} sessionId={sessionId} />
       </div>
       <div className="webui-workspace-panel-actions">
-        <button type="button" aria-label={state.expanded ? "收起面板" : "展开面板"} aria-pressed={state.expanded} onClick={toggleExpanded}><WebuiIconWorkspaceExpand expanded={state.expanded} className="size-[18px]" /></button>
-        <button type="button" className="webui-workspace-panel-close" aria-label="关闭面板" disabled={panelClosing} onClick={startPanelClosing}><WebuiIconClose className="size-[18px]" /></button>
+        <WebuiButton variant="quiet-action" size="inline" className="webui-workspace-panel-action" aria-label={state.expanded ? "收起面板" : "展开面板"} aria-pressed={state.expanded} onClick={toggleExpanded}><WebuiIconWorkspaceExpand expanded={state.expanded} className="size-[18px]" /></WebuiButton>
+        <WebuiButton variant="quiet-action" size="inline" className="webui-workspace-panel-action webui-workspace-panel-close" aria-label="关闭面板" disabled={panelClosing} onClick={startPanelClosing}><WebuiIconClose className="size-[18px]" /></WebuiButton>
       </div>
     </div>
     {hasFileWorkspace ? <div className="webui-workspace-file-toolbar">
@@ -761,11 +764,11 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
         {activeFilePath ? activeFilePath.split("/").map((part, index) => <span key={`${part}-${index}`} className={index === activeFilePath.split("/").length - 1 ? "is-current" : ""}>{index ? <WebuiIconChevronRight className="size-3" /> : null}{part}</span>) : <span className="is-current">{basenamePath(workspaceDir ?? "") || "工作区"}</span>}
       </div>
       {activeTab?.content.kind === "file-preview" && /\.md$/iu.test(activeTab.content.path) ? <div className="webui-workspace-file-mode" role="group" aria-label="文件显示模式">
-        <button type="button" aria-pressed={!fileCodeMode} onClick={() => setFileCodeMode(false)}>预览</button>
-        <button type="button" aria-pressed={fileCodeMode} onClick={() => setFileCodeMode(true)}>代码</button>
+        <WebuiButton variant="segmented" size="compact" className="webui-workspace-file-mode-button" aria-pressed={!fileCodeMode} onClick={() => setFileCodeMode(false)}>预览</WebuiButton>
+        <WebuiButton variant="segmented" size="compact" className="webui-workspace-file-mode-button" aria-pressed={fileCodeMode} onClick={() => setFileCodeMode(true)}>代码</WebuiButton>
       </div> : null}
-      {activeTab?.content.kind === "file-preview" ? <button type="button" className="webui-workspace-edit-action" aria-label="编辑文件（暂未支持）" disabled><IconEdit aria-hidden="true" className="size-[18px]" size={18} stroke={1.7} /></button> : null}
-      <button type="button" className="webui-workspace-tree-toggle" aria-label={fileTreeOpen ? "隐藏文件树" : "显示文件树"} aria-pressed={fileTreeOpen} onClick={() => setFileTreeOpen((open) => !open)}><WebuiIconSidebarToggle className="size-5" /></button>
+      {activeTab?.content.kind === "file-preview" ? <WebuiButton variant="quiet-action" size="inline" className="webui-workspace-panel-action" aria-label="编辑文件（暂未支持）" disabled><IconEdit aria-hidden="true" className="size-[18px]" size={18} stroke={1.7} /></WebuiButton> : null}
+      <WebuiButton variant="quiet-action" size="inline" className="webui-workspace-panel-action" aria-label={fileTreeOpen ? "隐藏文件树" : "显示文件树"} aria-pressed={fileTreeOpen} onClick={() => setFileTreeOpen((open) => !open)}><WebuiIconSidebarToggle className="size-5" /></WebuiButton>
     </div> : null}
     <div className="webui-workspace-panel-body">
       <div className="webui-workspace-view">
@@ -774,9 +777,9 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     {tab === "review" && activeTab?.content.kind === "review" && activeTab.content.source === "workspace" ? <div className="webui-turn-review" data-testid="workspace-review">
       {/* 下面的状态文案都是播报通道，交给共享契约；类名不变，样式继续命中。 */}
       {reviewSummary?.tabId !== activeTab.id || reviewSummary.loading && !reviewSummary.summary ? <FeedbackLiveRegion className="webui-turn-review-empty">正在收集变更…</FeedbackLiveRegion> : reviewSummary.error && !reviewSummary.summary ? <FeedbackError message={reviewSummary.error} className="webui-turn-review-empty" /> : reviewSummary.summary ? <>
-        <div className="webui-turn-review-summary"><span>{reviewSummary.summary.totals.files} 个文件</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{reviewSummary.summary.totals.additions}</span>{reviewSummary.summary.totals.deletions ? <span className="webui-diff-del">-{reviewSummary.summary.totals.deletions}</span> : null}</span></div>
+        <WebuiInline gap="medium" justify="between" className="webui-turn-review-summary"><span>{reviewSummary.summary.totals.files} 个文件</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{reviewSummary.summary.totals.additions}</span>{reviewSummary.summary.totals.deletions ? <span className="webui-diff-del">-{reviewSummary.summary.totals.deletions}</span> : null}</span></WebuiInline>
         {reviewSummary.summary.files.length ? <>
-          <form className="webui-workspace-review-search" onSubmit={(event) => { event.preventDefault(); runReviewSearch(); }}><input aria-label="搜索变更" value={reviewSearchQuery} onChange={(event) => setReviewSearchQuery(event.currentTarget.value)} placeholder="搜索变更" /><button type="submit" disabled={!queries?.canSearchReviewDiffs || reviewSearch?.loading}>搜索</button></form>
+          <form className="webui-workspace-review-search" onSubmit={(event) => { event.preventDefault(); runReviewSearch(); }}><WebuiTextInput controlSize="compact" className="flex-1" aria-label="搜索变更" value={reviewSearchQuery} onChange={(event) => setReviewSearchQuery(event.currentTarget.value)} placeholder="搜索变更" /><WebuiButton variant="secondary" size="compact" type="submit" disabled={!queries?.canSearchReviewDiffs || reviewSearch?.loading}>搜索</WebuiButton></form>
           {reviewSearchAppliedQuery && currentWorkspaceReviewSearch?.loading ? <FeedbackLiveRegion className="webui-workspace-review-status">正在搜索变更…</FeedbackLiveRegion> : null}
           {reviewSearchAppliedQuery && currentWorkspaceReviewSearch?.error ? <FeedbackError message={currentWorkspaceReviewSearch.error} className="webui-workspace-review-status" /> : null}
           {reviewDiffs?.error && reviewDiffs.tabId === activeTab.id && reviewDiffs.snapshotId === activeReview?.reviewSnapshotId ? <FeedbackError message={reviewDiffs.error} className="webui-workspace-review-status" /> : null}
@@ -790,7 +793,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
       </> : null}
     </div> : null}
     {tab === "review" && activeTab?.content.kind === "review" && activeTab.content.source === "turn" ? <div className="webui-turn-review" data-testid="turn-review-panel" data-session-id={activeTab.content.sessionId} data-message-id={activeTab.content.messageId} data-turn-id={activeTab.content.turnId} data-change-set-id={activeTab.content.changeSetId}>
-      <div className="webui-turn-review-summary"><span>本轮改动</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{turnReviewFiles.reduce((sum, file) => sum + file.additions, 0)}</span>{turnReviewFiles.some((file) => file.deletions > 0) ? <span className="webui-diff-del">-{turnReviewFiles.reduce((sum, file) => sum + file.deletions, 0)}</span> : null}</span></div>
+      <WebuiInline gap="medium" justify="between" className="webui-turn-review-summary"><span>本轮改动</span><span className="webui-diff-header-stats"><span className="webui-diff-add">+{turnReviewFiles.reduce((sum, file) => sum + file.additions, 0)}</span>{turnReviewFiles.some((file) => file.deletions > 0) ? <span className="webui-diff-del">-{turnReviewFiles.reduce((sum, file) => sum + file.deletions, 0)}</span> : null}</span></WebuiInline>
       {turnReviewFiles.length ? <div className="webui-turn-review-files">{turnReviewFiles.map((file) => <WebuiDiffFileSection key={file.file} file={file} selected={selectedReviewPath === file.file} />)}</div> : <p className="webui-turn-review-empty">本轮没有可审查的文件差异。</p>}
     </div> : null}
     {tab === "canvas" ? <WorkspaceCanvas sessionId={activeSessionId} /> : null}
@@ -896,7 +899,7 @@ export function WebuiWorkspacePanel({ state, dispatch, sessionId, workspaceDir, 
     </div> : null}
       </div>
       {hasFileWorkspace && fileTreeOpen ? <aside className="webui-workspace-file-tree-panel" aria-label="工作区文件树">
-        <label className="webui-workspace-file-search"><WebuiIconSearch className="size-4" /><input aria-label="搜索文件" placeholder="搜索" value={fileSearch} onChange={(event) => setFileSearch(event.currentTarget.value)} /></label>
+        <WebuiSearchField className="webui-workspace-file-search" icon={<WebuiIconSearch className="size-4" />} label="搜索文件" placeholder="搜索" value={fileSearch} onChange={(event) => setFileSearch(event.currentTarget.value)} />
         <div className="webui-workspace-file-tree-scroll" ref={fileTreeScrollRef}>
           {/* 加载中是一条播报；播报通道交给共享契约。契约本身带 role="status"，
               仍是这个滚动容器的直接子元素，`.webui-workspace-file-tree-scroll > [role="status"]` 继续命中。 */}

@@ -323,7 +323,7 @@ describe("real host over the loopback service", () => {
         throw new Error(`Built WebUI startup failed: ${await startupFallback.innerText()}`);
       }
       await page.getByRole("button", { name: "插件" }).first().click();
-      await page.locator(".webui-plugin-manage-trigger").click();
+      await page.getByTestId("plugin-manage-trigger").click();
       await page.locator('.webui-plugin-category-filter button', { hasText: "MCP" }).click();
       await browserExpect(page.getByPlaceholder("搜索MCP...")).toBeVisible();
       await browserExpect(page.getByText("暂无内容")).toBeVisible();
@@ -339,7 +339,7 @@ describe("real host over the loopback service", () => {
         JSON.stringify(frame.body).includes('"servers":[]'),
       )).toBe(true);
 
-      await page.locator(".webui-plugin-create-trigger").click();
+      await page.getByTestId("plugin-create-trigger").click();
       await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
       const dialog = page.getByRole("dialog", { name: "MCP Server" });
       await browserExpect(dialog).toBeVisible();

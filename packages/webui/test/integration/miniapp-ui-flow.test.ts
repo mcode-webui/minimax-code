@@ -47,7 +47,7 @@ afterEach(async () => {
  */
 async function openApplications(page: Page): Promise<void> {
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
   await page
     .locator('.webui-plugin-category-filter[aria-label="插件管理分类"] button', { hasText: "应用" })
     .click();

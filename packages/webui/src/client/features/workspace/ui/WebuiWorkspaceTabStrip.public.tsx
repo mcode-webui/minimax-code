@@ -32,6 +32,7 @@ import {
   type FormEvent,
   type ReactElement,
 } from "react";
+import { IconPlus } from "@tabler/icons-react";
 
 import {
   type WebuiBrowserTargetId,
@@ -63,6 +64,8 @@ import {
 } from "../../../shell/icons.js";
 import { WebuiDropdown, type WebuiDropdownTriggerProps } from "../../../ui/Dropdown.js";
 import { WebuiMenuItem } from "../../../ui/menu-item.js";
+import { WebuiTextInput } from "../../../ui/field.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 const STRIP_COPY = {
   addTab: "新建标签页",
@@ -328,8 +331,10 @@ export function WebuiWorkspaceTabStrip({
           data-testid={`workspace-tab-strip-item-${item.id}`}
           data-tab-kind={item.content.kind}
         >
-          <button
-            type="button"
+          <WebuiButton
+            variant="plain"
+            size="regular"
+            className="webui-workspace-tab-control"
             role="tab"
             aria-selected={state.activeTabId === item.id}
             data-testid={`workspace-tab-${item.id}`}
@@ -337,19 +342,22 @@ export function WebuiWorkspaceTabStrip({
           >
             {workspaceTabStripGlyph(item)}
             <span className="webui-workspace-tab-label">{webuiWorkspaceTabLabel(item)}</span>
-          </button>
-          <button
-            type="button"
+          </WebuiButton>
+          <WebuiButton
+            variant="quiet-subtle"
+            size="inline-tiny"
+            className="webui-workspace-tab-close"
             aria-label={`${webuiWorkspaceTabLabel(item)} ${STRIP_COPY.fileClose}`}
             data-testid={`workspace-tab-${item.id}-close`}
             onClick={() => void closeTab(item)}
           >
             <WebuiIconClose className="size-3" />
-          </button>
+          </WebuiButton>
         </div>
       ))}
-      <button
-        type="button"
+      <WebuiButton
+        variant="quiet-action"
+        size="inline"
         className="webui-workspace-new-tab-trigger"
         aria-label={STRIP_COPY.addTab}
         data-testid="workspace-add-tab"
@@ -357,8 +365,8 @@ export function WebuiWorkspaceTabStrip({
       >
         {/* The glyph is decoration inside a button that already has a name; leaving
             it readable made the visible text disagree with that name. */}
-        <span aria-hidden="true">+</span>
-      </button>
+        <IconPlus aria-hidden="true" size={18} stroke={1.7} />
+      </WebuiButton>
     </div>
   );
 }
@@ -452,7 +460,9 @@ export function WebuiWorkspaceLauncher({
   const overflowTiles = tiles.slice(visibleTileCount);
 
   const renderTile = ({ tile, command }: typeof tiles[number], index: number) => (
-    <button
+    <WebuiButton
+      variant="surface-quiet"
+      size="inline"
       key={tile.kind}
       ref={index === 0 ? firstTileRef : undefined}
       type="button"
@@ -466,7 +476,7 @@ export function WebuiWorkspaceLauncher({
         {launcherTileGlyph(tile.kind)}
       </span>
       <span className="webui-workspace-launcher-tile-label">{tile.label}</span>
-    </button>
+    </WebuiButton>
   );
 
   return (
@@ -488,8 +498,10 @@ export function WebuiWorkspaceLauncher({
       </div>
       <form className="webui-workspace-launcher-omnibox" onSubmit={submit}>
         <WebuiIconSearch className="webui-workspace-launcher-omnibox-glyph size-5 shrink-0" />
-        <input
-          className="webui-workspace-launcher-omnibox-input"
+        <WebuiTextInput
+          appearance="bare"
+          textSize="large"
+          className="min-w-0 flex-1"
           type="text"
           value={typed}
           aria-label={STRIP_COPY.launcherUrlLabel}
@@ -497,7 +509,9 @@ export function WebuiWorkspaceLauncher({
           data-testid="workspace-launcher-url"
           onChange={(event) => setTyped(event.target.value)}
         />
-        <button
+        <WebuiButton
+          variant="quiet-secondary"
+          size="inline-dense"
           type="submit"
           className="webui-workspace-launcher-omnibox-submit"
           data-testid="workspace-launcher-url-submit"
@@ -509,7 +523,7 @@ export function WebuiWorkspaceLauncher({
           ) : (
             <WebuiIconSend className="size-4" />
           )}
-        </button>
+        </WebuiButton>
       </form>
       <div className="webui-workspace-launcher-tiles" ref={tilesRef} data-testid="workspace-launcher-tiles">
         {visibleTiles.map(renderTile)}
@@ -521,7 +535,9 @@ export function WebuiWorkspaceLauncher({
             onOpen={() => setOverflowOpen(true)}
             onClose={() => setOverflowOpen(false)}
             trigger={(triggerProps: WebuiDropdownTriggerProps) => (
-              <button
+              <WebuiButton
+                variant="surface-quiet"
+                size="inline"
                 {...triggerProps}
                 type="button"
                 className="webui-workspace-launcher-tile"
@@ -532,7 +548,7 @@ export function WebuiWorkspaceLauncher({
                   <WebuiIconMore className="size-6" />
                 </span>
                 <span className="webui-workspace-launcher-tile-label">其他</span>
-              </button>
+              </WebuiButton>
             )}
             wrapperClassName="webui-workspace-launcher-more"
             className="webui-workspace-launcher-overflow-menu"

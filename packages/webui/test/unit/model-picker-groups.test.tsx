@@ -147,7 +147,8 @@ describe("model picker — provider grouping", () => {
     );
 
     expect(html.match(/webui-model-list-row-check/gu)).toHaveLength(1);
-    expect(html).toContain(`aria-current="true"`);
+    // The row is the shared selectable-row: its selected state is `aria-pressed`.
+    expect(html).toContain(`aria-pressed="true"`);
     expect(html).toContain(`data-webui-model-list-row="${modelKey(minimax)}"`);
   });
 });

@@ -15,6 +15,8 @@ import { sessionHash } from "../../../projection/common/router.js";
 import { type WebuiSessionActivityMap } from "../projection/session-activity.js";
 import { sessionLabel } from "../projection/rail-groups.js";
 import { SessionActivityMeta } from "./session-activity-meta.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 /**
  * One project's expansion: the sessions under a project's row, each collapsible
@@ -69,7 +71,9 @@ export function ProjectExpansion({
                   aria-hidden={!expanded}
                   ref={(element) => element?.toggleAttribute("inert", !expanded)}
                 >
-                  <ul
+                  <WebuiStack
+                    as="ul"
+                    gap="hairline"
                     className="webui-project-session-list"
                     data-webui-project-sessions={projectKey}
                   >
@@ -87,10 +91,11 @@ export function ProjectExpansion({
                           >
                             <span className="webui-session-leading-marker">
                             {children.length > 0 ? (
-                              <button
-                                type="button"
+                              <WebuiIconButton
+                                tone="bare"
+                                size="rail"
+                                label={`${childrenExpanded ? "收起" : "展开"}子会话：${sessionLabel(session)}`}
                                 className="webui-session-disclosure"
-                                aria-label={`${childrenExpanded ? "收起" : "展开"}子会话：${sessionLabel(session)}`}
                                 aria-expanded={childrenExpanded}
                                 title={childrenExpanded ? "收起子会话" : "展开子会话"}
                                 onClick={(event) => {
@@ -100,7 +105,7 @@ export function ProjectExpansion({
                                 }}
                               >
                                 <WebuiIconSessionTreeDisclosure className={childrenExpanded ? "is-expanded" : undefined} />
-                              </button>
+                              </WebuiIconButton>
                             ) : <span aria-hidden="true" className="webui-session-leading-line" />}
                             </span>
                             <a
@@ -121,11 +126,12 @@ export function ProjectExpansion({
                             </a>
                             <div className="webui-session-row-actions">
                               {onToggleSessionPin ? (
-                                <button
-                                  type="button"
-                                  aria-label={`${pinnedSessions?.[session.sessionId] ? "取消置顶" : "置顶"}：${sessionLabel(session)}`}
+                                <WebuiIconButton
+                                  tone="bare"
+                                  size="rail"
+                                  label={`${pinnedSessions?.[session.sessionId] ? "取消置顶" : "置顶"}：${sessionLabel(session)}`}
                                   title={pinnedSessions?.[session.sessionId] ? "取消置顶" : "置顶"}
-                                  className="webui-rail-action"
+                                  data-webui-rail-action="pin"
                                   onClick={(event) => {
                                     event.preventDefault();
                                     event.stopPropagation();
@@ -137,14 +143,14 @@ export function ProjectExpansion({
                                    *  the slashed pin. Same component the context menu
                                    *  uses, so the two cannot drift apart. */}
                                   <WebuiIconContextPin pinned={Boolean(pinnedSessions?.[session.sessionId])} />
-                                </button>
+                                </WebuiIconButton>
                               ) : null}
                               {onArchiveSession ? (
-                                <button
-                                  type="button"
-                                  aria-label={`${session.archived ? "取消归档" : "归档"}：${sessionLabel(session)}`}
+                                <WebuiIconButton
+                                  tone="bare"
+                                  size="rail"
+                                  label={`${session.archived ? "取消归档" : "归档"}：${sessionLabel(session)}`}
                                   title={session.archived ? "取消归档" : "归档"}
-                                  className="webui-rail-action"
                                   onClick={(event) => {
                                     event.preventDefault();
                                     event.stopPropagation();
@@ -152,17 +158,17 @@ export function ProjectExpansion({
                                   }}
                                 >
                                   <WebuiIconContextArchive />
-                                </button>
+                                </WebuiIconButton>
                               ) : null}
-                              <button
-                                type="button"
-                                aria-label={`${sessionLabel(session)} 更多操作`}
+                              <WebuiIconButton
+                                tone="bare"
+                                size="rail"
+                                label={`${sessionLabel(session)} 更多操作`}
                                 title="更多操作"
-                                className="webui-rail-action"
                                 onClick={(event) => onSessionContextMenu(event, session)}
                               >
                                 <WebuiIconMore />
-                              </button>
+                              </WebuiIconButton>
                             </div>
                           </div>
                           {children.length > 0 ? (
@@ -172,7 +178,9 @@ export function ProjectExpansion({
                               aria-hidden={!childrenExpanded}
                               ref={(element) => element?.toggleAttribute("inert", !childrenExpanded)}
                             >
-                              <ul
+                              <WebuiStack
+                                as="ul"
+                                gap="micro"
                                 className="webui-project-child-session-list"
                                 data-webui-project-child-sessions={session.sessionId}
                               >
@@ -202,20 +210,20 @@ export function ProjectExpansion({
                                         />
                                       </a>
                                       <div className="webui-session-row-actions">
-                                        <button
-                                          type="button"
-                                          aria-label={`${sessionLabel(child)} 更多操作`}
+                                        <WebuiIconButton
+                                          tone="bare"
+                                          size="rail"
+                                          label={`${sessionLabel(child)} 更多操作`}
                                           title="更多操作"
-                                          className="webui-rail-action"
                                           onClick={(event) => onSessionContextMenu(event, child, true)}
                                         >
                                           <WebuiIconMore />
-                                        </button>
+                                        </WebuiIconButton>
                                       </div>
                                     </div>
                                   </li>
                                 ))}
-                              </ul>
+                              </WebuiStack>
                             </div>
                           ) : null}
                         </li>
@@ -223,18 +231,19 @@ export function ProjectExpansion({
                     })}
                     {hasMore ? (
                       <li key={`${projectKey}-more`}>
-                        <button
-                          type="button"
+                        <WebuiButton
+                          variant="selectable-row"
+                          size="compact"
                           className="webui-project-session-more text-text_default_tertiary"
                           onClick={() => {
                             onShowMore();
                           }}
                         >
                           更多
-                        </button>
+                        </WebuiButton>
                       </li>
                     ) : null}
-                  </ul>
+                  </WebuiStack>
                 </div>
   );
 }

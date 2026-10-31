@@ -36,6 +36,7 @@ import { SshProjectForm } from "./ssh-project-form.js";
 import { SshTerminalView } from "./ssh-terminal-view.js";
 import { ContentPage } from "../../../ui/content-page.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface SshPanelViewProps {
   readonly snapshot: WebuiSshSnapshot;
@@ -131,14 +132,14 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
             {WEBUI_SSH_NO_CONNECTIONS_TEXT}
           </p>
           : null}
-        <ul className="space-y-2">
+        <WebuiStack as="ul" gap="small">
           {hostRows.map((row) => (
             <li
               key={row.alias}
               data-webui-ssh-host={row.alias}
               className="rounded-[8px] border border-border_default px-3 py-2"
             >
-              <div className="flex items-center justify-between gap-3">
+              <WebuiInline gap="medium" justify="between">
                 <span className="text-sm font-medium text-text_default_primary">{row.displayName}</span>
                 <span
                   data-webui-ssh-status={row.alias}
@@ -146,14 +147,14 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
                 >
                   {row.statusLabel}
                 </span>
-              </div>
+              </WebuiInline>
               <p className="mt-1 font-mono text-xs text-text_default_secondary">{row.endpointLabel}</p>
               {row.errorLabel === undefined
                 ? null
                 : <p data-webui-ssh-host-error={row.alias} className="mt-0.5 text-xs text-text_default_tertiary">
                   {row.errorLabel}
                 </p>}
-              <div className="mt-2 flex items-center gap-2">
+              <WebuiInline gap="small" className="mt-2">
                 <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-toggle={row.alias}
                   onClick={() => {
                     const connection = props.snapshot.connections.find((item) => item.alias === row.alias);
@@ -208,20 +209,20 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
                   >
                     删除
                   </WebuiButton>}
-              </div>
+              </WebuiInline>
             </li>
           ))}
-        </ul>
+        </WebuiStack>
         {projectRows.length === 0
           ? null
-          : <ul className="mt-3 space-y-2">
+          : <WebuiStack as="ul" gap="small" className="mt-3">
             {projectRows.map((row) => (
               <li
                 key={row.id}
                 data-webui-ssh-project={row.id}
                 className="rounded-[8px] border border-border_default px-3 py-2"
               >
-                <div className="flex items-center justify-between gap-3">
+                <WebuiInline gap="medium" justify="between">
                   <span className="text-sm font-medium text-text_default_primary">{row.displayName}</span>
                   <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-ssh-project-remove={row.id}
                     onClick={() => {
@@ -232,13 +233,13 @@ export function SshPanelView(props: SshPanelViewProps): ReactElement {
                   >
                     删除
                   </WebuiButton>
-                </div>
+                </WebuiInline>
                 <p className="mt-1 font-mono text-xs text-text_default_secondary">
                   {row.alias} · {row.path}
                 </p>
               </li>
             ))}
-          </ul>}
+          </WebuiStack>}
         {discoveryEmpty
           ? <p data-webui-ssh-discovery-empty="true" className="mt-3 text-xs text-text_default_tertiary">
             {discoveryEmpty}
@@ -367,7 +368,7 @@ export function SshPanel(props: SshPanelProps): ReactElement {
                   ? <p className="mt-1 text-xs text-text_default_tertiary">
                     {webuiSshDiscoveryEmptyText(snapshot.discovery) ?? ""}
                   </p>
-                  : <ul className="mt-1 space-y-0.5">
+                  : <WebuiStack as="ul" gap="micro" className="mt-1">
                     {webuiSshDiscoveredHostRows(snapshot.discovery).map((row) => (
                       <li key={row.alias}>
                         <WebuiButton variant="quiet-highlight" size="inline-tiny" data-webui-ssh-discovered-host={row.alias}
@@ -385,7 +386,7 @@ export function SshPanel(props: SshPanelProps): ReactElement {
                         </WebuiButton>
                       </li>
                     ))}
-                  </ul>}
+                  </WebuiStack>}
               </div>
             ),
           }

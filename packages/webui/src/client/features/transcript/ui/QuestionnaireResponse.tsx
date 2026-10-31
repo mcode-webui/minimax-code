@@ -9,6 +9,7 @@ import type { ReactElement } from "react";
 
 import type { WebuiQuestionnaireResponseSummary } from "../contracts/transcript-view.js";
 import { formatWebuiMessageTimestamp } from "../projection/message-timestamp.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 /**
  * Historical questionnaire-response projection. Once the user submits a
@@ -50,14 +51,18 @@ export function WebuiQuestionnaireResponse({
           </time>
         ) : null}
       </header>
-      <ul
-        className="webui-questionnaire-history-answers flex min-w-0 flex-col gap-3"
+      <WebuiStack
+        as="ul"
+        gap="medium"
+        className="webui-questionnaire-history-answers min-w-0"
         data-testid="questionnaire-history-answers"
       >
         {answers.map((answer, index) => (
-          <li
+          <WebuiStack
+            as="li"
+            gap="compact"
             key={`${requestId}-${index}`}
-            className="webui-questionnaire-history-answer flex min-w-0 flex-col gap-1.5 text-size_14 leading-line_height_20"
+            className="webui-questionnaire-history-answer min-w-0 text-size_14 leading-line_height_20"
             data-testid={`questionnaire-history-answer-${index}`}
           >
             <strong
@@ -66,7 +71,7 @@ export function WebuiQuestionnaireResponse({
             >
               {answer.question}
             </strong>
-            <ul className="flex min-w-0 flex-wrap gap-2">
+            <WebuiInline as="ul" gap="small" wrap className="min-w-0">
               {answer.labels.map((label, labelIndex) => (
                 <li
                   key={`${requestId}-${index}-${labelIndex}`}
@@ -76,10 +81,10 @@ export function WebuiQuestionnaireResponse({
                   <span>{label}</span>
                 </li>
               ))}
-            </ul>
-          </li>
+            </WebuiInline>
+          </WebuiStack>
         ))}
-      </ul>
+      </WebuiStack>
       <details className="webui-questionnaire-history-details border-t-[0.5px] border-border_default pt-2">
         <summary className="w-fit cursor-pointer text-size_12 leading-line_height_16 text-text_default_tertiary hover:text-text_default_secondary">
           查看回答信息

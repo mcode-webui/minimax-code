@@ -38,6 +38,7 @@ import {
   type WebuiRemoteControlPanelModel,
 } from "../projection/remote-control-panel.js";
 import { FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface RemoteControlPanelViewProps {
   readonly snapshot: WebuiRemoteControlSnapshot;
@@ -67,9 +68,9 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
   const model = webuiRemoteControlPanelModel(props.snapshot, props.nowMs);
   const sshDisabled = props.onOpenSsh === undefined;
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <div className="flex-1 min-w-0 flex flex-col items-center px-6 py-8 overflow-y-auto">
-        <div className="flex w-full max-w-[612px] flex-1 flex-col items-center justify-center">
+    <WebuiInline align="stretch" className="h-full w-full overflow-hidden">
+      <WebuiStack align="center" className="min-w-0 flex-1 overflow-y-auto px-6 py-8">
+        <WebuiStack align="center" justify="center" className="w-full max-w-[612px] flex-1">
           <h1 className="text-center text-4xl font-medium leading-[1.2] text-text_default_primary">
             {model.title}
           </h1>
@@ -77,7 +78,7 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
             {model.subtitle}
           </p>
           <div className="mt-10 flex w-full max-w-[534px] flex-col items-stretch gap-10 rounded-3xl border-[0.5px] border-border_default bg-bg_default_primary px-5 pb-5 pt-6">
-            <div className="flex flex-col gap-6">
+            <WebuiStack gap="large">
               {model.features.map((feature, index) => (
                 <Fragment key={feature.key}>
                   {index > 0 ? (
@@ -88,15 +89,15 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                       />
                     </div>
                   ) : null}
-                  <div className="flex h-5 items-center gap-2">
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-icon_default_primary">
+                  <WebuiInline gap="small" className="h-5">
+                    <WebuiInline inline justify="center" className="h-5 w-5 flex-shrink-0 text-icon_default_primary">
                       {featureIcon(feature.key)}
-                    </div>
+                    </WebuiInline>
                     <span className="text-sm leading-5 text-text_default_primary">{feature.text}</span>
-                  </div>
+                  </WebuiInline>
                 </Fragment>
               ))}
-            </div>
+            </WebuiStack>
             {model.error ? (
               <FeedbackLiveRegion
                 className="text-center text-sm text-text_default_secondary"
@@ -106,9 +107,11 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
               </FeedbackLiveRegion>
             ) : null}
             {model.pairingCode ? (
-              <div
+              <WebuiStack
+                gap="small"
+                align="center"
                 data-testid="rc-pairing-code"
-                className="flex w-full flex-col items-center gap-2 rounded-2xl bg-bg_grouped_secondary_elevated px-4 py-4"
+                className="w-full rounded-2xl bg-bg_grouped_secondary_elevated px-4 py-4"
               >
                 <span className="text-sm text-text_default_secondary">在 MiniMax App 中输入配对码</span>
                 <span className="text-3xl font-medium tracking-[0.3em] text-text_default_primary">
@@ -117,34 +120,38 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                 <span className="text-xs text-text_default_tertiary">
                   {model.pairingExpiresInSeconds ?? 0} 秒后失效
                 </span>
-              </div>
+              </WebuiStack>
             ) : null}
             {model.showsConnectedDevice ? (
-              <div
+              <WebuiStack
+                gap="tight"
+                align="center"
                 data-testid="rc-connected-device"
-                className="flex w-full flex-col items-center gap-1"
+                className="w-full"
               >
                 <span className="text-sm text-text_default_primary">
                   {model.connectedDevice ?? "已连接的设备"}
                 </span>
                 <span className="text-xs text-text_default_tertiary">手机已连接，可远程接管这台电脑</span>
-              </div>
+              </WebuiStack>
             ) : null}
             {model.pendingUnbind ? (
-              <div
+              <WebuiStack
+                gap="medium"
+                align="center"
                 data-testid="rc-pending-unbind"
-                className="flex w-full flex-col items-center gap-3 rounded-2xl border-[0.5px] border-border_default px-4 py-4"
+                className="w-full rounded-2xl border-[0.5px] border-border_default px-4 py-4"
               >
                 <span className="text-sm text-text_default_primary">手机端请求解绑这台电脑</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
+                <WebuiInline gap="medium">
+                  <WebuiButton
+                    variant="danger"
+                    size="inline"
                     data-testid="rc-unbind-confirm"
                     onClick={() => props.onResolveUnbind(true)}
-                    className="rounded-lg bg-bg_interaction_primary_default px-3 py-1 text-sm font-medium text-text_label_primary_default transition-opacity hover:opacity-90"
                   >
                     确认解绑
-                  </button>
+                  </WebuiButton>
                   <WebuiButton
                     variant="quiet-highlight"
                     size="inline"
@@ -153,19 +160,20 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                   >
                     取消
                   </WebuiButton>
-                </div>
-              </div>
+                </WebuiInline>
+              </WebuiStack>
             ) : null}
-            <div className="flex w-full flex-col items-center gap-3">
-              <button
-                type="button"
+            <WebuiStack gap="medium" align="center" className="w-full">
+              <WebuiButton
+                variant="primary"
+                size="regular"
                 data-testid="rc-connect"
                 onClick={props.onConnect}
                 disabled={props.busy === true || !model.canConnect}
-                className="h-9 w-full rounded-lg bg-bg_interaction_primary_default text-sm font-medium text-text_label_primary_default transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-50"
+                className="w-full"
               >
                 {model.connectLabel}
-              </button>
+              </WebuiButton>
               {model.showsConnectedDevice ? (
                 <WebuiButton
                   variant="quiet-highlight"
@@ -188,14 +196,17 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
               >
                 {model.sshLabel}
               </WebuiButton>
-            </div>
+            </WebuiStack>
           </div>
-          <div
+          <WebuiStack
             data-testid="rc-version-qr"
-            className="mt-8 flex w-full max-w-[420px] flex-col items-center gap-2 pb-4"
+            gap="small"
+            align="center"
+            className="mt-8 w-full max-w-[420px] pb-4"
           >
-            <div
-              className="flex flex-row items-center gap-3 text-sm"
+            <WebuiInline
+              gap="medium"
+              className="text-sm"
               role="group"
               aria-label={model.minimumVersion}
             >
@@ -205,33 +216,34 @@ export function RemoteControlPanelView(props: RemoteControlPanelViewProps): Reac
                     <span aria-hidden="true" className="h-3 w-px bg-text_default_quaternary" />
                   ) : null}
                   <div className="group relative inline-flex">
-                    <button
-                      type="button"
+                    <WebuiButton
+                      variant="quiet-secondary"
+                      size="inline"
                       data-testid={`rc-platform-${mark.key}`}
                       data-enabled="true"
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-[8px] px-2 py-1.5 text-sm font-medium text-text_default_tertiary transition-colors hover:bg-bg_interaction_tertiary_hover hover:text-text_default_primary"
+                      className="inline-flex items-center gap-1 rounded-[8px] px-2 py-1.5"
                     >
                       <span>{mark.label}</span>
-                    </button>
+                    </WebuiButton>
                   </div>
                 </Fragment>
               ))}
-            </div>
+            </WebuiInline>
             <p className="text-center text-xs text-text_default_tertiary">{model.minimumVersion}</p>
-          </div>
-        </div>
-      </div>
+          </WebuiStack>
+        </WebuiStack>
+      </WebuiStack>
       <div className="hidden w-[548px] flex-shrink-0 p-4 lg:block">
-        <div className="flex h-full w-full justify-center overflow-hidden rounded-3xl bg-[#7DC6FF]">
+        <WebuiInline justify="center" className="h-full w-full overflow-hidden rounded-3xl bg-[#7DC6FF]">
           <img
             src="/assets/img/remote_control_phone_zh.png"
             alt=""
             className="w-[400px] flex-none object-contain"
             style={{ borderRadius: "44px" }}
           />
-        </div>
+        </WebuiInline>
       </div>
-    </div>
+    </WebuiInline>
   );
 }
 

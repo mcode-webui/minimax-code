@@ -25,6 +25,8 @@
 import type { ReactElement } from "react";
 
 import { WebuiIconCheck } from "../../../shell/icons.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 import type {
   WebuiModelPickerEntry,
   WebuiModelProviderGroup,
@@ -48,33 +50,35 @@ export function WebuiModelListPanel({
 }: WebuiModelListPanelProps): ReactElement {
   const selectedKey = selected ? modelKey(selected) : undefined;
   return (
-    <div className="webui-model-list" data-webui-model-list="true">
+    <WebuiStack gap="medium" className="webui-model-list" data-webui-model-list="true">
       <div className="webui-model-list-head">
         <span className="webui-model-list-title">选择模型</span>
       </div>
-      <div className="webui-model-list-groups">
+      <WebuiStack gap="medium" className="webui-model-list-groups">
         {groups.length === 0 ? (
           <p className="webui-model-list-empty">没有可用模型</p>
         ) : null}
         {groups.map((group) => (
-          <div
+          <WebuiStack
+            gap="tight"
             key={group.id}
             className="webui-model-list-group"
             data-webui-model-list-group={group.id}
           >
-            <div className="webui-model-list-group-header">
+            <WebuiStack as="div" gap="micro" align="start" className="webui-model-list-group-header">
               <span className="webui-model-list-group-name">{group.label}</span>
               <span className="webui-model-list-group-subtitle">{group.id}</span>
-            </div>
+            </WebuiStack>
             {group.models.map((model) => {
               const active = modelKey(model) === selectedKey;
               return (
-                <button
+                <WebuiButton
+                  variant="selectable-row"
+                  size="regular"
                   key={modelKey(model)}
-                  type="button"
                   className={`webui-model-list-row ${active ? "is-active" : ""}`}
                   data-webui-model-list-row={modelKey(model)}
-                  aria-current={active ? "true" : undefined}
+                  aria-pressed={active}
                   onClick={() => onSelect(model)}
                 >
                   <span className="webui-model-list-row-name">
@@ -85,12 +89,12 @@ export function WebuiModelListPanel({
                       <WebuiIconCheck />
                     </span>
                   ) : null}
-                </button>
+                </WebuiButton>
               );
             })}
-          </div>
+          </WebuiStack>
         ))}
-      </div>
-    </div>
+      </WebuiStack>
+    </WebuiStack>
   );
 }

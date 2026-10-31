@@ -1174,7 +1174,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     // beyond the raw WebSocket codec assertion in real-host-loopback.test.ts.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole("button", { name: "插件" }).first().click();
-    await page.locator(".webui-plugin-manage-trigger").click();
+    await page.getByTestId("plugin-manage-trigger").click();
     await page.locator('.webui-plugin-category-filter button', { hasText: "MCP" }).click();
     await browserExpect(page.getByPlaceholder("搜索MCP...")).toBeVisible();
     await browserExpect(page.getByText("暂无内容")).toBeVisible();
@@ -1189,7 +1189,7 @@ it("a real agent turn resumes after refresh and drains a queued message in order
     const mcpListResponse = received.find((response) => response.requestId === mcpListRequest?.requestId);
     expect(mcpListResponse?.body).toEqual({ servers: [] });
 
-    await page.locator(".webui-plugin-create-trigger").click();
+    await page.getByTestId("plugin-create-trigger").click();
     await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
     const mcpDialog = page.getByRole("dialog", { name: "MCP Server" });
     await browserExpect(mcpDialog).toBeVisible();

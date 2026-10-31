@@ -35,13 +35,14 @@ test("marketplace groups and filters Mini Apps from the returned tags", async ({
 async function openManagement(page) {
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
 }
 
-async function expectCenteredDialog(dialog, page, fieldsSelector) {
+async function expectCenteredDialog(dialog, page, fieldsSelector, expectedFieldsDisplay = "grid") {
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
+  await dialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
   const geometry = await dialog.evaluate((node, fieldsSelector) => {
     const backdrop = node.parentElement;
     const backdropBox = backdrop.getBoundingClientRect();
@@ -59,14 +60,14 @@ async function expectCenteredDialog(dialog, page, fieldsSelector) {
       fieldsDisplay: fieldsStyle?.display,
     };
   }, fieldsSelector);
-  expect(geometry).toMatchObject({
+  expect(geometry, JSON.stringify(geometry)).toMatchObject({
     backdropFixed: true,
     backdropCoversViewport: true,
     centered: true,
     insideViewport: true,
-    ...(fieldsSelector ? { fieldsDisplay: "grid" } : {}),
+    ...(fieldsSelector ? { fieldsDisplay: expectedFieldsDisplay } : {}),
   });
-  await expect(page.locator(".webui-plugin-backdrop")).toHaveScreenshot(screenshotOptions);
+  await expect(page.locator('[data-webui-dialog-scrim="true"]')).toHaveScreenshot(screenshotOptions);
 }
 
 async function expectMobileDialog(dialog, page, fieldsSelector) {
@@ -221,10 +222,10 @@ test("Agent add form is centered, fields are aligned and backdrop dismissal work
     };
   });
   expect(alignment, JSON.stringify(alignment)).toMatchObject({ labelCount: 4, promptHasWidth: true, labelInputsHaveUsableHeight: true, noHorizontalOverflow: true, labelBoxesInDialog: true });
-  await page.locator(".webui-plugin-backdrop").click({ position: { x: 5, y: 5 } });
+  await page.locator('[data-webui-dialog-scrim="true"]').click({ position: { x: 5, y: 5 } });
   await expect(dialog).toHaveCount(0);
 
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await expect(createAgent).toBeVisible();
   await createAgent.click();
   const reopened = page.getByRole("dialog", { name: "Agent" });
@@ -260,6 +261,7 @@ test("MCP add form validates inputs, switches transport and sends advanced HTTP 
   await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
   const dialog = page.getByRole("dialog", { name: "MCP Server" });
   await expectCenteredDialog(dialog, page, ".webui-mcp-form-fields");
+  await expect(dialog.getByRole("switch", { name: "启用 MCP server" })).toBeChecked();
   await expectMobileDialog(dialog, page, ".webui-mcp-form-fields");
 
   await dialog.getByLabel("名称").fill("local-docs");
@@ -270,13 +272,19 @@ test("MCP add form validates inputs, switches transport and sends advanced HTTP 
   await dialog.getByRole("button", { name: "高级" }).click();
   await dialog.getByLabel("请求头").fill('{"x-test":"synthetic"}');
   await dialog.getByLabel("超时（毫秒）").fill("0");
-  await dialog.getByRole("button", { name: "添加服务器" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("正整数");
+  // The Desktop dialog disables its primary action while the form is invalid,
+  // so the invalid state is asserted on the control: a disabled action cannot be
+  // pressed and cannot send a request.
+  await expect(dialog.getByRole("button", { name: "添加服务器" })).toBeDisabled();
+  // A disabled action cannot be pressed, so the invalid value is refused before
+  // any request exists. The 正整数 message `buildRequest` throws for the same
+  // value stays a defensive check behind `canSave`, not a user-facing path.
   await expect.poll(() => page.evaluate(() => window.__fixture.requests.some((request) =>
     request.operation === "pluginManagement" && request.body.action === "createMcpServer",
   ))).toBe(false);
 
   await dialog.getByLabel("超时（毫秒）").fill("1500");
+  await expect(dialog.getByRole("button", { name: "添加服务器" })).toBeEnabled();
   await dialog.getByRole("button", { name: "添加服务器" }).click();
   await expect.poll(() => page.evaluate(() => window.__fixture.requests.some((request) =>
     request.operation === "pluginManagement" && request.body.action === "createMcpServer",
@@ -310,7 +318,7 @@ test("Git plugin import form is an accessible viewport overlay and previews loca
   await openManagement(page);
   await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const dialog = page.getByRole("dialog", { name: "从 Git 仓库导入插件" });
-  await expectCenteredDialog(dialog, page, ".webui-plugin-import-body");
+  await expectCenteredDialog(dialog, page, ".webui-plugin-import-body", "block");
   await expectMobileDialog(dialog, page, ".webui-plugin-import-body");
   await dialog.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/example/local-plugin");
   await dialog.getByRole("button", { name: "预览" }).click();

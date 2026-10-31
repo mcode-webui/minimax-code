@@ -52,8 +52,8 @@ describe("the field contract", () => {
   it("expresses the same field as a row and as a stack", () => {
     const stacked = render({ label: "API Key", control: input });
     const row = render({ label: "API Key", arrangement: "row", control: input });
-    expect(stacked).toContain('class="webui-field"');
-    expect(row).toContain("webui-field webui-field--row");
+    expect(stacked).toContain('class="webui-field webui-field--gap-compact"');
+    expect(row).toContain("webui-field webui-field--gap-compact webui-field--row");
     // Both carry the same wiring: the arrangement is where the four sit, not
     // what they are.
     for (const html of [stacked, row]) expect(html).toContain("webui-field-label");

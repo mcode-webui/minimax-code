@@ -26,6 +26,7 @@ import type { MemoryHandoff } from "../../settings/contracts/memory-handoff.js";
 import type { WebuiVersionInfo } from "../../../../shared/contracts/version.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiMenuItem, WebuiMenuSeparator } from "../../../ui/menu-item.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { useWebuiAccountWorkflows, useWebuiAccountWorkflowsState } from "../bindings/use-account-workflows.public.js";
 import { SIGNIN, SigninCard, formatSigninError, type SigninState } from "./UserMenuSignin.js";
@@ -265,10 +266,10 @@ export function UserMenu({
           // the menu.
           const buttonProps = triggerProps;
           return collapsed
-            ? <button type="button" {...buttonProps} className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" aria-label="打开用户菜单">
+            ? <WebuiIconButton {...buttonProps} tone="surface" size="panel" className="webui-user-menu-trigger-rail" data-testid="sidebar-user-menu-trigger-rail" label="打开用户菜单">
                 <UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} compact />
-              </button>
-            : <button type="button" {...buttonProps} className="webui-user-menu-trigger" data-testid="sidebar-user-menu-trigger">
+              </WebuiIconButton>
+            : <WebuiButton variant="selectable-row" size="menu-trigger" {...buttonProps} data-testid="sidebar-user-menu-trigger">
                 {/* The row's own text names the trigger. An `aria-label` that
                   * restates the nickname and the plan joins two adjacent spans
                   * with a space the markup does not have, and the rule compares
@@ -277,7 +278,7 @@ export function UserMenu({
                 <span aria-hidden="true"><UserMenuAvatar avatarUrl={avatarUrl} displayName={nickname} /></span>
                 <span className="webui-user-menu-identity"><span>{nickname}</span><small>{plan}</small></span>
                 <span className="webui-user-menu-bell" aria-hidden="true"><WebuiIconBell /></span>
-              </button>;
+              </WebuiButton>;
         }}
       >
         <div className="webui-user-menu-uid" aria-label="用户 ID">UID : {uid ?? "—"}</div>

@@ -5,7 +5,6 @@
 // status/actions layout.
 
 import { useEffect, useState, type ReactElement } from "react";
-import { createPortal } from "react-dom";
 import { IconPlayerPause, IconPlayerPlay } from "@tabler/icons-react";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import {
@@ -20,7 +19,7 @@ import type {
 import type { WebuiGoalCommands } from "../contracts/goal-port.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 import {
   WebuiIconCommandGoal,
   WebuiIconClose,
@@ -39,11 +38,13 @@ function GoalResumeIcon(): ReactElement {
 export function WebuiGoalClearDialog({
   busy,
   error,
+  portalTarget,
   onCancel,
   onConfirm,
 }: {
   readonly busy: boolean;
   readonly error?: string;
+  readonly portalTarget: HTMLElement | null;
   readonly onCancel: () => void;
   readonly onConfirm: () => void;
 }): ReactElement {
@@ -59,31 +60,19 @@ export function WebuiGoalClearDialog({
    * holds still reaches it, and the dialog does not close under a delete that
    * is still running.
    */
-  const layerId = useDialogLayer({
-    id: "goal-clear-confirm",
-    dismissible: !busy,
-    onClose: onCancel,
-  });
   return (
-    <div
-      className="webui-message-dialog webui-goal-clear-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="goal-clear-confirm-title"
-      aria-describedby="goal-clear-confirm-description"
-      data-testid="goal-clear-confirm"
-      data-overlay-layer={layerId}
-    >
-      <section className="webui-goal-clear-dialog-surface">
-        <header className="webui-goal-clear-dialog-heading">
-          <h2 id="goal-clear-confirm-title">删除目标？</h2>
-          <WebuiIconButton label="关闭" onClick={onCancel} disabled={busy}>
-            <WebuiIconClose />
-          </WebuiIconButton>
-        </header>
-        <p id="goal-clear-confirm-description">删除目标后，目标模式会关闭，转为普通模式继续。</p>
-        {error ? <FeedbackError message={error} className="webui-goal-clear-dialog-error" testId="goal-clear-error" /> : null}
-        <div className="webui-goal-clear-dialog-actions">
+    <WebuiDialog
+      id="goal-clear-confirm"
+      title="删除目标？"
+      description="删除目标后，目标模式会关闭，转为普通模式继续。"
+      portalTarget={portalTarget}
+      onClose={onCancel}
+      dismissOnEscape={!busy}
+      dismissOnBackdrop={!busy}
+      testId="goal-clear-confirm"
+      width="compact"
+      footer={
+        <>
           <WebuiButton variant="secondary" onClick={onCancel} disabled={busy}>取消</WebuiButton>
           <WebuiButton
             variant="danger"
@@ -93,9 +82,11 @@ export function WebuiGoalClearDialog({
           >
             {busy ? "删除中…" : "删除"}
           </WebuiButton>
-        </div>
-      </section>
-    </div>
+        </>
+      }
+    >
+      {error ? <FeedbackError message={error} className="webui-goal-clear-dialog-error" testId="goal-clear-error" /> : null}
+    </WebuiDialog>
   );
 }
 
@@ -172,11 +163,11 @@ export function WebuiGoalBanner({
     ? <WebuiGoalClearDialog
       busy={busy}
       error={error}
+      portalTarget={dom.portalTarget()}
       onCancel={() => { setConfirmClear(false); setError(undefined); }}
       onConfirm={clear}
     />
     : null;
-  const portalTarget = dom.portalTarget();
   return (
     <section className="webui-goal-banner" data-testid="thread-goal-banner" data-goal-status={status}>
       <div className="webui-goal-banner-row">
@@ -186,7 +177,7 @@ export function WebuiGoalBanner({
         </div>
         <div className="webui-goal-banner-content-row" data-testid="thread-goal-banner-content-row">
           <div className="webui-goal-banner-objective-group" data-testid="thread-goal-banner-objective-group">
-            <button type="button" className="webui-goal-objective" data-testid="thread-goal-banner-objective" aria-expanded={objectiveExpanded} title={goal.objective} onClick={() => setObjectiveExpanded((value) => !value)}>{goal.objective}</button>
+            <WebuiButton variant="quiet-secondary" size="inline" className="webui-goal-objective" data-testid="thread-goal-banner-objective" aria-expanded={objectiveExpanded} title={goal.objective} onClick={() => setObjectiveExpanded((value) => !value)}>{goal.objective}</WebuiButton>
           </div>
           <div className="webui-goal-usage" data-testid="thread-goal-usage">
             <span data-testid="thread-goal-tokens-used">{goal.tokensUsed} tokens</span>
@@ -208,9 +199,7 @@ export function WebuiGoalBanner({
       </div>
       {objectiveExpanded ? <div className="webui-goal-objective-expanded" data-testid="thread-goal-objective-expanded">{goal.objective}</div> : null}
       {error && !confirmClear ? <FeedbackError message={error} testId="thread-goal-error" /> : null}
-      {clearDialog
-        ? portalTarget ? createPortal(clearDialog, portalTarget) : clearDialog
-        : null}
+      {clearDialog}
     </section>
   );
 }

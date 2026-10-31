@@ -16,6 +16,8 @@ import {
   WebuiIconDiffSummary,
 } from "../../../shell/icons.js";
 import { WebuiMarkdown } from "./markdown.public.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 import {
   isWebuiEditTool,
   toolCallInputText,
@@ -89,11 +91,11 @@ function WebuiToolDetailShell({
   return (
     <div className="webui-tool-detail" data-webui-tool-result="true">
       <div className="webui-tool-detail-surface">
-        <div className="webui-tool-detail-body">
+        <WebuiStack gap="small" className="webui-tool-detail-body">
           <div className="webui-tool-detail-title">{title}</div>
           <div className="webui-tool-detail-divider" aria-hidden="true" />
-          <div className="webui-tool-detail-content">{children}</div>
-        </div>
+          <WebuiStack gap="small" className="webui-tool-detail-content">{children}</WebuiStack>
+        </WebuiStack>
       </div>
     </div>
   );
@@ -121,10 +123,10 @@ function WebuiToolDetailSection({
   readonly error?: boolean;
 }): ReactElement {
   return (
-    <section className="webui-tool-detail-section">
+    <WebuiStack as="section" gap="small" className="webui-tool-detail-section">
       <div className={error ? "webui-tool-detail-label is-error" : "webui-tool-detail-label"}>{label}</div>
       <pre>{value.length > 2000 ? `${value.slice(0, 2000)}...` : value}</pre>
-    </section>
+    </WebuiStack>
   );
 }
 
@@ -164,16 +166,16 @@ export function WebuiToolResults({
     ));
   if (edits.length === 0) {
     return (
-      <div className="webui-tool-list" data-webui-tool-list="true">
+      <WebuiStack gap="small" className="webui-tool-list" data-webui-tool-list="true">
         {renderRows(tools)}
-      </div>
+      </WebuiStack>
     );
   }
   if (authoritativeDiffAvailable) {
     return (
-      <div className="webui-tool-list" data-webui-tool-list="true">
+      <WebuiStack gap="small" className="webui-tool-list" data-webui-tool-list="true">
         {renderRows(showEditToolRows ? tools : others)}
-      </div>
+      </WebuiStack>
     );
   }
   const stats = edits.map(webuiEditFileStat);
@@ -224,19 +226,20 @@ export function WebuiToolResults({
         ))}
       </ul>
       {stats.length > 3 ? (
-        <button
-          type="button"
+        <WebuiButton
+          variant="plain"
+          size="regular"
           className="webui-diff-expand"
           data-webui-diff-expand="true"
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? "收起" : `展开其余 ${stats.length - 3} 个`}
-        </button>
+        </WebuiButton>
       ) : null}
       {others.length > 0 ? (
-        <div className="webui-tool-list" data-webui-tool-list="true">
+        <WebuiStack gap="small" className="webui-tool-list" data-webui-tool-list="true">
           {renderRows(others)}
-        </div>
+        </WebuiStack>
       ) : null}
     </div>
   );
@@ -427,9 +430,10 @@ export function WebuiTurnProcess({
     <section className="pt-2" data-testid="turn-process-disclosure">
       <div className="flex min-w-0 flex-wrap items-center gap-x-2" data-testid="turn-process-summary">
         {canToggle ? (
-          <button
-            type="button"
-            className="group/turn-process text-activity-body-small flex items-center gap-1 py-1 text-center text-sm font-normal leading-5 tracking-normal text-text_label_tertiary_default transition-colors hover:text-text_label_tertiary_hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border_accent"
+          <WebuiButton
+            variant="quiet-subtle"
+            size="inline"
+            className="group/turn-process flex items-center gap-1 py-1 text-center text-sm font-normal leading-5 tracking-normal"
             aria-expanded={contentExpanded}
             data-testid="turn-process-trigger"
             data-summary-text={summary}
@@ -442,7 +446,7 @@ export function WebuiTurnProcess({
             >
               <WebuiIconChevronDown className="size-4" />
             </span>
-          </button>
+          </WebuiButton>
         ) : (
           <span
             className="text-activity-body-small flex items-center gap-2 py-1 text-center text-sm font-normal leading-5 tracking-normal text-text_label_tertiary_default"
@@ -464,9 +468,9 @@ export function WebuiTurnProcess({
       </div>
       <div className="mt-2 border-b-[0.5px] border-border_default" data-testid="turn-process-separator" aria-hidden="true" />
       {hasExpandableContent ? (
-        <div className="mt-2 space-y-4" data-testid="turn-process-detail" hidden={!contentExpanded}>
+        <WebuiStack gap="roomy" className="mt-2" data-testid="turn-process-detail" hidden={!contentExpanded}>
           {typeof children === "function" ? children(contentExpanded) : contentExpanded ? children : null}
-        </div>
+        </WebuiStack>
       ) : null}
       {collapsedContent?.(contentExpanded)}
       {active && showLiveActivity ? (
@@ -554,9 +558,9 @@ export function WebuiThinkingBlock({
           <WebuiMarkdown source={text} />
         </div>
         {contentOverflows ? (
-          <button type="button" className="webui-thinking-expand" onClick={() => setContentExpanded((expanded) => !expanded)}>
+          <WebuiButton variant="quiet-subtle" size="inline" className="webui-thinking-expand" onClick={() => setContentExpanded((expanded) => !expanded)}>
             {contentExpanded ? "收起" : "展开"}
-          </button>
+          </WebuiButton>
         ) : null}
       </div>
       {streaming && showStreamingStatus ? (

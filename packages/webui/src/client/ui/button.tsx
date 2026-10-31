@@ -20,6 +20,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import type { WebuiLayoutGap } from "./layout-primitives.js";
 
 /**
  * The variants the client's callers need today.
@@ -43,6 +44,12 @@ export type WebuiButtonVariant =
   | "quiet-highlight"
   | "quiet-secondary"
   | "quiet-subtle"
+  | "accent-toggle"
+  | "send-action"
+  | "surface-quiet"
+  | "quiet-action"
+  | "segmented"
+  | "selectable-row"
   // The two appearances four businesses each used to declare for themselves.
   | "accent"
   | "grouped";
@@ -69,7 +76,14 @@ export type WebuiButtonSize =
   | "inline-dense"
   | "inline-tiny"
   | "action"
-  | "pill";
+  | "pill"
+  | "rail"
+  | "option"
+  | "content"
+  | "composer-action"
+  | "menu-trigger"
+  | "heatmap-cell"
+  | "row";
 
 const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   secondary: "webui-mavis-button-gray",
@@ -99,6 +113,12 @@ const VARIANT_CLASS: Record<WebuiButtonVariant, string> = {
   "quiet-secondary": "webui-mavis-button-quiet-secondary",
   // The ringless inline action with the quietest label.
   "quiet-subtle": "webui-mavis-button-quiet-subtle",
+  "accent-toggle": "webui-mavis-button-accent-toggle",
+  "send-action": "webui-mavis-button-send-action",
+  "surface-quiet": "webui-mavis-button-surface-quiet",
+  "quiet-action": "webui-mavis-button-quiet-action",
+  segmented: "webui-mavis-button-segmented",
+  "selectable-row": "webui-mavis-button-selectable-row",
   // The filled call to action: the interactions business's `.webui-button-primary`,
   // which the account, transcript, composer, workspace and shell businesses also
   // rendered.
@@ -124,6 +144,13 @@ const SIZE_CLASS: Record<WebuiButtonSize, string> = {
   action: "webui-mavis-button-action",
   // The grouped pill's geometry; it pairs with the `grouped` variant.
   pill: "webui-mavis-button-pill",
+  rail: "webui-mavis-button-rail",
+  option: "webui-mavis-button-option",
+  content: "webui-mavis-button-content",
+  "composer-action": "webui-mavis-button-composer-action",
+  "menu-trigger": "webui-mavis-button-menu-trigger",
+  "heatmap-cell": "webui-mavis-button-heatmap-cell",
+  row: "webui-mavis-button-row",
 };
 
 /**
@@ -132,8 +159,8 @@ const SIZE_CLASS: Record<WebuiButtonSize, string> = {
  * The button and the link that looks like one share it, which is what makes
  * them the same control rather than two controls that agree today.
  */
-function buttonClasses(variant: WebuiButtonVariant, size: WebuiButtonSize, className?: string): string {
-  return ["webui-mavis-button", VARIANT_CLASS[variant], SIZE_CLASS[size], className]
+function buttonClasses(variant: WebuiButtonVariant, size: WebuiButtonSize, className?: string, contentGap?: Exclude<WebuiLayoutGap, "none">): string {
+  return ["webui-mavis-button", VARIANT_CLASS[variant], SIZE_CLASS[size], contentGap ? `webui-mavis-button--content-gap-${contentGap}` : "", className]
     .filter((entry) => Boolean(entry && entry.length > 0))
     .join(" ");
 }
@@ -141,6 +168,8 @@ function buttonClasses(variant: WebuiButtonVariant, size: WebuiButtonSize, class
 export interface WebuiButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
   readonly variant: WebuiButtonVariant;
   readonly size?: WebuiButtonSize;
+  /** Gap between button content such as an icon and its label. */
+  readonly contentGap?: Exclude<WebuiLayoutGap, "none">;
   /** The caller's layout only — never the control's states or appearance. */
   readonly className?: string;
   readonly children?: ReactNode;
@@ -156,10 +185,10 @@ export interface WebuiButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
 // Forwarded refs are part of the contract, not an extra: a button that opens a
 // dropdown is a trigger, and a trigger has to hand its element to the popup.
 export const WebuiButton = forwardRef<HTMLButtonElement, WebuiButtonProps>(function WebuiButton(
-  { variant, size = "regular", className, children, type = "button", ...rest },
+  { variant, size = "regular", contentGap, className, children, type = "button", ...rest },
   ref,
 ): ReactElement {
-  const classes = buttonClasses(variant, size, className);
+  const classes = buttonClasses(variant, size, className, contentGap);
   return (
     <button ref={ref} type={type} className={classes} {...rest}>
       {children}
@@ -171,6 +200,7 @@ export interface WebuiButtonLinkProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "className"> {
   readonly variant: WebuiButtonVariant;
   readonly size?: WebuiButtonSize;
+  readonly contentGap?: Exclude<WebuiLayoutGap, "none">;
   /** The caller's layout only — never the control's states or appearance. */
   readonly className?: string;
   readonly children?: ReactNode;
@@ -186,9 +216,9 @@ export interface WebuiButtonLinkProps
  * it as the class string of a business that owned it.
  */
 export const WebuiButtonLink = forwardRef<HTMLAnchorElement, WebuiButtonLinkProps>(
-  function WebuiButtonLink({ variant, size = "regular", className, children, ...rest }, ref): ReactElement {
+  function WebuiButtonLink({ variant, size = "regular", contentGap, className, children, ...rest }, ref): ReactElement {
     return (
-      <a ref={ref} className={buttonClasses(variant, size, className)} {...rest}>
+      <a ref={ref} className={buttonClasses(variant, size, className, contentGap)} {...rest}>
         {children}
       </a>
     );
@@ -203,7 +233,8 @@ export interface WebuiIconButtonProps
    * Which surface the glyph sits on: `surface` is the filled box a header uses,
    * `bare` the no-fill control a field row uses. Both are this contract's.
    */
-  readonly tone?: "surface" | "bare";
+  readonly tone?: "surface" | "bare" | "inverse";
+  readonly size?: "regular" | "compact" | "micro" | "panel" | "rail";
   readonly className?: string;
   readonly children?: ReactNode;
 }
@@ -217,12 +248,17 @@ export interface WebuiIconButtonProps
  */
 export const WebuiIconButton = forwardRef<HTMLButtonElement, WebuiIconButtonProps>(
   function WebuiIconButton(
-    { label, tone = "surface", className, children, type = "button", ...rest },
+    { label, tone = "surface", size = "regular", className, children, type = "button", ...rest },
     ref,
   ): ReactElement {
     const classes = [
       "webui-icon-button",
       tone === "bare" ? "webui-icon-button--bare" : "",
+      tone === "inverse" ? "webui-icon-button--inverse" : "",
+      size === "compact" ? "webui-icon-button--compact" : "",
+      size === "micro" ? "webui-icon-button--micro" : "",
+      size === "panel" ? "webui-icon-button--panel" : "",
+      size === "rail" ? "webui-icon-button--rail" : "",
       className,
     ]
       .filter(Boolean)

@@ -16,7 +16,6 @@
 //       `formatWebuiMessageTimestamp`
 
 import { useState, type ReactElement } from "react";
-import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import {
   WebuiIconMessageCopy,
@@ -35,7 +34,8 @@ import type { WebuiMessageActionCapabilities } from "../contracts/transcript-vie
 import { formatWebuiMessageTimestamp } from "../projection/message-timestamp.js";
 import { toggleWebuiFeedback, copyWebuiMessageText, scheduleWebuiCopiedReset } from "../application/message-feedback.js";
 import type { WebuiCopyDependencies } from "../application/message-feedback.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiDialog, WebuiDialogActions } from "../../../ui/dialog.js";
 import { FeedbackError } from "../../../ui/feedback.js";
 
 export function WebuiMessageActionButton({
@@ -56,18 +56,19 @@ export function WebuiMessageActionButton({
   readonly active?: boolean;
 }): ReactElement {
   return (
-    <button
-      type="button"
+    <WebuiIconButton
+      tone="bare"
+      size="compact"
       className={`webui-message-action${active ? " webui-message-action-active" : ""}`}
       data-testid={testId}
-      aria-label={label}
+      label={label}
       title={label}
       {...(active === undefined ? {} : { "aria-pressed": active })}
       disabled={disabled}
       onClick={onClick}
     >
       {icon}
-    </button>
+    </WebuiIconButton>
   );
 }
 
@@ -205,16 +206,15 @@ export function WebuiRewindDialog({
   readonly onClose: () => void;
   readonly onConfirm: (rewindTurnDiff: boolean) => void;
 }): ReactElement {
-  // A modal layer: the rewind preview answers its own dismissal.
-  const layerId = useDialogLayer({ id: "rewind-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const files = preview?.turns.flatMap((turn) => turn.files) ?? [];
   const turns = preview?.turns.length ?? 1;
-  const dialog = (
-    <div className="webui-message-dialog" data-overlay-layer={layerId} role="dialog" aria-modal="true" data-testid="rewind-preview-dialog" data-message-id={messageId}>
-      <div className="webui-message-dialog-surface">
-        <h3>{"回退"}</h3>
-        <p>{files.length > 0 ? `${turns} 轮对话将会回退 · ${files.length} 个文件将被修改。` : `${turns} 轮对话将会回退，不涉及任何文件改动。`}</p>
+  return (
+    <WebuiDialog id="rewind-dialog" title="回退" description={files.length > 0 ? `${turns} 轮对话将会回退 · ${files.length} 个文件将被修改。` : `${turns} 轮对话将会回退，不涉及任何文件改动。`} onClose={onClose} dismissOnEscape portalTarget={dom.portalTarget()} testId="rewind-preview-dialog" dataAttributes={{ "data-message-id": messageId }} width="compact" footer={<WebuiDialogActions>
+      <WebuiButton variant="secondary" onClick={onClose} disabled={busy}>取消</WebuiButton>
+      <WebuiButton variant="secondary" onClick={() => onConfirm(false)} disabled={busy} data-testid="rewind-confirm-only">仅回退对话</WebuiButton>
+      {files.length > 0 ? <WebuiButton variant="danger" onClick={() => onConfirm(true)} disabled={busy} data-testid="rewind-confirm-with-files">回退对话和文件</WebuiButton> : null}
+    </WebuiDialogActions>}>
         <section data-testid="rewind-preview-files">
           <h4>受影响的文件改动</h4>
           {loading ? <p>正在检查当前文件…</p> : null}
@@ -222,14 +222,6 @@ export function WebuiRewindDialog({
           {!loading && !error && files.length === 0 ? <p>没有受影响的文件改动。</p> : null}
           {files.map((file) => <div key={`${file.filePath}-${file.action}`} className="webui-rewind-file-row"><span>{file.filePath}</span><span>{file.skipped ? "跳过" : file.action}</span></div>)}
         </section>
-        <div className="webui-message-dialog-actions">
-          <button type="button" onClick={onClose} disabled={busy}>取消</button>
-          <button type="button" onClick={() => onConfirm(false)} disabled={busy} data-testid="rewind-confirm-only">仅回退对话</button>
-          {files.length > 0 ? <button type="button" onClick={() => onConfirm(true)} disabled={busy} data-testid="rewind-confirm-with-files" data-action-variant="danger">回退对话和文件</button> : null}
-        </div>
-      </div>
-    </div>
+    </WebuiDialog>
   );
-  const portalTarget = dom.portalTarget();
-  return portalTarget ? createPortal(dialog, portalTarget) : dialog;
 }

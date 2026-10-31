@@ -9,6 +9,7 @@
 // converted once, in the projection, into the schedule the runtime stores — so the form and the
 // shared row cannot disagree about what the preset means.
 import { useState, type ReactElement } from "react";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 import type {
   WebuiCronSchedule,
@@ -27,7 +28,7 @@ import {
   type WebuiCronSchedulePreset,
 } from "../projection/scheduling-panel.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiSelect, WebuiTextarea, WebuiTextInput } from "../../../ui/field.js";
 
 export interface SchedulingEditorViewProps {
   readonly mode: "create" | "edit";
@@ -39,9 +40,6 @@ export interface SchedulingEditorViewProps {
   readonly onCancel: () => void;
   readonly onSubmit: () => void;
 }
-
-const inputClass =
-  "w-full rounded-[8px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none focus:border-border_accent";
 
 export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactElement {
   const { draft, onChange } = props;
@@ -58,13 +56,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
       <WebuiField
         label="名称"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
+            controlSize="dense"
             type="text"
             data-webui-scheduling-field="name"
             value={draft.name}
             onChange={(event) => onChange({ name: event.target.value })}
-            className={inputClass}
           />
         )}
       />
@@ -72,13 +70,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         ? <WebuiField
           label="执行 agent"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="text"
               data-webui-scheduling-field="agentName"
               value={draft.agentName}
               onChange={(event) => onChange({ agentName: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -86,45 +84,45 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
       <WebuiField
         label="请求"
         control={(props) => (
-          <textarea
+          <WebuiTextarea
             {...props}
+            controlSize="compact"
             data-webui-scheduling-field="prompt"
             value={draft.prompt}
             rows={2}
             onChange={(event) => onChange({ prompt: event.target.value })}
-            className={inputClass}
           />
         )}
       />
       <WebuiField
         label="周期"
         control={(props) => (
-          <select
+          <WebuiSelect
             {...props}
+            controlSize="dense"
             data-webui-scheduling-field="preset"
             value={draft.preset}
             onChange={(event) => onChange({ preset: event.target.value as WebuiCronSchedulePreset })}
-            className={inputClass}
           >
             {(Object.keys(WEBUI_CRON_PRESET_LABELS) as WebuiCronSchedulePreset[]).map((preset) => (
               <option key={preset} value={preset}>
                 {WEBUI_CRON_PRESET_LABELS[preset]}
               </option>
             ))}
-          </select>
+          </WebuiSelect>
         )}
       />
       {draft.preset === "daily" || draft.preset === "weekly"
         ? <WebuiField
           label="时间（HH:MM）"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="text"
               data-webui-scheduling-field="time"
               value={draft.time}
               onChange={(event) => onChange({ time: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -133,13 +131,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         ? <WebuiField
           label="星期（0 为周日）"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="text"
               data-webui-scheduling-field="weekday"
               value={draft.weekday}
               onChange={(event) => onChange({ weekday: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -148,13 +146,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         ? <WebuiField
           label="每小时的分钟数（0-59）"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="text"
               data-webui-scheduling-field="minute"
               value={draft.minute}
               onChange={(event) => onChange({ minute: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -163,13 +161,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         ? <WebuiField
           label="执行时间"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="datetime-local"
               data-webui-scheduling-field="onceAt"
               value={draft.onceAt}
               onChange={(event) => onChange({ onceAt: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -178,13 +176,13 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         ? <WebuiField
           label="cron 表达式（五段）"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
+              controlSize="dense"
               type="text"
               data-webui-scheduling-field="expression"
               value={draft.expression}
               onChange={(event) => onChange({ expression: event.target.value })}
-              className={inputClass}
             />
           )}
         />
@@ -192,39 +190,39 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
       <WebuiField
         label="模型（可选）"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
+            controlSize="dense"
             type="text"
             data-webui-scheduling-field="model"
             value={draft.model}
             onChange={(event) => onChange({ model: event.target.value })}
-            className={inputClass}
           />
         )}
       />
       <WebuiField
         label="项目（可选）"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
+            controlSize="dense"
             type="text"
             data-webui-scheduling-field="project"
             value={draft.project}
             onChange={(event) => onChange({ project: event.target.value })}
-            className={inputClass}
           />
         )}
       />
       <WebuiField
         label="会话（留空则每次新建）"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
+            controlSize="dense"
             type="text"
             data-webui-scheduling-field="sessionId"
             value={draft.sessionId}
             onChange={(event) => onChange({ sessionId: event.target.value })}
-            className={inputClass}
           />
         )}
       />
@@ -233,7 +231,7 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
           {props.error}
         </p>
         : null}
-      <div className="flex items-center gap-2 pt-1">
+      <WebuiInline gap="small" className="pt-1">
         <WebuiButton variant="outline" size="inline" type="submit"
           data-webui-scheduling-submit="true"
           disabled={props.busy}
@@ -247,7 +245,7 @@ export function SchedulingEditorView(props: SchedulingEditorViewProps): ReactEle
         >
           取消
         </WebuiButton>
-      </div>
+      </WebuiInline>
     </form>
   );
 }

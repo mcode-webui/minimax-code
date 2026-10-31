@@ -185,7 +185,7 @@ describe("W0 · SSR · WebuiMessageActionButton", () => {
     expect(html).toContain('aria-label="赞"');
     expect(html).toContain('title="赞"');
     expect(html).toContain('type="button"');
-    expect(html).toContain('class="webui-message-action"');
+    expect(html).toContain("webui-icon-button");
     // No selection state is passed, so the toggle must not claim one.
     expect(html).not.toContain("aria-pressed");
     expect(html).not.toContain("webui-message-action-active");

@@ -18,6 +18,8 @@
 
 import { useState, type ReactElement } from "react";
 import { IconRefresh } from "@tabler/icons-react";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 import { WebuiIconChevronRight } from "../../../shell/icons.js";
 import type {
@@ -79,7 +81,7 @@ export function WebuiModelPanel({
   const canReset = !scale.disabled && level !== effortResetOption(model);
 
   return (
-    <div className="webui-model-panel" data-webui-model-panel="true">
+    <WebuiStack gap="small" className="webui-model-panel" data-webui-model-panel="true">
       <div className="webui-model-panel-head">
         <span
           className="webui-model-panel-level"
@@ -88,28 +90,30 @@ export function WebuiModelPanel({
         >
           {levelLabel}
         </span>
-        <button
-          type="button"
+        <WebuiIconButton
+          tone="bare"
+          size="compact"
           className="webui-model-panel-reset"
           data-webui-model-panel-reset="true"
-          aria-label="重置思考等级"
+          label="重置思考等级"
           title="重置思考等级"
           disabled={!canReset}
           onClick={onResetEffort}
         >
           <IconRefresh aria-hidden="true" size={16} stroke={1.4} />
-        </button>
+        </WebuiIconButton>
       </div>
 
-      <button
-        type="button"
+      <WebuiButton
+        variant="plain"
+        size="regular"
         className="webui-model-panel-model"
         data-webui-model-panel-model="true"
         onClick={onOpenList}
       >
         <span className="webui-model-panel-model-name">{modelName}</span>
         <WebuiIconChevronRight className="webui-model-panel-model-chevron" />
-      </button>
+      </WebuiButton>
 
       {contextOptions.length > 0 ? (
         <div
@@ -129,11 +133,14 @@ export function WebuiModelPanel({
               model?.contextWindowOptionHints?.[String(value)] ===
               "higher_usage";
             return (
-              <button
+              <WebuiButton
+                variant="selectable-row"
+                size="inline-tiny"
                 key={String(value)}
                 type="button"
                 className={`webui-model-panel-context-option ${active ? "is-active" : ""}`}
                 data-webui-model-context-option={String(value)}
+                aria-pressed={active}
                 onClick={() => onContextLimitChange(value)}
               >
                 {formatContextWindow(value)}
@@ -142,7 +149,7 @@ export function WebuiModelPanel({
                     较高用量
                   </span>
                 ) : null}
-              </button>
+              </WebuiButton>
             );
           })}
         </div>
@@ -155,6 +162,6 @@ export function WebuiModelPanel({
         onCommit={onEffortChange}
         onPreviewChange={setPreviewLevel}
       />
-    </div>
+    </WebuiStack>
   );
 }

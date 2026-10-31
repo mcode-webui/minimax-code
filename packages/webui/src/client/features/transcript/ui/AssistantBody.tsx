@@ -2,6 +2,8 @@
 // at its end.
 
 import { useState, type ReactElement } from "react";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 import { IconChevronDown } from "@tabler/icons-react";
 import { WebuiMarkdown } from "./markdown.public.js";
 import { basenamePath } from "../../../projection/common/paths.js";
@@ -114,7 +116,7 @@ function WebuiDeliveredAssets({ assets, workspaceDir, onOpenFile }: {
   readonly onOpenFile?: (reference: WebuiMessageFileReference) => void;
 }): ReactElement | null {
   if (assets.length === 0) return null;
-  return <ul className="webui-delivered-assets" data-testid="delivered-assets-list">{assets.map((asset, index) => {
+  return <WebuiStack as="ul" gap="small" className="webui-delivered-assets" data-testid="delivered-assets-list">{assets.map((asset, index) => {
     const src = typeof asset.src === "string" ? asset.src : "";
     const name = String(asset.name ?? (basenamePath(src) || "文件"));
     const caption = typeof asset.caption === "string" && asset.caption !== name ? asset.caption : undefined;
@@ -123,7 +125,7 @@ function WebuiDeliveredAssets({ assets, workspaceDir, onOpenFile }: {
     const icon = ["svg", "png", "jpg", "jpeg", "gif", "webp", "avif"].includes(extension ?? "") ? "🖼️" : extension === "py" ? "🐍" : "📄";
     const label = <><span className="webui-delivered-asset-icon" aria-hidden="true">{icon}</span><span>{name}</span></>;
     return <li key={`${src}-${index}`} className="webui-delivered-asset" data-deleted={asset.deleted === true ? "true" : undefined}>{reference && onOpenFile ? <a className="webui-message-file-link" href={reference.path} title={reference.path} data-webui-file-reference={reference.path} onClick={(event) => { event.preventDefault(); onOpenFile(reference); }}>{label}</a> : <span>{label}</span>}{caption ? <span className="webui-delivered-asset-caption"> — {caption}</span> : null}{asset.deleted === true ? <span className="webui-delivered-asset-deleted">已删除</span> : null}</li>;
-  })}</ul>;
+  })}</WebuiStack>;
 }
 
 function WebuiAgentJoinedGroup({
@@ -135,8 +137,9 @@ function WebuiAgentJoinedGroup({
   if (agents.length === 0) return null;
   return (
     <section className="webui-agent-joined-group" data-webui-agent-activity="agent-joined-group">
-      <button
-        type="button"
+      <WebuiButton
+        variant="plain"
+        size="regular"
         className="webui-agent-joined-toggle"
         aria-expanded={expanded}
         aria-label="分配任务"
@@ -144,7 +147,7 @@ function WebuiAgentJoinedGroup({
       >
         <span>分配任务</span>
         <IconChevronDown className={`webui-agent-joined-chevron${expanded ? "" : " is-collapsed"}`} aria-hidden="true" size={16} stroke={1.7} />
-      </button>
+      </WebuiButton>
       <div className="webui-agent-joined-list" data-testid="agent-task-list" hidden={!expanded}>
         {agents.map((agent, index) => {
           const name = String(agent.agentName ?? agent.name ?? "Agent");
@@ -297,16 +300,17 @@ export function WebuiAssistantBody({
       hasMergedActivity,
     );
     return (
-      <div className="activity-group-content webui-turn-process-segments">
+      <WebuiStack gap="large" className="activity-group-content webui-turn-process-segments">
         {segments.map((segment, index) => <div key={`${segment.messageId}-${index}`} className="webui-turn-process-segment">
           {renderedRows.filter((row) => row.messageId === segment.messageId).map((row) => row.element)}
         </div>)}
-      </div>
+      </WebuiStack>
     );
   };
   return (
-    <div
-      className="webui-assistant-body text-sm space-y-4"
+    <WebuiStack
+      gap="roomy"
+      className="webui-assistant-body text-sm"
       data-webui-assistant-body={messageId}
     >
       {hasExpandableProcessContent || hasProcessDuration ? (
@@ -361,6 +365,6 @@ export function WebuiAssistantBody({
       {attachments?.length ? (
         <MessageAttachments attachments={attachments} />
       ) : null}
-    </div>
+    </WebuiStack>
   );
 }

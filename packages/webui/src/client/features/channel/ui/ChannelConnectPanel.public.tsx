@@ -56,7 +56,8 @@ import {
   type WebuiChannelRow,
 } from "../projection/channel-panel.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface ChannelConnectPanelProps {
   readonly owner: ReturnType<typeof createWebuiChannelOwner>;
@@ -101,7 +102,7 @@ function DetailSection(props: {
         <p className="text-sm leading-5 text-text_default_primary">{props.title}</p>
         <p className="mt-1 text-xs leading-4 text-text_default_secondary">{props.description}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{props.children}</div>
+      <WebuiInline gap="small" className="shrink-0">{props.children}</WebuiInline>
     </section>
   );
 }
@@ -150,10 +151,10 @@ function ChannelBindForm(props: {
       <WebuiField
         label="客户端名称"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
             data-webui-channel-bind-name="true"
-            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
+            controlSize="compact"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -162,10 +163,10 @@ function ChannelBindForm(props: {
       <WebuiField
         label="飞书 App ID"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
             data-webui-channel-bind-app-id="true"
-            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
+            controlSize="compact"
             value={appId}
             onChange={(event) => setAppId(event.target.value)}
           />
@@ -174,11 +175,11 @@ function ChannelBindForm(props: {
       <WebuiField
         label="飞书 App Secret"
         control={(props) => (
-          <input
+          <WebuiTextInput
             {...props}
             data-webui-channel-bind-app-secret="true"
+            controlSize="compact"
             type="password"
-            className="w-full rounded-[6px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary"
             value={appSecret}
             onChange={(event) => setAppSecret(event.target.value)}
           />
@@ -187,7 +188,7 @@ function ChannelBindForm(props: {
       <p className="text-xs leading-4 text-text_default_tertiary">
         {WEBUI_CHANNEL_SECTION_BIND_QR} · {WEBUI_CHANNEL_SECTION_BIND_QR_HINT}
       </p>
-      <div className="flex items-center gap-2">
+      <WebuiInline gap="small">
         <WebuiButton variant="outline" size="inline" type="submit"
           data-webui-channel-bind-submit="true"
 
@@ -200,7 +201,7 @@ function ChannelBindForm(props: {
         >
           取消
         </WebuiButton>
-      </div>
+      </WebuiInline>
     </form>
   );
 }
@@ -221,7 +222,7 @@ function ChannelDetail(props: {
         title={WEBUI_CHANNEL_STATE_BOUND}
         description={`${props.row.platformLabel} · ${props.row.agentLabel}`}
       >
-        <div className="flex flex-col items-end gap-1 text-right">
+        <WebuiStack gap="tight" align="end" className="text-right">
           <span className="text-xs leading-4 text-text_default_secondary">
             {WEBUI_CHANNEL_SECTION_BIND_QR} · {WEBUI_CHANNEL_SECTION_BIND_QR_DESCRIPTION}
           </span>
@@ -230,13 +231,13 @@ function ChannelDetail(props: {
           </span>
           <WebuiButton variant="outline" size="inline-dense" disabled
             data-webui-channel-bind-refresh="true"
-            className="flex items-center gap-1 text-text_default_tertiary"
+            className="text-text_default_tertiary"
           >
             <IconRefresh aria-hidden="true" size={14} stroke={1.5} />
             {WEBUI_CHANNEL_SECTION_BIND_QR_REFRESH}
           </WebuiButton>
           <NotWired />
-        </div>
+        </WebuiStack>
       </DetailSection>
 
       <DetailSection
@@ -269,7 +270,7 @@ function ChannelDetail(props: {
         title={WEBUI_CHANNEL_SECTION_FILTER}
         description={WEBUI_CHANNEL_SECTION_FILTER_DESCRIPTION}
       >
-        <div className="flex items-center gap-2">
+        <WebuiInline gap="small">
           <WebuiButton variant="outline" size="inline-dense" data-webui-channel-filter-mode="result"
             aria-pressed={filter?.mode !== "full"}
             onClick={() =>
@@ -294,7 +295,7 @@ function ChannelDetail(props: {
           >
             {WEBUI_CHANNEL_FILTER_MODE_FULL}
           </WebuiButton>
-        </div>
+        </WebuiInline>
         <span className="text-xs text-text_default_secondary">
           {filter === undefined ? "" : webuiChannelFilterModeLabel(filter.mode)}
         </span>
@@ -323,28 +324,27 @@ export function ChannelConnectPanelView(props: ChannelConnectPanelViewProps): Re
   // and saying so would invite the reader to bind a client they may already have.
   const showEmpty = rows.length === 0 && props.snapshot.status === "ready";
   return (
-    <div
+    <WebuiInline
+      align="stretch"
+      justify="center"
       data-webui-component="channel-connect-panel"
-      className="flex h-full min-h-0 w-full justify-center overflow-hidden px-6 py-10"
+      className="h-full min-h-0 w-full overflow-hidden px-6 py-10"
     >
-      <main className="mx-auto flex h-full min-w-0 w-full max-w-[912px] items-start gap-3">
+      <WebuiInline as="main" gap="medium" align="start" className="mx-auto h-full min-w-0 w-full max-w-[912px]">
         <aside
           className="h-full min-h-0 w-[220px] shrink-0 overflow-y-auto overscroll-contain"
           data-webui-component="channel-connection-list"
         >
-          <div className="flex flex-col gap-px">
+          <WebuiStack gap="hairline">
             {rows.map((row) => (
-              <button
+              <WebuiButton
+                variant="selectable-row"
+                size="regular"
                 key={row.name}
-                type="button"
                 aria-pressed={row.selected}
                 data-webui-channel-row={row.name}
                 onClick={() => props.onSelect(row.name)}
-                className={`flex h-[62px] w-full items-center gap-2 rounded-lg py-2.5 pl-2 pr-3 text-left transition-colors ${
-                  row.selected
-                    ? "bg-bg_interaction_tertiary_selected"
-                    : "hover:bg-bg_interaction_tertiary_hover"
-                }`}
+                className="flex h-[62px] w-full items-center gap-2 rounded-lg py-2.5 pl-2 pr-3"
               >
                 <span
                   className="mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-text_default_tertiary"
@@ -361,18 +361,19 @@ export function ChannelConnectPanelView(props: ChannelConnectPanelViewProps): Re
                     {row.platformLabel}
                   </span>
                 </span>
-              </button>
+              </WebuiButton>
             ))}
-          </div>
-          <button
-            type="button"
+          </WebuiStack>
+          <WebuiButton
+            variant="quiet-secondary"
+            size="inline"
             data-webui-channel-new="true"
             onClick={props.onOpenBinding}
-            className="mt-2 flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-left text-sm text-text_default_secondary hover:bg-bg_interaction_tertiary_hover hover:text-text_default_primary"
+            className="mt-2 flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-left"
           >
             <IconPlus aria-hidden="true" size={16} stroke={1.5} />
             新 Bot
-          </button>
+          </WebuiButton>
           {props.snapshot.status === "loading" ? (
             <p className="mt-2 text-xs text-text_default_tertiary">{WEBUI_CHANNEL_LOADING_TEXT}</p>
           ) : null}
@@ -413,8 +414,8 @@ export function ChannelConnectPanelView(props: ChannelConnectPanelViewProps): Re
             />
           )}
         </section>
-      </main>
-    </div>
+      </WebuiInline>
+    </WebuiInline>
   );
 }
 

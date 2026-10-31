@@ -49,9 +49,10 @@ the caller as layout, or leaves that caller outside the primitive with the reaso
 ## Shared contracts
 
 **Form composition.** The shared unit is a **field** — label, description, validation error and
-control, connected by id and ARIA — plus shared form layout and action patterns. Native submission,
-validation, pending and dirty state and business commands stay with the caller. A settings row and
-a stacked provider form are two arrangements of the same field, not the same form.
+control, connected by id and ARIA — plus shared native text/select controls, form layout and action
+patterns. Shared controls own their common appearance and interaction states; native submission,
+validation rules, pending and dirty state and business commands stay with the caller. A settings row
+and a stacked provider form are two arrangements of the same field, not the same form.
 
 **Structural patterns.** Three patterns are named. The **settings page** already exists and is used
 today by the settings, review and browser businesses, which is evidence that a shared page frame
@@ -63,6 +64,17 @@ nested-scroll behaviour or business lifetimes, and shared visual values alone do
 compatibility. The **panel** — header slot, body, explicit scroll boundary — is a family. The
 application shell, workspace and transcript keep their existing owners and layouts under ADR 0022
 and ADR 0025, and the package-wide obligations below apply to them as well.
+
+Repeated, content-independent horizontal and vertical groups use `WebuiInline` and `WebuiStack`
+(`client/ui/layout-primitives.tsx`). They own direction, alignment (including text baseline), the named `hairline`/`micro`/`tight`/`compact`/`small`/
+`medium`/`roomy`/`large` spacing steps, and start/center/end/between main-axis distribution.
+`WebuiInline` also supports inline formatting for content-sized groups that were previously
+`inline-flex`.
+Callers keep semantic elements, width/flex behavior, clipping, padding, responsive rules and any
+business-specific geometry. Do not wrap a unique layout just to replace its tag, or add arbitrary
+spacing values to the shared vocabulary without repeated call-site evidence. `WebuiInline` may render
+as `div`, `label`, `main`, `span` or `ul`; `WebuiStack` may render as `div`, `li`, `section`, `ul` or `ol`, so a shared arrangement
+does not require giving up the caller's list or section semantics.
 
 **Motion.** Motion becomes package-wide foundations: duration and easing tokens, named transition
 families — feedback, surface enter and exit, disclosure, loading — and a reduced-motion policy.
@@ -172,6 +184,29 @@ with their existing semantics; the rest migrate by inventory. Until a path is mi
 is a known limitation, and the one-dispatcher invariant is not enabled for a mixed path.
 
 ## Rendering integrity after extraction
+
+### Modal visual convergence amendment — 2026-10-31
+
+The original rendering-integrity rule remains the default for extracting an
+existing control: callers keep their geometry and content. A user-approved
+cross-client modal redesign is an explicit exception to that default. All
+modal dialogs converge on `client/ui/dialog.tsx` and `styles/dialog.css`, using
+the supplied Desktop MCP dialog as their visual reference: a shared dark
+scrim, a 640 CSS px standard surface (viewport constrained), 16px radius,
+85vh maximum height, independently scrolling body, and fixed header/footer.
+The shell owns modal framing and dismissal registration; feature callers retain
+their title, data, validation, submission state, content layout and commands.
+Desktop source values that are not yet verified at runtime — especially mask
+alpha, shadow and small-screen behavior — remain visual acceptance items rather
+than being described as source facts. A named business exception must include
+the interaction boundary, the condition under which it is revisited, and remain
+in both inventories.
+
+The first adopted caller is the settings dialog adapter. Until migration is
+complete, legacy dialogs can still differ visually; this staged state does not
+declare package-wide unification. Managed modal focus, inertness, nested
+ordering and restoration continue to be governed by the overlay-coordination
+contract above and must be checked in the built browser.
 
 Extracting a control into the shared layer must not change what a surface renders or how it lays
 out. Every migrated surface is compared against its pre-migration state on the states it enumerates,
@@ -286,7 +321,9 @@ because four forced a lie:
   discharged by what it mounts. Calling it a business exception would be wrong in the
   other direction — it is not declining a contract, it has nothing to decline;
 - **business-exception** — a module that keeps its own implementation of a family
-  contract, with the reason it does;
+  contract, with the reason it does and the condition under which that exemption is
+  revisited. The gate fails an exception that records neither or only one of them,
+  because an exemption without a review trigger is drift nobody was asked to look at;
 - **pending-contract-decision** — classified, not decided. The programme cannot close
   while any of these remain.
 

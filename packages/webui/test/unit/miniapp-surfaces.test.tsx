@@ -228,7 +228,9 @@ describe("the plugin catalogue's apps area", () => {
       workflows,
     );
     expect(withSession).toContain("查看");
-    expect(withSession).toMatch(/<button type="button" aria-label="查看" title="[^"]+">查看<\/button>/);
+    // The action is the shared button now; what the row promises is its
+    // accessible name and its visible label.
+    expect(withSession).toMatch(/<button[^>]*aria-label="查看"[^>]*title="[^"]+"[^>]*>[^<]*查看<\/button>/u);
   });
 
   it("says the capability is absent rather than showing an empty list", () => {

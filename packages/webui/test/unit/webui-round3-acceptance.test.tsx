@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -312,26 +313,19 @@ describe("round-3 message actions", () => {
   });
 
   it("renders rewind preview for file and no-file cases", () => {
-    const noFiles = renderToStaticMarkup(createElement(WebuiRewindDialog, {
-      messageId: "user-1",
-      loading: false,
-      busy: false,
-      preview: { turns: [{ turnId: "turn-1", files: [] }] },
-      onClose: () => undefined,
-      onConfirm: () => undefined,
-    }));
-    expect(noFiles).toContain("没有受影响的文件改动");
-    expect(noFiles).not.toContain("rewind-confirm-with-files");
-    const withFiles = renderToStaticMarkup(createElement(WebuiRewindDialog, {
-      messageId: "user-1",
-      loading: false,
-      busy: false,
-      preview: { turns: [{ turnId: "turn-1", files: [{ filePath: "a.ts", action: "modify", skipped: false }] }] },
-      onClose: () => undefined,
-      onConfirm: () => undefined,
-    }));
-    expect(withFiles).toContain("rewind-confirm-with-files");
-    expect(withFiles).toContain("a.ts");
+    // The preview is the shared modal shell now, and the shell portals its
+    // surface — so a static render of the dialog is empty and cannot show either
+    // branch. Both branches are pinned at the source here, and the runtime
+    // branch is driven by the browser suite (`transcript.spec.mjs`).
+    const source = readFileSync(
+      new URL("../../src/client/features/transcript/ui/MessageActions.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(source).toContain("没有受影响的文件改动");
+    expect(source).toContain('data-testid="rewind-confirm-with-files"');
+    // The files branch and the empty branch are complements of one condition.
+    expect(source).toMatch(/files\.length === 0 \? <p>没有受影响的文件改动/u);
+    expect(source).toMatch(/files\.length > 0 \? <WebuiButton/u);
   });
 });
 

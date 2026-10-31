@@ -29,6 +29,8 @@ import {
 } from "../projection/composer-interactions.js";
 import type { SlashCommandEntry } from "./slash-palette.js";
 import { FeedbackBusy } from "../../../ui/feedback.js";
+import { WebuiTextInput } from "../../../ui/field.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 
 /** One row the `@` list can offer. */
 export type WebuiComposerMentionChoice =
@@ -157,12 +159,14 @@ export function WebuiComposerEditorStaging({
     urlReferences.map((reference) => (
       <div key={`${key}:${reference.id}`} className="webui-composer-url-reference">
         <span aria-hidden="true">↗</span>
-        <input
+        <WebuiTextInput
+          appearance="bare"
+          className="min-w-0 flex-1"
           aria-label="URL 引用"
           value={reference.url}
           onChange={(event) => onChangeReference(reference.id, event.target.value)}
         />
-        <button type="button" aria-label="移除 URL 引用" onClick={() => onRemoveReference(reference.id)}><IconX aria-hidden="true" size={14} stroke={1.7} /></button>
+        <WebuiIconButton label="移除 URL 引用" tone="bare" size="compact" onClick={() => onRemoveReference(reference.id)}><IconX aria-hidden="true" size={14} stroke={1.7} /></WebuiIconButton>
       </div>
     ));
   return (
@@ -173,7 +177,7 @@ export function WebuiComposerEditorStaging({
             <div key={attachment.id} className={`webui-composer-attachment${attachment.kind === "image" ? " is-image" : ""}`}>
               {attachment.kind === "image" ? <img src={attachment.dataUrl} alt={attachment.fileName} /> : <span className="webui-composer-attachment-type">{attachment.fileName.split(".").pop()?.toUpperCase() ?? "FILE"}</span>}
               <span className="webui-composer-attachment-name" title={attachment.fileName}>{attachment.fileName}</span>
-              <button type="button" aria-label={`移除 ${attachment.fileName}`} onClick={() => onRemoveAttachment(attachment.id)}><IconX aria-hidden="true" size={14} stroke={1.7} /></button>
+              <WebuiIconButton label={`移除 ${attachment.fileName}`} tone="inverse" size="compact" className="webui-composer-attachment-remove" onClick={() => onRemoveAttachment(attachment.id)}><IconX aria-hidden="true" size={14} stroke={1.7} /></WebuiIconButton>
             </div>
           ))}
           {references("attached")}
@@ -203,10 +207,10 @@ export function WebuiComposerEditorStaging({
           {mention.choices.map((choice, index) => (
             <Fragment key={`${choice.section}:${choice.kind}:${choice.kind === "agent" ? choice.session.sessionId : choice.label}`}>
               {index === 0 || mention.choices[index - 1]?.section !== choice.section ? <div className="webui-composer-mention-section">{choice.section}</div> : null}
-              <button type="button" role="option" aria-selected={index === mention.index} className="webui-composer-mention-option" onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => mention.onIndexChange(index)} onClick={() => mention.onChoose(choice)}>
+              <WebuiButton variant="selectable-row" size="option" type="button" role="option" aria-selected={index === mention.index} className="webui-composer-mention-option" onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => mention.onIndexChange(index)} onClick={() => mention.onChoose(choice)}>
                 <span>{choice.label}</span>
                 {choice.kind === "plugin" && choice.detail ? <small>{choice.detail}</small> : null}
-              </button>
+              </WebuiButton>
             </Fragment>
           ))}
         </WebuiDropdown>
@@ -239,7 +243,9 @@ export function WebuiComposerEditorStaging({
                     技能
                   </div>
                 ) : null}
-                <button
+                <WebuiButton
+                  variant="selectable-row"
+                  size="option"
                   type="button"
                   role="option"
                   aria-selected={index === commandIndex}
@@ -260,7 +266,7 @@ export function WebuiComposerEditorStaging({
                   <Icon className="webui-command-option-icon text-icon_default_secondary" />
                   <span className="webui-command-option-label">{command.label}</span>
                   <span className="webui-command-option-description text-text_default_tertiary">{command.description}</span>
-                </button>
+                </WebuiButton>
               </Fragment>
             );
           })}

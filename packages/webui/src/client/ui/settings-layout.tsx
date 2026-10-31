@@ -21,6 +21,7 @@
 // both use it without one business reaching into another's private module.
 
 import type { ReactElement, ReactNode } from "react";
+import { WebuiButton } from "./button.js";
 
 /**
  * The page frame: one centred column, the width every settings page shares.
@@ -153,9 +154,9 @@ export function SettingsDivider(): ReactElement {
 export function InfoHint({ text, testId }: { readonly text: string; readonly testId: string }): ReactElement {
   return (
     <span className="webui-settings-info-hint-anchor">
-      <button type="button" data-testid={testId} className="webui-settings-info-hint" aria-label={text}>
+      <WebuiButton variant="plain" size="inline" data-testid={testId} className="webui-settings-info-hint" aria-label={text}>
         i
-      </button>
+      </WebuiButton>
       <span aria-hidden="true" className="webui-settings-info-hint-bubble">
         {text}
       </span>

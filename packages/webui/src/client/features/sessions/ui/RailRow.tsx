@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { WebuiButton } from "../../../ui/button.js";
 
 export function RailRow({
   label,
@@ -20,13 +21,14 @@ export function RailRow({
       data-webui-nav-item={label}
       data-webui-nav-active={active ? "true" : "false"}
     >
-      <button
-        type="button"
+      <WebuiButton
+        variant="plain"
+        size="regular"
         onClick={() => onSelect?.()}
         disabled={inert}
         aria-disabled={inert ? "true" : undefined}
         tabIndex={inert ? -1 : undefined}
-        className="flex h-full min-w-0 flex-1 items-center gap-2 pl-2 pr-2.5 text-left focus:outline-none"
+        className="flex h-full min-w-0 flex-1 items-center gap-2 pl-2 pr-2.5 text-left"
       >
         {icon ? (
           <span className="flex flex-shrink-0 items-center justify-center">
@@ -36,7 +38,7 @@ export function RailRow({
         <span className="min-w-0 flex-1 truncate whitespace-nowrap">
           {label}
         </span>
-      </button>
+      </WebuiButton>
     </div>
   );
 }

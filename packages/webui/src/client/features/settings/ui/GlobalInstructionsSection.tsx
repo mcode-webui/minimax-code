@@ -11,8 +11,10 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from "re
 import type { WebuiGlobalInstructionsView } from "../../../../shared/contracts/personalization.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
+import { WebuiTextarea } from "../../../ui/field.js";
 import { PERSONALIZATION_SECTION_HINTS, SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 const INSTRUCTIONS_PLACEHOLDER = [
   "# Agents 全局设定",
@@ -156,9 +158,10 @@ export function GlobalInstructionsSection({
         </SettingsButton>
       }
     >
-      <textarea
+      <WebuiTextarea
         data-testid="global-instructions-textarea"
-        className="webui-personalization-textarea"
+        controlSize="document"
+        appearance="document"
         value={draft}
         spellCheck={false}
         placeholder={INSTRUCTIONS_PLACEHOLDER}
@@ -167,7 +170,7 @@ export function GlobalInstructionsSection({
           setSaved(false);
         }}
       />
-      <div className="webui-personalization-meta">
+      <WebuiInline gap="medium" justify="between" className="webui-personalization-meta">
         <span data-testid="global-instructions-path">{filePath}</span>
         <span
           data-testid="global-instructions-size"
@@ -175,7 +178,7 @@ export function GlobalInstructionsSection({
         >
           {byteLength} / {maxBytes} 字节
         </span>
-      </div>
+      </WebuiInline>
       {overLimit ? (
         <FeedbackError message="内容超出 {maxBytes} 字节上限，请精简后再保存。" className="webui-settings-error" testId="global-instructions-over-limit" />
       ) : null}

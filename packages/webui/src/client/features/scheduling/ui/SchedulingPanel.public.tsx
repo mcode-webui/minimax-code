@@ -16,6 +16,7 @@
 // The panel is a surface of its own, not a section of the settings modal and not a tab of the
 // session-scoped workspace panel: scheduled tasks are not session-scoped (ADR 0027).
 import { useEffect, useState, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 import type { WebuiCronRun, WebuiCronTask } from "../../../../shared/contracts/cron.js";
 import type {
@@ -118,14 +119,14 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
             {WEBUI_SCHEDULING_EMPTY_TEXT}
           </p>
           : null}
-        <ul className="space-y-2">
+        <WebuiStack as="ul" gap="small">
           {rows.map((row) => (
             <li
               key={row.cronId}
               data-webui-scheduling-task={row.cronId}
               className="rounded-[8px] border border-border_default px-3 py-2"
             >
-              <div className="flex items-center justify-between gap-3">
+              <WebuiInline gap="medium" justify="between">
                 <span className="text-sm font-medium text-text_default_primary">{row.name}</span>
                 <span
                   data-webui-scheduling-enabled={row.enabled ? "true" : "false"}
@@ -133,7 +134,7 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
                 >
                   {row.enabledLabel}
                 </span>
-              </div>
+              </WebuiInline>
               <p className="mt-1 text-sm text-text_default_secondary">{row.scheduleLabel}</p>
               <p className="mt-0.5 text-xs text-text_default_tertiary">{row.nextRunLabel}</p>
               <p
@@ -142,7 +143,7 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
               >
                 {row.holdLabel}
               </p>
-              <div className="mt-2 flex items-center gap-2">
+              <WebuiInline gap="small" className="mt-2">
                 <WebuiButton variant="outline-secondary" size="inline-tiny" data-webui-scheduling-edit={row.cronId}
                   onClick={() => {
                     const task = tasksById.get(row.cronId);
@@ -206,9 +207,9 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
                   >
                     删除
                   </WebuiButton>}
-              </div>
+              </WebuiInline>
               {props.expandedRuns === row.cronId
-                ? <ul data-webui-scheduling-runs={row.cronId} className="mt-2 space-y-1 border-t-[0.5px] border-border_default pt-1">
+                ? <WebuiStack as="ul" gap="tight" data-webui-scheduling-runs={row.cronId} className="mt-2 border-t-[0.5px] border-border_default pt-1">
                   {(props.runs?.get(row.cronId) ?? []).length === 0
                     ? <li className="text-xs text-text_default_tertiary">还没有运行记录。</li>
                     : webuiCronRunRows(props.runs?.get(row.cronId) ?? []).map((run) => (
@@ -231,11 +232,11 @@ export function SchedulingPanelView(props: SchedulingPanelViewProps): ReactEleme
                           </WebuiButton>}
                       </li>
                     ))}
-                </ul>
+                </WebuiStack>
                 : null}
             </li>
           ))}
-        </ul>
+        </WebuiStack>
     </ContentPage>
   );
 }

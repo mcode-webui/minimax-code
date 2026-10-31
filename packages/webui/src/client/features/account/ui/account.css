@@ -14,34 +14,8 @@
     justify-content: center;
     padding: 6px 0;
   }
-  .webui-user-menu-trigger,
   .webui-user-menu-trigger-rail {
-    display: flex;
-    align-items: center;
-    color: var(--text_default_primary);
-    transition: background-color 120ms ease;
-  }
-  .webui-user-menu-trigger {
-    width: 100%;
-    height: 48px;
-    border-radius: 10px;
-    padding: 0 8px;
-    text-align: left;
-  }
-  .webui-user-menu-trigger:hover,
-  .webui-user-menu-trigger[aria-expanded="true"] {
-    background-color: var(--bg_interaction_tertiary_hover);
-  }
-  .webui-user-menu-trigger-rail {
-    width: 36px;
-    height: 36px;
-    justify-content: center;
     border-radius: var(--radius_full);
-    color: var(--icon_default_primary);
-  }
-  .webui-user-menu-trigger-rail:hover,
-  .webui-user-menu-trigger-rail[aria-expanded="true"] {
-    background-color: var(--bg_interaction_tertiary_hover);
   }
   .webui-user-menu-avatar {
     display: flex;
@@ -200,26 +174,17 @@
     line-height: 18px;
   }
   .webui-user-menu-usage-content {
-    display: flex;
-    flex-direction: column;
+    min-width: 0;
   }
   .webui-user-menu-quota-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    min-width: 0;
   }
   .webui-user-menu-quota-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     border-radius: 8px;
     overflow: hidden;
   }
   .webui-user-menu-quota-line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    min-width: 0;
   }
   .webui-user-menu-quota-label {
     min-width: 0;
@@ -258,9 +223,7 @@
     color: var(--text_default_primary);
   }
   .webui-user-menu-usage-error {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    min-width: 0;
   }
   .webui-user-menu-usage-error-title {
     font-size: 14px;
@@ -271,41 +234,20 @@
   .webui-user-menu-usage-retry {
     align-self: flex-start;
     margin-top: 4px;
-    padding: 0;
-    border: 0;
-    background: none;
-    font-family: inherit;
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 500;
-    color: var(--text_default_primary);
-    cursor: pointer;
-  }
-  .webui-user-menu-usage-retry:hover {
-    text-decoration: underline;
   }
   .webui-user-menu-usage-skeleton {
-    display: flex;
     min-height: 72px;
-    flex-direction: column;
-    gap: 8px;
     padding: 8px 0;
   }
   .webui-user-menu-usage-skeleton.is-animated {
     animation: webui-user-menu-usage-pulse 1.2s ease-in-out infinite;
   }
   .webui-user-menu-usage-skeleton-row {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     padding: 4px 0;
     border-radius: 8px;
   }
   .webui-user-menu-usage-skeleton-line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    min-width: 0;
   }
   .webui-user-menu-usage-skeleton-bar {
     border-radius: 4px;
@@ -444,9 +386,6 @@
   .signin-day-claimed-animation {
     animation: signin-day-claimed 0.36s ease-out;
   }
-  .signin-claim-button:disabled {
-    cursor: default;
-  }
   @media (prefers-reduced-motion: reduce) {
     .signin-card-collapsing,
     .signin-day-claimed-animation {
@@ -461,11 +400,7 @@
   }
   .webui-signin-credits-link {
     display: inline;
-    cursor: pointer;
-    border: 0;
-    background: transparent;
     padding: 0;
-    font: inherit;
     color: inherit;
     text-decoration: underline;
     text-decoration-color: currentColor;

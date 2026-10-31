@@ -1,14 +1,14 @@
 /* settings — settings pages, dialogs and account surfaces. */
 @layer components {
 
-  .webui-settings-mask { position: fixed; inset: 0; z-index: 100; display: flex; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
+  /* One scrim for every role="dialog" surface: this host is page-like in its
+   * geometry, but it sits over the live shell like the shared dialog shell, so
+   * it dims the app with the same token rather than the lighter utility wash. */
+  .webui-settings-mask { position: fixed; inset: 0; z-index: 100; display: flex; background: var(--webui-modal-scrim); animation: webui-overlay-enter 160ms ease-out both; }
   /* The account login dialog: the settings mask's overlay treatment around a
    * small centered card — a dialog, not a full page, because the entry points
    * (user menu, usage panel) are popovers over the live shell. */
-  .webui-account-login-mask { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
-  .webui-account-login { display: flex; width: min(420px, calc(100vw - 48px)); flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--radius_12); background: var(--bg_default_secondary_elevated); color: var(--text_default_primary); animation: webui-modal-enter 200ms cubic-bezier(.2, .7, .2, 1) both; }
-  .webui-account-login-header { display: flex; align-items: center; justify-content: space-between; }
-  .webui-account-login-close { border: 0; background: transparent; color: var(--text_default_secondary); font-size: 18px; cursor: pointer; }
+  .webui-account-login-content { display: flex; flex-direction: column; gap: var(--spacing_16); }
   .webui-account-login-body { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
   .webui-account-login-hint { margin: 0; color: var(--text_default_secondary); }
   .webui-account-login-code { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
@@ -17,20 +17,14 @@
   .webui-account-login-actions { display: flex; gap: 8px; justify-content: center; }
   .webui-settings-modal { display: flex; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg_default_primary); color: var(--text_default_primary); animation: webui-modal-enter 200ms cubic-bezier(.2, .7, .2, 1) both; }
   .webui-settings-sidebar { width: 260px; flex: 0 0 260px; overflow-y: hidden; }
-  .webui-settings-back, .webui-settings-nav-item { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); border: 0; background: transparent; color: var(--text_default_secondary); text-align: left; }
-  .webui-settings-back { font-size: var(--size_14); }
-  .webui-settings-back:hover, .webui-settings-nav-item:hover { color: var(--text_default_primary); }
-  .webui-settings-nav-item:disabled { cursor: default; color: var(--text_default_tertiary); opacity: .68; }
+  .webui-settings-back { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); text-align: left; }
+  .webui-settings-nav-item { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); text-align: left; }
   /* Secondary, not tertiary: the field's own text and placeholder are read against
      a surface, and tertiary measures 2.15:1 there. */
   .webui-settings-search { display: flex; height: 36px; align-items: center; gap: var(--spacing_8); padding: 0 var(--spacing_8); border: 1px solid var(--border_default); border-radius: var(--radius_8); color: var(--text_default_secondary); }
-  .webui-settings-search-field { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: inherit; }
-  .webui-settings-search-clear { border: 0; background: transparent; color: inherit; }
   .webui-settings-group { margin-top: 0; }
   .webui-settings-nav > .webui-settings-group:first-child { margin-top: var(--spacing_24); }
   .webui-settings-group h3 { margin: 0 0 var(--spacing_6); color: var(--text_default_tertiary); font-weight: var(--weight_medium); }
-  .webui-settings-nav-item { border-radius: var(--radius_8); transition: background-color 120ms ease, color 120ms ease; }
-  .webui-settings-nav-item.is-active { background: var(--bg_interaction_tertiary_selected); color: var(--text_default_primary); }
   .webui-settings-icon { width: 18px; height: 18px; flex: 0 0 18px; }
   .webui-settings-content { min-width: 0; flex: 1; overflow: auto; animation: webui-settings-content-in 180ms ease both; }
   .webui-settings-content-header { display: flex; align-items: flex-start; justify-content: space-between; }
@@ -38,21 +32,17 @@
   .webui-settings-content h2 { margin: 0; font-size: var(--size_16); font-weight: var(--weight_medium); line-height: 26px; }
 
   .webui-settings-content-header:has(.webui-archived-delete-all) { align-items: center; margin-bottom: var(--spacing_40); }
-  .webui-archived-delete-all { display: inline-flex; height: 36px; align-items: center; gap: 6px; border: 0; border-radius: 12px; padding: 0 12px; background: rgba(255, 59, 48, .1); color: #e5484d; font: inherit; font-size: var(--size_14); cursor: pointer; }
-  .webui-archived-delete-all:hover { background: rgba(255, 59, 48, .16); }
-  .webui-archived-delete-all:disabled { opacity: .45; cursor: default; }
+  .webui-archived-delete-all { display: inline-flex; align-items: center; gap: 6px; }
 
   /* Code review (Review 审查模式 / 修复建议+跳转). */
   .webui-review-totals { display: flex; align-items: center; gap: var(--spacing_8); margin-bottom: var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-review-search { display: flex; min-width: 0; height: 38px; align-items: center; gap: var(--spacing_8); margin-bottom: var(--spacing_12); border: 1px solid var(--border_default); border-radius: 12px; padding: 0 12px; background: var(--bg_default_primary); color: var(--text_default_secondary); }
   .webui-review-search:focus-within { border-color: var(--border_accent); }
-  .webui-review-search-field { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text_default_primary); font: inherit; font-size: var(--size_14); }
-  .webui-review-clear { flex: none; border: 0; background: transparent; color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-review-clear { flex: none; }
   .webui-review-files { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
   .webui-review-file { overflow: hidden; border-radius: var(--radius_12); }
   .webui-review-file + .webui-review-file { border-top: 1px solid var(--border_light); }
-  .webui-review-file-heading { display: flex; width: 100%; min-width: 0; align-items: center; gap: var(--spacing_8); padding: 10px 12px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
-  .webui-review-file-heading:hover { background: var(--bg_interaction_secondary_default); }
+  .webui-review-file-heading { display: flex; width: 100%; min-width: 0; align-items: center; gap: var(--spacing_8); padding: 10px 12px; }
   .webui-review-file-path { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text_default_primary); font-size: var(--size_12); }
   .webui-review-file-status { flex: none; color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-review-file-stats { display: inline-flex; flex: none; gap: 4px; font-size: var(--size_12); }
@@ -68,7 +58,7 @@
   .webui-review-line-text { flex: 1; padding-right: 12px; white-space: pre; }
   /* Only a line that survives into the working tree can be jumped to, so the
      clickable surface is deliberately absent on deletions. */
-  .webui-review-line-jump { display: flex; min-width: max-content; width: 100%; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .webui-review-line-jump { display: flex; min-width: max-content; width: 100%; }
   .webui-review-line-jump:hover { text-decoration: underline; }
   .webui-review-line-static { display: flex; min-width: max-content; width: 100%; }
   .webui-review-loading, .webui-review-empty { margin: 0; padding: var(--spacing_16) 0; color: var(--text_default_secondary); font-size: var(--size_12); }
@@ -79,7 +69,7 @@
   .webui-review-workspace-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
   .webui-review-workspace { padding: 10px 8px 10px 12px; }
   .webui-review-workspace + .webui-review-workspace { border-top: 1px solid var(--border_light); }
-  .webui-review-workspace-heading { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+  .webui-review-workspace-heading { display: flex; width: 100%; align-items: center; gap: var(--spacing_8); }
   .webui-review-workspace-name { display: inline-flex; min-width: 0; flex: 1; align-items: center; gap: 6px; overflow: hidden; color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-review-workspace-kind { flex: none; color: var(--text_default_tertiary); font-size: var(--size_12); }
   .webui-review-workspace-path { margin: 4px 0 0; overflow: hidden; color: var(--text_default_tertiary); font-size: var(--size_12); text-overflow: ellipsis; white-space: nowrap; }
@@ -89,14 +79,8 @@
   .webui-worktree-session-link:hover { color: var(--text_default_primary); text-decoration: underline; }
   .webui-worktree-forked { flex: none; color: var(--text_default_tertiary); }
   .webui-archived-filters { display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: var(--spacing_24); }
-  .webui-archived-search { display: flex; min-width: 0; height: 38px; align-items: center; gap: var(--spacing_8); border: 1px solid var(--border_default); border-radius: 12px; padding: 0 12px; background: var(--bg_default_primary); color: var(--text_default_secondary); }
-  .webui-archived-search:focus-within { border-color: var(--border_accent); }
-  .webui-archived-search-field { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text_default_primary); font: inherit; font-size: var(--size_14); }
-  .webui-archived-search-field::placeholder { color: var(--text_default_tertiary); }
-  .webui-archived-icon-button { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--text_default_tertiary); cursor: pointer; }
-  .webui-archived-icon-button:hover { background: var(--bg_interaction_tertiary_press); color: var(--text_default_primary); }
-  .webui-archived-unarchive { height: 36px; flex: 0 0 auto; border: 0; border-radius: 12px; padding: 0 12px; background: var(--bg_grouped_tertiary); color: var(--text_default_primary); font: inherit; font-size: var(--size_14); cursor: pointer; }
-  .webui-archived-unarchive:hover { background: var(--bg_interaction_tertiary_press); }
+  .webui-archived-icon-button { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; padding: 0; }
+  .webui-archived-unarchive { flex: 0 0 auto; }
   .webui-archived-empty { display: grid; min-height: 180px; place-items: center; color: var(--text_default_tertiary); font-size: var(--size_14); }
   @media (max-width: 1080px) {
     .webui-settings-sidebar {
@@ -105,7 +89,6 @@
     }
   }
 
-  @media (max-width: 760px) { .webui-archived-unarchive { padding: 0 9px; } }
 
   .webui-settings-error { margin: 0 var(--spacing_20) var(--spacing_16); color: var(--text_label_danger_secondary_default); font-size: var(--size_12); }
   .webui-settings-empty-panel { max-width: 760px; min-height: 220px; margin: 0 auto; }
@@ -124,21 +107,6 @@
    * from are the same surface. The z-index sits above the settings shell's
    * own 100, because a dialog inside the settings modal must float above the
    * modal, not inside it. */
-  .webui-settings-dialog-mask { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
-  .webui-settings-dialog-surface { display: flex; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: hidden; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
-  .webui-settings-dialog-surface.is-wide { width: min(560px, calc(100vw - 32px)); }
-  /* The preview variant. The account page's share preview shows the image it
-   * is about to save, so the surface is the preview: no header, no frame, no
-   * padding of its own — the preview card carries the rounded corners the
-   * Desktop gives it. */
-  .webui-settings-dialog-surface.is-preview { width: auto; max-height: none; border: 0; border-radius: 0; background: transparent; padding: 0; box-shadow: none; }
-  .webui-settings-dialog-surface.is-preview .webui-settings-dialog-body { overflow: visible; }
-  /* The preview variant sits on the Desktop's overlay, not on the shell's
-   * scrim. The shell's scrim is white at 50%, which is what a dialog over the
-   * shell wants; the share preview is a white card, and a white card on a
-   * white scrim is not a card. The Desktop's own preview mask is the 25%
-   * black overlay, and the card is legible against it. */
-  .webui-settings-dialog-mask.is-overlay { background: var(--utility_overlay); }
   /* The share preview's card: the Desktop's own 10px halo in the theme's
    * shadow token. */
   .webui-account-usage-share-card { box-shadow: 0 0 10px 0 var(--shadow_default); }
@@ -154,32 +122,17 @@
   .webui-account-usage-cell-tip { position: fixed; z-index: 130; display: flex; transform: translate(-50%, -100%); flex-direction: column; gap: 6px; border-radius: var(--radius_4); background: rgb(0 0 0 / 85%); padding: 8px 10px; color: var(--text_default_inverted_static); pointer-events: none; }
   .webui-account-usage-cell-tip-date { font-size: 11px; line-height: 16px; opacity: .6; }
   .webui-account-usage-cell-tip-value { font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; }
-  .webui-settings-dialog-header { display: flex; width: 100%; flex: none; align-items: center; justify-content: space-between; gap: var(--spacing_12); }
-  .webui-settings-dialog-header h3 { display: flex; min-width: 0; align-items: center; gap: var(--spacing_4); margin: 0; color: var(--text_default_primary); font-size: var(--size_14); font-weight: var(--weight_medium); line-height: var(--line_height_20); }
-  .webui-settings-dialog-close { display: flex; width: 26px; height: 26px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: var(--radius_8); background: var(--bg_interaction_tertiary_default); color: var(--text_default_tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
-  .webui-settings-dialog-close:hover { background: var(--bg_interaction_tertiary_hover); color: var(--text_default_secondary); }
-  .webui-settings-dialog-close:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 1px; }
-  /* The body scrolls, not the surface. A surface that scrolls carries its own
-   * header and footer away with it, and a list that overflows its body paints
-   * over the footer instead of scrolling inside it. */
-  .webui-settings-dialog-body { display: flex; width: 100%; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_8); overflow-y: auto; }
-  .webui-settings-dialog-footer { display: flex; width: 100%; flex: none; align-items: center; justify-content: flex-end; gap: var(--spacing_8); }
   /* A dialog's own list: the same row shape the settings card uses, minus the
    * card around it, so the rows in a dialog and the rows in a section read as
    * the same object. */
   .webui-settings-dialog-list { display: flex; width: 100%; flex-direction: column; }
-  .webui-settings-dialog-list-row { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: var(--spacing_12); color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_20); }
+  .webui-settings-dialog-list-row { width: 100%; min-height: 44px; color: var(--text_default_primary); font-size: var(--size_14); line-height: var(--line_height_20); }
   .webui-settings-dialog-list-row span { color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-settings-dialog-empty { padding: var(--spacing_16) 0; color: var(--text_default_secondary); font-size: var(--size_12); text-align: center; }
   /* The memory manager is a dialog, not a settings section, so it keeps a
      header of its own: a title on the left, a close button on the right. The
      settings pages themselves render the shared section header instead. */
   .webui-personalization-header { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: 0 var(--spacing_16); }
-  /* The memory manager is a dialog, not an expansion. It is portalled to the
-     body, so the z-index is compared against everything else at the root: the
-     settings shell is 100, and this sits above it. */
-  .webui-memory-manager-mask { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); animation: webui-overlay-enter 160ms ease-out both; }
-  .webui-memory-manager-surface { display: flex; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; flex-direction: column; gap: var(--spacing_12); border: 1px solid var(--border_default); border-radius: var(--radius_16); background: var(--bg_grouped_secondary); padding: var(--spacing_16); color: var(--text_default_primary); outline: none; }
   .webui-memory-manager-editor { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; gap: var(--spacing_4); }
   /* The dialog's own editor is the *base* `.mavis-textarea`, not the
      `mavis-personalization-editor` the two settings-page editors carry, so it
@@ -276,9 +229,8 @@
      moves the already-measured 14px inset to 15px. Left alone pending a
      pixel check. */
   .webui-memory-manager-count { position: absolute; right: 0; bottom: 0; left: 0; display: flex; height: 28px; align-items: center; justify-content: flex-end; padding: 0 14px; border-radius: 0 0 var(--radius_12) var(--radius_12); background: var(--bg_grouped_secondary); color: var(--text_default_tertiary); font-size: var(--size_12); line-height: var(--line_height_16); }
-  .webui-memory-manager-surface > .webui-mavis-button { align-self: flex-start; }
-  .webui-memory-manager-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing_20); }
   .webui-memory-manager-actions { display: flex; flex: none; align-items: center; gap: var(--spacing_16); }
+  .webui-dialog-footer.webui-memory-manager-footer { justify-content: space-between; }
   /* The memory manager's header controls, declared from the token layer
      rather than measured off a capture.
    *
@@ -315,7 +267,6 @@
      resolve the way a block's would, and the controls landed ~19px short of
      the border. A padding override is decided by the cascade and does not
      depend on that. */
-  .webui-memory-manager-surface .webui-personalization-header { position: relative; padding-right: 0; }
   /* 记忆操作's surface and its hang off the ⋯ button's right edge come from the
    * shared dropdown layer; this rule only says what the menu holds. */
   .webui-memory-manager-menu { display: flex; min-width: 168px; flex-direction: column; padding: var(--spacing_4); }
@@ -323,35 +274,6 @@
    * What is left here is the memory manager's own arrangement: its rows are
    * deeper than the contract's default. */
   .webui-memory-manager-menu-item { padding: var(--spacing_8) var(--spacing_12); }
-  /* 删除记忆's confirmation, measured in the reference layout.
-   *
-   * A second modal, not a panel inside the first: the editor is dimmed
-   * behind a centred dialog, which an inline block cannot do — there is nothing
-   * behind it inside the surface to dim. The scrim is therefore its own
-   * fixed layer at 140, above `.webui-memory-manager-mask`'s 120, because this
-   * dialog is stacked on top of that one rather than inside it.
-   *
-   * 480 wide and 18-radius are the measured values; 20 is the nearest step on
-   * the radius ramp, and the difference only shows on the corner arc. Padding
-   * 24 plus a 22 title line, a 16 gap, two 22 body lines, a 20 gap and a 30
-   * button adds up to the measured 183, which is the number that says the
-   * vertical rhythm is measured and not a guess.
-   *
-   * The footer reuses `.webui-mavis-button-gray` and `-danger` unchanged: those
-   * already resolve to the token values in the light theme — danger is
-   * `red_400` on `gray_0` text, which is exactly the #f73646 the button measures,
-   * and gray is `bg_interaction_secondary_default`, ~#f5f5f5 against the
-   * measured #f7f7f7. Restating those colours here would be a second place to
-   * drift. */
-  .webui-memory-confirm-mask { position: fixed; inset: 0; z-index: 140; display: flex; align-items: center; justify-content: center; background: var(--utility_scrim); }
-  .webui-memory-confirm { position: relative; display: flex; width: min(480px, calc(100vw - 32px)); flex-direction: column; border: 1px solid var(--border_default); border-radius: var(--radius_20); background: var(--bg_grouped_secondary); padding: var(--spacing_24); outline: none; }
-  .webui-memory-confirm-title { margin: 0; padding-right: var(--spacing_32); color: var(--text_default_primary); font-size: var(--size_16); font-weight: var(--weight_medium); line-height: var(--line_height_22); }
-  /* The × is the shared icon-button contract (styles/button.css); what is left
-     here is this confirmation's own placement: the button sits in the corner
-     above the title rather than in a header row. */
-  .webui-memory-confirm-close { position: absolute; top: var(--spacing_12); right: var(--spacing_12); width: 32px; height: 32px; }
-  .webui-memory-confirm-body { margin: var(--spacing_16) 0 0; color: var(--text_default_secondary); font-size: var(--size_14); line-height: var(--line_height_22); }
-  .webui-memory-confirm-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing_8); margin-top: var(--spacing_20); }
   /* 关于你 is ONE control. The `personalization-profile-section`
      renders a single TextArea bound to `moreAbout`; `nickname` and `occupation`
      exist only in the file layer, which still parses and re-emits their
@@ -366,15 +288,12 @@
      a textarea with min/max and no autoSize. The memory dialog overrides both
      for its own 13-to-24-row range. */
   .webui-user-profile-fields { display: flex; flex-direction: column; gap: var(--spacing_8); }
-.webui-personalization-textarea { width: 100%; height: auto; field-sizing: content; min-height: 144px; max-height: 200px; resize: none; border: none; outline: none; background: var(--bg_grouped_tertiary); border-radius: var(--radius_16); padding: 10px var(--spacing_16); color: var(--text_default_primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--size_12); line-height: var(--line_height_20); }
-  .webui-personalization-textarea::placeholder { color: var(--text_default_tertiary); }
-  .webui-personalization-meta { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--spacing_12); padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
+  .webui-personalization-meta { width: 100%; padding: var(--spacing_8) var(--spacing_12); color: var(--text_default_secondary); font-size: var(--size_12); }
   .webui-personalization-meta span:first-child { min-width: 0; overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
   .webui-personalization-meta .is-over-limit { color: var(--text_label_danger_secondary_default); }
   .webui-personalization-saved { margin: 0; padding: 0 var(--spacing_12) var(--spacing_4); color: var(--text_status_success); font-size: var(--size_12); }
   .webui-mode-options { display: flex; width: 100%; gap: var(--spacing_12); }
-  .webui-mode-card { display: flex; height: 118px; min-width: 0; flex: 1; flex-direction: column; align-items: flex-start; justify-content: center; border: 0; padding: 2px; text-align: left; }
-  .webui-mode-card:disabled { cursor: not-allowed; }
+  .webui-mode-card { display: flex; height: 118px; min-width: 0; flex: 1; flex-direction: column; align-items: flex-start; justify-content: center; padding: 2px; text-align: left; }
   .webui-mode-inner { position: relative; display: flex; width: 100%; height: 114px; flex-shrink: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; border-radius: var(--radius_12); background: var(--bg_interaction_secondary_default); padding: var(--spacing_12) var(--spacing_16); }
   .webui-mode-icon { display: flex; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg_grouped_secondary); color: var(--icon_default_primary); }
   .webui-mode-copy { display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--spacing_4); }
@@ -386,7 +305,7 @@
   .webui-mode-radio svg { display: block; }
   .mavis-settings-appearance-row .webui-settings-row-control { display: flex; }
   .mavis-settings-theme-selector { display: flex; align-items: flex-start; gap: var(--spacing_12); }
-  .mavis-settings-theme-option { display: flex; width: 100px; flex: 0 0 100px; flex-direction: column; align-items: center; gap: var(--spacing_8); border: 0; background: transparent; padding: 0; color: var(--text_default_secondary); font-size: var(--size_12); line-height: var(--line_height_16); }
+  .mavis-settings-theme-option { display: flex; width: 100px; flex: 0 0 100px; flex-direction: column; align-items: center; gap: var(--spacing_8); padding: 0; }
   /* The shortcut chip. It is a key the user reads, so it is set in the
    * monospace face the composer uses for its own key hints: a combination
    * like `Ctrl + Enter` is a sequence of names, and names read better when
@@ -411,11 +330,9 @@
   .webui-toggle-switch.is-checked > span { transform: translateX(12px); }
   .webui-toggle-switch:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
   .webui-toggle-switch:disabled { cursor: default; opacity: .6; }
-  .webui-ant-select { position: relative; display: inline-flex; width: 96px; height: 36px; align-items: center; }
+  .webui-ant-select { position: relative; width: 96px; height: 36px; }
   .webui-ant-select.is-wide { width: 152px; }
-  .webui-ant-select-field { width: 100%; height: 36px; appearance: none; border: 1px solid var(--border_default); border-radius: var(--radius_8); background: transparent; padding: 0 32px 0 11px; color: var(--text_default_primary); font-size: var(--size_14); }
   .webui-ant-select svg { position: absolute; right: 8px; pointer-events: none; color: var(--text_default_tertiary); }
-  .webui-ant-select-field:disabled { cursor: default; opacity: .6; }
   /* The button family's declarations live in `client/styles/button.css`
    * now: the shared presentation layer owns the control's states and its
    * appearance, and a feature stylesheet that re-declares them is drift
@@ -450,11 +367,7 @@
   .dark .webui-section-save-button:not(:disabled):hover { opacity: .8; }
   .webui-segmented { gap: 0; background: var(--gray_75); }
   .webui-settings-sidebar { padding: 46px var(--spacing_12) var(--spacing_20); border-right: 0; background: var(--bg_default_scrim); }
-  .webui-settings-back { height: 30px; margin-bottom: var(--spacing_20); border-radius: var(--radius_8); padding: 0 var(--spacing_8); line-height: var(--line_height_20); }
-  .webui-settings-nav-item { min-height: 30px; padding: 0 10px; font-size: var(--size_14); line-height: var(--line_height_20); }
-  .webui-settings-nav-item { color: var(--text_default_primary); }
-  .webui-settings-nav-item.is-active { background: var(--bg_interaction_tertiary_selected); border-radius: var(--radius_8); }
-  .webui-settings-nav-item:focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--border_accent); }
+  .webui-settings-back { margin-bottom: var(--spacing_20); }
   .webui-settings-group h3 { padding: 16px var(--spacing_8) 6px; font-size: var(--size_14); line-height: var(--line_height_20); }
   /* The page title is pinned to the top of the scrolling content, so the user
    * always knows which page they are on. The header carries the content
@@ -471,7 +384,6 @@
     .webui-settings-back { margin-bottom: var(--spacing_16); }
     .webui-settings-nav > .webui-settings-group:first-child { margin-top: 8px; }
     .webui-settings-group h3 { padding-top: 12px; padding-bottom: 6px; }
-    .webui-settings-nav-item { height: 30px; min-height: 30px; }
   }
   .dark .signin-corner-default {
     opacity: 0.2;

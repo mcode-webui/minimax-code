@@ -135,8 +135,11 @@ describe("the panel keeps the reset boundary", () => {
     const form = between(panel, "webui-provider-form-body", "webui-provider-form-actions");
     expect(form).toContain("{!editingProvider ?");
     expect(form.indexOf("ProviderPresetPicker")).toBeGreaterThan(form.indexOf("{!editingProvider ?"));
-    // The dialog itself is still conditional on `showProviderForm`, and still a portal.
-    expect(panel).toContain("{showProviderForm && portalTarget ? createPortal(");
+    // The dialog is the shared shell now: it is still conditional on
+    // `showProviderForm` and it still portals, but the shell owns both, so the
+    // call site states `open` and hands it the portal target.
+    expect(panel).toMatch(/<WebuiDialog[\s\S]{0,400}open=\{showProviderForm\}/u);
+    expect(panel).toContain("portalTarget={portalTarget}");
     expect(panel).toContain("function ProviderPresetPicker(");
   });
 

@@ -16,6 +16,54 @@
  */
 
 @layer components {
+  .webui-inline,
+  .webui-stack {
+    display: flex;
+  }
+
+  .webui-inline { flex-direction: row; }
+  .webui-inline--inline { display: inline-flex; }
+  .webui-stack { flex-direction: column; }
+  .webui-inline--wrap { flex-wrap: wrap; }
+  .webui-inline--justify-start,
+  .webui-stack--justify-start { justify-content: flex-start; }
+  .webui-inline--justify-center,
+  .webui-stack--justify-center { justify-content: center; }
+  .webui-inline--justify-end,
+  .webui-stack--justify-end { justify-content: flex-end; }
+  .webui-inline--justify-between,
+  .webui-stack--justify-between { justify-content: space-between; }
+
+  .webui-inline--align-start,
+  .webui-stack--align-start { align-items: flex-start; }
+  .webui-inline--align-center,
+  .webui-stack--align-center { align-items: center; }
+  .webui-inline--align-end,
+  .webui-stack--align-end { align-items: flex-end; }
+  .webui-inline--align-stretch,
+  .webui-stack--align-stretch { align-items: stretch; }
+  .webui-inline--align-baseline,
+  .webui-stack--align-baseline { align-items: baseline; }
+
+  .webui-inline--gap-none,
+  .webui-stack--gap-none { gap: 0; }
+  .webui-inline--gap-hairline,
+  .webui-stack--gap-hairline { gap: 1px; }
+  .webui-inline--gap-micro,
+  .webui-stack--gap-micro { gap: 2px; }
+  .webui-inline--gap-tight,
+  .webui-stack--gap-tight { gap: var(--spacing_4); }
+  .webui-inline--gap-compact,
+  .webui-stack--gap-compact { gap: var(--spacing_6); }
+  .webui-inline--gap-small,
+  .webui-stack--gap-small { gap: var(--spacing_8); }
+  .webui-inline--gap-medium,
+  .webui-stack--gap-medium { gap: var(--spacing_12); }
+  .webui-inline--gap-roomy,
+  .webui-stack--gap-roomy { gap: var(--spacing_16); }
+  .webui-inline--gap-large,
+  .webui-stack--gap-large { gap: var(--spacing_24); }
+
   :root {
     /*
      * The smallest width at which each full form applies. The rail is a column

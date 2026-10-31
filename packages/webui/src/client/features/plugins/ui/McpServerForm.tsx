@@ -21,18 +21,11 @@ import {
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiDialogActions } from "../../../ui/dialog.js";
+import { WebuiField, WebuiSelect, WebuiTextarea, WebuiTextInput } from "../../../ui/field.js";
+import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { FeedbackError } from "../../../ui/feedback.js";
-
-/**
- * The text control's own box.
- *
- * The form's stylesheet used to address its controls through the `<label>`
- * each of them sat in; the field contract owns that label now, so the control
- * carries its own shape rather than borrowing it from an ancestor.
- */
-const CONTROL_CLASS =
-  "w-full rounded-[9px] border border-border_default bg-bg_default_primary px-3 py-[9px] text-text_default_primary";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface McpServerFormProps {
   /** The server being edited, or `undefined` for a new one. */
@@ -287,19 +280,52 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
   };
 
   const isStdio = transport === "stdio";
+  const isTimeoutValid = !timeoutMs.trim() || (Number.isSafeInteger(Number(timeoutMs)) && Number(timeoutMs) > 0);
+  const isConnectionValid = isStdio
+    ? command.trim().length > 0
+    : (() => {
+        try {
+          const parsed = new URL(url.trim());
+          return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname.length > 0;
+        } catch {
+          return false;
+        }
+      })();
+  const isJsonValid = (() => {
+    try {
+      const draft = serverFromJson(json, name, enabled);
+      const draftTransport = read(draft.config, "transport");
+      const endpointValid = draftTransport === "stdio"
+        ? read(draft.config, "command").trim().length > 0
+        : (() => {
+            try {
+              const parsed = new URL(read(draft.config, "url").trim());
+              return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname.length > 0;
+            } catch {
+              return false;
+            }
+          })();
+      return draft.name.trim().length > 0 && endpointValid;
+    } catch {
+      return false;
+    }
+  })();
+  const canSave = jsonMode
+    ? isJsonValid
+    : name.trim().length > 0 && isConnectionValid && isTimeoutValid;
 
   return (
     <div className="webui-mcp-form">
       <div className="webui-mcp-mode">
-        <button type="button" aria-pressed={!jsonMode} onClick={() => (jsonMode ? toForm() : undefined)}>
+        <WebuiButton variant={jsonMode ? "plain" : "surface"} size="compact" aria-pressed={!jsonMode} onClick={() => (jsonMode ? toForm() : undefined)}>
           表单
-        </button>
-        <button type="button" aria-pressed={jsonMode} onClick={() => (jsonMode ? undefined : toJson())}>
+        </WebuiButton>
+        <WebuiButton variant={jsonMode ? "surface" : "plain"} size="compact" aria-pressed={jsonMode} onClick={() => (jsonMode ? undefined : toJson())}>
           JSON
-        </button>
+        </WebuiButton>
       </div>
       {jsonMode ? (
-        <textarea
+          <WebuiTextarea
           aria-label="MCP 配置 JSON"
           value={json}
           onChange={(event) => setJson(event.currentTarget.value)}
@@ -308,84 +334,86 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
         <div className="webui-mcp-form-fields">
           <WebuiField
             label="名称"
+            required
             control={(props) => (
-              <input {...props} className={CONTROL_CLASS} value={name} onChange={(event) => setName(event.currentTarget.value)} />
+              <WebuiTextInput {...props} required value={name} onChange={(event) => setName(event.currentTarget.value)} />
             )}
           />
           <WebuiField
             label="传输方式"
             control={(props) => (
-              <select {...props} className={CONTROL_CLASS} value={transport} onChange={(event) => setTransport(event.currentTarget.value)}>
+              <WebuiSelect {...props} value={transport} onChange={(event) => setTransport(event.currentTarget.value)}>
                 <option value="stdio">stdio</option>
                 <option value="http">http</option>
                 <option value="streamable-http">streamable-http</option>
                 <option value="sse">sse</option>
-              </select>
+              </WebuiSelect>
             )}
           />
           {isStdio ? (
             <>
               <WebuiField
                 label="命令"
+                required
                 control={(props) => (
-                  <input {...props} className={CONTROL_CLASS} value={command} onChange={(event) => setCommand(event.currentTarget.value)} />
+                  <WebuiTextInput {...props} required value={command} onChange={(event) => setCommand(event.currentTarget.value)} />
                 )}
               />
               <WebuiField
                 label="参数"
                 control={(props) => (
-                  <input {...props} className={CONTROL_CLASS} value={args} onChange={(event) => setArgs(event.currentTarget.value)} />
+                  <WebuiTextInput {...props} value={args} onChange={(event) => setArgs(event.currentTarget.value)} />
                 )}
               />
             </>
           ) : (
             <WebuiField
               label="地址"
+              required
               control={(props) => (
-                <input {...props} className={CONTROL_CLASS} value={url} onChange={(event) => setUrl(event.currentTarget.value)} />
+                <WebuiTextInput {...props} required value={url} onChange={(event) => setUrl(event.currentTarget.value)} />
               )}
             />
           )}
           <WebuiField
             label="描述"
+            className="webui-mcp-form-full-row"
             control={(props) => (
-              <input {...props} className={CONTROL_CLASS} value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
+              <WebuiTextInput {...props} value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
             )}
           />
-          <label>
-            <span>启用</span>
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(event) => setEnabled(event.currentTarget.checked)}
-            />
-          </label>
-          <button type="button" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((open) => !open)}>
+          <WebuiInline gap="medium" justify="between" className="webui-mcp-enabled">
+            <WebuiStack gap="micro" className="webui-mcp-enabled-copy">
+              <span className="webui-mcp-enabled-title">启用</span>
+              <span className="webui-mcp-enabled-hint">允许 MiniMax Code 使用此服务。</span>
+            </WebuiStack>
+            <ToggleSwitch label="启用 MCP server" checked={enabled} onChange={setEnabled} />
+          </WebuiInline>
+          <WebuiButton variant="outline-secondary" size="compact" className="webui-mcp-advanced-button" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((open) => !open)}>
             高级
-          </button>
+          </WebuiButton>
           {advancedOpen ? (
             <>
               {isStdio ? (
                 <WebuiField
                   label="环境变量"
                   control={(props) => (
-                    <textarea {...props} className={CONTROL_CLASS} value={env} onChange={(event) => setEnv(event.currentTarget.value)} />
+                    <WebuiTextarea {...props} value={env} onChange={(event) => setEnv(event.currentTarget.value)} />
                   )}
                 />
               ) : (
                 <WebuiField
                   label="请求头"
                   control={(props) => (
-                    <textarea {...props} className={CONTROL_CLASS} value={headers} onChange={(event) => setHeaders(event.currentTarget.value)} />
+                    <WebuiTextarea {...props} value={headers} onChange={(event) => setHeaders(event.currentTarget.value)} />
                   )}
                 />
               )}
               <WebuiField
                 label="超时（毫秒）"
                 control={(props) => (
-                  <input
+                  <WebuiTextInput
                     {...props}
-                    className={CONTROL_CLASS}
                     value={timeoutMs}
                     onChange={(event) => setTimeoutMs(event.currentTarget.value)}
                   />
@@ -396,14 +424,14 @@ export function McpServerForm({ editing, onSubmit, onClose }: McpServerFormProps
         </div>
       )}
       {localError ? <FeedbackError message={localError} /> : null}
-      <div className="webui-agent-form-actions">
-        <WebuiButton variant="surface" size="panel" onClick={onClose}>
+      <WebuiDialogActions>
+        <WebuiButton variant="secondary" size="dialog" onClick={onClose}>
           取消
         </WebuiButton>
-        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
+        <WebuiButton variant="primary" size="dialog" disabled={!canSave} onClick={() => void save()}>
           {editing ? "保存" : "添加服务器"}
         </WebuiButton>
-      </div>
+      </WebuiDialogActions>
     </div>
   );
 }

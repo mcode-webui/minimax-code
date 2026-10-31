@@ -30,7 +30,7 @@ async function stageMcpServers(page, servers) {
 
 async function openMcpArea(page) {
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
   await page.locator('.webui-plugin-category-filter button', { hasText: "MCP" }).click();
 }
 
@@ -145,8 +145,8 @@ test("a late Git preview cannot populate a replacement import dialog", async ({ 
   });
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/old/repository");
@@ -158,7 +158,7 @@ test("a late Git preview cannot populate a replacement import dialog", async ({ 
   )).toBe(true);
 
   await dialog.getByRole("button", { name: "关闭" }).click();
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const replacement = page.getByRole("dialog");
   await replacement.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/new/repository");
@@ -197,8 +197,8 @@ test("closing an import dialog does not cancel an accepted mutation settlement",
   });
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const initial = page.getByRole("dialog");
   await initial.getByRole("textbox", { name: "仓库 URL" }).fill("https://github.com/owner/repository");
@@ -217,7 +217,7 @@ test("closing an import dialog does not cancel an accepted mutation settlement",
     ).length,
   );
   await initial.getByRole("button", { name: "关闭" }).click();
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await page.getByRole("menuitem", { name: "从 Git 仓库导入插件" }).click();
   const replacement = page.getByRole("dialog");
 

@@ -111,50 +111,12 @@
   margin-left: auto;
 }
 
-.webui-plan-build-button {
-  display: inline-flex;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius_8);
-  padding: var(--spacing_6) var(--spacing_8);
-  color: var(--text_default_primary);
-  font-size: 14px;
-  font-weight: var(--weight_regular);
-  line-height: var(--line_height_20);
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.webui-plan-build-button:hover:not(:disabled) {
-  background-color: var(--bg_interaction_tertiary_hover);
-}
-
-.webui-plan-build-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .webui-plan-view-button {
   display: inline-flex;
   width: 94px;
-  height: 30px;
   align-items: center;
   justify-content: center;
   gap: var(--spacing_6);
-  border: 1px solid var(--border_default);
-  border-radius: var(--radius_8);
-  background-color: var(--bg_default_primary);
-  color: var(--text_default_primary);
-  font-size: 14px;
-  line-height: var(--line_height_20);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.webui-plan-view-button:hover:not(:disabled) {
-  background-color: var(--bg_grouped_primary);
-  border-color: var(--border_heavy);
 }
 
 .webui-plan-view-icon {
@@ -240,26 +202,10 @@
   white-space: nowrap;
 }
 
-.webui-plan-review-close {
-  display: inline-flex;
+.webui-plan-review-close-size {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius_8);
-  color: var(--icon_default_secondary);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.webui-plan-review-close:hover:not(:disabled) {
-  background-color: var(--bg_interaction_tertiary_hover);
-}
-
-.webui-plan-review-close:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .webui-plan-review-body {
@@ -271,23 +217,8 @@
 .webui-plan-review-approve {
   display: flex;
   width: 100%;
-  height: 42px;
   align-items: center;
   gap: var(--spacing_8);
-  border-radius: 10px;
-  padding: 0 var(--spacing_4) 0 var(--spacing_12);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.webui-plan-review-approve:hover:not(:disabled) {
-  background-color: var(--bg_interaction_tertiary_hover);
-}
-
-.webui-plan-review-approve:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .webui-plan-review-approve-badge {
@@ -346,75 +277,10 @@
   color: var(--icon_default_primary);
 }
 
-.webui-plan-review-feedback-input {
-  min-width: 0;
-  flex: 1;
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: var(--text_default_primary);
-  font-size: 14px;
-  line-height: var(--line_height_20);
-}
-
-.webui-plan-review-feedback-input:focus {
-  outline: none;
-}
-
-.webui-plan-review-feedback-input::placeholder {
-  color: var(--text_default_tertiary);
-}
-
-.webui-plan-review-feedback-submit,
-.webui-plan-review-skip {
-  display: inline-flex;
-  min-width: 56px;
-  height: 32px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--spacing_16);
-  border-radius: var(--radius_8);
-  font-size: 14px;
-  line-height: var(--line_height_20);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.webui-plan-review-feedback-submit {
-  border: 1px solid transparent;
-  background-color: var(--bg_interaction_primary_default);
-  color: var(--text_default_inverted);
-}
-
-.webui-plan-review-feedback-submit:hover:not(:disabled) {
-  background-color: var(--bg_interaction_primary_hover);
-}
-
-.webui-plan-review-skip {
-  border: 1px solid var(--border_default);
-  background-color: var(--bg_default_primary);
-  color: var(--text_default_primary);
-}
-
-.webui-plan-review-skip:hover:not(:disabled) {
-  background-color: var(--bg_grouped_primary);
-  border-color: var(--border_heavy);
-}
-
-.webui-plan-review-feedback-submit:disabled,
-.webui-plan-review-skip:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* ------------------------------------------------------------------ enter */
 
 .webui-plan-enter-confirmation {
-  display: flex;
   width: 100%;
-  flex-direction: column;
-  gap: var(--spacing_8);
   border: 1px solid var(--border_default);
   border-radius: var(--radius_16);
   background-color: var(--bg_grouped_secondary_elevated);
@@ -445,47 +311,6 @@
   justify-content: flex-end;
   gap: var(--spacing_8);
   margin-top: var(--spacing_12);
-}
-
-.webui-plan-enter-button,
-.webui-plan-enter-confirm {
-  display: inline-flex;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius_8);
-  padding: 0 var(--spacing_16);
-  font-size: 14px;
-  line-height: var(--line_height_20);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.webui-plan-enter-button {
-  border: 1px solid var(--border_default);
-  background-color: var(--bg_default_primary);
-  color: var(--text_default_primary);
-}
-
-.webui-plan-enter-button:hover:not(:disabled) {
-  background-color: var(--bg_grouped_primary);
-  border-color: var(--border_heavy);
-}
-
-.webui-plan-enter-confirm {
-  border: 1px solid transparent;
-  background-color: var(--bg_interaction_primary_default);
-  color: var(--text_default_inverted);
-}
-
-.webui-plan-enter-confirm:hover:not(:disabled) {
-  background-color: var(--bg_interaction_primary_hover);
-}
-
-.webui-plan-enter-button:disabled,
-.webui-plan-enter-confirm:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .webui-plan-card-error {

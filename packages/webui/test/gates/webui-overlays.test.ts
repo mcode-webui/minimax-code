@@ -23,6 +23,14 @@ describe("the overlay inventory", () => {
     expect(scanned).toEqual({ dropdowns: 1, dialogs: 1, managed: 1 });
   });
 
+  it("recognizes adoption through the shared modal shell", () => {
+    expect(scanSource('<WebuiDialog id="account-login" title="账号登录" />')).toEqual({
+      dropdowns: 0,
+      dialogs: 1,
+      managed: 1,
+    });
+  });
+
   it("fails on a surface nobody has decided about", () => {
     const problems = compareOverlays({ "c.tsx": { dropdowns: 2, dialogs: 0, managed: 0 } }, inventory);
     expect(problems).toContain("c.tsx: has a floating layer but is not inventoried");

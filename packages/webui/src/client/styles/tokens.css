@@ -13,6 +13,9 @@
  */
 
 :root {
+  /* The Desktop Ant theme's modal mask is its `utility_overlay` token, which
+   * is #00000040 — black at 25%, not a gray-tinted black. */
+  --webui-modal-scrim: rgb(0 0 0 / 25%);
   --bg_default_scrim: #fafafa;
   --bg_grouped_secondary: #fff;
   --bg_grouped_tertiary: #f5f5f5;
@@ -198,8 +201,8 @@
   --spacing_64: 64px;
   --spacing_8: 8px;
   --spacing_90: 90px;
-  --weight_medium: 500px;
-  --weight_regular: 400px;
+  --weight_medium: 500;
+  --weight_regular: 400;
 
   /* semantic tokens — light values (the default; .light reaffirms them) */
   --bg_default_primary: var(--gray_0);
@@ -632,6 +635,9 @@
 
 /* .dark rebinds every semantic token for the dark theme. */
 .dark {
+  /* The dark palette's utility_overlay is #0000003d, so the modal dimming is a
+   * shade weaker there than in the light theme. */
+  --webui-modal-scrim: rgb(0 0 0 / 23.9%);
   --bg_default_primary: var(--gray_1000);
   --bg_default_primary_elevated: var(--gray_900);
   --bg_default_scrim: var(--gray_1000);

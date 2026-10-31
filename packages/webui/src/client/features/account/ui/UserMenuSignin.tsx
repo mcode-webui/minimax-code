@@ -15,7 +15,8 @@ import {
 } from "@mavis/shared/daily-signin";
 import type { WebuiSigninPanelView } from "../../../../shared/contracts/account.js";
 import { FeedbackError } from "../../../ui/feedback.js";
-import { WebuiButton } from "../../../ui/button.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 export interface SigninState {
   readonly loading: boolean;
@@ -206,23 +207,25 @@ function SigninCreditsInfo({ onNavigateToUsage }: { readonly onNavigateToUsage: 
   const [open, setOpen] = useState(false);
   return (
     <span className="webui-signin-credits-anchor">
-      <button
-        type="button"
-        aria-label={SIGNIN.creditsAria}
-        className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-icon_default_tertiary transition-colors hover:text-icon_default_primary focus-visible:outline-none focus-visible:text-icon_default_primary"
+      <WebuiIconButton
+        tone="bare"
+        size="regular"
+        label={SIGNIN.creditsAria}
+        className="size-4 shrink-0"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
       >
         <SigninInfoIcon />
-      </button>
+      </WebuiIconButton>
       {open ? (
         <span role="tooltip" className="webui-signin-credits-tooltip">
           <span className="text-xs leading-[18px]">
             <span>{SIGNIN.creditsInfo} </span>
-            <button
-              type="button"
+            <WebuiButton
+              variant="plain"
+              size="inline-dense"
               className="webui-signin-credits-link"
               onClick={() => {
                 setOpen(false);
@@ -230,7 +233,7 @@ function SigninCreditsInfo({ onNavigateToUsage }: { readonly onNavigateToUsage: 
               }}
             >
               {SIGNIN.creditsLink}
-            </button>
+            </WebuiButton>
           </span>
         </span>
       ) : null}
@@ -295,12 +298,12 @@ export function SigninCard({
         ) : panel ? (
           <>
             <div className="relative min-h-10 pl-1">
-              <div className="flex min-h-5 items-start gap-1 pr-20">
+              <WebuiInline gap="tight" align="start" className="min-h-5 pr-20">
                 <h2 className="m-0 min-w-0 text-sm font-medium leading-5 break-words">
                   {SIGNIN.title}
                 </h2>
                 <SigninCreditsInfo onNavigateToUsage={onNavigateToUsage} />
-              </div>
+              </WebuiInline>
               {streak > 0 ? (
                 <p data-testid="signin-streak" className="mb-0 mt-1 text-xs leading-4 text-text_default_secondary">
                   {SIGNIN.streakBefore}
@@ -326,29 +329,30 @@ export function SigninCard({
                     onClick={onClaim}
                   >
                     {claiming ? (
-                      <span className="inline-flex min-w-0 max-w-full items-center justify-center gap-0.5">
+                      <WebuiInline as="span" inline justify="center" gap="micro" className="min-w-0 max-w-full">
                         <span className="webui-signin-claim-spinner" aria-hidden="true" />
                         <span className="truncate">{SIGNIN.claiming}</span>
-                      </span>
+                      </WebuiInline>
                     ) : (
-                      <span className="inline-flex min-w-0 max-w-full items-center justify-center gap-0.5">
+                      <WebuiInline as="span" inline justify="center" gap="micro" className="min-w-0 max-w-full">
                         <span className="truncate">{SIGNIN.claimEarn}</span>
-                        <span aria-hidden="true" className="inline-flex shrink-0">
+                        <WebuiInline as="span" inline className="shrink-0" aria-hidden="true">
                           <SigninCreditsIcon size={16} />
-                        </span>
+                        </WebuiInline>
                         <span className="shrink-0">{points}</span>
-                      </span>
+                      </WebuiInline>
                     )}
                   </WebuiButton>
                 ) : (
-                  <button
-                    type="button"
+                  <WebuiButton
+                    variant="accent"
+                    size="regular"
                     disabled
                     aria-label={buttonLabel}
-                    className="h-8 w-full cursor-default rounded-lg border-0 bg-bg_interaction_primary_inactive p-0 text-sm font-medium text-text_label_primary_inactive"
+                    className="signin-claim-button h-8 w-full"
                   >
                     {buttonLabel}
-                  </button>
+                  </WebuiButton>
                 )}
                 {bonus > 0 ? (
                   <span
@@ -356,9 +360,9 @@ export function SigninCard({
                     className="signin-bonus-tag absolute right-0 top-[-9.5px] inline-flex max-w-full items-center gap-0.5 rounded-t-xl rounded-bl-xl bg-bg_interaction_accent_focus_blue px-2 py-0.5 text-xs font-medium leading-4 text-text_default_inverted_static"
                   >
                     <span className="truncate">{SIGNIN.bonusPrefix}</span>
-                    <span aria-hidden="true" className="inline-flex shrink-0">
+                    <WebuiInline as="span" inline className="shrink-0" aria-hidden="true">
                       <SigninCreditsIcon size={12} />
-                    </span>
+                    </WebuiInline>
                     <span className="shrink-0">{formatSigninPoints(bonus)}</span>
                   </span>
                 ) : null}
@@ -374,13 +378,14 @@ export function SigninCard({
             className="relative mt-8 flex min-h-[104px] flex-col items-center justify-center gap-2 px-4 text-center"
             message={<span className="m-0 text-xs leading-4 text-text_default_secondary">{error ?? SIGNIN.error}</span>}
             action={
-              <button
-                type="button"
+              <WebuiButton
+                variant="plain"
+                size="inline-dense"
                 onClick={onRetry}
-                className="border-0 bg-transparent p-0 text-xs font-medium text-text_default_accent hover:underline"
+                className="webui-signin-retry"
               >
                 {SIGNIN.retry}
-              </button>
+              </WebuiButton>
             }
           />
         )}

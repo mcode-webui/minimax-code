@@ -50,6 +50,17 @@ import { useMemo } from "react";
 import { createWebuiSettingsWorkflows } from "../../src/client/features/settings/application/settings-workflows.js";
 import { WebuiSettingsWorkflowsProvider } from "../../src/client/bindings/use-query-state.js";
 
+/** The dialog's source: the shell portals its surface, so a static render of it is empty. */
+function memoryDialogSource(): string {
+  return readFileSync(
+    new URL(
+      "../../src/client/features/settings/ui/MemoryManagerDialog.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+}
+
 type PanelCaps = {
   readonly getGlobalInstructions?: (() => Promise<unknown>) | undefined;
   readonly setGlobalInstructions?: ((request: { readonly content: string }) => Promise<unknown>) | undefined;
@@ -122,19 +133,14 @@ describe("记忆摘要 save button states", () => {
     // laxer one. `renderToStaticMarkup` runs no effects, so no test here can
     // drive the button into its enabled state; the predicate itself is covered
     // above, the one-line wiring is not independently testable.
-    const markup = renderToStaticMarkup(
-      <MemoryManagerDialog onClose={() => {}} />,
-    );
-    // The whole opening tag, not the slice from the test id onwards: where
-    // `disabled` lands inside the tag is the renderer's business, and a
-    // check that reads only the tail after `data-testid` fails on a
-    // perfectly correct button whose attributes happen to be ordered
-    // differently. The tag opens before the test id does, so the start is
-    // the last `<button` ahead of it.
-    const testIdAt = markup.indexOf('data-testid="agent-memory-save"');
-    const tagStart = markup.lastIndexOf("<button", testIdAt);
-    const save = markup.slice(tagStart);
-    expect(save.slice(0, save.indexOf(">"))).toContain("disabled");
+    // The dialog renders through the shared shell, which portals its surface, so
+    // a static render of it is empty. The wiring is asserted at the source: the
+    // save action is disabled by the saveability predicate and by the absence of
+    // the write capability, which is what makes the first frame disabled.
+    const source = memoryDialogSource();
+    const saveAt = source.indexOf('testId="agent-memory-save"');
+    expect(saveAt).toBeGreaterThan(0);
+    expect(source.slice(saveAt - 200, saveAt + 200)).toContain("disabled={!saveable || !setAgentMemory}");
   });
 });
 
@@ -144,18 +150,13 @@ describe("记忆摘要 dialog markup", () => {
     // left; the two buttons are `variant:"gray"` for 取消 and `variant:"black"`
     // for 保存. Drawing both grey made the committing action the quieter of the
     // two, which is the opposite of the intent.
-    const markup = renderToStaticMarkup(
-      <MemoryManagerDialog onClose={() => {}} />,
-    );
-
-    const footer = markup.slice(markup.indexOf("webui-memory-manager-footer"));
-    expect(footer).toContain('data-testid="agent-memory-save"');
-    expect(footer).toContain("webui-mavis-button-black");
-    // 取消 keeps the light fill it is given.
-    expect(footer).toContain("webui-mavis-button-gray");
-    expect(footer).not.toContain(
-      "webui-mavis-button-gray webui-mavis-button-gray",
-    );
+    const source = memoryDialogSource();
+    const footerAt = source.indexOf("footer={");
+    const footer = source.slice(footerAt, source.indexOf("</WebuiDialog>", footerAt));
+    expect(footer).toContain('testId="agent-memory-save"');
+    // 保存 is the filled primary; 取消 is the grey secondary beside it.
+    expect(footer).toMatch(/<SettingsButton\s+variant="black"/u);
+    expect(footer).toMatch(/<SettingsButton\s+onClick=\{onClose\}>取消/u);
   });
 
   it("keeps the timestamp in the footer row, below the editor", () => {
@@ -164,14 +165,14 @@ describe("记忆摘要 dialog markup", () => {
     // asserted here -- `draft` only exists after the first read, and
     // `renderToStaticMarkup` runs no effects, so the count row never paints in
     // this render. Its geometry is covered in `webui-w0-css-structure.test.ts`.
-    const markup = renderToStaticMarkup(
-      <MemoryManagerDialog onClose={() => {}} />,
-    );
-    expect(markup).toContain('class="webui-memory-manager-footer"');
-    expect(markup).toContain('data-testid="agent-memory-updated"');
-    expect(markup.indexOf("webui-memory-manager-footer")).toBeGreaterThan(
-      markup.indexOf('data-testid="agent-memory-manage'),
-    );
+    const source = memoryDialogSource();
+    // The timestamp and the actions ride the shell's footer, which is why the
+    // dialog names that slot rather than painting a row of its own.
+    expect(source).toContain('footerClassName="webui-memory-manager-footer"');
+    const footerAt = source.indexOf("footer={");
+    const footer = source.slice(footerAt, source.indexOf("</WebuiDialog>", footerAt));
+    expect(footer).toContain('data-testid="agent-memory-updated"');
+    expect(footer).toContain("webui-memory-manager-actions");
   });
 });
 
@@ -335,7 +336,9 @@ describe("PersonalizationSettings markup", () => {
   it("declares an unavailable surface instead of a silently dead editor", () => {
     const markup = renderToStaticMarkup(<PersonalizationSettings />);
 
-    expect(markup).toContain("webui-personalization-textarea");
+    // The editor is the field contract's document textarea now: the surface
+    // class names the layout, and the control owns the appearance.
+    expect(markup).toContain("webui-control--document");
     expect(markup).toContain("global-instructions-unavailable");
   });
 

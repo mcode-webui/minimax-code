@@ -57,6 +57,7 @@ export function FeedbackError({
   id,
   testId,
   className,
+  layout = "stacked",
   dataAttributes,
 }: {
   readonly message: ReactNode;
@@ -66,12 +67,14 @@ export function FeedbackError({
   readonly testId?: string;
   /** The surface's own classes, for a place whose error has its own chrome. */
   readonly className?: string;
+  /** How the error and its retry action sit together. */
+  readonly layout?: "stacked" | "inline";
   /** The surface's own markers, passed through untouched. */
   readonly dataAttributes?: Readonly<Record<string, string>>;
 }): ReactElement {
   return (
     <div
-      className={`webui-feedback webui-feedback--error${className ? ` ${className}` : ""}`}
+      className={`webui-feedback webui-feedback--error${layout === "inline" ? " webui-feedback--inline" : ""}${className ? ` ${className}` : ""}`}
       role="alert"
       id={id}
       data-testid={testId}

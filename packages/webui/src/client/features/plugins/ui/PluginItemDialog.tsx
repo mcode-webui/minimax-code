@@ -11,7 +11,6 @@
 // catalogue hands down is one `onSubmit` that runs a typed intent.
 
 import type { ReactElement } from "react";
-import { createPortal } from "react-dom";
 
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import type { WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
@@ -19,7 +18,7 @@ import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { McpServerForm } from "./McpServerForm.js";
 import { AgentForm } from "./AgentForm.js";
 import { SkillForm } from "./SkillForm.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 
 export interface PluginItemDialogProps {
   readonly dialog: "mcp" | "agent" | "skill";
@@ -43,33 +42,20 @@ export function PluginItemDialog({
   onChatWithAgent,
   onClose,
 }: PluginItemDialogProps): ReactElement {
-  // The plugin editor is a modal layer (ADR 0028 § Overlay coordination): it
-  // answers a dismissal, and a press outside it is answered by it rather than by
-  // whatever is behind the dialog.
-  const layerId = useDialogLayer({ id: "plugin-item-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const portalTarget = dom.portalTarget();
-  const surface = (
-    <div
-      className="webui-plugin-backdrop"
-    >
-      <div
-        className={`webui-plugin-dialog${dialog === "mcp" ? " webui-mcp-dialog" : ""}`}
-        data-overlay-layer={layerId}
-        role="dialog"
-        aria-modal="true"
-        aria-label={TITLE[dialog]}
+  return (
+      <WebuiDialog
+        id="plugin-item-dialog"
+        title={editing ? `编辑${TITLE[dialog]}` : `添加${TITLE[dialog]}`}
+        description={dialog === "mcp"
+          ? "配置 MiniMax Code 如何连接到这个 server"
+          : "配置 MiniMax Code 如何连接到该项"}
+        onClose={onClose}
+        dismissOnEscape
+        width="standard"
+        portalTarget={portalTarget}
       >
-        <header className="webui-plugin-dialog-header">
-          <strong>
-            {editing ? `编辑${TITLE[dialog]}` : `添加${TITLE[dialog]}`}
-          </strong>
-          <p>
-            {dialog === "mcp"
-              ? "配置 MiniMax Code 如何连接到这个 server"
-              : "配置 MiniMax Code 如何连接到该项"}
-          </p>
-        </header>
         {dialog === "mcp" ? (
           <McpServerForm editing={editing} onSubmit={onSubmit} onClose={onClose} />
         ) : dialog === "agent" ? (
@@ -82,12 +68,6 @@ export function PluginItemDialog({
         ) : (
           <SkillForm onSubmit={onSubmit} onClose={onClose} />
         )}
-      </div>
-    </div>
+      </WebuiDialog>
   );
-  // The dialog is portalled out of the plugin page rather than drawn inside
-  // it, so that the page can be a size container: a container confines the
-  // fixed-position descendants inside it, and this dialog's scrim is meant to
-  // cover the whole viewport rather than the page (ADR 0025).
-  return portalTarget ? createPortal(surface, portalTarget) : surface;
 }

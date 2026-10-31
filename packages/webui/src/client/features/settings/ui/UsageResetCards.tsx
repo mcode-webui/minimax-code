@@ -30,6 +30,7 @@ import type {
 import { useWebuiAccountWorkflowsState } from "../../account/bindings/use-account-workflows.public.js";
 import { SettingsButton, SettingsDialog } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 /**
  * The reset-card state and its phase, read off the account owner's published
@@ -186,7 +187,8 @@ export function UsageResetCards({ account, state }: UsageResetCardsProps): React
       ) : cards.error && cards.items.length === 0 ? (
         <FeedbackError
           message={cards.error}
-          className="flex items-center gap-3 px-3 py-2 text-[13px] leading-5 text-text_default_secondary"
+          layout="inline"
+          className="px-3 py-2 text-[13px] leading-5 text-text_default_secondary"
           action={
             <SettingsButton size="compact" onClick={() => void account?.loadResetCards()}>
               {WEBUI_RESET_CARD_COPY.retry}
@@ -223,7 +225,7 @@ export function UsageResetCards({ account, state }: UsageResetCardsProps): React
         </div>
       )}
       {cards.hasMore && cards.items.length > 0 ? (
-        <div className="flex justify-end px-3 pt-2">
+        <WebuiInline justify="end" className="px-3 pt-2">
           <SettingsButton
             size="compact"
             testId="settings-usage-reset-card-load-more"
@@ -232,7 +234,7 @@ export function UsageResetCards({ account, state }: UsageResetCardsProps): React
           >
             {WEBUI_RESET_CARD_COPY.loadMore}
           </SettingsButton>
-        </div>
+        </WebuiInline>
       ) : null}
     </SettingsSection>
     {historyOpen ? (
@@ -343,7 +345,8 @@ function ResetCardHistoryDialog({
         ) : history.error && history.items.length === 0 ? (
           <FeedbackError
             message={WEBUI_RESET_CARD_COPY.historyLoadError}
-            className="flex items-center gap-3 py-2 text-[13px] leading-5 text-text_default_secondary"
+            layout="inline"
+            className="py-2 text-[13px] leading-5 text-text_default_secondary"
             action={
               <SettingsButton size="compact" onClick={onLoadMore}>
                 {WEBUI_RESET_CARD_COPY.retry}
@@ -360,7 +363,9 @@ function ResetCardHistoryDialog({
         ) : (
           <div className="webui-settings-dialog-list" data-testid="settings-usage-reset-card-history-list">
             {history.items.map((flow) => (
-              <div
+              <WebuiInline
+                gap="medium"
+                justify="between"
                 key={`${flow.cardId}\u0000${flow.eventType}\u0000${flow.createTimeMs ?? ""}`}
                 className="webui-settings-dialog-list-row"
               >
@@ -370,7 +375,7 @@ function ResetCardHistoryDialog({
                     ? ""
                     : new Date(flow.createTimeMs).toLocaleString("sv-SE").replaceAll("-", ".")}
                 </span>
-              </div>
+              </WebuiInline>
             ))}
           </div>
         )}

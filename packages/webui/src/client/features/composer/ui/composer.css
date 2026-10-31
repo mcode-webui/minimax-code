@@ -181,26 +181,8 @@
   .webui-composer-mention-option {
     display: flex;
     width: 100%;
-    min-height: 38px;
     align-items: center;
     gap: 10px;
-    padding: 8px 10px;
-    border: 0;
-    border-radius: 9px;
-    background: transparent;
-    color: var(--webui-color-text-primary, #262626);
-    /* Pinned rather than inherited. Inheriting let the rows take whatever the
-     * section's font-size happened to be, which is why the panel read larger
-     * than the 14px row language used everywhere around it. */
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .webui-composer-mention-option:hover,
-  .webui-composer-mention-option[aria-selected="true"] {
-    background: var(--webui-color-bg-secondary, #f5f5f5);
   }
 
   .webui-composer-menu-back {
@@ -211,15 +193,6 @@
     padding: 10px;
     color: var(--webui-color-text-tertiary, #999);
     font-size: 12px;
-  }
-
-  .webui-composer-hidden-file-input {
-    position: fixed;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
   }
 
   .webui-composer-permission-wrap {
@@ -459,20 +432,10 @@
     white-space: nowrap;
   }
 
-  .webui-composer-attachment > button {
+  .webui-composer-attachment-remove {
     position: absolute;
     top: 4px;
     right: 4px;
-    display: grid;
-    width: 24px;
-    height: 24px;
-    place-items: center;
-    border: 0;
-    border-radius: 50%;
-    background: rgb(0 0 0 / 28%);
-    color: #fff;
-    font-size: 18px;
-    cursor: pointer;
   }
 
   .webui-composer-attachment-loading {
@@ -493,27 +456,9 @@
     color: var(--webui-color-text-secondary, #666);
   }
 
-  .webui-composer-url-reference input {
+  .webui-composer-url-reference .webui-control {
     width: 300px;
     max-width: min(300px, calc(100vw - 112px));
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-  }
-
-  .webui-composer-url-reference button {
-    display: grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 auto;
-    place-items: center;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--webui-color-text-tertiary, #999);
-    cursor: pointer;
   }
 
   /* Only the model selector needs a positioning context here. The workspace
@@ -588,13 +533,6 @@
     align-items: center;
     width: 100%;
     gap: var(--spacing_12);
-    border-radius: var(--radius_8);
-    padding: var(--spacing_8) var(--spacing_12);
-    color: var(--text_default_primary);
-    text-align: left;
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    transition: background-color 120ms ease;
   }
   .webui-command-option-icon {
     flex-shrink: 0;
@@ -628,10 +566,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .webui-command-option:hover,
-  .webui-command-option[aria-selected="true"] {
-    background-color: var(--bg_interaction_tertiary_hover);
   }
   /* Section header inside the popover. A small dim
      divider separates the default section from the skills section; this rule
@@ -706,39 +640,6 @@
   }
   .webui-composer-add-button:hover:not(:disabled) {
     color: var(--icon_default_primary);
-  }
-
-  /* The composer's call to action: a filled blue disc carrying an inverted
-   * glyph. `#3a83f7` is a brand blue with no entry in the token
-   * palette — those run cyan (`#0094fc`, `#0077d9`) and are visibly cooler —
-   * so it stays a literal here, matching how the toggle switch already pins
-   * `#0094fc`, rather than being forced onto a `--blue_*` step that would
-   * render a different hue. The glyph is pinned to `#fff` instead of
-   * `--text_default_inverted`, which the dark theme binds to `--gray_1000`:
-   * a fixed blue fill needs white ink in both themes. */
-  .webui-send-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background-color: #3a83f7;
-    color: #fff;
-    transition: background-color 120ms ease;
-  }
-  .webui-send-button:hover:not(:disabled) {
-    background-color: #3579e3;
-  }
-  .webui-send-button:disabled {
-    background-color: rgb(58 131 247 / 40%);
-    color: #fff;
-    cursor: not-allowed;
-  }
-  .webui-send-button:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
   }
 
   /* The composer field sits inside the card rather than on the surface: no
@@ -852,23 +753,6 @@
     box-shadow: 0 0 20px 0 var(--shadow_default);
   }
 
-  /* The stop button is the send button's twin: same disc, same blue, same
-   * 36px, so the mid-turn swap reads as the glyph changing rather than the
-   * control resizing. This block sits after `.webui-send-button` and its
-   * `background` shorthand would otherwise win the cascade, which is why the
-   * fill is repeated here rather than inherited. */
-  .webui-send-button--stop {
-    display: inline-flex;
-    width: 36px;
-    height: 36px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 50%;
-    background: #3a83f7;
-    cursor: pointer;
-  }
-
   .webui-send-stop-square {
     width: 11px;
     height: 11px;
@@ -876,9 +760,4 @@
     background: #fff;
   }
 
-  .webui-goal-mode-button:hover:not(:disabled),
-  .webui-goal-mode-button.is-active {
-    background: rgb(0 132 255 / 10%);
-    color: var(--icon_default_accent);
-  }
 }

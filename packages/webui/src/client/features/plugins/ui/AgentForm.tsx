@@ -12,7 +12,8 @@ import {
 } from "../contracts/plugin-rows.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiDialogActions } from "../../../ui/dialog.js";
+import { WebuiField, WebuiTextarea, WebuiTextInput } from "../../../ui/field.js";
 
 export interface AgentFormProps {
   readonly editing: Row | undefined;
@@ -74,20 +75,20 @@ export function AgentForm({
       <WebuiField
         label="名称"
         control={(props) => (
-          <input {...props} className="w-full" value={name} onChange={(event) => setName(event.currentTarget.value)} />
+          <WebuiTextInput {...props} value={name} onChange={(event) => setName(event.currentTarget.value)} />
         )}
       />
       <WebuiField
         label="描述"
         control={(props) => (
-          <input {...props} className="w-full" value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
+          <WebuiTextInput {...props} value={description} onChange={(event) => setDescription(event.currentTarget.value)} />
         )}
       />
       <WebuiField
         className="wide"
         label="系统提示词"
         control={(props) => (
-          <textarea {...props} className="w-full" value={prompt} onChange={(event) => setPrompt(event.currentTarget.value)} />
+          <WebuiTextarea {...props} className="webui-plugin-form-content" value={prompt} onChange={(event) => setPrompt(event.currentTarget.value)} />
         )}
       />
       {/* The model belongs to the initial definition, which only a new agent
@@ -96,23 +97,23 @@ export function AgentForm({
         <WebuiField
           label="模型"
           control={(props) => (
-            <input {...props} className="w-full" value={model} onChange={(event) => setModel(event.currentTarget.value)} />
+            <WebuiTextInput {...props} value={model} onChange={(event) => setModel(event.currentTarget.value)} />
           )}
         />
       )}
-      <div className="webui-agent-form-actions">
+      <WebuiDialogActions>
         {editing && onChatWithAgent ? (
-          <WebuiButton variant="surface" size="panel" onClick={() => void onChatWithAgent(name)}>
+          <WebuiButton variant="secondary" size="dialog" onClick={() => void onChatWithAgent(name)}>
             对话
           </WebuiButton>
         ) : null}
-        <WebuiButton variant="surface" size="panel" onClick={onClose}>
+        <WebuiButton variant="secondary" size="dialog" onClick={onClose}>
           取消
         </WebuiButton>
-        <WebuiButton variant="surface" size="panel" onClick={() => void save()}>
+        <WebuiButton variant="primary" size="dialog" onClick={() => void save()}>
           保存
         </WebuiButton>
-      </div>
+      </WebuiDialogActions>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import type {
 import { MiniAppAppsList } from "../../miniapp/ui/MiniAppAppsList.public.js";
 import { useWebuiMiniAppCatalogueSummary } from "../../miniapp/bindings/use-miniapp-catalogue.public.js";
 import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 
 type Area = "plugins" | "skills" | "apps" | "mcp" | "agents";
 type PluginCatalogueSelection = {
@@ -320,8 +321,9 @@ export function PluginCatalogue({
        * content is laid out against. */}
       <header className="webui-plugin-header">
         {managementOpen ? (
-          <button
-            type="button"
+          <WebuiButton
+            variant="quiet-secondary"
+            size="inline"
             className="webui-plugin-management-back"
             onClick={() => {
               setManagementOpen(false);
@@ -331,7 +333,7 @@ export function PluginCatalogue({
             aria-label="返回"
           >
             ‹ 插件
-          </button>
+          </WebuiButton>
         ) : null}
         <div className="webui-plugin-header-inner">
           {managementOpen ? (
@@ -350,14 +352,16 @@ export function PluginCatalogue({
                 // The menu hung off the anchor's right edge (`right: 0`).
                 align="end"
                 trigger={(triggerProps) => { const { ref, ...rest } = triggerProps; return (
-                  <button
-                    type="button"
+                  <WebuiButton
+                    variant="primary"
+                    size="compact"
                     {...rest}
                     ref={ref}
-                    className="webui-plugin-create-trigger"
+                    className="h-[34px]"
+                    data-testid="plugin-create-trigger"
                   >
                     ＋ 创建
-                  </button>
+                  </WebuiButton>
                 ); }}
               >
                 <WebuiMenuItem
@@ -392,30 +396,39 @@ export function PluginCatalogue({
                * that pair is gone. The 管理 button in the same button group opens
                * the management view, which is where installed plugins live. */}
               <div className="webui-plugin-header-tabs" aria-label="插件与技能">
-                <button
+                <WebuiButton
+                  variant="segmented"
+                  size="inline-dense"
                   aria-pressed={area === "plugins"}
+                  className="min-w-[52px] h-7 px-[10px]"
                   onClick={() => selectMarketCatalog("plugins")}
                 >
                   插件
-                </button>
-                <button
+                </WebuiButton>
+                <WebuiButton
+                  variant="segmented"
+                  size="inline-dense"
                   aria-pressed={area === "skills"}
+                  className="min-w-[52px] h-7 px-[10px]"
                   onClick={() => selectMarketCatalog("skills")}
                 >
                   技能
-                </button>
+                </WebuiButton>
               </div>
               <div className="webui-plugin-create-anchor">
-                <button
-                  type="button"
-                  aria-label="刷新插件市场"
+                <WebuiIconButton
+                  label="刷新插件市场"
+                  tone="surface"
                   onClick={() => void reload()}
                 >
                   ⟳
-                </button>
-                <button
-                  type="button"
-                  className="webui-plugin-manage-trigger"
+                </WebuiIconButton>
+                <WebuiButton
+                  variant="surface-quiet"
+                  size="compact"
+                  contentGap="compact"
+                  className="min-w-[92px]"
+                  data-testid="plugin-manage-trigger"
                   onClick={() => {
                     setManagementOpen(true);
                     setView("personal");
@@ -423,7 +436,7 @@ export function PluginCatalogue({
                 >
                   <IconSettings aria-hidden="true" size={18} stroke={1.7} />
                   管理
-                </button>
+                </WebuiButton>
               </div>
             </>
           )}
@@ -466,7 +479,10 @@ export function PluginCatalogue({
           <div className="webui-agent-list">
             <div className="webui-agent-list-heading">全部 Agent</div>
             {filtered.map((item) => (
-              <button
+              <WebuiButton
+                variant="selectable-row"
+                size="row"
+                className="w-full gap-2.5 overflow-hidden"
                 key={nameOf(item)}
                 aria-pressed={selectedAgent === item}
                 onClick={() => {
@@ -486,11 +502,12 @@ export function PluginCatalogue({
                 <span>
                   {read(item, "displayName", "display_name") || nameOf(item)}
                 </span>
-              </button>
+              </WebuiButton>
             ))}
-            <button
-              className="webui-agent-create"
-              type="button"
+            <WebuiButton
+              variant="quiet-secondary"
+              size="row"
+              className="mt-1 w-full gap-2.5 text-left"
               onClick={() => {
                 attachItemDialog();
                 setEditing(undefined);
@@ -498,7 +515,7 @@ export function PluginCatalogue({
               }}
             >
               <IconPlus aria-hidden="true" size={16} stroke={1.7} /> 创建 Agent
-            </button>
+            </WebuiButton>
           </div>
           {/*
             The agent detail is a view, not a second editor. It used to carry
@@ -509,7 +526,7 @@ export function PluginCatalogue({
           */}
           <div className="webui-agent-detail">
             <div className="webui-agent-fields">
-              <label className="webui-agent-avatar-field">
+              <div className="webui-agent-avatar-field">
                 头像
                 <span className="webui-agent-avatar webui-agent-avatar--large">
                   {read(selectedAgent ?? {}, "avatarDataUrl").startsWith(
@@ -523,8 +540,8 @@ export function PluginCatalogue({
                     <WebuiIconAgent className="webui-agent-avatar-icon webui-agent-avatar-icon--large" />
                   )}
                 </span>
-              </label>
-              <label>
+              </div>
+              <div>
                 名称
                 <span data-testid="webui-agent-detail-name">
                   {read(
@@ -534,30 +551,30 @@ export function PluginCatalogue({
                     "display_name",
                   )}
                 </span>
-              </label>
-              <label className="webui-agent-model-field">
+              </div>
+              <div className="webui-agent-model-field">
                 模型
                 <span data-testid="webui-agent-detail-model">
                   {read(selectedAgent ?? {}, "model") || "—"}
                 </span>
-              </label>
-              <label>
+              </div>
+              <div>
                 描述
                 <span data-testid="webui-agent-detail-description">
                   {read(selectedAgent ?? {}, "description") || "—"}
                 </span>
-              </label>
-              <label>
+              </div>
+              <div>
                 系统提示词
                 <span data-testid="webui-agent-detail-prompt">
                   {read(selectedAgent ?? {}, "systemPrompt", "system_prompt")}
                 </span>
-              </label>
+              </div>
               <div className="webui-agent-actions">
                 {selectedAgent ? (
-                  <button
-                    type="button"
-                    className="webui-agent-delete"
+                  <WebuiButton
+                    variant="danger"
+                    size="compact"
                     onClick={() =>
                       confirmMutation("删除 Agent", {
                         kind: "deleteAgent",
@@ -566,13 +583,13 @@ export function PluginCatalogue({
                     }
                   >
                     删除
-                  </button>
+                  </WebuiButton>
                 ) : (
                   <span />
                 )}
-                <button
-                  type="button"
-                  className="webui-agent-save"
+                <WebuiButton
+                  variant="outline"
+                  size="compact"
                   disabled={busy || !selectedAgent}
                   onClick={() => {
                     attachItemDialog();
@@ -581,16 +598,16 @@ export function PluginCatalogue({
                   }}
                 >
                   编辑
-                </button>
+                </WebuiButton>
                 {selectedAgent && onChatWithAgent ? (
-                  <button
-                    type="button"
-                    className="webui-agent-chat"
+                  <WebuiButton
+                    variant="surface-quiet"
+                    size="compact"
                     disabled={busy}
                     onClick={() => void chatWithAgent(selectedAgent)}
                   >
                     和他对话
-                  </button>
+                  </WebuiButton>
                 ) : null}
               </div>
             </div>

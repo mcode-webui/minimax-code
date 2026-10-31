@@ -101,24 +101,6 @@
     color: var(--icon_default_tertiary, #a0a6b0);
   }
 
-  .webui-browser-omnibox-url {
-    min-width: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    padding: 0;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: var(--font-size_12, 12px);
-    color: var(--text_default_secondary);
-  }
-
-  .webui-browser-omnibox-url:disabled {
-    cursor: default;
-  }
-
   /* The page the Agent is on. A real browser has one person and one page, so
    * it has no such mark; this one has two, and the difference is the point of
    * the tab model. It is a report at the quiet end of the row, never a
@@ -160,9 +142,6 @@
    * and they keep their own padding. */
   .webui-browser-panel {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
     min-width: 0;
     min-height: 0;
     height: 100%;

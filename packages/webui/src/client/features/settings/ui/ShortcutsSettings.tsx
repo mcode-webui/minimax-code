@@ -13,6 +13,7 @@
 // the capture is a layer while it is open.
 
 import { Fragment, useEffect, useMemo, useState, type ReactElement } from "react";
+import { WebuiButton } from "../../../ui/button.js";
 import {
   findShortcutConflict,
   parseShortcut,
@@ -101,8 +102,9 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
             {index > 0 ? <SettingsDivider /> : null}
             <SettingsRow title={row.title} description={row.description} testId={`settings-shortcut-row-${row.actionId}`}>
               {row.editable ? (
-                <button
-                  type="button"
+                <WebuiButton
+                  variant="plain"
+                  size="inline"
                   className={`mavis-settings-shortcut-key${capturing === row.actionId ? " is-capturing" : ""}`}
                   data-testid={row.testId}
                   data-overlay-layer={capturing === row.actionId ? captureLayerId : undefined}
@@ -111,7 +113,7 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
                   onClick={() => { setError(""); setCapturing(row.actionId); }}
                 >
                   {capturing === row.actionId ? "按下组合键…" : row.label}
-                </button>
+                </WebuiButton>
               ) : (
                 <span className="mavis-settings-shortcut-key is-static" data-testid={row.testId}>
                   {row.note ?? row.label}

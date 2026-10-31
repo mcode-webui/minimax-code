@@ -11,7 +11,134 @@
 // stay with the caller, which is why `control` is a render function — the caller
 // owns the element, this owns the ids and the attributes that point at it.
 
-import { useId, type ReactElement, type ReactNode } from "react";
+import {
+  forwardRef,
+  useId,
+  type InputHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
+
+/** The shared single-line text control. Appearance belongs to the field family. */
+export interface WebuiTextInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "className"> {
+  readonly controlSize?: "regular" | "compact" | "dense";
+  readonly appearance?: "boxed" | "bare";
+  readonly textSize?: "small" | "regular" | "large";
+  readonly textTone?: "primary" | "secondary";
+  /** Layout only; the control appearance remains owned by this component. */
+  readonly className?: string;
+}
+
+export const WebuiTextInput = forwardRef<HTMLInputElement, WebuiTextInputProps>(function WebuiTextInput(
+  { controlSize = "regular", appearance = "boxed", textSize = "regular", textTone = "primary", className, ...props },
+  ref,
+): ReactElement {
+  const classes = [
+    "webui-control",
+    controlSize === "compact" ? "webui-control--compact" : "",
+    controlSize === "dense" ? "webui-control--dense" : "",
+    appearance === "bare" ? "webui-control--bare" : "",
+    textSize !== "regular" ? `webui-control--text-${textSize}` : "",
+    textTone === "secondary" ? "webui-control--text-secondary" : "",
+    className,
+  ].filter(Boolean).join(" ");
+  return <input {...props} ref={ref} className={classes} />;
+});
+
+/** The shared multi-line text control. */
+export interface WebuiTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "className" | "size"> {
+  readonly controlSize?: "regular" | "compact" | "large" | "document";
+  readonly appearance?: "default" | "document";
+  /** Layout only; the control appearance remains owned by this component. */
+  readonly className?: string;
+}
+
+export const WebuiTextarea = forwardRef<
+  HTMLTextAreaElement,
+  WebuiTextareaProps
+>(function WebuiTextarea({ controlSize = "regular", appearance = "default", className, ...props }, ref): ReactElement {
+  return <textarea {...props} ref={ref} className={["webui-control", "webui-control--multiline", controlSize === "compact" ? "webui-control--compact" : "", controlSize === "large" ? "webui-control--large" : "", controlSize === "document" ? "webui-control--document" : "", appearance === "document" ? "webui-control--document-appearance" : "", className].filter(Boolean).join(" ")} />;
+});
+
+/** The shared native select control, including its focus and disabled states. */
+export interface WebuiSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "className"> {
+  readonly controlSize?: "regular" | "compact" | "dense";
+  readonly appearance?: "boxed" | "custom-chevron";
+  readonly className?: string;
+}
+
+export const WebuiSelect = forwardRef<HTMLSelectElement, WebuiSelectProps>(function WebuiSelect(
+  { controlSize = "regular", appearance = "boxed", className, ...props },
+  ref,
+): ReactElement {
+  return <select {...props} ref={ref} className={["webui-control", controlSize === "compact" ? "webui-control--compact" : "", controlSize === "dense" ? "webui-control--dense" : "", appearance === "custom-chevron" ? "webui-control--custom-chevron" : "", className].filter(Boolean).join(" ")} />;
+});
+
+export const WebuiCheckbox = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "type"> & { readonly className?: string }
+>(function WebuiCheckbox({ className, ...props }, ref): ReactElement {
+  return <input {...props} ref={ref} type="checkbox" className={["webui-checkbox", className].filter(Boolean).join(" ")} />;
+});
+
+export const WebuiRadio = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "type"> & { readonly className?: string }
+>(function WebuiRadio({ className, ...props }, ref): ReactElement {
+  return <input {...props} ref={ref} type="radio" className={["webui-radio", className].filter(Boolean).join(" ")} />;
+});
+
+/** A visually hidden native file picker, triggered by its owning surface's button. */
+export const WebuiFileInput = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "className">
+>(function WebuiFileInput(props, ref): ReactElement {
+  return <input {...props} ref={ref} type="file" className="webui-file-input" />;
+});
+
+export interface WebuiSearchFieldProps {
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: NonNullable<InputHTMLAttributes<HTMLInputElement>["onChange"]>;
+  readonly placeholder?: string;
+  readonly appearance?: "regular" | "compact";
+  /** Surface placement only; the search control's appearance stays shared. */
+  readonly className?: string;
+  readonly testId?: string;
+}
+
+/** A labelled search control with the shared icon, field and focus-within treatment. */
+export function WebuiSearchField({
+  icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  appearance = "regular",
+  className,
+  testId,
+}: WebuiSearchFieldProps): ReactElement {
+  return (
+    <label
+      className={`webui-search-field webui-search-field--${appearance}${className ? ` ${className}` : ""}`}
+      data-testid={testId}
+    >
+      <span className="webui-search-field-icon" aria-hidden="true">{icon}</span>
+      <WebuiTextInput
+        appearance="bare"
+        controlSize="dense"
+        className="webui-search-field-control"
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+      />
+    </label>
+  );
+}
 
 /**
  * The attributes the contract owns. Every key here is a DOM attribute, so a
@@ -39,6 +166,8 @@ export interface WebuiFieldProps {
   readonly description?: string;
   readonly error?: string;
   readonly required?: boolean;
+  /** Shared label-to-control spacing; callers select a named step, never a CSS value. */
+  readonly gap?: "compact" | "small";
   /**
    * How the label, the description and the error sit against the control.
    *
@@ -64,6 +193,7 @@ export function WebuiField({
   description,
   error,
   required = false,
+  gap = "compact",
   arrangement = "stacked",
   className,
   control,
@@ -113,7 +243,7 @@ export function WebuiField({
 
   if (arrangement === "row") {
     return (
-      <div className={`webui-field webui-field--row${className ? ` ${className}` : ""}`}>
+      <div className={`webui-field webui-field--gap-${gap} webui-field--row${className ? ` ${className}` : ""}`}>
         <div className="webui-field-text">
           {labelText}
           {descriptionText}
@@ -125,7 +255,7 @@ export function WebuiField({
   }
 
   return (
-    <div className={`webui-field${className ? ` ${className}` : ""}`}>
+    <div className={`webui-field webui-field--gap-${gap}${className ? ` ${className}` : ""}`}>
       {labelText}
       {descriptionText}
       <div className="webui-field-control">{control(props, field)}</div>

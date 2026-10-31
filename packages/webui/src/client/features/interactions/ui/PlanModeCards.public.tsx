@@ -29,6 +29,7 @@ import type {
   WebuiQuestionnaireRequest,
 } from "../../../../shared/contracts/interactions.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 /** Shared busy/error plumbing for every plan surface. */
 export interface WebuiPlanCardChrome {
@@ -113,17 +114,19 @@ export function WebuiPlanDeliveryCard({
           </div>
         </div>
         <div className="webui-plan-delivery-actions">
-          <button
-            type="button"
+          <WebuiButton
+            variant="quiet-secondary"
+            size="inline"
             className="webui-plan-build-button"
             data-testid="plan-build"
             disabled={busy}
             onClick={onBuild}
           >
             <span data-testid="plan-build-label">{WEBUI_PLAN_COPY.deliveryBuild}</span>
-          </button>
-          <button
-            type="button"
+          </WebuiButton>
+          <WebuiButton
+            variant="outline-secondary"
+            size="inline"
             className="webui-plan-view-button"
             data-testid="plan-view"
             disabled={!onViewPlan}
@@ -137,7 +140,7 @@ export function WebuiPlanDeliveryCard({
                 it to 执行 would duplicate the build action sitting next to it.
                 Open state is carried by aria-exppressed semantics. */}
             <span data-testid="plan-view-label">{WEBUI_PLAN_COPY.deliveryView}</span>
-          </button>
+          </WebuiButton>
         </div>
       </div>
 

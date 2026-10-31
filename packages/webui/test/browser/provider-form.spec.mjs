@@ -65,7 +65,7 @@ test.beforeEach(async ({ page }) => {
 
 const settingsDialog = (page) => page.locator('[role="dialog"][aria-label="设置"]');
 const customPanel = (page) => page.locator('[data-testid="settings-custom-models-panel"]');
-const formDialog = (page) => page.locator('[role="dialog"][aria-label="添加模型"], [role="dialog"][aria-label="编辑提供商"]');
+const formDialog = (page) => page.getByRole("dialog", { name: /^(添加模型|编辑提供商)$/u });
 
 /** Opens settings the way a user does, then the Usage page's custom-model tab. */
 async function openCustomModels(page) {

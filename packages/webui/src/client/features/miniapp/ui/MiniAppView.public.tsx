@@ -53,6 +53,7 @@ import {
 import { createWebuiMiniAppAgentBridge } from "../application/miniapp-agent-bridge.js";
 import { sessionHash } from "../../../projection/common/router.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 import {
   webuiMiniAppRefusalText,
   webuiMiniAppWindowName,
@@ -401,9 +402,9 @@ export function MiniAppView({
         <div className="webui-miniapp-view-detached" data-testid="miniapp-view-detached">
           {/* 切换到独立标签页的事实要被听到，播报通道交给共享契约。 */}
           <FeedbackLiveRegion>已在独立的浏览器标签页中打开。</FeedbackLiveRegion>
-          <button type="button" data-testid="miniapp-switch-standalone" onClick={moveToStandalone}>
+          <WebuiButton variant="secondary" size="compact" data-testid="miniapp-switch-standalone" onClick={moveToStandalone}>
             切换到该标签页
-          </button>
+          </WebuiButton>
         </div>
       ) : null}
       {presentation?.kind === "open" && !detached ? (
@@ -447,31 +448,32 @@ export function MiniAppView({
               <span className="webui-miniapp-view-badge" data-testid="miniapp-view-status">
                 {row?.statusLabel ?? "运行中"}
               </span>
-              <button type="button" data-testid="miniapp-refresh" onClick={reload}>
+              <WebuiButton variant="secondary" size="compact" data-testid="miniapp-refresh" onClick={reload}>
                 刷新
-              </button>
-              <button
-                type="button"
+              </WebuiButton>
+              <WebuiButton
+                variant="secondary"
+                size="compact"
                 data-testid="miniapp-stop"
                 onClick={() => void workflows?.stop(pluginId)}
               >
                 停止
-              </button>
+              </WebuiButton>
             </>
           ) : null}
           {canMove ? (
-            <button type="button" data-testid="miniapp-open-standalone" onClick={moveToStandalone}>
+            <WebuiButton variant="secondary" size="compact" data-testid="miniapp-open-standalone" onClick={moveToStandalone}>
               在新标签页中打开
-            </button>
+            </WebuiButton>
           ) : null}
         </div>
       ) : null}
       {presentation?.kind === "stopped" && !detached ? (
         <div className="webui-miniapp-view-stopped" data-testid="miniapp-view-stopped">
           <FeedbackError message={presentation.reason} />
-          <button type="button" onClick={() => void workflows?.open(pluginId)}>
+          <WebuiButton variant="secondary" size="compact" onClick={() => void workflows?.open(pluginId)}>
             重新打开
-          </button>
+          </WebuiButton>
         </div>
       ) : null}
       {presentation === undefined && refusal ? (

@@ -16,6 +16,7 @@
 // own lifetime and every command behind its buttons.
 
 import type { ReactElement, ReactNode } from "react";
+import { WebuiInline } from "./layout-primitives.js";
 
 export interface ContentPageProps {
   /** The page's heading. One line: the header truncates rather than wraps. */
@@ -136,7 +137,7 @@ export function ContentPage({
       header={
         <>
           <h1 className="min-w-0 truncate text-base font-medium text-text_default_primary">{title}</h1>
-          {actions === undefined ? null : <div className="flex items-center gap-2">{actions}</div>}
+          {actions === undefined ? null : <WebuiInline gap="small">{actions}</WebuiInline>}
         </>
       }
     >

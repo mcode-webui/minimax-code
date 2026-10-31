@@ -37,6 +37,8 @@ import {
 
 import { WebuiIconChevronDown, WebuiIconModel } from "../../../shell/icons.js";
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 import type {
   WebuiModelPickerDraft,
   WebuiModelPickerEntry,
@@ -319,8 +321,9 @@ export function WebuiModelPicker({
           // the ref the skeleton focuses when Escape closes the menu.
           const buttonProps = triggerProps;
           return (
-            <button
-              type="button"
+            <WebuiButton
+              variant="plain"
+              size="regular"
               {...buttonProps}
               id={triggerId}
               className="webui-model-selector-trigger"
@@ -333,7 +336,7 @@ export function WebuiModelPicker({
               <span className="webui-model-trigger-icon">
                 <WebuiIconModel />
               </span>
-              <span className="flex min-w-0 items-baseline gap-[6px]">
+              <WebuiInline as="span" gap="compact" align="baseline" className="min-w-0">
                 <span className="webui-model-trigger-label min-w-0 truncate whitespace-nowrap">
                   {triggerText}
                 </span>
@@ -354,9 +357,9 @@ export function WebuiModelPicker({
                     {triggerLevel}
                   </span>
                 ) : null}
-              </span>
+              </WebuiInline>
               <WebuiIconChevronDown className="webui-model-trigger-chevron flex-shrink-0 text-icon_default_tertiary" />
-            </button>
+            </WebuiButton>
           );
         }}
       >

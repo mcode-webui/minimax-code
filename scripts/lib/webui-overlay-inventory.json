@@ -9,7 +9,7 @@
   "files": {
     "features/account/ui/AccountLoginDialog.tsx": {
       "disposition": "managed",
-      "note": "the sign-in panel is a modal layer"
+      "note": "the sign-in panel uses the shared WebuiDialog modal frame and coordinator registration"
     },
     "features/account/ui/UserMenu.tsx": {
       "disposition": "managed",
@@ -41,7 +41,7 @@
     },
     "features/goal/ui/GoalBanner.public.tsx": {
       "disposition": "managed",
-      "note": "the delete-goal confirmation registers through the shared useDialogLayer, so the coordinator answers its Escape and the press outside it, and it stays put while the delete is in flight"
+      "note": "the delete-goal confirmation uses WebuiDialog with shared scrim, fixed actions and a deferred dismissal policy while deletion is in flight"
     },
     "features/models/ui/ModelPicker.public.tsx": {
       "disposition": "managed",
@@ -49,7 +49,7 @@
     },
     "features/models/ui/ProviderFormPanel.public.tsx": {
       "disposition": "managed",
-      "note": "the preset picker and the format picker"
+      "note": "provider editor and delete confirmation use WebuiDialog; the preset and format pickers remain nested managed popovers"
     },
     "features/plugins/ui/PluginCatalogue.tsx": {
       "disposition": "managed",
@@ -65,23 +65,23 @@
     },
     "features/settings/ui/MemoryManagerDialog.tsx": {
       "disposition": "managed",
-      "note": "the dialog registers through the shared useDialogLayer; the menu and the confirmation name their parent outright, so dialog, menu and confirmation stay one nested path"
+      "note": "the parent and nested confirmation use the shared WebuiDialog shell; the menu names the parent directly, so dialog, menu and confirmation stay one nested path"
     },
     "features/settings/ui/SettingsModal.public.tsx": {
       "disposition": "managed",
-      "note": "the shell's settings modal"
+      "note": "full-page settings host keeps its page-like layout as a documented visual exception and provides a managed parent boundary to nested dialogs"
     },
     "features/settings/ui/settings-atoms.tsx": {
       "disposition": "managed",
-      "note": "the shared dialog primitive registers through the shared useDialogLayer: dismissible when it offers a way out, deferred otherwise so a nested portal is not swallowed"
+      "note": "the settings dialog adapter renders the shared WebuiDialog shell; its close policy is passed to the shared coordinator registration"
     },
     "features/transcript/ui/MessageActions.tsx": {
       "disposition": "managed",
-      "note": "the rewind preview dialog"
+      "note": "rewind preview uses WebuiDialog and its fixed shared actions slot"
     },
     "features/transcript/ui/MessageItem.tsx": {
       "disposition": "managed",
-      "note": "the fork dialog; its layer is active only while it is rendered"
+      "note": "fork dialog uses WebuiDialog and mounts only while active"
     },
     "features/workspace/ui/WebuiWorkspaceTabStrip.public.tsx": {
       "disposition": "managed",
@@ -89,11 +89,15 @@
     },
     "features/workspace/ui/WorkspaceProgressPanel.tsx": {
       "disposition": "managed",
-      "note": "the commit dialog is a modal layer"
+      "note": "commit dialog uses WebuiDialog with shared actions slot"
     },
     "ui/ContextMenu.tsx": {
       "disposition": "managed",
       "note": "opened at a point; a press anywhere else ends it"
+    },
+    "ui/dialog.tsx": {
+      "disposition": "managed",
+      "note": "the shared public modal shell portals into the document body, registers with the coordinator, and delegates inertness/focus containment and restoration to the browser platform"
     }
   }
 }

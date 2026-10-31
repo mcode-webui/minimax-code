@@ -231,7 +231,7 @@ test("plugin management skill and MCP rows layout baselines", async ({ page }) =
   });
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
 
   const surface = page.getByTestId("plugin-management");
   await surface.locator('.webui-plugin-category-filter button', { hasText: "技能" }).click();

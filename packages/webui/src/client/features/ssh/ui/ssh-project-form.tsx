@@ -8,7 +8,8 @@ import { useState, type ReactElement } from "react";
 import type { WebuiSshConnection, WebuiSshProjectRequest } from "../../../../shared/contracts/ssh.js";
 import type { WebuiSshDirectoryListing } from "../application/ssh-owner.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiSelect, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface SshProjectFormProps {
   readonly hosts: readonly WebuiSshConnection[];
@@ -64,31 +65,32 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
         <WebuiField
           label="主机"
           control={(controlProps) => (
-            <select
+            <WebuiSelect
               {...controlProps}
+              controlSize="compact"
               data-webui-ssh-project-host="true"
               value={alias}
               onChange={(event) => setAlias(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
             >
               {props.hosts.map((host) => (
                 <option key={host.alias} value={host.alias}>
                   {host.displayName || host.alias}
                 </option>
               ))}
-            </select>
+            </WebuiSelect>
           )}
         />
         <WebuiField
           label="名称"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-project-name="true"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
@@ -96,14 +98,15 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
           className="col-span-2"
           label="远端目录"
           control={(controlProps) => (
-            <div className="mt-0.5 flex w-full items-center gap-2">
-              <input
+            <WebuiInline gap="small" className="mt-0.5 w-full">
+              <WebuiTextInput
                 {...controlProps}
+                controlSize="compact"
                 type="text"
                 data-webui-ssh-project-path="true"
                 value={path}
                 onChange={(event) => setPath(event.target.value)}
-                className="flex-1 rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+                className="flex-1"
               />
               <WebuiButton variant="outline-secondary" size="inline-dense" data-webui-ssh-project-browse="true"
                 onClick={() => void browse(path)}
@@ -112,7 +115,7 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
               >
                 浏览
               </WebuiButton>
-            </div>
+            </WebuiInline>
           )}
         />
       </div>
@@ -120,7 +123,7 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
         ? listing.ok
           ? (
             <div data-webui-ssh-project-listing="true" className="mt-2 rounded-[6px] border-[0.5px] border-border_default p-2">
-            <div className="flex items-center justify-between">
+            <WebuiInline justify="between">
               <span className="font-mono text-xs text-text_default_secondary">{listing.path}</span>
               <WebuiButton variant="quiet-secondary" size="inline-tiny" data-webui-ssh-project-up="true"
                 onClick={() => void browse(parentPath(listing.path))}
@@ -128,10 +131,10 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
               >
                 上一级
               </WebuiButton>
-            </div>
+            </WebuiInline>
             {listing.entries.length === 0
               ? <p className="mt-1 text-xs text-text_default_tertiary">这个目录里没有条目。</p>
-              : <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto">
+              : <WebuiStack as="ul" gap="micro" className="mt-1 max-h-40 overflow-y-auto">
                 {listing.entries.map((entry) => (
                   <li key={entry.path}>
                     <WebuiButton variant="quiet-highlight" size="inline-tiny" data-webui-ssh-project-entry={entry.path}
@@ -145,7 +148,7 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
                     </WebuiButton>
                   </li>
                 ))}
-              </ul>}
+              </WebuiStack>}
             </div>
           )
           : (
@@ -159,7 +162,7 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
           {props.error}
         </p>
         : null}
-      <div className="mt-2 flex items-center gap-2">
+      <WebuiInline gap="small" className="mt-2">
         <WebuiButton variant="outline" size="inline-dense" type="submit"
           data-webui-ssh-project-submit="true"
 
@@ -172,7 +175,7 @@ export function SshProjectForm(props: SshProjectFormProps): ReactElement {
         >
           取消
         </WebuiButton>
-      </div>
+      </WebuiInline>
     </form>
   );
 }

@@ -660,7 +660,7 @@ test("the apps area uses installed plugin metadata and has no separate install b
   });
   await openApp(page);
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
   await page.locator(".webui-plugin-category-filter").getByRole("button", { name: "应用" }).click();
 
   const apps = page.getByTestId("miniapp-apps");

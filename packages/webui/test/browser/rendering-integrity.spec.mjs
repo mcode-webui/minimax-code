@@ -207,10 +207,10 @@ async function openUsagePage(page) {
 async function openMcpForm(page, name) {
   await openApp(page, "#session=A");
   await page.getByRole("button", { name: "插件" }).first().click();
-  await page.locator(".webui-plugin-manage-trigger").click();
+  await page.getByTestId("plugin-manage-trigger").click();
   // The management surface's create control opens the chooser; "添加 MCP server"
   // is one option in it, not a button on the management list.
-  await page.locator(".webui-plugin-create-trigger").click();
+  await page.getByTestId("plugin-create-trigger").click();
   await page.getByRole("menuitem", { name: "添加 MCP server" }).click();
   const dialog = page.getByRole("dialog", { name: "MCP Server" });
   await expect(dialog).toBeVisible();

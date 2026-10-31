@@ -13,6 +13,7 @@
 import type { ReactElement } from "react";
 
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 import type { WebuiPermissionMode } from "../../../features/settings/contracts/settings-port.js";
 import type { WebuiIconProps } from "../../../shell/icons.js";
@@ -103,8 +104,9 @@ export function WebuiComposerPermissionControl({
       wrapperClassName="webui-composer-permission-wrap"
       className="webui-composer-permission-menu"
       trigger={(triggerProps) => (
-        <button
-          type="button"
+        <WebuiButton
+          variant="plain"
+          size="regular"
           {...triggerProps}
           className={`webui-composer-permission-button${mode === "bypassPermissions" ? " webui-composer-permission-button--warning" : ""}`}
           aria-label={mode ? `授权模式：${PERMISSION_MODE_OPTION[mode].label}` : "授权模式"}
@@ -122,7 +124,7 @@ export function WebuiComposerPermissionControl({
           {mode ? <PermissionModeIcon mode={mode} /> : <WebuiIconPermissionRequest className="webui-composer-permission-icon" />}
           <span className="webui-composer-permission-label">{mode ? PERMISSION_MODE_OPTION[mode].label : unavailable ? "授权不可用" : "读取授权模式…"}</span>
           <WebuiIconChevronDown className="webui-composer-permission-chevron" />
-        </button>
+        </WebuiButton>
       )}
     >
       <div className="webui-composer-permission-header">
@@ -141,9 +143,10 @@ export function WebuiComposerPermissionControl({
           const { label, description, Icon } = PERMISSION_MODE_OPTION[option];
           const active = mode === option;
           return (
-            <button
+            <WebuiButton
+              variant="selectable-row"
+              size="regular"
               key={option}
-              type="button"
               role="menuitemradio"
               aria-checked={active}
               data-permission-mode={option}
@@ -160,7 +163,7 @@ export function WebuiComposerPermissionControl({
                 <span className="webui-composer-permission-description">{description}</span>
               </span>
               {active ? <WebuiIconCheck className="webui-composer-permission-check" /> : null}
-            </button>
+            </WebuiButton>
           );
         })}
     </WebuiDropdown>

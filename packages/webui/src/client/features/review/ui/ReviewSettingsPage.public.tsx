@@ -13,6 +13,8 @@ import {
   useSyncExternalStore,
   type ReactElement,
 } from "react";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiTextInput } from "../../../ui/field.js";
 
 import {
   initialWebuiReviewState,
@@ -226,17 +228,19 @@ export function WebuiReviewWorkspacePicker({ workspaces, selected, loading, erro
     <SettingsCard>
       <ul className="webui-review-workspace-list">
         {workspaces.map((workspace) => <li className="webui-review-workspace" key={workspace.workspaceDir}>
-          <button
-            type="button"
+          <WebuiButton
+            variant="selectable-row"
+            size="content"
             className="webui-review-workspace-heading"
             data-testid="review-workspace-option"
             data-webui-workspace-dir={workspace.workspaceDir}
             data-webui-workspace-current={workspace.workspaceDir === selected ? "true" : undefined}
+            aria-pressed={workspace.workspaceDir === selected}
             onClick={() => onSelect?.(workspace.workspaceDir)}
           >
             <span className="webui-review-workspace-name"><FolderIcon />{workspace.name}</span>
             <span className="webui-review-workspace-kind">{workspace.sessions.length} 个会话</span>
-          </button>
+          </WebuiButton>
           <p className="webui-review-workspace-path" title={workspace.workspaceDir}>{workspace.workspaceDir}</p>
         </li>)}
       </ul>
@@ -267,15 +271,16 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
     </div> : null}
     {state.status === "ready" ? <div className="webui-review-search">
       <SearchIcon />
-      <input
-        className="webui-review-search-field"
+      <WebuiTextInput
+        appearance="bare"
+        className="min-w-0 flex-1"
         aria-label="在变更里搜索"
         placeholder="在变更里搜索"
         data-testid="review-search-input"
         value={state.query}
         onChange={(event) => onQueryChange?.(event.target.value)}
       />
-      {filterActive ? <button type="button" className="webui-review-clear" data-testid="review-search-clear" onClick={() => onClearFilters?.()}>清除</button> : null}
+      {filterActive ? <WebuiButton variant="quiet-secondary" size="inline-tiny" className="webui-review-clear" data-testid="review-search-clear" onClick={() => onClearFilters?.()}>清除</WebuiButton> : null}
     </div> : null}
     {loading || state.searchPending ? <FeedbackLiveRegion className="webui-review-loading">{loading ? "正在读取待审查的变更…" : "正在搜索…"}</FeedbackLiveRegion> : null}
     {note || state.error ? (
@@ -304,8 +309,9 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
           const diffError = withinWorkspace ? state.diffErrors[file.fileId] : undefined;
           const pending = withinWorkspace && state.loadingFileIds.includes(file.fileId);
           return <li className="webui-review-file" key={file.fileId} data-testid="review-file" data-file-id={file.fileId} data-webui-review-file-status={file.status} data-webui-review-outside-workspace={withinWorkspace ? undefined : "true"}>
-            <button
-              type="button"
+            <WebuiButton
+              variant="selectable-row"
+              size="content"
               className="webui-review-file-heading"
               data-testid="review-file-toggle"
               aria-expanded={expanded}
@@ -317,7 +323,7 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
                 <span className="webui-diff-add">{`+${file.additions}`}</span>
                 {file.deletions > 0 ? <span className="webui-diff-del">{`-${file.deletions}`}</span> : null}
               </span>
-            </button>
+            </WebuiButton>
             {expanded ? <div className="webui-review-file-body" data-testid="review-file-body">
               {/* 读取补丁的进展和结果都要被听到，播报通道交给共享契约。 */}
               {!withinWorkspace ? <FeedbackLiveRegion className="webui-review-file-error" testId="review-file-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</FeedbackLiveRegion> : null}
@@ -335,7 +341,7 @@ export function WebuiReviewPanel({ state, visible, filtering, loading, note, emp
                   return <li className={`webui-review-line webui-review-line--${line.kind}`} key={index} data-webui-review-line-kind={line.kind} data-webui-review-line={line.newLine ?? ""}>
                     {target === undefined || !onOpenFileLine
                       ? <span className="webui-review-line-static">{text}</span>
-                      : <button type="button" className="webui-review-line-jump" data-testid="review-line-jump" data-webui-review-jump-line={target} onClick={() => onOpenFileLine(file.path, target)}>{text}</button>}
+                      : <WebuiButton variant="quiet-highlight" size="content" className="webui-review-line-jump" data-testid="review-line-jump" data-webui-review-jump-line={target} onClick={() => onOpenFileLine(file.path, target)}>{text}</WebuiButton>}
                   </li>;
                 })}
               </ol> : null}

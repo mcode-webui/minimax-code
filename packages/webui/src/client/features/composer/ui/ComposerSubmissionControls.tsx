@@ -15,6 +15,7 @@ import {
   WebuiIconCommandPlan,
   WebuiIconSend,
 } from "../../../shell/icons.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface WebuiComposerModePillsProps {
   /** Whether goal mode is running with a goal the coordinator can create. */
@@ -38,9 +39,9 @@ export function WebuiComposerModePills({
   return (
     <>
       {goalActive ? (
-        <button
-          type="button"
-          className="webui-goal-mode-button is-active"
+        <WebuiButton
+          variant="accent-toggle"
+          size="content"
           aria-pressed={true}
           aria-label="取消目标模式"
           data-testid="composer-goal-mode"
@@ -49,12 +50,13 @@ export function WebuiComposerModePills({
         >
           <WebuiIconCommandGoal />
           <span>目标</span>
-        </button>
+        </WebuiButton>
       ) : null}
       {planActive ? (
-        <button
+        <WebuiButton
+          variant="accent-toggle"
+          size="content"
           type="button"
-          className="webui-goal-mode-button is-active"
           aria-pressed="true"
           aria-label="退出计划模式"
           data-testid="composer-plan-mode"
@@ -63,7 +65,7 @@ export function WebuiComposerModePills({
         >
           <WebuiIconCommandPlan />
           <span>计划</span>
-        </button>
+        </WebuiButton>
       ) : null}
     </>
   );
@@ -81,24 +83,26 @@ export function WebuiComposerSubmitButton({
   onStop,
 }: WebuiComposerSubmitButtonProps) {
   return sending ? (
-    <button
-      type="button"
+    <WebuiButton
+      variant="send-action"
+      size="composer-action"
       aria-label="停止"
       data-webui-composer-stop="true"
-      className="webui-send-button webui-send-button--stop"
       onClick={onStop}
     >
       <span className="webui-send-stop-square" aria-hidden="true" />
-    </button>
+    </WebuiButton>
   ) : (
-    <button
+    <WebuiButton
+      variant="send-action"
+      size="composer-action"
       type="submit"
       disabled={submitBlocked}
+      data-testid="composer-send"
       aria-label="发送"
       data-webui-composer-submit="true"
-      className="webui-send-button"
     >
       <WebuiIconSend />
-    </button>
+    </WebuiButton>
   );
 }

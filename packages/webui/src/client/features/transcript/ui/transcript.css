@@ -1,6 +1,9 @@
 /* transcript — moved out of styles/shell.css; rules kept in their original relative order. */
 @layer components {
 
+  /* The 5px rhythm belongs to the transcript's placeholder lines. */
+  .webui-transcript-skeleton-lines { gap: 5px; }
+
 
   .webui-context-usage-anchor { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
   .webui-context-usage-trigger { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--icon_default_tertiary); }
@@ -447,21 +450,15 @@
   .webui-thinking-expand {
     display: block;
     margin-top: var(--spacing_4);
-    color: var(--text_default_tertiary);
-    font-size: 14px;
-    line-height: 20px;
     text-align: left;
   }
-  .webui-thinking-expand:hover { color: var(--text_default_secondary); }
   .webui-thinking-detail .webui-markdown {
     font-size: 14px;
     line-height: 20px;
     color: var(--text_default_tertiary);
   }
   .webui-turn-process-segments {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing_16);
+    min-width: 0;
   }
   .webui-turn-process-segment {
     display: contents;
@@ -471,10 +468,7 @@
   }
 
   .webui-tool-list {
-    display: flex;
     min-width: 0;
-    flex-direction: column;
-    gap: var(--spacing_8);
   }
   .webui-tool-row {
     min-width: 0;
@@ -509,8 +503,7 @@
   .webui-tool-icon--file, .webui-tool-icon--code { color: var(--text_default_tertiary); }
   .webui-tool-icon--web, .webui-tool-icon--browser, .webui-tool-icon--command { color: var(--text_default_secondary); }
   .webui-tool-row[data-webui-tool-status="error"] .webui-tool-icon { color: var(--text_status_error); }
-  .webui-tool-detail-content { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_8); }
-  .webui-tool-detail-section { display: flex; min-width: 0; flex-direction: column; gap: var(--spacing_8); }
+  .webui-tool-detail-section { min-width: 0; }
   .webui-tool-detail-label { overflow: hidden; color: var(--text_default_tertiary); font-size: 14px; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
   .webui-tool-detail-label.is-error { color: var(--text_status_error); }
   .webui-tool-detail-section pre { max-height: 180px; overflow: auto; margin: 0; color: var(--text_default_secondary); font-size: 14px; line-height: 20px; white-space: pre-wrap; word-break: break-all; }
@@ -524,7 +517,6 @@
   .webui-agent-activity-title { color: var(--text_default_tertiary); font-size: 12px; line-height: 16px; }
   .webui-agent-joined-group { width: 100%; max-width: 524px; max-height: 240px; overflow: hidden; border: 0.5px solid var(--border_default); border-radius: 16px; padding: 12px 8px; }
   .webui-agent-joined-toggle { display: flex; width: 100%; height: 20px; align-items: center; border-radius: 8px; padding: 0 10px; color: var(--text_default_primary); text-align: left; font-size: 14px; line-height: 20px; }
-  .webui-agent-joined-toggle:focus-visible { outline: 2px solid var(--border_accent); outline-offset: 2px; }
   .webui-agent-joined-chevron { margin-left: auto; color: var(--icon_default_tertiary); font-size: 16px; line-height: 16px; transition: transform 200ms ease-out; }
   .webui-agent-joined-chevron.is-collapsed { transform: rotate(-90deg); }
   .webui-agent-joined-list { display: flex; max-height: 188px; flex-direction: column; gap: 8px; overflow-y: auto; margin-top: 8px; padding-right: 8px; }
@@ -559,10 +551,7 @@
     padding: 4px;
   }
   .webui-tool-detail-body {
-    display: flex;
     min-width: 0;
-    flex-direction: column;
-    gap: var(--spacing_8);
     border-radius: 10px;
     background-color: var(--bg_grouped_secondary);
     padding: 10px var(--spacing_16);
@@ -582,10 +571,7 @@
     background-color: var(--border_default);
   }
   .webui-tool-detail-content {
-    display: flex;
     min-width: 0;
-    flex-direction: column;
-    gap: var(--spacing_8);
   }
   .webui-tool-detail-running { color: var(--text_default_secondary); }
   .webui-tool-detail pre {
@@ -619,7 +605,7 @@
   }
   .webui-message-file-link { display: inline-flex; align-items: baseline; gap: 5px; color: var(--text_default_accent); text-decoration: none; }
   .webui-message-file-link:hover { text-decoration: underline; }
-  .webui-delivered-assets { display: flex; flex-direction: column; gap: var(--spacing_8); margin: var(--spacing_8) 0; padding-left: var(--spacing_24); list-style: disc; }
+  .webui-delivered-assets { margin: var(--spacing_8) 0; padding-left: var(--spacing_24); list-style: disc; }
   .webui-delivered-asset { color: var(--text_default_secondary); }
   .webui-delivered-asset-icon { margin-right: 5px; }
   .webui-delivered-asset-caption { color: var(--text_default_secondary); }
@@ -1029,7 +1015,6 @@
     min-width: 0;
     flex: 1;
     overflow: hidden;
-    color: var(--text_default_secondary);
     text-overflow: ellipsis;
     text-align: left;
     white-space: nowrap;
@@ -1042,16 +1027,7 @@
     align-items: center;
     justify-content: flex-start;
     padding: 0 12px;
-    border: 0;
-    background: transparent;
-    color: var(--text_default_secondary);
-    font-size: 14px;
     text-align: left;
-    cursor: pointer;
-  }
-
-  .webui-diff-expand:hover {
-    color: var(--text_default_primary);
   }
 
   .webui-diff-card .webui-tool-list {
@@ -1072,29 +1048,14 @@
     height: 32px;
     align-items: center;
     padding: 0 8px;
-    border-radius: 8px;
-    color: var(--text_default_primary);
-    font-size: 14px;
-    cursor: pointer;
     white-space: nowrap;
-  }
-
-  .webui-diff-review:hover,
-  .webui-diff-revert:hover,
-  .webui-diff-reapply:hover {
-    background: var(--bg_interaction_tertiary_hover);
   }
 
   .webui-diff-review {
     padding: 0 12px;
-    border: 1px solid var(--border_default);
-    background: transparent;
   }
 
   .webui-diff-review-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     padding: 8px 12px;
     border-top: 0.5px solid var(--border_default);
     color: var(--text_default_secondary);
@@ -1111,14 +1072,8 @@
 
   .webui-diff-revert,
   .webui-diff-reapply {
-    border: 0;
-    background: transparent;
-  }
-
-  .webui-diff-revert:disabled,
-  .webui-diff-reapply:disabled {
-    cursor: default;
-    opacity: 0.5;
+    min-width: 0;
+    padding: 4px 8px;
   }
 
   /* A revert/reapply that did not apply. Deliberately a footnote on the live
@@ -1155,16 +1110,6 @@
 
   .webui-diff-error-dismiss {
     flex: none;
-    height: 24px;
-    padding: 0 8px;
-    border: 0.5px solid var(--border_default);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text_default_secondary);
-  }
-
-  .webui-diff-error-dismiss:hover {
-    background: var(--bg_interaction_tertiary_hover);
   }
 
   /* ===== Message actions, goal banner, and questionnaire states ===== */
@@ -1252,10 +1197,7 @@
     border-left: 1px solid var(--border_default);
   }
 
-  .webui-user-inline-editor, .webui-message-dialog-surface {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  .webui-user-inline-editor {
     padding: 16px;
     border: 1px solid var(--border_default);
     border-radius: 16px;
@@ -1263,125 +1205,13 @@
     color: var(--text_default_primary);
   }
 
-  .webui-message-dialog input {
-    width: 100%;
-    min-height: 36px;
-    padding: 8px 10px;
-    border: 1px solid var(--border_default);
-    border-radius: 8px;
-    background: var(--bg_default_primary);
-    color: var(--text_default_primary);
-    font: inherit;
-    resize: vertical;
-  }
+  .webui-user-inline-editor-control { width: 100%; min-height: 80px; resize: vertical; }
 
-  .webui-user-inline-editor textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: 12px;
-    border: 1px solid var(--border_default);
-    border-radius: 12px;
-    background: var(--bg_default_primary);
-    color: var(--text_default_primary);
-    font: inherit;
-    line-height: 24px;
-    resize: vertical;
-    transition: border-color 120ms ease, box-shadow 120ms ease;
-  }
-
-  .webui-user-inline-editor textarea:focus-visible {
-    border-color: var(--border_accent);
-    outline: 2px solid var(--border_accent);
-    outline-offset: 1px;
-  }
-
-  .webui-inline-editor-actions, .webui-message-dialog-actions {
+  .webui-inline-editor-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-  }
-
-  .webui-inline-editor-actions button,
-  .webui-message-dialog-actions button {
-    display: inline-flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px;
-    border: 1px solid var(--border_default);
-    border-radius: var(--radius_8);
-    background: var(--bg_default_primary);
-    color: var(--text_default_secondary);
-    font: inherit;
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
-    cursor: pointer;
-    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-  }
-
-  .webui-inline-editor-actions button:hover:not(:disabled),
-  .webui-message-dialog-actions button:hover:not(:disabled) {
-    border-color: var(--border_heavy);
-    background: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_primary);
-  }
-
-  .webui-inline-editor-actions button:last-child,
-  .webui-message-dialog-actions button:last-child {
-    border-color: transparent;
-    background: var(--bg_interaction_primary_default);
-    color: var(--text_default_inverted);
-    font-weight: var(--weight_medium);
-  }
-
-  .webui-inline-editor-actions button:last-child:hover:not(:disabled),
-  .webui-message-dialog-actions button:last-child:hover:not(:disabled) {
-    border-color: transparent;
-    background: var(--bg_interaction_primary_hover);
-    color: var(--text_default_inverted);
-  }
-
-  .webui-message-dialog-actions button[data-action-variant="danger"] {
-    background: var(--bg_interaction_danger_primary_default);
-    color: var(--text_label_danger_primary_default);
-  }
-
-  .webui-message-dialog-actions button[data-action-variant="danger"]:hover:not(:disabled) {
-    background: var(--bg_interaction_danger_primary_hover);
-    color: var(--text_label_danger_primary_hover);
-  }
-
-  .webui-inline-editor-actions button:focus-visible,
-  .webui-message-dialog-actions button:focus-visible {
-    outline: 2px solid var(--border_accent);
-    outline-offset: 2px;
-  }
-
-  .webui-inline-editor-actions button:disabled,
-  .webui-message-dialog-actions button:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  .webui-message-dialog {
-    position: fixed;
-    inset: 0;
-    z-index: 1400;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: var(--utility_overlay);
-  }
-
-  .webui-message-dialog-surface {
-    width: min(520px, 100%);
-    max-height: min(640px, 90vh);
-    overflow: auto;
-    border: 0;
-    border-radius: var(--radius_24);
-    background: var(--bg_default_primary);
-    box-shadow: 0 8px 32px rgb(0 0 0 / 12%);
   }
 
   .webui-rewind-file-row {

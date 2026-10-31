@@ -19,6 +19,7 @@ import type { WebuiClientMessagePage } from "../contracts/message-view.js";
 import type { WebuiTranscriptItem } from "../contracts/transcript-view.js";
 import type { WebuiTranscriptCommands } from "../contracts/session-read-port.js";
 import type { WebuiQuestionnaireRequest } from "../../../../shared/contracts/interactions.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 import type { WebuiTurnDiffView } from "../../../../shared/contracts/session.js";
 import type { WebuiQuestionnaireResponseSummary } from "../contracts/transcript-view.js";
@@ -317,8 +318,9 @@ export function WebuiSessionTranscript({
       className="message-container-viewport scrollbar-hide webui-session-transcript-scroll relative flex w-full flex-col"
       data-webui-session-transcript-scroll="true"
     >
-      <div
-        className="message-list flex w-full flex-col gap-spacing_8"
+      <WebuiStack
+        gap="small"
+        className="message-list w-full"
         data-webui-message-list="true"
       >
         {error ? (
@@ -334,7 +336,7 @@ export function WebuiSessionTranscript({
           </p>
         ) : null}
         {loadOlder ? (
-          <div className="flex w-full justify-center py-1">
+          <WebuiInline align="stretch" justify="center" className="w-full py-1">
             <WebuiButton variant="grouped" size="pill" onClick={loadOlder}
               disabled={loading}
               className="text-size_14 leading-line_height_20"
@@ -343,7 +345,7 @@ export function WebuiSessionTranscript({
               <IconChevronUp aria-hidden="true" className="size-4 flex-none" size={16} stroke={1.7} />
               <span>{loading ? "正在加载…" : "加载更早消息"}</span>
             </WebuiButton>
-          </div>
+          </WebuiInline>
         ) : null}
         {groups.flatMap((group) => {
           const userItem = group.items.find(
@@ -550,7 +552,7 @@ export function WebuiSessionTranscript({
             <ActivityIndicator showLabel labelOverride="思考中…" />
           </div>
         ) : null}
-      </div>
+      </WebuiStack>
       <TurnNavigator
         turns={turns}
         preview={navigatorPreview}

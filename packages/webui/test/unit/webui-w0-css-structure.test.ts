@@ -355,22 +355,6 @@ describe("W0 · the memory manager's header controls", () => {
     expect(restFills).toEqual(["var(--bg_interaction_tertiary_default)"]);
   });
 
-  it("lines the controls up with the editor's right border", () => {
-    // `.webui-personalization-header` indents its children by 16px, while the
-    // editor is a *sibling* of that header and starts at the surface's own
-    // padding -- so the controls sat inboard of the text below them.
-    //
-    // Zeroing the header's right padding, not a negative margin. The header is a
-    // stretched flex item, so its box and padding do not resolve the way a
-    // block's would: `margin-right: -16px` still left the controls ~19px short
-    // of the border when measured off a capture.
-    const header = winning(
-      ".webui-memory-manager-surface .webui-personalization-header",
-    ).body;
-    expect(declaration(header, "padding-right")).toBe("0");
-    expect(declaration(header, "margin-right")).toBeUndefined();
-  });
-
   it("parks the character count inside the editor, 14px off both edges", () => {
     // 1:1 off the dialog -- the digits sit 14px left of the
     // border and 14px above it, inside the field.
@@ -482,18 +466,22 @@ describe("W0 · the memory manager's header controls", () => {
     // is global (`.mavis-textarea textarea{resize:none!important}`
     // beats even the inline `resize:vertical` one call site passes), so no
     // editor in this dialog can be dragged taller.
-    const shared = winning(".webui-personalization-textarea").body;
-    expect(declaration(shared, "resize")).toBe("none");
-    expect(declaration(shared, "border")).toBe("none");
-    expect(declaration(shared, "background")).toBe("var(--bg_grouped_tertiary)");
-    expect(declaration(shared, "border-radius")).toBe("var(--radius_16)");
+    // The shared document editor is the field contract's `.webui-control--document*`
+    // pair now: the dialog states the size, and the control owns the surface.
+    const shared = winning(".webui-control--document").body;
+    const sharedAppearance = winning(".webui-control--document-appearance").body;
+    expect(declaration(sharedAppearance, "border")).toBe("0");
+    expect(declaration(sharedAppearance, "background")).toBe("var(--bg_grouped_tertiary)");
+    expect(declaration(sharedAppearance, "border-radius")).toBe("var(--radius_16)");
     // The two settings-page editors are height-clamped, not free. Their style
     // object passes `minHeight: 144, maxHeight: 200`, and
     // `field-sizing: content` with `height: auto` is what makes those two
     // numbers the whole rule -- the field grows with its text and stops at
     // 200px. The dialog overrides both for its own 13-to-24-row range.
+    expect(declaration(shared, "resize")).toBe("none");
     expect(declaration(shared, "height")).toBe("auto");
     expect(declaration(shared, "field-sizing")).toBe("content");
+    expect(declaration(sharedAppearance, "font-size")).toBe("var(--size_12)");
     expect(declaration(shared, "min-height")).toBe("144px");
     expect(declaration(shared, "max-height")).toBe("200px");
   });
@@ -502,10 +490,15 @@ describe("W0 · the memory manager's header controls", () => {
     // The last row is `flex justify-between`: the timestamp on the
     // left, 取消/保存 on the right, 20px from the editor above and 16px between
     // the two buttons. There is no divider -- the gap is the divider.
-    const footer = winning(".webui-memory-manager-footer").body;
-    expect(declaration(footer, "gap")).toBe("var(--spacing_20)");
+    const footer = winning(".webui-dialog-footer.webui-memory-manager-footer").body;
+    expect(declaration(footer, "justify-content")).toBe("space-between");
+    // The divider and the padding are the shared shell's: the Desktop MCP
+    // editor's footer is 16px/24px/20px with a hairline top edge, and a surface
+    // that adds a footer-specific rule for either is re-deriving it.
     expect(declaration(footer, "border-top")).toBeUndefined();
-    expect(declaration(footer, "padding-top")).toBeUndefined();
+    expect(declaration(footer, "padding")).toBeUndefined();
+    const sharedFooter = winning(".webui-dialog-footer").body;
+    expect(declaration(sharedFooter, "padding")).toBe("var(--spacing_16) var(--spacing_24) var(--spacing_20)");
 
     const actions = winning(".webui-memory-manager-actions").body;
     expect(declaration(actions, "gap")).toBe("var(--spacing_16)");
@@ -540,6 +533,9 @@ describe("W0 · stylesheet composition", () => {
       // The shared dropdown surface: the look, the motion and the shape every
       // floating popup in the client shares.
       "./dropdown.css",
+      // The shared modal shell: the scrim, the surface, its header, body and
+      // footer, and the action slot's geometry.
+      "./dialog.css",
       "../features/plugins/ui/plugins.css",
       // The shared button contract: the base, the sizes and the variants.
       "./button.css",
@@ -631,8 +627,13 @@ describe("W0 · structural declarations W5 must preserve", () => {
     expect(declaration(progressPanel.body, "min-height")).toBe("0");
     const workspaceSectionTitle = winning(".webui-workspace-section-title");
     expect(declaration(workspaceSectionTitle.body, "padding")).toBe("0 var(--spacing_6)");
-    expect(declaration(workspaceSectionTitle.body, "font-size")).toBe("var(--size_14)");
-    expect(declaration(workspaceSectionTitle.body, "line-height")).toBe("20px");
+    // The disclosure is a shared header-size button now, so the label's type is
+    // the button contract's and the feature rule keeps only the row's
+    // arrangement. Asserting a font here would pin a value no rule declares.
+    expect(declaration(workspaceSectionTitle.body, "font-size")).toBeUndefined();
+    const headerButton = winning(".webui-mavis-button-header").body;
+    expect(declaration(headerButton, "font-size")).toBe("13px");
+    expect(declaration(headerButton, "line-height")).toBe("18.57px");
     expect(declaration(winning(".webui-progress-overview-main").body, "flex")).toBe("0 1 auto");
     const progressCard = winning(".webui-progress-overview-card");
     expect(declaration(progressCard.body, "height")).toBe("auto");
@@ -1154,7 +1155,13 @@ describe("W0 · stacking order", () => {
       // 4 is gone: it was the workspace panel's add-menu anchor, and the add
       // menu became the launcher's tiles. The launcher is a tab's content
       // rather than an overlay, so it needs no layer of its own.
-      1, 2, 3, 5, 20, 40, 45, 50, 60, 70, 80, 90, 100, 110, 111, 120, 121, 130, 140, 1400,
+      //
+      // The band above 100 is the shared dialog shell's now. The provider
+      // dialog's own 110 backdrop, the memory confirmation's 140 mask and the
+      // portalled 1400 message dialog are all `WebuiDialog` instances, so each
+      // one registers at the shell's 100 mask and 111 surface instead of
+      // declaring a layer of its own.
+      1, 2, 3, 5, 20, 40, 45, 50, 60, 70, 80, 90, 100, 111, 120, 121, 130,
     ]);
   });
 });

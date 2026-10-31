@@ -216,6 +216,31 @@ contract.
   outside the primitive with the reason recorded.
 - **Each adopted control publishes its contract here**: what the primitive owns, what a caller
   states, and which differences are named variants.
+- **Modal dialogs use the `WebuiDialog` shell.** The Desktop MCP reference sets a 640 CSS px
+  standard width, 85vh maximum height, 16px surface radius, independently scrolling body, fixed
+  title row and footer. The scrim is the `--webui-modal-scrim` token: the Desktop Ant theme binds
+  `colorBgMask` to its `utility_overlay` token, which the 3.1.3 bundle defines as `#00000040` in the
+  light palette and `#0000003d` in the dark one, so the token is black at 25% and 23.9% respectively.
+  The frame keeps `100vw - 32px` and `85vh` at every viewport; only the inner padding steps down
+  below the narrow breakpoint. Every remaining value below was read from the **running** 3.1.3 app
+  (`getComputedStyle` on the live MCP editor, 1528×599 CSS px at DPR 1.25): surface shadow
+  `0 6px 16px 0 rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%)`;
+  title 20px/28px at weight 600; close control 32×32 at an 18px inset with an 8px radius; footer
+  padding 16px 24px 20px; footer actions 37px tall, radius 8px, 24px side padding, 14px on a 21px
+  line at weight 500, with no minimum width; modal field labels 14px/21px at weight 500 in the
+  secondary text colour; modal controls 36px tall, radius 8px, 12px side padding, 14px on a 21px
+  line. Compact and wide widths are named variants. The shell owns portal placement, coordinator
+  registration, inert background, focus containment and return, and the common Cancel/primary action
+  row; feature callers own form data, validation, business layout and commands. Modal field density
+  is scoped to the shell, so a page-level form keeps the field contract's own scale. Popovers and
+  menus stay non-modal. The app-wide Settings host keeps its page-like full-viewport layout as a
+  documented exception.
+- **Repeated generic grouping uses `WebuiInline` and `WebuiStack`.** They own direction, alignment,
+  main-axis distribution (start/center/end/between), inline formatting and named spacing steps
+  (`hairline`, `micro`, `tight`, `compact`, `small`, `medium`, `roomy`, `large`). `compact` maps to the shared 6px spacing token. Alignment also includes `baseline` for text-centered inline groups. Callers keep content-specific width, clipping,
+  padding, responsive geometry and semantic elements. `WebuiInline` supports `div`/`label`/`main`/`span`/`ul`;
+  `WebuiStack` supports `div`/`li`/`section`/`ul`/`ol`.
+  Unique arrangements stay local instead of being forced into a generic wrapper.
 - **A control is adopted by rendering its component, never by spelling its classes.** A class name
   carries no variant, no size default, no `type="button"` and no required accessible name, and it lets
   a caller re-derive the recipe the contract owns. `client/ui/` owns the class strings; a caller
@@ -257,13 +282,29 @@ applicable states and their appearance; the caller owns layout, meaning and life
 
 ### The button contract
 
-`WebuiButton` renders a `<button>`; `WebuiIconButton` renders an icon-only button and takes the
+`WebuiButton` renders a `<button>`; its optional `contentGap` names the spacing between child content
+such as an icon and a label. `WebuiIconButton` renders an icon-only button and takes the
 accessible name as its `label`; `WebuiButtonLink` renders an `<a>` that looks like a button, for the
 callers that navigate rather than act.
 
 A **variant** is a whole appearance: the fill, the border, the label colour and the states that belong
 to that appearance. A **size** is the geometry. They compose, and the size states no width — a
 caller's layout decides how wide the control may be.
+
+The shared button also owns its content row: inline-flex rendering, centered cross-axis alignment, a
+centered default content position and the standard 8px icon/label gap. `selectable-row` starts its
+content at the leading edge; a control with a different internal arrangement must use an explicit,
+documented variant rule. Callers may still set the button's outer width, margin and placement, but do
+not repeat the shared content-row declarations in feature CSS.
+
+Inside a `WebuiDialog` footer, the shared dialog action slot owns action geometry, measured on the
+running Desktop 3.1.3 app: 37px height, a 14px label on a 21px line at weight 500, an 8px radius,
+24px horizontal padding and 8px spacing, with no minimum width — the width follows the label, which
+is how Desktop's `取消` lands on 76px. A caller that needs a shorter action row states its own
+padding at the narrow breakpoint rather than re-skinning the control. The screenshot's disabled
+primary keeps the shared disabled state; its disabled fill is `rgb(173,173,173)` with a white label
+and `cursor: not-allowed` — the running 3.1.3 app's own values, taken from
+`--bg_interaction_primary_inactive` — and it does not define the enabled primary color.
 
 | Variant | Appearance | Paired size |
 | --- | --- | --- |
@@ -291,18 +332,28 @@ strings that named them are gone.
 The inline sizes state no height: their callers sized the control by its label, its padding and its
 border, and a stated height would squeeze the ringed ones by the two pixels their border takes.
 
+`WebuiIconButton` publishes the sizes an icon-only control needs: `regular` (26px), `compact`
+(24px), `micro` (16px, for a glyph inside a 24px chip or a 32px row), `rail` (30px) and `panel`
+(36px). A caller that resizes one of these with `size-4`-style utilities is re-deriving geometry the
+contract owns; if no published size fits, the size is the contract's to add.
+
 ### The other contracts
 
 - **The menu row** — `WebuiMenuItem` and `WebuiMenuSeparator` own a `role="menuitem"` row's label, its
   icon slot, its trailing slot and its disabled state.
 - **The field** — `WebuiField` owns the label, the description, the validation error and the wiring
   between them: the control is named by `for`, described by `aria-describedby` and marked invalid by
-  `aria-invalid`. `WebuiFormLayout` and `WebuiFormActions` own the arrangement of a form.
+  `aria-invalid`. `WebuiTextInput`, `WebuiTextarea`, `WebuiSelect`, `WebuiCheckbox`, `WebuiRadio` and
+  `WebuiFileInput` own the common native control markup, appearance, focus, hidden-picker geometry
+  and disabled states. `WebuiSearchField` owns the labelled icon/input composition and focus-within
+  treatment shared by search surfaces. `WebuiFormLayout` and `WebuiFormActions` own the arrangement of a form.
+  Feature code keeps submission, validation rules and business state.
 - **The feedback family** — `FeedbackEmpty`, `FeedbackError`, `FeedbackSkeleton`, `FeedbackProgress`,
   `FeedbackBusy`, `FeedbackAnnouncement` and `FeedbackLiveRegion` own the announcement. The family is
   the only place in the client that authors `role="alert"`, `role="status"`, `role="progressbar"` or
   `aria-live`; a surface whose state *is* the thing being announced uses `FeedbackLiveRegion`, and a
-  message with no visual form uses `FeedbackAnnouncement`.
+  message with no visual form uses `FeedbackAnnouncement`. `FeedbackError` provides a named inline
+  layout for an error message with a retry action; callers do not add flex utilities to recreate it.
 
 ## The eight families
 

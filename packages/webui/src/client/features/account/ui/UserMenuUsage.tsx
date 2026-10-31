@@ -13,6 +13,7 @@ import type {
 } from "../../../../shared/contracts/usage-quota.js";
 import { formatUsageResetLabel } from "../projection/usage.public.js";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 
 export interface UsageState {
   readonly status: "idle" | "loading" | "ready" | "error";
@@ -23,24 +24,25 @@ export interface UsageState {
 function UsageSkeleton({ animated }: { readonly animated?: boolean }): ReactElement {
   const bars = () => (
     <>
-      <div className="webui-user-menu-usage-skeleton-line">
+      <WebuiInline gap="small" className="webui-user-menu-usage-skeleton-line" justify="between">
         <span className="webui-user-menu-usage-skeleton-bar webui-user-menu-usage-skeleton-bar--a" />
         <span className="webui-user-menu-usage-skeleton-bar webui-user-menu-usage-skeleton-bar--b" />
-      </div>
-      <div className="webui-user-menu-usage-skeleton-line">
+      </WebuiInline>
+      <WebuiInline gap="small" className="webui-user-menu-usage-skeleton-line" justify="between">
         <span className="webui-user-menu-usage-skeleton-bar webui-user-menu-usage-skeleton-bar--c" />
         <span className="webui-user-menu-usage-skeleton-bar webui-user-menu-usage-skeleton-bar--d" />
-      </div>
+      </WebuiInline>
     </>
   );
   return (
-    <div
+    <WebuiStack
+      gap="small"
       className={`webui-user-menu-usage-skeleton${animated ? " is-animated" : ""}`}
       data-testid={animated ? "usage-popover-loading" : "usage-popover-pending"}
     >
-      <div className="webui-user-menu-usage-skeleton-row">{bars()}</div>
-      <div className="webui-user-menu-usage-skeleton-row">{bars()}</div>
-    </div>
+      <WebuiStack gap="small" className="webui-user-menu-usage-skeleton-row">{bars()}</WebuiStack>
+      <WebuiStack gap="small" className="webui-user-menu-usage-skeleton-row">{bars()}</WebuiStack>
+    </WebuiStack>
   );
 }
 
@@ -54,18 +56,18 @@ interface QuotaRowProps {
 
 function QuotaRow(props: QuotaRowProps): ReactElement {
   return (
-    <div className={`webui-user-menu-quota-row webui-user-menu-quota-row--${props.position}`}>
-      <div className="webui-user-menu-quota-line">
+    <WebuiStack gap="tight" className={`webui-user-menu-quota-row webui-user-menu-quota-row--${props.position}`}>
+      <WebuiInline gap="small" className="webui-user-menu-quota-line" justify="between">
         <span className="webui-user-menu-quota-label">{props.label}</span>
         <span className="webui-user-menu-quota-value">{props.valueLabel}</span>
-      </div>
+      </WebuiInline>
       {props.resetLabel || props.totalLabel ? (
-        <div className="webui-user-menu-quota-line webui-user-menu-quota-meta">
+        <WebuiInline gap="small" className="webui-user-menu-quota-line webui-user-menu-quota-meta" justify="between">
           <span>{props.resetLabel ?? ""}</span>
           <span>{props.totalLabel ?? ""}</span>
-        </div>
+        </WebuiInline>
       ) : null}
-    </div>
+    </WebuiStack>
   );
 }
 
@@ -151,16 +153,16 @@ function UsageReady({
           : "middle";
   const showPlanRow = result.hasTokenPlan === false;
   return (
-    <div className="webui-user-menu-usage-content" data-testid="usage-popover-content">
+    <WebuiStack className="webui-user-menu-usage-content" data-testid="usage-popover-content">
       {showPlanRow ? (
-        <div className="webui-user-menu-quota-rows">
-          <div className="webui-user-menu-quota-line">
+        <WebuiStack gap="small" className="webui-user-menu-quota-rows">
+          <WebuiInline gap="small" className="webui-user-menu-quota-line" justify="between">
             <span className="webui-user-menu-quota-label">Token Plan</span>
             <span className="webui-user-menu-quota-value webui-user-menu-quota-value--tertiary">未订阅</span>
-          </div>
-        </div>
+          </WebuiInline>
+        </WebuiStack>
       ) : rows.length > 0 ? (
-        <div className="webui-user-menu-quota-rows">
+        <WebuiStack gap="small" className="webui-user-menu-quota-rows">
           {rows.map((row, index) => (
             <QuotaRow
               key={row.label}
@@ -171,14 +173,14 @@ function UsageReady({
               position={position(index)}
             />
           ))}
-        </div>
+        </WebuiStack>
       ) : null}
       {showPlanRow || rows.length > 0 ? <div className="webui-user-menu-usage-hairline" /> : null}
       <div className="webui-user-menu-credits-row">
         <span>积分</span>
         <span>{formatWebuiCredits(result.creditBalance)}</span>
       </div>
-    </div>
+    </WebuiStack>
   );
 }
 
@@ -201,16 +203,16 @@ export function UsagePanel({
       {state.status === "loading" ? <UsageSkeleton animated /> : null}
       {state.status === "idle" ? <UsageSkeleton /> : null}
       {state.status === "error" ? (
-        <div className="webui-user-menu-usage-error" data-testid="usage-popover-error">
+        <WebuiStack gap="micro" className="webui-user-menu-usage-error" data-testid="usage-popover-error">
           <span className="webui-user-menu-usage-error-title">
             {state.errorMessage && AUTH_ERROR_PATTERN.test(state.errorMessage)
               ? "请重新登录"
               : "加载失败"}
           </span>
-          <button type="button" className="webui-user-menu-usage-retry" onClick={onRetry}>
+          <WebuiButton variant="quiet-highlight" size="content" className="webui-user-menu-usage-retry" onClick={onRetry}>
             重试
-          </button>
-        </div>
+          </WebuiButton>
+        </WebuiStack>
       ) : null}
       {state.status === "ready" ? <UsageReady result={state.result} onLogin={onLogin} /> : null}
     </div>

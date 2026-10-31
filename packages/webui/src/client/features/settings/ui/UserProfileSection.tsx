@@ -14,6 +14,8 @@ import type {
   WebuiUserProfileView,
 } from "../../../../shared/contracts/personalization.js";
 import { SettingsSection } from "../../../ui/settings-layout.js";
+import { WebuiTextarea } from "../../../ui/field.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 import { PERSONALIZATION_SECTION_HINTS, SettingsButton, SettingsSavedNotice } from "./settings-atoms.js";
 import { FeedbackError } from "../../../ui/feedback.js";
 
@@ -220,10 +222,11 @@ export function UserProfileSection({
            next save. Rendering inputs for them produced two permanently empty
            boxes above the real field, which is what they showed: the user's
            own `user.md` has both labels with nothing after the colon. */}
-        <textarea
+        <WebuiTextarea
           aria-label="更多关于你"
           data-testid="user-profile-more-about"
-          className="webui-personalization-textarea"
+          controlSize="document"
+          appearance="document"
           value={draft?.moreAbout ?? ""}
           spellCheck={false}
           placeholder={PROFILE_PLACEHOLDER}
@@ -231,7 +234,7 @@ export function UserProfileSection({
           onChange={(event) => update("moreAbout", event.target.value)}
         />
       </div>
-      <div className="webui-personalization-meta">
+      <WebuiInline gap="medium" justify="between" className="webui-personalization-meta">
         <span data-testid="user-profile-path">{filePath}</span>
         <span
           data-testid="user-profile-size"
@@ -239,7 +242,7 @@ export function UserProfileSection({
         >
           {length} / {maxChars} 字符
         </span>
-      </div>
+      </WebuiInline>
       {overLimit ? (
         <FeedbackError message="超过 {maxChars} 字符后，超出部分不会注入提示，请精简后再保存。" className="webui-settings-error" testId="user-profile-over-limit" />
       ) : null}

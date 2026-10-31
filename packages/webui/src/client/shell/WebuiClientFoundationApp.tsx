@@ -24,6 +24,7 @@ import { readWebuiMemoryHandoffPrompt, type MemoryHandoff } from "../features/se
 import { WebuiWorkspacePanel } from "../features/workspace/ui/WorkspacePanels.js";
 import { webuiRailIsDrawer, WEBUI_PROGRESS_PANEL_NARROW_QUERY } from "../ui/layout-thresholds.js";
 import { useOverlayLayer } from "../ui/overlay-coordinator.js";
+import { WebuiIconButton } from "../ui/button.js";
 import { WebuiProgressOverviewPanel } from "../features/workspace/ui/WorkspaceProgressPanel.js";
 import {
   getWorkspacePanelSessionState,
@@ -1145,31 +1146,29 @@ export function WebuiClientFoundationApp(
               progressPanelAvailable={progressPanelFits}
               workspacePanelOpen={workspacePanel.open}
               headerTools={<>
-                <button
-                  type="button"
+                <WebuiIconButton
+                  tone="bare"
+                  size="panel"
                   data-webui-sidebar-toggle="true"
-                  aria-label={railExpanded ? "收起导航栏" : "展开导航栏"}
+                  label={railExpanded ? "收起导航栏" : "展开导航栏"}
                   aria-expanded={railExpanded}
                   onClick={toggleRail}
-                  className="flex size-8 items-center justify-center rounded-[8px] text-text_default_tertiary hover:bg-bg_interaction_tertiary_hover"
+                  className="flex size-8 items-center justify-center"
                 >
                   <WebuiIconSidebarToggle />
-                </button>
-                <button
-                  type="button"
+                </WebuiIconButton>
+                <WebuiIconButton
+                  tone="bare"
+                  size="compact"
+                  label="搜索"
                   data-webui-search="true"
                   aria-expanded={railSearchOpen}
                   aria-controls="webui-rail-search"
-                  aria-label="搜索"
                   onClick={() => (railSearchOpen ? closeRailSearch() : openRailSearch())}
-                  className={`flex size-[30px] items-center justify-center rounded-lg text-text_default_tertiary ${
-                    railSearchOpen
-                      ? "bg-bg_interaction_tertiary_hover text-text_default_secondary"
-                      : "hover:bg-bg_interaction_tertiary_hover"
-                  }`}
+                  className={`flex size-[30px] items-center justify-center rounded-lg ${railSearchOpen ? "bg-bg_interaction_tertiary_hover text-text_default_secondary" : ""}`}
                 >
                   <WebuiIconSearch />
-                </button>
+                </WebuiIconButton>
               </>}
               onOpenBrowser={() => {
                 setProgressPanelOpen(false);

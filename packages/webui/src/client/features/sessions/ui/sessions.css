@@ -204,16 +204,10 @@
   .webui-project-section-toggle {
     display: flex;
     width: 100%;
-    height: 36px;
     align-items: center;
     gap: var(--spacing_8);
-    border: 0;
-    border-radius: var(--radius_8);
-    background: transparent;
     padding: 0 var(--spacing_8);
     text-align: left;
-    font-size: var(--size_14);
-    line-height: var(--line_height_20);
   }
   .webui-project-section-toggle > svg {
     width: 16px;
@@ -230,10 +224,6 @@
     border-top: 1px solid var(--border_light);
     padding-top: var(--spacing_8);
   }
-  .webui-project-section-toggle:focus-visible {
-    color: var(--text_default_primary);
-  }
-  .webui-project-section-toggle:focus-visible,
   .webui-pinned-session-card:focus-visible {
     outline: 2px solid var(--border_accent);
     outline-offset: 1px;
@@ -255,25 +245,14 @@
     display: flex;
     min-width: 0;
     flex: 1;
-    height: 36px;
     align-items: center;
     gap: var(--spacing_12);
-    border-radius: var(--radius_8);
     padding: 0 68px 0 var(--spacing_8);
-    transition: background-color 120ms ease, color 120ms ease;
   }
   .webui-project-folder-icon {
     width: 18px;
     height: 18px;
     flex: 0 0 18px;
-    color: var(--text_default_primary);
-  }
-  .webui-project-card:hover {
-    background-color: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_primary);
-  }
-  .webui-project-row:hover .webui-project-card {
-    background-color: var(--bg_interaction_tertiary_hover);
     color: var(--text_default_primary);
   }
   .webui-project-row-actions,
@@ -308,51 +287,15 @@
   .webui-project-child-session-row:has(:focus-visible) .webui-rail-spinner {
     visibility: hidden;
   }
-  .webui-rail-action {
-    display: flex;
-    width: 30px;
-    height: 30px;
-    flex: 0 0 30px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: var(--radius_4);
-    background: transparent;
-    color: var(--icon_default_tertiary);
-    transition: color 120ms ease;
-  }
-  .webui-rail-action > svg { width: 16px; height: 16px; }
-  .webui-rail-action:hover,
-  .webui-rail-action:focus-visible {
-    background: transparent;
-    color: var(--icon_default_secondary);
-  }
-
   .webui-project-session-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
     padding: 1px 0 var(--spacing_4) 2px;
   }
   .webui-project-session-more {
     display: flex;
     width: 100%;
-    height: 30px;
     align-items: center;
-    border: 0;
-    border-radius: var(--radius_8);
-    background: transparent;
     padding: 0 10px 0 32px;
     text-align: left;
-    font-size: var(--size_14);
-    line-height: 20px;
-    transition: background-color 120ms ease, color 120ms ease;
-  }
-  .webui-project-session-more:hover,
-  .webui-project-session-more:focus-visible {
-    background-color: var(--bg_interaction_tertiary_hover);
-    color: var(--text_default_secondary);
-    outline: none;
   }
   .webui-session-leading-marker {
     display: flex;
@@ -375,14 +318,6 @@
     flex: 0 0 18px;
     align-items: center;
     justify-content: center;
-    border: 0;
-    border-radius: var(--radius_4);
-    background: transparent;
-    color: var(--icon_default_tertiary);
-  }
-  .webui-session-disclosure:hover,
-  .webui-session-disclosure:focus-visible {
-    color: var(--icon_default_secondary);
   }
   .webui-session-disclosure svg {
     transition: transform 160ms ease;
@@ -428,9 +363,6 @@
    * makes the parent/child relationship visible without changing the data
    * projection. */
   .webui-project-child-session-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     padding-top: 1px;
   }
   .webui-project-child-session-card {

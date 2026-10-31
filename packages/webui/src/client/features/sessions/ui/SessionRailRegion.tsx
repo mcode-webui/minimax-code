@@ -2,6 +2,9 @@ import type { ChangeEvent, ComponentProps, ReactElement, ReactNode, RefObject } 
 import { WebuiProjectList } from "./SessionRail.js";
 import { RailRow } from "./RailRow.js";
 import { WebuiIconBrand, WebuiIconContextExport, WebuiIconNewTask, WebuiIconPlugins, WebuiIconRemote, WebuiIconSchedule, WebuiIconSessionImport, WebuiIconSites } from "../../../shell/icons.js";
+import { WebuiFileInput, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 type ProjectListProps = ComponentProps<typeof WebuiProjectList>;
 
@@ -47,8 +50,9 @@ export function SessionRailRegion(props: {
         <div data-webui-rail-brand="true">
           <div className="webui-rail-primary-action flex-shrink-0 px-4 pb-2" data-webui-rail-fixed-row="true">
             <img className="webui-brand-create-mascot" src="/assets/img/minimax-octopus-rail.png" alt="" aria-hidden="true" />
-            <button
-              type="button"
+            <WebuiButton
+              variant="plain"
+              size="regular"
               aria-label="新建任务 MiniMax Code 新建"
               title="新建任务"
               onClick={() => props.startNewTask()}
@@ -64,22 +68,24 @@ export function SessionRailRegion(props: {
                 <WebuiIconNewTask />
                 <span>新建</span>
               </span>
-            </button>
+            </WebuiButton>
           </div>
         </div>
         {props.searchOpen ? <div className="flex-shrink-0 px-4 pb-px pt-1" data-webui-rail-fixed-row="true">
-          <input
+          <WebuiTextInput
+            appearance="boxed"
+            controlSize="dense"
+            className="w-full"
             id="webui-rail-search" ref={props.searchInputRef} type="text" role="searchbox"
             data-webui-rail-search-input="true" aria-label="搜索会话" placeholder="搜索会话"
             value={props.searchQuery} onChange={(event) => props.setSearchQuery(event.target.value)}
             onKeyDown={(event) => { if (event.key !== "Escape") return; event.preventDefault(); props.closeSearch(); }}
-            className="w-full rounded-[8px] border border-border_default bg-bg_default_primary px-2 py-1 text-sm text-text_default_primary outline-none placeholder:text-text_default_tertiary focus:border-border_accent"
           />
         </div> : null}
         <div className="relative min-h-0 flex-1">
           <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
-            <div className="space-y-px pb-3">
-              <input ref={props.importInputRef} type="file" accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" className="webui-composer-hidden-file-input" onChange={props.onImportPicked} />
+            <WebuiStack gap="hairline" className="pb-3">
+              <WebuiFileInput ref={props.importInputRef} accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" onChange={props.onImportPicked} />
               <div className="webui-rail-command-group">
                 <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
               </div>
@@ -90,7 +96,7 @@ export function SessionRailRegion(props: {
                 <RailRow label="网站" icon={<WebuiIconSites />} inert />
                 <RailRow label="远程" icon={<WebuiIconRemote />} active={props.remoteOpen} onSelect={props.openRemote} />
               </div>
-            </div>
+            </WebuiStack>
             <WebuiProjectList {...props.projectList} />
             {props.searchQuery.trim() && !props.hasSearchResults ? <p data-webui-rail-search-empty="true" className="px-2 py-3 text-sm text-text_default_tertiary">没有匹配的会话</p> : null}
           </div>

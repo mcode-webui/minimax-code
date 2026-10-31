@@ -289,8 +289,10 @@ describe("plugin marketplace data paths", () => {
     expect(managingHeader).toContain(
       'onClick={() => selectMarketCatalog("skills")}',
     );
-    // The 管理 entry is what actually opens the installed view.
-    expect(managingHeader).toMatch(/>\s*管理\s*<\/button>/);
+    // The 管理 entry is what actually opens the installed view. It renders the
+    // shared button, so the stable hook is its test id rather than a literal
+    // `>管理</button>` string.
+    expect(managingHeader).toContain('data-testid="plugin-manage-trigger"');
     expect(managingHeader).toContain("setManagementOpen(true)");
     expect(managingHeader).toContain('setView("personal")');
   });

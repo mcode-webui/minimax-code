@@ -31,7 +31,12 @@ const DISPOSITIONS = new Set(["managed", "borrows-role", "exception", "pending"]
 /** The floating layers a source file produces. */
 export function scanSource(text) {
   const dropdowns = (text.match(/<WebuiDropdown\b/gu) ?? []).length;
-  const dialogs = (text.match(/role="dialog"/gu) ?? []).length;
+  const sharedDialogs = (text.match(/<WebuiDialog\b/gu) ?? []).length;
+  const dialogRegistrations = (text.match(/useDialogLayer\(/gu) ?? []).length;
+  const dialogs =
+    (text.match(/role="dialog"/gu) ?? []).length +
+    (text.match(/data-webui-dialog-shell/gu) ?? []).length +
+    sharedDialogs;
   // A layer registers either through the dropdown's `managed` prop or by calling
   // the hook directly; both are the same fact.
   //
@@ -41,8 +46,9 @@ export function scanSource(text) {
   // surface unmanaged — or, worse, call a surface that registers nothing managed.
   const managed =
     (text.match(/(^|[\s{])managed(\s*[=:,]|\s|\/|>)/gmu) ?? []).length +
+    sharedDialogs +
     (text.match(/useOverlayLayer\(/gu) ?? []).length +
-    (text.match(/useDialogLayer\(/gu) ?? []).length;
+    dialogRegistrations;
   return { dropdowns, dialogs, managed };
 }
 

@@ -24,6 +24,8 @@
 // the shell supplies them, so a tab's body is that business's published surface and the
 // switcher stays a switcher.
 import { useSyncExternalStore, type ReactElement, type ReactNode } from "react";
+import { WebuiRadio } from "../../../ui/field.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 import {
   WEBUI_REMOTE_TABS,
@@ -79,9 +81,11 @@ export function RemotePageView({
           {WEBUI_REMOTE_TABS.map((tab) => {
             const selected = tab.value === activeTab;
             return (
-              <label
+              <WebuiInline
+                as="label"
+                justify="center"
                 key={tab.value}
-                className={`flex h-7 cursor-pointer items-center justify-center rounded-[6px] px-3 text-[14px] leading-5 transition-colors ${
+                className={`h-7 cursor-pointer rounded-[6px] px-3 text-[14px] leading-5 transition-colors ${
                   selected
                     ? "bg-bg_grouped_secondary_elevated font-medium text-text_default_primary"
                     : "font-normal text-text_default_secondary hover:text-text_default_primary"
@@ -89,15 +93,14 @@ export function RemotePageView({
                 data-testid={`remote-page-tab-${tab.value}`}
                 data-selected={selected ? "true" : "false"}
               >
-                <input
-                  type="radio"
+                <WebuiRadio
                   name="webui-remote-page-tabs"
                   className="sr-only"
                   checked={selected}
                   onChange={() => onSelectTab(tab.value)}
                 />
                 <span title={tab.label}>{tab.label}</span>
-              </label>
+              </WebuiInline>
             );
           })}
         </div>

@@ -120,6 +120,7 @@ export const OVERLAY_LAYER_ATTRIBUTE = LAYER_ATTRIBUTE;
  */
 export function useDialogLayer(options: {
   readonly id: string;
+  readonly parentId?: string | null;
   readonly onClose?: () => void;
   readonly dismissible?: boolean;
   readonly order?: number;
@@ -133,7 +134,8 @@ export function useDialogLayer(options: {
   readonly active?: boolean;
 }): string {
   const { id, onClose, dismissible = true, order = 0, active = true } = options;
-  const parentId = useParentLayerId();
+  const inheritedParentId = useParentLayerId();
+  const parentId = options.parentId === undefined ? inheritedParentId : options.parentId;
   useOverlayLayer(
     {
       id,

@@ -7,13 +7,11 @@
 // dialog (`importPlugin` closes and clears only after `mutate` reports success).
 
 import type { ReactElement } from "react";
-import { createPortal } from "react-dom";
-
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { readWebuiPluginRow as read, type WebuiPluginRow as Row } from "../contracts/plugin-rows.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
-import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiField, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiDialog } from "../../../ui/dialog.js";
 import { FeedbackError, FeedbackLiveRegion } from "../../../ui/feedback.js";
 
 export interface PluginImportDialogProps {
@@ -29,42 +27,49 @@ export interface PluginImportDialogProps {
 }
 
 export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onPreview, onImport, onClose }: PluginImportDialogProps): ReactElement {
-  // A modal layer: one dismissal closes it, and nothing beneath it answers.
-  const layerId = useDialogLayer({ id: "plugin-import-dialog", onClose });
   const { dom } = useWebuiBrowserCapabilities();
   const portalTarget = dom.portalTarget();
-  const dialog = (
-    <div
-      className="webui-plugin-backdrop"
-      role="presentation"
-    >
-      <section
-        className="webui-plugin-dialog webui-plugin-import-dialog"
-        data-overlay-layer={layerId}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="plugin-import-title"
+  return (
+      <WebuiDialog
+        id="plugin-import-dialog"
+        title="从 Git 仓库导入插件"
+        description="输入 GitHub 插件仓库或子目录 URL"
+        onClose={onClose}
+        dismissOnEscape
+        width="standard"
+        portalTarget={portalTarget}
+        footer={
+          <>
+            <WebuiButton variant="secondary" size="dialog" onClick={onClose}>
+              取消
+            </WebuiButton>
+            {preview ? (
+              <WebuiButton
+                variant="primary"
+                size="dialog" disabled={busy || preview.canImport !== true}
+                onClick={onImport}
+              >
+                导入插件
+              </WebuiButton>
+            ) : (
+              <WebuiButton
+                variant="primary"
+                size="dialog" disabled={busy || !url.trim()}
+                onClick={onPreview}
+              >
+                预览
+              </WebuiButton>
+            )}
+          </>
+        }
       >
-        <header>
-          <div>
-            <h2 id="plugin-import-title">从 Git 仓库导入插件</h2>
-            <p>输入 GitHub 插件仓库或子目录 URL</p>
-          </div>
-          <button
-            onClick={() => onClose()}
-            aria-label="关闭"
-          >
-            ×
-          </button>
-        </header>
-        <div className="webui-plugin-form webui-plugin-import-body">
+        <div className="webui-plugin-import-body">
           <WebuiField
             className="wide"
             label="仓库 URL"
             control={(props) => (
-              <input
+              <WebuiTextInput
                 {...props}
-                className="w-full"
                 value={url}
                 onChange={(event) => {
                   onUrlChange(event.currentTarget.value);
@@ -125,30 +130,6 @@ export function PluginImportDialog({ url, onUrlChange, preview, error, busy, onP
         {error ? (
           <FeedbackError message=<>error</> className="webui-plugin-error" />
         ) : null}
-        <footer>
-          <WebuiButton variant="surface" size="dialog" onClick={() => onClose()}>
-            取消
-          </WebuiButton>
-          {preview ? (
-            <WebuiButton
-              variant="primary"
-              size="dialog" disabled={busy || preview.canImport !== true}
-              onClick={() => onImport()}
-            >
-              导入插件
-            </WebuiButton>
-          ) : (
-            <WebuiButton
-              variant="primary"
-              size="dialog" disabled={busy || !url.trim()}
-              onClick={() => onPreview()}
-            >
-              预览
-            </WebuiButton>
-          )}
-        </footer>
-      </section>
-    </div>
+      </WebuiDialog>
   );
-  return portalTarget ? createPortal(dialog, portalTarget) : dialog;
 }

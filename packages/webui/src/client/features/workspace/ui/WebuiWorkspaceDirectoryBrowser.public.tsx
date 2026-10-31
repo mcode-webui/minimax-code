@@ -10,7 +10,9 @@ import type { WebuiWorkspaceDirectoryListing } from "../../../../shared/contract
 import { looksLikeAbsoluteWorkspacePath } from "../../../projection/common/paths.js";
 import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { FeedbackError } from "../../../ui/feedback.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiField, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 import {
   useWebuiWorkspaceFiles,
   useWebuiWorkspaceQueriesState,
@@ -67,14 +69,15 @@ export function WebuiWorkspaceDirectoryBrowser({
 
   if (!queries?.canBrowseWorkspaceDirs)
     return (
-      <div className="flex flex-col gap-2" data-webui-workspace-manual="true">
+      <WebuiStack gap="small" data-webui-workspace-manual="true">
         <WebuiField
           className="webui-commit-dialog-label"
           label="项目绝对路径"
           control={(props) => (
-            <input
+            <WebuiTextInput
               {...props}
               className="w-full"
+              controlSize="compact"
               value={manualPath}
               autoFocus
               placeholder="/home/you/projects/my-project"
@@ -94,43 +97,47 @@ export function WebuiWorkspaceDirectoryBrowser({
           <FeedbackError message={error} className="webui-commit-dialog-error" />
         ) : null}
         <div className="webui-workspace-browser-actions">
-          <button
+          <WebuiButton
+            variant="outline"
+            size="compact"
             type="button"
-            className="webui-workspace-browser-action"
             onClick={onCancel}
           >
             取消
-          </button>
-          <button
+          </WebuiButton>
+          <WebuiButton
+            variant="accent"
+            size="compact"
             type="button"
-            className="webui-workspace-browser-action webui-workspace-browser-action--primary"
             onClick={submitManualPath}
           >
             使用此目录
-          </button>
+          </WebuiButton>
         </div>
-      </div>
+      </WebuiStack>
     );
 
   return (
-    <div className="flex flex-col gap-2" data-webui-workspace-browser="true">
-      <div className="flex items-center gap-2">
+    <WebuiStack gap="small" data-webui-workspace-browser="true">
+      <WebuiInline gap="small">
         {listing?.parent ? (
-          <button
+          <WebuiButton
+            variant="plain"
+            size="compact"
             type="button"
             className="webui-workspace-option webui-workspace-option--desktop"
             data-webui-workspace-action="up"
             onClick={() => browse(listing.parent)}
           >
             <span className="min-w-0 flex-1 truncate text-left">上一级</span>
-          </button>
+          </WebuiButton>
         ) : null}
         <span
           className="min-w-0 flex-1 truncate text-text_default_secondary text-size_12"
         >
           {listing?.dir ?? "正在读取目录…"}
         </span>
-      </div>
+      </WebuiInline>
       {error ? (
         <FeedbackError message={error} className="webui-commit-dialog-error" />
       ) : null}
@@ -138,7 +145,9 @@ export function WebuiWorkspaceDirectoryBrowser({
         <p className="webui-composer-menu-empty">正在读取目录…</p>
       ) : listing?.entries.length ? (
         listing.entries.map((entry) => (
-          <button
+          <WebuiButton
+            variant="plain"
+            size="regular"
             key={entry.path}
             type="button"
             className="webui-workspace-option webui-workspace-option--desktop"
@@ -149,7 +158,7 @@ export function WebuiWorkspaceDirectoryBrowser({
             <span className="min-w-0 flex-1 truncate text-left">
               {entry.name}
             </span>
-          </button>
+          </WebuiButton>
         ))
       ) : (
         <p className="webui-composer-menu-empty">此目录下没有子目录</p>
@@ -158,25 +167,27 @@ export function WebuiWorkspaceDirectoryBrowser({
         <p className="webui-composer-menu-empty">子目录过多，仅显示前若干项</p>
       ) : null}
       <div className="webui-workspace-browser-actions">
-        <button
+        <WebuiButton
+          variant="outline"
+          size="compact"
           type="button"
-          className="webui-workspace-browser-action"
           onClick={onCancel}
         >
           取消
-        </button>
-        <button
+        </WebuiButton>
+        <WebuiButton
+          variant="accent"
+          size="compact"
           type="button"
-          className="webui-workspace-browser-action webui-workspace-browser-action--primary"
           disabled={!listing}
           onClick={() => {
             if (listing) onSelect(listing.dir);
           }}
         >
           使用此目录
-        </button>
+        </WebuiButton>
       </div>
-    </div>
+    </WebuiStack>
   );
 }
 

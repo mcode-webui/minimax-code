@@ -15,6 +15,7 @@ import type {
   WebuiWorkspaceArchiveListing,
 } from "../../../../shared/contracts/workspace.js";
 import { archiveDestinationFor, formatArchiveSize } from "../projection/archive-projection.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export type WorkspaceArchiveViewProps = {
   /** Absolute workspace root; every archive path below is relative to it. */
@@ -85,7 +86,7 @@ export function WorkspaceArchiveListing({
         {`${archivePath}${prefix ? ` › ${prefix}` : ""}`}
       </p>
       {prefix
-        ? <button type="button" data-testid="workspace-archive-up" onClick={onGoUp}>返回上级</button>
+        ? <WebuiButton variant="quiet-secondary" size="inline" data-testid="workspace-archive-up" onClick={onGoUp}>返回上级</WebuiButton>
         : null}
       {truncated
         ? (
@@ -107,9 +108,9 @@ export function WorkspaceArchiveListing({
                 >
                   {entry.isDirectory
                     ? (
-                        <button type="button" data-testid="workspace-archive-directory" onClick={() => onEnterDirectory?.(entry.name)}>
+                        <WebuiButton variant="selectable-row" size="inline" data-testid="workspace-archive-directory" onClick={() => onEnterDirectory?.(entry.name)}>
                           {`${entry.name}（目录）`}
-                        </button>
+                        </WebuiButton>
                       )
                     : (
                         <>
@@ -150,14 +151,16 @@ function ArchiveExtractControls({
       <p data-testid="workspace-archive-destination">
         {destination ? `解压目标：${destination}` : "没有可用的解压目标。"}
       </p>
-      <button
+      <WebuiButton
+        variant="primary"
+        size="regular"
         type="button"
         data-testid="workspace-archive-extract"
         disabled={!destination || !onExtract || extractState.status === "running"}
         onClick={onExtract}
       >
         {extractState.status === "running" ? "正在解压…" : "解压当前目录"}
-      </button>
+      </WebuiButton>
       {extractState.status === "done"
         ? (
             <FeedbackLiveRegion testId="workspace-archive-extract-result">

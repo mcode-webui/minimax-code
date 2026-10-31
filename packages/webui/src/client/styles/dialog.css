@@ -1,0 +1,147 @@
+/* Shared modal contract: the Desktop MCP frame with an independently
+ * scrollable body and a footer that remains available at constrained heights. */
+@layer components {
+  .webui-dialog-mask {
+    position: fixed;
+    z-index: 100;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: var(--webui-modal-scrim);
+    animation: webui-overlay-enter 160ms ease-out both;
+  }
+
+  .webui-dialog-surface {
+    position: relative;
+    display: flex;
+    width: min(640px, calc(100vw - 32px));
+    max-height: 85vh;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0.5px solid var(--border_default);
+    border-radius: var(--radius_16);
+    background: var(--bg_grouped_secondary);
+    color: var(--text_default_primary);
+    /* The Desktop 3.1.3 MCP editor's own computed shadow, read from the running
+     * app: three layers rather than one. */
+    box-shadow:
+      0 6px 16px 0 rgb(0 0 0 / 8%),
+      0 3px 6px -4px rgb(0 0 0 / 12%),
+      0 9px 28px 8px rgb(0 0 0 / 5%);
+    container: webui-dialog-surface / inline-size;
+    animation: webui-modal-enter 200ms cubic-bezier(.2, .7, .2, 1) both;
+  }
+
+  .webui-dialog-surface--compact { width: min(480px, calc(100vw - 32px)); }
+  .webui-dialog-surface--wide { width: min(800px, calc(100vw - 32px)); }
+
+  .webui-dialog-header {
+    position: relative;
+    display: flex;
+    min-height: 72px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing_16);
+    border-bottom: 0.5px solid var(--border_default);
+    padding: 20px 64px var(--spacing_16) var(--spacing_24);
+  }
+
+  .webui-dialog-heading { min-width: 0; }
+  .webui-dialog-heading h2 {
+    margin: 0;
+    color: var(--text_default_primary);
+    /* Measured on the Desktop MCP editor at 3.1.3: 20px / 28px / 600. */
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+  }
+  .webui-dialog-heading p {
+    margin: var(--spacing_4) 0 0;
+    color: var(--text_default_tertiary);
+    font-size: var(--size_14);
+    line-height: var(--line_height_20);
+  }
+
+  /* The close control is the shell's chrome, sized by the shell: the icon
+   * button's base geometry is 26px and its stylesheet is imported after this
+   * one, so the shell scopes the rule to its own surface rather than relying on
+   * import order. Desktop measures 32×32 at inset 18px. */
+  .webui-dialog-header > .webui-dialog-close {
+    position: absolute;
+    top: 18px;
+    inset-inline-end: 18px;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+  }
+
+  .webui-dialog-body {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--spacing_16);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--spacing_20) var(--spacing_24) 0;
+  }
+
+  .webui-dialog-footer {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing_8);
+    border-top: 0.5px solid var(--border_default);
+    background: var(--bg_grouped_secondary);
+    padding: var(--spacing_16) var(--spacing_24) var(--spacing_20);
+  }
+
+  /* The footer's action geometry is the Desktop MCP editor's, measured at
+   * 3.1.3: 37px tall, 8px radius, 24px side padding, a 14px label on a 21px
+   * line. The width follows the label instead of a minimum, which is how the
+   * Desktop `取消` lands on 76px and `添加服务器` on 118px. */
+  .webui-dialog-actions > .webui-mavis-button,
+  .webui-dialog-footer > .webui-mavis-button {
+    min-width: 0;
+    height: 37px;
+    border-radius: var(--radius_8);
+    padding: 0 var(--spacing_24);
+    font-size: var(--size_14);
+    line-height: 21px;
+  }
+  .webui-dialog-footer:empty { display: none; }
+  .webui-dialog-actions { display: flex; flex: none; align-items: center; justify-content: flex-end; gap: var(--spacing_8); }
+
+  /* The modal baseline's field density, measured on the Desktop 3.1.3 MCP
+   * editor: a 36px control with an 8px radius and a 14px label on a 21px line in
+   * the secondary text colour. The field contract's own scale stays as it is for
+   * page-level forms; inside a modal the density is the reference's. */
+  .webui-dialog-surface .webui-control:not(.webui-control--bare) {
+    min-height: 36px;
+    border-radius: var(--radius_8);
+    font-size: var(--size_14);
+    line-height: 21px;
+  }
+  .webui-dialog-surface .webui-field-label {
+    color: var(--text_default_secondary);
+    font-size: var(--size_14);
+    line-height: 21px;
+  }
+
+  /* A narrow viewport keeps the same frame rules the Desktop reference states:
+   * the surface stays inside `100vw - 32px` and `85vh`, and only the inner
+   * padding steps down. */
+  @media (max-width: 560px) {
+    .webui-dialog-header { padding-inline: var(--spacing_16) 56px; }
+    .webui-dialog-body { padding: var(--spacing_16); }
+    .webui-dialog-footer { padding: var(--spacing_12) var(--spacing_16); }
+    .webui-dialog-footer > .webui-mavis-button { padding: 0 var(--spacing_16); }
+  }
+}

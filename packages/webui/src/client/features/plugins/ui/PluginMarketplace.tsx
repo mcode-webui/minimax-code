@@ -4,6 +4,8 @@ import type { WebuiPluginCatalogueRow } from "../projection/catalogue-view.js";
 import type { WebuiPluginIntent } from "../contracts/plugin-actions.js";
 import { readWebuiPluginRow as read } from "../contracts/plugin-rows.js";
 import { FeedbackEmpty } from "../../../ui/feedback.js";
+import { WebuiSearchField } from "../../../ui/field.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 const MARKET_PREVIEW_COUNT = 8;
 const MINIAPP_CATEGORY = { id: "tag:miniapp", label: "Mini App" } as const;
@@ -49,25 +51,20 @@ export function PluginMarketplaceFilters({
               .map((tag) => ({ id: `tag:${tag.key}`, label: tag.displayName })),
             ...categories.slice(1),
           ].map((item) => (
-            <button
+            <WebuiButton
+              variant="segmented"
+              size="inline-dense"
+              type="button"
               key={item.id}
               aria-pressed={category === item.id}
               onClick={() => onCategoryChange(item.id)}
             >
               {item.label}
-            </button>
+            </WebuiButton>
           ))}
         </nav>
       ) : null}
-      <label className="webui-plugin-market-search">
-        <IconSearch aria-hidden="true" size={18} stroke={1.5} />
-        <input
-          aria-label={`搜索${noun}`}
-          placeholder={`搜索${noun}...`}
-          value={query}
-          onChange={(event) => onQueryChange(event.currentTarget.value)}
-        />
-      </label>
+      <WebuiSearchField icon={<IconSearch size={18} stroke={1.5} />} label={`搜索${noun}`} placeholder={`搜索${noun}...`} value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
     </div>
   );
 }
@@ -144,16 +141,18 @@ export function PluginMarketplace({
                     <p>{row.description || read(item, "transport")}</p>
                   </div>
                   {area === "plugins" ? (
-                    <button
-                      type="button"
+                    <WebuiButton
+                      variant="secondary"
+                      size="compact"
                       disabled={item.installed === true}
                       onClick={() => onIntent(pluginIntent("installPlugin"))}
                     >
                       {item.installed === true ? "已安装" : "安装"}
-                    </button>
+                    </WebuiButton>
                   ) : (
-                    <button
-                      type="button"
+                    <WebuiButton
+                      variant="secondary"
+                      size="compact"
                       disabled={
                         item.added === true ||
                         !read(
@@ -189,7 +188,7 @@ export function PluginMarketplace({
                       }
                     >
                       {item.added === true ? "已添加" : "添加"}
-                    </button>
+                    </WebuiButton>
                   )}
                 </article>
               );
@@ -198,8 +197,9 @@ export function PluginMarketplace({
         </div>
       )}
       {!hideToggle && visibleMarketTotal > MARKET_PREVIEW_COUNT ? (
-        <button
-          type="button"
+        <WebuiButton
+          variant="quiet-secondary"
+          size="content"
           className="webui-plugin-show-all"
           onClick={onToggleAll}
         >
@@ -208,7 +208,7 @@ export function PluginMarketplace({
             : marketTotal === null
               ? `查看全部${noun}`
               : `查看全部 ${marketTotal} 个`}
-        </button>
+        </WebuiButton>
       ) : null}
     </>
   );

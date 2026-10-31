@@ -15,6 +15,9 @@
 
 import { useEffect, useState, type ReactElement } from "react";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiTextInput } from "../../../ui/field.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 
 import {
   WEBUI_PLAN_COPY,
@@ -86,20 +89,21 @@ export function WebuiPlanReviewDecision({
     >
       <header className="webui-plan-review-header">
         <h4 className="webui-plan-review-title">{WEBUI_PLAN_COPY.reviewTitle}</h4>
-        <button
-          type="button"
-          className="webui-plan-review-close"
+        <WebuiIconButton
+          tone="bare"
+          className="webui-plan-review-close-size"
+          label="common.close"
           data-testid="plan-review-close"
-          aria-label="common.close"
           disabled={busy}
           onClick={() => submit(buildWebuiPlanSkipAnswers())}
         >
           <WebuiIconClose className="h-full w-full" />
-        </button>
+        </WebuiIconButton>
       </header>
       <div className="webui-plan-review-body">
-        <button
-          type="button"
+        <WebuiButton
+          variant="selectable-row"
+          size="row"
           className="webui-plan-review-approve"
           data-testid="plan-review-approve"
           disabled={busy}
@@ -107,7 +111,7 @@ export function WebuiPlanReviewDecision({
         >
           <span className="webui-plan-review-approve-badge" aria-hidden="true">A</span>
           <span className="webui-plan-review-approve-label">{WEBUI_PLAN_COPY.reviewApprove}</span>
-        </button>
+        </WebuiButton>
         <div
           className="webui-plan-review-feedback-option"
           data-testid="plan-review-feedback-option"
@@ -120,9 +124,10 @@ export function WebuiPlanReviewDecision({
             >
               <WebuiIconMessageEdit size={16} />
             </span>
-            <input
+            <WebuiTextInput
+              appearance="bare"
+              className="min-w-0 flex-1"
               type="text"
-              className="webui-plan-review-feedback-input"
               data-testid="plan-review-feedback-input"
               value={feedback}
               disabled={busy}
@@ -145,25 +150,27 @@ export function WebuiPlanReviewDecision({
               }}
             />
             {hasFeedback ? (
-              <button
-                type="button"
-                className="webui-plan-review-feedback-submit"
+              <WebuiButton
+                variant="accent"
+                size="inline-dense"
+                className="min-w-[56px] shrink-0"
                 data-testid="plan-review-feedback-submit"
                 disabled={busy}
                 onClick={() => submit(buildWebuiPlanFeedbackAnswers(trimmed))}
               >
                 {WEBUI_PLAN_COPY.send}
-              </button>
+              </WebuiButton>
             ) : (
-              <button
-                type="button"
-                className="webui-plan-review-skip"
+              <WebuiButton
+                variant="outline"
+                size="inline-dense"
+                className="min-w-[56px] shrink-0"
                 data-testid="plan-review-skip"
                 disabled={busy}
                 onClick={() => submit(buildWebuiPlanSkipAnswers())}
               >
                 {WEBUI_PLAN_COPY.skip}
-              </button>
+              </WebuiButton>
             )}
           </div>
         </div>
@@ -188,7 +195,9 @@ export function WebuiPlanEnterConfirmation({
   const busy = chrome?.busy === true;
   const options = webuiPlanEnterOptions(request);
   return (
-    <section
+    <WebuiStack
+      as="section"
+      gap="small"
       className="webui-plan-enter-confirmation"
       data-testid="plan-enter-confirmation"
       data-request-id={request.id}
@@ -198,33 +207,33 @@ export function WebuiPlanEnterConfirmation({
         <p className="webui-plan-enter-description">{WEBUI_PLAN_COPY.enterDescription}</p>
         <div className="webui-plan-enter-actions">
           {options.decline ? (
-            <button
-              type="button"
-              className="webui-plan-enter-button"
+            <WebuiButton
+              variant="outline"
+              size="inline-dense"
               data-testid="plan-enter-decline"
               disabled={busy}
               onClick={() => onAnswers(buildWebuiPlanEnterAnswers("decline"))}
             >
               {WEBUI_PLAN_COPY.enterDecline}
-            </button>
+            </WebuiButton>
           ) : null}
           {options.confirm ? (
-            <button
-              type="button"
-              className="webui-plan-enter-confirm"
+            <WebuiButton
+              variant="accent"
+              size="inline-dense"
               data-testid="plan-enter-confirm"
               disabled={busy}
               onClick={() => onAnswers(buildWebuiPlanEnterAnswers("confirm"))}
             >
               {WEBUI_PLAN_COPY.enterConfirm}
-            </button>
+            </WebuiButton>
           ) : null}
         </div>
       </div>
       {chrome?.error ? (
         <FeedbackError message={chrome.error} className="webui-plan-card-error" />
       ) : null}
-    </section>
+    </WebuiStack>
   );
 }
 

@@ -63,7 +63,7 @@ function rowSlice(html: string, sessionId: string): string {
 
 function pinButton(html: string, sessionId: string): string | undefined {
   return rowSlice(html, sessionId)
-    .match(/<button[^>]*class="webui-rail-action"[^>]*>/u)?.[0];
+    .match(/<button[^>]*data-webui-rail-action="pin"[^>]*>/u)?.[0];
 }
 
 /**

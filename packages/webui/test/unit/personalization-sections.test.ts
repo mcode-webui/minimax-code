@@ -77,17 +77,19 @@ describe("the manager dialog keeps its own mount and dismissal", () => {
   });
 
   it("hears Escape on the document, sheds one layer at a time, and restores focus", () => {
-    // Escape belongs to the shared dialog layer, not to this component: the
-    // dialog registers itself and the coordinator sheds exactly the topmost
-    // layer. A second handler here would close two layers on one press.
-    expect(dialog).toContain("useDialogLayer({");
-    // Two layers above the editor: the delete confirmation is the topmost, and Escape inside it must
-    // dismiss that rather than the whole manager.
-    expect(dialog).toContain("const confirmOpenRef = useRef(false);");
-    expect(dialog).toContain("confirmOpenRef.current = confirmingDelete;");
-    // Focus moves in on mount and back to whatever held it on unmount.
-    expect(dialog).toContain("surfaceRef.current?.focus();");
-    expect(dialog).toContain("restoreTo?.focus();");
+    // Escape belongs to the shared dialog shell, not to this component: the
+    // dialog renders `WebuiDialog`, which registers its own layer with the
+    // coordinator, and the platform layer owns focus entry and return. A second
+    // handler here would close two layers on one press, so its absence is the
+    // assertion.
+    expect(dialog).toContain("<WebuiDialog");
+    expect(dialog).not.toContain("useDialogLayer({");
+    expect(dialog).toContain("dismissOnEscape={!menuOpen}");
+    // Two layers above the editor: the delete confirmation is the topmost and
+    // names the manager as its parent, so one Escape sheds only the
+    // confirmation.
+    expect(dialog).toContain('parentLayerId="memory-manager"');
+    expect(dialog).toContain('id="memory-manager-confirm"');
   });
 
   it("still confirms a delete before it drops the file", () => {

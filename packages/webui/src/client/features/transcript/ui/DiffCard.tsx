@@ -18,6 +18,8 @@ import type { WebuiTurnDiffView } from "../../../../shared/contracts/session.js"
 import type { WebuiDiffState } from "../../review/contracts/review-view.js";
 import { useWebuiTurnReview } from "../../review/bindings/use-turn-review.public.js";
 import { FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiStack } from "../../../ui/layout-primitives.js";
 import {
   projectWebuiDiffFiles,
   WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE,
@@ -124,24 +126,24 @@ export function WebuiDiffCard({
         <span className="webui-diff-header-divider" aria-hidden="true" />
         <div className="webui-diff-actions">
           {reverted ? (
-            <button type="button" className="webui-diff-reapply" data-testid="turn-diff-undo" disabled={busy || view.canReapply === false} onClick={() => void mutate("reapply")}>
+            <WebuiButton variant="quiet-secondary" size="inline" className="webui-diff-reapply" data-testid="turn-diff-undo" disabled={busy || view.canReapply === false} onClick={() => void mutate("reapply")}>
               重新应用
-            </button>
+            </WebuiButton>
           ) : (
-            <button type="button" className="webui-diff-revert" data-testid="turn-diff-undo" disabled={busy || view.canUndo === false} onClick={() => void mutate("revert")}>
+            <WebuiButton variant="quiet-secondary" size="inline" className="webui-diff-revert" data-testid="turn-diff-undo" disabled={busy || view.canUndo === false} onClick={() => void mutate("revert")}>
               撤销
-            </button>
+            </WebuiButton>
           )}
-          <button type="button" className="webui-diff-review" data-webui-diff-review="true" data-testid="turn-diff-review" onClick={() => { if (view) onReview?.(view); if (!onReview) setReviewing((open) => !open); }}>
+          <WebuiButton variant="outline-secondary" size="inline" className="webui-diff-review" data-webui-diff-review="true" data-testid="turn-diff-review" onClick={() => { if (view) onReview?.(view); if (!onReview) setReviewing((open) => !open); }}>
             {reviewing ? "关闭 Review" : "Review"}
-          </button>
+          </WebuiButton>
         </div>
       </div>
       <ul className="webui-diff-files">
         {shown.map((file) => (
           <li className="webui-diff-file" key={file.file} data-webui-diff-file="true" data-file-path={file.file} data-webui-diff-outside-workspace={file.withinWorkspace ? undefined : "true"}>
             <span className="webui-diff-file-icon" data-testid="turn-diff-file-icon"><WebuiIconDiffFile fileName={basenameOf(file.file)} /></span>
-            <button type="button" className="webui-diff-file-name" data-testid="turn-diff-file-name" title={file.file} onClick={() => { if (view) onReview?.({ ...view, fileChanges: files }, file.file); }}>{basenameOf(file.file)}</button>
+            <WebuiButton variant="plain" size="inline" className="webui-diff-file-name" data-testid="turn-diff-file-name" title={file.file} onClick={() => { if (view) onReview?.({ ...view, fileChanges: files }, file.file); }}>{basenameOf(file.file)}</WebuiButton>
             <span className="webui-diff-file-stats" data-webui-diff-file-stats="true">
               <span className="webui-diff-add">{`+${file.additions}`}</span>
               {file.deletions > 0 ? <span className="webui-diff-del">{`-${file.deletions}`}</span> : null}
@@ -150,12 +152,12 @@ export function WebuiDiffCard({
         ))}
       </ul>
       {files.length > 3 ? (
-        <button type="button" className="webui-diff-expand" data-webui-diff-expand="true" data-testid="turn-diff-show-more" onClick={() => setExpanded((open) => !open)}>
+        <WebuiButton variant="plain" size="inline" className="webui-diff-expand" data-webui-diff-expand="true" data-testid="turn-diff-show-more" onClick={() => setExpanded((open) => !open)}>
           {expanded ? "收起" : `展开其余 ${files.length - 3} 个`}
-        </button>
+        </WebuiButton>
       ) : null}
       {reviewing && !onReview ? (
-        <div className="webui-diff-review-panel" data-webui-diff-review-panel="true">
+        <WebuiStack gap="small" className="webui-diff-review-panel" data-webui-diff-review-panel="true">
           {files.map((file) => (
             <details key={`${file.file}-review`} open>
               <summary>{file.file}</summary>
@@ -164,7 +166,7 @@ export function WebuiDiffCard({
                 : <p data-testid="turn-diff-outside-workspace">{WEBUI_DIFF_OUTSIDE_WORKSPACE_NOTICE}</p>}
             </details>
           ))}
-        </div>
+        </WebuiStack>
       ) : null}
       {mutationError ? (
         /* `role="alert"` because this replaces what used to be no feedback at
@@ -181,9 +183,9 @@ export function WebuiDiffCard({
             </span>
           }
           action={
-            <button type="button" className="webui-diff-error-dismiss" data-testid="turn-diff-mutation-error-dismiss" onClick={dismissError}>
+            <WebuiButton variant="outline-secondary" size="inline-tiny" className="webui-diff-error-dismiss" data-testid="turn-diff-mutation-error-dismiss" onClick={dismissError}>
               知道了
-            </button>
+            </WebuiButton>
           }
         />
       ) : null}

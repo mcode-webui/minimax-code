@@ -14,6 +14,7 @@ import { useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
+import { WebuiButton } from "../../../ui/button.js";
 import type {
   WebuiUsageHeatmapCell,
   WebuiUsageHeatmapModel,
@@ -135,10 +136,11 @@ export function UsageHeatmap({
                 );
               }
               return (
-                <button
+                <WebuiButton
                   key={cell.date}
-                  type="button"
-                  className={`h-2.5 w-2.5 rounded-sm p-0 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border_accent ${levelClassName(cell.level)}`}
+                  variant="plain"
+                  size="heatmap-cell"
+                  className={levelClassName(cell.level)}
                   aria-label={cellLabel(cell)}
                   data-testid={`usage-cell-${cell.date}`}
                   onMouseEnter={(event) =>

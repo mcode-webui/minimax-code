@@ -97,6 +97,7 @@ interface TestEntry {
   families: string[];
   disposition: string;
   reason?: string;
+  revisit?: string;
 }
 
 interface TestInventory {
@@ -231,11 +232,25 @@ describe("the classification", () => {
     inventory.entries[0].disposition = "business-exception";
     inventory.entries[1].disposition = "business-exception";
     inventory.entries[1].reason = "owns a canvas the shared layer cannot express";
+    inventory.entries[1].revisit = "a second surface needs the same canvas";
     const { failures } = evaluatePresentationCoverage({ modules, inventory });
     expect(failures.map((failure: { kind: string; path: string }) => [failure.kind, failure.path])).toEqual([
       ["invalid-disposition", inventory.entries[0].path],
     ]);
     expect(failures[0].detail).toContain("recorded reason");
+  });
+
+  it("fails on a business exception recorded without a revisit condition", () => {
+    const clientRoot = baseTree();
+    const modules = modulesFor(clientRoot);
+    const inventory = withSignatures(modules);
+    inventory.entries[0].disposition = "business-exception";
+    inventory.entries[0].reason = "owns a canvas the shared layer cannot express";
+    const { failures } = evaluatePresentationCoverage({ modules, inventory });
+    expect(failures.map((failure: { kind: string; path: string }) => [failure.kind, failure.path])).toEqual([
+      ["invalid-disposition", inventory.entries[0].path],
+    ]);
+    expect(failures[0].detail).toContain("condition under which it is revisited");
   });
 
   it("keeps a pending disposition valid and marks the unification unfinished", () => {

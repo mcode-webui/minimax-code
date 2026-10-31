@@ -3,11 +3,9 @@
 // composition, and count-down math (10s rate-limit window, default `0` when
 // `errorAt` is missing) are pinned by `output-error.test.tsx`.
 //
-// The icon hover overlay uses the `mavis-output-error-tooltip` class and the
-// retry row uses the shared black button (`mavis-button.black`). Both are
-// external dependencies the integrator must wire; this component leaves the
-// same slots open via props (`renderIconTooltip`, `renderRetryButton`) so a
-// unit test can pin the output structure without dragging antd in.
+// The icon hover overlay is supplied by the host when it needs one; the retry
+// action uses the WebUI shared button. The render hooks remain available for a
+// host-owned tooltip or retry surface.
 //
 // `variant` accepts the `OutputRetrying` / `OutputRateLimited` / `OutputError`
 // variants as plain string literals to keep this file dependency-free.
@@ -15,6 +13,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { FeedbackLiveRegion } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 export type OutputErrorVariant = "output_retrying" | "output_rate_limited" | "output_error";
 
@@ -50,15 +50,14 @@ function formatRetryCount(count: OutputErrorRetryCount | undefined): string | nu
   return `（${Math.min(current, total)}/${total}）`;
 }
 
-function DefaultRetryButton({ className, onClick, children }: {
-  className: string;
+function DefaultRetryButton({ onClick, children }: {
   onClick: () => void;
   children: ReactNode;
 }): React.JSX.Element {
   return (
-    <button
-      type="button"
-      className={className}
+    <WebuiButton
+      variant="outline-secondary"
+      size="inline"
       data-testid="output-error-retry"
       onClick={(event) => {
         event.stopPropagation();
@@ -66,7 +65,7 @@ function DefaultRetryButton({ className, onClick, children }: {
       }}
     >
       {children}
-    </button>
+    </WebuiButton>
   );
 }
 
@@ -130,14 +129,13 @@ export function OutputError(props: OutputErrorProps): React.JSX.Element {
   const showRetryCount = !isRetrying ? formatRetryCount(retryCount) : null;
   const showRetry = !isRetrying && !showCountdown && onRetry;
 
-  const retryButtonClass =
-    "cursor-pointer !h-8 !px-3 !py-0 inline-flex items-center justify-center !text-sm !leading-5 !font-medium rounded-md border-[0.5px] border-border_default bg-bg_default_primary hover:bg-bg_interaction_tertiary_hover text-text_default_primary";
+  const retryButtonClass = "webui-output-error-retry";
 
   const retryNode = showRetry ? (
     renderRetryButton ? (
       renderRetryButton({ className: retryButtonClass, onClick: () => onRetry!(), label: retryLabel ?? "重试" })
     ) : (
-      <DefaultRetryButton className={retryButtonClass} onClick={() => onRetry!()}>
+      <DefaultRetryButton onClick={() => onRetry!()}>
         {retryLabel ?? "重试"}
       </DefaultRetryButton>
     )
@@ -149,15 +147,15 @@ export function OutputError(props: OutputErrorProps): React.JSX.Element {
       data-testid="output-error-surface"
       data-output-error-variant={variant}
     >
-      <div
-        className="flex h-10 w-full items-center"
+      <WebuiInline
+        className="h-10 w-full"
         aria-hidden="true"
       >
         <div
           className="h-[0.5px] w-full bg-border_default"
           data-testid="output-error-divider"
         />
-      </div>
+      </WebuiInline>
       <FeedbackLiveRegion
         className="flex min-h-8 w-fit items-center text-body-base !tracking-[0px] text-text_default_secondary"
         testId={testId}

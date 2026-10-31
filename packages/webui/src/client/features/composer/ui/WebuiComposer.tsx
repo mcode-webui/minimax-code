@@ -31,6 +31,8 @@ import {
 } from "./ComposerSubmissionControls.js";
 import { WebuiComposerPermissionControl } from "./ComposerPermissionControl.js";
 import { WebuiComposerProjectRow } from "./ComposerProjectRow.js";
+import { WebuiFileInput, WebuiTextarea } from "../../../ui/field.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 import type {
   WebuiComposerPluginCatalogue,
   WebuiComposerPluginSummary,
@@ -1102,19 +1104,15 @@ export function WebuiComposer({
         data-overlay-layer="composer-mention composer-command"
         data-webui-session-composer-overlay={sessionLayout ? "true" : undefined}
       >
-        <input
+        <WebuiFileInput
           ref={fileInputRef}
-          type="file"
           multiple
-          className="webui-composer-hidden-file-input"
           aria-label="添加文件或图片"
           onChange={(event) => { void addFiles(event.currentTarget.files); event.currentTarget.value = ""; }}
         />
-        <input
+        <WebuiFileInput
           ref={folderInputRef}
-          type="file"
           multiple
-          className="webui-composer-hidden-file-input"
           aria-label="添加本地文件夹"
           {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
           onChange={(event) => { void addFiles(event.currentTarget.files); event.currentTarget.value = ""; }}
@@ -1129,15 +1127,13 @@ export function WebuiComposer({
           data-webui-composer="true"
           className="w-full"
         >
-          <div className="message-input-home-container flex flex-col items-center gap-1.5 rounded-[20px] bg-bg_default_scrim pb-2">
+          <WebuiStack gap="compact" align="center" className="message-input-home-container rounded-[20px] bg-bg_default_scrim pb-2">
             <div className="w-full rounded-[20px] border border-border_default bg-bg_grouped_secondary_elevated p-3 webui-composer-card">
               <div ref={composerInputContainerRef} className="message-input-container relative transition-colors">
-                <label className="sr-only" htmlFor={`${fieldId}-content`}>
-                  Message
-                </label>
-                <textarea
+                <WebuiTextarea
                   ref={textareaRef}
                   id={`${fieldId}-content`}
+                  aria-label="Message"
                   name="content"
                   rows={2}
                   value={draft}
@@ -1244,8 +1240,9 @@ export function WebuiComposer({
                   }}
                 />
               </div>
-              <div
-                className="flex w-full items-center gap-3 px-3 pt-1"
+              <WebuiInline
+                gap="medium"
+                className="w-full px-3 pt-1"
                 data-webui-composer-toolbar="true"
               >
                 <WebuiDropdown
@@ -1357,7 +1354,7 @@ export function WebuiComposer({
                     onStop={() => void handleStop()}
                   />
                 </div>
-              </div>
+              </WebuiInline>
             </div>
 
         {!sessionLayout ? (
@@ -1369,7 +1366,7 @@ export function WebuiComposer({
             onSelectProject={onWorkspaceChange}
           />
         ) : null}
-          </div>
+          </WebuiStack>
         </form>
         ) : null}
         </div>

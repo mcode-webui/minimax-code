@@ -24,6 +24,7 @@ import { isTokenPlanModel } from "../../models/projection/token-plan-model.publi
 import { formatUsageResetLabel } from "../../account/projection/usage.public.js";
 import { WebuiDropdown, type WebuiDropdownPlacementArgs } from "../../../ui/Dropdown.js";
 import { FeedbackProgress } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
 export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
@@ -152,8 +153,9 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
         anchorElementRef={anchorRef}
         placement={placePanel}
         trigger={(triggerProps) => (
-          <button
-            type="button"
+          <WebuiButton
+            variant="plain"
+            size="regular"
             className="webui-context-usage-trigger"
             aria-label={`上下文窗口使用 ${label}`}
             title={`上下文窗口 ${label}`}
@@ -173,7 +175,7 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
                 }}
               />
             </svg>
-          </button>
+          </WebuiButton>
         )}
       >
         {/*
@@ -189,8 +191,9 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
             a separate "详情" control next to it would be two controls for one
             section.
           */}
-          <button
-            type="button"
+          <WebuiButton
+            variant="plain"
+            size="regular"
             className="webui-context-usage-heading webui-context-usage-disclosure"
             aria-expanded={breakdownOpen}
             aria-controls="webui-context-usage-breakdown"
@@ -207,7 +210,7 @@ export function ContextUsageIndicator({ usage, usageQuota, planModel }: {
                 <IconChevronDown aria-hidden="true" size={16} stroke={1.7} />
               </span>
             </span>
-          </button>
+          </WebuiButton>
           <FeedbackProgress
             className="webui-context-usage-bar"
             label="上下文窗口使用量"

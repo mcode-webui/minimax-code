@@ -9,7 +9,8 @@ import { useState, type ReactElement } from "react";
 
 import type { WebuiSshSaveConnectionRequest } from "../../../../shared/contracts/ssh.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiField } from "../../../ui/field.js";
+import { WebuiField, WebuiRadio, WebuiTextInput } from "../../../ui/field.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 
 export interface SshHostFormProps {
   readonly onSubmit: (request: WebuiSshSaveConnectionRequest) => void;
@@ -74,40 +75,39 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
         submit();
       }}
     >
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1 text-xs text-text_default_secondary">
-          <input
-            type="radio"
+      <WebuiInline gap="medium">
+        <WebuiInline as="label" gap="tight" className="text-xs text-text_default_secondary">
+          <WebuiRadio
             name="webui-ssh-kind"
             data-webui-ssh-kind="manual"
             checked={kind === "manual"}
             onChange={() => setKind("manual")}
           />
           手动填写
-        </label>
-        <label className="flex items-center gap-1 text-xs text-text_default_secondary">
-          <input
-            type="radio"
+        </WebuiInline>
+        <WebuiInline as="label" gap="tight" className="text-xs text-text_default_secondary">
+          <WebuiRadio
             name="webui-ssh-kind"
             data-webui-ssh-kind="ssh_config"
             checked={kind === "ssh_config"}
             onChange={() => setKind("ssh_config")}
           />
           来自 ~/.ssh/config
-        </label>
-      </div>
+        </WebuiInline>
+      </WebuiInline>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <WebuiField
           className="col-span-2"
           label="别名"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="alias"
               value={alias}
               onChange={(event) => setAlias(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
@@ -115,65 +115,70 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
           className="col-span-2"
           label="显示名称"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="displayName"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
         <WebuiField
           label="主机"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="host"
               value={host}
               onChange={(event) => setHost(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
         <WebuiField
           label="端口"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="port"
               value={port}
               onChange={(event) => setPort(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
         <WebuiField
           label="用户名"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
         <WebuiField
           label="私钥文件"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="text"
               data-webui-ssh-field="identityFile"
               value={identityFile}
               onChange={(event) => setIdentityFile(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
@@ -181,13 +186,14 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
           className="col-span-2"
           label="密码（仅用于第一次握手，不会保存在浏览器里）"
           control={(controlProps) => (
-            <input
+            <WebuiTextInput
               {...controlProps}
+              controlSize="compact"
               type="password"
               data-webui-ssh-field="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-0.5 w-full rounded-[6px] border border-border_default bg-transparent px-2 py-1 text-sm text-text_default_primary"
+              className="mt-0.5"
             />
           )}
         />
@@ -197,7 +203,7 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
           {props.error}
         </p>
         : null}
-      <div className="mt-2 flex items-center gap-2">
+      <WebuiInline gap="small" className="mt-2">
         <WebuiButton variant="outline" size="inline-dense" type="submit"
           data-webui-ssh-form-submit="true"
           disabled={props.busy}
@@ -211,7 +217,7 @@ export function SshHostForm(props: SshHostFormProps): ReactElement {
         >
           取消
         </WebuiButton>
-      </div>
+      </WebuiInline>
     </form>
   );
 }

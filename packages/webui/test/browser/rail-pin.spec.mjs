@@ -83,7 +83,7 @@ function clipRightInset(clipPath) {
  */
 async function pinGlyphState(page, sessionId) {
   const className = await rowOf(page, sessionId)
-    .locator(".webui-rail-action svg")
+    .locator('[data-webui-rail-action="pin"] svg')
     .first()
     .getAttribute("class");
   if (!className) return "none";
@@ -92,7 +92,7 @@ async function pinGlyphState(page, sessionId) {
 }
 
 async function pinButtonLabel(page, sessionId) {
-  return rowOf(page, sessionId).locator(".webui-rail-action").first().getAttribute("aria-label");
+  return rowOf(page, sessionId).locator('[data-webui-rail-action="pin"]').first().getAttribute("aria-label");
 }
 
 test("a pinned session row has one pin action and no duplicate pin marker", async ({ page }) => {
@@ -102,7 +102,7 @@ test("a pinned session row has one pin action and no duplicate pin marker", asyn
   const row = rowOf(page, "A");
   await row.hover();
   await expect(row.locator('[data-webui-pin-mark="true"]')).toHaveCount(0);
-  await expect(row.locator('.webui-rail-action[aria-label^="取消置顶"]')).toHaveCount(1);
+  await expect(row.locator('[data-webui-rail-action="pin"][aria-label^="取消置顶"]')).toHaveCount(1);
 });
 
 test("a running session title keeps its space before hover actions", async ({ page }) => {
@@ -197,7 +197,7 @@ test("two pinned rows each draw their own pin glyph", async ({ page }) => {
   await seedPins(page, { sessions: { A: true, B: true } });
   await openApp(page, "#session=A");
 
-  const glyphs = page.locator('.webui-rail-action svg[class*="tabler-icon-pin"]');
+  const glyphs = page.locator('[data-webui-rail-action="pin"] svg[class*="tabler-icon-pin"]');
   await expect(glyphs).toHaveCount(2);
   // Two separate elements, not one element counted twice.
   expect(await glyphs.evaluateAll((nodes) => new Set(nodes).size)).toBe(2);

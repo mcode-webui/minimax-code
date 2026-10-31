@@ -17,6 +17,7 @@ import {
 } from "../projection/miniapp-view.js";
 import { readWebuiPluginRow } from "../../plugins/contracts/plugin-rows.js";
 import { FeedbackBusy, FeedbackError } from "../../../ui/feedback.js";
+import { WebuiButton } from "../../../ui/button.js";
 
 export interface MiniAppInstalledPluginRow {
   readonly source: Record<string, unknown>;
@@ -155,7 +156,9 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
               </span>
               <div className="webui-plugin-actions">
                 {row?.enabled ? (<>
-                <button
+                <WebuiButton
+                  variant="secondary"
+                  size="compact"
                   type="button"
                   data-testid={`miniapp-app-open-${row.pluginId}`}
                   disabled={state.opening === row.pluginId || row.ownedElsewhere}
@@ -163,9 +166,11 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
                   onClick={() => void workflows?.open(row.pluginId)}
                 >
                   {row.ownedElsewhere ? `其他客户端运行中${row.ownerClient ? `（${row.ownerClient}）` : ""}` : "打开"}
-                </button>
+                </WebuiButton>
                 {opened?.kind === "open" && standaloneHref !== undefined ? (
-                  <button
+                  <WebuiButton
+                    variant="secondary"
+                    size="compact"
                     type="button"
                     aria-label="查看"
                     title="在独立标签页中查看 Mini App"
@@ -174,36 +179,40 @@ export function MiniAppAppsList({ installedPlugins = [], query = "", selectedSes
                     }}
                   >
                     查看
-                  </button>
+                  </WebuiButton>
                 ) : null}
-                <button
+                <WebuiButton
+                  variant="secondary"
+                  size="compact"
                   type="button"
                   disabled={!row.running && row.status !== "starting"}
                   onClick={() => void workflows?.stop(row.pluginId)}
                 >
                   停止
-                </button>
-                <button
+                </WebuiButton>
+                <WebuiButton
+                  variant="danger"
+                  size="compact"
                   type="button"
                   onClick={() => {
                     if (window.confirm(`确定卸载 ${item.name}？`)) void workflows?.uninstall(row.pluginId);
                   }}
                 >
                   卸载
-                </button>
-                <button type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, false)}>
+                </WebuiButton>
+                <WebuiButton variant="secondary" size="compact" type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, false)}>
                   停用
-                </button>
+                </WebuiButton>
                 </>) : !item.enabled ? (
-                  <button type="button" onClick={() => void workflows?.setPluginEnabled(item.pluginId, true)}>
+                  <WebuiButton variant="secondary" size="compact" type="button" onClick={() => void workflows?.setPluginEnabled(item.pluginId, true)}>
                     启用
-                  </button>
+                  </WebuiButton>
                 ) : row ? (
                   // A disabled package has nothing to start or stop; the one
                   // action it has is the one that makes it startable again.
-                  <button type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, true)}>
+                  <WebuiButton variant="secondary" size="compact" type="button" onClick={() => void workflows?.setPluginEnabled(row.pluginId, true)}>
                     启用
-                  </button>
+                  </WebuiButton>
                 ) : null}
               </div>
             </article>

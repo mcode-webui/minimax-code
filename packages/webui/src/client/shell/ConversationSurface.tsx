@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { WebuiIconHomeBrand } from "./icons.js";
 import { GreetingSkeleton } from "../features/transcript/ui/TranscriptSkeletons.js";
 import { WebuiWorkspacePanelControls } from "../features/workspace/ui/WorkspacePanelControls.js";
+import { WebuiInline, WebuiStack } from "../ui/layout-primitives.js";
 
 /** Conversation column layout; Shell supplies already-owned feature surfaces and named navigation actions. */
 export function ConversationSurface(props: {
@@ -24,7 +25,7 @@ export function ConversationSurface(props: {
   readonly workspacePanel?: ReactElement;
 }): ReactElement {
   return <>
-    <div className="webui-conversation-column relative flex h-full min-w-0 flex-1 flex-col">
+    <WebuiStack className="webui-conversation-column relative h-full min-w-0 flex-1">
       <div className="pointer-events-none absolute inset-x-0 top-6 z-[60] flex justify-center" data-webui-busy-banner-slot="true" />
       {/*
        * The header row: the rail's toggle, the search button, the session
@@ -61,22 +62,22 @@ export function ConversationSurface(props: {
         data-webui-session-layout={!props.home ? "true" : undefined}
       >
         {props.home ? <div aria-hidden="true" className="h-[clamp(96px,24vh,240px)] w-full shrink" /> : null}
-        <div className={props.home
-          ? "flex w-full max-w-[743px] shrink-0 flex-col items-center gap-2 px-4"
-          : "webui-session-layout relative flex min-h-0 w-full flex-1 flex-col items-center gap-2"}>
-          {props.home ? (props.greetingPending ? <GreetingSkeleton /> : <div className="flex flex-col items-center gap-2 text-center [@media(max-height:300px)]:hidden">
-            <div className="group/avatar relative size-[94px] flex-shrink-0"><div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary"><span className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"><WebuiIconHomeBrand className="h-full w-full" /></span></div></div>
+        <WebuiStack gap="small" align="center" className={props.home
+          ? "w-full max-w-[743px] shrink-0 px-4"
+          : "webui-session-layout flex-1"}>
+          {props.home ? (props.greetingPending ? <GreetingSkeleton /> : <WebuiStack gap="small" align="center" className="text-center [@media(max-height:300px)]:hidden">
+            <div className="group/avatar relative size-[94px] flex-shrink-0"><div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary"><WebuiInline as="span" justify="center" className="absolute inset-0 overflow-hidden rounded-full"><WebuiIconHomeBrand className="h-full w-full" /></WebuiInline></div></div>
             <h1 className="text-[28px] font-medium leading-tight text-text_default_primary">MiniMax Code Web，让工作更简单。</h1>
-          </div>) : null}
+          </WebuiStack>) : null}
           {props.usageBanner}
           {props.connectionStatus}
           <div className={props.home ? "contents" : "webui-session-scroll-viewport flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden"} data-webui-session-scroll={props.home ? undefined : "true"}>
             {props.composerAndTranscript}
             {!props.home ? <div className="webui-session-bottom-padding w-full shrink-0" data-testid="message-bottom-padding" data-webui-session-bottom-padding="true" /> : null}
           </div>
-        </div>
+        </WebuiStack>
       </div>
-    </div>
+    </WebuiStack>
     {!props.home ? props.progressPanel : null}
     {!props.home ? props.workspacePanel : null}
   </>;

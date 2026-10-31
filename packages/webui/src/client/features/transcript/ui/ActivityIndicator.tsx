@@ -25,6 +25,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import lottie from "lottie-web";
 import streamingRoseLoaderData from "../../../assets/lottie/streaming-rose-loader.json";
 import { bucketPhrases, pickWeightedPhrase, computeThinkingPhraseStartDelay, shouldPlayActivityIndicator } from "../../../ui/activity-phrase.js";
+import { WebuiInline } from "../../../ui/layout-primitives.js";
 import type { ThinkingPhraseSet } from "../../../ui/activity-phrase.js";
 
 export interface LottiePlayerProps {
@@ -277,8 +278,9 @@ export function ActivityIndicator(props: ActivityIndicatorProps): React.JSX.Elem
       data-testid="streaming-rose-loader"
       aria-hidden={ariaHidden}
     >
-      <div
-        className="relative flex shrink-0 items-center justify-center overflow-visible"
+      <WebuiInline
+        justify="center"
+        className="relative shrink-0 overflow-visible"
         style={{
           width: `${containerSize}px`,
           height: `${containerSize}px`,
@@ -295,7 +297,7 @@ export function ActivityIndicator(props: ActivityIndicatorProps): React.JSX.Elem
           innerClassName="h-full w-full"
           style={{ width: `${innerSize}px`, height: `${innerSize}px` }}
         />
-      </div>
+      </WebuiInline>
       {resolvedLabel ? (
         <span
           className="min-w-0 truncate text-sm leading-5 text-text_default_tertiary"

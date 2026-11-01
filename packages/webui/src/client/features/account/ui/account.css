@@ -426,4 +426,78 @@
       font-size: 10px;
     }
   }
+
+  /* ---------------------------------------------------------- login page */
+  /* The Desktop opens this surface as its own window; the browser's
+   * equivalent is a full-viewport overlay. The overlay is the modal's mask —
+   * the application behind it is inert while the page is open — and the page
+   * inside it carries the Desktop's own geometry. */
+  .webui-account-login-page-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    overflow-y: auto;
+    background-color: var(--bg_default_primary);
+  }
+  .webui-account-login-page {
+    display: flex;
+    width: 100%;
+    min-height: 100%;
+    flex-direction: column;
+    overflow-y: auto;
+    border-radius: var(--radius_16);
+    background-color: var(--bg_default_primary);
+    padding-bottom: var(--spacing_12);
+    padding-top: 138px;
+  }
+  .webui-account-login-logo {
+    object-fit: contain;
+  }
+  /* The Desktop's wordmark is an image; this client draws its own, the same
+   * way the rail's product mark does. */
+  .webui-account-login-wordmark {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing_4);
+    color: var(--text_default_primary);
+    font-size: var(--size_16);
+    font-weight: var(--weight_medium);
+    letter-spacing: -0.02em;
+  }
+  .webui-account-login-wordmark > span:last-child {
+    color: var(--text_label_accent_default);
+  }
+  /* The Desktop's call to action is a 44px fully rounded button with a 16px
+   * medium label. The shared button contract states no size that carries all
+   * three, so this class holds the Desktop's numbers. */
+  .webui-account-login-action {
+    border-radius: 9999px;
+  }
+  .webui-account-login-action-label {
+    font-size: var(--size_16);
+    font-weight: var(--weight_medium);
+  }
+  .webui-account-login-body {
+    display: flex;
+    width: 100%;
+    max-width: 320px;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing_12);
+  }
+  .webui-account-login-actions {
+    display: flex;
+    justify-content: center;
+  }
+  .webui-account-login-assist {
+    border-radius: 9999px;
+  }
+  /* The shared error family's own appearance stays shared; this class only
+   * places it where the Desktop's page puts its error line. */
+  .webui-account-login-error {
+    width: 100%;
+    max-width: 360px;
+    margin-top: var(--spacing_12);
+    text-align: center;
+  }
 }

@@ -685,6 +685,16 @@ export interface WebuiRuntimeHostHandle {
   readonly apiHost: { close(): Promise<void> };
   readonly appVersion?: string;
   readonly dataDir?: string;
+  /**
+   * The account scope the assembly resolved before the host was built.
+   *
+   * It travels with the handshake so the browser can name the account's own
+   * legal documents; the region decides the site and the language.
+   */
+  readonly runtimeScope?: {
+    readonly region: string;
+    readonly buildEnv: string;
+  };
   readonly invalidateAuth?: () => void;
   /**
    * The account credential the service holds, for the first-party clients that

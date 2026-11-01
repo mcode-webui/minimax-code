@@ -7,9 +7,9 @@
     "pending": "not migrated yet; the reason is recorded"
   },
   "files": {
-    "features/account/ui/AccountLoginDialog.tsx": {
+    "features/account/ui/AccountLoginPage.tsx": {
       "disposition": "managed",
-      "note": "the sign-in panel uses the shared WebuiDialog modal frame and coordinator registration"
+      "note": "the sign-in page registers with the coordinator as a full-viewport layer and attaches no listener of its own"
     },
     "features/account/ui/UserMenu.tsx": {
       "disposition": "managed",

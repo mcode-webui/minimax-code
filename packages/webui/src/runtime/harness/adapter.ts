@@ -62,6 +62,14 @@ export function createHarnessPortFromHost(
     version: host.appVersion ?? "unknown",
     protocolVersion: WEBUI_PROTOCOL_VERSION,
     ...(host.dataDir ? { dataDir: host.dataDir } : {}),
+    // The account scope travels with the handshake: the browser needs it to
+    // name the account's own legal documents.
+    ...(host.runtimeScope
+      ? {
+          region: host.runtimeScope.region,
+          buildEnv: host.runtimeScope.buildEnv,
+        }
+      : {}),
   };
   let closed = false;
   const port: Omit<WebuiHarnessPort, "runCommand" | "importSessionTransferWorkflow"> = {

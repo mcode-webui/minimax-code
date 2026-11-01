@@ -399,6 +399,14 @@ export interface WebuiAccountWorkflows {
   /** Claim today's check-in; records the result for the menu's animation. */
   readonly claimSignin: () => Promise<void>;
 
+  /**
+   * Read the persisted login state without starting a device flow.
+   *
+   * The login page asks this first: an account that is already signed in is
+   * offered the switch, not a second sign-in. It reads the store and changes
+   * nothing.
+   */
+  readonly loadLoginStatus: () => Promise<void>;
   /** Begin a device-authorization flow and start polling its status. */
   readonly beginLogin: () => Promise<void>;
   /** Cancel the in-flight attempt, stop polling and reset the view to idle. */
@@ -620,6 +628,18 @@ export function createWebuiAccountWorkflows(deps: {
     set((current) =>
       current.login.polling ? current : { ...current, login: { ...current.login, polling: true } },
     );
+  };
+
+  const loadLoginStatus = async (): Promise<void> => {
+    const read = port.getAccountLoginStatus;
+    if (!read) return;
+    try {
+      const view = await read();
+      applyLoginView(view);
+    } catch {
+      // A status that cannot be read leaves the page where it is. The page
+      // offers a sign-in, and the attempt that follows reports its own error.
+    }
   };
 
   const beginLogin = async (): Promise<void> => {
@@ -1183,6 +1203,12 @@ export function createWebuiAccountWorkflows(deps: {
       // identity cannot land as current.
       lastCredentialFingerprint = undefined;
       afterCredentialChange();
+      // The sign-in state belonged to the account that just left. A page that
+      // still reads as signed in would offer a switch instead of a sign-in.
+      set((current) => ({
+        ...current,
+        login: { ...current.login, view: { state: "idle" } },
+      }));
       // The account and quota answers belong to the account that just left:
       // re-read both so no surface keeps showing the previous identity.
       await Promise.all([loadAccount(), loadUsage(true)]);
@@ -1257,6 +1283,7 @@ export function createWebuiAccountWorkflows(deps: {
     redeemResetCard,
     loadSigninPanel,
     claimSignin,
+    loadLoginStatus,
     beginLogin,
     cancelLogin,
     stopLoginPolling,

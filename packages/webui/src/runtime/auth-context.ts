@@ -1,53 +1,35 @@
-// Account credentials for the WebUI's runtime host.
+// The WebUI's own account credential.
 //
-// The assembly requires an auth context getter with refresh and invalidation.
-// Managed MiniMax login carries no API key: the credential is an OAuth access
-// token sent as `Authorization: Bearer`, and the resolver throws
-// `managed OAuth bearer is not synced` when the header is absent. `@mavis/local-runtime-v2` defaults the getter to `() => undefined`
-// (`compat/v1/runtime.ts`), so an assembly that passes nothing can never talk
-// to a managed provider: every turn fails at the agent preflight.
+// The WebUI owns what it serves. The lease comes from the one OAuth core the
+// WebUI's auth session owns (`runtime/auth-session.ts`), and the account
+// identity comes from the WebUI's own account identity request
+// (`runtime/usage-quota.ts`) — the same request the Desktop's account identity
+// source makes against `/v1/api/user/info`.
 //
-// ADR 0003 keeps the WebUI off the terminal client's internals, so this reads
-// the on-disk store directly rather than importing that client's reader. The
-// layout is the one the client writes:
+// It used to read the terminal client's private projection
+// (`<dataDir>/cli-auth/**`) as the credential of record: the access token, the
+// login epoch and the account identity all came from files only `mcode login`
+// wrote. That made the WebUI a reader of another client's store. The credential
+// it served was the terminal client's, the identity it showed was the terminal
+// client's, and nothing the WebUI did could be signed out of it. Nothing
+// outside this process writes the credential now.
 //
-//   <dataDir>/cli-auth/shared-projection.json   → { region, buildEnv, … }
-//   <dataDir>/cli-auth/<buildEnv>/<region>/cli-auth.scope.json
-//   <dataDir>/cli-auth/<buildEnv>/<region>/local-runtime.auth.json → { auth }
+// What stayed is the shared login state. ADR 0006 has the WebUI read and write
+// `~/.minimax`, and the OAuth namespace inside it
+// (`auth/<buildEnv>/<region>/mcode-public/`) is where `mcode login` lands a
+// login — so a terminal sign-in still signs the browser in, and the browser's
+// own sign-in still signs the terminal in. That is the shared directory ADR
+// 0006 asks for. The private projection the terminal client kept beside it
+// (`cli-auth/`) is what this file no longer reads.
 //
-// Three deliberate differences from the terminal client's reader:
-//
-//   * It never writes. That reader imports a shared projection into the
-//     client's own scope directory; a second client mutating the same store
-//     would make two writers of one credential file for no gain, so this is
-//     read-only.
-//   * It resolves its own scope. The client knows its build environment at
-//     compile time; the WebUI has no equivalent, so it takes the scope the
-//     installed client last used from the shared projection and falls back to
-//     whichever scoped directory actually carries a token.
-//   * It refreshes by re-reading. The installed client renews the token in
-//     place, so picking a renewal up is a read; only a rejected token is
-//     remembered, and only for this process's lifetime.
-//
-// One decision, two consumers. The scope picked here is also the scope
-// `MAVIS_REGION` / `MAVIS_BUILD_ENV` are written from
-// (`packages/webui/src/runtime/runtime-environment.ts`). The projection is
-// adopted only when its directory actually carries a credential; otherwise
-// the scan falls through to the first scoped directory that does. Without
-// this guard a stale projection strands the runtime on a scope whose
-// bearer does not exist — the same `managed OAuth bearer is not synced`
-// text the credential gap produced, but with the OAuth-bearer fix in
-// place, leaving the diagnosis ambiguous.
-//
-// Refresh: a successful read is cached for `AUTH_CONTEXT_TTL_MS` so one turn
-// resolving several models does not re-read the file per resolution, and the
-// cache expires so an upstream renewal becomes visible without a restart. Only
-// a found credential is cached — a missing or rejected one is re-read, because
-// that is the case where picking the change up promptly is the whole point.
-// Invalidation: the runtime reports a rejected token, which is then withheld
-// until the store carries a different one.
+// The scope resolver is the other half of that decision. The runtime's
+// `MAVIS_REGION` / `MAVIS_BUILD_ENV` and the credential the harness reads must
+// name the same scope, or the runtime is pointed at a region the credential was
+// never issued for. Both now come from the OAuth namespace — the same place
+// the terminal client resolves its own scope from
+// (`packages/tui/src/cli/environment.ts`), so the two clients cannot disagree.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createAuthNamespace } from "@mavis/oauth-core";
 
@@ -69,94 +51,55 @@ export interface WebuiAuthContextReader {
     rejectedAccessToken?: string,
     loginEpoch?: string,
   ) => void;
-  /** Updates the in-memory projection from the shared OAuth lease. */
-  readonly setOAuthAuthContext: (auth: WebuiAuthContext | undefined) => void;
+  /** Publishes the credential the WebUI's own auth session holds. */
+  readonly setAuthContext: (auth: WebuiAuthContext | undefined) => void;
 }
 
 export interface WebuiAuthContextReaderOptions {
-  /** Injectable clock; tests drive the cache's expiry without waiting. */
+  /** Injectable clock; tests drive the reader's expiry without waiting. */
   readonly nowMs?: () => number;
 }
 
-const CLI_AUTH_DIRECTORY = "cli-auth";
-const CLI_AUTH_SCOPE_FILE = "cli-auth.scope.json";
-const CLI_SHARED_PROJECTION_FILE = "shared-projection.json";
-const CLI_AUTH_CONTEXT_FILE = "local-runtime.auth.json";
-const AUTH_CONTEXT_TTL_MS = 5_000;
-const REGIONS = new Set(["cn", "en"]);
-const BUILD_ENVS = new Set(["dev", "test", "staging", "prod"]);
+const BUILD_ENVS = ["dev", "test", "staging", "prod"] as const;
+const REGIONS = ["cn", "en"] as const;
+
+/**
+ * The OAuth statuses that mean the namespace still holds a usable login.
+ *
+ * The same list the terminal client applies when it resolves its own scope
+ * (`packages/tui/src/cli/environment.ts` — `isReusableAuthStatus`). One list,
+ * two clients: a scope either is a live login for both of them or for neither.
+ */
+const REUSABLE_AUTH_STATUSES = new Set([
+  "authorizing",
+  "authenticated",
+  "refreshing",
+  "scope_upgrade_required",
+  "expired",
+]);
 
 interface AuthScope {
   readonly region: string;
   readonly buildEnv: string;
 }
 
-type ScopeSource = "projection" | "directory";
-
-interface AdoptedScope {
-  readonly scope: AuthScope;
-  readonly source: ScopeSource;
-  readonly auth: WebuiAuthContext;
-}
-
-interface ScopedDirectory {
-  readonly directory: string;
-  readonly scope: AuthScope;
-}
-
 /**
- * Picks the {@link AdoptedScope} the runtime host should run as. The rule
- * is the one {@link readWebuiAuthContext} already applies to credentials:
- * a scope is adopted only when its directory can produce a credential, so
- * a stale projection cannot strand the runtime on a scope whose bearer
- * does not exist (a divergence that previously surfaced as the same
- * `managed OAuth bearer is not synced` error the credential gap produced
- * for a different cause).
+ * Finds the most recently active OAuth namespace. The OAuth state file carries
+ * only scope and status; the credential itself stays inside oauth-core's
+ * credential store.
  *
- * Used by both consumers — the runtime-environment resolver and the
- * credential reader — so the OAuth bearer and the
- * `MAVIS_REGION` / `MAVIS_BUILD_ENV` the harness picks up agree by
- * construction. Both reject when nothing is resolvable; both prefer the
- * projection when it can be backed; both fall through to the directory
- * scan otherwise.
- */
-function adoptScope(dataDir: string): AdoptedScope | undefined {
-  const projected = projectedScope(dataDir);
-  if (projected) {
-    const auth = readScopedAuth(scopedDirectory(dataDir, projected), projected);
-    if (auth) return { scope: projected, source: "projection", auth };
-  }
-  for (const { directory, scope } of scopedDirectories(dataDir)) {
-    const auth = readScopedAuth(directory, scope);
-    if (auth) return { scope, source: "directory", auth };
-  }
-  return undefined;
-}
-
-/**
- * Resolves the {@link AuthScope} the installed client last projected,
- * falling back to the first scoped directory that actually carries a
- * credential. Returns undefined when the data directory holds nothing the
- * resolver can trust, so the caller can choose to do nothing rather than
- * guess.
- *
- * Exported so the runtime-environment module can share one decision with
- * the credential reader — the same scope decides both the OAuth bearer
- * and the `MAVIS_REGION` / `MAVIS_BUILD_ENV` the harness picks up.
+ * This is the scope resolution the WebUI and the terminal client share. The
+ * terminal client reads the same state files to decide which region its own
+ * lease belongs to, so the two clients cannot end up pointed at different
+ * regions because one of them preferred a different file.
  */
 export function resolveAuthScope(dataDir: string): AuthScope | undefined {
-  return adoptScope(dataDir)?.scope ?? resolveOAuthAuthScope(dataDir);
-}
-
-/**
- * Finds the most recently active OAuth namespace when the legacy CLI
- * projection is absent. The OAuth state file carries only scope and status;
- * credentials remain inside oauth-core's credential store.
- */
-function resolveOAuthAuthScope(dataDir: string): AuthScope | undefined {
-  const candidates: Array<{ readonly scope: AuthScope; readonly modifiedAtMs: number }> = [];
-  for (const buildEnv of ["dev", "test", "staging", "prod"] as const) {
-    for (const region of ["cn", "en"] as const) {
+  const candidates: Array<{
+    readonly scope: AuthScope;
+    readonly modifiedAtMs: number;
+  }> = [];
+  for (const buildEnv of BUILD_ENVS) {
+    for (const region of REGIONS) {
       const namespace = createAuthNamespace({ dataDir, buildEnv, region });
       const statePath = join(namespace.namespaceHome, "auth-state.json");
       const state = readJsonObject(statePath);
@@ -165,14 +108,16 @@ function resolveOAuthAuthScope(dataDir: string): AuthScope | undefined {
         state.clientId !== "mcode-public" ||
         state.buildEnv !== buildEnv ||
         state.region !== region ||
-        (state.status !== "authenticated" &&
-          state.status !== "expired" &&
-          state.status !== "refreshing")
+        typeof state.status !== "string" ||
+        !REUSABLE_AUTH_STATUSES.has(state.status)
       ) {
         continue;
       }
       try {
-        candidates.push({ scope: { buildEnv, region }, modifiedAtMs: statSync(statePath).mtimeMs });
+        candidates.push({
+          scope: { buildEnv, region },
+          modifiedAtMs: statSync(statePath).mtimeMs,
+        });
       } catch {
         // A state file removed during discovery is not a usable scope.
       }
@@ -180,12 +125,6 @@ function resolveOAuthAuthScope(dataDir: string): AuthScope | undefined {
   }
   candidates.sort((left, right) => right.modifiedAtMs - left.modifiedAtMs);
   return candidates[0]?.scope;
-}
-
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : undefined;
 }
 
 function readJsonObject(path: string): Record<string, unknown> | undefined {
@@ -206,172 +145,68 @@ function readJsonObject(path: string): Record<string, unknown> | undefined {
     : undefined;
 }
 
-/**
- * Reads a scope record, rejecting anything the client would not have written.
- * Both `shared-projection.json` and `cli-auth.scope.json` carry this shape.
- */
-function readScope(
-  record: Record<string, unknown> | undefined,
-): AuthScope | undefined {
-  if (!record || record.version !== 1) return undefined;
-  const region = optionalString(record.region);
-  const buildEnv = optionalString(record.buildEnv);
-  if (!region || !buildEnv) return undefined;
-  if (!REGIONS.has(region) || !BUILD_ENVS.has(buildEnv)) return undefined;
-  return { region, buildEnv };
-}
-
-function scopedDirectory(dataDir: string, scope: AuthScope): string {
-  return join(dataDir, CLI_AUTH_DIRECTORY, scope.buildEnv, scope.region);
-}
-
-/** The scope the installed client last projected, if it left a record. */
-export function projectedScope(dataDir: string): AuthScope | undefined {
-  return readScope(
-    readJsonObject(join(dataDir, CLI_AUTH_DIRECTORY, CLI_SHARED_PROJECTION_FILE)),
-  );
-}
-
-/**
- * Every `<buildEnv>/<region>` directory under `cli-auth`, sorted so the scan
- * is deterministic. The scope comes from the path, not from the scope file, so
- * a directory whose record disagrees with the name it sits in is not read as a
- * live login. Used only when the projection is missing or stale.
- */
-function scopedDirectories(dataDir: string): ScopedDirectory[] {
-  const root = join(dataDir, CLI_AUTH_DIRECTORY);
-  let buildEnvs;
-  try {
-    buildEnvs = readdirSync(root, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-  const directories: ScopedDirectory[] = [];
-  for (const buildEnv of buildEnvs
-    .filter((entry) => entry.isDirectory() && BUILD_ENVS.has(entry.name))
-    .map((entry) => entry.name)
-    .sort()) {
-    let regions;
-    try {
-      regions = readdirSync(join(root, buildEnv), { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const region of regions
-      .filter((entry) => entry.isDirectory() && REGIONS.has(entry.name))
-      .map((entry) => entry.name)
-      .sort())
-      directories.push({
-        directory: join(root, buildEnv, region),
-        scope: { buildEnv, region },
-      });
-  }
-  return directories;
-}
-
-/**
- * Reads the credential stored for one scope directory. The scope file has to
- * agree with the directory it sits in — the client writes it alongside the
- * credential precisely so a stale directory is not read as a live login.
- */
-function readScopedAuth(
-  directory: string,
-  scope: AuthScope,
-): WebuiAuthContext | undefined {
-  const recorded = readScope(
-    readJsonObject(join(directory, CLI_AUTH_SCOPE_FILE)),
-  );
-  if (
-    !recorded ||
-    recorded.region !== scope.region ||
-    recorded.buildEnv !== scope.buildEnv
-  )
-    return undefined;
-  const record = readJsonObject(join(directory, CLI_AUTH_CONTEXT_FILE));
-  if (!record || record.version !== 1) return undefined;
-  const auth = record.auth;
-  if (!auth || typeof auth !== "object" || Array.isArray(auth)) return undefined;
-  const source = auth as Record<string, unknown>;
-  const accessToken = optionalString(source.accessToken);
-  if (!accessToken) return undefined;
-  const loginEpoch = optionalString(source.loginEpoch);
-  const realUserID = optionalString(source.realUserID);
-  const userEmail = optionalString(source.userEmail);
-  const userName = optionalString(source.userName);
-  const subUserName = optionalString(source.subUserName);
-  return {
-    accessToken,
-    ...(loginEpoch ? { loginEpoch } : {}),
-    ...(realUserID ? { realUserID } : {}),
-    ...(userEmail ? { userEmail } : {}),
-    ...(userName ? { userName } : {}),
-    ...(subUserName ? { subUserName } : {}),
-  };
-}
-
-/**
- * Reads the account credential the installed client holds for `dataDir`.
- * Prefers the scope the client last projected and falls back to the first
- * scoped directory that carries one. Delegates to {@link adoptScope} so
- * the scope picked here matches the one {@link resolveAuthScope} would
- * return — the runtime environment and the credential can never disagree
- * on what scope they belong to.
- */
-export function readWebuiAuthContext(
-  dataDir: string,
-): WebuiAuthContext | undefined {
-  return adoptScope(dataDir)?.auth;
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
 }
 
 /**
  * Builds the getter and invalidator pair the runtime host expects. Both are
- * required for managed login; see the header for why.
+ * required for managed login: the host defaults them to undefined when an
+ * assembly supplies neither, and a managed provider then fails every turn at
+ * the agent preflight with "managed OAuth bearer is not synced".
+ *
+ * The credential lives in this process. The WebUI's auth session publishes it
+ * with {@link WebuiAuthContextReader.setAuthContext} whenever a lease is
+ * projected, renewed or cleared, so the getter is a read of the projection
+ * rather than a read of a file another client owns.
+ *
+ * A rejection is per credential, not per process. Once the runtime reports a
+ * token rejected, that token is withheld until a different one is published;
+ * a token from a newer login epoch is served even when it repeats the
+ * rejected one, because the epoch is what tells the two apart.
  */
 export function createWebuiAuthContextReader(
-  dataDir: string,
   options: WebuiAuthContextReaderOptions = {},
 ): WebuiAuthContextReader {
-  const nowMs = options.nowMs ?? Date.now;
-  let cached: { readonly atMs: number; readonly auth: WebuiAuthContext } | undefined;
-  // Only the most recent rejection is withheld: once the store carries a
-  // different token the rejected one is stale by definition, and a rejected
-  // token is not a reason to distrust an unrelated renewal.
+  let authContext: WebuiAuthContext | undefined;
   let rejectedAccessToken: string | undefined;
-  let oauthAuthContext: WebuiAuthContext | undefined;
+  let rejectedLoginEpoch: string | undefined;
 
-  const read = (): WebuiAuthContext | undefined => {
-    const oauthAccessToken = oauthAuthContext?.accessToken;
-    if (oauthAccessToken && oauthAccessToken !== rejectedAccessToken) {
-      const stored = readWebuiAuthContext(dataDir);
-      return stored?.accessToken === oauthAccessToken
-        ? { ...stored, ...oauthAuthContext }
-        : oauthAuthContext;
-    }
-    const auth = readWebuiAuthContext(dataDir);
-    const accessToken = auth?.accessToken;
-    if (!accessToken || accessToken === rejectedAccessToken) return undefined;
-    return auth;
+  const isRejected = (context: WebuiAuthContext): boolean => {
+    const token = optionalString(context.accessToken);
+    if (!token) return false;
+    if (token !== rejectedAccessToken) return false;
+    const epoch = optionalString(context.loginEpoch);
+    const rejectedEpoch = optionalString(rejectedLoginEpoch);
+    // A rejection that named no epoch rejects this token outright. A rejection
+    // that named one only rejects the login it was made in.
+    return rejectedEpoch === undefined || epoch === undefined || epoch === rejectedEpoch;
   };
 
   return {
     getter() {
-      const now = nowMs();
-      if (cached && now - cached.atMs < AUTH_CONTEXT_TTL_MS) return cached.auth;
-      const auth = read();
-      cached = auth ? { atMs: now, auth } : undefined;
-      return auth;
+      if (!authContext) return undefined;
+      return isRejected(authContext) ? undefined : authContext;
     },
-    invalidator(nextRejectedAccessToken) {
+    invalidator(nextRejectedAccessToken, loginEpoch) {
       const token = optionalString(nextRejectedAccessToken);
-      if (token) rejectedAccessToken = token;
-      cached = undefined;
-    },
-    setOAuthAuthContext(auth) {
-      oauthAuthContext = auth;
-      if (auth?.accessToken && auth.accessToken !== rejectedAccessToken) {
-        rejectedAccessToken = undefined;
+      if (token) {
+        rejectedAccessToken = token;
+        rejectedLoginEpoch = optionalString(loginEpoch);
       }
-      cached = undefined;
+    },
+    setAuthContext(next) {
+      authContext = next;
+      const token = optionalString(next?.accessToken);
+      // A different token clears the rejection: the old one is stale by
+      // definition, and a rejected credential is not a reason to distrust an
+      // unrelated renewal.
+      if (token && token !== rejectedAccessToken) {
+        rejectedAccessToken = undefined;
+        rejectedLoginEpoch = undefined;
+      }
     },
   };
 }

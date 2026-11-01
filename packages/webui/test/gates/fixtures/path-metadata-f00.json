@@ -301,7 +301,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/account/application/login-phase.ts",
+      "path": "client/features/account/application/login-page-phase.ts",
       "layers": [
         "application"
       ],
@@ -355,7 +355,7 @@
       "home": "target"
     },
     {
-      "path": "client/features/account/ui/AccountLoginDialog.tsx",
+      "path": "client/features/account/ui/AccountLoginPage.tsx",
       "layers": [
         "bindings"
       ],
@@ -5497,6 +5497,15 @@
       "path": "server/websocket-server.ts",
       "layers": [
         "server"
+      ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "shared/account-legal-links.ts",
+      "layers": [
+        "shared"
       ],
       "role": "outside",
       "business": null,

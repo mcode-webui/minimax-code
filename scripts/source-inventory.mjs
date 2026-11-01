@@ -35,6 +35,12 @@ const skipped = new Set([
   // but not to this scan, and without the entry any developer who happens to have
   // the tool installed fails `check:source` over a file they never wrote.
   ".codegraph",
+  // The scratch directory of a working session, in the same category: git
+  // ignores it, it is machine-local, and it holds screenshots and one-off
+  // scripts rather than source. Without the entry any developer who has one
+  // fails `check:source` over files they never wrote — and the published
+  // inventory would record them as if they were part of the projection.
+  ".temp",
 ]);
 /**
  * The unpacked store builds, by name.

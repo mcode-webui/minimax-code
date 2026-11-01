@@ -63,7 +63,6 @@ import { createRemoteControlGlobalEventSource } from "./global-events.js";
 import { createRemoteControlLogger } from "./logger.js";
 import {
   createRemoteControlPairingClient,
-  readLegacyAuthIdentity,
   RemoteControlCredentialSource,
 } from "./pairing.js";
 
@@ -187,16 +186,15 @@ export function createWebuiRemoteControl(
    * The account credential the pairing pipeline signs with.
    *
    * The bearer is the service's OAuth lease, handed down by the assembly — the same lease the
-   * quota and the daily check-in sign with. The legacy cli-auth projection is read only as a
-   * fallback for the account id, because the server cross-checks the `user_id` common-param
-   * against the token's own subject.
+   * quota and the daily check-in sign with, resolved together with the account id the server
+   * cross-checks the `user_id` common-param against. Both come from the WebUI's own auth
+   * session; there is no second store to fall back to.
    */
   const credential = new RemoteControlCredentialSource(
     async () => {
       const provided = await host.getAuthCredential?.();
       if (provided?.accessToken) return provided;
-      const realUserID = provided?.realUserID ?? readLegacyAuthIdentity(requireDataDir(host));
-      return realUserID ? { realUserID } : undefined;
+      return provided?.realUserID ? { realUserID: provided.realUserID } : undefined;
     },
     (message) => {
       // A renewal that failed is not a sign-out. Say so, and keep the bearer.

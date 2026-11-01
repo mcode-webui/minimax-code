@@ -204,6 +204,56 @@ describe("the account answer has one owner", () => {
   });
 });
 
+describe("the login page reads the persisted state without starting a flow", () => {
+  it("reports an account that is already signed in", async () => {
+    // The page asks before it offers: an account that is signed in is offered
+    // the switch, not a second sign-in.
+    const begin = vi.fn(async (): Promise<WebuiAccountLoginView> => pending);
+    const workflows = createWebuiAccountWorkflows({
+      port: {
+        beginAccountLogin: begin,
+        getAccountLoginStatus: async () => ({ state: "authenticated" }),
+      },
+    });
+
+    await workflows.loadLoginStatus();
+
+    expect(begin).not.toHaveBeenCalled();
+    expect(workflows.getSnapshot().login.view).toEqual({ state: "authenticated" });
+  });
+
+  it("leaves the view alone when the status cannot be read", async () => {
+    const workflows = createWebuiAccountWorkflows({
+      port: {
+        getAccountLoginStatus: async () => Promise.reject(new Error("offline")),
+      },
+    });
+
+    await workflows.loadLoginStatus();
+
+    expect(workflows.getSnapshot().login.view).toBeUndefined();
+  });
+});
+
+describe("a sign-out forgets the account's sign-in state", () => {
+  it("resets the login view so the page offers a sign-in again", async () => {
+    const workflows = createWebuiAccountWorkflows({
+      port: {
+        signOut: async () => ({ success: true }),
+        getAccountLoginStatus: async () => ({ state: "authenticated" }),
+      },
+    });
+
+    await workflows.loadLoginStatus();
+    expect(workflows.getSnapshot().login.view).toEqual({ state: "authenticated" });
+
+    await workflows.signOutAccount();
+    // The sign-in state belonged to the account that just left. A page that
+    // still read as signed in would offer a switch instead of a sign-in.
+    expect(workflows.getSnapshot().login.view).toEqual({ state: "idle" });
+  });
+});
+
 describe("the owner's disposal", () => {
   it("stops every timer it runs", async () => {
     vi.useFakeTimers();

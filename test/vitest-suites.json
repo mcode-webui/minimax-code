@@ -310,6 +310,7 @@
       "packages/webui/test/integration/real-host-cron-task-mutations.test.ts",
       "packages/webui/test/integration/real-host-cron-runs.test.ts",
       "packages/webui/test/integration/cron-desktop-and-webui.test.ts",
+      "packages/webui/test/unit/account-legal-links.test.ts",
       "packages/webui/test/unit/account-login.test.ts",
       "packages/webui/test/unit/account-menu-panels.test.ts",
       "packages/webui/test/unit/account-workflows.test.ts",

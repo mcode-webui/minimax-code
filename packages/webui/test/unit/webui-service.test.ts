@@ -3546,28 +3546,66 @@ describe("WebUI runtime host assembly", () => {
     // Managed MiniMax login has no API key, so without this pair the resolver
     // throws "managed OAuth bearer is not synced" and every turn dies at the
     // agent preflight — even with the credential sitting in the data directory.
+    //
+    // The credential is the WebUI's own: it lives in the OAuth namespace the
+    // auth session leases from, not in the terminal client's private
+    // projection. The fixture writes that namespace the way the core does.
+    //
+    // The scope is `test/en` on purpose. Its account origins are reserved
+    // `.invalid` hosts, so the account-identity request the projection makes
+    // cannot reach anything — the test stays a unit test.
     const { createWebuiRuntimeHost } =
       await import("../../src/runtime/index.js");
+    const { createAuthNamespace } = await import("@mavis/oauth-core");
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-assembly-auth-"),
     );
-    const scopeDirectory = path.join(dataDir, "cli-auth", "prod", "cn");
     let lastOptions: Record<string, unknown> | undefined;
     try {
-      await mkdir(scopeDirectory, { recursive: true });
+      const namespace = createAuthNamespace({
+        dataDir,
+        buildEnv: "test",
+        region: "en",
+      });
+      const expiresAtMs = Date.now() + 60 * 60 * 1000;
+      // The credential store refuses a credential that is not private, so
+      // the fixture writes the namespace the way the core does.
+      await mkdir(namespace.namespaceHome, { recursive: true, mode: 0o700 });
       await writeFile(
-        path.join(scopeDirectory, "cli-auth.scope.json"),
-        `${JSON.stringify({ version: 1, updatedAtMs: 1, region: "cn", buildEnv: "prod" })}\n`,
-        "utf8",
+        namespace.statePath,
+        `${JSON.stringify({
+          schemaVersion: 2,
+          status: "authenticated",
+          storeKind: "file",
+          clientId: "mcode-public",
+          scopes: ["agent.default"],
+          audience: "agent-backend",
+          buildEnv: "test",
+          region: "en",
+          generation: 1,
+          expiresAtMs,
+        })}\n`,
+        { encoding: "utf8", mode: 0o600 },
       );
       await writeFile(
-        path.join(scopeDirectory, "local-runtime.auth.json"),
+        namespace.credentialPath,
         `${JSON.stringify({
-          version: 1,
-          updatedAtMs: 1,
-          auth: { accessToken: "assembled-token", realUserID: "user-1" },
+          schemaVersion: 1,
+          records: {
+            [`${namespace.credentialKey.service}\0${namespace.credentialKey.account}`]: {
+              schemaVersion: 1,
+              accessToken: "assembled-token",
+              refreshToken: "assembled-refresh",
+              tokenType: "Bearer",
+              clientId: "mcode-public",
+              scopes: ["agent.default"],
+              audience: "agent-backend",
+              expiresAtMs,
+              generation: 1,
+            },
+          },
         })}\n`,
-        "utf8",
+        { encoding: "utf8", mode: 0o600 },
       );
 
       const assembled = await createWebuiRuntimeHost({
@@ -3584,6 +3622,12 @@ describe("WebUI runtime host assembly", () => {
         ((rejectedAccessToken?: string) => void) | undefined;
       expect(typeof getter).toBe("function");
       expect(typeof invalidator).toBe("function");
+      // The scope travels with the handshake: the browser names the account's
+      // own legal documents with it.
+      expect(assembled.harnessPort.version()).toMatchObject({
+        region: "en",
+        buildEnv: "test",
+      });
       expect(getter?.()?.accessToken).toBe("assembled-token");
       // A token the runtime rejected is not handed back a second time.
       invalidator?.("assembled-token");

@@ -96,7 +96,24 @@ describe("the two cross-surface jumps stay in the menu", () => {
   });
 
   it("sends the quota popover's login action on to the login dialog", () => {
-    expect(shell).toContain("onLogin={() => { setOpen(false); setLoginOpen(true); }}");
+    // As a sign-in, not as a switch: this entry offers the account its login,
+    // and a switch would sign the current account out again. Switching is
+    // what the menu's own 切换账号 row is for.
+    expect(shell).toContain('onLogin={() => { setOpen(false); setLoginMode("sign-in"); setLoginOpen(true); }}');
+  });
+});
+
+describe("the menu offers the switch-account row", () => {
+  it("opens the login page in switch mode", () => {
+    // The Desktop reaches its login page to change accounts; the browser's
+    // bottom-left menu offers the same entry point.
+    expect(shell).toContain('data-testid="user-menu-switch-account"');
+    expect(shell).toContain("切换账号");
+    expect(shell).toContain('setLoginMode("switch"); setLoginOpen(true);');
+  });
+
+  it("keeps the sign-in row on the page's other mode", () => {
+    expect(shell).toContain('setLoginMode("sign-in"); setLoginOpen(true);');
   });
 });
 

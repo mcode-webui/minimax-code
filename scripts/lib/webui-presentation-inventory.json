@@ -1,7 +1,7 @@
 {
   "version": 1,
   "entries": [
-    {"path":"features/account/ui/AccountLoginDialog.tsx","label":"AccountLoginDialog","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"newly-adopted-contract"},
+    {"path":"features/account/ui/AccountLoginPage.tsx","label":"AccountLoginPage","kind":"surface","families":["overlays","surfaces-and-content"],"disposition":"newly-adopted-contract"},
     {"path":"features/account/ui/ConversationUsageBanner.tsx","label":"ConversationUsageBanner","kind":"surface","families":["surfaces-and-content","feedback-and-recovery"],"disposition":"business-exception","reason":"the cloud-quota banner: it states a business fact about quota, not a failure or an empty collection","revisit":"a second caller needs a quota or limit notice, or client/ui/feedback grows a notice contract that is not a failure"},
     {"path":"features/account/ui/UserMenu.tsx","label":"UserMenu","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
     {"path":"features/account/ui/UserMenuSignin.tsx","label":"UserMenuSignin","kind":"surface","families":["overlays"],"disposition":"newly-adopted-contract"},
@@ -136,9 +136,9 @@
     {"path":"ui/settings-layout.tsx","label":"settings-layout","kind":"concern","families":["structure","surfaces-and-content"],"disposition":"existing-shared-contract","reason":"the shared presentation home; this module is one of the contracts the rest of the client is classified against"}
   ],
   "reviewed": {
-    "features/account/ui/AccountLoginDialog.tsx": "bcc6e294bddcc2fb",
+    "features/account/ui/AccountLoginPage.tsx": "d55c86877150d6ce",
     "features/account/ui/ConversationUsageBanner.tsx": "c0403acfd2a1f12b",
-    "features/account/ui/UserMenu.tsx": "6802e5f4e560789d",
+    "features/account/ui/UserMenu.tsx": "13be049ec8863f0a",
     "features/account/ui/UserMenuSignin.tsx": "801a48af45246937",
     "features/account/ui/UserMenuUsage.tsx": "08eab4e808752c04",
     "features/browser/ui/BrowserAuthorizationSwitches.public.tsx": "e886e274edbb7a26",

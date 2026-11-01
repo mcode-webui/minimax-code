@@ -44,4 +44,26 @@ describe("the decoded handshake", () => {
     // Absent means "an older service", which is a different answer from an empty manifest.
     expect("capabilities" in decoded).toBe(false);
   });
+
+  it("keeps the account scope, which names the account's own legal documents", () => {
+    const decoded = webuiOperationResultCodecs.version!({
+      version: "1.2.3",
+      protocolVersion: 7,
+      region: "cn",
+      buildEnv: "prod",
+    });
+
+    // The scope is a handshake fact of the same shape as the manifest: additive,
+    // and read by the browser to resolve the account's own documents.
+    expect(decoded).toMatchObject({ region: "cn", buildEnv: "prod" });
+  });
+
+  it("omits the scope a service that predates it did not send", () => {
+    const decoded = webuiOperationResultCodecs.version!({ version: "1.0.0", protocolVersion: 7 });
+
+    // No scope means the page shows the notice without links — never a link to a
+    // document the account's site may not publish.
+    expect("region" in decoded).toBe(false);
+    expect("buildEnv" in decoded).toBe(false);
+  });
 });

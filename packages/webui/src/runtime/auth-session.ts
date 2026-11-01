@@ -12,6 +12,29 @@
 // refresh timer and the auth watch. The assembly composes it and injects the
 // pieces; nothing here knows about the network service, the harness host or
 // the browser.
+//
+// The projection rules are the Desktop's. The Desktop publishes its account
+// into its runtime through one module (`modules/auth/runtime-projection.js` in
+// the installed app) and that module's rules are what this one follows:
+//
+//   * Projections are serialized. Two mutations — a renewal landing while a
+//     sign-out lands — must not interleave, or the runtime keeps a credential
+//     the account no longer holds.
+//   * A projection re-reads the lease after it resolves the account identity
+//     and abandons the attempt when the lease moved underneath it. The
+//     identity belongs to the token it was resolved with; publishing it
+//     against a different token publishes somebody else's account.
+//   * A failed projection clears the runtime's credential. Leaving the last
+//     good one in place is how a signed-out account keeps talking to the
+//     provider.
+//   * A rejected credential is recovered, not just dropped: the core is asked
+//     what to do with it, and a renewal that the core can still serve is
+//     served (`retry`) while a credential the core considers gone ends the
+//     session (`logout`).
+//   * The watch projects the current lease on every status change, except the
+//     two statuses that only mean "the core is working on it" (`refreshing`,
+//     `expired`), and it refuses to publish a lease older than the status that
+//     triggered it.
 
 import {
   createAuthNamespace,
@@ -61,14 +84,16 @@ export interface WebuiAuthSession {
   readonly dispose: () => void;
 }
 
+/** How many times a projection may re-read the lease before it gives up. */
+const PROJECTION_ATTEMPTS = 3;
+
 export function createWebuiAuthSession(
   options: WebuiAuthSessionOptions,
 ): WebuiAuthSession {
-  // The account credential is read from the same directory the installed
-  // client uses, so a browser session never has to sign in again. See
-  // `auth-context.ts` for the store's layout and the deliberate differences
-  // from the terminal client's reader.
-  const authContext = createWebuiAuthContextReader(options.dataDir);
+  // The credential the WebUI serves is the one this session holds: the lease
+  // from the OAuth core below, and the account identity the WebUI resolves
+  // for that lease. Nothing is read from the terminal client's store.
+  const authContext = createWebuiAuthContextReader();
   const quotaNamespace = createAuthNamespace({
     dataDir: options.dataDir,
     buildEnv: options.buildEnv,
@@ -110,6 +135,9 @@ export function createWebuiAuthSession(
   let stopAuthWatch: (() => void) | undefined;
   let disposed = false;
   let refreshVersion = 0;
+  // The projection queue. Every publish goes through it, so a renewal that
+  // lands while a sign-out lands cannot interleave with it.
+  let projectionTail: Promise<void> = Promise.resolve();
   const scheduleAuthRefresh = (lease: NonNullable<typeof activeLease>) => {
     if (authRefreshTimer) clearTimeout(authRefreshTimer);
     const delay = Math.max(1_000, lease.expiresAtMs - Date.now() - 60_000);
@@ -118,6 +146,63 @@ export function createWebuiAuthSession(
     }, delay);
     authRefreshTimer.unref?.();
   };
+
+  /**
+   * Publishes the current lease and its account identity into the runtime.
+   *
+   * The identity is resolved against the token it was resolved with, so the
+   * lease is re-read afterwards: if the lease moved, the identity belongs to a
+   * credential that is no longer current and the attempt is repeated.
+   */
+  const projectLease = async (): Promise<void> => {
+    if (disposed) return;
+    const requestVersion = refreshVersion;
+    for (let attempt = 0; attempt < PROJECTION_ATTEMPTS; attempt += 1) {
+      const lease = await quotaOauthCore.getAccessToken({
+        requiredScopes: [...MCODE_OAUTH_SCOPES],
+        minValidityMs: 0,
+      });
+      const identity = await usageQuota
+        .resolveAccountIdentity(lease.accessToken)
+        .catch(() => undefined);
+      const current = await quotaOauthCore.getAccessToken({
+        requiredScopes: [...MCODE_OAUTH_SCOPES],
+        minValidityMs: 0,
+      });
+      if (
+        current.generation !== lease.generation ||
+        current.accessToken !== lease.accessToken
+      ) {
+        // The lease moved while the identity was being resolved. The identity
+        // belongs to the previous token, so it is not published.
+        continue;
+      }
+      if (disposed || refreshVersion !== requestVersion) return;
+      activeLease = lease;
+      authContext.setAuthContext({
+        accessToken: lease.accessToken,
+        ...(lease.loginEpoch ? { loginEpoch: lease.loginEpoch } : {}),
+        ...(identity ?? {}),
+      });
+      scheduleAuthRefresh(lease);
+      return;
+    }
+    throw new Error("The account changed while its identity was being resolved.");
+  };
+
+  const clearProjection = (): void => {
+    activeLease = undefined;
+    if (authRefreshTimer) clearTimeout(authRefreshTimer);
+    authRefreshTimer = undefined;
+    authContext.setAuthContext(undefined);
+  };
+
+  const enqueueProjection = (operation: () => Promise<void>): Promise<void> => {
+    const pending = projectionTail.catch(() => undefined).then(operation);
+    projectionTail = pending.catch(() => undefined);
+    return pending;
+  };
+
   const refreshOAuthAuthContext = async (
     rejectedAccessToken?: string,
     loginEpoch?: string,
@@ -133,31 +218,21 @@ export function createWebuiAuthSession(
             : {}),
         });
       } catch {
-        // A concurrent TUI login may have already replaced the lease.
+        // A concurrent login may have already replaced the lease.
       }
     }
     if (disposed || refreshVersion !== requestVersion) return;
-    const lease = await quotaOauthCore.getAccessToken({
-      requiredScopes: [...MCODE_OAUTH_SCOPES],
-      minValidityMs: 60_000,
+    await enqueueProjection(async () => {
+      if (disposed || refreshVersion !== requestVersion) return;
+      try {
+        await projectLease();
+      } catch {
+        // A projection that cannot be made leaves the runtime without a
+        // credential. Keeping the last good one would let a signed-out
+        // account keep talking to the provider.
+        if (!disposed && refreshVersion === requestVersion) clearProjection();
+      }
     });
-    if (disposed || refreshVersion !== requestVersion) return;
-    activeLease = lease;
-    const identity = await usageQuota
-      .resolveAccountIdentity(lease.accessToken)
-      .catch(() => undefined);
-    if (
-      disposed ||
-      refreshVersion !== requestVersion ||
-      activeLease?.accessToken !== lease.accessToken
-    )
-      return;
-    authContext.setOAuthAuthContext({
-      accessToken: lease.accessToken,
-      ...(lease.loginEpoch ? { loginEpoch: lease.loginEpoch } : {}),
-      ...(identity ?? {}),
-    });
-    scheduleAuthRefresh(lease);
   };
   const invalidateAuth = (
     rejectedAccessToken?: string,
@@ -169,25 +244,34 @@ export function createWebuiAuthSession(
   };
   const start = async (): Promise<void> => {
     if (disposed) return;
-    // OAuth is the canonical login store shared with `mcode login`; the
-    // cli-auth projection is only an optional source of additional identity data.
+    // The OAuth core is the WebUI's credential store; the terminal client's
+    // private projection is not consulted.
     await refreshOAuthAuthContext().catch(() => undefined);
   };
   const watch = (): void => {
     if (disposed) return;
     stopAuthWatch = quotaOauthCore.watch((status) => {
+      // `refreshing` and `expired` mean the core is working on the
+      // credential, not that the credential is gone.
+      if (status.status === "refreshing" || status.status === "expired") return;
       if (
         status.status === "anonymous" ||
         status.status === "logging_out" ||
         status.status === "logout_pending"
       ) {
-        activeLease = undefined;
-        authContext.setOAuthAuthContext(undefined);
-        if (authRefreshTimer) clearTimeout(authRefreshTimer);
-        authRefreshTimer = undefined;
+        enqueueProjection(async () => clearProjection()).catch(() => undefined);
         return;
       }
-      void refreshOAuthAuthContext().catch(() => undefined);
+      void quotaOauthCore
+        .getAccessToken({ requiredScopes: [...MCODE_OAUTH_SCOPES], minValidityMs: 0 })
+        .then((lease) => {
+          // The status that triggered this may already be superseded.
+          if (lease.generation < status.generation) return;
+          return refreshOAuthAuthContext();
+        })
+        .catch(() => {
+          void refreshOAuthAuthContext().catch(() => undefined);
+        });
     });
     void refreshOAuthAuthContext().catch(() => undefined);
   };
@@ -200,7 +284,7 @@ export function createWebuiAuthSession(
     if (authRefreshTimer) clearTimeout(authRefreshTimer);
     authRefreshTimer = undefined;
     activeLease = undefined;
-    authContext.setOAuthAuthContext(undefined);
+    authContext.setAuthContext(undefined);
   };
   return {
     authContext,

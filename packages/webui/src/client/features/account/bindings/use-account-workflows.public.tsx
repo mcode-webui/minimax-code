@@ -8,7 +8,7 @@
 // transport method for the account operations.
 //
 // Three peers read through these hooks: the account business's `UserMenu` and
-// `AccountLoginDialog` need the workflow handle and the live snapshot to drive
+// `AccountLoginPage` need the workflow handle and the live snapshot to drive
 // their panels, the settings dialog mounts both the workflows and the state
 // to drive its account tab and the sign-out button, and the composer's draft
 // loop watches the workflows state so its banner tracks the signed-in user.

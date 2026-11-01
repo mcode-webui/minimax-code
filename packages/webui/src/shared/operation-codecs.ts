@@ -134,7 +134,7 @@ function readCapabilityManifest(
 export const webuiOperationResultCodecs: WebuiOperationResultCodecs = {
   version: (body) => {
     if (!isRecord(body)) throw malformed("version", "the body is not an object");
-    const { version, protocolVersion, dataDir, capabilities } = body;
+    const { version, protocolVersion, dataDir, region, buildEnv, capabilities } = body;
     if (typeof version !== "string") throw malformed("version", "`version` is not a string");
     if (typeof protocolVersion !== "number") {
       throw malformed("version", "`protocolVersion` is not a number");
@@ -143,6 +143,13 @@ export const webuiOperationResultCodecs: WebuiOperationResultCodecs = {
       version,
       protocolVersion,
       ...(typeof dataDir === "string" ? { dataDir } : {}),
+      // The account scope is part of the handshake fact, so it crosses the
+      // boundary with the rest of it: the browser names the account's own
+      // legal documents from it. Optional and additive — a service that
+      // predates the scope omits it, and the page then shows the notice
+      // without links.
+      ...(typeof region === "string" ? { region } : {}),
+      ...(typeof buildEnv === "string" ? { buildEnv } : {}),
       ...(readCapabilityManifest(capabilities) ?? {}),
     };
   },

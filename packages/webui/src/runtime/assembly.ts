@@ -256,17 +256,11 @@ export async function createWebuiRuntimeHost(
   // credential reader served. The CLI does this for itself
   // (`packages/tui/src/cli/environment.ts:40-72`); the WebUI has to do
   // its own because ADR 0003 forbids importing that module. The resolver
-  // is a no-op when the store carries nothing and nothing is explicit in
-  // the environment, so a WebUI start without a client-side login still
-  // falls back to the harness defaults — `en` / `dev`,
-  // `isManagedRuntime()=false` — exactly as before this step existed.
+  // defaults a fresh install to cn/prod, so the login flow has a reachable
+  // account endpoint before the OAuth namespace exists.
   const scope = configureWebuiRuntimeEnvironment({ dataDir: options.dataDir });
-  const quotaRegion = (scope?.region ?? process.env.MAVIS_REGION ?? "en") as
-    | "cn"
-    | "en";
-  const quotaBuildEnv = (
-    scope?.buildEnv ?? process.env.MAVIS_BUILD_ENV ?? "dev"
-  ) as "dev" | "test" | "staging" | "prod";
+  const quotaRegion = scope.region as "cn" | "en";
+  const quotaBuildEnv = scope.buildEnv as "dev" | "test" | "staging" | "prod";
   // The one OAuth core, lease and refresh timer. It reads the shared `mcode
   // login` credential the installed client uses, so a browser session never has
   // to sign in again.
@@ -459,6 +453,12 @@ export async function createWebuiRuntimeHost(
   const hostHandle = {
     ...host,
     appVersion: options.appVersion ?? host.appVersion ?? "webui",
+    // The scope the resolver settled on, so the handshake can name the
+    // account's own legal documents to the browser.
+    runtimeScope: {
+      region: quotaRegion,
+      buildEnv: quotaBuildEnv,
+    },
     invalidateAuth: authSession.invalidateAuth,
     // The remote-control pairing pipeline signs its own HTTP, and the browser
     // never holds the token — so the credential comes from the one OAuth core,

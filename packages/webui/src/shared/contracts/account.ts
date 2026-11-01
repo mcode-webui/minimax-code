@@ -13,7 +13,7 @@ import type { ClaimSigninData, SigninPanel } from "@mavis/shared/daily-signin";
 // | `WebuiSigninPanelView` | The daily check-in panel (streak, today's status, claimability). | Runtime `getSigninPanel` (`runtime/harness/account.ts`; host `getSigninPanel`, the shared `SigninPanel`). | `client/features/account/contracts/account-port.ts`; `client/features/account/ui/UserMenuSignin.tsx`. |
 // | `WebuiClaimSigninView` | The result of claiming today's check-in. | Runtime `claimSignin` (`runtime/harness/account.ts`; host `claimSignin`). | `client/features/account/contracts/account-port.ts`; `client/features/account/ui/UserMenuSignin.tsx`. |
 // | `WebuiAccountLoginPromptView` | The device-authorization prompt (code, verification URI, expiry) the login dialog shows. | Runtime `beginAccountLogin` / `getAccountLoginStatus` (`runtime/harness/account.ts`; host OAuth core). | unverified — nested in `WebuiAccountLoginView.prompt`; no direct importer. |
-// | `WebuiAccountLoginView` | One answer for both account questions: idle / pending(+prompt) / authenticated / error. | Runtime `beginAccountLogin` / `getAccountLoginStatus`. | `client/features/account/contracts/account-port.ts`; `client/features/account/ui/AccountLoginDialog.tsx`; `server/operation/provider.ts` (response type). |
+// | `WebuiAccountLoginView` | One answer for both account questions: idle / pending(+prompt) / authenticated / error. | Runtime `beginAccountLogin` / `getAccountLoginStatus`. | `client/features/account/contracts/account-port.ts`; `client/features/account/ui/AccountLoginPage.tsx`; `server/operation/provider.ts` (response type). |
 export type WebuiSigninPanelView = SigninPanel;
 export type WebuiClaimSigninView = ClaimSigninData;
 

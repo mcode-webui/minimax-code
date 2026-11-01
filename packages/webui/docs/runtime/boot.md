@@ -16,7 +16,9 @@ reduced to passing capability flags into the host.
    (`runtime-environment.ts`) *before* the host is built, so `getRuntimeRegion()`,
    `getRuntimeBuildEnv()` and `isManagedRuntime()` see the same scope the credential reader served.
    The WebUI does this for itself because ADR 0003 forbids importing the terminal client's module. A
-   start with no client-side login falls back to the harness defaults (`en` / `dev`, not managed).
+   A complete explicit environment pair wins, otherwise it resolves the live OAuth namespace. A
+   fresh install with no account scope defaults to `cn/prod`, so the login page reaches the
+   production account service instead of the old `en/dev` placeholder endpoint.
 3. **Create the one OAuth core, its lease and its refresh timer** (`auth-session.ts`). It reads the
    shared `mcode login` credential, so a browser session never signs in again. A failure here aborts
    the boot before any host exists.

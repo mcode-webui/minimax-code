@@ -33,7 +33,7 @@
 // the daily check-in sign with — so it signs the pairing pipeline with that, and the account id
 // travels in the `user_id` common-param the server cross-checks against the token.
 import { remoteControlDeviceName } from "./device-name.js";
-import { resolveAuthScope, readWebuiAuthContext } from "../auth-context.js";
+import { resolveAuthScope } from "../auth-context.js";
 import { PairingClient } from "./bridge/pairing-client.js";
 import type { RcLogger } from "./bridge/types.js";
 
@@ -260,15 +260,4 @@ export function createRemoteControlPairingClient(
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     ...(options.logger ? { logger: options.logger } : {}),
   });
-}
-
-/**
- * The credential the legacy cli-auth projection carries, if it carries one.
- *
- * The projection is the *older* store: it is a second place an account id can live, and the
- * server cross-checks the `user_id` common-param against the token's own subject. It is read
- * only as a fallback for the account id — the bearer always comes from the OAuth lease.
- */
-export function readLegacyAuthIdentity(dataDir: string): string | undefined {
-  return readWebuiAuthContext(dataDir)?.realUserID;
 }

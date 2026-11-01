@@ -371,7 +371,7 @@ export function installFixtureTransport() {
       if (body?.before) return { messages: [{ msgId: `older-${body.before}`, role: "user", msgContent: "Older synthetic page", timestamp: 1_699_999_999_999 }], hasMore: false };
       return pages[body?.id] ?? { messages: [], hasMore: false };
     }
-    if (operation === "version") return { version: "browser-fixture", protocolVersion: 1 };
+    if (operation === "version") return { version: "browser-fixture", protocolVersion: 1, region: "cn", buildEnv: "prod" };
     if (operation === "listSkills") return { skills: [] };
     if (operation === "listCronTasks") return { items: clone(cronTasks), hasMore: false };
     if (operation === "createCronTask") {

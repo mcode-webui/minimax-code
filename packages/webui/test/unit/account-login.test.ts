@@ -22,7 +22,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AuthStatusSnapshot } from "@mavis/oauth-core";
 
 import { createWebuiAccountLoginSession } from "../../src/runtime/account-login.js";
-import { deriveWebuiAccountLoginPhase } from "../../src/client/features/account/application/login-phase.js";
+import { deriveWebuiAccountLoginPagePhase } from "../../src/client/features/account/application/login-page-phase.js";
 
 /** A controllable core: the test decides when the prompt lands and when the
  *  attempt settles, including the cancellation rejection. */
@@ -158,19 +158,22 @@ async function loginPromiseSettles(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-describe("deriveWebuiAccountLoginPhase", () => {
-  it("maps every server answer to the view the panel shows", () => {
-    expect(deriveWebuiAccountLoginPhase(undefined)).toEqual({ kind: "loading" });
-    expect(deriveWebuiAccountLoginPhase({ state: "idle" })).toEqual({ kind: "loading" });
-    expect(deriveWebuiAccountLoginPhase({ state: "authenticated" })).toEqual({
+describe("deriveWebuiAccountLoginPagePhase", () => {
+  it("maps every server answer to the phase the login page shows", () => {
+    // No answer yet and "idle" both read as signed out: the page waits for the
+    // user to ask for a sign-in, and its call to action stays disabled until
+    // the store has answered whether an account is signed in.
+    expect(deriveWebuiAccountLoginPagePhase(undefined)).toEqual({ kind: "signed-out" });
+    expect(deriveWebuiAccountLoginPagePhase({ state: "idle" })).toEqual({ kind: "signed-out" });
+    expect(deriveWebuiAccountLoginPagePhase({ state: "authenticated" })).toEqual({
       kind: "authenticated",
     });
-    expect(deriveWebuiAccountLoginPhase({ state: "error", error: "expired" })).toEqual({
+    expect(deriveWebuiAccountLoginPagePhase({ state: "error", error: "expired" })).toEqual({
       kind: "error",
       error: "expired",
     });
     expect(
-      deriveWebuiAccountLoginPhase({
+      deriveWebuiAccountLoginPagePhase({
         state: "pending",
         prompt: {
           userCode: "X",
@@ -178,20 +181,24 @@ describe("deriveWebuiAccountLoginPhase", () => {
           expiresAtMs: 1,
         },
       }),
-    ).toEqual({
-      kind: "pending",
-      userCode: "X",
-      verificationUri: "https://x.invalid",
-      verificationUriComplete: undefined,
-    });
+    ).toEqual({ kind: "awaiting", verificationUri: "https://x.invalid" });
   });
 
-  it("keeps a prompt-less pending answer honest: waiting, not guessing", () => {
-    expect(deriveWebuiAccountLoginPhase({ state: "pending" })).toEqual({
-      kind: "pending",
-      userCode: undefined,
-      verificationUri: undefined,
-      verificationUriComplete: undefined,
-    });
+  it("opens the complete authorization URL when the prompt carries one", () => {
+    expect(
+      deriveWebuiAccountLoginPagePhase({
+        state: "pending",
+        prompt: {
+          userCode: "X",
+          verificationUri: "https://x.invalid",
+          verificationUriComplete: "https://x.invalid/activate?code=X",
+          expiresAtMs: 1,
+        },
+      }),
+    ).toEqual({ kind: "awaiting", verificationUri: "https://x.invalid/activate?code=X" });
+  });
+
+  it("keeps a prompt-less pending answer honest: opening, not guessing", () => {
+    expect(deriveWebuiAccountLoginPagePhase({ state: "pending" })).toEqual({ kind: "opening" });
   });
 });

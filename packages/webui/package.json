@@ -17,7 +17,7 @@
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
     "typecheck:test": "node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc -p tsconfig.test.json --noEmit",
     "build:styles": "node ../../scripts/build-webui-styles.mjs",
-    "test": "node ../../scripts/run-vitest-suite.mjs webui"
+    "test": "node ../../scripts/run-vitest-suite.mjs webui-host webui"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { availableParallelism } from "node:os";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
@@ -32,11 +33,24 @@ const fontEnvironment = prepareFontEnvironment(root, {
 // reuses: it is a fresh machine per run and has nothing to reuse.
 const reuseExistingServer = !process.env.CI && process.env.WEBUI_BROWSER_REUSE === "1";
 
+// Specs never share page state: each one installs its own `window.__fixture`
+// and the served client is read-only, so a worker count is a scheduling
+// decision, not a correctness one. Files still run whole, in order, because the
+// steps inside one spec describe one interaction sequence.
+//
+// The default leaves one worker per spare core pair, capped: a 2-core runner
+// gets 1, a 4-core CI runner gets 2, and a developer machine gets 4 — the point
+// where a further worker buys wall clock but starts starving the browser that
+// launches an extension of its own. `WEBUI_BROWSER_WORKERS=1` restores the
+// fully serial run for a bisect.
+const cpuBudget = Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2)));
+const workers = Number(process.env.WEBUI_BROWSER_WORKERS ?? cpuBudget);
+
 export default defineConfig({
   testDir: "./packages/webui/test/browser",
   outputDir: outputDirectory,
   fullyParallel: false,
-  workers: 1,
+  workers,
   reporter: "list",
   metadata: { webuiBrowserServerId: serverId },
   use: {

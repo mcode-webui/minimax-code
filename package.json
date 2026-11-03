@@ -34,7 +34,7 @@
     "check:webui-feedback": "node scripts/check-webui-feedback.mjs",
     "coverage:review": "node scripts/coverage-review.mjs",
     "install:webui-browsers": "playwright install chromium",
-    "test:webui": "node scripts/run-vitest-suite.mjs webui",
+    "test:webui": "node scripts/run-vitest-suite.mjs webui-host webui",
     "test:webui-package": "node scripts/verify-webui-package.mjs",
     "test:webui-browser": "playwright install --with-deps chromium && playwright test packages/webui/test/browser",
     "typecheck:webui": "pnpm --filter @mavis/webui typecheck:server && pnpm --filter @mavis/webui typecheck:client && pnpm --filter @mavis/webui typecheck:test",

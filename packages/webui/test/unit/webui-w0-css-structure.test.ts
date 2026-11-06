@@ -1071,6 +1071,8 @@ describe("W0 · stacking order", () => {
       // 150 is `.webui-miniapp-launcher-popover`, the 应用 launcher's popover:
       // above the window frame it can open over (140), and still under the
       // notice host (160), which has to stay readable over everything.
+      // 155 is the shared loading overlay: above the surfaces whose actions
+      // it reports on, below the toast host, and transparent to pointer input.
       // 160 is `.webui-toast-host` (ADR 0030): the notice crosses a modal, so
       // it is the one layer declared above the dialog band.
       // 4 is gone: it was the workspace panel's add-menu anchor, and the add
@@ -1081,7 +1083,7 @@ describe("W0 · stacking order", () => {
       // registers at the shell's 100 mask and 111 surface instead of declaring
       // a layer of its own.
       0, 1, 2, 3, 5, 20, 40, 45, 50, 60, 70, 80, 90, 100, 111, 120, 121, 130,
-      140, 150, 160,
+      140, 150, 155, 160,
     ]);
   });
 });

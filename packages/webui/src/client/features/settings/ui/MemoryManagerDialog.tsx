@@ -119,19 +119,23 @@ export function MemoryManagerDialog({
     setConfirmingDelete(false);
   }, [open]);
 
+  const loadRevision = useRef(0);
+  const editRevision = useRef(0);
   const load = useCallback(async (reader: NonNullable<MemoryManagerDialogProps["getAgentMemory"]>) => {
+    const revision = ++loadRevision.current;
+    const edits = editRevision.current;
     setLoading(true);
     setError(undefined);
     try {
       const value = await reader({ includeContent: true });
-      if (!value) return;
+      if (revision !== loadRevision.current || !value) return;
       // The body is only taken when the box still holds the server's text.
       // A read that settles after the user has started typing must not replace
       // their edit with a body they have not seen: the editor is the user's,
       // and silently reverting it is worse than showing a value one read old.
       // The metadata is still refreshed — the size and timestamp describe the
       // file, not the edit.
-      if (!dirtyRef.current) {
+      if (editRevision.current === edits) {
         setDraft(value.content ?? "");
         setBaseline(value.content ?? "");
       }
@@ -139,23 +143,12 @@ export function MemoryManagerDialog({
       setFilePath(value.path);
       setFileSize(value.sizeBytes);
     } catch (cause: unknown) {
+      if (revision !== loadRevision.current) return;
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }, []);
-
-  /**
-   * Whether the box holds text the user typed rather than text the server sent.
-   *
-   * Read through a ref because `load` is deliberately built with no dependencies
-   * (see below): a callback that closed over the current draft would have to be
-   * rebuilt whenever it changed, and rebuilding it is exactly what re-arms the
-   * effect that must fire only once per open. The ref carries the answer across
-   * without making the callback depend on it.
-   */
-  const dirtyRef = useRef(false);
-  dirtyRef.current = draft !== undefined && draft !== baseline;
 
   /**
    * The body loads on open. 管理 goes straight into the editor,
@@ -175,7 +168,19 @@ export function MemoryManagerDialog({
   }, [getAgentMemory]);
   useEffect(() => {
     const reader = readerRef.current;
-    if (open && reader) void load(reader);
+    if (open) {
+      // A new opening owns a fresh draft even if the previous exit animation
+      // has not finished. The closing frame keeps its content until then.
+      setDraft(undefined);
+      setBaseline(undefined);
+      setUpdatedAt(undefined);
+      setFilePath(undefined);
+      setFileSize(0);
+      setError(undefined);
+      setSaved(false);
+      if (reader) void load(reader);
+    }
+    return () => { loadRevision.current += 1; };
   }, [load, open]);
 
   /**
@@ -343,17 +348,6 @@ export function MemoryManagerDialog({
       headerActions={menu}
       closeTestId="agent-memory-close"
       onClose={onClose}
-      onExitComplete={() => {
-        setDraft(undefined);
-        setBaseline(undefined);
-        setUpdatedAt(undefined);
-        setFilePath(undefined);
-        setFileSize(0);
-        setError(undefined);
-        setSaved(false);
-        setMenuOpen(false);
-        setConfirmingDelete(false);
-      }}
       dismissOnEscape={!menuOpen}
       dismissOnBackdrop
       portalTarget={dom.portalTarget()}
@@ -395,6 +389,7 @@ export function MemoryManagerDialog({
                   placeholder="编辑 Agent 的工作记忆摘要"
                   spellCheck={false}
                   onChange={(event) => {
+                    editRevision.current += 1;
                     setDraft(event.target.value);
                     setSaved(false);
                   }}

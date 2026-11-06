@@ -203,9 +203,8 @@ describe("the Mini App page bridge over the loopback wire", () => {
   /**
    * The listeners the handler would otherwise keep privately.
    *
-   * A Mini App's proxy port is derived from its plugin id, so a listener left
-   * bound makes the next start of that plugin fail. The service owns the registry
-   * it is given, and this file owns it here.
+   * Every Mini App shares one proxy listener. This fixture owns the registry
+   * and closes it after each case so the listener cannot outlive the service.
    */
   let proxies: ReturnType<typeof createMiniAppProxyRegistry> | undefined;
 
@@ -219,12 +218,12 @@ describe("the Mini App page bridge over the loopback wire", () => {
   /**
    * One service per case, on its own Mini App plugin id.
    *
-   * The proxy's loopback port is derived from the plugin id, so two cases sharing
-   * one id would contend for the same port if a shutdown were ever slow.
+   * Each registry requests an ephemeral port, independent of any running WebUI
+   * deployment and of other test services on this machine.
    */
   async function connect(pluginId: string) {
     const { port, recorded } = scriptedPort();
-    proxies = createMiniAppProxyRegistry();
+    proxies = createMiniAppProxyRegistry({ port: 0 });
     service = new WebuiService({
       port,
       operations: createOperationRegistry(port, undefined, undefined, undefined, proxies),

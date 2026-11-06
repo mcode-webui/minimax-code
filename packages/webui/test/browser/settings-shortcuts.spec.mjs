@@ -124,10 +124,14 @@ test("a captured combination becomes the binding the page shows", async ({ page 
   // is named. The capture stays open so the user can press another one;
   // Escape leaves it, and the binding is the one it was.
   await rebind(page, "newline", "Control+Enter");
-  await expect(page.locator('[data-testid="mavis-settings-shortcut-error"]')).toContainText("发送消息");
+  const error = page.getByTestId("mavis-settings-shortcut-error");
+  await expect(error).toContainText("发送消息");
+  await expect(shortcutKey(page, "newline")).toHaveAttribute("aria-invalid", "true");
+  await expect(shortcutKey(page, "newline")).toHaveAttribute("aria-describedby", await error.getByRole("alert").getAttribute("id"));
   await page.keyboard.press("Escape");
   await expect(shortcutKey(page, "newline")).toHaveText("Shift + Enter");
   await expect(page.locator('[data-testid="mavis-settings-shortcut-error"]')).toHaveCount(0);
+  await expect(shortcutKey(page, "newline")).not.toHaveAttribute("aria-invalid", "true");
 });
 
 test("the binding survives closing the settings and coming back", async ({ page }) => {

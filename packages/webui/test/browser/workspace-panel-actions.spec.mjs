@@ -13,6 +13,7 @@
 // shell's render.
 
 import { expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 import { configureFixture, openApp, openLauncherTile, switchSession, test } from "./harness.mjs";
 
@@ -40,6 +41,40 @@ test("the file tree names each row with its own type glyph", async ({ page }) =>
   const row = tree.getByRole("button", { name: /a\.ts/u });
   await expect(row.locator("svg.tabler-icon-file-type-ts")).toHaveCount(1);
   await expect(row.locator("svg.tabler-icon-file")).toHaveCount(0);
+});
+
+test("the tablist owns only tabs while new and close actions remain keyboard reachable", async ({ page }) => {
+  await configureFixture(page, () => undefined);
+  await openApp(page);
+  await openFilePanel(page);
+  const strip = page.getByTestId("workspace-tab-strip");
+  const tabs = strip.getByRole("tab");
+  const count = await tabs.count();
+  expect(count).toBeGreaterThan(0);
+  const ownership = await strip.getByRole("tablist").getAttribute("aria-owns");
+  expect(ownership?.split(" ")).toEqual(await tabs.evaluateAll((elements) => elements.map((element) => element.id)));
+  const scan = await new AxeBuilder({ page })
+    .include('[data-testid="workspace-tab-strip"]')
+    .withRules(["aria-required-children", "aria-required-parent", "nested-interactive"])
+    .analyze();
+  expect(scan.violations).toEqual([]);
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    const { nodes } = await cdp.send("Accessibility.getFullAXTree");
+    const list = nodes.find((node) => node.name?.value === "工作区面板标签" && /^tablist$/iu.test(node.role?.value ?? ""));
+    expect(list).toBeDefined();
+    const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+    expect(list.childIds.map((id) => byId.get(id)?.role?.value)).toEqual(Array(count).fill("tab"));
+  } finally {
+    await cdp.detach();
+  }
+
+  await page.getByTestId("workspace-add-tab").focus();
+  await page.keyboard.press("Enter");
+  await expect(tabs).toHaveCount(count + 1);
+  await strip.locator(".webui-workspace-tab.is-active .webui-workspace-tab-close").focus();
+  await page.keyboard.press("Enter");
+  await expect(tabs).toHaveCount(count);
 });
 
 test("the panel opens a file, closes the tab, and keeps its place across a session switch", async ({

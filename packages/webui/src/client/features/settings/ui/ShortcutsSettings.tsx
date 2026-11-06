@@ -12,8 +12,9 @@
 // does not consume is Escape: that one belongs to the overlay coordinator, and
 // the capture is a layer while it is open.
 
-import { Fragment, useEffect, useMemo, useState, type ReactElement } from "react";
+import { Fragment, useEffect, useId, useMemo, useState, type ReactElement } from "react";
 import { WebuiButton } from "../../../ui/button.js";
+import { WebuiFieldError } from "../../../ui/field.js";
 import {
   findShortcutConflict,
   parseShortcut,
@@ -25,7 +26,6 @@ import { SettingsDivider, SettingsPage, SettingsRow, SettingsSection } from "../
 import { SettingsButton } from "./settings-atoms.js";
 import { shortcutActionTitle, shortcutSettingsRows } from "../projection/settings-shortcuts.js";
 import { useDialogLayer } from "../../../ui/overlay-listeners.js";
-import { useWebuiToastError } from "../../../ui/toast.js";
 
 export interface ShortcutsSettingsProps {
   readonly bindings: ShortcutBindings;
@@ -36,6 +36,7 @@ export interface ShortcutsSettingsProps {
 export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSettingsProps): ReactElement {
   const [capturing, setCapturing] = useState<ShortcutActionId | undefined>(undefined);
   const [error, setError] = useState("");
+  const errorId = useId();
   const rows = useMemo(() => shortcutSettingsRows(bindings), [bindings]);
 
   /**
@@ -115,7 +116,7 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
           </SettingsButton>
         }
       >
-        {error ? <SettingsErrorNotice message={error} testId="mavis-settings-shortcut-error" /> : null}
+        {error ? <span data-testid="mavis-settings-shortcut-error"><WebuiFieldError id={errorId} message={error} /></span> : null}
         {rows.map((row, index) => (
           <Fragment key={row.actionId}>
             {index > 0 ? <SettingsDivider /> : null}
@@ -129,6 +130,8 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
                   data-overlay-layer={capturing === row.actionId ? captureLayerId : undefined}
                   aria-label={`${row.title}的快捷键，当前为${row.label}`}
                   aria-pressed={capturing === row.actionId}
+                  aria-invalid={capturing === row.actionId && error ? true : undefined}
+                  aria-describedby={capturing === row.actionId && error ? errorId : undefined}
                   onClick={() => { setError(""); setCapturing(row.actionId); }}
                   // The capture's own control answers Escape: it holds focus while
                   // the capture is open, so the key reaches it before any surface
@@ -155,24 +158,4 @@ export function ShortcutsSettings({ bindings, onChange, onReset }: ShortcutsSett
       </SettingsSection>
     </SettingsPage>
   );
-}
-
-/**
- * The failure notice.
- *
- * The toast is said from a component of its own, mounted only while there is
- * something to say: the toast reads the client-wide provider, and a surface
- * that is rendered on its own — a page test, a static frame — has no provider
- * to say it through. `SettingsSavedNotice` has the same shape for the same
- * reason.
- */
-function SettingsErrorNotice({
-  message,
-  testId,
-}: {
-  readonly message: string;
-  readonly testId?: string;
-}): ReactElement | null {
-  useWebuiToastError(message, { testId });
-  return null;
 }

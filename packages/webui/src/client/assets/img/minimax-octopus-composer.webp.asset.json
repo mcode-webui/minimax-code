@@ -1,0 +1,6 @@
+{
+  "source": "minimax-octopus-composer.webm (existing user-provided coral-octopus-3d-white.webm)",
+  "destination": "minimax-octopus-composer.webp",
+  "description": "The original 24fps looping composer animation with alpha, resized to 180x320 for browser-independent image decoding at up to 3x its CSS size.",
+  "conversion": "ffmpeg -c:v libvpx-vp9 -i minimax-octopus-composer.webm -vf scale=180:320 -c:v libwebp_anim -quality 85 -compression_level 6 -loop 0 -an minimax-octopus-composer.webp"
+}

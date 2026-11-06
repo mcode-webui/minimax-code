@@ -25,6 +25,7 @@
 
 import {
   useState,
+  useId,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -321,6 +322,7 @@ export function WebuiWorkspaceTabStrip({
   // The strip owns the row, so it is the strip that brings a focused,
   // off-screen tab into view. The row scrolls, the panel does not.
   const tabListRef = useRef<HTMLDivElement>(null);
+  const tabListId = useId();
   useEffect(() => {
     tabListRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
@@ -363,9 +365,15 @@ export function WebuiWorkspaceTabStrip({
   }, [watchKey, dispatch, runScope]);
 
   return (
-    // The tab list is the row that owns the tabs, so it is the element that says
-    // `tablist`: a wrapper above it would own a plain div rather than the tabs.
-    <div className="webui-workspace-tab-list" role="tablist" aria-label="工作区面板标签" data-testid="workspace-tab-strip" ref={tabListRef}>
+    <div className="webui-workspace-tab-list" data-testid="workspace-tab-strip" ref={tabListRef}>
+      {/* Only the tab controls belong to the tablist. Explicit ownership keeps
+          the adjacent close/new buttons independent without changing layout. */}
+      {state.tabs.length > 0 ? <div
+        className="sr-only"
+        role="tablist"
+        aria-label="工作区面板标签"
+        aria-owns={state.tabs.map((item) => `${tabListId}-${item.id}`).join(" ")}
+      /> : null}
       {state.tabs.map((item) => (
         <WebuiMotionSlot key={item.id} kind="feedback">
         <div
@@ -375,6 +383,7 @@ export function WebuiWorkspaceTabStrip({
           data-tab-kind={item.content.kind}
         >
           <WebuiButton
+            id={`${tabListId}-${item.id}`}
             variant="plain"
             size="regular"
             className="webui-workspace-tab-control"

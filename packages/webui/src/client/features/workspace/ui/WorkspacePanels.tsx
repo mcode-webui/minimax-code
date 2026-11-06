@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 import { WebuiButton } from "../../../ui/button.js";
 import { WebuiInline } from "../../../ui/layout-primitives.js";
 import { WebuiSearchField, WebuiTextInput } from "../../../ui/field.js";
@@ -446,7 +446,11 @@ function WebuiWorkspacePanelView({ state, dispatch, sessionId, workspaceDir, wor
   const autoCreateTerminalFor = useRef<string>();
   const [terminalInitialSize, setTerminalInitialSize] = useState<{ readonly cols: number; readonly rows: number }>();
   const [terminalError, setTerminalError] = useState<string>();
-  const terminalSupport = terminalOwner?.support().create ?? "absent";
+  const terminalSupport = useSyncExternalStore(
+    terminalOwner?.subscribe ?? (() => () => undefined),
+    () => terminalOwner?.support().create ?? "absent",
+    () => terminalOwner?.support().create ?? "absent",
+  );
   const terminalAvailability = terminalSupport === "absent" ? "当前服务未提供终端。"
     : terminalSupport === "not-ready" ? "终端服务尚未就绪。"
       : terminalSupport === "incompatible" ? "终端接口与当前页面不兼容，请检查服务版本。" : undefined;

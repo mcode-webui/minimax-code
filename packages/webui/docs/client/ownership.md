@@ -114,6 +114,8 @@ proposing to move this state to the server.
   creation with different explanations; an older handshake with no roster keeps the unverified
   attempt path. Permission denial remains a call failure. The panel subscribes to catalogue changes
   while retaining xterm presentation by terminal identity, so output updates do not recreate a watch.
+  The owner also observes the settings owner's handshake snapshot and notifies mounted readers
+  when terminal availability changes after reconnect; its disposal releases that subscription.
 - **Team mode.** `createSession` carries `teamModeOff` as the only create-time team field
   (`shared/contracts/session.ts`). A session's team state is never read back from the server — there
   is no `teamMode` on the session view.

@@ -1,0 +1,6 @@
+{
+  "source": "packages/webui/src/client/assets/img/minimax-octopus-composer.webm",
+  "destination": "composer-mascot-opaque.webm",
+  "description": "Test-only opaque re-encode of the existing user-provided mascot, simulating video decoders that discard its alpha channel.",
+  "conversion": "ffmpeg -i minimax-octopus-composer.webm -c:v libvpx-vp9 -b:v 0 -crf 40 -an composer-mascot-opaque.webm"
+}

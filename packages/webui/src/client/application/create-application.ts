@@ -680,13 +680,6 @@ export function createWebuiApplication(
   // can reach which port" is decided here rather than by which port a component
   // happened to be handed.
   const slices = deps.slices ?? createWebuiPortSlices(deps.turnCapabilities ?? {});
-  // The terminal owner reads the handshake's capability manifest when asked, so a
-  // host that declares no terminal bridge is reported absent rather than offered,
-  // and a bridge that is not ready says so. The reader is lazy because the
-  // handshake is read by the settings owner, which is built below.
-  const terminalOwner = createWebuiTerminalOwner(slices.workspace, {
-    readCapabilities: () => settingsWorkflows.getSnapshot().runtimeVersion.value?.capabilities,
-  });
   const transcriptCommands: WebuiTranscriptCommands = {
     ...(slices.sessions.getSessionForkOptions
       ? { getSessionForkOptions: (request) => slices.sessions.getSessionForkOptions!(request) }
@@ -873,6 +866,12 @@ export function createWebuiApplication(
   const settingsWorkflows = createWebuiSettingsWorkflows({
     port: slices.settings,
     identityEpochs,
+  });
+  // The terminal owner reads the current handshake and notifies its mounted
+  // readers when reconnect changes the declared capability.
+  const terminalOwner = createWebuiTerminalOwner(slices.workspace, {
+    readCapabilities: () => settingsWorkflows.getSnapshot().runtimeVersion.value?.capabilities,
+    subscribeCapabilities: settingsWorkflows.subscribe,
   });
   // `models` owns the catalogue, the selection and the provider list. The one
   // call that crosses the boundary is the api-key upsert's: it refreshes

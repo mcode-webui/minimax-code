@@ -54,6 +54,12 @@
     transition-duration: var(--webui-motion-duration-feedback);
     transition-timing-function: var(--webui-motion-ease-standard);
   }
+  /* Keep the conversation's reserved gutter in step with its panel's exit. */
+  .webui-motion-panel-layout {
+    transition-property: padding-inline-end;
+    transition-duration: var(--webui-motion-duration-surface);
+    transition-timing-function: var(--webui-motion-ease-standard);
+  }
   /* surface — a floating surface arrives. The caller names the keyframes, which
    * carry the direction; the family carries the timing so every surface in the
    * client arrives at the same speed. */

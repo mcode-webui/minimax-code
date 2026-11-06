@@ -2168,6 +2168,9 @@ describe("WebUI service", () => {
       path.join(fixtureDir, "styles.css"),
       "/* styles-fixture */",
     );
+    await mkdir(path.join(fixtureDir, "assets"));
+    const mascotBytes = await readFile(new URL("../../src/client/assets/img/minimax-octopus-composer.webp", import.meta.url));
+    await writeFile(path.join(fixtureDir, "assets/mascot.webp"), mascotBytes);
     try {
       const devService = new WebuiService({
         port,
@@ -2182,6 +2185,10 @@ describe("WebUI service", () => {
           const response = await fetch(`http://127.0.0.1:${port1}${path}`);
           expect(response.status, `dev-mode GET ${path}`).toBe(200);
         }
+        const mascot = await fetch(`http://127.0.0.1:${port1}/assets/mascot.webp`);
+        expect(mascot.status).toBe(200);
+        expect(mascot.headers.get("content-type")).toBe("image/webp");
+        expect(Buffer.from(await mascot.arrayBuffer())).toEqual(mascotBytes);
       } finally {
         await devService.close();
       }

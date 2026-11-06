@@ -251,7 +251,7 @@ test("closing the dialog returns focus to the control that opened it", async ({ 
   await expect.poll(() => page.locator("#webui-root").evaluate((element) => element.inert)).toBe(true);
 });
 
-test("the shared modal frame keeps its header and actions fixed around a scrolling body", async ({ page }, testInfo) => {
+test("the shared modal frame keeps its header and actions fixed around a scrolling memory editor", async ({ page }, testInfo) => {
   await page.evaluate(() => window.__fixture.setResponse("getAgentMemory", {
     agentName: "main",
     path: "memory.md",
@@ -270,15 +270,16 @@ test("the shared modal frame keeps its header and actions fixed around a scrolli
     const header = surface.querySelector(".webui-dialog-header");
     const body = surface.querySelector(".webui-dialog-body");
     const footer = surface.querySelector(".webui-dialog-footer");
-    if (!header || !body || !footer) return null;
+    const editor = surface.querySelector("textarea");
+    if (!header || !body || !footer || !editor) return null;
     return {
       surface: bounds(surface),
       header: bounds(header),
       body: bounds(body),
       footer: bounds(footer),
       bodyOverflowY: getComputedStyle(body).overflowY,
-      bodyClientHeight: body.clientHeight,
-      bodyScrollHeight: body.scrollHeight,
+      editorClientHeight: editor.clientHeight,
+      editorScrollHeight: editor.scrollHeight,
       scrim: getComputedStyle(surface.parentElement).backgroundColor,
     };
   });
@@ -286,16 +287,17 @@ test("the shared modal frame keeps its header and actions fixed around a scrolli
   expect(geometry?.surface.width).toBeCloseTo(640, 0);
   expect(geometry?.surface.height ?? 0).toBeLessThanOrEqual(765);
   expect(geometry?.bodyOverflowY).toBe("auto");
-  expect(geometry?.bodyScrollHeight ?? 0).toBeGreaterThan(geometry?.bodyClientHeight ?? 0);
+  expect(geometry?.editorScrollHeight ?? 0).toBeGreaterThan(geometry?.editorClientHeight ?? 0);
   expect(geometry?.header.top).toBeGreaterThanOrEqual(geometry?.surface.top ?? 0);
   expect(Math.abs((geometry?.footer.bottom ?? 0) - (geometry?.surface.bottom ?? 0))).toBeLessThanOrEqual(2);
   // The scrim is the shared modal token, and the Desktop's colorBgMask binds it
   // to utility_overlay: black at 25% in the light palette.
   expect(geometry?.scrim).toBe("rgba(0, 0, 0, 0.25)");
 
-  await page.getByTestId("agent-memory-manager").locator(".webui-dialog-body").evaluate((body) => {
-    body.scrollTop = body.scrollHeight;
+  await page.getByTestId("agent-memory-textarea").evaluate((editor) => {
+    editor.scrollTop = editor.scrollHeight;
   });
+  await expect.poll(() => page.getByTestId("agent-memory-textarea").evaluate((editor) => editor.scrollTop)).toBeGreaterThan(0);
   await expect(page.getByTestId("agent-memory-save")).toBeVisible();
   await testInfo.attach("shared-modal-desktop-long-content", {
     body: await page.screenshot(),

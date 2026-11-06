@@ -63,7 +63,7 @@ const panelText = (page) =>
     return el ? (el.textContent || "").replace(/\s+/g, " ").trim() : null;
   });
 
-test("environment loading skeleton geometry", async ({ page }) => {
+test("environment loading skeleton geometry", async ({ page }, testInfo) => {
   await configureFixture(page, () => window.__fixture.delayEvery("getWorkspaceEnvironment", {}));
   await openApp(page, "#session=A");
   await attachLiveTurn(page);
@@ -72,10 +72,15 @@ test("environment loading skeleton geometry", async ({ page }) => {
   ))).toBe(true);
   const environment = page.locator(".webui-environment-panel.is-loading");
   await expect(environment).toBeVisible();
-  const loadingActions = environment.locator(".webui-environment-actions > .webui-environment-action.webui-motion-loading");
+  const loadingActions = environment.locator(".webui-environment-actions > .webui-environment-action.webui-page-skeleton-node");
   await expect(loadingActions).toHaveCount(3);
-  await expect.poll(() => loadingActions.first().evaluate((element) => getComputedStyle(element).animationName)).toBe("webui-skeleton-pulse");
-  await expect.poll(() => loadingActions.first().evaluate((element) => getComputedStyle(element).backgroundColor !== "rgba(0, 0, 0, 0)")).toBe(true);
+  for (const action of await loadingActions.all()) {
+    const bar = action.locator(".webui-skeleton").first();
+    await expect(bar).toBeVisible();
+    await expect.poll(() => bar.evaluate((element) => getComputedStyle(element).animationName)).toBe("webui-skeleton-pulse");
+    await expect.poll(() => bar.evaluate((element) => getComputedStyle(element).backgroundColor !== "rgba(0, 0, 0, 0)")).toBe(true);
+    expect((await bar.boundingBox()).height).toBe(28);
+  }
   const rowGeometry = await environment.locator(".webui-environment-actions > .webui-environment-action").evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     return { top: rect.top, bottom: rect.bottom, height: rect.height };
@@ -83,6 +88,7 @@ test("environment loading skeleton geometry", async ({ page }) => {
   expect(rowGeometry).toHaveLength(3);
   expect(rowGeometry.every((rect) => rect.height === 36)).toBe(true);
   expect(rowGeometry.slice(1).every((rect, index) => rect.top - rowGeometry[index].bottom >= 8)).toBe(true);
+  await testInfo.attach("environment-loading", { body: await environment.screenshot(), contentType: "image/png" });
 });
 
 test("the open terminal action uses a terminal icon", async ({ page }) => {

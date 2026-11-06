@@ -60,7 +60,7 @@ test("V19/V35 an older roster permits an unverified attempt and permission denia
 
   // The refusal stays a call refusal: the panel reports it and nothing else
   // stops working.
-  await expect(page.getByTestId("workspace-panel")).toContainText("Synthetic terminal permission denied");
+  await expect(page.getByTestId("workspace-terminal-status")).toContainText("Synthetic terminal permission denied");
   await expect(page.getByPlaceholder("输入消息…（输入 / 唤起命令）")).toBeEnabled();
 });
 
@@ -131,11 +131,15 @@ test("V31/V34 inspection and authorization progress through a saturated activity
   await page.mouse.click(8, 8);
   await page.locator('[data-testid="sidebar-user-menu-trigger"]').click();
   await page.getByTestId("user-menu-account-login").click();
-  // The login surface carries the code, and the element that shows it is the
-  // status row now — what the acceptance cares about is that the code a person
-  // must type is on screen.
-  await expect(page.getByTestId("account-login-status")).toBeVisible();
-  await expect(page.locator('[data-testid^="account-login"]').filter({ hasText: "TEST-CODE" }).first()).toBeVisible();
+  const login = page.getByTestId("account-login-page");
+  await expect(login).toHaveAttribute("data-webui-account-login-phase", "signed-out");
+  await page.context().route("https://example.invalid/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "Synthetic authorization page" }),
+  );
+  const authorizationPopup = page.waitForEvent("popup");
+  await page.getByTestId("account-login-sign-in").click();
+  await expect(await authorizationPopup).toHaveURL("https://example.invalid/device?code=TEST-CODE");
+  await expect(login).toHaveAttribute("data-webui-account-login-phase", "awaiting");
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -143,7 +147,7 @@ test("V31/V34 inspection and authorization progress through a saturated activity
   });
   const hidden = await sessionModels(page);
   await page.clock.runFor(10_000);
-  await expect(page.getByTestId("account-login-dialog")).toHaveAttribute("data-webui-account-login-phase", "authenticated");
+  await expect(login).toHaveAttribute("data-webui-account-login-phase", "authenticated");
   expect(await sessionModels(page)).toBe(hidden);
   expect(await requestCount(page, "abortSession")).toBe(0);
   await page.evaluate(() => {
@@ -156,6 +160,7 @@ test("V31/V34 inspection and authorization progress through a saturated activity
 });
 
 test("V33 memory loads once per open and preserves dirty input across unrelated owner refreshes", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await configureFixture(page, () => {
     window.__fixture.setResponse("getGlobalInstructions", { content: "", exists: true, path: "AGENTS.md", maxBytes: 32768 });
     window.__fixture.setResponse("getUserProfile", { nickname: "", occupation: "", moreAbout: "", exists: true, malformed: false, path: "user.md", sizeBytes: 0, maxChars: 10000 });

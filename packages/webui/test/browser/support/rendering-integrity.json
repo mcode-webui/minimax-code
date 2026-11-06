@@ -510,7 +510,7 @@
     "settings-usage-page/empty/dark": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 24,
         "insideViewport": true,
         "insideContainer": true,
@@ -533,7 +533,7 @@
     "settings-usage-page/empty/light": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 24,
         "insideViewport": true,
         "insideContainer": true,
@@ -556,7 +556,7 @@
     "settings-usage-page/longest/dark": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 225,
         "insideViewport": true,
         "insideContainer": true,
@@ -579,7 +579,7 @@
     "settings-usage-page/longest/light": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 225,
         "insideViewport": true,
         "insideContainer": true,
@@ -602,7 +602,7 @@
     "settings-usage-page/maximum/dark": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 497,
         "insideViewport": true,
         "insideContainer": true,
@@ -625,7 +625,7 @@
     "settings-usage-page/maximum/light": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 497,
         "insideViewport": true,
         "insideContainer": true,
@@ -648,7 +648,7 @@
     "settings-usage-page/one/dark": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 225,
         "insideViewport": true,
         "insideContainer": true,
@@ -671,7 +671,7 @@
     "settings-usage-page/one/light": {
       "missing": false,
       "root": {
-        "width": 692,
+        "width": 698,
         "height": 225,
         "insideViewport": true,
         "insideContainer": true,
@@ -985,7 +985,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 5,
         "clipped": 1,
         "empty": 0
       }
@@ -1008,7 +1008,7 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
+        "count": 5,
         "clipped": 1,
         "empty": 0
       }
@@ -1031,8 +1031,8 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 64,
-        "clipped": 30,
+        "count": 34,
+        "clipped": 0,
         "empty": 0
       }
     },
@@ -1054,8 +1054,8 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 64,
-        "clipped": 30,
+        "count": 34,
+        "clipped": 0,
         "empty": 0
       }
     },
@@ -1077,8 +1077,8 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
-        "clipped": 1,
+        "count": 5,
+        "clipped": 0,
         "empty": 0
       }
     },
@@ -1100,8 +1100,8 @@
         "outsideRoot": 0
       },
       "texts": {
-        "count": 6,
-        "clipped": 1,
+        "count": 5,
+        "clipped": 0,
         "empty": 0
       }
     }

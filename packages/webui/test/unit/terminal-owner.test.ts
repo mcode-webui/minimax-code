@@ -35,6 +35,37 @@ it("V19/V35 skips a known unavailable roster and reads after readiness changes",
   owner.dispose();
 });
 
+it("notifies a mounted reader when the capability manifest changes and releases the subscription", () => {
+  let state: "absent" | "supported" = "absent";
+  let capabilityChanged = () => {};
+  let released = 0;
+  const owner = createWebuiTerminalOwner({
+    createTerminal: async () => ({ terminalId: "terminal-ready", status: "running" }),
+  }, {
+    readCapabilities: () => ({ terminal: state }),
+    subscribeCapabilities: (listener: () => void) => {
+      capabilityChanged = listener;
+      return () => { released += 1; };
+    },
+  });
+  const observed: string[] = [];
+  const before = owner.getSnapshot();
+  owner.subscribe(() => observed.push(owner.support().create));
+
+  state = "supported";
+  capabilityChanged();
+  expect(observed).toEqual(["supported"]);
+  expect(owner.getSnapshot()).not.toBe(before);
+  capabilityChanged();
+  expect(observed).toEqual(["supported"]);
+
+  owner.dispose();
+  expect(released).toBe(1);
+  state = "absent";
+  capabilityChanged();
+  expect(observed).toEqual(["supported"]);
+});
+
 function port(trace: Trace, terminals: string[] = ["terminal-a", "terminal-b"]) {
   let watches = 0;
   return {

@@ -141,7 +141,9 @@ contract.
   of its sibling is claiming space twice: it covers the content and narrows it. A drawer is out of
   the flow, a closed panel is zero wide, and a column takes the width it actually uses. The
   progress panel's card is the one float that keeps a gutter, and that gutter is the card's own
-  room — which is why the card closes itself where there is none.
+  room — which is why the card closes itself where there is none. Closing the card returns that
+  gutter through the shared panel-layout transition, using the surface duration token; reduced
+  motion collapses the transition through the shared policy.
 - **Two pieces of geometry that describe one relationship are derived from one number.** The rail's
   toggle and the session title were two literals for one gap; they are now two children of one
   row, so they cannot disagree.

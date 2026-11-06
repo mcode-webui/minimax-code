@@ -184,7 +184,12 @@ test.describe("the packaged production entry, against a real browser", () => {
               await readFile(resolve(developmentDist), "utf8"),
             ) as Record<string, unknown>;
             expect(packaged.key).toBe(publicKeyBase64);
-            expect(development.key).toBeUndefined();
+            const source = JSON.parse(await readFile(
+              new URL("../../../browser-extension/manifest.json", import.meta.url), "utf8",
+            )) as Record<string, unknown>;
+            expect(development.key).toBe(source.key);
+            expect(typeof development.key).toBe("string");
+            expect(extensionIdOfPublicKey(Buffer.from(String(development.key), "base64"))).not.toBe(expectedId);
             const { key: _packagedKey, ...packagedRest } = packaged;
             const { key: _developmentKey, ...developmentRest } = development;
             expect(packagedRest).toEqual(developmentRest);

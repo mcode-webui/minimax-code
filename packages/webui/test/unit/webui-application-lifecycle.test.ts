@@ -617,6 +617,7 @@ describe("R2 · the handshake facts are re-read when the connection returns", ()
   it("re-reads the version, so readiness is a live answer rather than a boot-time one", async () => {
     const opened: ReturnType<typeof scriptedChannel>[] = [];
     let versionReads = 0;
+    let terminal: "absent" | "supported" = "absent";
     const application = createWebuiApplication({
       openEventChannel: () => {
         const fake = scriptedChannel();
@@ -626,20 +627,27 @@ describe("R2 · the handshake facts are re-read when the connection returns", ()
       slices: createWebuiPortSlices({
         version: async () => {
           versionReads += 1;
-          return { version: "1.0.0", protocolVersion: 1, capabilities: { terminal: "absent" } };
+          return { version: "1.0.0", protocolVersion: 1, capabilities: { terminal } };
         },
+        createTerminal: async () => ({ terminalId: "terminal-ready", status: "running" }),
       } as never),
       turns: { resumeSession: (async () => {}) as unknown as WebuiClientSessionResumer },
     });
     application.start({ initialSessionId: SESSION });
+    const observed: string[] = [];
+    application.terminalOwner.subscribe(() => observed.push(application.terminalOwner.support().create));
 
     // A reconnect is a possible observation gap *and* a possible restart on the other
     // side: a service that came back with a different bridge must not keep the previous
     // connection's capability answer.
     opened[0]!.ready();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(versionReads).toBeGreaterThanOrEqual(1);
+    await expect.poll(() => application.terminalOwner.support().create).toBe("absent");
+    expect(versionReads).toBe(1);
+
+    terminal = "supported";
+    opened[0]!.ready();
+    await expect.poll(() => observed.at(-1)).toBe("supported");
+    expect(versionReads).toBe(2);
 
     application.dispose();
   });

@@ -797,7 +797,7 @@ test("a Mini App owned by another client reports the refusal and stays unopened 
   await openLauncherTile(page, "miniapp-picker");
   await page.getByTestId("miniapp-picker").getByRole("button", { name: "打开" }).click();
 
-  await expect(page.getByTestId("miniapp-picker")).toContainText(
+  await expect(page.getByTestId("miniapp-picker-refusal-demo.miniapp")).toContainText(
     "已在其他客户端运行：Mini App is already running in Desktop",
   );
   await expect(page.getByTestId("miniapp-view-frame")).toHaveCount(0);

@@ -89,6 +89,7 @@ export function websocketUrl(context: WebuiClientAssetContext): string {
 export function contentType(name: string): string {
   if (name.endsWith(".svg")) return "image/svg+xml";
   if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
   if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
   if (name.endsWith(".woff2")) return "font/woff2";
   if (name.endsWith(".woff")) return "font/woff";

@@ -594,7 +594,7 @@ const SURFACES = [
         tree: [treeFile("a.ts")],
         open: async (page) => {
           await openWorkspaceTree(page);
-          await expect(page.getByRole("complementary", { name: "工作区文件树" })).toContainText("a.ts");
+          await expect(page.getByRole("complementary", { name: "工作区文件树" }).getByRole("button", { name: "a.ts", exact: true })).toHaveCount(1);
         },
       },
       {
@@ -604,6 +604,7 @@ const SURFACES = [
         open: async (page) => {
           await openWorkspaceTree(page);
           const tree = page.getByRole("complementary", { name: "工作区文件树" });
+          await expect(tree.locator(".webui-file-tree-row")).toHaveCount(TREE_MAXIMUM_FILES);
           await expect(tree).toContainText(`file-${TREE_MAXIMUM_FILES}.ts`);
         },
       },
@@ -614,7 +615,7 @@ const SURFACES = [
         open: async (page) => {
           await openWorkspaceTree(page);
           await expect(page.getByRole("complementary", { name: "工作区文件树" })).toContainText(
-            LONGEST_FILENAME.slice(0, 30),
+            LONGEST_FILENAME,
           );
         },
       },
@@ -775,13 +776,18 @@ test.describe("rendering integrity of the migrated surfaces", () => {
   for (const surface of SURFACES) {
     for (const state of surface.states) {
       for (const theme of THEMES) {
-        test(`${surface.id} / ${state.id} / ${theme}`, async ({ page }) => {
+        test(`${surface.id} / ${state.id} / ${theme}`, async ({ page }, testInfo) => {
           await useTheme(page, theme);
           await (state.seed ?? surface.seed)(page, state);
           await state.open(page);
           expect(await appliedTheme(page), `${surface.id}/${state.id}: the theme did not apply`).toBe(theme);
 
           const facts = await captureSurface(page, surface, state);
+          if (["workspace-panel", "settings-usage-page"].includes(surface.id) && state.id === "longest") {
+            await testInfo.attach(`${surface.id}-${state.id}-${theme}`, {
+              body: await surface.root(page).screenshot(), contentType: "image/png",
+            });
+          }
           const key = manifestKey(surface.id, state.id, theme);
           recorded[key] = facts;
 

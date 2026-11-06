@@ -181,13 +181,13 @@ export function WebuiEnvironmentPanel({ workspaceDir, isDefaultWorkspace = false
   const environmentBody = <div className="webui-environment-body">
     <div className="webui-environment-workspace">{environment?.branch || " "}</div>
     <div className="webui-environment-actions">
-      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={onOpenChanges} disabled={!onOpenChanges}>
+      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" skeletonOnPageLoading onClick={onOpenChanges} disabled={!onOpenChanges}>
         <WebuiIconRunLocation className="size-5" /><span>{PROGRESS_COPY.changes}</span>{hasLineChanges && environment ? <small aria-label={`新增 ${environment.insertions} 行，删除 ${environment.deletions} 行`}><span className="webui-diff-additions">+{environment.insertions}</span><span className="webui-diff-deletions">-{environment.deletions}</span></small> : null}
       </WebuiButton>
-      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={() => setCommitOpen(true)} disabled={!canMutate}>
+      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" skeletonOnPageLoading onClick={() => setCommitOpen(true)} disabled={!canMutate}>
         <WebuiIconFile className="size-5" /><span>{PROGRESS_COPY.commit}</span>
       </WebuiButton>
-      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" onClick={onOpenTerminal} disabled={!onOpenTerminal}>
+      <WebuiButton variant="selectable-row" size="rail" className="webui-environment-action" skeletonOnPageLoading onClick={onOpenTerminal} disabled={!onOpenTerminal}>
         <WebuiIconWorkspaceTerminal className="size-5" /><span>{PROGRESS_COPY.openTerminal}</span>
       </WebuiButton>
     </div>

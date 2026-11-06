@@ -1,5 +1,11 @@
 # Composer
 
+The session composer's decorative octopus uses a transparent animated WebP through `<picture>`.
+Reduced motion selects a matching transparent PNG first frame, which also serves as the fallback
+for browsers without WebP support. Both assets have the same aspect ratio, so switching media
+does not move the decoration. This image path avoids depending on video alpha decoding or
+autoplay support; the original WebM remains the conversion source recorded in the asset manifests.
+
 The Composer's fields do not share one reset policy. This table is the contract; a change to any row
 needs its own behavioural evidence — browser or assembled-application, per
 [`../verification/gates.md`](../verification/gates.md).

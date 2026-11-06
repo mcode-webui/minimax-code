@@ -43,6 +43,8 @@ export function createWebuiTerminalOwner(
      * asked. Absent (or answering `undefined`) is an older service: unknown.
      */
     readonly readCapabilities?: () => WebuiCapabilityView;
+    /** Re-check the manifest when its owning snapshot changes. */
+    readonly subscribeCapabilities?: (listener: () => void) => () => void;
   } = {},
 ): WebuiTerminalOwner {
   let snapshot: WebuiTerminalCatalogue = initialWebuiTerminalCatalogue;
@@ -153,6 +155,14 @@ export function createWebuiTerminalOwner(
     snapshot = next;
     for (const listener of listeners) listener();
   };
+
+  let declared = declaredFamily();
+  const stopCapabilities = deps.subscribeCapabilities?.(() => {
+    const next = declaredFamily();
+    if (next === declared) return;
+    declared = next;
+    publish({ ...snapshot });
+  });
 
   const asRecord = (value: unknown): WebuiTerminalRecord | undefined => {
     if (!value || typeof value !== "object") return undefined;
@@ -286,6 +296,7 @@ export function createWebuiTerminalOwner(
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    stopCapabilities?.();
     detachAll();
     listeners.clear();
   };

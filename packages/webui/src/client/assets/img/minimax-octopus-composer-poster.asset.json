@@ -1,0 +1,6 @@
+{
+  "source": "minimax-octopus-composer.webm (existing user-provided coral-octopus-3d-white.webm)",
+  "destination": "minimax-octopus-composer-poster.png",
+  "description": "The animation's transparent first frame at the same 180x320 aspect ratio, used for reduced motion and image-format fallback.",
+  "conversion": "ffmpeg -c:v libvpx-vp9 -i minimax-octopus-composer.webm -vf scale=180:320 -frames:v 1 -update 1 minimax-octopus-composer-poster.png"
+}

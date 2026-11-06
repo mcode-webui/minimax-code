@@ -14,6 +14,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { expect } from "@playwright/test";
 
@@ -44,36 +45,75 @@ test("shared text fields use the shared feedback transition contract", async ({ 
   expect(properties).toContain("outline-color");
 });
 
+test("composer mascot keeps its corners transparent without video alpha support", async ({ page }, testInfo) => {
+  // This opaque response models a decoder dropping WebM alpha; it does not
+  // claim to replace Safari or Quark device coverage.
+  await page.route("**/assets/img/minimax-octopus-composer.webm", (route) => route.fulfill({
+    path: fileURLToPath(new URL("./support/composer-mascot-opaque.webm", import.meta.url)),
+    contentType: "video/webm",
+  }));
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, "#session=A");
+  const mascot = page.locator(".webui-composer-mascot");
+  await expect.poll(() => mascot.evaluate((element) => {
+    const media = element instanceof HTMLVideoElement ? element : element.querySelector("img");
+    return media instanceof HTMLVideoElement ? media.readyState >= 2 : media?.complete && media.naturalWidth > 0;
+  })).toBe(true);
+  const alpha = await mascot.evaluate((element) => {
+    const media = element instanceof HTMLVideoElement ? element : element.querySelector("img");
+    const canvas = document.createElement("canvas");
+    canvas.width = 180;
+    canvas.height = 320;
+    const context = canvas.getContext("2d");
+    if (!context || !media) throw new Error("Mascot media is unavailable");
+    context.drawImage(media, 0, 0, 180, 320);
+    return [[0, 0], [179, 0], [0, 319], [179, 319]].map(([x, y]) => context.getImageData(x, y, 1, 1).data[3]);
+  });
+  await page.evaluate(async () => {
+    const finite = document.getAnimations().filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)));
+  });
+  await page.screenshot({ path: testInfo.outputPath("mascot-without-video-alpha.png") });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({ path: testInfo.outputPath("mascot-without-video-alpha-dark.png") });
+  expect(alpha).toEqual([0, 0, 0, 0]);
+});
+
 test("composer mascot plays the transparent octopus and respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await openApp(page, "#session=A");
 
-  const mascot = page.locator("video.webui-composer-mascot");
+  const mascot = page.locator(".webui-composer-mascot img");
   await expect(mascot).toBeVisible();
-  await expect(mascot).toHaveAttribute("src", "/assets/img/minimax-octopus-composer.webm");
-  await expect.poll(() => mascot.evaluate((video) => video.readyState >= 2)).toBe(true);
-  await expect.poll(() => mascot.evaluate((video) => !video.paused)).toBe(true);
-  const searchBox = page.getByPlaceholder("输入消息…（输入 / 唤起命令）");
-  const card = page.locator(".webui-composer-card");
+  await expect.poll(() => mascot.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  expect(await mascot.evaluate((image) => image.currentSrc)).toMatch(/minimax-octopus-composer\.webp$/u);
+  const firstFrame = await mascot.screenshot();
+  await expect.poll(async () => (await mascot.screenshot()).equals(firstFrame), { message: "the mascot animation advances" }).toBe(false);
   // The octopus lies on the input: it is anchored to the card's right edge at the
   // shared spacing, and its tentacles reach the input's top edge. That is the
   // placement the design asks for, and neither relation depends on the viewport —
   // a mascot centred on the input would be a different design, so this measures
   // the anchor rather than an equality of centres. Both are recorded as the whole
   // set so a width-dependent drift (a centred or padded card) fails here.
-  const viewports = [{ width: 760, height: 900 }, { width: 1000, height: 700 }, { width: 1440, height: 900 }];
+  const viewports = [{ width: 390, height: 844 }, { width: 760, height: 900 }, { width: 1000, height: 700 }, { width: 1440, height: 900 }];
   const rightGaps = [];
   const tentacleGaps = [];
   for (const size of viewports) {
     await page.setViewportSize(size);
-    const [mascotBox, searchBoxBounds, cardBox] = await Promise.all([
-      mascot.boundingBox(),
-      searchBox.boundingBox(),
-      card.boundingBox(),
-    ]);
-    expect(mascotBox && searchBoxBounds && cardBox, `geometry at ${size.width}`).toBeTruthy();
-    rightGaps.push(Math.round(cardBox.x + cardBox.width - (mascotBox.x + mascotBox.width)));
-    tentacleGaps.push(Math.round(searchBoxBounds.y - (mascotBox.y + mascotBox.height)));
+    // Read one layout frame: separate protocol calls can straddle the rail's
+    // responsive transition and compare positions from different frames.
+    const geometry = await mascot.evaluate((image) => {
+      const card = image.closest(".webui-composer-card");
+      const input = card?.querySelector('textarea[name="content"]');
+      if (!card || !input) throw new Error("Composer geometry is unavailable");
+      const mascotBox = image.getBoundingClientRect();
+      const inputBox = input.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+      return { rightGap: cardBox.right - mascotBox.right, tentacleGap: inputBox.top - mascotBox.bottom };
+    });
+    rightGaps.push(Math.round(geometry.rightGap));
+    tentacleGaps.push(Math.round(geometry.tentacleGap));
   }
   // Anchored to the right edge: the gap is the same at every width, and it is the
   // shared 24px spacing plus the card's own border. A mascot placed relative to the
@@ -86,13 +126,13 @@ test("composer mascot plays the transparent octopus and respects reduced motion"
   expect(Math.max(...tentacleGaps) - Math.min(...tentacleGaps), JSON.stringify(tentacleGaps)).toBeLessThanOrEqual(1);
   expect(tentacleGaps[0], JSON.stringify(tentacleGaps)).toBeGreaterThanOrEqual(-12);
   expect(tentacleGaps[0], JSON.stringify(tentacleGaps)).toBeLessThanOrEqual(0);
-  const alpha = await mascot.evaluate((video) => {
+  const alpha = await mascot.evaluate((image) => {
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas 2D is unavailable");
-    context.drawImage(video, 0, 0);
+    context.drawImage(image, 0, 0);
     return context.getImageData(0, 0, 1, 1).data[3];
   });
   expect(alpha).toBe(0);
@@ -101,7 +141,20 @@ test("composer mascot plays the transparent octopus and respects reduced motion"
   }
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect.poll(() => mascot.evaluate((video) => video.paused)).toBe(true);
+  await expect.poll(() => mascot.evaluate((image) => image.currentSrc)).toMatch(/minimax-octopus-composer-poster\.png$/u);
+  await expect.poll(() => mascot.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  const reducedAlpha = await mascot.evaluate((image) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D is unavailable");
+    context.drawImage(image, 0, 0);
+    return context.getImageData(0, 0, 1, 1).data[3];
+  });
+  expect(reducedAlpha).toBe(0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect.poll(() => mascot.evaluate((image) => image.currentSrc)).toMatch(/minimax-octopus-composer\.webp$/u);
 });
 
 function composer(page) {

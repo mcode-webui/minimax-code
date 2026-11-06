@@ -59,6 +59,10 @@ test("the focus ring is visible on each field", async ({ page }) => {
   for (let index = 0; index < count; index += 1) {
     const control = controls.nth(index);
     if (!(await control.isVisible())) continue;
+    // A dialog focuses its first field on entry. Start from another control so
+    // the resting measurement cannot already contain the focused appearance.
+    await controls.nth(index === 0 ? 1 : 0).focus();
+    await expect(control).not.toBeFocused();
     // A focus indicator is not necessarily an outline: these fields answer focus
     // by strengthening their border. What matters is that something the eye can
     // see changes between resting and focused.
@@ -76,14 +80,16 @@ test("the focus ring is visible on each field", async ({ page }) => {
       });
     const resting = await read();
     await control.focus();
-    const focused = await read();
-    const drawn =
+    await expect.poll(async () => {
+      const focused = await read();
+      return (
       resting.borderColor !== focused.borderColor ||
       resting.borderWidth !== focused.borderWidth ||
       resting.outlineStyle !== focused.outlineStyle ||
       resting.outlineWidth !== focused.outlineWidth ||
-      resting.boxShadow !== focused.boxShadow;
-    expect(drawn, `a visible focus indicator on ${focused.name}`).toBe(true);
+      resting.boxShadow !== focused.boxShadow
+      );
+    }, { message: `a visible focus indicator on ${resting.name}` }).toBe(true);
   }
 });
 

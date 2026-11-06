@@ -313,7 +313,7 @@ test.describe("the layout adapts to the width it has", () => {
     }
   });
 
-  test("a closed progress panel reserves no width at all", async ({ page }) => {
+  test("a closed progress panel reserves no width at all", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await configureFixture(page, () => undefined);
@@ -327,24 +327,52 @@ test.describe("the layout adapts to the width it has", () => {
       const style = getComputedStyle(element);
       return { property: style.transitionProperty, duration: style.transitionDuration };
     });
-    // The width change belongs to the motion surface (ADR 0028): the panel slot
-    // reports enter/exit and the layout follows it, so the layout declares no
-    // timing of its own — which is the thing worth pinning here.
-    expect(layoutMotion.duration).toBe("0s");
+    // The shared panel-layout slot owns the gutter's timing, matching the
+    // panel surface's duration rather than snapping the conversation wider.
+    expect(layoutMotion).toEqual({ property: "padding-inline-end", duration: "0.18s" });
+    await page.screenshot({ path: testInfo.outputPath("progress-open.png") });
 
     await page.getByTestId("workspace-panel-controls").getByRole("button", { name: "环境信息与进度" }).click();
     await expect(motion).toHaveAttribute("data-webui-motion-state", "exit");
-    await page.waitForTimeout(60);
-    const inFlightPadding = await layout.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingRight));
-    expect(inFlightPadding).toBeGreaterThan(0);
-    expect(inFlightPadding).toBeLessThan(312);
+    const closingPadding = await layout.evaluate(async (element) => {
+      const samples = [];
+      const deadline = performance.now() + 1_000;
+      do {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        samples.push(Number.parseFloat(getComputedStyle(element).paddingRight));
+      } while (samples.at(-1) > 0 && performance.now() < deadline);
+      return samples;
+    });
+    await testInfo.attach("progress-gutter-samples", {
+      body: JSON.stringify(closingPadding),
+      contentType: "application/json",
+    });
+    expect(closingPadding.some((padding) => padding > 0 && padding < 312), "the gutter has a rendered intermediate width").toBe(true);
+    expect(closingPadding.at(-1)).toBe(0);
 
-    // The card's width animates to nothing and the gutter it had reserved goes
-    // with it, so the conversation gets the space back.
+    // The card exits and its gutter shrinks with it, returning the space.
     await expect(motion).toHaveCount(0);
     await expect
       .poll(async () => layout.evaluate((element) => getComputedStyle(element).paddingRight))
       .toBe("0px");
+    await page.screenshot({ path: testInfo.outputPath("progress-closed.png") });
+  });
+
+  test("a closed progress panel releases its gutter with reduced motion", async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await configureFixture(page, () => undefined);
+    await openApp(page, "#session=A");
+    await page.evaluate(() => document.documentElement.classList.add("dark"));
+
+    const layout = page.locator('[data-webui-session-layout="true"]');
+    await expect.poll(() => layout.evaluate((element) => getComputedStyle(element).paddingRight)).toBe("312px");
+    expect(await layout.evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration))).toBe(0.00001);
+    await page.screenshot({ path: testInfo.outputPath("progress-open-dark-reduced.png") });
+    await page.getByTestId("workspace-panel-controls").getByRole("button", { name: "环境信息与进度" }).click();
+    await expect(page.locator(".webui-progress-panel-motion")).toHaveCount(0);
+    await expect.poll(() => layout.evaluate((element) => getComputedStyle(element).paddingRight)).toBe("0px");
+    await page.screenshot({ path: testInfo.outputPath("progress-closed-dark-reduced.png") });
   });
 
   test("the progress panel and the workspace panel do not both claim the surface", async ({ page }) => {
@@ -391,7 +419,8 @@ test.describe("the layout adapts to the width it has", () => {
     // The window narrows: the card has nowhere to go but on top of the text,
     // so it takes itself away.
     await page.setViewportSize({ width: 1024, height: 900 });
-    await expect(motion).toHaveAttribute("data-webui-motion-state", "exit");
+    // Reduced motion collapses the exit to 0.01ms; assert the settled outcome
+    // rather than racing that transient attribute.
     await expect(motion).toHaveCount(0);
 
     // It stays away when the window widens again: it does not come back on its

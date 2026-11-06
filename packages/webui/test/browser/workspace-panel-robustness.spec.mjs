@@ -33,8 +33,8 @@ test("the panel reports an unexpected tree answer instead of crashing", async ({
   // The transcript is still mounted: a bad workspace answer does not take the
   // rest of the surface with it.
   await expect(page.locator("[data-webui-transcript]")).toHaveCount(1);
-  // And the tree says what happened rather than rendering the answer.
-  await expect(page.getByTestId("workspace-panel")).toContainText(
+  // The failed read is reported through the shared toast; the tree stays usable.
+  await expect(page.getByTestId("webui-toast")).toContainText(
     "工作区文件列表返回了意外的结果。",
   );
 });

@@ -136,7 +136,18 @@ The shell case asserts that built
 image assets finish loading successfully. The tests also assert relevant DOM state and viewport
 geometry; screenshots are not the sole oracle. These are deterministic fixture renders with
 synthetic session content, not user workspace or account data. Review image diffs on the pinned
-Linux Chromium revision before accepting baseline changes. Build before either browser command:
+Linux Chromium revision before accepting baseline changes.
+
+`pnpm test:webui-browser` uses the already installed Playwright Chromium directly. It does not
+download a browser or install system packages. On a new machine, run `pnpm install:webui-browsers`
+once to install the matching Chromium revision; repeat it after a Playwright upgrade when the
+required revision changes. If Linux reports missing system libraries, provision them explicitly
+with `pnpm exec playwright install-deps chromium` during environment setup. That setup command
+can require administrator privileges; it is not part of the browser test command. The aggregate
+`pnpm verify` keeps the browser-only installation before the WebUI suites and does not install
+system packages.
+
+Build before running the browser suite:
 
 ```sh
 pnpm build:webui

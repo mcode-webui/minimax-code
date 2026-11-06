@@ -40,7 +40,7 @@ const server = createServer(async (request, response) => {
       );
       body = Buffer.from(html);
     }
-    const contentType = name.endsWith(".js") ? "text/javascript; charset=utf-8" : name.endsWith(".css") ? "text/css; charset=utf-8" : name.endsWith(".svg") ? "image/svg+xml" : "text/html; charset=utf-8";
+    const contentType = name.endsWith(".js") ? "text/javascript; charset=utf-8" : name.endsWith(".css") ? "text/css; charset=utf-8" : name.endsWith(".svg") ? "image/svg+xml" : name.endsWith(".png") ? "image/png" : name.endsWith(".webp") ? "image/webp" : "text/html; charset=utf-8";
     response.writeHead(200, { "content-type": contentType, "cache-control": "no-store" }).end(body);
   } catch {
     response.writeHead(404).end("built WebUI artifact not found; run pnpm build:webui first");

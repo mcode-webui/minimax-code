@@ -5,7 +5,7 @@ in-page transport). Run the directory, not a hand-kept list: Playwright collects
 
 ```sh
 pnpm build:webui          # the suite drives the built client
-pnpm test:webui-browser   # installs the pinned Chromium revision and, on Linux, its system dependencies
+pnpm test:webui-browser   # uses the already installed Playwright Chromium; no system-package installation
 ```
 
 The screenshot comparisons read the fonts in `fonts/`, not the ones the machine has installed, so

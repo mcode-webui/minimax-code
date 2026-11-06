@@ -78,16 +78,11 @@ const steps = [
   { name: "build:webui", script: "build:webui" },
   { name: "check:webui-boundary", script: "check:webui-boundary" },
   { name: "test:webui-package", script: "test:webui-package", platforms: ["linux", "darwin"] },
-  // The WebUI integration suites drive a real Chromium: the loopback host
-  // test opens the built client in one and submits through it. The browser
-  // used to arrive with the `test:webui-browser` gate, which runs *after*
-  // this one, so a suite that needs a browser depended on a later gate
-  // having run first. Install it before, so a gate never depends on a later
-  // gate. The Linux browser gate still installs with its system dependencies;
-  // the fonts the visual baselines need no longer come from there, because
-  // the gate loads the font files committed under
-  // `packages/webui/test/browser/fonts/` (see
-  // `scripts/lib/webui-font-environment.mjs`).
+  // Both the WebUI integration suites and browser gate use Chromium. Install
+  // the browser before either suite; the individual test commands use the
+  // installed binary without installing system packages or requesting sudo.
+  // System dependencies are an explicit environment setup step. Visual
+  // baselines use the committed fonts through webui-font-environment.mjs.
   { name: "install:webui-browsers", script: "install:webui-browsers" },
   { name: "test:webui", script: "test:webui" },
   { name: "test:webui-browser", script: "test:webui-browser", platforms: ["linux"] },

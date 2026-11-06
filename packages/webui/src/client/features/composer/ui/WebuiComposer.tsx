@@ -281,29 +281,6 @@ export function WebuiComposer({
   useEffect(() => {
     if (sessionId) pendingHomeModelSelectionRef.current = undefined;
   }, [sessionId]);
-  const composerMascotVideoRef = useRef<HTMLVideoElement | null>(null);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return undefined;
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setPrefersReducedMotion(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-  useEffect(() => {
-    const video = composerMascotVideoRef.current;
-    if (!video) return;
-    if (prefersReducedMotion) {
-      video.pause();
-      return;
-    }
-    void video.play().catch(() => undefined);
-  }, [prefersReducedMotion]);
   const { stream, sending, transcript } = useWebuiSessionState(sessionId);
   const turnCommands = useWebuiSessionCommands(sessionId);
   // The per-session effects registry the shell provides. The composer registers
@@ -1206,18 +1183,21 @@ export function WebuiComposer({
           <WebuiStack gap="compact" align="center" className="message-input-home-container rounded-[20px] bg-bg_default_scrim pb-2">
             <div className="w-full rounded-[20px] border border-border_default bg-bg_grouped_secondary_elevated p-3 webui-composer-card">
               {sessionLayout && sessionId ? (
-                <video
-                  ref={composerMascotVideoRef}
-                  className="webui-composer-mascot"
-                  src="/assets/img/minimax-octopus-composer.webm"
-                  aria-hidden="true"
-                  autoPlay={!prefersReducedMotion}
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  draggable="false"
-                />
+                <picture className="webui-composer-mascot" aria-hidden="true">
+                  <source
+                    srcSet="/assets/img/minimax-octopus-composer.webp"
+                    type="image/webp"
+                    media="(prefers-reduced-motion: no-preference)"
+                  />
+                  <img
+                    src="/assets/img/minimax-octopus-composer-poster.png"
+                    width={180}
+                    height={320}
+                    className="block w-full"
+                    alt=""
+                    draggable="false"
+                  />
+                </picture>
               ) : null}
               <WebuiMotionSlot kind="feedback">
               <div ref={composerInputContainerRef} className="message-input-container relative">

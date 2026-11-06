@@ -3808,6 +3808,7 @@
     "packages/webui/docs/adr/0029-page-surfaces-share-layout-skeleton-and-motion-contracts.md",
     "packages/webui/docs/adr/0030-the-client-reports-failures-and-confirmations-as-toasts.md",
     "packages/webui/docs/adr/0031-the-webui-may-bind-beyond-loopback-and-a-non-loopback-request-presents-the-credential.md",
+    "packages/webui/docs/adr/0032-responsive-session-observation-and-execution-lifecycle.md",
     "packages/webui/docs/adr/observation-architecture.md",
     "packages/webui/docs/agents/domain.md",
     "packages/webui/docs/agents/issue-tracker.md",

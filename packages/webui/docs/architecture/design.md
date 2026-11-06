@@ -290,10 +290,12 @@ role belongs to. Details: [`../client/ownership.md`](../client/ownership.md).
 
 ## 9. State and temporal ownership
 
-The client — not the server — owns its stream state and reconciles it. That is a measured decision, not
-an omission: a server snapshot-plus-deltas design was prototyped and compared against the client's
-policy, and it reached consistency only by inventing capabilities the host does not have
+The client currently owns and reconciles its stream state. The 2026-10-16 comparison rejected a
+snapshot-plus-deltas prototype that required capabilities absent from the host/wire tested then
 ([`../adr/observation-architecture.md`](../adr/observation-architecture.md)).
+[ADR 0032](../adr/0032-responsive-session-observation-and-execution-lifecycle.md) records the
+accepted, not-yet-implemented lifecycle redesign and reopens that forward constraint against
+current harness capabilities. It retains application ownership and the temporal fences below.
 
 Four mechanisms hold the resulting concurrency down, each with one home:
 

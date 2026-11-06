@@ -295,6 +295,18 @@ The turns a client has accepted but that have not started, because a turn was
 already in flight. Queueing is what a send becomes when the session is busy.
 _Avoid_: backlog, pending list, buffer
 
+**Background task**:
+A tracked unit of Agent-initiated work associated with a session, with its own
+execution status and output. It can outlive the turn that created it. It is
+distinct from a scheduled task and a terminal opened by the user.
+_Avoid_: cron run, terminal, turn
+
+**Child session**:
+A session created for delegated Agent work, related to its parent session.
+Its navigable history and the task tracking its execution are related but
+distinct identities.
+_Avoid_: background task, turn, duplicate session
+
 ### Session data and its owners
 
 **Session store**:

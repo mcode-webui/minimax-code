@@ -4,6 +4,13 @@
 approach**. A server snapshot-plus-deltas design is **not** promoted. ADR 0018 records the decision;
 this document is its evidence.
 
+**2026-11-06 scope update:** [ADR 0032](0032-responsive-session-observation-and-execution-lifecycle.md)
+reopens this design constraint for the new session-lifecycle work. The current harness has a
+session-scoped stream with commit/replacement/rewind/terminal frames; compatibility projection
+does not preserve all of that envelope, and a shared snapshot watermark is not yet established.
+The historical measurements below remain dated evidence, not a current capability inventory.
+No new comparison or performance result is claimed by this update.
+
 **Evidence availability:** the two probes this decision was made from were scratch artifacts run
 from the repository root and deliberately kept **outside** the repository. They are not present in
 this checkout or on this machine any more. What survives is this record of what they measured — treat

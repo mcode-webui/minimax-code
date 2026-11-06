@@ -3,6 +3,12 @@
 **Status:** Accepted and implemented on `feat/webui-business-cohesion`.
 **Date:** 2026-10-16.
 
+**2026-11-06 amendment:** [ADR 0032](0032-responsive-session-observation-and-execution-lifecycle.md)
+retains the implemented ownership decisions below and reopens A5's forward observation constraint
+against current harness capabilities. The comparison below describes the 2026-10-16 host and wire,
+not a timeless claim that no session-scoped stream exists. The new design is accepted but its
+implementation and acceptance evidence are pending.
+
 The A1–A4 ownership findings are implemented. A session's creation, adoption and goal submission
 decide inside one application-owned use case: all four creation origins (ordinary send, goal, plugin
 session, rail) reach it, the shell consumes the committed navigation result instead of deciding it,

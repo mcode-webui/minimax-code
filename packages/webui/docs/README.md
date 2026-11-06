@@ -110,7 +110,15 @@ defines the page, skeleton and shared motion contracts for route pages, dialogs,
 repeated semantic elements. ADR 0030 records the client's one way of saying something that has
 already happened: the shared toast, which reports a failure, a confirmation or a failed read over the
 client instead of in the page, while a field's own validation error and a state that stays keep their
-place. A new decision takes the next free number.
+place.
+
+[ADR 0032](adr/0032-responsive-session-observation-and-execution-lifecycle.md) records the accepted,
+not-yet-implemented session observation and execution lifecycle redesign: immediate user feedback,
+continuous transcript/media settlement, coordinated queue/history/task operations, recoverable
+pending intent, narrow subscriptions and measured UI performance budgets. Its delivery-target
+table is the authority for the derived tracker specification and tickets. It amends the forward
+constraint of ADR 0018's historical observation comparison without claiming new runtime evidence.
+A new decision takes the next free number.
 
 | Retired | Was | Why it is not in the log | Where the live facts are |
 | --- | --- | --- | --- |

@@ -98,11 +98,13 @@ stop calls `abortSession`, and only an unstarted queued item is removable from t
 
 ## Reconciling delivery state
 
-The client reconciles its own turn/stream state, and this is a decision, not an omission: a server
-snapshot-plus-deltas design was prototyped and measured against the client's policy, and it reached
-consistency only by inventing capabilities the host does not have. Read
-[`../adr/observation-architecture.md`](../adr/observation-architecture.md) before
-proposing to move this state to the server.
+The client currently reconciles its own turn/stream state. The 2026-10-16 comparison in
+[`../adr/observation-architecture.md`](../adr/observation-architecture.md) rejected a
+snapshot-plus-deltas prototype that depended on capabilities absent from the host/wire tested then.
+[ADR 0032](../adr/0032-responsive-session-observation-and-execution-lifecycle.md) accepts a new,
+not-yet-implemented lifecycle design using current harness evidence. Its application-owned
+coordination preserves these ownership and temporal fences; the historical comparison does not
+establish today's capability inventory.
 
 ## Surface facts worth knowing
 

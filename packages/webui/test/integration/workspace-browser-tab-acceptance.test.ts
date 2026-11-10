@@ -16,8 +16,7 @@
 // handler, the input path through the client's own binding, and the provider
 // itself. A case that only exercised a helper would not be the case.
 
-import { execFileSync } from "node:child_process";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -46,6 +45,7 @@ import type {
   WebuiBrowserAuthorization,
   WebuiBrowserTargetId,
 } from "../../src/shared/contracts/browser.js";
+import { chromeExecutableVersion, resolveChromeExecutable } from "./chrome-executable.js";
 
 /** This programme's records. They live in its own completion directory. */
 const records = acceptanceRecordsFor("workspace-browser-tab");
@@ -66,19 +66,7 @@ const SETTLE_MS = 750;
  */
 const TIMEOUT_MS = 30_000;
 
-async function chromeIsAvailable(): Promise<boolean> {
-  for (const candidate of ["/usr/bin/google-chrome", "/usr/bin/chromium"]) {
-    try {
-      await access(candidate);
-      return true;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return false;
-}
-
-const available = await chromeIsAvailable();
+const available = (await resolveChromeExecutable()) !== undefined;
 
 function pageHtml(title: string): string {
   return [
@@ -114,13 +102,8 @@ describe.skipIf(!available)("the acceptance of the workspace browser tab model",
   };
 
   beforeAll(async () => {
-    try {
-      browserVersion = execFileSync("/usr/bin/google-chrome", ["--version"], {
-        encoding: "utf8",
-      }).trim();
-    } catch {
-      browserVersion = "unknown";
-    }
+    const chromePath = await resolveChromeExecutable();
+    browserVersion = chromePath ? chromeExecutableVersion(chromePath) : "unknown";
     dataDir = await mkdtemp(join(tmpdir(), "webui-tab-acceptance-"));
     service = new WebuiBrowserService({
       authorization: {

@@ -22,6 +22,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { WebuiIsolatedChromiumProvider } from "../../src/runtime/browser/isolated-chromium/provider.js";
 import { webuiBrowserPicturePoint } from "../../src/client/features/browser/application/browser-commands.js";
 import type { WebuiBrowserImageFrame, WebuiBrowserTargetId } from "../../src/shared/contracts/browser.js";
+import { resolveChromeExecutable } from "./chrome-executable.js";
 
 /** How long the page is given to tick. */
 const WATCH_MS = 3_000;
@@ -53,25 +54,7 @@ function buttonPageUrl(): string {
   return `data:text/html,${encodeURIComponent(html)}`;
 }
 
-async function resolveChromePath(): Promise<string | undefined> {
-  const { access } = await import("node:fs/promises");
-  for (const candidate of [
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ]) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return undefined;
-}
-
-const available = (await resolveChromePath()) !== undefined;
+const available = (await resolveChromeExecutable()) !== undefined;
 
 describe.skipIf(!available)("the isolated Chromium's screencast", () => {
   let dataDir: string;

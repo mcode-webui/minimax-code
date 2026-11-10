@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   WebuiBrowserService,
@@ -183,6 +187,7 @@ function createService(
   initial: WebuiBrowserAuthorization,
   tabIds: readonly string[] = ["tab-1"],
   edgeProvider?: WebuiBrowserSurfaceProvider,
+  overrides: Partial<WebuiBrowserServiceOptions> = {},
 ): {
   service: WebuiBrowserService;
   provider: RecordingProvider;
@@ -203,6 +208,7 @@ function createService(
     ...(edgeProvider
       ? { createBridgeProvider: async (surface: string) => (surface === "edge" ? edgeProvider : undefined) }
       : {}),
+    ...overrides,
   };
   return { service: new WebuiBrowserService(options), provider, state };
 }
@@ -279,7 +285,7 @@ describe("browser service", () => {
     const starting = new Promise<void>((resolve) => { started = resolve; });
     const create = vi.fn(() => { started(); return new Promise<WebuiBrowserSurfaceProvider>((resolve) => { release = resolve; }); });
     const authorization = { ...ALL_OFF, isolatedChromium: true };
-    const service = new WebuiBrowserService({ authorization: { read: async () => authorization, write: async () => authorization }, dataDir: "unused", createIsolatedProvider: create });
+    const service = new WebuiBrowserService({ authorization: { read: async () => authorization, write: async () => authorization }, dataDir: "/tmp/webui-browser-unused-data-dir", createIsolatedProvider: create });
     const first = service.listTargets("isolated-chromium");
     const second = service.listTargets("isolated-chromium");
     await starting;
@@ -333,7 +339,7 @@ describe("browser service", () => {
     let authorization = { ...ALL_OFF, isolatedChromium: true };
     const service = new WebuiBrowserService({
       authorization: { read: async () => authorization, write: async (input) => (authorization = { ...authorization, ...input }) },
-      dataDir: "unused-recording-provider",
+      dataDir: "/tmp/webui-browser-unused-recording-provider",
       createIsolatedProvider: create,
     });
     const first = service.listTargets("isolated-chromium");
@@ -1513,3 +1519,203 @@ async function stop(
   await new Promise((resolve) => setTimeout(resolve, 20));
   await service.close();
 }
+/**
+ * The failures the service sees must be visible.
+ *
+ * A start that failed and left nothing behind is indistinguishable from a
+ * start that never happened, and a stream that never produced a frame is
+ * indistinguishable from a stream that is merely quiet. The session's
+ * diagnostics are where both are written down.
+ */
+describe("the browser session's diagnostics", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  /** A directory of its own, so the artifact under test is this session's. */
+  async function diagnosticsDirectory(): Promise<string> {
+    const directory = await mkdtemp(join(tmpdir(), "webui-browser-diagnostics-"));
+    vi.stubEnv("WEBUI_BROWSER_OUTPUT_DIR", directory);
+    return directory;
+  }
+
+  /** The artifact the session wrote. */
+  async function readArtifact(directory: string): Promise<BrowserDiagnosticsArtifact> {
+    const raw = await readFile(join(directory, "service-browser.json"), "utf8");
+    return JSON.parse(raw) as BrowserDiagnosticsArtifact;
+  }
+
+  it("gives up on a stream whose first frame never arrives", async () => {
+    const directory = await diagnosticsDirectory();
+    const { service, provider } = createService(
+      { ...ALL_OFF, isolatedChromium: true },
+      ["tab-1"],
+      undefined,
+      // The budget is the service's own; the test shortens the wait so the
+      // case runs quickly without changing what production waits for.
+      { firstFrameTimeoutMs: 150 },
+    );
+    await service.listTargets("isolated-chromium");
+    await service.selectTarget(tab("tab-1"), "run-panel");
+
+    const startedAt = Date.now();
+    // The provider never pushes a frame: the panel asked for a picture and
+    // the browser never sent one.
+    const failure = await streamFailure(service, tab("tab-1"));
+    const elapsed = Date.now() - startedAt;
+
+    // The stream ended with the browser's own timeout code, which is what
+    // the server puts on the wire for the client.
+    expect(failure).toBeInstanceOf(WebuiBrowserOperationError);
+    expect((failure as WebuiBrowserOperationError).code).toBe("browser_operation_timeout");
+    // The screencast really was running: the deadline ended a live stream,
+    // it did not stop one from starting.
+    expect(provider.startedStreams).toContain("tab-1");
+    // The stream gave up rather than hanging: it ended at the deadline, and
+    // it ended at all.
+    expect(elapsed).toBeGreaterThanOrEqual(140);
+    expect(elapsed).toBeLessThan(5_000);
+    // Giving up released what the stream held: the screencast was stopped,
+    // not left running for a panel that has already been told it failed.
+    expect(provider.stoppedStreams).toContain("tab-1");
+
+    const artifact = await readArtifact(directory);
+    expect(artifact.firstFrame.timeouts).toBe(1);
+    await service.close();
+  });
+
+  it("records an eager start that could not launch the browser", async () => {
+    const directory = await diagnosticsDirectory();
+    const authorization = { ...ALL_OFF, isolatedChromium: true };
+    const service = new WebuiBrowserService({
+      authorization: { read: async () => authorization, write: async () => authorization },
+      dataDir: "/tmp/webui-browser-warmup-test",
+      createIsolatedProvider: async () => {
+        throw new Error("the browser did not start");
+      },
+    });
+
+    // The eager start fails and the switch stays on: the failure is not the
+    // switch's to report, and the switch must not be torn down over it.
+    await expect(service.initialize()).resolves.toBeUndefined();
+
+    const artifact = await readArtifact(directory);
+    expect(artifact.warmup.attempts).toBe(1);
+    expect(artifact.warmup.failures).toBe(1);
+    expect(artifact.warmup.lastFailure?.message).toContain("the browser did not start");
+    expect(artifact.launches.attempts).toBe(1);
+    expect(artifact.launches.failures).toBe(1);
+    expect(artifact.launches.history[0]?.trigger).toBe("warmup");
+    expect(artifact.launches.history[0]?.outcome).toBe("failed");
+    // Nothing came before the first attempt.
+    expect(artifact.launches.history[0]?.previousFailure).toBeUndefined();
+
+    // The next call that needs the browser starts it again, and the retry
+    // carries the failure that came before it: a retry that leaves no trace
+    // of what it retries is a start that looks like the first one.
+    await expect(service.listTargets("isolated-chromium")).rejects.toThrow("the browser did not start");
+    const retried = await readArtifact(directory);
+    expect(retried.launches.attempts).toBe(2);
+    expect(retried.launches.failures).toBe(2);
+    expect(retried.launches.history[1]?.trigger).toBe("demand");
+    expect(retried.launches.history[1]?.previousFailure?.message).toContain("the browser did not start");
+    await service.close();
+  });
+
+  it("records how long the first frame took", async () => {
+    const directory = await diagnosticsDirectory();
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+
+    const stream = collectFrames(service, tab("tab-1"));
+    await waitUntil(() => provider.startedStreams.includes("tab-1"));
+    provider.pushFrame(1, "tab-1");
+    await settleFrames();
+    await stop(service, [stream]);
+
+    // The first frame's cost is written down: a picture that took a second
+    // and a picture that took a quarter of one are not the same thing, and
+    // only one of them can be read from the record.
+    const artifact = await readArtifact(directory);
+    expect(artifact.firstFrame.last?.targetId).toBe("tab-1");
+    expect(artifact.firstFrame.last?.surface).toBe("isolated-chromium");
+    expect(artifact.firstFrame.last?.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(artifact.firstFrame.timeouts).toBe(0);
+  });
+
+  it("writes the dropped frames into the session's diagnostics", async () => {
+    const directory = await diagnosticsDirectory();
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+
+    const stream = collectFrames(service, tab("tab-1"));
+    await waitUntil(() => provider.startedStreams.includes("tab-1"));
+    // A frame that names another page is dropped rather than put on screen,
+    // and the drop is counted.
+    provider.frameHandlers.get("tab-1")?.({
+      target: { ...tab("tab-1"), targetId: "tab-2" },
+      data: "QlRSQVk=",
+      format: "jpeg",
+      sequence: 1,
+    });
+    await settleFrames();
+    expect(service.droppedFrameCount("isolated-chromium")).toBe(1);
+    await stop(service, [stream]);
+
+    // The count is not a number nobody can reach: it is written down.
+    const artifact = await readArtifact(directory);
+    expect(artifact.droppedFrames["isolated-chromium"]).toBe(1);
+  });
+});
+
+/** The shape the session's diagnostics artifact holds. */
+interface BrowserDiagnosticsArtifact {
+  readonly schema: string;
+  readonly warmup: {
+    readonly attempts: number;
+    readonly failures: number;
+    readonly lastFailure?: { readonly message: string };
+  };
+  readonly launches: {
+    readonly attempts: number;
+    readonly failures: number;
+    readonly totalDurationMs: number;
+    readonly history: readonly {
+      readonly trigger: string;
+      readonly outcome: string;
+      readonly durationMs: number;
+      readonly failure?: { readonly message: string };
+      readonly previousFailure?: { readonly message: string };
+    }[];
+  };
+  readonly firstFrame: {
+    readonly last?: {
+      readonly surface: string;
+      readonly targetId: string;
+      readonly latencyMs: number;
+    };
+    readonly timeouts: number;
+  };
+  readonly droppedFrames: Record<string, number>;
+}
+
+/**
+ * The error a stream ended with, if it ended with one.
+ *
+ * A stream that never produces a frame does not end by itself, so the
+ * failure can only be read by asking the stream for it.
+ */
+async function streamFailure(
+  service: WebuiBrowserService,
+  target: WebuiBrowserTargetId,
+): Promise<unknown> {
+  try {
+    for await (const _frame of service.watchFrames("isolated-chromium", target)) {
+      return undefined;
+    }
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
+

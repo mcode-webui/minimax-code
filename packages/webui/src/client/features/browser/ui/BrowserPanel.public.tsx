@@ -76,6 +76,10 @@ const PANEL_COPY = {
   absent: "当前运行时没有浏览器能力，浏览器面板不可用。",
   notReady: "浏览器能力尚未就绪（例如扩展未连接），面板暂时无法显示页面。",
   unknown: "当前运行时没有报告浏览器能力，面板按未授权处理。",
+  // The stream gave up. The reason is said once, beside this notice, as a
+  // toast; this sentence says the half that is about the panel — that the
+  // picture is not coming, and that opening the page again is the way back.
+  failed: "浏览器画面流已失败，画面不会再来。重新打开页面可以重试。",
 } as const;
 
 export interface BrowserPanelProps {
@@ -408,6 +412,19 @@ export function BrowserPanel({
       {capability !== "absent" && capability !== "not-ready" && !authorized ? (
         <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-unauthorized">
           {PANEL_COPY.unauthorized}
+        </FeedbackLiveRegion>
+      ) : null}
+
+      {/*
+        A stream that gave up is not a page that is still loading. The empty
+        placeholder below looks the same in both cases, so the failure says
+        so — and it says it here, in the panel, rather than only in a toast
+        that a person can miss. It renders only when the panel failed, so the
+        default DOM is the one that was there before.
+      */}
+      {state?.status === "error" ? (
+        <FeedbackLiveRegion className="webui-browser-notice" testId="browser-panel-failed">
+          {PANEL_COPY.failed}
         </FeedbackLiveRegion>
       ) : null}
 

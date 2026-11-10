@@ -239,6 +239,15 @@ export interface BrowserPort {
       readonly viewport?: WebuiBrowserViewport;
     },
     onFrame: (frame: WebuiBrowserImageFrame) => void,
+    /**
+     * The service's refusal, when the stream gave up.
+     *
+     * The frames themselves say nothing about a stream that stopped, so the
+     * refusal is reported here rather than left to the panel to infer: a
+     * panel that is waiting and a panel whose stream failed look identical
+     * until one of them is told.
+     */
+    onFailure?: (error: Error) => void,
   ) => () => void;
   /**
    * The session's web tabs, as a snapshot, on a stream.

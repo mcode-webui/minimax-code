@@ -560,6 +560,7 @@
       "packages/webui/test/unit/browser-web-tabs-operation.test.ts",
       "packages/webui/test/unit/browser-web-tab-toolbar.test.tsx",
       "packages/webui/test/unit/browser-frame-stream.test.ts",
+      "packages/webui/test/unit/isolated-chromium-startup-diagnostics.test.ts",
       "packages/webui/test/unit/browser-session-release.test.ts",
       "packages/webui/test/unit/browser-bridge-cdp.test.ts",
       "packages/webui/test/unit/browser-bridge-adversarial.test.ts",

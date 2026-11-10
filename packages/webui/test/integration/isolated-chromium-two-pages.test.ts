@@ -50,6 +50,7 @@ import type {
   WebuiBrowserImageFrame,
   WebuiBrowserTargetId,
 } from "../../src/shared/contracts/browser.js";
+import { resolveChromeExecutable } from "./chrome-executable.js";
 
 /** A page with a field and a title, so two pages can be told apart. */
 function pageHtml(title: string): string {
@@ -144,37 +145,7 @@ async function waitFor(
   );
 }
 
-async function chromeIsAvailable(): Promise<boolean> {
-  return (await resolveChromePath()) !== undefined;
-}
-
-async function resolveChromePath(): Promise<string | undefined> {
-  const { access } = await import("node:fs/promises");
-  const candidates =
-    process.platform === "darwin"
-      ? [
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-          "/Applications/Chromium.app/Contents/MacOS/Chromium",
-          "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-        ]
-      : [
-          "/usr/bin/google-chrome",
-          "/usr/bin/google-chrome-stable",
-          "/usr/bin/chromium",
-          "/usr/bin/chromium-browser",
-        ];
-  for (const candidate of candidates) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return undefined;
-}
-
-const available = await chromeIsAvailable();
+const available = (await resolveChromeExecutable()) !== undefined;
 
 describe.skipIf(!available)("the isolated Chromium, one page per web tab", () => {
   let dataDir: string;

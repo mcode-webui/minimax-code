@@ -24,6 +24,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { WebuiIsolatedChromiumProvider } from "../../src/runtime/browser/isolated-chromium/provider.js";
 import type { WebuiBrowserTargetId } from "../../src/shared/contracts/browser.js";
 import { beginAcceptanceSuite, observeAcceptance, restoreAcceptanceRecords } from "../browser/acceptance-record.js";
+import { chromeExecutableVersion, resolveChromeExecutable } from "./chrome-executable.js";
 
 /** The record file this suite writes. */
 const SUITE = "isolated-chromium";
@@ -46,48 +47,7 @@ const PAGE_HTML = [
   "</script>",
 ].join("\n");
 
-async function chromeIsAvailable(): Promise<boolean> {
-  return (await resolveChromePath()) !== undefined;
-}
-
-/** The Chrome the isolated provider drives, and its own version. */
-async function resolveChromePath(): Promise<string | undefined> {
-  const { access } = await import("node:fs/promises");
-  for (const candidate of [
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ]) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return undefined;
-}
-
-/**
- * The browser's own version.
- *
- * Read from the binary rather than assumed: an acceptance record that says
- * "Chrome" without saying which Chrome is not a record.
- */
-async function chromeVersion(path: string): Promise<string> {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const run = promisify(execFile);
-  try {
-    const { stdout } = await run(path, ["--version"], { timeout: 20_000 });
-    return stdout.trim();
-  } catch {
-    return "unknown";
-  }
-}
-
-const available = await chromeIsAvailable();
+const available = (await resolveChromeExecutable()) !== undefined;
 
 describe.skipIf(!available)("the browser input path, against a real page", () => {
   let dataDir: string;
@@ -100,8 +60,8 @@ describe.skipIf(!available)("the browser input path, against a real page", () =>
     beginAcceptanceSuite(SUITE);
     dataDir = await mkdtemp(join(tmpdir(), "webui-browser-use-e2e-"));
     provider = await WebuiIsolatedChromiumProvider.launch({ dataDir });
-    const path = await resolveChromePath();
-    if (path) browserVersion = await chromeVersion(path);
+    const path = await resolveChromeExecutable();
+    if (path) browserVersion = chromeExecutableVersion(path);
   }, 60_000);
 
   afterAll(async () => {

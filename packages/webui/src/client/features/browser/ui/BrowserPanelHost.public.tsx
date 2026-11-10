@@ -372,6 +372,12 @@ export function BrowserPanelHost({
           dispatch({ type: "frame", frame });
         }
       },
+      // The service's refusal, not the panel's guess. A stream that gave up is
+      // reported as an error, so it stops looking like a page that is still
+      // loading — the two are the same picture on screen otherwise.
+      (error) => {
+        dispatch({ type: "failed", error: toBrowserError(error) });
+      },
     );
     return () => {
       stop();

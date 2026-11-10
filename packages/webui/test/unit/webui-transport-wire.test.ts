@@ -654,3 +654,67 @@ describe("an inbound frame is judged before it is believed", () => {
     await expect(pending).resolves.toEqual({ sessions: [], hasMore: false });
   });
 });
+
+describe("the browser frame connection", () => {
+  const target = {
+    surface: "isolated-chromium" as const,
+    browserId: "browser-1",
+    targetId: "tab-1",
+    generation: 1,
+  };
+
+  it("reports the service's refusal instead of dropping it", async () => {
+    // An error frame is the service saying the stream gave up. Dropping it
+    // leaves the panel waiting for a picture that is never coming, and the
+    // panel cannot tell "still loading" from "the service stopped" on its
+    // own — so the refusal has to reach it.
+    const transport = transportWith(ControllableSocket);
+    const frames: unknown[] = [];
+    const failures: Error[] = [];
+    const stop = transport.watchBrowserFrames(
+      { surface: "isolated-chromium", target },
+      (frame) => frames.push(frame),
+      (error) => failures.push(error),
+    );
+    await tick();
+    const socket = ControllableSocket.latest!;
+    socket.deliver({
+      kind: "error",
+      requestId: socket.request.requestId,
+      code: "browser_operation_timeout",
+      message: "The browser delivered no frame for \"tab-1\" within 60000 ms.",
+    });
+    await tick();
+
+    expect(frames).toHaveLength(0);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.message).toContain("delivered no frame");
+    // The code is the branchable half; the message carries the budget and
+    // changes with it.
+    expect((failures[0] as unknown as { code?: string }).code).toBe("browser_operation_timeout");
+    stop();
+  });
+
+  it("keeps delivering frames after the watch was opened", async () => {
+    const transport = transportWith(ControllableSocket);
+    const frames: unknown[] = [];
+    const failures: Error[] = [];
+    const stop = transport.watchBrowserFrames(
+      { surface: "isolated-chromium", target },
+      (frame) => frames.push(frame),
+      (error) => failures.push(error),
+    );
+    await tick();
+    const socket = ControllableSocket.latest!;
+    socket.deliver({
+      kind: "event",
+      requestId: socket.request.requestId,
+      body: { target, data: "QUJD", format: "jpeg", sequence: 1 },
+    });
+    await tick();
+
+    expect(frames).toHaveLength(1);
+    expect(failures).toHaveLength(0);
+    stop();
+  });
+});

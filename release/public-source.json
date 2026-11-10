@@ -4930,6 +4930,7 @@
     "packages/webui/test/unit/home-adoption-transaction.test.ts",
     "packages/webui/test/unit/interaction-coordinator.test.ts",
     "packages/webui/test/unit/interaction-session-owners.test.ts",
+    "packages/webui/test/unit/isolated-chromium-startup-diagnostics.test.ts",
     "packages/webui/test/unit/markdown-autolink-double-anchor.test.tsx",
     "packages/webui/test/unit/markdown-codeblock-c1-highlight.test.tsx",
     "packages/webui/test/unit/markdown-codeblock-c2-line-numbers.test.tsx",

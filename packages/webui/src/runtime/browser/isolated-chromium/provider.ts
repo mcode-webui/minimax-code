@@ -39,9 +39,10 @@
 //     frames as the page changes, which is what the panel needs; polling
 //     `Page.captureScreenshot` would be a screenshot, not a live stream.
 
-import { spawn, type ChildProcess } from "node:child_process";
-import { access, mkdir, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { constants } from "node:fs";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import {
   BrowserCore,
@@ -71,6 +72,33 @@ import { WebuiIsolatedChromiumCoreTransport } from "./core-transport.js";
 const STARTUP_TIMEOUT_MS = 30_000;
 /** How often the endpoint file is polled while the browser starts. */
 const STARTUP_POLL_INTERVAL_MS = 100;
+/**
+ * How much of Chrome's own error output is kept.
+ *
+ * The stream is unbounded and the end of it is the part that names the
+ * problem, so the tail is what is kept.
+ */
+const STDERR_CAPTURE_LIMIT_BYTES = 64 * 1024;
+/** How much of that tail is quoted in an error message. */
+const STDERR_MESSAGE_CHARS = 400;
+/**
+ * How long a failure waits for the browser's own error output.
+ *
+ * The words are on a stream that may still hold data when the process is
+ * already gone, so the failure waits for the stream to end before it quotes
+ * them — but not for ever.
+ */
+const STDERR_DRAIN_TIMEOUT_MS = 250;
+/** How long the browser binary may take to answer `--version`. */
+const CHROME_VERSION_PROBE_TIMEOUT_MS = 5_000;
+/**
+ * How long a failure waits for the version before it is reported.
+ *
+ * The version belongs in the account of the failure, but a browser that dies
+ * has to be reported at once: the probe is therefore given a moment and no
+ * more.
+ */
+const VERSION_PROBE_WAIT_MS = 1_000;
 /** How long a command is retried while the page is still being attached. */
 const ATTACHMENT_RETRY_WINDOW_MS = 3_000;
 /** The delay between attachment retries. */
@@ -246,6 +274,23 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
   #child: ChildProcess | undefined;
   #connection: WebuiBrowserCdpConnection | undefined;
   /**
+   * The facts of this startup.
+   *
+   * A launch that fails says nothing about itself: the process goes away, the
+   * port file never appears, and the only words the caller gets are "it did
+   * not start". These are the facts that make such a failure explainable.
+   */
+  readonly #trace = new ChromeStartupTrace();
+  /**
+   * Chrome's own error output.
+   *
+   * It is kept rather than printed: the runtime's browser paths keep no logs,
+   * and this text belongs in a file that says what happened.
+   */
+  readonly #stderr = new StderrTail();
+  /** Where the diagnostics of this provider are written. */
+  readonly #outputDir: string;
+  /**
    * The pages this provider drives, by target id.
    *
    * One entry per web tab. A target that is not in here is a page this
@@ -274,6 +319,7 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
   private constructor(options: WebuiIsolatedChromiumProviderOptions) {
     this.#options = options;
     this.#userDataDir = join(options.dataDir, "browser", "isolated-chromium", "profile");
+    this.#outputDir = browserDiagnosticsDir(this.#userDataDir);
     this.browserId = `isolated-chromium-${randomSuffix()}`;
     this.#core = new BrowserCore({
       provider: "webui-isolated-chromium",
@@ -299,61 +345,173 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
   }
 
   async #start(): Promise<void> {
-    const chromePath = await resolveChromePath(this.#options.chromePath);
-    await mkdir(this.#userDataDir, { recursive: true, mode: 0o700 });
-    const activePortPath = join(this.#userDataDir, "DevToolsActivePort");
-    await rm(activePortPath, { force: true });
-
-    const viewport = this.#options.viewport ?? { width: 1280, height: 800 };
-    const child = spawn(
-      chromePath,
-      [
-        "--headless=new",
-        "--remote-debugging-port=0",
-        "--remote-debugging-address=127.0.0.1",
-        `--user-data-dir=${this.#userDataDir}`,
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-background-networking",
-        "--disable-component-update",
-        "--disable-sync",
-        "--disable-features=Translate,MediaRouter",
-        `--window-size=${viewport.width},${viewport.height}`,
-        "about:blank",
-      ],
-      { stdio: ["ignore", "ignore", "ignore"] },
-    );
-    this.#child = child;
-
-    let endpoint: string;
+    const trace = this.#trace;
+    const stderr = this.#stderr;
+    let child: ChildProcess | undefined;
+    let versionProbe: Promise<unknown> | undefined;
     try {
-      endpoint = await waitForDevToolsEndpoint(child, activePortPath);
+      const chromePath = await resolveChromePath(this.#options.chromePath);
+      trace.setChromePath(chromePath);
+      trace.mark("chromePathResolved");
+      // The version is asked for beside the launch rather than before it: a
+      // browser that dies has to be reported at once, and a probe that hangs
+      // must not stand between the failure and the report of it.
+      versionProbe = probeChromeVersion(chromePath).then((version) => {
+        trace.setChromeVersion(version);
+        trace.mark("chromeVersionProbed", { version: version ?? null });
+        return version;
+      });
+
+      await mkdir(this.#userDataDir, { recursive: true, mode: 0o700 });
+      const activePortPath = join(this.#userDataDir, "DevToolsActivePort");
+      await rm(activePortPath, { force: true });
+
+      const viewport = this.#options.viewport ?? { width: 1280, height: 800 };
+      child = spawn(
+        chromePath,
+        [
+          "--headless=new",
+          "--remote-debugging-port=0",
+          "--remote-debugging-address=127.0.0.1",
+          `--user-data-dir=${this.#userDataDir}`,
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--disable-background-networking",
+          "--disable-component-update",
+          "--disable-sync",
+          "--disable-features=Translate,MediaRouter",
+          `--window-size=${viewport.width},${viewport.height}`,
+          "about:blank",
+        ],
+        // The browser's own error output is the only thing that says *why* it
+        // did not start, so it is piped and kept rather than dropped.
+        { stdio: ["ignore", "ignore", "pipe"] },
+      );
+      this.#child = child;
+      trace.mark("spawned", { pid: child.pid ?? null });
+      child.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
+      // The browser's words arrive on a stream that may still hold data when
+      // the process is already gone, so a failure waits for the stream to end
+      // before it quotes them.
+      const stderrEnded = new Promise<void>((resolve) => {
+        const stream = child?.stderr;
+        if (!stream) {
+          resolve();
+          return;
+        }
+        stream.once("end", () => resolve());
+        stream.once("close", () => resolve());
+        stream.once("error", () => resolve());
+      });
+      const drainStderr = async (): Promise<void> => {
+        await Promise.race([stderrEnded, delay(STDERR_DRAIN_TIMEOUT_MS)]);
+      };
+
+      // A process that cannot be started says so on the `error` event, and an
+      // event nobody listens for is an uncaught exception that takes the
+      // process with it. The failure is therefore recorded and turned into a
+      // browser error like any other.
+      let spawnError: Error | undefined;
+      child.on("error", (error: Error) => {
+        spawnError = error;
+        trace.mark("spawnError", { message: error.message });
+      });
+      child.on("exit", (code, signal) => {
+        trace.mark("exited", { code, signal: signal ?? null });
+      });
+
+      let endpoint: string;
+      try {
+        endpoint = await waitForDevToolsEndpoint(child, activePortPath, {
+          chromePath,
+          stderr: () => stderr.text(),
+          spawnError: () => spawnError,
+          awaitStderr: drainStderr,
+          onEndpoint: () => trace.mark("devToolsActivePortRead"),
+        });
+      } catch (error) {
+        child.kill("SIGKILL");
+        throw error;
+      }
+
+      let connection: WebuiBrowserCdpConnection;
+      try {
+        connection = await WebuiBrowserCdpConnection.connect(endpoint);
+      } catch (error) {
+        // A handshake that fails leaves a browser process that nothing owns.
+        // That process keeps the profile's single-instance lock, so the next
+        // launch would fail on the lock rather than on its own problem.
+        child.kill("SIGKILL");
+        throw error;
+      }
+      this.#connection = connection;
+      this.#unsubscribe = connection.onEvent((event) => this.#onEvent(event));
+
+      const created = await connection.send<{ targetId: string }>("Target.createTarget", {
+        url: "about:blank",
+      });
+      trace.mark("targetCreated", { targetId: created.targetId });
+      this.#launchTargetId = created.targetId;
+      await this.#attachPage(created.targetId);
+
+      // The panel must also be told about pages created by links using
+      // `target="_blank"` or `window.open`. Discover only after the launch page
+      // is attached, then ignore the initial inventory Chromium reports as part
+      // of enabling discovery.
+      const initialTargets = await connection.send<{
+        targetInfos?: readonly { targetId: string }[];
+      }>("Target.getTargets");
+      for (const target of initialTargets.targetInfos ?? []) {
+        this.#targetsBeforeDiscovery.add(target.targetId);
+      }
+      await connection.send("Target.setDiscoverTargets", { discover: true });
+      trace.mark("started");
     } catch (error) {
-      child.kill("SIGKILL");
+      // A failed launch leaves a browser process behind unless it is stopped
+      // here, and the process would keep the profile locked for the next one.
+      child?.kill("SIGKILL");
+      if (versionProbe) {
+        await Promise.race([versionProbe, delay(VERSION_PROBE_WAIT_MS)]);
+      }
+      trace.setFailure(error);
+      await this.#flushDiagnostics();
       throw error;
     }
+    await versionProbe;
+    await this.#flushDiagnostics();
+  }
 
-    const connection = await WebuiBrowserCdpConnection.connect(endpoint);
-    this.#connection = connection;
-    this.#unsubscribe = connection.onEvent((event) => this.#onEvent(event));
-
-    const created = await connection.send<{ targetId: string }>("Target.createTarget", {
-      url: "about:blank",
+  /**
+   * Writes what this startup learned to disk.
+   *
+   * The runtime's browser paths keep no logs, so these files are the only
+   * place the facts exist. A file that cannot be written is not a browser
+   * failure: the person is waiting for a browser, not for a diagnostics file.
+   */
+  async #flushDiagnostics(): Promise<void> {
+    await writeBrowserDiagnostics({
+      outputDir: this.#outputDir,
+      userDataDir: this.#userDataDir,
+      artifact: this.#artifact(),
+      stderr: this.#stderr.text(),
     });
-    this.#launchTargetId = created.targetId;
-    await this.#attachPage(created.targetId);
+  }
 
-    // The panel must also be told about pages created by links using
-    // `target="_blank"` or `window.open`. Discover only after the launch page
-    // is attached, then ignore the initial inventory Chromium reports as part
-    // of enabling discovery.
-    const initialTargets = await connection.send<{
-      targetInfos?: readonly { targetId: string }[];
-    }>("Target.getTargets");
-    for (const target of initialTargets.targetInfos ?? []) {
-      this.#targetsBeforeDiscovery.add(target.targetId);
-    }
-    await connection.send("Target.setDiscoverTargets", { discover: true });
+  /** The structured account of this startup. */
+  #artifact(): Record<string, unknown> {
+    return {
+      kind: "isolated-chromium-startup",
+      browserId: this.browserId,
+      generatedAt: new Date().toISOString(),
+      userDataDir: this.#userDataDir,
+      outputDir: this.#outputDir,
+      chromePath: this.#trace.chromePath(),
+      chromeVersion: this.#trace.chromeVersion() ?? null,
+      elapsedMs: this.#trace.elapsedMs(),
+      marks: this.#trace.marks(),
+      failure: this.#trace.failure(),
+      stderrTail: summarizeStderr(this.#stderr.text()),
+    };
   }
 
   /**
@@ -897,6 +1055,9 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
     this.#connection?.close();
     this.#connection = undefined;
     await this.#stopBrowser();
+    // Chrome's own words about the run are written when the browser is
+    // stopped, so the file holds everything the browser said before it went.
+    await this.#flushDiagnostics();
     // The profile is **kept**. It is the browser's state — the sessions the
     // person signed into — and it belongs to this host's data directory like
     // any other state the host keeps. Deleting it on every close meant that a
@@ -1172,12 +1333,19 @@ function randomSuffix(): string {
  * The platform list is the same one the repository's own headless transport
  * uses, so the isolated browser and the runtime's browser behave the same on
  * a given machine.
+ *
+ * A candidate has to be *executable*, not merely present: a file that exists
+ * but cannot be run is a browser that fails to start, and finding it here
+ * turns that into one clear refusal instead of a launch that dies silently.
  */
-async function resolveChromePath(explicit?: string): Promise<string> {
+export async function resolveChromePath(
+  explicit?: string,
+  candidates: readonly string[] = defaultChromeCandidates(),
+): Promise<string> {
   if (explicit?.trim()) return explicit.trim();
-  for (const candidate of defaultChromeCandidates()) {
+  for (const candidate of candidates) {
     try {
-      await access(candidate);
+      await access(candidate, constants.X_OK);
       return candidate;
     } catch {
       // Keep looking.
@@ -1189,7 +1357,211 @@ async function resolveChromePath(explicit?: string): Promise<string> {
   );
 }
 
-function defaultChromeCandidates(): readonly string[] {
+/**
+ * Where the startup diagnostics are written.
+ *
+ * The environment variable comes first so that a CI run can collect the
+ * files it produced; without it the facts stay with the profile that made
+ * them.
+ */
+export function browserDiagnosticsDir(userDataDir: string): string {
+  const configured = process.env.WEBUI_BROWSER_OUTPUT_DIR?.trim();
+  if (configured) return configured;
+  return join(userDataDir, "browser-diagnostics");
+}
+
+/**
+ * Writes the account of a startup and the browser's own error output.
+ *
+ * The browser's output goes to two places: the directory the run collects
+ * from, and the profile directory beside the browser that produced it. The
+ * names are fixed, so a run that starts twice leaves two files rather than a
+ * growing pile.
+ */
+export async function writeBrowserDiagnostics(options: {
+  readonly outputDir: string;
+  readonly userDataDir: string;
+  readonly artifact: Record<string, unknown>;
+  readonly stderr: string;
+}): Promise<void> {
+  const { outputDir, userDataDir, artifact, stderr } = options;
+  await writeTextFile(
+    join(outputDir, "chrome-startup.json"),
+    `${JSON.stringify(artifact, null, 2)}\n`,
+  );
+  await writeTextFile(join(outputDir, "chrome-stderr.log"), stderr);
+  await writeTextFile(join(userDataDir, "chrome-stderr.log"), stderr);
+}
+
+async function writeTextFile(path: string, content: string): Promise<void> {
+  try {
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, content, "utf8");
+  } catch {
+    // A diagnostics file that cannot be written must not fail the browser.
+  }
+}
+
+/**
+ * Asks the browser binary for its version.
+ *
+ * The version is one of the few facts that can be read without starting the
+ * browser, and it is the fact that says *which* Chrome failed — two builds
+ * fail differently. A probe that fails says nothing and is not itself a
+ * browser failure.
+ */
+async function probeChromeVersion(chromePath: string): Promise<string | undefined> {
+  return await new Promise<string | undefined>((resolve) => {
+    let settled = false;
+    const finish = (value: string | undefined): void => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    try {
+      const child = execFile(
+        chromePath,
+        ["--version"],
+        {
+          timeout: CHROME_VERSION_PROBE_TIMEOUT_MS,
+          killSignal: "SIGKILL",
+          windowsHide: true,
+          maxBuffer: STDERR_CAPTURE_LIMIT_BYTES,
+        },
+        (error, stdout) => {
+          if (error) {
+            finish(undefined);
+            return;
+          }
+          const text = typeof stdout === "string" ? stdout.trim() : "";
+          finish(text.length > 0 ? text : undefined);
+        },
+      );
+      child.on("error", () => finish(undefined));
+    } catch {
+      finish(undefined);
+    }
+  });
+}
+
+/**
+ * Flattens the browser's error output into one quotable line.
+ *
+ * The tail of the output is kept and the rest is dropped: what a browser
+ * says last is what names the problem, and an error message that carried a
+ * whole log would be unreadable.
+ */
+function summarizeStderr(text: string | undefined): string {
+  if (!text) return "";
+  const flattened = text.replace(/\s+/gu, " ").trim();
+  if (!flattened) return "";
+  if (flattened.length <= STDERR_MESSAGE_CHARS) return flattened;
+  return `...${flattened.slice(-STDERR_MESSAGE_CHARS)}`;
+}
+
+/** The browser's own words, quoted after a failure. */
+function stderrClause(text: string | undefined): string {
+  const summary = summarizeStderr(text);
+  return summary.length > 0 ? ` Chrome said: ${summary}` : "";
+}
+
+/**
+ * The tail of the browser's error output.
+ *
+ * Chrome says why it failed on its error stream and nowhere else, and the
+ * stream is unbounded, so only the end of it is kept.
+ */
+class StderrTail {
+  readonly #limit: number;
+  #chunks: Buffer[] = [];
+  #bytes = 0;
+
+  constructor(limit: number = STDERR_CAPTURE_LIMIT_BYTES) {
+    this.#limit = limit;
+  }
+
+  push(chunk: Buffer | string): void {
+    const buffer = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    this.#chunks.push(buffer);
+    this.#bytes += buffer.length;
+    while (this.#chunks.length > 1 && this.#bytes > this.#limit) {
+      this.#bytes -= this.#chunks[0].length;
+      this.#chunks.shift();
+    }
+    const head = this.#chunks[0];
+    if (head && head.length > this.#limit) {
+      this.#chunks[0] = head.subarray(head.length - this.#limit);
+      this.#bytes = this.#chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    }
+  }
+
+  text(): string {
+    if (this.#chunks.length === 0) return "";
+    return Buffer.concat(this.#chunks).toString("utf8");
+  }
+}
+
+/**
+ * The facts of one startup, collected as the browser starts.
+ *
+ * The marks are the moments a launch can be read at — the binary that was
+ * chosen, the process that was started, the endpoint that was published, the
+ * page that was created — and the elapsed time between them is what says
+ * where a launch went wrong.
+ */
+class ChromeStartupTrace {
+  readonly #startedAt = Date.now();
+  readonly #marks: { readonly phase: string; readonly atMs: number; readonly detail?: Record<string, unknown> }[] = [];
+  #chromePath: string | undefined;
+  #chromeVersion: string | undefined;
+  #failure: { readonly code: string; readonly message: string } | undefined;
+
+  setChromePath(value: string): void {
+    this.#chromePath = value;
+  }
+
+  setChromeVersion(value: string | undefined): void {
+    this.#chromeVersion = value;
+  }
+
+  mark(phase: string, detail?: Record<string, unknown>): void {
+    this.#marks.push({
+      phase,
+      atMs: Date.now() - this.#startedAt,
+      ...(detail ? { detail } : {}),
+    });
+  }
+
+  setFailure(error: unknown): void {
+    const failure = error as { code?: unknown; message?: unknown } | null;
+    this.#failure = {
+      code: typeof failure?.code === "string" ? failure.code : "unknown",
+      message: typeof failure?.message === "string" ? failure.message : String(error),
+    };
+  }
+
+  chromePath(): string | undefined {
+    return this.#chromePath;
+  }
+
+  chromeVersion(): string | undefined {
+    return this.#chromeVersion;
+  }
+
+  elapsedMs(): number {
+    return Date.now() - this.#startedAt;
+  }
+
+  marks(): readonly { phase: string; atMs: number; detail?: Record<string, unknown> }[] {
+    return this.#marks;
+  }
+
+  failure(): { code: string; message: string } | undefined {
+    return this.#failure;
+  }
+}
+
+export function defaultChromeCandidates(): readonly string[] {
   if (process.platform === "darwin") {
     return [
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -1217,39 +1589,104 @@ function defaultChromeCandidates(): readonly string[] {
 }
 
 /**
+ * What the wait needs to know about the browser process.
+ *
+ * A child process satisfies this, and so does anything that names the way a
+ * process died: the wait's decisions are about the state of the process, not
+ * about anything a process can do.
+ */
+export interface DevToolsEndpointChild {
+  /** The code the process exited with, or null while it still runs. */
+  readonly exitCode: number | null;
+  /** The signal that killed the process, or null while it still runs. */
+  readonly signalCode: NodeJS.Signals | null;
+}
+
+/**
  * Waits for the browser to publish its DevTools endpoint.
  *
  * The endpoint is read from the `DevToolsActivePort` file the browser writes
  * rather than scraped from its output: the file is the browser's own
  * statement of where it is listening, and it avoids mistaking a log line for
  * an address.
+ *
+ * The wait ends early when the browser is already gone. A browser that was
+ * killed leaves a signal rather than an exit code, and a browser that cannot
+ * be started reports an error on the process itself; in both cases the wait
+ * would otherwise spend the whole timeout on a death that has already
+ * happened and then report a timeout that explains nothing.
  */
-async function waitForDevToolsEndpoint(
-  child: ChildProcess,
+export async function waitForDevToolsEndpoint(
+  child: DevToolsEndpointChild,
   activePortPath: string,
-  timeoutMs = STARTUP_TIMEOUT_MS,
+  options: {
+    /** The binary that was started, for the failure message. */
+    readonly chromePath?: string;
+    /** How long the browser may take to publish its endpoint. */
+    readonly timeoutMs?: number;
+    /** The browser's own error output, quoted in the failure message. */
+    readonly stderr?: () => string | undefined;
+    /** The failure of the process itself, when it could not be started. */
+    readonly spawnError?: () => Error | undefined;
+    /** Waits for the browser's own error output to arrive. */
+    readonly awaitStderr?: () => Promise<void>;
+    /** Called with the endpoint as soon as it has been read. */
+    readonly onEndpoint?: (endpoint: string) => void;
+  } = {},
 ): Promise<string> {
-  const deadline = Date.now() + timeoutMs;
+  const timeoutMs = options.timeoutMs ?? STARTUP_TIMEOUT_MS;
+  const startedAt = Date.now();
+  const deadline = startedAt + timeoutMs;
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
+    const spawnError = options.spawnError?.();
+    if (spawnError) {
+      await options.awaitStderr?.();
       throw browserOperationError(
         "browser_provider_failed",
-        `The browser exited during startup with code ${child.exitCode}.`,
+        `The browser could not be started: ${spawnError.message}.${stderrClause(options.stderr?.())}`,
+      );
+    }
+    if (child.signalCode !== null) {
+      await options.awaitStderr?.();
+      throw browserOperationError(
+        "browser_provider_failed",
+        `The browser was killed by signal ${child.signalCode} during startup (exit code ${child.exitCode ?? "none"}) after ${Date.now() - startedAt}ms (chrome: ${options.chromePath ?? "unknown"}).${stderrClause(options.stderr?.())}`,
+      );
+    }
+    if (child.exitCode !== null) {
+      await options.awaitStderr?.();
+      throw browserOperationError(
+        "browser_provider_failed",
+        `The browser exited during startup with code ${child.exitCode} after ${Date.now() - startedAt}ms (chrome: ${options.chromePath ?? "unknown"}).${stderrClause(options.stderr?.())}`,
       );
     }
     try {
       const endpoint = parseDevToolsActivePort(await readFile(activePortPath, "utf8"));
-      if (endpoint) return endpoint;
+      if (endpoint) {
+        options.onEndpoint?.(endpoint);
+        return endpoint;
+      }
     } catch {
       // The browser has not written the file yet.
     }
     await delay(STARTUP_POLL_INTERVAL_MS);
   }
+  await options.awaitStderr?.();
+  const activePortPresent = await fileExists(activePortPath);
   throw browserOperationError(
     "browser_operation_timeout",
-    "The browser did not publish a DevTools endpoint in time.",
+    `The browser did not publish a DevTools endpoint in time (after ${Date.now() - startedAt}ms; chrome: ${options.chromePath ?? "unknown"}; DevToolsActivePort file: ${activePortPresent ? "present" : "absent"}; exit code: ${child.exitCode ?? "none"}; signal: ${child.signalCode ?? "none"}).${stderrClause(options.stderr?.())}`,
     true,
   );
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function parseDevToolsActivePort(raw: string): string | undefined {

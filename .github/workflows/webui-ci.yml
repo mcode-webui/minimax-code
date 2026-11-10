@@ -41,12 +41,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:webui
       - run: pnpm install:webui-browsers
-      - name: Validate attribution negative controls
-        env:
-          ATTRIBUTION_OUTPUT: ${{ runner.temp }}/mac-browser-chromium/attribution-negative-controls.json
-        run: |
-          mkdir -p "$WEBUI_BROWSER_OUTPUT_DIR"
-          node scripts/attribution-negative-controls.mjs
+      - name: Repeat streaming and real attribution controls
+        run: pnpm exec playwright test packages/webui/test/browser/streaming-performance.spec.mjs --headed --repeat-each=5
       - name: Retain diagnostic artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

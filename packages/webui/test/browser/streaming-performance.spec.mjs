@@ -19,6 +19,13 @@
 import { expect } from "@playwright/test";
 
 import { attachJsonEvidence, openApp, startTurn, test } from "./harness.mjs";
+import {
+  APPLICATION_BLOCK_MS,
+  MEASURE_END,
+  MEASURE_START,
+  attributeApplicationWork,
+  startApplicationTrace,
+} from "./application-performance.mjs";
 
 // Keep trace snapshots and screenshot capture outside the measured interval;
 // a failure screenshot is taken only after the performance assertions.
@@ -61,7 +68,6 @@ function historyMessages(turns) {
 const JANK_FRAME_MS = 50;
 /** A frame longer than this is more than one dropped frame. */
 const DROPPED_FRAME_MS = 100;
-const APPLICATION_BLOCK_MS = 50;
 
 function percentile(values, fraction) {
   if (!values.length) throw new Error("performance measurement collected no frame samples");
@@ -107,11 +113,8 @@ async function measureStreamedReply(page, options) {
   // so it is staged through the fixture's boot-time setup hook.
   await page.addInitScript((messages) => {
     window.__WEBUI_FIXTURE_SETUP__ ??= [];
-    window.__WEBUI_FIXTURE_SETUP__.push(() =>
-      window.__fixture.setPage("A", { messages, hasMore: false }),
-    );
+    window.__WEBUI_FIXTURE_SETUP__.push(() => window.__fixture.setPage("A", { messages, hasMore: false }));
   }, historyMessages(historyTurns));
-  await page.addInitScript((enabled) => { window.__WEBUI_DIAG_DOUBLE_FRAME__ = enabled; }, test.info().project.name.startsWith("coalesced"));
   await openApp(page);
   await startTurn(page, "A", "Stream a long answer");
 
@@ -122,7 +125,10 @@ async function measureStreamedReply(page, options) {
     window.__fixture.emitStream("A", {
       dataJson: JSON.stringify({
         type: "agent_message",
-        agent_message: { msg_id: "msg-user-1", msg_content: "Stream a long answer" },
+        agent_message: {
+          msg_id: "msg-user-1",
+          msg_content: "Stream a long answer",
+        },
       }),
     });
   });
@@ -139,101 +145,133 @@ async function measureStreamedReply(page, options) {
     await cdp.send("Profiler.start");
   }
 
-  const metrics = await page.evaluate(async (chunkTextsIn) => {
-    const count = chunkTextsIn.length;
-    const longTasks = [];
-    const longTaskDetails = [];
-    const observer = new PerformanceObserver((entries) => {
-      for (const entry of entries.getEntries()) {
-        longTasks.push(entry.duration);
-        longTaskDetails.push(entry.toJSON());
-      }
-    });
-    observer.observe({ type: "longtask" });
-    const longAnimationFrames = [];
-    const frameObserver = new PerformanceObserver((entries) => {
-      longAnimationFrames.push(...entries.getEntries().map((entry) => entry.toJSON()));
-    });
-    frameObserver.observe({ type: "long-animation-frame" });
+  const finishTrace = await startApplicationTrace(page);
+  let traceEvents;
+  let metrics;
+  try {
+    metrics = await page.evaluate(
+      async ({ chunkTextsIn, measureStart, measureEnd }) => {
+        if (
+          !["longtask", "long-animation-frame"].every((type) => PerformanceObserver.supportedEntryTypes.includes(type))
+        ) {
+          throw new Error("application performance observers are unavailable");
+        }
+        const count = chunkTextsIn.length;
+        const longTasks = [];
+        const longTaskDetails = [];
+        const observer = new PerformanceObserver((entries) => {
+          for (const entry of entries.getEntries()) {
+            longTasks.push(entry.duration);
+            longTaskDetails.push(entry.toJSON());
+          }
+        });
+        observer.observe({ type: "longtask" });
+        const longAnimationFrames = [];
+        const frameObserver = new PerformanceObserver((entries) => {
+          longAnimationFrames.push(...entries.getEntries().map((entry) => entry.toJSON()));
+        });
+        frameObserver.observe({ type: "long-animation-frame" });
 
-    // A rAF loop records the frame pacing the reader actually sees.
-    const frameGaps = [];
-    let previousFrame = performance.now();
-    let running = true;
-    const sample = () => {
-      if (!running) return;
-      const now = performance.now();
-      frameGaps.push(now - previousFrame);
-      previousFrame = now;
-      requestAnimationFrame(sample);
-    };
-    requestAnimationFrame(sample);
+        // A rAF loop records the frame pacing the reader actually sees.
+        const frameGaps = [];
+        let previousFrame = performance.now();
+        let running = true;
+        const sample = () => {
+          if (!running) return;
+          const now = performance.now();
+          frameGaps.push(now - previousFrame);
+          previousFrame = now;
+          requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
 
-    // A zero-delay timer is the cheapest honest probe of "can the main thread
-    // still answer me": a busy renderer pushes it late.
-    const timerDelays = [];
-    let timerRunning = true;
-    const probe = () => {
-      if (!timerRunning) return;
-      const requested = performance.now();
-      setTimeout(() => {
-        timerDelays.push(performance.now() - requested);
+        // A zero-delay timer is the cheapest honest probe of "can the main thread
+        // still answer me": a busy renderer pushes it late.
+        const timerDelays = [];
+        let timerRunning = true;
+        const probe = () => {
+          if (!timerRunning) return;
+          const requested = performance.now();
+          setTimeout(() => {
+            timerDelays.push(performance.now() - requested);
+            probe();
+          }, 0);
+        };
         probe();
-      }, 0);
-    };
-    probe();
 
-    const started = performance.now();
-    for (let index = 0; index < count; index += 1) {
-      window.__fixture.emitStream("A", {
-        cursor: `cursor-${index}`,
-        dataJson: JSON.stringify({
-          type: "agent_message_chunk",
-          agent_message_chunk: {
-            msg_id: "a-turn-1",
-            msg_content: `${chunkTextsIn[index]}\n\n`,
-          },
-        }),
-      });
-      // Each frame is its own browser task in production, so the render
-      // opportunity is per frame. A macrotask boundary reproduces that.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-    const emitted = performance.now();
+        performance.mark(measureStart);
+        const started = performance.now();
+        for (let index = 0; index < count; index += 1) {
+          window.__fixture.emitStream("A", {
+            cursor: `cursor-${index}`,
+            dataJson: JSON.stringify({
+              type: "agent_message_chunk",
+              agent_message_chunk: {
+                msg_id: "a-turn-1",
+                msg_content: `${chunkTextsIn[index]}\n\n`,
+              },
+            }),
+          });
+          // Each frame is its own browser task in production, so the render
+          // opportunity is per frame. A macrotask boundary reproduces that.
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        const emitted = performance.now();
 
-    await new Promise((resolve) => {
-      const deadline = performance.now() + 20_000;
-      const check = () => {
-        const text = document.querySelector('[data-webui-assistant-body="a-turn-1"]')?.textContent ?? "";
-        if (text.includes(`Paragraph ${count - 1} of the streamed answer`)) return resolve();
-        if (performance.now() > deadline) return resolve();
-        requestAnimationFrame(check);
-      };
-      check();
-    });
-    // 最终文本进入 DOM 后仍需完成绘制；与拖拽一样覆盖提交后的两帧。
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const settled = performance.now();
-    running = false;
-    timerRunning = false;
-    const records = observer.takeRecords();
-    longTaskDetails.push(...records.map((entry) => entry.toJSON()));
-    observer.disconnect();
-    longAnimationFrames.push(...frameObserver.takeRecords().map((entry) => entry.toJSON()));
-    frameObserver.disconnect();
-    return {
-      emitted: emitted - started,
-      settled: settled - started,
-      longTasks: [...longTasks, ...records.map((entry) => entry.duration)],
-      longTaskDetails,
-      longAnimationFrames,
-      frameGaps: frameGaps.slice(1),
-      timerDelays,
-      liveBodyFound: Boolean(document.querySelector('[data-webui-assistant-body="a-turn-1"]')),
-    };
-  }, chunkTexts);
+        await new Promise((resolve) => {
+          const deadline = performance.now() + 20_000;
+          const check = () => {
+            const text = document.querySelector('[data-webui-assistant-body="a-turn-1"]')?.textContent ?? "";
+            if (text.includes(`Paragraph ${count - 1} of the streamed answer`)) return resolve();
+            if (performance.now() > deadline) return resolve();
+            requestAnimationFrame(check);
+          };
+          check();
+        });
+        // 最终文本进入 DOM 后仍需完成绘制；与拖拽一样覆盖提交后的两帧。
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const settled = performance.now();
+        performance.mark(measureEnd);
+        running = false;
+        timerRunning = false;
+        const records = observer.takeRecords();
+        longTaskDetails.push(...records.map((entry) => entry.toJSON()));
+        observer.disconnect();
+        longAnimationFrames.push(...frameObserver.takeRecords().map((entry) => entry.toJSON()));
+        frameObserver.disconnect();
+        return {
+          emitted: emitted - started,
+          settled: settled - started,
+          longTasks: [...longTasks, ...records.map((entry) => entry.duration)],
+          longTaskDetails,
+          longAnimationFrames,
+          frameGaps: frameGaps.slice(1),
+          timerDelays,
+          liveBodyFound: Boolean(document.querySelector('[data-webui-assistant-body="a-turn-1"]')),
+        };
+      },
+      {
+        chunkTextsIn: chunkTexts,
+        measureStart: MEASURE_START,
+        measureEnd: MEASURE_END,
+      },
+    );
+  } finally {
+    traceEvents = await finishTrace();
+  }
+  await attachJsonEvidence("application-task-trace.json", traceEvents);
   const idleAfter = await measureIdleFrames(page, Math.max(2000, metrics.settled));
-  await attachJsonEvidence("stream-performance-raw.json", { historyTurns, chunks, idleBefore, active: metrics, idleAfter });
+  // 即使归因数据不完整也先保留原始样本，便于定位采样失败。
+  await attachJsonEvidence("stream-performance-samples.json", { historyTurns, chunks, idleBefore, active: metrics, idleAfter });
+  const applicationWork = attributeApplicationWork(traceEvents, metrics.longAnimationFrames);
+  await attachJsonEvidence("stream-performance-raw.json", {
+    historyTurns,
+    chunks,
+    idleBefore,
+    active: metrics,
+    idleAfter,
+    applicationWork,
+  });
 
   if (cdp) {
     const { profile } = await cdp.send("Profiler.stop");
@@ -264,6 +302,7 @@ async function measureStreamedReply(page, options) {
     droppedFrames: gaps.filter((gap) => gap >= DROPPED_FRAME_MS).length,
     worstTimerDelay: Math.max(0, ...metrics.timerDelays),
     longTaskCount: metrics.longTasks.filter((duration) => duration >= APPLICATION_BLOCK_MS).length,
+    applicationOverBudget: applicationWork.cpuOverBudget.length + applicationWork.scriptsOverBudget.length,
   };
   console.info(
     [
@@ -277,6 +316,9 @@ async function measureStreamedReply(page, options) {
       `dropped frames(>=${DROPPED_FRAME_MS}ms): ${summary.droppedFrames}`,
       `worst timer delay: ${summary.worstTimerDelay.toFixed(1)} ms`,
       `long tasks: ${summary.longTaskCount}`,
+      `application tasks/scripts over budget: ${summary.applicationOverBudget}`,
+      `max task CPU: ${(Math.max(...applicationWork.tasks.map((task) => Number.isFinite(task.tdur) ? task.tdur : task.dur)) / 1000).toFixed(1)} ms`,
+      `max script: ${Math.max(0, ...applicationWork.scripts.map((script) => script.duration)).toFixed(1)} ms`,
     ].join(" | "),
   );
   return summary;
@@ -294,9 +336,7 @@ async function expectRenderedAnswer(page, chunks) {
   const answer = body.locator(".webui-markdown");
   await expect(answer).toHaveCount(1);
   // The oldest block, the one every later frame reused.
-  await expect(answer.locator("p").first()).toContainText(
-    "Paragraph 0 of the streamed answer",
-  );
+  await expect(answer.locator("p").first()).toContainText("Paragraph 0 of the streamed answer");
   // Every block that arrived: one list of two items and one fenced code block
   // per chunk, all of them rendered.
   await expect(answer.locator(".webui-code-block")).toHaveCount(chunks);
@@ -320,10 +360,10 @@ test("a streamed reply keeps the page responsive", async ({ page }) => {
     summary.p95FrameGap,
     `stream p95 ${summary.p95FrameGap} ms exceeds same-page idle budget ${summary.allowedP95FrameGap} ms`,
   ).toBeLessThan(summary.allowedP95FrameGap);
-  // No single frame may block the main thread long enough to be a stutter.
+  // 原始停顿保留诊断；实际主线程执行与脚本阻塞分别执行 50ms 预算。
   expect(
-    summary.longTaskCount,
-    `the streamed reply produced ${summary.longTaskCount} long tasks`,
+    summary.applicationOverBudget,
+    `the streamed reply produced ${summary.applicationOverBudget} application tasks/scripts over budget`,
   ).toBe(0);
 });
 
@@ -343,9 +383,131 @@ test("a long reply in a long conversation does not drop frames", async ({ page }
     `stream p95 ${summary.p95FrameGap} ms exceeds same-page idle budget ${summary.allowedP95FrameGap} ms`,
   ).toBeLessThan(summary.allowedP95FrameGap);
   expect(
-    summary.longTaskCount,
-    `the streamed reply produced ${summary.longTaskCount} long tasks`,
+    summary.applicationOverBudget,
+    `the streamed reply produced ${summary.applicationOverBudget} application tasks/scripts over budget`,
   ).toBe(0);
+});
+
+for (const scenario of ["idle", "javascript", "layout", "synchronous-wait"]) {
+  test(`application attribution detects real blocking: ${scenario}`, async ({ page }) => {
+    await openApp(page);
+    await page.route("**/__application_wait", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      await route.fulfill({ status: 200, body: "ok" });
+    });
+    const finishTrace = await startApplicationTrace(page);
+    let events;
+    let frames;
+    try {
+      frames = await page.evaluate(
+        async ({ scenario, start, end }) => {
+          if (!PerformanceObserver.supportedEntryTypes.includes("long-animation-frame")) {
+            throw new Error("application performance observers are unavailable");
+          }
+          const frames = [];
+          const observer = new PerformanceObserver((list) =>
+            frames.push(...list.getEntries().map((entry) => entry.toJSON())),
+          );
+          observer.observe({ type: "long-animation-frame" });
+          const content = document.createElement("div");
+          document.body.append(content);
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          performance.mark(start);
+          await new Promise((resolve) =>
+            setTimeout(() => {
+              const started = performance.now();
+              if (scenario === "synchronous-wait") {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/__application_wait", false);
+                request.send();
+                if (request.status !== 200) throw new Error("synchronous wait control failed");
+              }
+              if (scenario === "layout") content.innerHTML = '<div style="width:50%">layout control</div>'.repeat(3000);
+              let iteration = 0;
+              while (scenario !== "idle" && performance.now() - started < 80) {
+                if (scenario === "layout") {
+                  content.style.width = `${600 + (iteration % 2)}px`;
+                  content.getBoundingClientRect();
+                }
+                iteration += 1;
+              }
+              resolve();
+            }, 0),
+          );
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          performance.mark(end);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          frames.push(...observer.takeRecords().map((entry) => entry.toJSON()));
+          observer.disconnect();
+          content.remove();
+          return frames;
+        },
+        { scenario, start: MEASURE_START, end: MEASURE_END },
+      );
+    } finally {
+      events = await finishTrace();
+    }
+    const work = attributeApplicationWork(events, frames);
+    await attachJsonEvidence("application-attribution-control.json", {
+      scenario,
+      work,
+      frames,
+    });
+    expect(work.cpuOverBudget.length + work.scriptsOverBudget.length > 0).toBe(scenario !== "idle");
+    if (scenario !== "idle") expect(work.scriptsOverBudget.length).toBeGreaterThan(0);
+  });
+}
+
+test("missing application timing fails instead of passing with zero work", async ({ page }) => {
+  await openApp(page);
+  expect(() => attributeApplicationWork([], [])).toThrow("markers are missing");
+  const markers = [
+    { name: MEASURE_START, ts: 1, pid: 1, tid: 1 },
+    { name: MEASURE_END, ts: 100, pid: 1, tid: 1 },
+  ];
+  expect(() => attributeApplicationWork(markers, [])).toThrow("CPU timing is unavailable");
+  expect(() =>
+    attributeApplicationWork(
+      [
+        ...markers,
+        {
+          name: "ThreadControllerImpl::RunTask",
+          ph: "X",
+          pid: 1,
+          tid: 1,
+          ts: 2,
+          dur: 70,
+        },
+      ],
+      [],
+    ),
+  ).toThrow("CPU timing is unavailable");
+  const measured = {
+    name: "ThreadControllerImpl::RunTask",
+    ph: "X",
+    pid: 1,
+    tid: 1,
+    ts: 2,
+    dur: 10,
+    tdur: 10,
+  };
+  expect(() =>
+    attributeApplicationWork(
+      [
+        ...markers,
+        measured,
+        {
+          ...measured,
+          ts: 3,
+          dur: 70_000,
+          tdur: undefined,
+        },
+      ],
+      [],
+    ),
+  ).toThrow("CPU timing is unavailable");
+  const shortSynthetic = { ...measured, ts: 3, dur: 1, tdur: undefined };
+  expect(attributeApplicationWork([...markers, measured, shortSynthetic], []).cpuOverBudget).toEqual([]);
 });
 
 test("frame calibration distinguishes scheduler outliers from sustained application delay", async ({ page }) => {
@@ -371,7 +533,10 @@ test("continuous chunks remain visible before the stream ends and the final chun
       window.__fixture.emitStream("A", {
         dataJson: JSON.stringify({
           type: "agent_message_chunk",
-          agent_message_chunk: { msg_id: "progressive-answer", msg_content: `Visible chunk ${index}.\n\n` },
+          agent_message_chunk: {
+            msg_id: "progressive-answer",
+            msg_content: `Visible chunk ${index}.\n\n`,
+          },
         }),
       });
       await new Promise((resolve) => setTimeout(resolve, 4));
@@ -388,10 +553,15 @@ test("continuous chunks remain visible before the stream ends and the final chun
     window.__fixture.emitStream("A", {
       dataJson: JSON.stringify({
         type: "agent_message_chunk",
-        agent_message_chunk: { msg_id: "progressive-answer", msg_content: "Final chunk before DONE." },
+        agent_message_chunk: {
+          msg_id: "progressive-answer",
+          msg_content: "Final chunk before DONE.",
+        },
       }),
     });
     window.__fixture.emitStream("A", { dataJson: "[DONE]" });
   });
-  await expect(page.locator('[data-webui-assistant-body="progressive-answer"]')).toContainText("Final chunk before DONE.");
+  await expect(page.locator('[data-webui-assistant-body="progressive-answer"]')).toContainText(
+    "Final chunk before DONE.",
+  );
 });

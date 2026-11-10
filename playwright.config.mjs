@@ -37,7 +37,6 @@ export default defineConfig({
   testDir: "./packages/webui/test/browser",
   outputDir: outputDirectory,
   fullyParallel: false,
-  projects: ["baseline-0", "coalesced-0", "coalesced-1", "baseline-1", "baseline-2", "coalesced-2"].map((name) => ({ name })),
   workers: 1,
   reporter: "list",
   metadata: { webuiBrowserServerId: serverId },

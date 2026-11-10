@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { WebuiIsolatedChromiumProvider } from "../../src/runtime/browser/isolated-chromium/provider.js";
+import { resolveChromeExecutable } from "./chrome-executable.js";
 
 /** The cookie the origin hands out. Its name says what it is for. */
 const COOKIE_NAME = "mavis-session";
@@ -61,32 +62,6 @@ async function waitFor(
   throw new Error(
     `timed out waiting for ${description}${lastError === undefined ? "" : `: ${String(lastError)}`}`,
   );
-}
-
-async function chromeIsAvailable(): Promise<boolean> {
-  const { access: canAccess } = await import("node:fs/promises");
-  const candidates =
-    process.platform === "darwin"
-      ? [
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-          "/Applications/Chromium.app/Contents/MacOS/Chromium",
-          "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-        ]
-      : [
-          "/usr/bin/google-chrome",
-          "/usr/bin/google-chrome-stable",
-          "/usr/bin/chromium",
-          "/usr/bin/chromium-browser",
-        ];
-  for (const candidate of candidates) {
-    try {
-      await canAccess(candidate);
-      return true;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return false;
 }
 
 /**
@@ -139,7 +114,7 @@ async function visit(
   );
 }
 
-const available = await chromeIsAvailable();
+const available = (await resolveChromeExecutable()) !== undefined;
 
 describe.skipIf(!available)("the isolated Chromium's profile", () => {
   let dataDir: string;

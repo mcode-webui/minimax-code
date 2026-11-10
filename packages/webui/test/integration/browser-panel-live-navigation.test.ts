@@ -19,27 +19,10 @@ import type {
   WebuiBrowserTargetId,
   WebuiBrowserWebTabSnapshot,
 } from "../../src/shared/contracts/browser.js";
+import { resolveChromeExecutable } from "./chrome-executable.js";
 
 const TIMEOUT_MS = 30_000;
 const POLL_MS = 50;
-
-async function resolveChromePath(): Promise<string | undefined> {
-  const { access } = await import("node:fs/promises");
-  for (const candidate of [
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ]) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Keep looking.
-    }
-  }
-  return undefined;
-}
 
 async function startPageServer(respond: (path: string) => string): Promise<{
   server: Server;
@@ -58,7 +41,7 @@ async function startPageServer(respond: (path: string) => string): Promise<{
   return { server, origin: `http://127.0.0.1:${address.port}` };
 }
 
-const chromeAvailable = (await resolveChromePath()) !== undefined;
+const chromeAvailable = (await resolveChromeExecutable()) !== undefined;
 
 /**
  * Whether a failure is the page behind a reference moving on.

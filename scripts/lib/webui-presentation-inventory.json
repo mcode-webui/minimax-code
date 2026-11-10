@@ -158,7 +158,7 @@
   "reviewed": {
     "features/account/ui/AccountLoginPage.tsx": "37ae4e50a0f4dedb",
     "features/account/ui/ConversationUsageBanner.tsx": "c0403acfd2a1f12b",
-    "features/account/ui/UserMenu.tsx": "91d80e3c5a9609cc",
+    "features/account/ui/UserMenu.tsx": "31a3050c8cb1ca4f",
     "features/account/ui/UserMenuSignin.tsx": "640554aea4a84be7",
     "features/account/ui/UserMenuUsage.tsx": "6afecd2411c833bb",
     "features/browser/ui/BrowserAuthorizationSwitches.public.tsx": "8999c432c97c210c",

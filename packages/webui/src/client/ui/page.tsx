@@ -223,6 +223,7 @@ export type WebuiMotionSlotKind =
   | "feedback"
   | "feedback-clip"
   | "feedback-opacity"
+  | "feedback-padding"
   | "panel-layout"
   | "progress";
 
@@ -239,6 +240,7 @@ const WEBUI_MOTION_SLOT_CLASSES: Record<WebuiMotionSlotKind, string> = {
   feedback: "webui-motion-feedback",
   "feedback-clip": "webui-motion-feedback-clip",
   "feedback-opacity": "webui-motion-feedback-opacity",
+  "feedback-padding": "webui-motion-feedback-padding",
   "panel-layout": "webui-motion-panel-layout",
   progress: "webui-motion-progress",
 };

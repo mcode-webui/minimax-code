@@ -1243,10 +1243,27 @@ test('suite runner pins its locale, preserves gate arguments and canonicalizes W
         language: child.language,
         lcAll: child.lcAll,
         lcMessages: child.lcMessages,
-        locale: child.locale,
       },
-      { lang: 'C', language: 'C', lcAll: 'C', lcMessages: 'C', locale: 'en-US' },
+      { lang: 'C', language: 'C', lcAll: 'C', lcMessages: 'C' },
     );
+    // The runner pins the POSIX locale variables, and that is what it can
+    // promise: Node derives its ICU default locale from those variables on
+    // POSIX, so `LC_ALL=C` lands on `en-US`. Windows has no such variables —
+    // Node reads the OS user default locale, and no environment variable
+    // overrides it (`LC_ALL`, `LANG`, `NODE_ICU_DATA` and `ICU_DEFAULT_LOCALE`
+    // were all measured to leave the locale unchanged). So the ICU locale
+    // follows the host there.
+    //
+    // The key is the *host* platform, not the simulated one: the loop fakes
+    // `process.platform` for the runner, but the child is a real process on
+    // this machine, so its ICU locale is the host's whatever the runner was
+    // told to believe.
+    if (process.platform === 'win32') {
+      assert.ok(typeof child.locale === 'string' && child.locale.length > 0,
+        'the child reports a locale');
+    } else {
+      assert.equal(child.locale, 'en-US');
+    }
   }
 });
 
@@ -1447,7 +1464,12 @@ function filesWritingVersion(repositoryRoot, version) {
       if (entry.isDirectory()) walk(full);
       else if (!/\.(?:ts|tsx|mts|mjs|cjs|js|jsx)$/u.test(entry.name)) continue;
       else {
-        const relative = path.relative(repositoryRoot, full);
+        // `path.relative` hands back the platform separator, but every
+        // comparison below — the test-file filter and the shared-module
+        // exclusion — is written in POSIX shape. Normalizing once here keeps
+        // the check meaningful on Windows, where the un-normalized path never
+        // matched and the shared module was reported as its own offender.
+        const relative = path.relative(repositoryRoot, full).split(path.sep).join("/");
         if (isTestFile(relative)) continue;
         if (withoutComments(readFileSync(full, 'utf8')).includes(version)) offenders.push(relative);
       }

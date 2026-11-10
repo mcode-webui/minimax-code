@@ -1,7 +1,7 @@
 {
   "baseline": "f00b1268c28ad15054a8882620c3fb08beb86d58",
   "sourceSha256": "46b86b658adc1611f3531d8dc9844612f7e9ee3de0eec4a532aeec44b5de0a12",
-  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, and runtime/ssh/authentication remains outside the client.",
+  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, runtime/ssh/authentication remains outside the client, bindings/use-webui-shutdown remains a binding, platform/webui-shutdown remains infrastructure, and server/http/shutdown remains outside the client.",
   "cases": [
     {
       "path": "runtime/native-pty.ts",
@@ -2319,6 +2319,15 @@
     },
     {
       "path": "client/features/settings/projection/settings-view.ts",
+      "layers": [
+        "view"
+      ],
+      "role": "feature-projection",
+      "business": "settings",
+      "home": "target"
+    },
+    {
+      "path": "client/features/settings/projection/usage-plan.public.ts",
       "layers": [
         "view"
       ],
@@ -6372,6 +6381,27 @@
       "layers": [
         "server"
       ],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
+    {
+      "path": "client/bindings/use-webui-shutdown.ts",
+      "layers": ["bindings"],
+      "role": "bindings",
+      "business": null,
+      "home": "current"
+    },
+    {
+      "path": "client/platform/webui-shutdown.ts",
+      "layers": ["infrastructure"],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "server/http/shutdown.ts",
+      "layers": ["server"],
       "role": "outside",
       "business": null,
       "home": "outside"

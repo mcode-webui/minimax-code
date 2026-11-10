@@ -164,10 +164,12 @@ pnpm test:webui-browser
 The font files under `packages/webui/test/browser/fonts/` are committed to this repository.
 The fixture server exposes those files as web fonts under the client's first sans and monospace
 family names, and `openApp` waits for both faces and the initial layout observation before a test
-measures geometry. This also pins macOS and Windows, whose font engines do not use fontconfig.
-On Linux, `scripts/lib/webui-font-environment.mjs` additionally sets `FONTCONFIG_FILE` to expose
-only the committed files and selects grayscale antialiasing. Native rasterization can still differ,
-so screenshot baselines are platform-specific; review actual native captures before adding them.
+measures geometry. The typeface is therefore the same on every platform, macOS and Windows included,
+whose font engines do not use fontconfig. On Linux, `scripts/lib/webui-font-environment.mjs` additionally
+sets `FONTCONFIG_FILE` to expose only the committed files and selects grayscale antialiasing. What the
+typeface pin does not fix is the rasterizer: every platform draws the same outlines on its own pixels,
+and two machines of one platform still differ by a handful, so screenshot baselines are platform-specific
+and the pixel budget stays tight; review actual native captures before adding them.
 
 Chromium uses its normal frame scheduling and graphics path. Live Markdown coalescing
 is measured at the browser's paint opportunities rather than an artificially unbounded frame rate.

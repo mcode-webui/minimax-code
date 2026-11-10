@@ -208,7 +208,13 @@ describe("real host over the loopback service", () => {
       vi.unstubAllEnvs();
       (await import("@mavis/config")).resetConfig();
     }
-  });
+    // The deadline is the file's own: this case boots the real host and calls
+    // an operation over the loopback service, exactly as its four siblings do,
+    // and they all run on 120s. This one alone fell back to Vitest's 5s
+    // default, which a cold Windows runner does not always clear — the host
+    // boot, the service start and the catalog read all have to fit inside it.
+    // The assertions are unchanged.
+  }, 120_000);
 
   it("answers a session round trip from the real host in an isolated data directory", async () => {
     const host = await bootRealHost();

@@ -137,7 +137,7 @@
     line-height: var(--line_height_20);
   }
   .webui-pinned-session-card > span:first-of-type {
-    clip-path: inset(0 0 0 0);
+    padding-right: 0;
   }
   .webui-pinned-session-card:hover,
   .webui-pinned-session-row:hover .webui-pinned-session-card {
@@ -145,10 +145,24 @@
   }
   .webui-pinned-session-row:hover .webui-pinned-session-card > span:first-of-type,
   .webui-pinned-session-row:has(:focus-visible) .webui-pinned-session-card > span:first-of-type {
-    clip-path: inset(0 88px 0 0);
+    /* Reserve the row actions with padding, not clip-path: a clip cuts the
+     * text away outright, so a title narrower than the reserve (88px) was
+     * erased entirely and only the floating buttons were left. */
+    padding-right: 88px;
   }
   .webui-project-section-content { min-width: 0; }
   .webui-project-section-content-inner { min-height: 0; overflow: hidden; }
+  /* The base layer sets `scrollbar-gutter: stable` on every div/ul/section,
+   * so each of these nested rail containers reserved a 17px scrollbar slot.
+   * Five levels of nesting ate 85px and squeezed the session list down to
+   * 123px — narrower than the three inline row actions (90px), which left
+   * the session name nowhere to go. These levels never scroll, so the slot
+   * is pure loss; opt out the way the plugin and transcript panels do. */
+  .webui-disclosure-content,
+  .webui-project-section-content,
+  .webui-project-section-content-inner {
+    scrollbar-gutter: auto;
+  }
   [data-webui-pinned-sessions="true"] { margin-bottom: var(--spacing_4); }
   /* The section header is a full-width disclosure row, so its label belongs at
    * the start of the row. The shared button base centres its content, and
@@ -309,11 +323,14 @@
     padding: 0 var(--spacing_8);
   }
   .webui-project-session-card > span:first-child {
-    clip-path: inset(0 0 0 0);
+    padding-right: 0;
   }
   .webui-project-session-row:hover .webui-project-session-card > span:first-child,
   .webui-project-session-row:has(:focus-visible) .webui-project-session-card > span:first-child {
-    clip-path: inset(0 88px 0 0);
+    /* Reserve the row actions with padding, not clip-path: a clip cuts the
+     * text away outright, so a title narrower than the reserve (88px) was
+     * erased entirely and only the floating buttons were left. */
+    padding-right: 88px;
   }
   .webui-pinned-session-row:hover .webui-rail-session-meta,
   .webui-pinned-session-row:has(:focus-visible) .webui-rail-session-meta,
@@ -343,11 +360,13 @@
     text-align: left;
   }
   .webui-project-child-session-title {
-    clip-path: inset(0 0 0 0);
+    padding-right: 0;
   }
   .webui-project-child-session-row:hover .webui-project-child-session-title,
   .webui-project-child-session-row:has(:focus-visible) .webui-project-child-session-title {
-    clip-path: inset(0 28px 0 0);
+    /* Reserve the row action with padding, not clip-path: a clip cuts the
+     * text away outright instead of letting it end in an ellipsis. */
+    padding-right: 28px;
   }
   .webui-project-child-session-card:hover,
   .webui-project-child-session-row:hover .webui-project-child-session-card,

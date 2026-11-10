@@ -95,6 +95,14 @@ export interface WebuiBrowserDom {
   readonly portalTarget: () => HTMLElement | null;
   readonly listenForMouseDown: (listener: (event: MouseEvent) => void) => () => void;
   readonly listenForPointerDown: (listener: (event: PointerEvent) => void, capture?: boolean) => () => void;
+  /**
+   * A click anywhere in the document.
+   *
+   * A rail row is a plain anchor, so the surface that owns the shell hears
+   * the clicks the row cannot report itself. The listener is the document's,
+   * and it is the platform's: a surface does not reach for the document.
+   */
+  readonly listenForClick: (listener: (event: MouseEvent) => void, capture?: boolean) => () => void;
   readonly listenForKeyDown: (listener: (event: KeyboardEvent) => void) => () => void;
   /**
    * The viewport was resized.
@@ -241,6 +249,7 @@ export function createWebuiBrowserDom(
     portalTarget: () => documentObject?.body ?? null,
     listenForMouseDown: (listener) => listen("mousedown", listener),
     listenForPointerDown: (listener, capture) => listen("pointerdown", listener, capture),
+    listenForClick: (listener, capture) => listen("click", listener, capture),
     listenForKeyDown: (listener) => listen("keydown", listener),
     listenForResize: (listener) => {
       if (!windowObject) return () => undefined;

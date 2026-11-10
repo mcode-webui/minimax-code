@@ -638,4 +638,24 @@ describe("WebUI Markdown", () => {
     expect(inlineMathHtml).toContain("webui-math");
     expect(inlineMathHtml).toContain("katex");
   });
+
+  it("leaves a shell variable in prose alone", () => {
+    // A dollar that opens a variable name is not math, and the prose between
+    // two of them is prose. Read as math it swallowed a whole paragraph, and
+    // KaTeX then complained about every Chinese character in it.
+    const shellHtml = renderToStaticMarkup(
+      createElement(WebuiMarkdown, { source: "用 $state 读取，结果是 $x^2$。" }),
+    );
+    // The real formula is still a formula.
+    expect(shellHtml).toContain("webui-math");
+    expect(shellHtml).toContain("katex");
+    // The prose in front of it was not swallowed into the formula.
+    expect(shellHtml).toContain("$state 读取");
+
+    const chineseHtml = renderToStaticMarkup(
+      createElement(WebuiMarkdown, { source: "文本 $（这是）$ 结束" }),
+    );
+    expect(chineseHtml).not.toContain("webui-math");
+    expect(chineseHtml).toContain("（这是）");
+  });
 });

@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, it } from "vitest";
 import { checkWindowsSourceLocation } from "../scripts/check-windows-source-location.mjs";
 import { resolveWslPath } from "../packages/tui/src/host/wsl-path.js";
 import { McodeUpdateService } from "../packages/tui/src/update/service.js";
+import {
+  ensureTrashScript,
+  inspectTrashRuntime,
+} from "../packages/local-runtime/src/infra/ensure-trash-script.js";
 
 const windowsPath = String.raw`D:\Users\demo\Documents\Screen shots\截图.png`;
 const temporaryRoots = [];
@@ -41,6 +45,36 @@ describe.skipIf(process.platform !== "win32")("Windows source contract", () => {
   it("preserves Windows path syntax on the native host", async () => {
     assert.equal(await resolveWslPath(windowsPath), windowsPath);
   });
+
+  // The trash shim is what keeps a Windows deletion recoverable: the
+  // permission pipeline rewrites `rm` to it, and if it cannot run, the
+  // deletion falls back to a hard one.
+  //
+  // The shim is a CommonJS script, and Node reads the module type of a `.js`
+  // file from the nearest ancestor `package.json`. An ancestor that says
+  // `"type": "module"` — a user's home directory can easily hold one —
+  // makes Node parse the shim as ESM, where `require` is not defined, and the
+  // shim never runs. The extension is therefore part of the contract: `.cjs`
+  // says CommonJS whatever the ancestor says.
+  it("seeds a trash shim that runs under an ancestor package that declares ESM", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "mcode-trash-"));
+    temporaryRoots.push(root);
+    // The ancestor that decides how Node reads every `.js` file beneath it.
+    writeFileSync(path.join(root, "package.json"), JSON.stringify({ type: "module" }), "utf8");
+    const dataDir = path.join(root, "data");
+    ensureTrashScript(dataDir, "win32");
+
+    assert.deepEqual(
+      readdirSync(path.join(dataDir, "bin")).filter((name) => name.startsWith("mavis-trash.")).sort(),
+      ["mavis-trash.cjs", "mavis-trash.cmd"],
+    );
+
+    // The product's own probe: it spawns the launcher and asks the script
+    // whether it is there. "not callable" is the verdict this contract exists
+    // to prevent.
+    const status = inspectTrashRuntime(dataDir, "win32");
+    assert.equal(status.available, true, JSON.stringify(status));
+  }, 30_000);
 
   it.each(["standard npm", "custom npm wrapper", "custom npm wrapper with adjacent CLI"])("installs and validates a managed update in a complex path with %s", async (npmLayout) => {
     const root = mkdtempSync(path.join(tmpdir(), "mcode-update-"));

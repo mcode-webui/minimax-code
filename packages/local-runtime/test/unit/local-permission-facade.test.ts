@@ -114,7 +114,7 @@ function freshFacade(
 function seedWindowsTrashRuntime(dataDir: string): void {
   const binDir = path.join(dataDir, 'bin');
   mkdirSync(binDir, { recursive: true });
-  writeFileSync(path.join(binDir, 'mavis-trash.js'), TRASH_SCRIPT_WIN_CONTENT, 'utf8');
+  writeFileSync(path.join(binDir, 'mavis-trash.cjs'), TRASH_SCRIPT_WIN_CONTENT, 'utf8');
   writeFileSync(path.join(binDir, 'mavis-trash.cmd'), TRASH_CMD_LAUNCHER_CONTENT, 'utf8');
 }
 

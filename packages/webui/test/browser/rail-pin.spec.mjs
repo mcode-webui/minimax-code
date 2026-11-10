@@ -58,18 +58,14 @@ function rowOf(page, sessionId) {
 }
 
 /**
- * The right inset of a computed `inset()` clip, in pixels.
+ * The right padding of an element, in pixels.
  *
- * A clip of `inset(0px 88px 0px 0px)` hides the rightmost 88px of the
- * element, so the element's visible right edge sits that far in from its
- * layout box. Zero when the element is not clipped.
+ * A title that reserves the room for the row actions with padding keeps that
+ * room inside its own box, so the visible text ends that far in from the
+ * element's right edge. Zero when the element reserves nothing.
  */
-function clipRightInset(clipPath) {
-  const match = /^inset\((.*)\)$/u.exec(String(clipPath).trim());
-  if (!match) return 0;
-  const parts = match[1].split(/\s+/u);
-  if (parts.length < 2) return 0;
-  return Number.parseFloat(parts[1]) || 0;
+function rightPadding(paddingRight) {
+  return Number.parseFloat(String(paddingRight)) || 0;
 }
 
 /**
@@ -105,7 +101,7 @@ test("a pinned session row has one pin action and no duplicate pin marker", asyn
   await expect(row.locator('[data-webui-rail-action="pin"][aria-label^="取消置顶"]')).toHaveCount(1);
 });
 
-test("hovering a child session keeps its avatar and clips only the title for the menu", async ({ page }) => {
+test("hovering a child session keeps its avatar and reserves the menu's room in the title", async ({ page }) => {
   await openApp(page, "#session=A");
 
   const parentDisclosure = page.getByRole("button", { name: "展开子会话：Synthetic session A" });
@@ -124,7 +120,10 @@ test("hovering a child session keeps its avatar and clips only the title for the
   await expect(avatar).toBeVisible();
   await expect(action.getByRole("button", { name: "子任务 C 更多操作" })).toBeVisible();
   expect(await avatar.evaluate((element) => getComputedStyle(element).clipPath)).toBe("none");
-  await expect.poll(() => title.evaluate((element) => getComputedStyle(element).clipPath)).toBe("inset(0px 28px 0px 0px)");
+  // The room for the row action is reserved with padding, so the title ends in
+  // an ellipsis instead of being cut away, and a title shorter than the
+  // reserve keeps its words.
+  await expect.poll(() => title.evaluate((element) => getComputedStyle(element).paddingRight)).toBe("28px");
   const { titleBounds, actionBounds } = await childRow.evaluate((row) => {
     const rect = (selector) => {
       const { x, width } = row.querySelector(selector).getBoundingClientRect();
@@ -164,7 +163,7 @@ test("a running session title keeps its space before hover actions", async ({ pa
   const labelBeforeHover = await label.evaluate((element) => {
     const style = getComputedStyle(element);
     const bounds = element.getBoundingClientRect();
-    return { clipPath: style.clipPath, boundsRight: bounds.right };
+    return { paddingRight: style.paddingRight, boundsRight: bounds.right };
   });
   const metadataBeforeHover = await metadata.boundingBox();
   await row.hover();
@@ -174,7 +173,7 @@ test("a running session title keeps its space before hover actions", async ({ pa
     const style = getComputedStyle(element);
     const bounds = element.getBoundingClientRect();
     return {
-      clipPath: style.clipPath,
+      paddingRight: style.paddingRight,
       boundsRight: bounds.right,
       transitionProperty: style.transitionProperty,
       transitionDuration: style.transitionDuration,
@@ -189,20 +188,21 @@ test("a running session title keeps its space before hover actions", async ({ pa
 
   expect(before).not.toBeNull();
   expect(after).toBeNull();
-  // The space for the hover actions is kept by clipping the title's first
-  // span, not by padding it: the span is clipped from the right on hover, so
-  // the title's visible edge stops short of the actions. Clipping rather than
-  // padding keeps the row's own layout from moving while it answers a hover.
-  const clipBefore = clipRightInset(labelBeforeHover.clipPath);
-  const clipAfter = clipRightInset(labelLayout.clipPath);
-  const contentRightBefore = labelBeforeHover.boundsRight - clipBefore;
-  const contentRightAfter = labelLayout.boundsRight - clipAfter;
-  expect(clipBefore).toBe(0);
+  // The space for the hover actions is kept by padding the title's first
+  // span, not by clipping it: the padding is inside the span's own box, so
+  // the title's text ends that far short of the actions and the row's own
+  // layout does not move while it answers a hover. A title shorter than the
+  // reserve keeps its words, which a clip would have erased.
+  const padBefore = rightPadding(labelBeforeHover.paddingRight);
+  const padAfter = rightPadding(labelLayout.paddingRight);
+  const contentRightBefore = labelBeforeHover.boundsRight - padBefore;
+  const contentRightAfter = labelLayout.boundsRight - padAfter;
+  expect(padBefore).toBe(0);
   expect(contentRightBefore).toBeLessThanOrEqual(metadataBeforeHover.x);
-  expect(clipAfter).toBe(88);
+  expect(padAfter).toBe(88);
   expect(contentRightAfter).toBeLessThanOrEqual(actionsBounds.x);
   expect(actionsBounds.x - contentRightAfter).toBeLessThanOrEqual(8);
-  expect(labelLayout.transitionProperty).toContain("clip-path");
+  expect(labelLayout.transitionProperty).toContain("padding-right");
   expect(metaDisplay).toBe("none");
   expect(actionStyle.opacity).toBe("1");
   expect(actionStyle.transitionProperty).toContain("opacity");
@@ -211,7 +211,7 @@ test("a running session title keeps its space before hover actions", async ({ pa
   await page.mouse.move(0, 0);
   await expect(spinner).toBeVisible();
   await expect(metadata).toBeVisible();
-  await expect.poll(() => label.evaluate((element) => getComputedStyle(element).clipPath)).toBe(labelBeforeHover.clipPath);
+  await expect.poll(() => label.evaluate((element) => getComputedStyle(element).paddingRight)).toBe(labelBeforeHover.paddingRight);
   await expect.poll(() => actions.evaluate((element) => getComputedStyle(element).opacity)).toBe("0");
   await page.screenshot({ path: test.info().outputPath("selected-running-session.png") });
 

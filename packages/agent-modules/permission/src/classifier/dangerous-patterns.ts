@@ -139,7 +139,7 @@ export type HardBlockedCategory =
   | 'windows-secure-erase'
   // Windows CMD/PowerShell delete commands. CLI-driven deletes on Windows
   // skip the Recycle Bin entirely and are irrecoverable. With the Windows
-  // mavis-trash.js script now available, the rm-rewrite pipeline can
+  // mavis-trash.cjs script now available, the rm-rewrite pipeline can
   // intercept these — but until that rewrite path is wired for Windows
   // delete commands (del/rd/Remove-Item), the safest policy is HARD deny.
   | 'windows-delete'
@@ -530,7 +530,7 @@ const HARD_BLOCKED_BASH_PATTERNS: ReadonlyArray<{
 
   // ---- windows-delete: CMD/PowerShell delete commands. CLI-driven Windows
   // deletes do not move to Recycle Bin and are irrecoverable. The Windows
-  // mavis-trash.js script provides Recycle Bin support, but rm-rewrite for
+  // mavis-trash.cjs script provides Recycle Bin support, but rm-rewrite for
   // Windows delete commands (del/rd/Remove-Item) is not yet wired, so HARD
   // deny until that pipeline is extended.
   {

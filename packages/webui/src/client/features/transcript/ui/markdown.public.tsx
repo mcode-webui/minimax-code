@@ -111,6 +111,15 @@ function codeFenceGutter(text: string): number[] {
   return lines.length > 1 ? lines.map((_line, index) => index + 1) : [];
 }
 
+/**
+ * Chinese characters and the punctuation that comes with them.
+ *
+ * Used to tell prose that merely contains dollars from a formula: a formula
+ * is not written in Chinese, so a dollar-delimited run that carries Chinese
+ * is prose.
+ */
+const WEBUI_MATH_CJK_PATTERN = /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]/u;
+
 marked.use({
   extensions: [
     {
@@ -134,6 +143,12 @@ marked.use({
           (body.includes("\n") || /^\d/u.test(body))
         )
           return undefined;
+        // A run between two dollars that carries Chinese words is prose that
+        // happens to contain dollars — a shell variable, a price, a stray
+        // symbol. Read as math it swallowed the paragraph, and KaTeX then
+        // complained about every Chinese character in it. Math is not written
+        // in Chinese, so a body that carries it is not math.
+        if (WEBUI_MATH_CJK_PATTERN.test(body)) return undefined;
         return {
           type: "webuiMath",
           raw: match[0],

@@ -153,12 +153,6 @@ export interface WebuiClientFoundationAppProps {
   readonly initialUsageQuota?: WebuiUsageQuotaResult;
   readonly locationHash?: string;
   readonly dataDir?: string;
-  /**
-   * What the identity row shows under the product name. The signed-in
-   * account's plan would go there; the WebUI is loopback-only and has no account, so it reports
-   * the scope it actually runs in. `main.tsx` passes the page's host.
-   */
-  readonly hostLabel?: string;
 }
 
 /**
@@ -214,7 +208,6 @@ export function WebuiClientFoundationApp(
     version,
     locationHash,
     dataDir,
-    hostLabel,
   } = props;
   // The assembly's slices: cut once by the application, published on it and
   // provided to the screens below. The shell holds no capability to cut its own
@@ -386,6 +379,24 @@ export function WebuiClientFoundationApp(
   useEffect(() => {
     dispatchShellSurface({ type: "show-conversation" });
   }, [dispatchShellSurface, selectedSessionId]);
+  // Clicking the rail link of the session that is already selected changes
+  // nothing the hash subscription can observe: the hash is the same, so no
+  // `hashchange` fires, the selection does not change, and the effect above
+  // does not run again -- the shell keeps the surface it was showing (the
+  // marketplace, the 远程 page) although the user asked for the conversation.
+  // The click is the one signal left, so the shell listens for it on the rail's
+  // session links and puts the conversation back.
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    return browserDom.listenForClick((event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("[data-webui-session-link]");
+      if (!link) return;
+      if (link.getAttribute("data-webui-session-link") !== selectedSessionId) return;
+      dispatchShellSurface({ type: "show-conversation" });
+    }, true);
+  }, [browserDom, dispatchShellSurface, selectedSessionId]);
   // Composer input history + per-session drafts. The one owner is the application
   // composer store: the shell subscribes to it and submits through it.
   const composerState = useSyncExternalStore(
@@ -1117,7 +1128,7 @@ export function WebuiClientFoundationApp(
               }}
               footer={!railCollapsed ? <div className="relative flex-shrink-0 border-t-[0.5px] border-border_default">
                 <UserMenu
-                  collapsed={railCollapsed} hostLabel={hostLabel} dataDir={dataDir}
+                  collapsed={railCollapsed} dataDir={dataDir}
                   version={runtimeVersion} sessionId={selectedSessionId}
                   workspaceDir={selectedSession?.workspaceDir}
                   onOpenFileLine={(path, line) => {

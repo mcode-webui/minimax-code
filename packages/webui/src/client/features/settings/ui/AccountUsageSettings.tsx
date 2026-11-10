@@ -25,7 +25,7 @@ import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 import { WebuiSkeleton } from "../../../ui/page.js";
 import { SettingsButton, SettingsDialog } from "./settings-atoms.js";
 import { useWebuiToastError } from "../../../ui/toast.js";
-import { formatPlanName } from "../projection/usage-plan.js";
+import { formatPlanName } from "../projection/usage-plan.public.js";
 import {
   buildUsageHeatmapModel,
   formatSpacedToken,

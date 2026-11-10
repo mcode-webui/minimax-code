@@ -18,6 +18,6 @@ export function buildLocalHostTrashRuntime(input: {
     readExecution: readWindowsTrashExecution,
     reportDiagnostic: (diagnostic) =>
       logger.error({ ...diagnostic }, 'local_runtime.windows_trash_execution_failed'),
-    ...(input.dataDir ? { scriptPath: path.join(input.dataDir, 'bin', 'mavis-trash.js') } : {}),
+    ...(input.dataDir ? { scriptPath: path.join(input.dataDir, 'bin', 'mavis-trash.cjs') } : {}),
   };
 }

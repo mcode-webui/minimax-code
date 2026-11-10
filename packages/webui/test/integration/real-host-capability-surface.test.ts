@@ -286,8 +286,13 @@ describe("the real host, the capability surface a turn offers", () => {
         content: "what can you do?",
       });
       expect(sent.ok).toBe(true);
+      // The turn's own stream is consumed before anything is asserted: the request this
+      // file reads is the turn's, and the turn is not over until the runtime has sent it.
       if (sent.ok) for await (const _frame of sent.source) void _frame;
-      // 后台标题请求也使用该端点，不能把先到的请求当成用户 turn。
+      // The runtime sends the background title request to the same model endpoint, and it can
+      // win the race to it. The title request carries `submit_session_title`; the user's turn
+      // does not. Reading the first request therefore reads whichever arrived first, which on
+      // a machine where the title wins is not the turn whose skills and tools this file reads.
       const turnRequests = stub.requests
         .map((request) => JSON.parse(request.body) as ModelRequest)
         .filter((request) => !extractToolNames(request).includes("submit_session_title"));

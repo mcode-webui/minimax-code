@@ -33,12 +33,16 @@ export async function attachJsonEvidence(name, value) {
  *
  * The committed baselines are recorded under the pinned font environment in
  * `packages/webui/test/browser/fonts/`, so the glyphs are the same on every
- * machine. What remains is the rasterizer's own rounding at a rounded
- * corner: a bubble's right edge lands on a fractional pixel, and whether that
- * edge rounds up or down shifts a handful of antialiased pixels from run to
- * run. Measured over repeated runs of the browser suite, the widest such
- * shift is seven pixels on the transcript surface and one on the plugin
- * management list.
+ * machine. The pixels are not: every platform rasterizes those glyphs its own
+ * way, so each baseline is recorded on the platform that compares it, and two
+ * machines of one platform still differ by a handful of pixels.
+ *
+ * Within a platform, what remains is the rasterizer's own rounding at a
+ * rounded corner: a bubble's right edge lands on a fractional pixel, and
+ * whether that edge rounds up or down shifts a handful of antialiased pixels
+ * from run to run. Measured over repeated runs of the browser suite, the
+ * widest such shift is seven pixels on the transcript surface and one on the
+ * plugin management list.
  *
  * The budget is therefore seven pixels plus a little headroom, on a capture
  * of well over a million pixels — under 0.001% of the image. A real layout

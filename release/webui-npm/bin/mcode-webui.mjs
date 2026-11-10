@@ -281,6 +281,9 @@ const service = new WebuiService({
   }),
   // Closed on shutdown: a leaked Mini App listener holds a plugin's derived port.
   miniappProxies,
+  // The page's own request to stop. The launcher owns the process, so the
+  // service asks it and the launcher ends the run the way Ctrl+C does.
+  requestShutdown: () => void close().finally(() => process.exit(0)),
 });
 
 let closing;

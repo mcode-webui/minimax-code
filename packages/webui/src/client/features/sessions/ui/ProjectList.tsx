@@ -300,7 +300,7 @@ export function ProjectList({
                         className="webui-pinned-session-card text-text_default_primary"
                       >
                         <WebuiIconSession className="flex-shrink-0" />
-                        <WebuiMotionSlot kind="feedback-clip">
+                        <WebuiMotionSlot kind="feedback-padding">
                           <span className="min-w-0 flex-1 truncate">{sessionLabel(session)}</span>
                         </WebuiMotionSlot>
                         <SessionActivityMeta

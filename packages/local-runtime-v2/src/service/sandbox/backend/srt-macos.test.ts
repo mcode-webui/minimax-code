@@ -194,7 +194,11 @@ describe("srt-macos backend", () => {
       // an empty dir under sandboxTempDir so git init/clone skip hook-template
       // copies (an empty env value no longer skips on git >= 2.53).
       env: {
-        GIT_TEMPLATE_DIR: "/tmp/session-1/git-templates-empty",
+        // The backend joins the template dir onto the sandbox temp dir, so the
+        // path carries the host's separator. A POSIX-shaped literal here never
+        // matched on Windows, where the directory is
+        // `\tmp\session-1\git-templates-empty`.
+        GIT_TEMPLATE_DIR: join("/tmp/session-1", "git-templates-empty"),
         ...baseEnv,
         MAVIS_TRASH_FORCE_MV: "1",
       },

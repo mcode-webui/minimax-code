@@ -31,7 +31,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { loadBetterSqlite3 } from "@mavis/shared";
+import { loadBetterSqlite3, retryWindowsFileSystemOperationAsync } from "@mavis/shared";
 
 import { SshRuntimeError } from "./errors.js";
 
@@ -187,7 +187,13 @@ export function createSshStore<T>(filePath: string, codec: SshStoreCodec<T>): Ss
     const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
     try {
       await writeFile(temporaryPath, `${JSON.stringify(document, null, 2)}\n`, { mode: 0o600 });
-      await rename(temporaryPath, filePath);
+      // Windows refuses the rename while another process holds the file open
+      // for a moment — an indexer, a scanner, a concurrent reader — and the
+      // refusal is transient. Every other atomic write in the repository
+      // retries it; this one did not, so the store failed at random on
+      // Windows and nowhere else. The rename stays awaited: the commit must
+      // not return before the document is in place.
+      await retryWindowsFileSystemOperationAsync(() => rename(temporaryPath, filePath));
     } catch (error) {
       // A failed write must not leave an uncommitted document beside the real one.
       await rm(temporaryPath, { force: true }).catch(() => undefined);

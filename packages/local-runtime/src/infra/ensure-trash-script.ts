@@ -11,7 +11,7 @@
  * fell back to `/bin/rm` — hard-deleting the user's files.
  *
  * - macOS / Linux: seeds a POSIX bash script at `mavis-trash` (0o755).
- * - Windows: seeds a Node.js script at `mavis-trash.js` plus a `.cmd`
+ * - Windows: seeds a Node.js script at `mavis-trash.cjs` plus a `.cmd`
  *   launcher `mavis-trash.cmd`, so the permission pipeline can invoke
  *   `mavis-trash <paths>` uniformly across platforms.
  *
@@ -36,7 +36,7 @@ export function ensureTrashScript(
   const isWin = platform === 'win32';
 
   if (isWin) {
-    seedFileIfChanged(path.join(binDir, 'mavis-trash.js'), TRASH_SCRIPT_WIN_CONTENT);
+    seedFileIfChanged(path.join(binDir, 'mavis-trash.cjs'), TRASH_SCRIPT_WIN_CONTENT);
     seedFileIfChanged(path.join(binDir, 'mavis-trash.cmd'), TRASH_CMD_LAUNCHER_CONTENT);
   } else {
     seedFileIfChanged(path.join(binDir, 'mavis-trash'), TRASH_SCRIPT_CONTENT, 0o755);
@@ -153,7 +153,7 @@ export function inspectTrashRuntime(
     }
   }
   if (platform !== 'win32') return { available: true };
-  const scriptPath = path.join(dataDir, 'bin', 'mavis-trash.js');
+  const scriptPath = path.join(dataDir, 'bin', 'mavis-trash.cjs');
   const launcherPath = path.join(dataDir, 'bin', 'mavis-trash.cmd');
   const cacheKey = `${platform}:${dataDir}`;
   let phase: TrashRuntimeDiagnostics['phase'] = 'read-script';

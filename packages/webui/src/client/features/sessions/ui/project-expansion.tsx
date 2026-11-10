@@ -122,7 +122,7 @@ function ProjectExpansionView({
                               onContextMenu={(event) => onSessionContextMenu(event, session)}
                               className="webui-project-session-card text-text_default_primary"
                             >
-                              <WebuiMotionSlot kind="feedback-clip">
+                              <WebuiMotionSlot kind="feedback-padding">
                                 <span className="min-w-0 flex-1 truncate">{sessionLabel(session)}</span>
                               </WebuiMotionSlot>
                               <SessionActivityMeta
@@ -213,7 +213,7 @@ function ProjectExpansionView({
                                         className="webui-project-child-session-card text-text_default_primary"
                                       >
                                         <WebuiAgentAvatar agentName={child.agentName} size="compact" />
-                                        <WebuiMotionSlot kind="feedback-clip">
+                                        <WebuiMotionSlot kind="feedback-padding">
                                           <span className="webui-project-child-session-title min-w-0 flex-1 truncate">{sessionLabel(child)}</span>
                                         </WebuiMotionSlot>
                                         <SessionActivityMeta

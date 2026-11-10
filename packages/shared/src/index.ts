@@ -47,6 +47,8 @@ export {
 } from './openrouter-attribution.js';
 export {
   retryWindowsFileSystemOperation,
+  retryWindowsFileSystemOperationAsync,
+  type WindowsFileSystemAsyncRetryOptions,
   type WindowsFileSystemRetryOptions,
 } from './windows-file-system.js';
 

@@ -1,4 +1,4 @@
-import { watch, type FSWatcher } from 'node:fs';
+import { realpathSync, watch, type FSWatcher } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 
 import {
@@ -58,7 +58,22 @@ export class LocalPluginDirectoryWatcher implements LocalPluginDirectoryWatcherP
   }
 
   protected createWatcher(root: string, onChange: () => void): FSWatcher {
-    return watch(root, { persistent: false, recursive: true }, onChange);
+    // Windows reports a changed file under its long name, and libuv compares
+    // that name against the directory string the watch was given. A directory
+    // reached through its 8.3 short alias — which is how the plugin directory
+    // under a short-named home directory spells itself — therefore fails
+    // libuv's own `!_wcsnicmp(filename, dir, dirlen)` assertion, and that
+    // assertion takes the process down rather than raising an error.
+    //
+    // `realpathSync.native` resolves the alias to the long path; the
+    // JavaScript implementation of `realpathSync` does not.
+    let watchPath = root;
+    try {
+      watchPath = realpathSync.native(root);
+    } catch {
+      watchPath = root;
+    }
+    return watch(watchPath, { persistent: false, recursive: true }, onChange);
   }
 
   async whenIdle(): Promise<void> {

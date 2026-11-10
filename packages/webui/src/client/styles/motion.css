@@ -47,6 +47,11 @@
     transition-timing-function: var(--webui-motion-ease-standard);
   }
   .webui-motion-feedback-clip { transition: clip-path var(--webui-motion-duration-feedback) var(--webui-motion-ease-standard); }
+  /* A title that reserves the row actions' room with padding rather than with a
+   * clip: the padding sits inside the title's own box, so the text ends in an
+   * ellipsis, a short title keeps its words, and the row does not move while it
+   * answers a hover. */
+  .webui-motion-feedback-padding { transition: padding-right var(--webui-motion-duration-feedback) var(--webui-motion-ease-standard); }
   .webui-motion-feedback-opacity { transition: opacity var(--webui-motion-duration-feedback) var(--webui-motion-ease-standard); }
   /* Shared progress motion for geometry-driven meters in any feature. */
   .webui-motion-progress {

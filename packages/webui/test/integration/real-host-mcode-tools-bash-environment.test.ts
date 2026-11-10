@@ -36,8 +36,20 @@ const PROVIDER_NAME = "stub";
 const PROVIDER_ID = `custom_provider:${PROVIDER_NAME}`;
 const HOST_KEY_PREFIX = "__MAVIS_MCODE_TOOLS_";
 
-/** The Bash command that reads the host keys back out of the child env. */
-const READ_HOST_KEYS = `env | grep '^${HOST_KEY_PREFIX}' | sort`;
+/**
+ * The command that reads the host keys back out of the child env.
+ *
+ * `env | grep` is POSIX shell syntax, and the Windows runtime runs
+ * PowerShell, where `env` does not exist — the command failed to parse there.
+ * Node reads the same environment the child was given and prints it in the
+ * same shape on both, so the subject of the test is unchanged.
+ */
+const READ_HOST_KEYS = (() => {
+  const script = `Object.entries(process.env).filter(([name]) => name.startsWith('${HOST_KEY_PREFIX}')).sort().forEach(([name, value]) => console.log(name + '=' + value))`;
+  const executable = JSON.stringify(process.execPath);
+  const source = JSON.stringify(script);
+  return process.platform === 'win32' ? `& ${executable} -e ${source}` : `${executable} -e ${source}`;
+})();
 
 /**
  * The content-review gateway answers on both API versions the runtime uses:

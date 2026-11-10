@@ -1,8 +1,15 @@
 /**
- * mavis-trash.js — Node.js script that moves files to Windows Recycle Bin.
+ * mavis-trash.cjs — Node.js script that moves files to Windows Recycle Bin.
  *
- * Seeded into `<dataDir>/bin/mavis-trash.js` on daemon startup (Windows only).
+ * Seeded into `<dataDir>/bin/mavis-trash.cjs` on daemon startup (Windows only).
  * Companion to the POSIX bash `mavis-trash` script (macOS/Linux).
+ *
+ * The extension is not a detail. The script is CommonJS, and Node reads the
+ * module type of a `.js` file from the nearest ancestor `package.json`: an
+ * ancestor that says `"type": "module"` — a user's home directory can easily
+ * hold one — makes Node parse this script as ESM, where `require` is not
+ * defined, and the script never runs. `.cjs` says CommonJS whatever the
+ * ancestor says.
  *
  * Uses PowerShell's Microsoft.VisualBasic.FileIO API to send files/directories
  * to the Recycle Bin, which is the Windows equivalent of macOS Finder Trash.
@@ -14,7 +21,7 @@
 /* eslint-disable no-useless-escape */
 
 /**
- * The Node.js script content. Runs standalone via `node mavis-trash.js [flags] file1 file2 ...`.
+ * The Node.js script content. Runs standalone via `node mavis-trash.cjs [flags] file1 file2 ...`.
  *
  * Matches the bash script's interface:
  * - Silently strips rm-style flags (-r, -f, -rf, --recursive, --force, -R, --)
@@ -626,7 +633,7 @@ export function buildTrashCmdLauncherContent(runtimeExecutable: string = process
   const escapedExecutable = runtimeExecutable.replaceAll('%', '%%').replaceAll('"', '""');
   return `@echo off
 set "ELECTRON_RUN_AS_NODE=1"
-"${escapedExecutable}" "%~dp0mavis-trash.js" %*
+"${escapedExecutable}" "%~dp0mavis-trash.cjs" %*
 `;
 }
 

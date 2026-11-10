@@ -147,13 +147,25 @@ export async function executeLocalHostTrashIfRequested(input: {
   }
 }
 
+/**
+ * The file names the Windows trash shim is known by.
+ *
+ * The shim is a CommonJS script, and `.cjs` is what says so: it is
+ * CommonJS whatever the nearest ancestor `package.json` says, while a `.js`
+ * shim follows that ancestor and can be parsed as ESM. The previous `.js`
+ * name is still accepted, because a runtime pointed at it is a stale
+ * configuration rather than a reason to refuse the operation here — whether
+ * the script actually runs is decided by the probe, not by its name.
+ */
+const WINDOWS_TRASH_SCRIPT_NAMES = new Set(['mavis-trash.cjs', 'mavis-trash.js']);
+
 function isAvailableWindowsTrashRuntime(
   runtime: LocalHostTrashRuntime,
 ): runtime is LocalHostTrashRuntime & { readonly scriptPath: string } {
   return (
     typeof runtime.scriptPath === 'string' &&
     path.isAbsolute(runtime.scriptPath) &&
-    path.basename(runtime.scriptPath).toLowerCase() === 'mavis-trash.js'
+    WINDOWS_TRASH_SCRIPT_NAMES.has(path.basename(runtime.scriptPath).toLowerCase())
   );
 }
 

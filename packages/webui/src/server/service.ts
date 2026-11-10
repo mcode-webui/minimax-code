@@ -144,6 +144,14 @@ export interface WebuiServiceOptions {
   readonly credential?: WebuiCredential;
   /** Explicitly allow all WebUI HTTP and WebSocket requests without a token. */
   readonly fullAccess?: boolean;
+  /**
+   * The host's answer to a request to stop the service.
+   *
+   * The service owns its listener, not the process: the host that assembled
+   * it does, so the host hands this answer down and the shutdown route asks
+   * it. Absent when the host has none.
+   */
+  readonly requestShutdown?: () => void;
   /** Optional server factory; tests inject an HTTP server without listening. */
   readonly httpServerFactory?: () => Server;
   /**
@@ -280,6 +288,9 @@ export class WebuiService {
       clientDir: this.clientDirOverride,
       ...(this.browserExtensionPackage
         ? { browserExtensionPackage: this.browserExtensionPackage }
+        : {}),
+      ...(options.requestShutdown
+        ? { requestShutdown: options.requestShutdown }
         : {}),
       port: this.port,
     };

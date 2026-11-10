@@ -26,7 +26,7 @@ import { getUsageQuotaOperation } from "../../src/server/operation/operations.js
 import {
   UsagePanel,
 } from "../../src/client/features/account/ui/UserMenuUsage.js";
-import { formatUsageResetLabel } from "../../src/client/features/account/projection/usage.public.js";
+import { formatRailPlanLabel, formatUsageResetLabel } from "../../src/client/features/account/projection/usage.public.js";
 
 const REMAINS_PERCENT_BODY = {
   model_remains: [
@@ -304,6 +304,42 @@ describe("formatUsageResetLabel", () => {
   it("renders nothing for past or missing timestamps", () => {
     expect(formatUsageResetLabel(now - 1_000, now)).toBeUndefined();
     expect(formatUsageResetLabel(undefined, now)).toBeUndefined();
+  });
+});
+
+describe("formatRailPlanLabel", () => {
+  it("prompts a signed-out account to sign in", () => {
+    expect(formatRailPlanLabel({ signedIn: false })).toBe("请先登录账号！");
+  });
+  it("names the plan a signed-in account reports", () => {
+    expect(
+      formatRailPlanLabel({ signedIn: true, hasTokenPlan: true, tokenPlanTier: "Pro" }),
+    ).toBe("Pro");
+    expect(formatRailPlanLabel({ signedIn: true, planName: "免费版" })).toBe("免费版");
+  });
+  it("shows the M Plan level and the legacy plan name", () => {
+    expect(
+      formatRailPlanLabel({ signedIn: true, hasTokenPlan: true, tokenPlanTier: "Go" }),
+    ).toBe("Go");
+    expect(
+      formatRailPlanLabel({
+        signedIn: true,
+        hasTokenPlan: true,
+        tokenPlanTier: "101004",
+        subscriptionType: "token_plan",
+      }),
+    ).toBe("Token Plan");
+  });
+  it("shows a pre-upgrade plan identifier by its display name", () => {
+    expect(
+      formatRailPlanLabel({ signedIn: true, hasTokenPlan: true, tokenPlanTier: "max" }),
+    ).toBe("Max");
+    expect(
+      formatRailPlanLabel({ signedIn: true, hasTokenPlan: true, planName: "plus极速版" }),
+    ).toBe("Plus 极速版");
+  });
+  it("renders nothing before the quota answer arrives", () => {
+    expect(formatRailPlanLabel(undefined)).toBeUndefined();
   });
 });
 

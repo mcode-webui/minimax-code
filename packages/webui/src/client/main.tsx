@@ -279,7 +279,6 @@ function WebuiClientRoot({
           <WebuiClientFoundationApp
           teamModeLabel={teamModeCopy().label}
             label="webui-foundation"
-            hostLabel={location.host}
             dataDir={dataDir}
           />
           )}

@@ -5,7 +5,7 @@ import { useWebuiAccountWorkflows, useWebuiAccountWorkflowsState } from "../../.
 import { ToggleSwitch } from "../../../ui/ToggleSwitch.js";
 import { SettingsPage, SettingsSection } from "../../../ui/settings-layout.js";
 import { formatResetLabel, getActiveSourceBadge, type ProviderHeaderDraft } from "../../../features/models/projection/usage-settings.public.js";
-import { formatPlanName, formatPlanSourceLabel, hasWebuiPlan } from "../projection/usage-plan.js";
+import { formatPlanName, formatPlanSourceLabel, hasWebuiPlan } from "../projection/usage-plan.public.js";
 import { UsageResetCards } from "./UsageResetCards.js";
 import { IconButton, RefreshIcon } from "../../../ui/form-atoms.js";
 import { IconChevronDown, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";

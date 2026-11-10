@@ -108,9 +108,13 @@ styled with the same names the token file declares.
   a copy of it. A settings page brings its own content, never its own frame.
 - The 用量与模型 page names the account's plan, it does not name a product: the plan name, the
   model-source label and the 限额重置 section all follow the account's own answer
-  (`features/settings/projection/usage-plan.ts` and `features/settings/ui/UsageResetCards.tsx`).
+  (`features/settings/projection/usage-plan.public.ts` and `features/settings/ui/UsageResetCards.tsx`).
   A hard-coded plan name is a bug, not a default — the legacy "Token Plan" label belongs to the
-  legacy `token_plan` subscription kind alone.
+  legacy `token_plan` subscription kind alone. The account's tier is shown as the membership answer
+  reports it: the M Plan levels (Go / Explore / Build) read as reported, and the pre-upgrade
+  identifiers (starter / plus / max / ultra / plus极速版) read as their product display names. Any
+  other reported tier name passes through, and only a numeric combo id falls back to the kind's
+  generic plan name.
 - The settings pages share their controls too, not only their frame: `features/settings/ui/settings-atoms.tsx`
   owns the page's button (`SettingsButton`, with a `compact` size for a row action) and its dialog
   (`SettingsDialog` — a scrim, a surface, a header and a scrolling body). A control that each page

@@ -32,7 +32,7 @@ import {
   hasWebuiPlan,
   WEBUI_FREE_PLAN_NAME,
   WEBUI_PLAN_NAME,
-} from "../../src/client/features/settings/projection/usage-plan.js";
+} from "../../src/client/features/settings/projection/usage-plan.public.js";
 import {
   formatResetCardExpiry,
   formatResetCardFlowLabel,
@@ -63,6 +63,57 @@ describe("the plan name is the account's, not a constant", () => {
     // answer, not the raw number.
     expect(formatPlanTier("101004")).toBeUndefined();
     expect(formatPlanName({ hasTokenPlan: true, tokenPlanTier: "101004" })).toBe(WEBUI_PLAN_NAME);
+  });
+
+  it("shows the M Plan tier names as the account reports them", () => {
+    for (const tier of ["Go", "Explore", "Build"])
+      expect(formatPlanName({ hasTokenPlan: true, tokenPlanTier: tier })).toBe(tier);
+  });
+
+  it("keeps a pre-upgrade tier name instead of forcing the new levels", () => {
+    // The plan was renamed before the M Plan levels existed; the account's own
+    // answer is the only name that is true for it.
+    expect(formatPlanName({ hasTokenPlan: true, tokenPlanTier: "Max Plan" })).toBe("Max Plan");
+  });
+
+  it("shows the pre-upgrade plan identifiers by their display name", () => {
+    // The old accounts report the tier as an identifier; the product names are
+    // the display form, in any casing or spacing the API hands over.
+    const cases: [string, string][] = [
+      ["starter", "Starter"],
+      ["plus", "Plus"],
+      ["max", "Max"],
+      ["ultra", "Ultra"],
+      ["plus极速版", "Plus 极速版"],
+      ["Plus 极速版", "Plus 极速版"],
+      ["MAX", "Max"],
+    ];
+    for (const [reported, display] of cases)
+      expect(formatPlanName({ hasTokenPlan: true, tokenPlanTier: reported })).toBe(display);
+  });
+
+  it("uses the account's plan name when the tier is a combo id", () => {
+    expect(
+      formatPlanName({ hasTokenPlan: true, tokenPlanTier: "101004", planName: "plus" }),
+    ).toBe("Plus");
+    expect(formatPlanName({ hasTokenPlan: true, planName: "ultra" })).toBe("Ultra");
+  });
+
+  it("falls back by subscription kind when the tier is a combo id", () => {
+    expect(
+      formatPlanName({
+        hasTokenPlan: true,
+        tokenPlanTier: "101004",
+        subscriptionType: "token_plan",
+      }),
+    ).toBe("Token Plan");
+    expect(
+      formatPlanName({
+        hasTokenPlan: true,
+        tokenPlanTier: "101004",
+        subscriptionType: "mplan",
+      }),
+    ).toBe(WEBUI_PLAN_NAME);
   });
 
   it("counts a tier without a plan flag as subscribed", () => {

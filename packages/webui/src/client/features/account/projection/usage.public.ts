@@ -8,6 +8,22 @@
 // The text below is the declaration as it stood in the source module — no
 // behaviour change.
 
+import type { WebuiUsageQuotaResult } from "../../../../shared/contracts/usage-quota.js";
+import { formatPlanName } from "../../settings/projection/usage-plan.public.js";
+
+/**
+ * The line under the rail identity: the plan a signed-in account reports, the
+ * sign-in prompt for a signed-out one, and nothing until the quota answer
+ * arrives (or when it cannot be read).
+ */
+export function formatRailPlanLabel(
+  result: WebuiUsageQuotaResult | undefined,
+): string | undefined {
+  if (!result) return undefined;
+  if (result.signedIn === false) return "请先登录账号！";
+  return formatPlanName(result);
+}
+
 /**
  * Formats a quota reset timestamp:
  * `3小时13分后重置` below a day, `5天7小时后重置` once days are involved,

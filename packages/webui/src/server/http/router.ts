@@ -18,6 +18,7 @@ import { rejectHttp, parseHttpUrl } from "./responses.js";
 import { serveClientAsset } from "./client-assets.js";
 import { serveBrowserExtensionPackage } from "./browser-extension.js";
 import { handleSessionTransfer, handleSessionImport } from "./session-transfer.js";
+import { handleWebuiShutdown } from "./shutdown.js";
 import { serveWorkspaceFile } from "./workspace-file.js";
 import type { WebuiHarnessPort } from "../../runtime/port.js";
 import type { WebuiBrowserExtensionPackage } from "../browser-bridge/extension-package.js";
@@ -40,6 +41,15 @@ export interface WebuiHttpRouterContext {
    */
   readonly browserExtensionPackage?: WebuiBrowserExtensionPackage;
   readonly port: WebuiHarnessPort;
+  /**
+   * The host's answer to a request to stop the server.
+   *
+   * The service owns its listener, not the process: the host that assembled
+   * it does. Absent when the host has no such answer -- the service embedded
+   * in an application that outlives it -- and the shutdown route then refuses
+   * rather than stopping something nobody offered to stop.
+   */
+  readonly requestShutdown?: () => void;
 }
 
 export async function serveHttpRequest(
@@ -85,6 +95,20 @@ export async function serveHttpRequest(
   }
   if (request.method === "POST" && url.pathname === "/session-import") {
     await handleSessionImport(request, url, response, context.port);
+    return;
+  }
+  // The page's own request to stop the server. It sits after the loopback,
+  // origin and credential checks so it inherits them, and it asks the credential
+  // again: stopping the process is not a privilege the ordinary routes hand
+  // out on loopback.
+  if (request.method === "POST" && url.pathname === "/webui-shutdown") {
+    handleWebuiShutdown(request, response, url, {
+      credential: context.credential,
+      fullAccess: context.fullAccess === true,
+      ...(context.requestShutdown
+        ? { requestShutdown: context.requestShutdown }
+        : {}),
+    });
     return;
   }
   // Ahead of the GET-only gate below because this route also answers HEAD:

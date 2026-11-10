@@ -33,6 +33,9 @@
 // A surface that is not authorized is refused before anything is attempted, so
 // "you did not switch this on" is distinguishable from "the browser broke".
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import {
   isSameWebuiBrowserTarget,
   WEBUI_BROWSER_RESTRICTED_COMMANDS,
@@ -73,6 +76,105 @@ import {
  * many *targets* a stream may carry, not on how much image data it may hold.
  */
 const WEBUI_BROWSER_FRAME_QUEUE_LIMIT = 32;
+
+/**
+ * How long a stream waits for its **first** frame.
+ *
+ * The budget is a promise to the person waiting for the picture, not an
+ * internal detail: a panel that asked for a frame and gets none must be
+ * told, because a stream that never ends and a stream that is merely slow
+ * look identical from the panel. It has to be generous enough for a browser
+ * that is *busy* rather than broken, because from out here the two are the
+ * same thing.
+ *
+ * The number is the CDP command budget
+ * (`WEBUI_BROWSER_CDP_COMMAND_TIMEOUT_MS`, 60 s) because the first frame is
+ * the product of the same work a command waits for: the browser attaches to
+ * the page, paints it and starts the screencast. A budget shorter than a
+ * single command's would abandon work the browser is still legitimately
+ * doing — which is what the old fifteen-second budget did. Its own note
+ * says it: on a loaded runner "the browser answers a page open in about
+ * half a minute", the fifteen-second budget "turned that slowness into a
+ * failure: the open was abandoned halfway, so the panel never received a
+ * frame and the person saw an empty browser instead of a slow one".
+ *
+ * The measurement agrees. On the macOS CI runner the browser path costs
+ * 19–22 s where the same case costs 5.3 s on Linux (the two-pages
+ * integration file), and the agent-transcript cases that open the browser
+ * panel run 58–81 s; one run never reached a first frame within 60 s at
+ * all. A fifteen-second budget calls the common twenty seconds a failure.
+ * Sixty seconds covers the common case with room to spare and still ends
+ * the stream, so a browser that is genuinely wedged is reported rather than
+ * waited on.
+ *
+ * The two budgets are sequential rather than competing. The provider's
+ * start-up budget (30 s) covers Chrome booting until it publishes a
+ * DevTools endpoint; this clock starts after the provider exists and the
+ * screencast has been asked for, so the worst case from "switch on" to
+ * "picture or error" is the sum of the two, each bounded and each reported
+ * with its own code.
+ *
+ * The clock stops at the first frame. A stream that is running is not a
+ * stream that is stuck, however long it runs.
+ */
+const WEBUI_BROWSER_FIRST_FRAME_TIMEOUT_MS = 60_000;
+
+/**
+ * Where the browser diagnostics are written.
+ *
+ * One directory, so the service's own record of a browser session and the
+ * provider's record of the same session sit beside each other: the host's
+ * `WEBUI_BROWSER_OUTPUT_DIR` when it names one, and otherwise a
+ * directory under the data dir the browser keeps its profile in.
+ */
+const WEBUI_BROWSER_DIAGNOSTICS_DIRECTORY = "browser-diagnostics";
+
+/**
+ * The file this service writes its own diagnostics to.
+ *
+ * The name is fixed. The artifact is the one file a reader looks for, and a
+ * name with a random suffix would be a file nobody finds.
+ */
+const WEBUI_BROWSER_SERVICE_DIAGNOSTICS_FILE = "service-browser.json";
+
+/**
+ * The shortest gap between two diagnostics writes.
+ *
+ * The dropped-frame counter can move on every frame, so its writes are
+ * throttled; every other event writes at once, because those are the events
+ * somebody is waiting to see.
+ */
+const WEBUI_BROWSER_DIAGNOSTICS_WRITE_INTERVAL_MS = 500;
+
+/**
+ * One failure the service saw, as the diagnostics record it.
+ *
+ * The code is the browser's own when the failure carries one — the same code
+ * the caller would have been given — and the message is what the failure
+ * said. A failure that names nothing is still a failure, and is recorded as
+ * such.
+ */
+interface WebuiBrowserFailureRecord {
+  readonly at: string;
+  readonly message: string;
+  readonly code: string | undefined;
+}
+
+/**
+ * One attempt to start the isolated browser, as the diagnostics record it.
+ *
+ * The attempt carries the failure that came before it. A start that follows
+ * a failed start is a retry, and a retry that leaves no trace of what it
+ * retries is indistinguishable from a first start.
+ */
+interface WebuiBrowserLaunchRecord {
+  readonly at: string;
+  readonly trigger: "warmup" | "demand";
+  readonly outcome: "started" | "failed";
+  readonly durationMs: number;
+  readonly failure: WebuiBrowserFailureRecord | undefined;
+  readonly previousFailure: WebuiBrowserFailureRecord | undefined;
+}
 
 /**
  * The run whose selection the panel is showing when no run is active.
@@ -155,6 +257,15 @@ export interface WebuiBrowserServiceOptions {
   };
   /** The Chrome executable the isolated browser should use. */
   readonly chromePath?: string;
+  /**
+   * How long a stream waits for its first frame.
+   *
+   * The default is the service's own budget. It is injectable so a test can
+   * exercise the deadline without waiting for it — the deadline is a product
+   * behaviour, and a test that shortened the wait must not shorten what
+   * production waits for.
+   */
+  readonly firstFrameTimeoutMs?: number;
 }
 
 /**
@@ -203,6 +314,48 @@ export class WebuiBrowserService {
   >();
   /** How many frames each surface dropped, per surface. */
   readonly #droppedFrames = new Map<WebuiBrowserSurface, number>();
+  /**
+   * What this service has seen of the browser session.
+   *
+   * The record is what the diagnostics artifact is written from. It exists
+   * because the failures this service sees are otherwise invisible: a start
+   * that failed and left nothing behind is indistinguishable from a start
+   * that never happened, and a stream that never produced a frame is
+   * indistinguishable from a stream that is merely quiet.
+   */
+  readonly #diagnostics = {
+    /** How many eager starts were attempted, and how many of them failed. */
+    warmupAttempts: 0,
+    warmupFailures: 0,
+    /** How many starts were attempted, and how many of them failed. */
+    launchAttempts: 0,
+    launchFailures: 0,
+    /** How long every start took, added up. */
+    launchTotalDurationMs: 0,
+    /** The last few attempts, oldest first. */
+    launches: [] as WebuiBrowserLaunchRecord[],
+    /** The last attempt, whatever its outcome. */
+    lastLaunch: undefined as WebuiBrowserLaunchRecord | undefined,
+    /** The failure the last eager start left behind. */
+    lastWarmupFailure: undefined as WebuiBrowserFailureRecord | undefined,
+    /** The last failure of any kind, which the next attempt carries. */
+    lastFailure: undefined as WebuiBrowserFailureRecord | undefined,
+    /** The first frame of the last stream, and how long it took. */
+    firstFrame: undefined as
+      | {
+          readonly surface: WebuiBrowserSurface;
+          readonly targetId: string;
+          readonly latencyMs: number;
+          readonly at: string;
+        }
+      | undefined,
+    /** How many streams gave up waiting for their first frame. */
+    firstFrameTimeouts: 0,
+  };
+  /** The diagnostics write that is in flight. */
+  #diagnosticsWrite: Promise<void> = Promise.resolve();
+  /** The diagnostics write that is scheduled, if any. */
+  #diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
   /**
    * The web tabs each session has open, per surface and then per run.
    *
@@ -597,10 +750,18 @@ export class WebuiBrowserService {
         // Starting eagerly is what makes "turn it on and it works" true. A
         // failure here is not fatal: the surface stays unauthorized-but-on, and
         // the next list request reports the provider failure with its own code.
+        this.#diagnostics.warmupAttempts += 1;
         try {
-          await this.#ensureProvider(surface);
-        } catch {
-          // Reported by the call that needs the provider.
+          await this.#ensureProvider(surface, { trigger: "warmup" });
+        } catch (error) {
+          // The failure is not thrown: the switch is on, and the next call
+          // that needs the browser starts it again. But it must not vanish
+          // with the catch that swallowed it either. A start that failed and
+          // left nothing behind is indistinguishable from a start that never
+          // happened, so the failure is recorded in the session's diagnostics
+          // and the next attempt carries it — the retry is a visible retry.
+          this.#recordWarmupFailure(error);
+          await this.#writeDiagnostics();
         }
       }
     }
@@ -608,6 +769,7 @@ export class WebuiBrowserService {
 
   async #ensureProvider(
     surface: WebuiBrowserSurface,
+    options: { readonly trigger?: "warmup" | "demand" } = {},
   ): Promise<WebuiBrowserSurfaceProvider | undefined> {
     if (this.#closed) return undefined;
     const existing = this.#providers.get(surface);
@@ -642,13 +804,13 @@ export class WebuiBrowserService {
       const provider = await pending.promise;
       if (pending.revoked && !this.#closed) {
         const authorization = await this.readAuthorization();
-        if (isBrowserSurfaceUsable(authorization, surface)) return this.#ensureProvider(surface);
+        if (isBrowserSurfaceUsable(authorization, surface)) return this.#ensureProvider(surface, options);
       }
       return provider;
     }
     const acquisition: { revoked: boolean; promise: Promise<WebuiBrowserSurfaceProvider | undefined> } = {
       revoked: false,
-      promise: Promise.resolve().then(() => this.#launchIsolatedProvider(acquisition)).finally(() => {
+      promise: Promise.resolve().then(() => this.#launchIsolatedProvider(acquisition, options.trigger ?? "demand")).finally(() => {
         if (this.#acquisition === acquisition) this.#acquisition = undefined;
       }),
     };
@@ -656,16 +818,30 @@ export class WebuiBrowserService {
     return acquisition.promise;
   }
 
-  async #launchIsolatedProvider(acquisition: { revoked: boolean }): Promise<WebuiBrowserSurfaceProvider | undefined> {
+  async #launchIsolatedProvider(
+    acquisition: { revoked: boolean },
+    trigger: "warmup" | "demand",
+  ): Promise<WebuiBrowserSurfaceProvider | undefined> {
     const surface = "isolated-chromium";
     const create =
       this.#options.createIsolatedProvider ??
       ((options: { readonly dataDir: string; readonly chromePath?: string }) =>
         WebuiIsolatedChromiumProvider.launch(options));
-    const provider = await create({
-      dataDir: this.#options.dataDir,
-      ...(this.#options.chromePath ? { chromePath: this.#options.chromePath } : {}),
-    });
+    const startedAt = Date.now();
+    let provider: WebuiBrowserSurfaceProvider;
+    try {
+      provider = await create({
+        dataDir: this.#options.dataDir,
+        ...(this.#options.chromePath ? { chromePath: this.#options.chromePath } : {}),
+      });
+    } catch (error) {
+      // The browser did not start. The attempt is recorded before the failure
+      // travels on, so the record of what went wrong outlives the call that
+      // would otherwise have swallowed it.
+      await this.#recordLaunch(trigger, "failed", Date.now() - startedAt, error);
+      throw error;
+    }
+    await this.#recordLaunch(trigger, "started", Date.now() - startedAt);
     let authorization: WebuiBrowserAuthorization;
     try {
       authorization = await this.readAuthorization();
@@ -991,6 +1167,9 @@ export class WebuiBrowserService {
       // sees a picture of a page it did not ask for, not even briefly.
       if (!this.#frameMatchesTarget(target, frame)) {
         this.#droppedFrames.set(surface, (this.#droppedFrames.get(surface) ?? 0) + 1);
+        // The count has an outlet now: it is written into the session's
+        // diagnostics, where the drop can be read rather than guessed at.
+        this.#scheduleDiagnostics();
         return;
       }
       const index = queue.findIndex(
@@ -1039,22 +1218,67 @@ export class WebuiBrowserService {
     // page whoever looks at it.
     if (viewport) await provider.setViewport?.(targetKey, viewport);
     if (first) await provider.startImageStream(targetKey, handler);
+
+    // The first frame's deadline.
+    //
+    // A stream that never produces a frame is a panel that waits forever, and
+    // the person cannot tell that apart from a slow page. The clock runs from
+    // the moment the screencast is asked for, and stops at the first frame
+    // that reaches the subscriber: a stream that is running is not a stream
+    // that is stuck, however long it runs.
+    const firstFrameBudgetMs =
+      typeof this.#options.firstFrameTimeoutMs === "number" &&
+      this.#options.firstFrameTimeoutMs > 0
+        ? this.#options.firstFrameTimeoutMs
+        : WEBUI_BROWSER_FIRST_FRAME_TIMEOUT_MS;
+    const firstFrameStartedAt = Date.now();
+    let firstFrameSeen = false;
+    let firstFrameDeadlinePassed = false;
+    let firstFrameDeadline: ReturnType<typeof setTimeout> | undefined;
+    const firstFrameDeadlinePromise = new Promise<void>((resolve) => {
+      firstFrameDeadline = setTimeout(() => {
+        firstFrameDeadlinePassed = true;
+        resolve();
+      }, firstFrameBudgetMs);
+    });
     try {
       while (!signal?.aborted) {
         while (queue.length > 0) {
           const frame = queue.shift();
           if (!frame) continue;
+          if (!firstFrameSeen) {
+            firstFrameSeen = true;
+            this.#recordFirstFrame(surface, target, Date.now() - firstFrameStartedAt);
+            // The deadline is over: the frame arrived, so nothing is waiting
+            // for one any more.
+            if (firstFrameDeadline) clearTimeout(firstFrameDeadline);
+            void this.#writeDiagnostics();
+          }
           yield frame;
+        }
+        if (!firstFrameSeen && firstFrameDeadlinePassed) {
+          // The picture is not coming. The stream says so rather than
+          // waiting: the server turns this into the error frame the client
+          // is waiting for, with the browser's own timeout code.
+          this.#diagnostics.firstFrameTimeouts += 1;
+          await this.#writeDiagnostics();
+          throw browserOperationError(
+            "browser_operation_timeout",
+            `The browser delivered no frame for "${target.targetId}" within ${firstFrameBudgetMs} ms.`,
+            true,
+          );
         }
         await Promise.race([
           new Promise<void>((resolve) => {
             notify = resolve;
           }),
           new Promise<void>((resolve) => setTimeout(resolve, 250)),
+          firstFrameDeadlinePromise,
         ]);
         notify = undefined;
       }
     } finally {
+      if (firstFrameDeadline) clearTimeout(firstFrameDeadline);
       subscribers.delete(deliver);
       if (subscribers.size === 0) {
         // Cancelling the stream releases the provider-side resources it held:
@@ -1130,6 +1354,169 @@ export class WebuiBrowserService {
    */
   droppedFrameCount(surface: WebuiBrowserSurface): number {
     return this.#droppedFrames.get(surface) ?? 0;
+  }
+
+  /**
+   * The directory the browser diagnostics are written under.
+   *
+   * The host's own directory when it names one, and otherwise a directory
+   * under the data dir the browser keeps its profile in.
+   */
+  #diagnosticsDirectory(): string {
+    const configured = process.env.WEBUI_BROWSER_OUTPUT_DIR;
+    if (typeof configured === "string" && configured.trim().length > 0) return configured;
+    return join(this.#options.dataDir, WEBUI_BROWSER_DIAGNOSTICS_DIRECTORY);
+  }
+
+  /**
+   * The session's diagnostics, as the artifact holds them.
+   *
+   * The shape is fixed rather than incidental: a reader who knows the file
+   * can find the numbers in it without knowing when it was written.
+   */
+  #diagnosticsDocument(): Record<string, unknown> {
+    const droppedFrames: Record<string, number> = {};
+    for (const [surface, count] of this.#droppedFrames) droppedFrames[surface] = count;
+    return {
+      schema: "webui.browser.service.diagnostics.v1",
+      updatedAt: new Date().toISOString(),
+      dataDir: this.#options.dataDir,
+      warmup: {
+        attempts: this.#diagnostics.warmupAttempts,
+        failures: this.#diagnostics.warmupFailures,
+        lastFailure: this.#diagnostics.lastWarmupFailure ?? null,
+      },
+      launches: {
+        attempts: this.#diagnostics.launchAttempts,
+        failures: this.#diagnostics.launchFailures,
+        totalDurationMs: this.#diagnostics.launchTotalDurationMs,
+        last: this.#diagnostics.lastLaunch ?? null,
+        history: this.#diagnostics.launches,
+      },
+      firstFrame: {
+        last: this.#diagnostics.firstFrame ?? null,
+        timeouts: this.#diagnostics.firstFrameTimeouts,
+      },
+      droppedFrames,
+    };
+  }
+
+  /**
+   * Writes the session's diagnostics.
+   *
+   * The write is best-effort: a diagnostics file that cannot be written must
+   * not stop the browser from being used. The writes are serialized, so two
+   * events cannot tear the file, and each write holds the state as it was
+   * when it ran — the last write therefore holds the state as it is.
+   */
+  async #writeDiagnostics(): Promise<void> {
+    const write = this.#diagnosticsWrite.then(
+      () => this.#writeDiagnosticsFile(),
+      () => this.#writeDiagnosticsFile(),
+    );
+    this.#diagnosticsWrite = write.catch(() => undefined);
+    await write;
+  }
+
+  /** Writes the diagnostics file itself. */
+  async #writeDiagnosticsFile(): Promise<void> {
+    try {
+      const directory = this.#diagnosticsDirectory();
+      await mkdir(directory, { recursive: true });
+      await writeFile(
+        join(directory, WEBUI_BROWSER_SERVICE_DIAGNOSTICS_FILE),
+        `${JSON.stringify(this.#diagnosticsDocument(), null, 2)}\n`,
+        "utf8",
+      );
+    } catch {
+      // A diagnostics file that cannot be written is a missing file, not a
+      // broken browser.
+    }
+  }
+
+  /**
+   * Schedules the diagnostics to be written.
+   *
+   * The dropped-frame counter can move on every frame, so its write is
+   * throttled rather than immediate. Every other event writes at once: those
+   * are the events somebody is waiting to see.
+   */
+  #scheduleDiagnostics(): void {
+    if (this.#diagnosticsTimer) return;
+    const timer = setTimeout(() => {
+      this.#diagnosticsTimer = undefined;
+      void this.#writeDiagnostics();
+    }, WEBUI_BROWSER_DIAGNOSTICS_WRITE_INTERVAL_MS);
+    this.#diagnosticsTimer = timer;
+    // The timer must not hold the process open: a diagnostics write is never
+    // worth a host that will not shut down.
+    (timer as { unref?: () => void }).unref?.();
+  }
+
+  /**
+   * Records one attempt to start the isolated browser.
+   *
+   * The attempt carries the failure that came before it: a start that
+   * follows a failed start is a retry, and a retry that leaves no trace of
+   * what it retries is a start that looks like the first one.
+   */
+  async #recordLaunch(
+    trigger: "warmup" | "demand",
+    outcome: "started" | "failed",
+    durationMs: number,
+    error?: unknown,
+  ): Promise<void> {
+    const failure = outcome === "failed" ? describeBrowserFailure(error) : undefined;
+    const record: WebuiBrowserLaunchRecord = {
+      at: new Date().toISOString(),
+      trigger,
+      outcome,
+      durationMs,
+      failure,
+      previousFailure: this.#diagnostics.lastFailure,
+    };
+    this.#diagnostics.launchAttempts += 1;
+    this.#diagnostics.launchTotalDurationMs += durationMs;
+    if (failure) {
+      this.#diagnostics.launchFailures += 1;
+      this.#diagnostics.lastFailure = failure;
+    }
+    this.#diagnostics.lastLaunch = record;
+    this.#diagnostics.launches.push(record);
+    // The history is a tail, not a ledger: it is here to show the sequence
+    // of attempts, and the sequence that matters is the recent one.
+    if (this.#diagnostics.launches.length > 10) this.#diagnostics.launches.shift();
+    await this.#writeDiagnostics();
+  }
+
+  /**
+   * Records that the eager start failed.
+   *
+   * The eager start is not allowed to fail the switch: the surface stays on,
+   * and the next call that needs the browser starts it again. But the failure
+   * must not disappear with the catch that swallowed it.
+   */
+  #recordWarmupFailure(error: unknown): void {
+    const failure = describeBrowserFailure(error);
+    this.#diagnostics.warmupFailures += 1;
+    this.#diagnostics.lastWarmupFailure = failure;
+    this.#diagnostics.lastFailure = failure;
+  }
+
+  /**
+   * Records that a stream delivered its first frame, and how long it took.
+   */
+  #recordFirstFrame(
+    surface: WebuiBrowserSurface,
+    target: WebuiBrowserTargetId,
+    latencyMs: number,
+  ): void {
+    this.#diagnostics.firstFrame = {
+      surface,
+      targetId: target.targetId,
+      latencyMs,
+      at: new Date().toISOString(),
+    };
   }
 
   /**
@@ -1517,7 +1904,30 @@ export class WebuiBrowserService {
     for (const [surface, provider] of [...this.#providers]) {
       await this.#stopProvider(surface, provider);
     }
+    // The session's record is written out one last time, so the numbers the
+    // artifact holds are the numbers the session ended with.
+    if (this.#diagnosticsTimer) {
+      clearTimeout(this.#diagnosticsTimer);
+      this.#diagnosticsTimer = undefined;
+    }
+    await this.#writeDiagnostics();
   }
+}
+
+/**
+ * Describes a failure the way the diagnostics record it.
+ *
+ * The code is the browser's own when the failure carries one — the same code
+ * the caller would have been given — and the message is what the failure
+ * said. A failure that names nothing is still a failure, and is recorded as
+ * one.
+ */
+function describeBrowserFailure(error: unknown): WebuiBrowserFailureRecord {
+  return {
+    at: new Date().toISOString(),
+    message: error instanceof Error ? error.message : String(error),
+    code: error instanceof WebuiBrowserOperationError ? error.code : undefined,
+  };
 }
 
 function sameTab(left: WebuiBrowserTargetId, right: WebuiBrowserTargetId): boolean {

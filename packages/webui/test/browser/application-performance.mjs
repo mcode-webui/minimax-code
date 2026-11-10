@@ -7,8 +7,14 @@ export function attributeFrameWork(events) {
   const start = events.find((event) => event.name === MEASURE_START);
   const end = events.find((event) => event.name === MEASURE_END);
   if (!start || !end) throw new Error("application frame markers are missing");
-  const marks = events.filter((event) => event.name === FRAME_MARK && event.pid === start.pid
-    && event.tid === start.tid && event.ts >= start.ts && event.ts <= end.ts);
+  const marks = events.filter(
+    (event) =>
+      event.name === FRAME_MARK &&
+      event.pid === start.pid &&
+      event.tid === start.tid &&
+      event.ts >= start.ts &&
+      event.ts <= end.ts,
+  );
   if (marks.length < 2 || marks.some((mark) => !Number.isFinite(mark.tts))) {
     throw new Error("application frame CPU timing is unavailable");
   }

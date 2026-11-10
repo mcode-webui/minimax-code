@@ -1,6 +1,23 @@
 export const APPLICATION_BLOCK_MS = 50;
 export const MEASURE_START = "webui-application-measure-start";
 export const MEASURE_END = "webui-application-measure-end";
+export const FRAME_MARK = "webui-application-frame";
+
+export function attributeFrameWork(events) {
+  const start = events.find((event) => event.name === MEASURE_START);
+  const end = events.find((event) => event.name === MEASURE_END);
+  if (!start || !end) throw new Error("application frame markers are missing");
+  const marks = events.filter((event) => event.name === FRAME_MARK && event.pid === start.pid
+    && event.tid === start.tid && event.ts >= start.ts && event.ts <= end.ts);
+  if (marks.length < 2 || marks.some((mark) => !Number.isFinite(mark.tts))) {
+    throw new Error("application frame CPU timing is unavailable");
+  }
+  return marks.slice(1).map((mark, index) => {
+    const previous = marks[index];
+    if (mark.tts < previous.tts || mark.ts < previous.ts) throw new Error("application frame clock is inconsistent");
+    return { wallMs: (mark.ts - previous.ts) / 1000, cpuMs: (mark.tts - previous.tts) / 1000 };
+  });
+}
 
 export function attributeApplicationWork(events, frames) {
   const start = events.find((event) => event.name === MEASURE_START);

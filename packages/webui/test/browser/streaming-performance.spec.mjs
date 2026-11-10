@@ -21,9 +21,11 @@ import { expect } from "@playwright/test";
 import { attachJsonEvidence, openApp, startTurn, test } from "./harness.mjs";
 import {
   APPLICATION_BLOCK_MS,
+  FRAME_MARK,
   MEASURE_END,
   MEASURE_START,
   attributeApplicationWork,
+  attributeFrameWork,
   startApplicationTrace,
 } from "./application-performance.mjs";
 
@@ -150,7 +152,7 @@ async function measureStreamedReply(page, options) {
   let metrics;
   try {
     metrics = await page.evaluate(
-      async ({ chunkTextsIn, measureStart, measureEnd }) => {
+      async ({ chunkTextsIn, measureStart, measureEnd, frameMark }) => {
         if (
           !["longtask", "long-animation-frame"].every((type) => PerformanceObserver.supportedEntryTypes.includes(type))
         ) {
@@ -178,6 +180,7 @@ async function measureStreamedReply(page, options) {
         let running = true;
         const sample = () => {
           if (!running) return;
+          performance.mark(frameMark);
           const now = performance.now();
           frameGaps.push(now - previousFrame);
           previousFrame = now;
@@ -254,6 +257,7 @@ async function measureStreamedReply(page, options) {
         chunkTextsIn: chunkTexts,
         measureStart: MEASURE_START,
         measureEnd: MEASURE_END,
+        frameMark: FRAME_MARK,
       },
     );
   } finally {
@@ -264,6 +268,7 @@ async function measureStreamedReply(page, options) {
   // 即使归因数据不完整也先保留原始样本，便于定位采样失败。
   await attachJsonEvidence("stream-performance-samples.json", { historyTurns, chunks, idleBefore, active: metrics, idleAfter });
   const applicationWork = attributeApplicationWork(traceEvents, metrics.longAnimationFrames);
+  const frameWork = attributeFrameWork(traceEvents);
   await attachJsonEvidence("stream-performance-raw.json", {
     historyTurns,
     chunks,
@@ -271,6 +276,7 @@ async function measureStreamedReply(page, options) {
     active: metrics,
     idleAfter,
     applicationWork,
+    frameWork,
   });
 
   if (cdp) {
@@ -303,6 +309,7 @@ async function measureStreamedReply(page, options) {
     worstTimerDelay: Math.max(0, ...metrics.timerDelays),
     longTaskCount: metrics.longTasks.filter((duration) => duration >= APPLICATION_BLOCK_MS).length,
     applicationOverBudget: applicationWork.cpuOverBudget.length + applicationWork.scriptsOverBudget.length,
+    p95FrameCpu: percentile(frameWork.map((frame) => frame.cpuMs), 0.95),
   };
   console.info(
     [
@@ -317,6 +324,7 @@ async function measureStreamedReply(page, options) {
       `worst timer delay: ${summary.worstTimerDelay.toFixed(1)} ms`,
       `long tasks: ${summary.longTaskCount}`,
       `application tasks/scripts over budget: ${summary.applicationOverBudget}`,
+      `p95 frame CPU: ${summary.p95FrameCpu.toFixed(1)} ms`,
       `max task CPU: ${(Math.max(...applicationWork.tasks.map((task) => Number.isFinite(task.tdur) ? task.tdur : task.dur)) / 1000).toFixed(1)} ms`,
       `max script: ${Math.max(0, ...applicationWork.scripts.map((script) => script.duration)).toFixed(1)} ms`,
     ].join(" | "),

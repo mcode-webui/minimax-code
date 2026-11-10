@@ -314,7 +314,7 @@ async function measureStreamedReply(page, options) {
     droppedFrames: gaps.filter((gap) => gap >= DROPPED_FRAME_MS).length,
     worstTimerDelay: Math.max(0, ...metrics.timerDelays),
     longTaskCount: metrics.longTasks.filter((duration) => duration >= APPLICATION_BLOCK_MS).length,
-    applicationOverBudget: applicationWork.cpuOverBudget.length + applicationWork.scriptsOverBudget.length,
+    applicationOverBudget: applicationWork.blockingOverBudget.length,
     p95FrameCpu: percentile(
       frameWork.map((frame) => frame.cpuMs),
       0.95,
@@ -479,8 +479,8 @@ for (const scenario of ["idle", "javascript", "layout", "synchronous-wait"]) {
       work,
       frames,
     });
-    expect(work.cpuOverBudget.length + work.scriptsOverBudget.length > 0).toBe(scenario !== "idle");
-    if (scenario !== "idle") expect(work.scriptsOverBudget.length).toBeGreaterThan(0);
+    expect(work.blockingOverBudget.length > 0).toBe(scenario !== "idle");
+    if (scenario === "synchronous-wait") expect(work.blockedTasks.some((task) => task.pauseMs >= 50)).toBe(true);
   });
 }
 
@@ -546,6 +546,16 @@ test("missing application timing fails instead of passing with zero work", async
   ).toThrow("CPU timing is unavailable");
   const shortSynthetic = { ...measured, ts: 3, dur: 1, tdur: undefined };
   expect(attributeApplicationWork([...markers, measured, shortSynthetic], []).cpuOverBudget).toEqual([]);
+  const wallGap = [
+    { name: MEASURE_START, ts: 0, pid: 1, tid: 1, args: { data: { startTime: 0 } } },
+    { name: MEASURE_END, ts: 500_000, pid: 1, tid: 1 },
+    { ...measured, ts: 0, dur: 400_000, tdur: 20_000 },
+  ];
+  const script = { startTime: 0, duration: 400, pauseDuration: 0 };
+  expect(attributeApplicationWork(wallGap, [{ scripts: [script] }]).blockingOverBudget).toEqual([]);
+  const blocked = attributeApplicationWork(wallGap, [{ scripts: [{ ...script, pauseDuration: 60 }] }]);
+  expect(blocked.blockingOverBudget).toHaveLength(1);
+  expect(blocked.blockingOverBudget[0].applicationMs).toBe(80);
 });
 
 test("frame calibration distinguishes scheduler outliers from sustained application delay", async ({ page }) => {

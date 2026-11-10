@@ -50,17 +50,40 @@ export function attributeApplicationWork(events, frames) {
     throw new Error("application main-thread CPU timing is unavailable");
   }
   const scripts = frames.flatMap((frame) => frame.scripts);
-  if (scripts.some((script) => !Number.isFinite(script.duration))) {
+  if (
+    scripts.some(
+      (script) =>
+        !Number.isFinite(script.duration) || !Number.isFinite(script.pauseDuration) || script.pauseDuration < 0,
+    )
+  ) {
     throw new Error("application script timing is unavailable");
   }
+  const pauses = new Map();
+  for (const script of scripts.filter((script) => script.pauseDuration > 0)) {
+    if (!Number.isFinite(start.args?.data?.startTime) || !Number.isFinite(script.startTime)) {
+      throw new Error("application script clock mapping is unavailable");
+    }
+    const scriptStart = start.ts + (script.startTime - start.args.data.startTime) * 1000;
+    const scriptEnd = scriptStart + script.duration * 1000;
+    // LoAF 的毫秒精度比 trace 低，允许边界最多 0.2ms 的量化误差。
+    const owner = tasks.find((task) => task.ts <= scriptStart + 200 && task.ts + task.dur >= scriptEnd - 200);
+    if (!owner) throw new Error("application synchronous pause has no owning main-thread task");
+    pauses.set(owner, (pauses.get(owner) ?? 0) + script.pauseDuration);
+  }
+  const blockedTasks = tasks.map((task) => {
+    const cpuMs = (Number.isFinite(task.tdur) ? task.tdur : task.dur) / 1000;
+    const pauseMs = pauses.get(task) ?? 0;
+    return { task, cpuMs, pauseMs, applicationMs: cpuMs + pauseMs };
+  });
   return {
     tasks,
     scripts,
-    // CPU 覆盖脚本、布局与绘制的实际执行；脚本墙钟时间也保留门禁，避免漏掉同步等待。
+    blockedTasks,
+    // CPU 覆盖脚本、布局与绘制；浏览器记录的同步暂停另外计入，系统调度停顿保留诊断。
     cpuOverBudget: tasks.filter(
       (task) => (Number.isFinite(task.tdur) ? task.tdur : task.dur) / 1000 >= APPLICATION_BLOCK_MS,
     ),
-    scriptsOverBudget: scripts.filter((script) => script.duration >= APPLICATION_BLOCK_MS),
+    blockingOverBudget: blockedTasks.filter((task) => task.applicationMs >= APPLICATION_BLOCK_MS),
   };
 }
 

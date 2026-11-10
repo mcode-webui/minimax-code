@@ -14,7 +14,7 @@
 // asserts the three-button row.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
@@ -63,6 +63,19 @@ function loadedState() {
     frame: { target: viewed, data: "QUJD", format: "png", sequence: 7 },
   });
   return state;
+}
+
+/**
+ * A panel whose frame stream gave up.
+ *
+ * The state says so the way the service does: a failed event carries the
+ * code, and the panel shows that it failed rather than showing nothing.
+ */
+function failedState() {
+  return reduceWebuiBrowserPanelState(loadedState(), {
+    type: "failed",
+    error: { code: "browser_operation_timeout", message: "The browser delivered no frame.", retryable: true },
+  });
 }
 
 /** All-optional, like every port in this package: presence is the assertion. */
@@ -116,6 +129,25 @@ describe("the Browser panel", () => {
     expect(source).not.toContain("srcdoc");
     expect(source).not.toContain("blob:");
     expect(source).not.toContain("dangerouslySetInnerHTML");
+  });
+
+  it("says so when the frame stream failed, and says nothing extra", () => {
+    // A stream that gave up and a page that is still loading are the same
+    // picture on screen: an empty placeholder. The failure is what tells them
+    // apart, so it has to be on the panel rather than only in a toast.
+    const healthy = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={loadedState()} capabilities={{ browser: "supported" }} />,
+    );
+    const failed = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={failedState()} capabilities={{ browser: "supported" }} />,
+    );
+
+    expect(healthy).not.toContain("browser-panel-failed");
+    expect(failed).toContain('data-testid="browser-panel-failed"');
+    // The failure adds that one notice and changes nothing else — the
+    // picture, the empty placeholder and the rest of the panel are byte for
+    // byte what they were. A panel that failed must not repaint the world.
+    expect(failed.replace(/<div[^>]*data-testid="browser-panel-failed"[^>]*>[^<]*<\/div>/u, "")).toBe(healthy);
   });
 
   it("is the window's page and nothing beside it", () => {
@@ -424,5 +456,32 @@ describe("the installation key a Settings page mounts", () => {
     // Still no key on the first paint: the reader is only ever called from the
     // click handler, and nothing else can render one.
     expect(markup).not.toContain('data-testid="browser-installation-key-value"');
+  });
+});
+
+
+describe("baseline probe", () => {
+  it("prints the default-path markup", () => {
+    const loaded = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={loadedState()} capabilities={{ browser: "supported" }} />,
+    );
+    const empty = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={initialWebuiBrowserPanelState} capabilities={{ browser: "supported" }} />,
+    );
+    console.log("BASELINE_LOADED>>>" + loaded + "<<<");
+    console.log("BASELINE_EMPTY>>>" + empty + "<<<");
+  });
+});
+
+
+describe("baseline probe", () => {
+  it("writes the default-path markup", () => {
+    const loaded = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={loadedState()} capabilities={{ browser: "supported" }} />,
+    );
+    const empty = renderToStaticMarkup(
+      <BrowserPanel port={wiredPort} state={initialWebuiBrowserPanelState} capabilities={{ browser: "supported" }} />,
+    );
+    writeFileSync("/tmp/browser-panel-baseline.json", JSON.stringify({ loaded, empty }, null, 2));
   });
 });

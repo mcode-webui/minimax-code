@@ -194,6 +194,7 @@ export interface WebuiWire {
     operation: string,
     requestBody: { readonly surface: WebuiBrowserSurface; readonly target: WebuiBrowserTargetId },
     onFrame: (frame: WebuiBrowserImageFrame) => void,
+    onFailure?: (error: Error) => void,
   ): () => void;
   /**
    * The web-tab snapshot stream.
@@ -614,6 +615,7 @@ export function createWebuiWire({
       readonly viewport?: WebuiBrowserViewport;
     },
     onFrame: (frame: WebuiBrowserImageFrame) => void,
+    onFailure?: (error: Error) => void,
   ): () => void {
     let stopped = false;
     const session = openWireSession(operation, requestBody, {
@@ -621,6 +623,14 @@ export function createWebuiWire({
         // A stopped watch must not deliver, and `close()` is not a promise that
         // the socket stops emitting: the caller's flag is what guarantees it.
         if (stopped) return;
+        // An error frame is the service's answer: it says the stream gave up
+        // and why. Dropping it is what leaves a panel waiting for a picture
+        // that is never coming — the watcher has no way to tell "still
+        // loading" from "the service said it stopped", so it says neither.
+        if (frame.kind === "error") {
+          onFailure?.(new WebuiWireError(frame.code, frame.message, frame.requestId));
+          return;
+        }
         if (frame.kind !== "event" || !frame.body || typeof frame.body !== "object") return;
         onFrame(frame.body as WebuiBrowserImageFrame);
       },

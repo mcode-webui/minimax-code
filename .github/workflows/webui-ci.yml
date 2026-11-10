@@ -41,19 +41,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:webui
       - run: pnpm install:webui-browsers
-      - name: Probe frame source and failing interactions
-        run: >-
-          ${{ matrix.caffeinate && 'caffeinate -diu' || '' }} pnpm exec playwright test
-          packages/webui/test/browser/streaming-performance.spec.mjs
-          packages/webui/test/browser/workspace-panel-actions.spec.mjs
-          packages/webui/test/browser/browser-workspace.spec.mjs
-          packages/webui/test/browser/rail-pin.spec.mjs
-          packages/webui/test/browser/surface-appearance.spec.mjs
-          packages/webui/test/browser/responsive-baselines.spec.mjs
-          packages/webui/test/browser/visual-baselines.spec.mjs
-          --grep 'a streamed reply|a long reply'
-          ${{ matrix.headed && '--headed' || '' }}
-          --repeat-each=1
+      - name: Validate attribution negative controls
+        env:
+          ATTRIBUTION_OUTPUT: ${{ runner.temp }}/mac-browser-chromium/attribution-negative-controls.json
+        run: |
+          mkdir -p "$WEBUI_BROWSER_OUTPUT_DIR"
+          node scripts/attribution-negative-controls.mjs
       - name: Retain diagnostic artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

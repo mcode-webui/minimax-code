@@ -546,7 +546,7 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
       origin: new URL(url).origin,
     });
-    await browserExpect(page.locator("#webui-root")).toBeVisible();
+    await browserExpect(page.locator("#webui-root")).toBeVisible({ timeout: FIRST_SCREEN_TIMEOUT_MS });
     // The event channel opens as the client boots, so this wait is bounded by
     // the boot budget the file already documents — not by the default 5s, which
     // a loaded runner can pass without the client having started at all.
@@ -859,7 +859,7 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
     // message is part of that condition: it can only be on screen once the
     // reloaded client has resumed the session and rendered what it read back.
     await browserExpect(composer).toBeVisible({ timeout: FIRST_SCREEN_TIMEOUT_MS });
-    await browserExpect(page.locator("#webui-root")).toBeVisible();
+    await browserExpect(page.locator("#webui-root")).toBeVisible({ timeout: FIRST_SCREEN_TIMEOUT_MS });
     await browserExpect(page.getByText("Please reason, then answer.")).toBeVisible();
     try {
       await browserExpect.poll(() => requests.filter((request) => request.operation === "resumeSession").length)

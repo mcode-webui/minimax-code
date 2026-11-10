@@ -14,7 +14,7 @@
 // asserts the three-button row.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
@@ -459,29 +459,3 @@ describe("the installation key a Settings page mounts", () => {
   });
 });
 
-
-describe("baseline probe", () => {
-  it("prints the default-path markup", () => {
-    const loaded = renderToStaticMarkup(
-      <BrowserPanel port={wiredPort} state={loadedState()} capabilities={{ browser: "supported" }} />,
-    );
-    const empty = renderToStaticMarkup(
-      <BrowserPanel port={wiredPort} state={initialWebuiBrowserPanelState} capabilities={{ browser: "supported" }} />,
-    );
-    console.log("BASELINE_LOADED>>>" + loaded + "<<<");
-    console.log("BASELINE_EMPTY>>>" + empty + "<<<");
-  });
-});
-
-
-describe("baseline probe", () => {
-  it("writes the default-path markup", () => {
-    const loaded = renderToStaticMarkup(
-      <BrowserPanel port={wiredPort} state={loadedState()} capabilities={{ browser: "supported" }} />,
-    );
-    const empty = renderToStaticMarkup(
-      <BrowserPanel port={wiredPort} state={initialWebuiBrowserPanelState} capabilities={{ browser: "supported" }} />,
-    );
-    writeFileSync("/tmp/browser-panel-baseline.json", JSON.stringify({ loaded, empty }, null, 2));
-  });
-});

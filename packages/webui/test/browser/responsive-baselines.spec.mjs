@@ -19,6 +19,25 @@ import { expect } from "@playwright/test";
 
 import { configureFixture, openApp, screenshotOptions, test } from "./harness.mjs";
 
+/**
+ * The shell draws the composer's mascot from `/assets/`, and the screenshot
+ * compares pixels: a capture taken while that image is still loading shows
+ * the broken-image placeholder where the mascot belongs, and the comparison
+ * fails on pixels the code never drew.
+ *
+ * Every other baseline in this directory waits for the images before it
+ * captures. This one did not, so it captured whichever state the network
+ * happened to be in — and on a loaded runner that state is sometimes "not
+ * finished". The wait below is the same one the others use: every `/assets/`
+ * image reports `complete` with a natural width, so it has decoded rather
+ * than merely been requested.
+ */
+async function waitForImages(page) {
+  await expect.poll(() => page.locator('img[src^="/assets/"]').evaluateAll((images) =>
+    images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0),
+  )).toBe(true);
+}
+
 /** The widths the contract's matrix covers. */
 const WIDTHS = [1440, 1280, 1024, 900, 768, 640, 480];
 
@@ -35,6 +54,7 @@ for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
     await configureFixture(page, () => undefined);
     await openApp(page, "#session=A");
+    await waitForImages(page);
     await expect(page.locator("#webui-root")).toHaveScreenshot(`shell-at-${width}.png`, screenshotOptions);
   });
 }
@@ -46,6 +66,7 @@ for (const width of PANEL_WIDTHS) {
     await openApp(page, "#session=A");
     await page.getByTestId("workspace-panel-controls").getByRole("button", { name: "浏览器" }).click();
     await expect(page.getByTestId("workspace-panel")).toBeVisible();
+    await waitForImages(page);
     await expect(page.locator("#webui-root")).toHaveScreenshot(`workspace-panel-at-${width}.png`, screenshotOptions);
   });
 }

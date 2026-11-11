@@ -266,7 +266,11 @@
   .webui-workspace-launcher { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; container: webui-workspace-launcher / size; padding: var(--spacing_24); background: var(--bg_default_primary); color: var(--text_default_primary); }
   .webui-workspace-launcher-content { display: flex; width: 100%; flex-direction: column; align-items: center; transform: translateY(-24px); }
   .webui-workspace-launcher-brand { display: flex; min-height: clamp(72px, 10vw, 112px); flex: 0 0 auto; align-items: center; justify-content: center; margin-bottom: clamp(24px, 4vw, 48px); }
-  .webui-workspace-launcher-wordmark { font-family: "Century Gothic", "Arial Rounded MT Bold", "Segoe UI", sans-serif; font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+  /* The mark is drawn with the font the client carries, so every platform
+   * draws the same shapes. The faces after it are the fallbacks for a build
+   * where the font file did not make it into the artifact: the mark is still
+   * drawn, just not in its own face. */
+  .webui-workspace-launcher-wordmark { font-family: "MiniMax Wordmark", "Century Gothic", "Arial Rounded MT Bold", "Segoe UI", sans-serif; font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
   .webui-workspace-launcher-wordmark span { display: inline-block; }
   .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-mini { font-size: 0.88em; }
   .webui-workspace-launcher-wordmark .webui-workspace-launcher-wordmark-max { font-size: 1.08em; }

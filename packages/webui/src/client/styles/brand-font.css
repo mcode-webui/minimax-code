@@ -1,0 +1,50 @@
+/*
+ * The wordmark's own font, shipped with the client.
+ *
+ * The wordmark used to name a family that only exists on some machines:
+ * "Century Gothic" is a Microsoft font, so a Mac without Office, a Linux box
+ * and a Windows box each fell through to whatever they did have, and the same
+ * mark came out in a different face on every platform. That is not a cosmetic
+ * difference — the recorded baseline for one platform stopped matching the
+ * other two, and a person comparing the client against the recorded
+ * screenshot saw a difference that no code change had caused.
+ *
+ * So the mark is drawn with a font the client carries. Nunito is a rounded
+ * sans under the SIL Open Font License 1.1 — the licence text ships beside
+ * the font file — and it is the closest licensed face to the rounded one the
+ * mark used to land on: a Mac without Office fell through to Arial Rounded
+ * MT Bold, which is a Monotype font the client may not redistribute. Nunito
+ * keeps that roundness while being free to ship. Because it is a web font,
+ * the browser draws the same outlines everywhere instead of asking the host
+ * what it happens to have installed.
+ *
+ * The family is called "MiniMax Wordmark" rather than "Nunito" on purpose:
+ * a name no host happens to have installed is a name only this file can
+ * answer, so a machine that already has Nunito installed cannot answer
+ * first with a different version of it.
+ *
+ * font-display: block keeps the mark from being painted in a fallback face
+ * first: the mark is the one thing on that page that must not flicker
+ * between two shapes.
+ *
+ * One file covers the mark. Nunito is a variable face — its weight axis runs
+ * from 200 to 1000 — so the file below is instanced by the browser at each of
+ * the two weights the mark uses: the wordmark is set at 700 and its lower
+ * line at 600. Two rules, one file, and no second face to keep in step.
+ */
+
+@font-face {
+  font-family: "MiniMax Wordmark";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url("/assets/fonts/brand/Nunito-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "MiniMax Wordmark";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("/assets/fonts/brand/Nunito-latin.woff2") format("woff2");
+}

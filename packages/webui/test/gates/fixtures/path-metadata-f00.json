@@ -1,7 +1,7 @@
 {
   "baseline": "f00b1268c28ad15054a8882620c3fb08beb86d58",
   "sourceSha256": "46b86b658adc1611f3531d8dc9844612f7e9ee3de0eec4a532aeec44b5de0a12",
-  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, runtime/ssh/authentication remains outside the client, bindings/use-webui-shutdown remains a binding, platform/webui-shutdown remains infrastructure, and server/http/shutdown remains outside the client.",
+  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, runtime/ssh/authentication remains outside the client, bindings/use-webui-shutdown remains a binding, platform/webui-shutdown remains infrastructure, server/http/shutdown remains outside the client, and client/styles/brand-font remains a stylesheet.",
   "cases": [
     {
       "path": "runtime/native-pty.ts",
@@ -6405,6 +6405,13 @@
       "role": "outside",
       "business": null,
       "home": "outside"
+    },
+    {
+      "path": "client/styles/brand-font.css",
+      "layers": ["unknown"],
+      "role": "styles",
+      "business": null,
+      "home": "current"
     }
   ],
   "directions": [

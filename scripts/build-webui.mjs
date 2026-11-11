@@ -165,6 +165,13 @@ cpSync(
   path.join(outdir, "client/fonts"),
   { recursive: true },
 );
+// The wordmark's own font travels with the client. It is the one face that
+// has to look the same on every machine, so it cannot be left to the host.
+cpSync(
+  path.join(packageDir, "src/client/assets/fonts/brand"),
+  path.join(outdir, "client/assets/fonts/brand"),
+  { recursive: true },
+);
 
 // The WebUI server owns its own mcode-tools process boundary. Keep the
 // embedded entry and the command launcher beside the server bundle so the

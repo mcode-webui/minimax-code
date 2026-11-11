@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { chromium, expect as browserExpect, type Browser } from "@playwright/test";
+import { chromium, expect as browserExpect, type Browser, type Locator, type Page } from "@playwright/test";
 import { afterAll, expect, it } from "vitest";
 import type { WebuiBrowserAdapterBinding } from "../../src/runtime/harness/browser.js";
 
@@ -152,6 +152,140 @@ afterAll(() => {
   if (previousRegion === undefined) delete process.env.MAVIS_REGION;
   else process.env.MAVIS_REGION = previousRegion;
 });
+
+/**
+ * The deadline for the wait on the browser panel's first frame.
+ *
+ * The product's own first-frame deadline is 60s (browser-service.ts), so a
+ * wait longer than this would only outlast the product's own answer to the
+ * same question. The wait ends on the frame, on the panel's failure notice,
+ * or at this deadline -- never later.
+ */
+const BROWSER_FRAME_TIMEOUT_MS = 60_000;
+
+/**
+ * One of the browser panel's own states, read from the page.
+ *
+ * Every state the panel can be in carries a `browser-panel-` testid, and the
+ * failure toast carries the browser's error code beside its words.
+ */
+type BrowserPanelNode = {
+  readonly id: string | null;
+  readonly text: string;
+  readonly errorCode: string | null;
+};
+
+/**
+ * How the wait on the browser panel's first frame ended.
+ *
+ * `frame` is the product working. `failed` is the product reporting that the
+ * stream gave up. `timeout` is neither. Both of the last two carry the
+ * panel's whole state, so the failure can say which state the panel was in.
+ */
+type BrowserPanelWait =
+  | { readonly outcome: "frame" }
+  | { readonly outcome: "failed"; readonly nodes: readonly BrowserPanelNode[] }
+  | { readonly outcome: "timeout"; readonly nodes: readonly BrowserPanelNode[] };
+
+/**
+ * The browser panel's whole state, in one pass over the page.
+ *
+ * The two states the old diagnostic looked at said almost nothing: the
+ * empty placeholder shows in every one of them, so "no frame yet", "the
+ * stream failed" and "the host cannot serve a browser" all read the same.
+ * Every `browser-panel-` node is collected instead, so a failure says which
+ * state the panel was in. The text is cut short: the report wants the
+ * notice's sentence, not a screen of DOM.
+ */
+async function readBrowserPanelNodes(page: Page): Promise<BrowserPanelNode[]> {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-testid^="browser-panel-"]')).map((node) => {
+      const text = (node.textContent ?? "").trim();
+      return {
+        id: node.getAttribute("data-testid"),
+        text: text.length > 200 ? `${text.slice(0, 200)}…` : text,
+        errorCode: node.getAttribute("data-error-code"),
+      };
+    }),
+  );
+}
+
+/**
+ * The panel's state at the moment it reported a failure.
+ *
+ * The live region says the stream is over; the toast beside it says why,
+ * and carries the browser's error code. The toast is mounted a moment after
+ * the notice, so it is waited for briefly -- the code and the browser's own
+ * wording are the parts of the failure worth having. The wait is bounded by
+ * the caller's deadline, so this never spends more than the frame wait
+ * would have.
+ */
+async function readBrowserPanelFailureNodes(
+  page: Page,
+  deadline: number,
+): Promise<BrowserPanelNode[]> {
+  const until = Math.min(deadline, Date.now() + 500);
+  for (;;) {
+    const nodes = await readBrowserPanelNodes(page);
+    if (nodes.some((node) => node.errorCode !== null) || Date.now() >= until) return nodes;
+    await page.waitForTimeout(50);
+  }
+}
+
+/**
+ * Whether the panel is saying the stream failed.
+ *
+ * The live region says the stream is over; the toast beside it says why,
+ * and carries the browser's error code. Either one is enough.
+ */
+function browserPanelReportedFailure(nodes: readonly BrowserPanelNode[]): boolean {
+  return nodes.some((node) => node.id === "browser-panel-failed" || node.id === "browser-panel-error");
+}
+
+/**
+ * Wait for the browser panel to show a frame, or to report that no frame is
+ * coming. Whichever happens first ends the wait.
+ *
+ * Two endings, two different faults. A frame is the product working: the
+ * isolated Chromium booted, opened the page and streamed a picture back. A
+ * failure notice is the product reporting that the stream gave up. The
+ * product's own first-frame deadline is 60s (browser-service.ts) -- the same
+ * budget this wait has -- so a panel that had already given up used to look
+ * exactly like a panel that was merely slow, and the diagnostic it printed
+ * could not tell the two apart. The wait now ends on whichever comes first,
+ * and the failure says which one it was.
+ *
+ * The frame is checked first, so a panel that delivered a picture and then
+ * failed is still the passing case it always was.
+ */
+async function waitForBrowserFrameOrFailure(
+  page: Page,
+  frame: Locator,
+  timeoutMs: number,
+): Promise<BrowserPanelWait> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (await frame.isVisible()) return { outcome: "frame" };
+    const nodes = await readBrowserPanelNodes(page);
+    if (browserPanelReportedFailure(nodes)) {
+      return { outcome: "failed", nodes: await readBrowserPanelFailureNodes(page, deadline) };
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      // The product's own deadline expires at about the same moment this
+      // one does, so the last reading is the one that says whether the
+      // panel failed just as the wait ran out.
+      const last = await readBrowserPanelNodes(page);
+      if (browserPanelReportedFailure(last)) {
+        return { outcome: "failed", nodes: await readBrowserPanelFailureNodes(page, deadline) };
+      }
+      return { outcome: "timeout", nodes: last };
+    }
+    // The sleep never runs past the deadline, so the wait costs no more
+    // than the single budget it was given.
+    await page.waitForTimeout(Math.min(250, remaining));
+  }
+}
 
 it.each(["transcript", "cross-client", "external-active-mutation", "external-active-mutation-gap"] as const)("real agent rendering and recovery: %s", async (scenario) => {
   let releaseAnswer: () => void = () => undefined;
@@ -1068,20 +1202,43 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
     // event channel. That whole pipeline -- not the product's own
     // responsiveness -- is what this wait covers, and on a loaded CI runner
     // it can outlast the 30s window this test used to give it. Give the wait
-    // its own budget, and keep the failure readable: if the panel still
-    // shows its empty placeholder the frame never arrived, and if a
-    // capability notice is on screen the host could not serve a browser at
-    // all. Those are different faults and deserve different fixes.
-    try {
-      await browserExpect(browserFrame).toBeVisible({ timeout: 60_000 });
-    } catch (error) {
-      throw new Error(`${error instanceof Error ? error.message : String(error)}\n${JSON.stringify({
-        emptyFrameStillShowing: await page.getByTestId("browser-panel-frame-empty").count(),
-        capabilityNotices: await page.locator(
-          '[data-testid="browser-panel-unknown"], [data-testid="browser-panel-unauthorized"]',
-        ).allTextContents(),
-      })}`);
+    // its own budget.
+    //
+    // The wait now ends on one of three outcomes, and they are different
+    // faults. The frame arrives: the product works and the case goes on. The
+    // panel reports a failed stream: the product is not going to produce a
+    // picture, so the case fails at once, with the notice's own words and
+    // the browser's error code -- the product's first-frame deadline is 60s
+    // (browser-service.ts), the same as this wait, so a panel that had
+    // already given up used to look exactly like a panel that was merely
+    // slow, and the diagnostic could not tell the two apart. Neither: the
+    // wait runs out, and the failure prints the panel's whole state instead
+    // of two guesses about it.
+    const browserPanel = await waitForBrowserFrameOrFailure(page, browserFrame, BROWSER_FRAME_TIMEOUT_MS);
+    if (browserPanel.outcome === "failed") {
+      const notice = browserPanel.nodes.find((node) => node.id === "browser-panel-failed");
+      const toast = browserPanel.nodes.find((node) => node.id === "browser-panel-error");
+      throw new Error([
+        "the browser panel reported a failed stream before any frame arrived",
+        `notice: ${notice?.text ?? "(none)"}`,
+        `toast: ${toast?.text ?? "(none)"}`,
+        `error code: ${toast?.errorCode ?? "(none)"}`,
+        JSON.stringify({ panelState: browserPanel.nodes }),
+      ].join("\n"));
     }
+    if (browserPanel.outcome === "timeout") {
+      throw new Error([
+        `the browser panel showed no frame within ${BROWSER_FRAME_TIMEOUT_MS}ms and reported no failure`,
+        JSON.stringify({
+          emptyFrameStillShowing: browserPanel.nodes.filter((node) => node.id === "browser-panel-frame-empty").length,
+          capabilityNotices: browserPanel.nodes
+            .filter((node) => node.id === "browser-panel-unknown" || node.id === "browser-panel-unauthorized")
+            .map((node) => node.text),
+          panelState: browserPanel.nodes,
+        }),
+      ].join("\n"));
+    }
+
     const browserGeometry = await browserFrame.evaluate((node) => {
       const frame = node.getBoundingClientRect();
       const panel = node.closest(".webui-browser-panel")?.getBoundingClientRect();

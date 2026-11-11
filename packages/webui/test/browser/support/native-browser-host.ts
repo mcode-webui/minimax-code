@@ -62,6 +62,17 @@ const service = new WebuiService({ port, operations, terminal,
 const info = await service.start();
 process.send?.({ url: `http://127.0.0.1:${info.tcpPort}/?token=${info.credential.token}#session=${sessionId}`, workspaceDir, sessionId });
 let closing: Promise<void> | undefined;
+/**
+ * How long the service close is given before the host says it stopped there.
+ *
+ * The suite's own hook budget is thirty seconds, and the host used to spend
+ * all of it saying nothing: the service close never answered, so the hook
+ * timed out on a step it could not name. The host now answers first, and the
+ * answer names the step.
+ */
+const SERVICE_CLOSE_DEADLINE_MS = 20_000;
+/** What a service close that did not answer leaves behind. */
+const STALLED = Symbol("service.close did not finish");
 async function close() {
   if (closing) return closing;
   closing = (async () => {
@@ -69,8 +80,31 @@ async function close() {
     // finish is otherwise a silence, and the suite cannot tell which step
     // stopped answering.
     const step = (name: string) => { process.stderr.write(`[native-host] ${name}\n`); };
+    // The report leaves with the process, so the exit is taken in the send
+    // callback: the message has to be flushed first.
+    const report = (message: Record<string, unknown>) => {
+      process.send?.(message, () => {
+        process.disconnect?.();
+        process.exit(0);
+      });
+    };
     step("service.close");
-    await service.close();
+    const outcome = await new Promise<typeof STALLED | "closed" | unknown>((resolve) => {
+      const timer = setTimeout(() => resolve(STALLED), SERVICE_CLOSE_DEADLINE_MS);
+      service.close().then(
+        () => { clearTimeout(timer); resolve("closed"); },
+        (error: unknown) => { clearTimeout(timer); resolve(error); },
+      );
+    });
+    if (outcome === STALLED) {
+      // The service close did not answer. The terminals were already killed —
+      // that is the first thing the close does — so the host reports where it
+      // stopped and goes, instead of leaving the suite to time out blind.
+      step("service.close did not finish");
+      report({ closed: false, terminals: 0, exited: exits.length, stalledAt: "service.close" });
+      return;
+    }
+    if (outcome !== "closed") throw outcome;
     step("terminals exited");
     await Promise.all(exits);
     step("apiHost.close");
@@ -89,10 +123,7 @@ async function close() {
     // under load that was enough for the suite's shutdown hook to miss its
     // deadline. The callback runs once the message has been flushed, so the
     // report is not lost by exiting here.
-    process.send?.({ closed: true, terminals: 0, exited: exits.length }, () => {
-      process.disconnect?.();
-      process.exit(0);
-    });
+    report({ closed: true, terminals: 0, exited: exits.length });
   })();
   return closing;
 }

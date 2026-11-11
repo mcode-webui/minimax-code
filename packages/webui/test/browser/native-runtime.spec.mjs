@@ -52,7 +52,13 @@ test.afterAll(async () => {
     30_000,
     () => new Error(`the native host did not finish closing\n${logs}`),
   );
-  expect(message).toMatchObject({ closed: true, terminals: 0 });
+  // The host reports the step it stopped at when its own shutdown does not
+  // finish, so a stall says which step it was instead of leaving the hook
+  // with a bare timeout and no way to tell what is stuck.
+  expect(
+    message,
+    `the native host did not close${message?.stalledAt ? ` (stalled at ${message.stalledAt})` : ""}\n${logs}`,
+  ).toMatchObject({ closed: true, terminals: 0 });
   expect(message.exited).toBeGreaterThanOrEqual(6);
   // Once the host has said it closed, it has nothing left to do and it must
   // be gone. Node-pty's Windows console-list helper cannot attach to a

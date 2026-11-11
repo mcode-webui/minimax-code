@@ -119,11 +119,19 @@ export async function openApp(page, hash = "#session=A", options = {}) {
     const faces = await Promise.all([
       document.fonts.load('14px "HarmonyOS Sans"'),
       document.fonts.load('14px "Hack"'),
+      // The wordmark is a web font the client carries, and its font-display
+      // is block: until that face is ready the mark is not painted at all.
+      // A screenshot taken inside that window records a blank mark, so the
+      // face has to be settled before the client is measured.
+      document.fonts.load('14px "MiniMax Wordmark"'),
     ]);
     await document.fonts.ready;
     return faces.map((fonts) => fonts.length);
   });
-  expect(loadedFonts, "both pinned browser fonts must load before measuring the client").toEqual([1, 1]);
+  expect(
+    loadedFonts,
+    "the pinned browser fonts and the bundled wordmark face must load before measuring the client",
+  ).toEqual([1, 1, 1]);
   // Register the frame wait before advancing a deliberately frozen test clock.
   await page.evaluate(() => {
     window.__webuiInitialLayoutReady = new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

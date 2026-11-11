@@ -48,9 +48,18 @@ test(`usage hover keeps the subscription label stable during refresh (${theme})`
     new MutationObserver(() => window.__railLabelChanges.push(element.querySelector("small")?.textContent ?? null)).observe(element, { childList: true, subtree: true, characterData: true });
   });
   const requestsBefore = await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length);
+  const points = await page.evaluate(() => {
+    const center = (testId) => {
+      const element = document.querySelector(`[data-testid="${testId}"]`);
+      if (!element) throw new Error(`Missing menu item: ${testId}`);
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    };
+    return { settings: center("user-menu-settings"), usage: center("user-menu-usage") };
+  });
   for (let index = 0; index < 12; index += 1) {
-    await page.getByTestId("user-menu-settings").hover();
-    await usage.hover();
+    await page.mouse.move(points.settings.x, points.settings.y);
+    await page.mouse.move(points.usage.x, points.usage.y);
   }
   expect(await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length)).toBe(requestsBefore);
   expect(await page.evaluate(() => window.__railLabelChanges.filter((label) => label !== "Explore"))).toEqual([]);

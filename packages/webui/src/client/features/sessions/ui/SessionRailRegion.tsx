@@ -97,7 +97,7 @@ export function SessionRailRegion(props: {
         </div> : null}
         <div className="relative min-h-0 flex-1" hidden={props.collapsed}>
           <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
-            <WebuiStack gap="hairline" className="pb-3">
+            <WebuiStack gap="hairline" className="pb-0.5">
               <WebuiFileInput ref={props.importInputRef} accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" onChange={props.onImportPicked} />
               <div className="webui-rail-command-group">
                 <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />

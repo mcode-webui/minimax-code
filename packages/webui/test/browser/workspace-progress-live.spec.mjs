@@ -91,6 +91,36 @@ test("environment loading skeleton geometry", async ({ page }, testInfo) => {
   await testInfo.attach("environment-loading", { body: await environment.screenshot(), contentType: "image/png" });
 });
 
+for (const theme of ["light", "dark"]) {
+test(`compact progress fits its contents without clipping terminal hover (${theme})`, async ({ page }) => {
+  await page.addInitScript(value => window.localStorage.setItem("webui-theme", value), theme);
+  await configureFixture(page, () => window.__fixture.setResponse("getWorkspaceEnvironment", { isGitRepo: true, branch: "synthetic-progress-layout", changedFiles: 1, insertions: 3, deletions: 1, lineStatsStatus: "ready" }));
+  await openApp(page);
+  await attachLiveTurn(page);
+  await emitAgentMessage(page, "A", { msg_id: "compact-todos", msg_content: JSON.stringify({ eventType: "todo_updated", todos: Array.from({ length: 4 }, (_, index) => ({ content: `已完成步骤 ${index + 1}`, status: "completed" })) }) });
+  const terminal = page.getByRole("button", { name: "打开终端", exact: true });
+  await expect(page.locator(".webui-environment-panel")).toContainText("synthetic-progress-layout");
+  await terminal.hover();
+  const geometry = await page.locator(".webui-progress-overview-card").evaluate(card => {
+    const environment = card.querySelector(".webui-environment-panel").getBoundingClientRect();
+    const action = [...card.querySelectorAll(".webui-environment-action")].at(-1).getBoundingClientRect();
+    const rows = card.querySelectorAll(".webui-progress-row");
+    if (rows.length !== 4) throw new Error(`Expected four todos, got ${rows.length}`);
+    const last = rows[3].getBoundingClientRect();
+    const progress = card.querySelector(".webui-progress-panel").getBoundingClientRect();
+    const button = [...card.querySelectorAll(".webui-environment-action")].at(-1);
+    let clippingBottom = environment.bottom;
+    for (let parent = button.parentElement; parent && card.contains(parent); parent = parent.parentElement) {
+      if (getComputedStyle(parent).overflowY !== "visible") clippingBottom = Math.min(clippingBottom, parent.getBoundingClientRect().bottom);
+    }
+    return { clipped: action.bottom - clippingBottom, blank: progress.bottom - last.bottom };
+  });
+  expect(geometry.clipped).toBeLessThanOrEqual(0);
+  expect(geometry.blank).toBeLessThanOrEqual(12);
+  await page.locator(".webui-progress-overview-card").screenshot({ path: test.info().outputPath(`compact-progress-${theme}.png`), animations: "disabled" });
+});
+}
+
 test("the open terminal action uses a terminal icon", async ({ page }) => {
   await configureFixture(page, () => window.__fixture.setResponse("getWorkspaceEnvironment", {
     isGitRepo: true,
@@ -106,6 +136,39 @@ test("the open terminal action uses a terminal icon", async ({ page }) => {
   const action = page.getByRole("button", { name: "打开终端" });
   await expect(action).toBeVisible();
   await expect(action.locator("svg path")).toHaveCount(3);
+});
+
+test("environment and progress collapse through the shared disclosure height animation", async ({ page }) => {
+  await configureFixture(page, () => window.__fixture.setResponse("getWorkspaceEnvironment", { isGitRepo: true, branch: "synthetic-motion", changedFiles: 0, insertions: 0, deletions: 0, lineStatsStatus: "ready" }));
+  await openApp(page);
+  await attachLiveTurn(page);
+  await emitAgentMessage(page, "A", { msg_id: "motion-todos", msg_content: JSON.stringify({ eventType: "todo_updated", todos: Array.from({ length: 4 }, (_, index) => ({ content: `步骤 ${index + 1}`, status: "pending" })) }) });
+  await expect(page.locator(".webui-progress-row")).toHaveCount(4);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  for (const selector of [".webui-environment-panel", ".webui-progress-panel"]) {
+    const section = page.locator(selector);
+    for (const expanded of [true, false]) {
+    await section.evaluate(element => {
+      window.__sectionMotionDone = false;
+      window.__sectionHeights = [];
+      element.querySelector(".webui-workspace-section-title").addEventListener("click", () => {
+        const start = performance.now();
+        const sample = () => {
+          window.__sectionHeights.push(element.getBoundingClientRect().height);
+          if (performance.now() - start < 300) requestAnimationFrame(sample);
+          else window.__sectionMotionDone = true;
+        };
+        sample();
+      }, { once: true });
+    });
+    await section.getByRole("button", { expanded }).first().click();
+    await expect.poll(() => page.evaluate(() => window.__sectionMotionDone)).toBe(true);
+    const heights = await page.evaluate(() => window.__sectionHeights);
+    const initial = heights[0], final = heights.at(-1);
+    expect(Math.abs(initial - final)).toBeGreaterThan(20);
+    expect(heights.filter(height => height > Math.min(initial, final) + 1 && height < Math.max(initial, final) - 1).length, JSON.stringify(heights)).toBeGreaterThan(1);
+    }
+  }
 });
 
 test("the workspace commit dialog completes the shared exit motion before unmounting", async ({ page }) => {

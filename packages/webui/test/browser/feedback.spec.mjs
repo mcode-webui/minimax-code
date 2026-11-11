@@ -68,8 +68,10 @@ test("a dynamic field error is announced once and stays associated with its cont
   expect(alertId, "the error has an id a control can point at").toBeTruthy();
   expect(describedBy.split(" "), "the control is described by the error").toContain(alertId);
   await expect(endpoint).toHaveAttribute("aria-invalid", "true");
-  // This production dialog enables Escape and leaves backdrop dismissal off.
+  // The shared dialog dismisses on backdrop clicks by default.
   await page.mouse.click(6, 6);
+  await expect(form).toHaveCount(0);
+  await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: "添加模型", exact: true }).click();
   await expect(form).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(form).toHaveCount(0);

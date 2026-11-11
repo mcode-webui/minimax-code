@@ -34,10 +34,37 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHarnessPortFromHost } from "../../src/runtime/harness/adapter.js";
 import { checkWorkspaceFence } from "../../src/runtime/workspace-real-path.js";
+import { createWorkspaceAdapter } from "../../src/runtime/harness/workspace.js";
 
 /** Fixtures live in the OS temp dir; nothing is written into the repo tree. */
 let root = "";
 let workspace = "";
+
+describe("workspace file reference completion", () => {
+  function reader(matches: string[]) {
+    const readWorkspaceFile = vi.fn(async ({ path }: { path: string }) => path === "packages/webui/docs/design.md"
+      ? { type: "text", content: "# Architecture" }
+      : { type: "binary", content: "", error: "Path traversal denied" });
+    const searchWorkspaceFiles = vi.fn(async () => matches);
+    const adapter = createWorkspaceAdapter({ apiHost: { close: async () => {} }, cliService: { readWorkspaceFile, searchWorkspaceFiles } as never });
+    return { adapter, readWorkspaceFile, searchWorkspaceFiles };
+  }
+
+  it("completes a unique nested suffix and returns the actual path", async () => {
+    const { adapter, readWorkspaceFile } = reader(["other/design.md", "packages/webui/docs/design.md"]);
+    await expect(adapter.readWorkspaceFile({ workspaceDir: "/repo", path: "docs/design.md" })).resolves.toEqual({ type: "text", content: "# Architecture", resolvedPath: "packages/webui/docs/design.md" });
+    expect(readWorkspaceFile).toHaveBeenLastCalledWith({ workspaceDir: "/repo", path: "packages/webui/docs/design.md" });
+  });
+
+  it("does not guess among duplicate suffixes or search traversal paths", async () => {
+    const { adapter, readWorkspaceFile, searchWorkspaceFiles } = reader(["a/docs/design.md", "b/docs/design.md"]);
+    await expect(adapter.readWorkspaceFile({ workspaceDir: "/repo", path: "docs/design.md" })).resolves.toMatchObject({ error: "工作区中有多个匹配 docs/design.md 的文件，请使用完整相对路径。" });
+    expect(readWorkspaceFile).toHaveBeenCalledTimes(1);
+    searchWorkspaceFiles.mockClear();
+    await expect(adapter.readWorkspaceFile({ workspaceDir: "/repo", path: "../design.md" })).resolves.toMatchObject({ error: "Path traversal denied" });
+    expect(searchWorkspaceFiles).not.toHaveBeenCalled();
+  });
+});
 
 const layout = { x: 0, y: 0, width: 1, height: 1, zIndex: 0 };
 

@@ -142,7 +142,7 @@ export function SettingsDialog({
   testId,
   width = "narrow",
   variant = "default",
-  dismissOnMaskClick = false,
+  dismissOnMaskClick,
 }: {
   readonly open?: boolean;
   readonly title: string;
@@ -160,10 +160,8 @@ export function SettingsDialog({
   /**
    * Whether a click on the scrim closes the dialog.
    *
-   * The dialogs that carry a close button in their header do not need this:
-   * they say how to leave. A preview that shows the image it is about to save
-   * has no such button, so the scrim is the way out — clicking anywhere
-   * outside the preview dismisses it.
+   * Omitted values inherit the shared dialog's backdrop policy. An explicit
+   * value also preserves this wrapper's legacy Escape-key override.
    */
   readonly dismissOnMaskClick?: boolean;
 }): ReactElement {
@@ -184,7 +182,7 @@ export function SettingsDialog({
       title={title}
       onClose={onClose}
       width={width === "wide" ? "standard" : "compact"}
-      dismissOnEscape={dismissOnMaskClick}
+      dismissOnEscape={dismissOnMaskClick ?? false}
       dismissOnBackdrop={dismissOnMaskClick}
       portalTarget={dom.portalTarget()}
       testId={testId}

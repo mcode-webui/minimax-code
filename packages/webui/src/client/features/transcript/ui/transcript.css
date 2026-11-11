@@ -564,7 +564,7 @@
    * (`styles/markdown.css`), because three businesses render it. */
   .webui-delivered-assets { margin: var(--spacing_8) 0; padding-left: var(--spacing_24); list-style: disc; }
   .webui-delivered-asset { color: var(--text_default_secondary); }
-  .webui-delivered-asset-icon { margin-right: 5px; }
+  .webui-delivered-asset-icon { flex-shrink: 0; }
   .webui-delivered-asset-caption { color: var(--text_default_secondary); }
   .webui-delivered-asset-deleted { margin-left: var(--spacing_8); color: var(--text_default_tertiary); font-size: var(--size_12); }
 

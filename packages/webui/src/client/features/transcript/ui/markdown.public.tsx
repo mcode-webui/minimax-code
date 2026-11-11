@@ -319,7 +319,7 @@ function inline(tokens: readonly Token[] | undefined, onOpenFile?: (reference: N
       const fileIcon = fileReferenceEmoji(extension);
       const previousToken = tokens?.[index - 1];
       const hasExistingIcon = previousToken?.type === "text" && (previousToken as Token & { readonly text: string }).text.trim() === fileIcon;
-      return isSafeWebuiMarkdownHref(token.href) ? (
+      return fileReference || isSafeWebuiMarkdownHref(token.href) ? (
         fileReference ? fileReferenceAnchor(key, token.href, fileReference, onOpenFile!, !hasExistingIcon) : <a key={key} href={token.href} rel="noreferrer">
           {/* The label was tokenized by marked already. Re-lexing it here would
               re-emit an autolink inside this anchor — `<a>` inside `<a>`. */}

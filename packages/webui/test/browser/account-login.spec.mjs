@@ -33,6 +33,39 @@ test.beforeEach(async ({ page }) => {
   page.on("console", (message) => { if (message.type() === "error") console.error("BROWSER_CONSOLE_ERROR", message.text()); });
 });
 
+for (const theme of ["light", "dark"]) {
+test(`usage hover keeps the subscription label stable during refresh (${theme})`, async ({ page }) => {
+  await page.addInitScript((value) => window.localStorage.setItem("webui-theme", value), theme);
+  await configureFixture(page, () => window.__fixture.setUsageQuotaResult({ signedIn: true, hasTokenPlan: true, tokenPlanTier: "Explore" }));
+  await openApp(page);
+  const trigger = page.getByTestId("sidebar-user-menu-trigger");
+  await trigger.click();
+  const usage = page.getByTestId("user-menu-usage");
+  await usage.hover();
+  await expect(trigger.locator("small")).toHaveText("Explore");
+  await trigger.evaluate((element) => {
+    window.__railLabelChanges = [];
+    new MutationObserver(() => window.__railLabelChanges.push(element.querySelector("small")?.textContent ?? null)).observe(element, { childList: true, subtree: true, characterData: true });
+  });
+  const requestsBefore = await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length);
+  for (let index = 0; index < 12; index += 1) {
+    await page.getByTestId("user-menu-settings").hover();
+    await usage.hover();
+  }
+  expect(await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length)).toBe(requestsBefore);
+  expect(await page.evaluate(() => window.__railLabelChanges.filter((label) => label !== "Explore"))).toEqual([]);
+  await page.mouse.move(700, 150);
+  await expect(page.getByTestId("usage-popover")).toHaveCount(0);
+  await page.evaluate(() => window.__fixture.delayEvery("getUsageQuota", {}));
+  await usage.hover();
+  await expect(page.getByTestId("usage-popover-loading")).toBeVisible();
+  await expect(trigger.locator("small")).toHaveText("Explore");
+  await page.screenshot({ path: test.info().outputPath(`subscription-refresh-${theme}.png`), animations: "disabled" });
+  await page.evaluate(() => window.__fixture.resolveAllPending("getUsageQuota", {}, { signedIn: true, hasTokenPlan: true, tokenPlanTier: "Build" }));
+  await expect(trigger.locator("small")).toHaveText("Build");
+});
+}
+
 const loginPage = (page) => page.locator('[data-testid="account-login-page"]');
 
 async function openFromUserMenu(page, testId) {

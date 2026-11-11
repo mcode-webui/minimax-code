@@ -27,6 +27,10 @@
 // No test in this repository can, and the plan no longer implies one does.
 
 import { once } from "node:events";
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import type { RawData } from "ws";
@@ -41,6 +45,10 @@ import type {
 import type { WebuiSessionPage } from "../../src/shared/contracts/session.js";
 import { createWebuiWire, type WebuiSocket } from "../../src/client/platform/wire.js";
 import { createWebuiSettingsWorkflows } from "../../src/client/features/settings/application/settings-workflows.js";
+import { createWorkspaceAdapter } from "../../src/runtime/harness/workspace.js";
+import { readWorkspaceFile } from "../../../local-runtime-v2/src/service/workspace/operations/workspace-path.js";
+import { parseWebuiMessageFileReference } from "../../src/client/features/transcript/projection/message-file-reference.js";
+import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/features/workspace/projection/workspace-panel-state.js";
 
 interface TestPort extends WebuiHarnessPort {
   /** Every harness method the run actually reached, in call order. */
@@ -252,6 +260,96 @@ describe("loopback to harness-port evidence", () => {
   afterEach(async () => {
     await service?.close();
     service = undefined;
+  });
+
+  it("the development entry acknowledges shutdown and exits its isolated process", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "webui-dev-shutdown-"));
+    await writeFile(path.join(directory, "config.yaml"), "beta:\n  mcodeTools: false\n");
+    const child = spawn(process.execPath, ["--import", "tsx/esm", "scripts/run-webui-server.mjs"], {
+      cwd: process.cwd(),
+      env: { ...process.env, MINIMAX_DATA_DIR: directory, WEBUI_SERVER_TSX: "1", WEBUI_SERVER_PORT: "0", WEBUI_MINIAPP_PORT: "0", WEBUI_HOST: "127.0.0.1", TSX_TSCONFIG_PATH: path.resolve("tsconfig.standalone.json") },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const exited = once(child, "exit");
+    // The launcher prints its synthetic credential. Capture it for the request,
+    // but never include the process output in test diagnostics.
+    let output = "";
+    child.stderr.resume();
+    const ready = new Promise<{ port: string; token: string }>((resolve, reject) => {
+      child.on("error", reject);
+      child.stdout.on("data", (chunk) => {
+        output += String(chunk);
+        const port = output.match(/server listening at ws:\/\/127\.0\.0\.1:(\d+)/u)?.[1];
+        const token = output.match(/credential token: (\S+)/u)?.[1];
+        if (port && token) resolve({ port, token });
+      });
+      child.once("exit", (code) => reject(new Error(`Development server exited before readiness (${code})`)));
+    });
+    const bounded = async <T,>(work: Promise<T>, label: string): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try { return await Promise.race([work, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(label)), 20_000); })]); }
+      finally { clearTimeout(timer); }
+    };
+    try {
+      const { port, token } = await bounded(ready, "Development server did not become ready");
+      const unauthorized = await fetch(`http://127.0.0.1:${port}/webui-shutdown`, { method: "POST" });
+      expect(unauthorized.status).toBe(401);
+      expect(child.exitCode).toBeNull();
+      const response = await fetch(`http://127.0.0.1:${port}/webui-shutdown?token=${encodeURIComponent(token)}`, { method: "POST" });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: true, closing: true });
+      expect(await bounded(exited, "Development server did not exit after shutdown")).toEqual([0, null]);
+      await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow();
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGTERM");
+        await bounded(exited, "Development server cleanup timed out");
+      }
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 45_000);
+
+  it("opens an external absolute reference through the real file reader and authenticated byte route", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "webui-file-reference-"));
+    const workspaceDir = path.join(directory, "repo");
+    const artifacts = path.join(directory, "artifacts");
+    try {
+      await mkdir(workspaceDir);
+      await mkdir(artifacts);
+      await writeFile(path.join(artifacts, "design.md"), "# External architecture\n");
+      const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC", "base64");
+      await writeFile(path.join(artifacts, "图 1.png"), image);
+      // Only the CliService shell is supplied. The file read below is the
+      // production filesystem implementation, with its real-path checks.
+      const adapter = createWorkspaceAdapter({ apiHost: { close: async () => {} }, cliService: {
+        readWorkspaceFile: ({ workspaceDir, path }: { workspaceDir: string; path: string }) => readWorkspaceFile(workspaceDir, path),
+      } as never });
+      const port = { ...scriptedPort(), readWorkspaceFile: adapter.readWorkspaceFile };
+      service = new WebuiService({ port, operations: createOperationRegistry(port), credential: { token: "external-file-synthetic-token" } });
+      const info = await service.start();
+      const wire = createWebuiWire({ websocketUrl: `ws://127.0.0.1:${info.tcpPort}`, token: info.credential.token, webSocket: LoopbackSocket });
+      const reference = parseWebuiMessageFileReference(`${path.join(artifacts, "design.md")}:1`, workspaceDir)!;
+      const state = reduceWorkspacePanelState(initialWorkspacePanelState, { type: "open-file", sessionId: "external-file", workspaceDir, ...reference });
+      const content = state.tabs[0]?.content;
+      if (content?.kind !== "file-preview") throw new Error("External link did not open a file tab");
+      expect(content).toMatchObject({ workspaceDir: artifacts, path: "design.md", lineStart: 1 });
+      await expect(wire.request("readWorkspaceFile", { workspaceDir: content.workspaceDir, path: content.path })).resolves.toEqual({ type: "text", content: "# External architecture\n" });
+      const url = wire.workspaceFileUrl({ workspaceDir, path: path.join(artifacts, "图 1.png") });
+      const response = await fetch(url);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(image);
+      const range = await fetch(url, { headers: { Range: "bytes=0-7" } });
+      expect(range.status).toBe(206);
+      expect(Buffer.from(await range.arrayBuffer())).toEqual(image.subarray(0, 8));
+      const denied = new URL(url);
+      denied.searchParams.delete("token");
+      expect((await fetch(denied)).status).toBe(401);
+    } finally {
+      await service?.close();
+      service = undefined;
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("V20 reconciles a committed mutation after the real socket loses its response, without retrying", async () => {

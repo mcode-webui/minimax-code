@@ -24,7 +24,12 @@ Workspace file references and delivered-file rows share the same inline media re
 (including SVG and PNG), supported video and audio files render their contents in the transcript;
 video and audio use native controls without autoplay. Markdown image syntax and recognized bare
 media filenames in inline code use the same workspace resource path. Non-media files keep links.
-Remote HTTP(S) media and paths outside the current workspace are not automatically previewed.
+Remote HTTP(S) media are not automatically previewed. Explicit absolute local paths also work
+outside the session workspace: the file tab and authenticated media URL use the named file's
+containing directory as their read root. Relative traversal paths remain invalid.
+
+Delivered-file rows keep their icon and display name together, including when a reference cannot
+be opened. The icon type comes from the source filename, independently of a human-readable caption.
 
 The host serves actual workspace bytes with byte-range support. A transient media load failure
 retries a bounded number of times; content synchronization and media-byte availability remain
@@ -69,6 +74,12 @@ Pinned by `test/unit/markdown-codeblock-c2-line-numbers.test.tsx`.
 - A reference of the form `` `path/to/file.ts:120` `` renders as a clickable anchor carrying the
   line number, not as literal text.
 - Clicking it invokes `onOpenFile` with the parsed reference.
+- Absolute local references outside the workspace retain their absolute identity until the file
+  tab or media URL splits them into directory and filename. Existing workspace-relative references
+  keep their original meaning.
+- If a relative path with directories is absent, the runtime adapter may complete a unique,
+  segment-aligned suffix from workspace search. Ambiguous or truncated search results do not pick
+  a file. Bare-filename references retain their existing workspace search behavior.
 - A bare `` `file.ts` `` with no line number is still a valid reference.
 - A string that merely contains a colon is not turned into a reference.
 

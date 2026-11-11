@@ -244,7 +244,7 @@
     "features/ssh/ui/ssh-project-form.tsx": "b59f1441d12996fe",
     "features/ssh/ui/ssh-terminal-view.tsx": "4c0a7e868fbb2385",
     "features/transcript/ui/ActivityIndicator.tsx": "62617f06c98fb736",
-    "features/transcript/ui/AssistantBody.tsx": "1edefc4b411f88ce",
+    "features/transcript/ui/AssistantBody.tsx": "a1e529566f24253f",
     "features/transcript/ui/DiffCard.tsx": "c709d0876003513b",
     "features/transcript/ui/MessageActions.tsx": "1ba0f1ea77f9c3f2",
     "features/transcript/ui/MessageAttachments.tsx": "e06226b8d10d3d3e",

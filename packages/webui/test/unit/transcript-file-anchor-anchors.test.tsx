@@ -61,6 +61,13 @@ const markdownSource = readFileSync(
 );
 
 describe("SPEC-C C-5 transcript file/line anchors", () => {
+  it("retains an absolute file outside the workspace, including its line target", () => {
+    expect(parseWebuiMessageFileReference("/artifacts/design.md:12", "/repo")).toEqual({ path: "/artifacts/design.md", lineStart: 12 });
+    expect(parseWebuiMessageFileReference("C:/artifacts/design.md", "C:/repo")).toEqual({ path: "C:/artifacts/design.md" });
+    expect(parseWebuiMessageFileReference("/artifacts/../secret.md", "/repo")).toBeUndefined();
+    expect(render("[Design](/artifacts/design.md:12)", () => undefined)).toContain('data-webui-file-reference="/artifacts/design.md"');
+    expect(render("[Design](C:/artifacts/design.md)", () => undefined)).toContain('data-webui-file-reference="C:/artifacts/design.md"');
+  });
   it("renders a recognized inline-code path with a line number as a clickable file reference", () => {
     const html = render("See `path/to/file.ts:120` for the failing case.", () => undefined);
 
@@ -220,7 +227,7 @@ describe("media file links", () => {
     expect(renderServed("`schema.table_name`")).not.toContain("data-webui-file-media");
   });
 
-  it("never requests remote or outside-workspace image bytes", () => {
+  it("never requests remote, traversing or unsafe image references", () => {
     expect(renderServed("![Remote](https://example.invalid/picture.png)")).not.toContain("<img");
     expect(renderServed("![Outside](../picture.png)")).not.toContain("<img");
     expect(renderServed("![Unsafe](javascript:alert(1))")).not.toContain("<img");

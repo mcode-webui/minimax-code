@@ -16,10 +16,12 @@ process.env.WEBUI_BROWSER_SERVER_ID = serverId;
 // under a fontconfig that exposes only the font files committed to
 // `packages/webui/test/browser/fonts/`, so the rendering depends on this
 // repository and on nothing else.
+// Playwright clears outputDir before running. Runtime diagnostics and the
+// fontconfig prepared while loading this config must live outside that tree.
 const outputDirectory =
-  process.env.WEBUI_BROWSER_OUTPUT_DIR ?? "/tmp/minimax-webui-browser-results";
+  process.env.WEBUI_PLAYWRIGHT_OUTPUT_DIR ?? "/tmp/minimax-webui-playwright-results";
 const fontEnvironment = prepareFontEnvironment(root, {
-  cacheDirectory: outputDirectory,
+  cacheDirectory: process.env.WEBUI_BROWSER_FONT_CACHE_DIR ?? "/tmp/minimax-webui-browser-font-cache",
 });
 
 // `reuseExistingServer` is opt-in. Playwright only probes the url for

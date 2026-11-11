@@ -2018,11 +2018,12 @@ describe('LocalPermissionFacade', () => {
     });
 
     it('write to a path inside dataDir still ASKs (sandbox is read-only)', async () => {
-      const { facade, dataDir } = freshFacade({ permissionMode: 'default' });
+      const { facade, dataDir } = freshFacade({ permissionMode: 'default', workspaceDir: '/synthetic-workspace' });
       try {
         const r = await facade.checkPermission({
           toolName: 'write',
           input: { path: path.join(dataDir, 'skills', 'generated', 'SKILL.md') },
+          agentName: 'synthetic-agent',
         });
         // Writes to dataDir go through normal review. The sandbox
         // auto-allow is scoped to READ-ONLY tools because fs-permission's
@@ -2118,7 +2119,7 @@ describe('LocalPermissionFacade', () => {
 
   describe('turn-scoped trusted exact writes', () => {
     it('allows only the supplied exact Plan target without persisting a rule', async () => {
-      const { facade, ruleStore, dataDir } = freshFacade({ permissionMode: 'default' });
+      const { facade, ruleStore, dataDir } = freshFacade({ permissionMode: 'default', workspaceDir: '/synthetic-workspace' });
       const planPath = path.join(dataDir, 'v2', 'sessions', 'session-a', 'artifacts', 'plan.md');
       try {
         await expect(
@@ -2126,6 +2127,7 @@ describe('LocalPermissionFacade', () => {
             toolName: 'write',
             input: { path: planPath, content: '# Plan' },
             sessionId: 'session-a',
+            agentName: 'synthetic-agent',
             trustedExactWritePaths: [planPath],
           }),
         ).resolves.toMatchObject({ behavior: 'allow' });
@@ -2134,6 +2136,7 @@ describe('LocalPermissionFacade', () => {
             toolName: 'write',
             input: { path: `${planPath}.bak`, content: '# Escape' },
             sessionId: 'session-a',
+            agentName: 'synthetic-agent',
             trustedExactWritePaths: [planPath],
           }),
         ).resolves.toMatchObject({ behavior: 'ask' });

@@ -275,6 +275,9 @@ describe("the browser extension download", () => {
     expect(wire.workspaceFileUrl({ workspaceDir: "/w", path: "a.ts" })).toBe(
       "https://runtime.example:8443/workspace-file?dir=%2Fw&path=a.ts&token=fixture-token",
     );
+    expect(wire.workspaceFileUrl({ workspaceDir: "/w", path: "/artifacts/图 1.png" })).toBe(
+      "https://runtime.example:8443/workspace-file?dir=%2Fartifacts&path=%E5%9B%BE+1.png&token=fixture-token",
+    );
     expect(wire.miniappStandaloneUrl({ pluginId: "p" })).toBe(
       "https://runtime.example:8443/miniapp?token=fixture-token&plugin=p",
     );

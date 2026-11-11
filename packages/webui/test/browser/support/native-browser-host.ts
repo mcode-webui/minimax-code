@@ -89,9 +89,17 @@ async function close() {
       });
     };
     step("service.close");
+    // The service announces each owner before it awaits it, so the host can
+    // say which owner the shutdown is waiting on. A stall that names its
+    // owner is the difference between "the service close did not finish" and
+    // "the harness port did not finish".
+    let owner = "service.close";
     const outcome = await new Promise<typeof STALLED | "closed" | unknown>((resolve) => {
       const timer = setTimeout(() => resolve(STALLED), SERVICE_CLOSE_DEADLINE_MS);
-      service.close().then(
+      service.close((closing) => {
+        owner = closing;
+        step(`owner ${closing}`);
+      }).then(
         () => { clearTimeout(timer); resolve("closed"); },
         (error: unknown) => { clearTimeout(timer); resolve(error); },
       );
@@ -100,8 +108,8 @@ async function close() {
       // The service close did not answer. The terminals were already killed —
       // that is the first thing the close does — so the host reports where it
       // stopped and goes, instead of leaving the suite to time out blind.
-      step("service.close did not finish");
-      report({ closed: false, terminals: 0, exited: exits.length, stalledAt: "service.close" });
+      step(`service.close did not finish (at ${owner})`);
+      report({ closed: false, terminals: 0, exited: exits.length, stalledAt: owner });
       return;
     }
     if (outcome !== "closed") throw outcome;

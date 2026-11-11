@@ -1,6 +1,6 @@
 import type { WebuiTurnDiffView } from "../../../../shared/contracts/session.js";
 import type { WebuiBrowserTargetId } from "../../../../shared/contracts/browser.js";
-import { basenamePath } from "../../../projection/common/paths.js";
+import { absoluteFileLocation, basenamePath, isAbsolutePath } from "../../../projection/common/paths.js";
 
 // ---------------------------------------------------------------------------
 // The tab-kind registry. The kinds used to be enumerated in three places — the
@@ -489,12 +489,15 @@ function replaceTabContent(
 export function reduceWorkspacePanelState(state: WorkspacePanelState, command: WorkspacePanelCommand): WorkspacePanelState {
   switch (command.type) {
     case "open-file": {
-      const path = command.path.replace(/\\/gu, "/").replace(/^\.\//u, "");
+      const absolute = absoluteFileLocation(command.path);
+      if (isAbsolutePath(command.path) && !absolute) return state;
+      const path = absolute?.path ?? command.path.replace(/\\/gu, "/").replace(/^\.\//u, "");
+      const workspaceDir = absolute?.workspaceDir ?? command.workspaceDir;
       if (!path || path.startsWith("/") || path.split("/").some((part) => part === ".." || part === "")) return state;
       const content: WebuiWorkspaceTabContent = {
         kind: "file-preview",
         sessionId: command.sessionId,
-        workspaceDir: command.workspaceDir,
+        workspaceDir,
         path,
         ...(command.lineStart !== undefined ? { lineStart: command.lineStart } : {}),
         ...(command.lineEnd !== undefined ? { lineEnd: command.lineEnd } : {}),
@@ -508,7 +511,7 @@ export function reduceWorkspacePanelState(state: WorkspacePanelState, command: W
           candidate.kind === "file-preview" &&
           candidate.path === path &&
           candidate.sessionId === command.sessionId &&
-          candidate.workspaceDir === command.workspaceDir,
+          candidate.workspaceDir === workspaceDir,
       );
       if (existing) return activate(state, { ...existing, content });
       return openNewTab(state, content);

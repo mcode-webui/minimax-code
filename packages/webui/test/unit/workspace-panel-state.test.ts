@@ -314,6 +314,11 @@ describe("right workspace panel navigation", () => {
     expect(source).toContain('class="webui-file-code"');
   });
 
+  it("opens an absolute file through its containing directory and preserves line selection", () => {
+    const state = reduceWorkspacePanelState(initialWorkspacePanelState, { type: "open-file", sessionId: "s1", workspaceDir: "/repo", path: "/artifacts/design.md", lineStart: 12 });
+    expect(state.tabs[0]?.content).toEqual({ kind: "file-preview", sessionId: "s1", workspaceDir: "/artifacts", path: "design.md", lineStart: 12 });
+  });
+
   it("isolates identical relative files by session and workspace and rejects traversal", () => {
     let state = initialWorkspacePanelState;
     state = reduceWorkspacePanelState(state, { type: "open-file", sessionId: "s1", workspaceDir: "/a", path: "index.ts" });
@@ -332,6 +337,18 @@ describe("right workspace panel navigation", () => {
     expect(state.tabs.map((tab) => tab.content.kind)).toEqual(["review", "review"]);
     expect(state.tabs.map((tab) => (tab.content.kind === "review" ? tab.content.source : undefined))).toEqual(["workspace", "turn"]);
     expect(state.tabs[1]?.content).toMatchObject({ source: "turn", messageId: "group-1", assistantMessageId: "assistant-9", turnId: "turn-3", changeSetId: "change-7" });
+  });
+
+  it("does not mislabel a failed source-file read as binary content", () => {
+    const content = { kind: "file-preview" as const, sessionId: "s1", workspaceDir: "/repo", path: "missing.ts" };
+    const markup = renderToStaticMarkup(createElement(WebuiFilePreview, { tabId: "missing", content, codeMode: true, result: { loading: false, content: { type: "binary", content: "", error: "Path traversal denied" } } }));
+    expect(markup).not.toContain("无法在文本预览中显示二进制文件");
+  });
+
+  it("uses the completed file path for media bytes", () => {
+    const content = { kind: "file-preview" as const, sessionId: "s1", workspaceDir: "/repo", path: "out/chart.png" };
+    const markup = renderToStaticMarkup(createElement(WebuiFilePreview, { tabId: "chart", content, codeMode: false, result: { loading: false, content: { type: "binary", content: "", mimeType: "image/png", resolvedPath: "packages/webui/out/chart.png" } }, workspaceFileUrl: ({ path }) => `/file?path=${path}` }));
+    expect(markup).toContain('src="/file?path=packages/webui/out/chart.png"');
   });
 
   it("parses only safe workspace file references and preserves line ranges", () => {

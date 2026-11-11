@@ -249,6 +249,13 @@ contract.
   is scoped to the shell, so a page-level form keeps the field contract's own scale. Popovers and
   menus stay non-modal. The app-wide Settings host keeps its page-like full-viewport layout as a
   documented exception.
+  Clicking the backdrop dismisses a dialog by default. A caller that must block dismissal
+  passes `dismissOnBackdrop={false}` or gates `onClose` while its command is running.
+  Escape dismissal remains opt-in. The settings dialog wrapper inherits the backdrop default.
+- **Progress overview sections size to their content.** The environment keeps every action visible;
+  short todo lists do not reserve the long-list height. Todo and subagent lists retain bounded
+  scrolling. `WebuiDisclosure` owns the animated body height; section shells must not impose a
+  competing collapsed height or flex basis.
 - **Repeated generic grouping uses `WebuiInline` and `WebuiStack`.** They own direction, alignment,
   main-axis distribution (start/center/end/between), inline formatting and named spacing steps
   (`hairline`, `micro`, `tight`, `compact`, `small`, `medium`, `roomy`, `large`). `compact` maps to the shared 6px spacing token. Alignment also includes `baseline` for text-centered inline groups. Callers keep content-specific width, clipping,

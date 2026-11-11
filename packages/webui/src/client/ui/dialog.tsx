@@ -51,6 +51,7 @@ export interface WebuiDialogProps {
   readonly closeLabel?: string;
   readonly closeTestId?: string;
   readonly dismissOnEscape?: boolean;
+  /** Defaults to true; pass false when dismissal must be blocked. */
   readonly dismissOnBackdrop?: boolean;
   readonly width?: WebuiDialogWidth;
   readonly portalTarget: HTMLElement | null;
@@ -108,7 +109,7 @@ export function WebuiDialog({
   closeLabel = "关闭",
   closeTestId,
   dismissOnEscape = false,
-  dismissOnBackdrop = false,
+  dismissOnBackdrop = true,
   width = "standard",
   portalTarget,
   testId,

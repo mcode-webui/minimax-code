@@ -121,25 +121,28 @@ export function createWorkspaceAdapter(
       if (
         result.type !== "binary" ||
         result.error !== "Path traversal denied" ||
-        request.path.includes("/") ||
-        request.path.includes("\\") ||
+        path.isAbsolute(request.path) ||
+        request.path.replace(/\\/gu, "/").split("/").some((segment) => !segment || segment === "." || segment === "..") ||
         !cliService.searchWorkspaceFiles
       ) return result;
 
-      // Assistant replies sometimes link only a basename (for example,
-      // `SessionComposer.tsx`) even when the file lives in a nested package.
-      // Resolve only an exact, unique basename; never guess among duplicates.
+      // A reply may omit the package prefix. Only a unique segment-aligned
+      // suffix can complete it; the existing bare-name behavior stays intact.
       try {
+        const suffix = request.path.replace(/\\/gu, "/");
         const matches = await cliService.searchWorkspaceFiles({
           workspaceDir: request.workspaceDir,
-          query: request.path,
+          query: pathPosix.basename(suffix),
           limit: 100,
         });
         const exactMatches = matches.filter(
-          (candidate) => pathPosix.basename(candidate.replace(/\\/gu, "/")) === request.path,
+          (candidate) => {
+            const normalized = candidate.replace(/\\/gu, "/");
+            return normalized === suffix || normalized.endsWith(`/${suffix}`);
+          },
         );
         const [exactMatch] = exactMatches;
-        if (exactMatches.length === 1 && exactMatch) {
+        if (exactMatches.length === 1 && exactMatch && (!suffix.includes("/") || matches.length < 100)) {
           const resolved = (await cliService.readWorkspaceFile!({
             ...request,
             path: exactMatch,
@@ -150,8 +153,10 @@ export function createWorkspaceAdapter(
           type: "text",
           content: "",
           error:
-            exactMatches.length > 1
-              ? `工作区中有多个名为 ${request.path} 的文件，请使用完整相对路径。`
+            exactMatches.length > 1 || (suffix.includes("/") && matches.length >= 100)
+              ? suffix.includes("/")
+                ? `工作区中有多个匹配 ${request.path} 的文件，请使用完整相对路径。`
+                : `工作区中有多个名为 ${request.path} 的文件，请使用完整相对路径。`
               : `工作区中没有找到 ${request.path}。`,
         };
       } catch {

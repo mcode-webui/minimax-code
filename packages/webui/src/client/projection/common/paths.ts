@@ -104,6 +104,18 @@ export function isAbsolutePath(value: string): boolean {
   return posix.startsWith("/") || /^[a-z]:\//iu.test(posix);
 }
 
+/** Split an explicitly named local file for the directory-scoped read APIs. */
+export function absoluteFileLocation(value: string): { workspaceDir: string; path: string } | undefined {
+  const normalized = toPosixPath(value);
+  if (!isAbsolutePath(normalized) || normalized.startsWith("//")) return undefined;
+  const separator = normalized.lastIndexOf("/");
+  if (separator < 0 || separator === normalized.length - 1) return undefined;
+  const segments = normalized.slice(normalized.startsWith("/") ? 1 : 3).split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return undefined;
+  const rootLength = normalized.startsWith("/") ? 1 : 3;
+  return { workspaceDir: normalized.slice(0, Math.max(separator, rootLength)), path: normalized.slice(separator + 1) };
+}
+
 /**
  * What an absolute path's root is spelled as.
  *

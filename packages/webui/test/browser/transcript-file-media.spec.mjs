@@ -56,6 +56,40 @@ function deliveredRow(page) {
   return page.locator('[data-testid="delivered-assets-list"] .webui-delivered-asset');
 }
 
+for (const theme of ["light", "dark"]) {
+test(`outside-workspace deliveries retain typed links, align labels and open previews (${theme})`, async ({ page }) => {
+  await page.addInitScript((value) => window.localStorage.setItem("webui-theme", value), theme);
+  await page.route("**/workspace-file**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+  await configureFixture(page, () => {
+    window.__fixture.setResponse("readWorkspaceFile", { type: "text", content: "# Outside architecture" });
+    window.__fixture.setPage("A", { messages: [{ msgId: "outside-files", role: "assistant", msgContent: '<deliver-assets><media src="/synthetic/artifacts/architecture.png" caption="架构设计图" /><media src="/synthetic/artifacts/design.md" caption="架构文档" /><media src="https://example.invalid/file.txt" caption="远程文件" /></deliver-assets>' }], hasMore: false });
+  });
+  await openApp(page, "#session=A");
+  const rows = deliveredRow(page);
+  const imageLink = rows.getByRole("link", { name: "架构设计图" });
+  await expect(imageLink.locator("svg.tabler-icon-file-type-png")).toHaveCount(1);
+  await expect(rows.locator("img")).toHaveJSProperty("naturalWidth", 1);
+  const imageUrl = new URL(await rows.locator("img").getAttribute("src"), page.url());
+  expect(imageUrl.searchParams.get("dir")).toBe("/synthetic/artifacts");
+  expect(imageUrl.searchParams.get("path")).toBe("architecture.png");
+  for (const text of ["架构设计图", "架构文档", "远程文件"]) {
+    const delta = await rows.filter({ hasText: text }).evaluate((row) => {
+      const icon = row.querySelector("svg").getBoundingClientRect();
+      const label = row.querySelector(".webui-inline > span:last-child").getBoundingClientRect();
+      return Math.abs(icon.top + icon.height / 2 - label.top - label.height / 2);
+    });
+    expect(delta).toBeLessThanOrEqual(1);
+  }
+  await imageLink.click();
+  await expect(page.getByTestId("workspace-file-preview").locator("img")).toHaveJSProperty("naturalWidth", 1);
+  await rows.getByRole("link", { name: "架构文档" }).click();
+  await expect(page.getByTestId("workspace-file-preview")).toContainText("Outside architecture");
+  const reads = await page.evaluate(() => window.__fixture.requests.filter((request) => request.operation === "readWorkspaceFile").map((request) => request.body));
+  expect(reads).toContainEqual({ workspaceDir: "/synthetic/artifacts", path: "design.md" });
+  await page.screenshot({ path: test.info().outputPath(`outside-files-${theme}.png`), animations: "disabled" });
+});
+}
+
 test("a delivered picture appears after one failed load, without a reload", async ({ page }) => {
   let attempts = 0;
   await page.route("**/workspace-file**", async (route) => {
@@ -220,6 +254,31 @@ test("a delivered source file stays a plain link", async ({ page }) => {
   // Nothing asked for bytes: a source file is not a picture.
   expect(attempts).toBe(0);
 });
+
+for (const theme of ["light", "dark"]) {
+test(`an inline file label shares the surrounding prose baseline (${theme})`, async ({ page }) => {
+  await page.addInitScript((value) => window.localStorage.setItem("webui-theme", value), theme);
+  await configureFixture(page, () => window.__fixture.setPage("A", {
+    messages: [{ msgId: "inline-baseline", role: "assistant", msgContent: "正文 before `runtime/port.ts` after 是唯一能力边界。\n\n### 标题 before `runtime/port.ts` after 是唯一能力边界。" }], hasMore: false,
+  }));
+  await openApp(page, "#session=A");
+  const links = page.locator("a.webui-message-file-link");
+  await expect(links).toHaveCount(2);
+  for (const link of await links.all()) {
+    const geometry = await link.evaluate((anchor) => {
+      const text = anchor.previousSibling;
+      const index = text.textContent.indexOf("before");
+      const prose = document.createRange();
+      prose.setStart(text, index); prose.setEnd(text, index + 6);
+      const label = document.createRange();
+      label.selectNodeContents(anchor.lastElementChild);
+      return { prose: prose.getBoundingClientRect().bottom, label: label.getBoundingClientRect().bottom };
+    });
+    expect(Math.abs(geometry.prose - geometry.label)).toBeLessThanOrEqual(1);
+  }
+  await page.locator(".webui-markdown").filter({ hasText: "正文 before" }).screenshot({ path: test.info().outputPath(`inline-file-baseline-${theme}.png`), animations: "disabled" });
+});
+}
 
 test("a file link icon is vertically centered with its label", async ({ page }) => {
   await page.route("**/workspace-file**", async (route) =>

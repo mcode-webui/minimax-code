@@ -214,14 +214,12 @@ const port = createHarnessPortFromHost(assembled.host, {
     // The service closes every Mini App proxy on the way down; a leaked listener
     // holds a plugin's derived port, which would make that Mini App unstartable.
     miniappProxies,
+    // The standalone host owns the process; HTTP shutdown uses the same
+    // bounded cleanup as Ctrl+C. Repeated requests do not force a second exit.
+    requestShutdown: () => {
+      if (!stopping) shutdown();
+    },
   });
-  const info = await service.start();
-  // The Mini App listener is bound before the first Mini App opens, so the
-  // runtime cannot take this port for one of its own Mini Apps first.
-  await miniappProxies.prepare();
-  console.log(`[webui] server listening at ${info.boundUrl}`);
-  console.log(`[webui] Mini App port: ${miniappPort}`);
-  printAccess(info, bindHost);
   const close = async () => {
     await service.close();
     await browser.close();
@@ -254,6 +252,15 @@ const port = createHarnessPortFromHost(assembled.host, {
   };
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+
+  // Register cleanup before accepting a shutdown request from the page.
+  const info = await service.start();
+  // The Mini App listener is bound before the first Mini App opens, so the
+  // runtime cannot take this port for one of its own Mini Apps first.
+  await miniappProxies.prepare();
+  console.log(`[webui] server listening at ${info.boundUrl}`);
+  console.log(`[webui] Mini App port: ${miniappPort}`);
+  printAccess(info, bindHost);
 
   /**
    * The path a person opens, with the per-start credential on it.

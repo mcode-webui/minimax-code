@@ -16,6 +16,7 @@
 import type { WebuiDeliveryHandle } from "../features/turn/contracts/execution-port.js";
 import type { WebuiStreamFrame } from "../../shared/contracts/stream.js";
 import { randomId } from "../../shared/random-id.js";
+import { absoluteFileLocation } from "../projection/common/paths.js";
 import type {
   WebuiMiniAppPresentationIntent,
   WebuiMiniAppPresentationState,
@@ -967,7 +968,8 @@ export function createWebuiWire({
     // `http:`/`https:` respectively, and it must happen before the token is
     // appended — the server checks the token on this route like any other.
     const base = httpBaseFromWebsocketUrl(baseWebsocketUrl);
-    const query = new URLSearchParams({ dir: workspaceDir, path: filePath, token });
+    const location = absoluteFileLocation(filePath);
+    const query = new URLSearchParams({ dir: location?.workspaceDir ?? workspaceDir, path: location?.path ?? filePath, token });
     return `${base}/workspace-file?${query.toString()}`;
   }
 

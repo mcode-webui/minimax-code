@@ -93,7 +93,9 @@
   }
   .webui-markdown a.webui-message-file-link {
     color: var(--text_default_accent);
+    align-items: baseline;
   }
+  .webui-markdown a.webui-message-file-link > [aria-hidden="true"] { align-self: center; }
   .webui-markdown a:hover {
     color: var(--text_default_accent);
     text-decoration: underline;

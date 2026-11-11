@@ -43,7 +43,21 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const directories = job.steps.find(step => step.name === 'Set isolated WebUI output directories');
   assert.equal(directories.shell, 'bash');
   assert.match(directories.run, /MCODE_WEBUI_VERIFY_DIR=\$RUNNER_TEMP\//);
-  assert.match(directories.run, /WEBUI_BROWSER_OUTPUT_DIR=\$RUNNER_TEMP\//);
+  assert.match(directories.run, /WEBUI_PLAYWRIGHT_OUTPUT_DIR=\$RUNNER_TEMP\/webui-playwright-results/);
+  assert.match(directories.run, /WEBUI_BROWSER_FONT_CACHE_DIR=\$RUNNER_TEMP\/webui-browser-font-cache/);
+  assert.doesNotMatch(directories.run, /WEBUI_BROWSER_OUTPUT_DIR=/);
+  for (const [command, directory] of [
+    ['pnpm test:webui', 'units'],
+    ['pnpm test:webui-browser', 'browser'],
+    ['pnpm test:webui-package', 'package'],
+  ]) {
+    assert.equal(job.steps.find(step => step.run === command).env.WEBUI_BROWSER_OUTPUT_DIR,
+      '${{ runner.temp }}/webui-browser-diagnostics/' + directory);
+  }
+  const browserConfig = readFileSync(new URL('../playwright.config.mjs', import.meta.url), 'utf8');
+  assert.match(browserConfig, /process\.env\.WEBUI_PLAYWRIGHT_OUTPUT_DIR/);
+  assert.match(browserConfig, /cacheDirectory: process\.env\.WEBUI_BROWSER_FONT_CACHE_DIR/);
+  assert.doesNotMatch(browserConfig, /process\.env\.WEBUI_BROWSER_OUTPUT_DIR/);
   const commands = job.steps.filter(step => step.run && step !== directories).map(step => step.run);
   for (const command of commands) {
     if (command === 'pnpm install --frozen-lockfile' || command === 'pnpm exec playwright install-deps chromium') continue;
@@ -70,6 +84,10 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const diagnostics = job.steps.find(step => step.name === 'Upload WebUI browser diagnostics');
   assert.equal(diagnostics.if, '${{ !cancelled() }}', 'Successful runs must retain raw performance samples too');
   assert.equal(diagnostics.with['retention-days'], 7);
+  assert.deepEqual(diagnostics.with.path.trim().split(/\r?\n/), [
+    '${{ runner.temp }}/webui-browser-diagnostics/',
+    '${{ runner.temp }}/webui-playwright-results/',
+  ]);
 });
 
 test('coverage review distinguishes declared browser scenarios from executed evidence', () => {

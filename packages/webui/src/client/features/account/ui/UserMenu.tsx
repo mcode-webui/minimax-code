@@ -282,6 +282,7 @@ export function UserMenu({
   const loadUsage = (forceRefresh = false) => {
     setUsageOpen(true);
     setSigninOpen(false);
+    if (!forceRefresh && (usageOpen || accountSnapshot.usage.status === "loading")) return;
     void accountWorkflows?.loadUsage(forceRefresh);
   };
 
@@ -310,7 +311,7 @@ export function UserMenu({
   const avatarUrl =
     profile?.avatarUrl?.trim() || profile?.defaultAvatarUrl?.trim();
   const planLabel = formatRailPlanLabel(
-    usage.status === "ready" ? usage.result : undefined,
+    accountSnapshot.usage.result,
   );
   const identity = objectValue(account?.identity);
   const auth = objectValue(account?.auth);

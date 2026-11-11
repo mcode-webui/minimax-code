@@ -87,7 +87,10 @@ and extraction revision. Channel filter writes use the selected bot's detail rev
 Account login uses attempt and status-read revisions across begin, poll, cancel and dialog close.
 Credential removal is shared by switch and sign-out: retire the credential epoch and reconcile
 account/usage before beginning another login. Malformed check-in and directory responses enter
-recoverable error states. Settings subscribes once per resource slot, independently of repeated
+recoverable error states. Repeated hover/focus on an open usage panel does not start another quota
+read; explicit refresh and retry still do. The rail displays the owner's last quota result while
+a new read is loading, then adopts the new answer instead of hiding the subscription name.
+Settings subscribes once per resource slot, independently of repeated
 reads; retained model answers retire with their epoch/session resource. Composer catalogue
 invalidation also retires outstanding promises, preventing stale successful consumption.
 

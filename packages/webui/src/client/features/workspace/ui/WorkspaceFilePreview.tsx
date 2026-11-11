@@ -30,9 +30,10 @@ export function WebuiFilePreview({ tabId, content, result, codeMode, workspaceFi
   readonly codeMode: boolean;
   readonly workspaceFileUrl?: (request: { readonly workspaceDir: string; readonly path: string }) => string;
 }): ReactElement {
-  const previewMarkdown = /\.md$/iu.test(content.path) && !codeMode;
+  const filePath = result?.content?.resolvedPath ?? content.path;
+  const previewMarkdown = /\.md$/iu.test(filePath) && !codeMode;
   const text = result?.content?.content ?? "";
-  const language = webuiFileLanguage(content.path);
+  const language = webuiFileLanguage(filePath);
   // The read failed, or the content came back carrying an error of its own:
   // both are said once, as toasts, and neither is drawn in the layout.
   useWebuiToastError(result?.error);
@@ -41,18 +42,19 @@ export function WebuiFilePreview({ tabId, content, result, codeMode, workspaceFi
   // text, and an HTML preview is a stream the browser fetches rather than a
   // string the panel holds. Waiting on `readWorkspaceFile` first would either
   // flash a binary error or buffer a document nobody will read.
-  const archive = isWorkspaceArchivePath(content.path)
-    ? <WorkspaceArchiveView workspaceDir={content.workspaceDir} path={content.path} />
+  const archive = isWorkspaceArchivePath(filePath)
+    ? <WorkspaceArchiveView workspaceDir={content.workspaceDir} path={filePath} />
     : undefined;
-  const html = !archive && isWorkspaceHtmlPath(content.path) && workspaceFileUrl
-    ? <WorkspaceHtmlPreview path={content.path} fileUrl={workspaceFileUrl({ workspaceDir: content.workspaceDir, path: content.path })} content={result?.content} />
+  const html = !archive && isWorkspaceHtmlPath(filePath) && workspaceFileUrl
+    ? <WorkspaceHtmlPreview path={filePath} fileUrl={workspaceFileUrl({ workspaceDir: content.workspaceDir, path: filePath })} content={result?.content} />
     : undefined;
   return <div className="webui-workspace-file-document" data-testid="workspace-file-preview" data-file-path={content.path}>
       {archive ?? html
         /* 加载文件是一条播报；播报通道交给共享契约。`.webui-workspace-file-document > p`
            靠元素名命中，契约多了一层 div，等价的间距与颜色留在里面的 p 上。 */
         ?? (result?.loading ? <FeedbackLiveRegion><p className="m-spacing_16 text-text_default_tertiary">正在加载文件…</p></FeedbackLiveRegion>
-          : result?.content && isMediaContent(result.content, content.path) ? <WorkspaceMediaPreview path={content.path} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: content.workspaceDir, path: content.path })} />
+          : result?.error || result?.content?.error ? null
+          : result?.content && isMediaContent(result.content, filePath) ? <WorkspaceMediaPreview path={filePath} content={result.content} fileUrl={workspaceFileUrl?.({ workspaceDir: content.workspaceDir, path: filePath })} />
             : result?.content?.type === "binary" ? <p>无法在文本预览中显示二进制文件。</p>
               : result?.content ? previewMarkdown ? <WebuiMarkdown source={text} /> : <pre className="webui-file-code"><code className={language ? `hljs language-${language}` : ""}>{text.split("\n").map((line, index) => {
                 const lineNumber = index + 1;

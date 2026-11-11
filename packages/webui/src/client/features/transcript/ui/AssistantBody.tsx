@@ -5,7 +5,7 @@ import { useId, useState, type ReactElement } from "react";
 import { WebuiButton } from "../../../ui/button.js";
 import { WebuiAgentAvatar } from "../../../ui/agent-avatar.js";
 import { WebuiIconAlertTriangle, WebuiIconChevronDown, WebuiIconFileForName } from "../../../shell/icons.js";
-import { WebuiStack } from "../../../ui/layout-primitives.js";
+import { WebuiInline, WebuiStack } from "../../../ui/layout-primitives.js";
 import { WebuiDisclosure, WebuiMotionSlot } from "../../../ui/page.js";
 import { WebuiFileMedia, WebuiMarkdown } from "./markdown.public.js";
 import { basenamePath } from "../../../projection/common/paths.js";
@@ -124,7 +124,7 @@ function WebuiDeliveredAssets({ assets, workspaceDir, onOpenFile }: {
     const name = String(asset.name ?? (basenamePath(src) || "文件"));
     const caption = typeof asset.caption === "string" && asset.caption !== name ? asset.caption : undefined;
     const reference = src ? parseWebuiMessageFileReference(src, workspaceDir) : undefined;
-    const label = <><span className="webui-delivered-asset-icon" aria-hidden="true"><WebuiIconFileForName fileName={name} /></span><span>{name}</span></>;
+    const label = <WebuiInline as="span" inline gap="tight"><span className="webui-delivered-asset-icon" aria-hidden="true"><WebuiIconFileForName fileName={src} /></span><span>{name}</span></WebuiInline>;
     return <li key={`${src}-${index}`} className="webui-delivered-asset" data-deleted={asset.deleted === true ? "true" : undefined}>{reference && onOpenFile ? <a className="webui-message-file-link" href={reference.path} title={reference.path} data-webui-file-reference={reference.path} onClick={(event) => { event.preventDefault(); onOpenFile(reference); }}>{label}</a> : <span>{label}</span>}{caption ? <span className="webui-delivered-asset-caption"> — {caption}</span> : null}{asset.deleted === true ? <span className="webui-delivered-asset-deleted">已删除</span> : null}{reference ? <WebuiFileMedia path={reference.path} /> : null}</li>;
   })}</WebuiStack>;
 }

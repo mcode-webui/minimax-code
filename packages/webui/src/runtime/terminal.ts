@@ -70,6 +70,30 @@ export class WebuiTerminalManager implements WebuiTerminalProcessPort {
       signal?.removeEventListener("abort", onAbort);
     }
   }
-  disposeBySession() { for (const terminal of this.terminals.values()) terminal.pty.kill(); this.terminals.clear(); }
+  /**
+   * Kill every terminal in this session.
+   *
+   * Node-pty's Windows kill path forks a helper that lists the processes
+   * attached to the shell's console, and `child_process.fork` hands that
+   * child this process's `execArgv`. Whatever this process was started with
+   * is therefore loaded inside the helper, and the helper has no use for our
+   * arguments. Under the acceptance host that meant tsx's loader ran inside
+   * node-pty's helper, which is the shape microsoft/node-pty#974 describes;
+   * the helper then failed on `AttachConsole` and the kill fell back to
+   * node-pty's five-second timer.
+   *
+   * The kill is synchronous and the helper needs none of our flags, so the
+   * flags are put aside for the length of the kill and put back afterwards.
+   */
+  disposeBySession() {
+    const execArgv = process.execArgv;
+    process.execArgv = [];
+    try {
+      for (const terminal of this.terminals.values()) terminal.pty.kill();
+    } finally {
+      process.execArgv = execArgv;
+      this.terminals.clear();
+    }
+  }
   private get(id: string) { const terminal = this.terminals.get(id); if (!terminal) throw new Error("终端不存在"); return terminal; }
 }

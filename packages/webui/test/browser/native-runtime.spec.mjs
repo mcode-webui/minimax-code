@@ -47,13 +47,28 @@ test.afterAll(async () => {
   // The host's own trace of where it is in the shutdown is the only thing
   // that says which step stopped answering, so a shutdown that does not
   // finish has to carry it.
+  // The budget is below Playwright's own hook timeout on purpose: this
+  // hook's message carries the host's trace, and a tie would leave
+  // Playwright's bare "afterAll hook timeout" as the only thing said.
   const [message] = await within(
     stopped,
-    30_000,
+    25_000,
     () => new Error(`the native host did not finish closing\n${logs}`),
   );
-  expect(message).toMatchObject({ closed: true, terminals: 0 });
-  expect(message.exited).toBeGreaterThanOrEqual(6);
+  // The host reports the step it stopped at when its own shutdown does not
+  // finish, so a stall says which step it was instead of leaving the hook
+  // with a bare timeout and no way to tell what is stuck.
+  expect(
+    message,
+    `the native host did not close${message?.stalledAt ? ` (stalled at ${message.stalledAt})` : ""}\n${logs}`,
+  ).toMatchObject({ closed: true, terminals: 0 });
+  // The case creates six terminals before the shutdown, so a smaller count
+  // means the body failed before it got that far. Saying so keeps the
+  // teardown's second complaint from reading like a second defect.
+  expect(
+    message.exited,
+    `the host closed ${message.exited} terminals; the case creates six before the shutdown, so fewer means the body failed earlier\n${logs}`,
+  ).toBeGreaterThanOrEqual(6);
   // Once the host has said it closed, it has nothing left to do and it must
   // be gone. Node-pty's Windows console-list helper cannot attach to a
   // ConPTY shell, so every terminal it kills leaves a five-second fallback

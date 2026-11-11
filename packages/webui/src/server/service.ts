@@ -342,18 +342,23 @@ export class WebuiService {
    *
    * Attempt every owner in order and report all failures after release.
    */
-  close(): Promise<void> {
-    this.closing ??= this.#closeOwners();
+  close(onOwner?: (owner: string) => void): Promise<void> {
+    this.closing ??= this.#closeOwners(onOwner);
     return this.closing;
   }
 
-  async #closeOwners(): Promise<void> {
+  async #closeOwners(onOwner?: (owner: string) => void): Promise<void> {
     /** One owner that failed, kept with its name for the aggregate. */
     const failures: { readonly owner: string; readonly error: unknown }[] = [];
     const attempt = async (
       owner: string,
       step: () => void | Promise<void>,
     ): Promise<void> => {
+      // The owner is announced before it is awaited, so a caller that is
+      // waiting on the close knows which owner it is waiting for. Every
+      // await here is unbounded, and a shutdown that never finishes is
+      // otherwise a silence.
+      onOwner?.(owner);
       try {
         await step();
       } catch (error) {

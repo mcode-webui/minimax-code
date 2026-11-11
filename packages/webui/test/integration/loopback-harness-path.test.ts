@@ -49,6 +49,7 @@ import { createWorkspaceAdapter } from "../../src/runtime/harness/workspace.js";
 import { readWorkspaceFile } from "../../../local-runtime-v2/src/service/workspace/operations/workspace-path.js";
 import { parseWebuiMessageFileReference } from "../../src/client/features/transcript/projection/message-file-reference.js";
 import { initialWorkspacePanelState, reduceWorkspacePanelState } from "../../src/client/features/workspace/projection/workspace-panel-state.js";
+import { toPosixPath } from "../../src/client/projection/common/paths.js";
 
 interface TestPort extends WebuiHarnessPort {
   /** Every harness method the run actually reached, in call order. */
@@ -332,7 +333,7 @@ describe("loopback to harness-port evidence", () => {
       const state = reduceWorkspacePanelState(initialWorkspacePanelState, { type: "open-file", sessionId: "external-file", workspaceDir, ...reference });
       const content = state.tabs[0]?.content;
       if (content?.kind !== "file-preview") throw new Error("External link did not open a file tab");
-      expect(content).toMatchObject({ workspaceDir: artifacts, path: "design.md", lineStart: 1 });
+      expect(content).toMatchObject({ workspaceDir: toPosixPath(artifacts), path: "design.md", lineStart: 1 });
       await expect(wire.request("readWorkspaceFile", { workspaceDir: content.workspaceDir, path: content.path })).resolves.toEqual({ type: "text", content: "# External architecture\n" });
       const url = wire.workspaceFileUrl({ workspaceDir, path: path.join(artifacts, "图 1.png") });
       const response = await fetch(url);

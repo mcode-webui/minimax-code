@@ -6,6 +6,27 @@ import { expect } from "@playwright/test";
 import { test } from "./harness.mjs";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
+/**
+ * How long the case waits for a terminal's shell to become ready.
+ *
+ * The shell is not ready when the terminal is: on the Windows runner the
+ * PowerShell process needed about four seconds before it printed its first
+ * prompt, and bytes written into the pty before that wait in the pty's
+ * input buffer. A command written into that window spends the assertion's
+ * five seconds on the shell's start-up instead of on the command's echo,
+ * and the assertion then fails on a command that was never wrong.
+ *
+ * This budget is for the start-up alone. It is a precondition on the
+ * write, not a longer allowance for the assertion: the assertion still
+ * gets the five seconds it always had.
+ */
+const SHELL_READY_TIMEOUT_MS = 20_000;
+/**
+ * How much of that budget the shell gets to say something before it is
+ * asked to run the probe. The rest is kept for the probe, so a shell that
+ * has greeted us but is not reading yet is still asked with time to spare.
+ */
+const SHELL_SPEAK_BUDGET_MS = 10_000;
 let child;
 let ready;
 let logs = "";
@@ -105,6 +126,77 @@ async function openTerminal(page) {
   await page.getByTestId("workspace-panel-controls").getByRole("button", { name: "浏览器" }).click();
   await page.getByTestId("workspace-launcher-tile-terminal").click();
 }
+/**
+ * Waits until a terminal's shell is ready to take a command.
+ *
+ * Two signals, because they answer two different questions.
+ *
+ * The first is the shell's own output, read before this case has written
+ * anything into the terminal, so what it shows is the shell's greeting and
+ * not this case's own echo. It needs no prompt text: a shell that has
+ * printed something has started, and PowerShell's prompt and sh's prompt
+ * differ, so a wait that matched prompt text would only ever hold for one
+ * shell. A shell that greets late is not a failure on its own, so this
+ * step only records what it saw.
+ *
+ * The second is a probe the shell executes, and it is the step that proves
+ * the shell is ready, because "the shell has started" is not yet "the
+ * shell is reading". On the Windows runner the prompt arrived about a
+ * second before the shell rendered the line that had been typed into it, so
+ * a wait that stopped at the prompt would still write into a shell that was
+ * not reading yet.
+ *
+ * The probe's marker is split across the probe the same way the command's
+ * marker is split below, so the shell's echo of the probe's own text
+ * cannot pass for an answer: only the shell's execution of it can.
+ *
+ * The probe is the only platform-specific part of the wait, and both
+ * branches carry the same marker, so the question the wait asks -- did
+ * the shell run this and print the answer -- is the same question on every
+ * platform. Only the syntax differs, because PowerShell and sh do not
+ * take the same command; the probe splits its literal for the same reason
+ * the command below splits its own.
+ *
+ * A wait that runs out says what it was waiting for and shows the output
+ * the terminal did produce, because "the shell never answered" on its own
+ * leaves nothing to go on.
+ */
+async function waitForShellReady(page, terminalId) {
+  const deadline = Date.now() + SHELL_READY_TIMEOUT_MS;
+  const readOutput = async () => (await rpc(page, "listTerminals"))
+    .find((entry) => entry.terminalId === terminalId)?.output ?? "";
+  let greetingFailure;
+  let greeted = false;
+  try {
+    await expect
+      .poll(readOutput, {
+        timeout: Math.min(SHELL_SPEAK_BUDGET_MS, Math.max(1, deadline - Date.now())),
+        message: `the shell of terminal ${terminalId} printed nothing`,
+      })
+      .not.toBe("");
+    greeted = true;
+  } catch (error) {
+    // A shell that greets late is not a failure by itself: the probe below
+    // is what decides, and it still has budget. The reason is kept so a
+    // failure below can say which of the two signals went missing.
+    greetingFailure = error;
+  }
+  const marker = "WEBUI_READY_PROBE";
+  const probe = process.platform === "win32"
+    ? "Write-Output ('WEBUI_READY_' + 'PROBE')\r"
+    : "printf 'WEBUI_READY_%s\\n' PROBE\r";
+  await rpc(page, "writeTerminal", { terminalId, data: probe });
+  try {
+    await expect
+      .poll(readOutput, {
+        timeout: Math.max(1, deadline - Date.now()),
+        message: `the shell of terminal ${terminalId} never executed the readiness probe`,
+      })
+      .toContain(marker);
+  } catch (error) {
+    throw new Error(`the shell of terminal ${terminalId} was not ready within ${SHELL_READY_TIMEOUT_MS}ms, so the command would have been typed into a shell that was not reading yet; the shell ${greeted ? "had greeted us but" : "never greeted us, and"} the probe ${JSON.stringify(probe)} never produced ${marker}, and the terminal's output was ${JSON.stringify(await readOutput())}\n${greetingFailure ? `${greetingFailure.message}\n` : ""}${error.message}`);
+  }
+}
 
 test("V04/V06: native PTYs survive another page, reload and a full five-slot roster", async ({ page, context }) => {
   test.setTimeout(90_000);
@@ -133,6 +225,12 @@ test("V04/V06: native PTYs survive another page, reload and a full five-slot ros
   await expect(second.locator(".webui-xterm-host")).toBeVisible();
   await second.getByRole("button", { name: "关闭面板" }).click();
   await second.close();
+  // The shell behind a terminal is not ready when the terminal is, so the
+  // command below is only worth writing once the shell has answered a
+  // probe. Otherwise the command waits in the pty's input buffer for the
+  // shell to finish starting up, and the five seconds the assertion has are
+  // spent on the start-up instead of on the answer.
+  await waitForShellReady(page, terminal.terminalId);
   await rpc(page, "writeTerminal", { terminalId: terminal.terminalId, data: process.platform === "win32" ? "Write-Output ('WEBUI_NATIVE_' + 'ALIVE')\r" : "printf 'WEBUI_NATIVE_%s\\n' ALIVE\r" });
   await expect.poll(async () => (await rpc(page, "listTerminals"))[0].output).toContain("WEBUI_NATIVE_ALIVE");
   for (let index = 1; index < 5; index += 1) await rpc(page, "createTerminal", { workspaceDir: ready.workspaceDir });
@@ -163,6 +261,10 @@ test("V04/V06: native PTYs survive another page, reload and a full five-slot ros
   const survivors = await rpc(page, "listTerminals");
   expect(survivors).toHaveLength(5);
   const latest = survivors.at(-1);
+  // This terminal came from the held create above, so it carries the same
+  // start-up wait as the first one: the command goes in only once the shell
+  // behind it has answered.
+  await waitForShellReady(page, latest.terminalId);
   await rpc(page, "writeTerminal", { terminalId: latest.terminalId, data: process.platform === "win32" ? "Write-Output ('WEBUI_LATE_' + 'ALIVE')\r" : "printf 'WEBUI_LATE_%s\\n' ALIVE\r" });
   await expect.poll(async () => (await rpc(page, "listTerminals")).find((entry) => entry.terminalId === latest.terminalId).output)
     .toContain("WEBUI_LATE_ALIVE");

@@ -125,6 +125,9 @@ const client = await build({
 cpSync(path.join(webuiDir, "src/client/index.html"), path.join(outdir, "client/index.html"));
 cpSync(path.join(webuiDir, "src/client/assets/img"), path.join(outdir, "client/assets/img"), { recursive: true });
 cpSync(path.join(webuiDir, "src/client/assets/fonts/katex"), path.join(outdir, "client/fonts"), { recursive: true });
+// The wordmark's own font travels with the client: it is the one face that
+// has to look the same on every machine, so it cannot be left to the host.
+cpSync(path.join(webuiDir, "src/client/assets/fonts/brand"), path.join(outdir, "client/assets/fonts/brand"), { recursive: true });
 copyLocalRuntimeAssets({ repositoryRoot: root, outputDir: outdir, filter: () => true });
 // The bundled server resolves its agent and skill assets relative to its own
 // directory (import.meta.url), so it looks for <outdir>/server/assets. Mirror

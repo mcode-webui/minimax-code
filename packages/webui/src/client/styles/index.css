@@ -15,6 +15,10 @@
  */
 
 @import "./tokens.css";
+/* The wordmark's own font, carried by the client. It comes after the tokens
+ * because a font declaration is not part of the layered composition: it says
+ * which face answers a family name, not how the shell is built. */
+@import "./brand-font.css";
 /* Motion foundations (ADR 0028 § Shared contracts): the four named families and
  * the reduced-motion policy. It comes right after the tokens, because every
  * surface below it moves by reading one of these values. */

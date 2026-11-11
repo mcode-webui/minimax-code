@@ -17,7 +17,7 @@
 // does not depend on `pnpm build:styles` having run.
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { SKELETON_CONTENT_MAX_WIDTH_PX } from "../../src/client/features/transcript/ui/TranscriptSkeletons.js";
 import { WEBUI_LAYOUT_THRESHOLDS } from "../../src/client/ui/layout-thresholds.js";
 import path from "node:path";
@@ -446,6 +446,10 @@ describe("W0 · stylesheet composition", () => {
     // the split harmless (every file wraps its rules in `@layer components`).
     expect(imports).toEqual([
       "./tokens.css",
+      // The wordmark's own font, carried by the client so the mark is drawn
+      // the same way on every machine. A font declaration is not part of the
+      // layered composition, so it sits next to the tokens.
+      "./brand-font.css",
       // The shared contracts (ADR 0028): the motion foundations every surface
       // animates with, the field's own arrangement, the feedback family's
       // states, and the shell's own rules.
@@ -521,6 +525,43 @@ describe("W0 · stylesheet composition", () => {
     expect(shellRules.filter((rule) => rule.context.length === 0)).toHaveLength(
       0,
     );
+  });
+});
+
+describe("W0 · the wordmark's own font", () => {
+  it("names the font files the client actually carries", () => {
+    const fontCss = readFileSync(path.join(stylesDir, "brand-font.css"), "utf8");
+    const urls = [...fontCss.matchAll(/url\("([^"]+)"\)/gu)].map((match) => match[1]);
+    // Two faces: the mark is set at 700 and its lower line at 600.
+    expect(urls).toHaveLength(2);
+    for (const url of urls) {
+      // The path is absolute: one stylesheet serves every surface, so a
+      // relative path would resolve against the page rather than the font.
+      expect(url.startsWith("/assets/fonts/brand/")).toBe(true);
+      // The file has to be there. Nothing else in the gate checks that a URL
+      // in a stylesheet resolves — the build copies what the script tells it
+      // to, and the browser asks for the font and is answered with a 404,
+      // which is a blank mark rather than a failure.
+      expect(existsSync(path.join(clientDir, url))).toBe(true);
+    }
+  });
+
+  it("asks for the wordmark's own face first and keeps the old faces behind it", () => {
+    const workspaceCss = readFileSync(
+      path.join(clientDir, "features/workspace/ui/workspace.css"),
+      "utf8",
+    );
+    const rule = workspaceCss.match(/\.webui-workspace-launcher-wordmark\s*\{([^}]*)\}/u);
+    expect(rule).not.toBeNull();
+    const stack = rule?.[1].match(/font-family:\s*([^;]+);/u)?.[1] ?? "";
+    const families = stack.split(",").map((family) => family.trim());
+    // The bundled face comes first: it is the one that answers on every
+    // machine, so the mark does not depend on what the host happens to have.
+    expect(families[0]).toBe('"MiniMax Wordmark"');
+    // The faces that came before are still behind it: if the font file does
+    // not make it into an artifact, the mark is still drawn — just not in
+    // its own face.
+    expect(families).toContain('"Century Gothic"');
   });
 });
 

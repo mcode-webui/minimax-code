@@ -1,124 +1,64 @@
-# Source evidence and refresh
+# Source evidence, discipline and refresh
 
-## Baseline
+## Working discipline on this checkout
 
-Investigated on 2026-10-19 starting at HEAD `4de6a59a5df5fa8a2eeab782fdb71603e1da9197` in `/home/fectivnfy/my_data/project/my_project/minimax-code`. The working tree already contained modifications to the package manifest and browser/integration tests, and a staged test-result deletion. `test/browser/fixture.mjs` also changed during the investigation. Concurrent work advanced HEAD to `7574e4b07579570c08fd1d83af67cc92294de75d`; the intervening diff changes the package manifest and tests, with no `packages/webui/src/` changes. Final capture provenance records that later clean tree and input hashes. This skill creation did not edit or commit repository files.
+This tree is edited by more than one agent session at a time, and a report usually starts as a symptom
+rather than a request for a change.
 
-The dependency checker scanned all 435 TypeScript source files and 1,557 in-package references: zero direction violations, cycles, role violations or publication violations; one declared structural exception. The current build succeeded with 108 server inputs, 331 client inputs and 432 combined inputs. Counts describe that run only and are not acceptance thresholds.
+- **Investigate read-only first.** For a reported bug, grep, probe and decode bundles before editing, then
+  state what you found and what you propose. A patch that lands before the diagnosis is a guess with a diff.
+- **Check who else is writing.** Before touching a hot file: `git status --porcelain` and
+  `find packages/webui/src -newermt '-15 minutes' -type f`. If another session is writing it, choose an
+  additive seam — a new export, a provider, a one-line prop at the shell — rather than rewriting the file.
+- **Verify a batch of patches, not each patch's return value.** After a batch, grep the file for one marker
+  from every patch: another session can rewrite a region from its own snapshot while each edit still
+  reports success.
+- **Stash only your own files.** `git stash push -- <paths>`, never the whole tree — another session's work
+  is not yours to hide, and this is the standard way to prove a red test predates you.
+- **Keep work material out of the repository.** Probes, briefs, logs and browser output go to a directory
+  outside the checkout; the source inventory scans untracked files, so scratch inside the tree becomes a
+  publication problem. Point `WEBUI_BROWSER_OUTPUT_DIR` at that external directory too.
+- **A fresh worktree has no `node_modules`.** `pnpm install --frozen-lockfile --prefer-offline` restores the
+  pinned toolchain. A compiler-option error you did not cause (`TS5101 … baseUrl … deprecated`) is a global
+  `tsc` on `PATH`, not your edit.
 
-Human/source investigation followed all four execution boundaries, all business homes, application wiring and teardown, request-freshness and submission mechanisms, validators/registry/bindings, capability derivation, runtime resources, style/token/compiler setup and representative unit/integration/browser tests. This is comprehensive architecture-oriented coverage, not a claim that every line of every file received an exhaustive correctness review.
+## What this skill investigated, and what it did not
 
-Independent read-only forward-testing exercised file-preview refresh during session switching and a new appearance settings row. It confirmed useful routing and found two refinements incorporated here: inspect leaf-owner disposal rather than universalizing application fencing, and settle/verify the actual surface before screenshot capture. The helper now checks finite animation settlement, image loads, theme and settings-versus-conversation identity. The final six originals were visually inspected. Full repository test suites and real provider/account scenarios were not executed for this external skill-only change.
+It was built by reading source, tests and documents at a fixed commit, then refreshed at later commits;
+repository history is the record of each pass. Coverage is architecture-oriented: every execution
+boundary, business home, application wiring, submission and freshness mechanism, the operation registry
+and bindings, capability derivation, runtime resources, the style/token/compiler setup and representative
+unit, integration and browser tests.
 
-## Source anchors by claim
+It is not a line-by-line correctness review, and no full suite or real provider/account scenario was run to
+produce it. When a claim matters to your change, read the current source: a copied rule is navigation, not
+proof. A citation is evidence only if you read the cited line — pattern-matching a file name is not a read.
 
-| Claim | Read/refresh in the repository |
+## Claims that were checked and failed
+
+Do not reintroduce these; each appeared in an earlier version of this material.
+
+| Claim | Reality at the last check |
 | --- | --- |
-| Operating rules and doc authority | root/package `AGENTS.md`, `packages/webui/docs/README.md`, `CONTEXT.md` |
-| Layer and role direction | `scripts/lib/webui-dependency-rules.mjs` (`ALLOWED_EDGES`, `PROJECTION_DOMAIN`, `classifyLayers`, `classifyRole`, role/publication checks), `scripts/check-webui-dependency.mjs` |
-| Browser wiring | `src/client/main.tsx`, `application/create-application.ts`, `port-slices.ts`, `bindings/application-context.tsx` |
-| Canonical state and temporal identity | `application/session-store.ts`, `identity-epochs.ts`, `conversation/request-freshness.ts`, `session-scope.ts`, `stream-lease.ts` |
-| Creation and submission | `application/task-session-workflows.ts`, `features/turn/contracts/submission.ts`, `application/submission-admission.ts`, `composer-submission.ts`, `turn-commands.ts`, Composer controller |
-| Independent business ownership | Feature application modules listed in `architecture.md`; per-session Goal/Interactions, separate Review families, provider editor, terminal owner |
-| Ingress and delivery | `client/platform/event-channel.ts`, `features/turn/application/event-coordinator.ts`, `session-fact.ts`, `conversation/stream-loop.ts`, Turn sink adapter |
-| Loopback contract | `shared/operation-names.ts`, `server/operation/{operations,bind-handlers,binding-mechanism,operation-dispatch}.ts` |
-| Support/readiness | `shared/capability-manifest.ts`, `server/service.ts`, `runtime/harness/adapter.ts` |
-| Process close | `runtime/assembly.ts`, `runtime/lifecycle.ts`, `runtime/terminal.ts`, `server/service.ts` |
-| Browser action semantics | `packages/browser-core/src/browser-core.ts`, `browser-actions.ts`, `browser-action-targets.ts`, `browser-transport.ts`; the WebUI adapters `src/runtime/browser/isolated-chromium/core-transport.ts` and `src/server/browser-bridge/core-transport.ts`; the authoritative narrative `packages/webui/docs/browser-use/10-browser-core-integration.md` |
-| Visual baseline | `client/styles/{tokens,index,shell}.css`, `tailwind.config.cjs`, feature CSS, `ConversationSurface.tsx`, `WebuiClientFoundationApp.tsx`, Settings appearance source |
-| Verification | `scripts/verify.mjs`, root/package scripts, `test/vitest-suites.json`, `playwright.config.mjs`, browser harness/server/fixture, token tests |
+| Account sign-in lives in `packages/webui/src/server/check-in.ts` | No such file; the account surface is `features/account/` over `shared/contracts/account.ts` and `@mavis/shared/daily-signin` |
+| Session runtime state lives in `src/client/app.tsx` | No such file; see `application/session-store.ts` and `client/application/create-application.ts` |
+| `packages/webui` is absent from `upstream/main`, so file moves are merge-free | `origin/main` carries more than 1,300 paths under `packages/webui/`; moving files costs a three-way merge |
 
-Unless explicitly prefixed, source rows refer to `packages/webui/src/`. Use symbol search for exact current locations rather than freezing line numbers that will drift.
-
-### Refresh of 2026-10-26 — the Browser Core layer
-
-A documentation synchronization pass brought the WebUI documents and this skill in line with the
-Browser Core integration (`eb6cd3e5`, `88c83655`). The facts it established, all read from the tree
-at `webui` / `88c83655`:
-
-| Claim | Evidence |
-| --- | --- |
-| The browser's action semantics belong to `@mavis/browser-core`, and both surfaces execute it over a `BrowserTransport` | `packages/browser-core/src/browser-transport.ts`; `src/runtime/browser/isolated-chromium/core-transport.ts`; `src/server/browser-bridge/core-transport.ts` |
-| `src/client/` and `src/shared/` may not import the core; the gate enforces it | `scripts/lib/webui-dependency-rules.mjs` — the workspace-host check for `client/` and `shared/` |
-| The restricted vocabulary is stated twice, and a test pins them together | `src/shared/contracts/browser.ts`; `packages/webui/test/unit/browser-restricted-commands.test.ts` |
-| The bridge's `open_tab` and `upload_files` are refused; the isolated surface refuses `return_to_previous_tab` | `src/server/browser-bridge/server.ts`; `src/runtime/browser/isolated-chromium/provider.ts`; `packages/browser-extension/src/cdp.ts` (the allowlist, 45 commands, without `Page.captureScreenshot` or `DOM.setFileInputFiles`) |
-| The bridge's screenshot comes from the extension's pushed visible-tab frame | `src/server/browser-bridge/server.ts` — `#captureVisibleFrame`; `packages/browser-extension/src/images.ts` |
-| The three new suites' evidence levels | `packages/webui/test/integration/browser-core-agent-actions.test.ts` (real browser), `packages/webui/test/unit/browser-bridge-core-actions.test.ts` (wiring, extension as a double), `packages/webui/test/unit/browser-restricted-commands.test.ts` (pure) |
-
-The line-number citations in `packages/webui/docs/browser-use/*.md` that this pass corrected were
-verified against the tree by reading the cited line, not by pattern-matching the file name. **New
-citations should be made the same way** — a citation that was not read at the cited line is not
-evidence.
-
-One capability difference is recorded but **not** pinned by a test: the bridge refuses `upload_files`.
-
-### Refresh of 2026-10-30 — the scheduled-task surface and stale rosters
-
-A documentation pass brought the WebUI documents and this skill in line with the scheduled-task
-surface (`c4082a66`…`16678b05`) and with rosters that had been stale for several features. Read from
-`webui` at `786ad138`, working tree checked before and after:
-
-| Claim | Evidence |
-| --- | --- |
-| The WebUI is a scheduler host: the `scheduling` business lists, creates, edits, enables, deletes, runs now and reads run history of scheduled tasks | `src/client/features/scheduling/**`; the rail row in `client/features/sessions/ui/SessionRailRegion.tsx`; six operations registered at `server/operation/operations.ts:332-337` |
-| The client reaches the v2 runtime's Cron service through the harness port, and its DTOs are the WebUI's own | `src/runtime/port.ts:725-730`; `src/runtime/harness/cron.ts`; `src/shared/contracts/cron.ts` |
-| The `webui` row differs from `tui` in **thirteen** cells | `packages/local-runtime/test/unit/runtime-owner-policy.test.ts:317` — the assertion enumerates all thirteen |
-| The roster is **99** bindings and **18** dedicated handlers covering **117** operation names | `packages/webui/test/unit/webui-operation-binding.test.ts:47-50` |
-| Sixteen business ports cut **fifteen** slices (terminal folds into workspace, `turn` builds its own) | `src/client/application/port-slices.ts` (`WebuiPortSliceSource`, `createWebuiPortSlices`) |
-| R2's restore write is guarded by `state` as well as both counters | `packages/local-runtime-v2/src/infra/scheduler/index.ts` — `updateRestoredJob` (`:794`), the `state` guard at `:814` |
-| The scheduled-task evidence is seven test files at levels 1, 4 and 5 | `docs/verification/gates.md`, "The scheduled-task suites" |
-
-**One counting trap worth keeping.** `operations.ts` has 131 `registerOperation` calls, while the
-roster test pins 99 + 18 = 117. The gap is handler-entry factories (browser, Mini App, Mini App agent)
-registering operations the bindings-plus-dedicated list does not name. Take the numbers from the test
-and describe them in its words — "N bindings and M dedicated handlers covering K operation names" —
-and do not call K "operations", because the registry is larger than K.
-
-**Not re-verified by this pass:** every entry of `docs/known-gaps.md` (its dated record stays
-2026-10-27 / `d9593276`; this pass added a note for the closed §7 and changed no entry), and the
-runtime behaviour of any surface — this was a static read of source and tests.
-
-### Refresh of 2026-11-02 — the shared presentation layer, page surfaces and motion
-
-A documentation pass brought the WebUI documents and this skill in line with the shared-presentation
-programme that landed between `97818b28` and `3b0eda94` on the `webui` branch: motion ownership moved
-into shared styles, loading skeletons were unified onto one pulse, the page/skeleton and motion
-contracts were decided ([ADR 0029](../../../../packages/webui/docs/adr/0029-page-surfaces-share-layout-skeleton-and-motion-contracts.md)),
-the button contract grew its remaining variants, and the shared controls took on the pending state of
-the commands they start. Read from the tree at `3b0eda94`; the working tree was dirty only with this
-pass's own edits.
-
-| Claim | Evidence |
-| --- | --- |
-| `client/ui/` is the shared presentation layer for controls, page surfaces, loading, motion and feedback — not a handful of pilots | `src/client/ui/{button,field,dialog,Dropdown,menu-item,ContextMenu,card,page,feedback,settings-layout,layout-primitives,ToggleSwitch}.tsx` plus their stylesheets under `src/client/styles/`; ADR 0028, ADR 0029 |
-| The button publishes **21 variants × 18 sizes**, and the pending contract is `loading` / `loadingLabel` (optionally driven by a promise-returning `onClick`) | `ui/button.tsx` — `WebuiButtonVariant`, `WebuiButtonSize`, `WebuiButtonProps`, `WebuiIconButtonProps`; `ui/feedback.tsx` — `useFeedbackActionLoading`, `FeedbackLoadingOverlay`; `ui/ToggleSwitch.tsx`; `styles/button.css` |
-| `WebuiPage` projects the loading skeleton from the layout the caller already renders, and `WebuiSkeletonProjection` lets a shared structure project its own part | `ui/page.tsx` — `projectSkeleton`, `WebuiPageProps` (`kind`, `loading`, `present`, `visible`, `onExitComplete`), `WebuiSkeletonProjection`, `useWebuiPageLoading`, `WebuiSkeleton` (`variant`, `width`, `height`, `animated`), `WebuiSkeletonGroup` |
-| Motion is four families with one token set, and a component names the family instead of a number | `styles/motion.css` — `feedback` 120ms, `surface` 180ms in / 120ms out, `disclosure` 160ms, `loading` 1.2s, three easings, the 8px distance, and the reduced-motion block; `docs/design/motion-inventory.json` — 7 files, 5 durations and 14 keyframes, 5 distinct effects with reasons |
-| The motion gate also polices source ownership, not only the inventory | `scripts/check-webui-motion.mjs` — feature-owned timing/rotation/interaction transform/smooth scroll, raw motion utilities and inline motion styles, `role="button"`, `data-webui-motion`, `<details>`, inline SVG animation, the `lottie-web` import, `WebuiDialog` without an explicit `open`, and the shared controls' feedback opt-in; `BUSINESS_MOTION_STYLESHEET_EXCEPTIONS` is `account.css` and `transcript.css` |
-| The presentation inventory covers **137** client UI modules, with **0** pending contract decisions | `pnpm check:webui-presentation` output at this HEAD; `scripts/lib/webui-presentation-inventory.json`; `docs/verification/coverage-review.md` regenerated by `pnpm coverage:review` |
-| The overlay inventory covers 25 sources: 23 managed, 1 `borrows-role`, 1 recorded exception | `pnpm check:webui-overlays` output; `scripts/lib/webui-overlay-inventory.json` — the pending-action overlay in `ui/feedback.tsx` is the exception, with its interaction boundary stated |
-
-**Four gates were red at `3b0eda94`, and the pass fixed them at the source rather than in prose.**
-The dependency gate rejected `ui/feedback.tsx` reading `document` for the pending overlay's portal
-(now the platform portal target through `useWebuiBrowserCapabilities().dom`); the motion gate rejected
-`features/plugins/ui/PluginCatalogue.tsx` scrolling with `behavior: "smooth"` (now
-`scrollWebuiContainerTo` in `bindings/browser-effects.ts`, which is where the policy lives); the
-overlay gate rejected two uninventoried layers, one of them the settings usage menu that never joined
-the coordinator (now `managed` with a layer id, plus inventory entries); and the feedback budget
-rejected a hand-written `role="status"` in `features/sessions/ui/ProjectList.tsx` (now
-`FeedbackAnnouncement`). After the fixes: all four gates pass, `typecheck:client` passes, and 17
-focused Vitest files pass (228 tests).
-
-**Not verified by this pass:** the rendered dismissal behaviour of the newly managed settings menu and
-the visible result of the pending overlay — both need a built-client browser run, so they are stated
-as unverified rather than as behaviour the docs may claim.
+Two counting habits worth keeping: take roster numbers from the test that pins them rather than from the
+registry (handler-entry factories register operations the bindings list never names), and describe them in
+the test's own words instead of inventing a category.
 
 ## Refresh workflow
 
-When using this skill, re-read current operating instructions and touched source. Refresh a reference only when changed source or an actual task reveals it is stale. Check callers, tests and decision rationale together; repository documents are navigation, not implementation proof. Never restore retired plans/generated navigation tables merely because a past memory mentions them.
+Re-read the current operating instructions and the touched source before trusting a reference. Refresh the
+skill when changed source or an actual task shows it is stale — not on a schedule, and never to restore a
+retired plan or a generated table from memory.
 
-For a visual refresh: inspect source/CSS changes, rebuild, run the capture helper to a new external directory, inspect original PNGs in both themes, review the manifest/errors and only then deliberately replace the skill references. Keep synthetic data labels and provenance. Rendering a new screenshot does not approve a product redesign.
+For a visual refresh: inspect the CSS/source changes, rebuild, run `scripts/capture-visuals.mjs` into a
+directory outside the repository, inspect the original PNGs in both themes, review the manifest and page
+errors, and only then replace the reference images deliberately. Rendering a new screenshot does not
+approve a redesign, and a failed selector or missing build is reported, never papered over with a fake
+reference image.
 
-The capture helper is reusable tooling. Its output should stay outside the repository; it owns an ephemeral loopback server and headless browser only. It uses existing repository Playwright and fixture code. Failure to find a build, package, browser or selector is explicit; resolve the actual mismatch rather than silently generating a fake reference image.
-
-Hindsight knowledge search/list were attempted during creation but returned connection failures. No Hindsight page was treated as source evidence. Historical local notes helped select lifecycle and evidence-boundary questions; current code/docs/gate output supply the actual guidance here.
+After any file addition or removal, run `node scripts/source-inventory.mjs --write` and `pnpm check:source`,
+and report what the inventory recorded rather than editing it by hand.

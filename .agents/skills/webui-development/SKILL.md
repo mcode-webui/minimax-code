@@ -5,79 +5,85 @@ description: Develop MiniMax Code packages/webui features, workflows, components
 
 # MiniMax WebUI development
 
-Use the existing WebUI as the product and architecture reference. Deliver requested behavior through its real application owners and preserve visual continuity unless a redesign is requested.
+Use the existing WebUI as the product and architecture reference. Deliver requested behavior through its
+real application owners and preserve visual continuity unless a redesign is requested.
 
 ## Establish the current contract
 
-Locate the repository from the working directory; the original checkout is `/home/fectivnfy/my_data/project/my_project/minimax-code`. Reference paths are repository-relative. Read root `AGENTS.md`, `packages/webui/AGENTS.md`, `packages/webui/docs/README.md`, and relevant terms in `CONTEXT.md`. Inspect HEAD and dirty files before editing. This skill is a source-grounded map, refreshed 2026-11-02, not an authority over current instructions, source or tests.
+Locate the repository from the working directory; reference paths are repository-relative. Read root
+`AGENTS.md`, `packages/webui/AGENTS.md`, `packages/webui/docs/README.md` and `CONTEXT.md` — they are
+authority over this skill, which is a map rather than a specification. Inspect HEAD and dirty files before
+editing.
 
-For the changed use case, identify its resource identity, state owner, command, binding, rendered surface and verification seam. Trace one real caller through implementation before choosing a home. Directory names and passing dependency gates alone do not prove ownership. If an explicitly approved design conflicts with the tree, surface that conflict before redesigning it.
+For the changed use case, identify its resource identity, state owner, command, binding, rendered surface
+and verification seam, then trace one real caller before choosing a home. Directory names and a green
+dependency gate do not prove ownership.
 
-For business-code changes, follow [Business maintenance](references/business-maintenance.md): choose the change type, locate the owner, implement through its command and lifecycle, and verify the affected consumer. It includes component placement, prohibited shortcuts and runtime maintenance.
+A reported symptom is diagnosed read-only first — greps, probes, decoded bundles — with findings stated
+before a patch. This checkout is edited by other sessions at the same time; read
+[working discipline](references/source-evidence.md) before touching a hot file.
 
-## Load the relevant reference
+## Read the repository document, not a copy of it
+
+| Question | Document |
+| --- | --- |
+| Which layer or role owns this; what may import what | `packages/webui/docs/architecture/{module-map,boundaries,layered-model}.md`, `packages/webui/AGENTS.md` |
+| Lifecycle, submission, streaming, settlement, history handoff | `packages/webui/docs/client/{ownership,submission,transcript-rendering,composer}.md` |
+| Loopback operations, runtime assembly, capabilities, process resources | `packages/webui/docs/runtime/boot.md`, `AGENTS.md` |
+| Which control, page surface or layout to render; tokens; motion families | `packages/webui/docs/design/design-language.md`, `packages/webui/docs/design/motion-inventory.json` |
+| Gate commands and what each one rejects | `packages/webui/docs/verification/{gates,browser-suite}.md` |
+| Browser actions and element references | `packages/webui/docs/browser-use/10-browser-core-integration.md` |
+
+## This skill's own references
 
 | Task | Read |
 | --- | --- |
-| Find code, choose an owner, judge imports, structural refactor | [Architecture and source map](references/architecture.md) |
-| Browser actions, element references, the external browser bridge | [Architecture and source map](references/architecture.md) and [Loopback and runtime](references/runtime.md) — the semantics live in `@mavis/browser-core`; start from `packages/webui/docs/browser-use/10-browser-core-integration.md` |
-| Session creation, send/queue/retry, streaming, async reads, disposal | [Ownership and lifecycle](references/ownership.md) |
-| Wire operations, runtime assembly, capabilities, process resources | [Loopback and runtime](references/runtime.md) |
-| Add a component or modify component styles/icons | Read [Component design system](references/component-design-system.md) first: it lists the shared contract for each kind of control and the patterns business code may not write. Then token selection, scales, Tabler icon usage and state rules |
-| Page layout, loading state, skeleton, disclosure or motion | [Component design system](references/component-design-system.md) — the `WebuiPage`, skeleton and motion-family contracts — and [Visual development](references/visual-design.md) for CSS compilation and rendered checks |
-| Theme, assets, layout, CSS compilation or visual verification | [Visual development](references/visual-design.md); screenshots there are optional context, not the design specification |
-| Tests, build, packaging, verification claims or delivery | [Verification and delivery](references/verification.md) |
-| Refresh the skill or check the investigation's limits | [Source evidence and refresh](references/source-evidence.md) |
+| Changing behavior through the real owner | [Business maintenance](references/business-maintenance.md) |
+| What business code may not write, and why | [Guardrails](references/guardrails.md) |
+| Split a module, or a cleanup whose bottom line is "behavior does not change" | [Structural refactors](references/module-refactor.md) |
+| A display affordance: a glyph per file type, inline media, a link that renders itself | [Rendering surfaces](references/rendering-surfaces.md) |
+| Settings tabs and sections, or typed filtering in a list or palette | [Registry-driven lists](references/list-surfaces.md) |
+| Which checks to run, and the traps in running them | [Verification](references/verification.md) |
+| CSS mechanics, media elements, measured geometry | [Visual implementation](references/visual-design.md) |
+| Account quota, membership, credits or daily sign-in | [Account data](references/account-data.md) |
+| Refresh this skill, or check what it did not investigate | [Source evidence](references/source-evidence.md) |
 
-Load the branches the task needs. Repository documents linked there provide detail; verify the particular implementation rather than treating a copied rule as proof.
+Load only the branches the task needs, and open the repository document a reference points at.
 
 ## Implement through existing seams
 
-- Keep business state and submitted operations with their application owner. Inject capability contracts; bindings subscribe and adapt browser effects; UI renders snapshots and invokes named commands. Local uncommitted forms and ephemeral presentation state can remain local when that is their established lifetime.
-- Publish a narrow owner-role module or contract for a real peer consumer. A `.public` suffix grants reachability, not authority to expose writers, teardown or another business's implementation.
-- Reuse request/freshness and session-interest mechanisms when results outlive selection or mounting. Capture operation identity before awaiting; preserve navigation, deletion, incarnation and newer-input fences.
-- For UI work, apply the component design system: render the shared contract (`client/ui/`) rather than restating it, use semantic color roles, the shared type/spacing/radius scales and complete interaction states, and use the Tabler icon library. **A business component that patches a shared control locally — its class string, its states, its timing or its pending behaviour — is a contract change in the wrong place:** extend the contract in `client/ui/` when the need recurs, and record a business exception with a reason and revisit condition when it genuinely does not recur. Keep business-private *composition and layout* with their business. Inspect the result in both themes; screenshots assist verification, while source tokens and component contracts define the design.
-- Keep file movement deliberate: this is a public source projection with an explicit inventory and upstream synchronization costs. Prefer a cohesive change in its current home over layout churn.
+- Keep business state and submitted operations with their application owner: inject capability contracts,
+  adapt browser effects in bindings, render snapshots and invoke named commands. Uncommitted forms and
+  ephemeral presentation state stay local when that is their lifetime.
+- Publish a narrow owner-role module for a real peer consumer. A `.public` suffix grants reachability, not
+  authority to expose writers, teardown or another business's implementation.
+- Render the shared presentation contracts in `client/ui/` instead of restating them. A business file that
+  re-declares a control's class string, states, timing or pending behaviour is a contract change in the
+  wrong place — [Guardrails](references/guardrails.md) states the boundary and the escape hatch.
+- Keep file movement deliberate: this is a public source projection with an explicit inventory and
+  upstream synchronization costs. Prefer a cohesive change in its current home over layout churn.
 
 ## Run only relevant verification
 
-Follow the current `packages/webui/AGENTS.md` gate map and select the smallest checks that cover the
-changed files and affected behavior. Do not run aggregate gates or full WebUI suites by default. The
-latest direct user instruction overrides older repository or skill wording that asks for broader
-verification; run a full gate only when the user explicitly requests it. Report the checks run and
-the coverage that remains. Activation never authorizes publication, Git pushes, production changes
-or paid/live-provider calls by itself.
+Select the smallest checks that cover the changed files and behavior; the gate map is
+`packages/webui/docs/verification/gates.md`. Do not run aggregate gates or full suites by default, and do
+not repeat a passing check for unchanged inputs. The latest direct user instruction overrides older
+repository or skill wording that asks for broader verification. Report the checks run and the coverage
+that remains; activation never authorizes publication, pushes, production changes or paid provider calls.
 
-## Verify complete business flows and usability
+## Verify the flow, not just the unit
 
-For a user-visible WebUI flow, build a source-grounded scenario matrix before writing tests. Trace
-each user-reachable entry point and primary control through its real owner, command, service or
-transport, runtime consumer, persisted state, and final rendered result where those layers apply.
-Include material state combinations such as empty/populated, valid/invalid, loading/error, cancel/
-retry/recovery, selection changes, refresh/resume, and concurrent activity. Cover every flow in the
-approved plan or request; do not stop at the named examples if the current UI exposes more actions.
+For a user-visible flow, build a scenario matrix from the real entry points before writing tests: empty
+and populated, valid and invalid, loading and error, cancel/retry/recovery, selection changes,
+refresh/resume, concurrent activity. Exercise the actual control for interaction claims — an injected
+demo object, direct service call or helper invocation cannot stand in for a click.
 
-Prefer tests that prove a user outcome over tests that mirror implementation details. Exercise the
-actual browser control for interaction claims: click the button, submit the form, change the tab,
-select the option, or use the keyboard path the user uses. An injected demo object, direct service
-call, reducer assertion or helper invocation cannot stand in for that interaction. Keep useful unit
-tests for local contracts, but label their evidence boundary accurately.
+Keep every claim at its evidence level: SSR markup proves content, a built-browser spec proves rendering
+and interaction, a loopback test proves wire delivery, and none of them proves a real account or another
+platform. Name the mocks, skips and untested boundaries in the report.
 
-For end-to-end or integration claims, preserve the real WebUI client/input and production service /
-transport / runtime adapter / persistence path through an observable rendered or persisted outcome.
-Use isolated temporary workspaces and stores, synthetic files and local origins. Deterministic local
-model stubs may control output and timing; they must not replace the path under test. Explicitly
-identify mocks, stubs, skips, environment gates, and any live/native boundary that remains untested.
-
-For layout and usability claims, run the built Chromium client and inspect the actual rendered DOM,
-computed geometry, responsive or constrained viewport behavior, overlay placement/stacking, focus
-and keyboard operation, scrolling, and representative screenshots for the states affected. A passing
-build, selector count or screenshot alone does not prove usability. Assert that dialogs remain
-overlays, controls stay visible and reachable, labels align with fields, and actions produce the
-expected user-visible result. Review screenshot diffs before accepting Linux CI baselines.
-
-For critical cross-layer paths, add a narrow break-link or mutation negative control when practical:
-the target flow should fail if input is dropped, a stream is not projected, persisted state is not
-restored, a runtime update is not rendered, or a browser control does not reach its service. Restore
-only the mutation introduced for that check and rerun the target flow. Preserve valid existing tests;
-remove one only when behavior is retired or replacement evidence is demonstrated and recorded.
+For layout or usability claims, run the built client and read computed geometry, stacking, focus,
+scrolling and both themes; a passing build or a single screenshot is not usability evidence. For a
+critical cross-layer path, add a narrow break-link or mutation control when practical, restore it
+afterwards, and preserve valid existing tests — remove one only when behavior is retired or replacement
+evidence is recorded.

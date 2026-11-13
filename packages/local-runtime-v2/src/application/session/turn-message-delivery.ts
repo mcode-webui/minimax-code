@@ -156,10 +156,16 @@ export function createTurnSystemMessageDelivery(
 }
 
 function executionOptionsFields(
-  input: Pick<ActivationSubmission, 'outputContract' | 'executionDeadlineAtMs'>,
+  input: Pick<
+    ActivationSubmission,
+    'outputContract' | 'executionDeadlineAtMs' | 'capabilitySelection'
+  >,
 ) {
   return {
     ...(input.outputContract ? { outputContract: input.outputContract } : {}),
+    // A trusted per-turn narrowing has to survive the delivery adapter; losing
+    // it here would silently run the node with the general Agent's tools.
+    ...(input.capabilitySelection ? { capabilitySelection: input.capabilitySelection } : {}),
     ...(input.executionDeadlineAtMs !== undefined
       ? { executionDeadlineAtMs: input.executionDeadlineAtMs }
       : {}),

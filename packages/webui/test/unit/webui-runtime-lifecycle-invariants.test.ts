@@ -34,6 +34,10 @@ import { resetDefaultLocalRuntimeConfig } from "@mavis/local-runtime-v2";
 import { createWebuiRuntimeHost } from "../../src/runtime/index.js";
 import { createWebuiAuthSession } from "../../src/runtime/auth-session.js";
 import { createWebuiRuntimeLifecycle } from "../../src/runtime/lifecycle.js";
+import { webuiPluginFailureTextFrom } from "../../src/client/projection/common/plugin-failure-text.js";
+import { PluginDesktopFacade } from "../../../local-runtime-v2/src/service/plugin-system/plugin/runtime/desktop-facade.js";
+import { OfficialPluginAuthBarrier, resolveOfficialPluginAuthState } from "../../../local-runtime-v2/src/service/plugin-system/plugin/runtime/official-operations.js";
+import { InstalledPluginSource } from "@mavis/protocol/local";
 
 // `vi.mock` factories are hoisted above the imports, so the counters they
 // close over must be hoisted too.
@@ -86,6 +90,45 @@ vi.mock("../../src/runtime/auth-session.js", async (importOriginal) => {
 });
 
 describe("WebUI runtime single-owner invariants", () => {
+  it("does not report a signed-in account as logged out when plugin identity lookup fails", async () => {
+    const session = createWebuiAuthSession({ dataDir: "unused-synthetic-auth", region: "en", buildEnv: "dev" });
+    const lease = { accessToken: "synthetic-token", expiresAtMs: Date.now() + 120_000, generation: 1 };
+    vi.spyOn(session.oauthCore, "getAccessToken").mockResolvedValue(lease as never);
+    vi.spyOn(session.usageQuota, "resolveAccountIdentity").mockRejectedValue(new Error("identity lookup unavailable"));
+    try {
+      await session.start();
+      expect(session.authContext.getter()?.accessToken).toBe(lease.accessToken);
+      const state = () => resolveOfficialPluginAuthState(session.authContext.getter());
+      const barrier = new OfficialPluginAuthBarrier({
+        isReady: () => state() === "ready",
+        isLoggedOut: () => state() === "logged_out",
+        timeoutMs: 10,
+      });
+      const system = { captureOfficialScope: () => ({ principalId: "synthetic-user", deployment: "test" }) };
+      const registryClient = { mutate: async () => { throw new Error("identity lookup unavailable"); } };
+      const facade = new PluginDesktopFacade({
+        system: system as never,
+        registryClient: registryClient as never,
+        listStandaloneSkills: async () => ({ skills: [], hasMore: false }),
+        standaloneSkillIdentities: async () => ({ names: new Set(), sourceUrls: new Set() }),
+        waitForOfficialAuth: () => barrier.waitUntilReady(),
+      });
+      let failure: unknown;
+      try {
+        await facade.installPlugin({ pluginName: "synthetic-plugin", source: InstalledPluginSource.OFFICIAL });
+      } catch (error) {
+        failure = error;
+      } finally {
+        barrier.dispose();
+      }
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure).not.toBeInstanceOf(TypeError);
+      expect(webuiPluginFailureTextFrom(failure)).not.toBe("官方账号未登录，无法操作市场插件。");
+    } finally {
+      session.dispose();
+      vi.restoreAllMocks();
+    }
+  });
   it("constructs one OAuth core and one refresh-timer owner, and one idempotent close owner", async () => {
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-runtime-invariants-"),

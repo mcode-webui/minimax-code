@@ -497,6 +497,7 @@ describe("W0 · stylesheet composition", () => {
       "../features/transcript/ui/transcript.css",
       "../features/sessions/ui/sessions.css",
       "../features/workspace/ui/workspace.css",
+      "../features/design/ui/design.css",
       "../features/scheduling/ui/scheduling.css",
       "../features/workspace/ui/workspace-progress.css",
       "../features/browser/ui/browser.css",

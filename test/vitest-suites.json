@@ -83,6 +83,8 @@
       "packages/local-runtime-v2/test/unit/miniapp/tool-approvals.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/agent-observations.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/miniapp-agent-session-ports.test.ts",
+      "packages/local-runtime-v2/test/unit/native-design/agent-ports.test.ts",
+      "packages/local-runtime-v2/test/unit/native-design/execution.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/miniapp-agent-session-ports-projection.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/miniapp-agent-model-selection.test.ts",
       "packages/local-runtime-v2/test/unit/miniapp/miniapp-tool-application.test.ts",
@@ -518,6 +520,15 @@
       "packages/webui/test/unit/webui-w2-effect-reducer.test.ts",
       "packages/webui/test/unit/webui-workspace-archive.test.ts",
       "packages/webui/test/unit/webui-workspace-canvas.test.tsx",
+      "packages/webui/test/unit/design-owner.test.ts",
+      "packages/webui/test/unit/design-runtime.test.ts",
+      "packages/webui/test/unit/design-media-runtime.test.ts",
+      "packages/webui/test/unit/design-capability-discovery.test.ts",
+      "packages/webui/test/unit/design-text-material.test.ts",
+      "packages/webui/test/unit/design-media-kind-preparation.test.ts",
+      "packages/webui/test/unit/design-task-panel.test.tsx",
+      "packages/webui/test/unit/design-template-mode-menu.test.tsx",
+      "packages/webui/test/integration/design-loopback.test.ts",
       "packages/webui/test/unit/webui-workspace-file-tree.test.tsx",
       "packages/webui/test/unit/webui-workspace-html-preview.test.tsx",
       "packages/webui/test/unit/webui-workspace-media-preview.test.tsx",
@@ -616,7 +627,8 @@
       "packages/webui/test/unit/webui-button-contract.test.tsx",
       "packages/webui/test/unit/ssh-connection-picker.test.tsx",
       "packages/webui/test/unit/connection-settings-page.test.tsx",
-      "packages/webui/test/unit/webui-toast.test.tsx"
+      "packages/webui/test/unit/webui-toast.test.tsx",
+      "packages/webui/test/integration/design-connector-reference.test.ts"
     ]
   }
 }

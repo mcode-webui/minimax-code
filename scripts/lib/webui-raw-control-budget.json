@@ -4,6 +4,7 @@
     "packages/webui/src/client/features/account/ui/account.css": [],
     "packages/webui/src/client/features/browser/ui/browser.css": [],
     "packages/webui/src/client/features/composer/ui/composer.css": [],
+    "packages/webui/src/client/features/design/ui/design.css": [],
     "packages/webui/src/client/features/goal/ui/goal.css": [],
     "packages/webui/src/client/features/interactions/ui/interactions.css": [],
     "packages/webui/src/client/features/interactions/ui/plan-mode.css": [],

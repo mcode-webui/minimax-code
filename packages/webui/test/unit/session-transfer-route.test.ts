@@ -17,6 +17,8 @@
 
 import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import { once } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebuiService } from "../../src/server/service.js";
 import { createOperationRegistry } from "../../src/server/operation/operations.js";
@@ -426,6 +428,23 @@ describe("POST /session-import", () => {
 });
 
 describe("readRequestBody", () => {
+  it("returns an explicit HTTP 413 for a chunked over-limit body without destroying its response connection", async () => {
+    const server = createServer(async (request, response) => {
+      try { await readRequestBody(request, 64, { keepConnectionOnLimit: true }); response.end("unexpected"); }
+      catch (error) { response.writeHead(413, { "content-type": "application/json", connection: "close" }); response.end(JSON.stringify({ code: (error as { code: string }).code })); }
+    });
+    server.listen(0, "127.0.0.1"); await once(server, "listening");
+    try {
+      const port = (server.address() as { port: number }).port;
+      const result = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const request = httpRequest(`http://127.0.0.1:${port}`, { method: "POST", headers: { "transfer-encoding": "chunked" } }, (response) => {
+          let body = ""; response.on("data", (chunk) => { body += String(chunk); }); response.on("end", () => resolve({ status: response.statusCode!, body }));
+        });
+        request.on("error", reject); request.write("a".repeat(40)); request.write("b".repeat(40)); request.end();
+      });
+      expect(result).toEqual({ status: 413, body: '{"code":"payload_too_large"}' });
+    } finally { await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())); }
+  });
   // A real stream, not a hand-rolled event emitter: the guard only means
   // anything if it fires on the same events a real request emits.
   const body = (chunks: readonly string[]): IncomingMessage =>

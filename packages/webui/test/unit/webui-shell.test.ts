@@ -251,7 +251,7 @@ describe("WebUI shell", () => {
     const markup = renderToStaticMarkup(createElement(WebuiWorkspacePanel, { state, dispatch: () => undefined, workspaceDir: "/tmp" }));
     expect(markup).toContain('data-testid="workspace-panel"');
     expect(markup).toContain("查看文件");
-    expect(markup).toContain("画布");
+    expect(markup).toContain("Design");
     expect(markup).toContain("终端");
     expect(markup).not.toContain('data-webui-progress-panel="true"');
     // The browser tool tab is gone: the panel's tabs are web tabs now, and a
@@ -1359,7 +1359,9 @@ describe("WebUI shell layout", () => {
     // what left a user staring at a chip that would not open -- and a reload
     // was the only thing that brought it back.
     // The 应用 launcher joined the ledger when it replaced the inert 网站 row.
-    expect(operable).toHaveLength(14);
+    // Native Design opens its authenticated standalone browser page.
+    expect(operable).toHaveLength(15);
+    expect(html).toMatch(/data-webui-nav-item="Design"/u);
     expect(html).toMatch(/data-webui-nav-item="应用"/u);
     expect(html).toMatch(/data-webui-model-selector="true"/u);
     expect(html).not.toMatch(/data-webui-model-selector="true"[^>]*\sdisabled/u);

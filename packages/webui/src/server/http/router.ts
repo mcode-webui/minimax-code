@@ -20,6 +20,7 @@ import { serveBrowserExtensionPackage } from "./browser-extension.js";
 import { handleSessionTransfer, handleSessionImport } from "./session-transfer.js";
 import { handleWebuiShutdown } from "./shutdown.js";
 import { serveWorkspaceFile } from "./workspace-file.js";
+import { applyDesignMediaAction, serveDesignAsset } from "./design-assets.js";
 import type { WebuiHarnessPort } from "../../runtime/port.js";
 import type { WebuiBrowserExtensionPackage } from "../browser-bridge/extension-package.js";
 
@@ -74,11 +75,13 @@ export async function serveHttpRequest(
   // publishes both (ADR 0031). The credential arrives in the query or in
   // the cookie the page response set.
   const requestHostname = hostnameFromHostHeader(request.headers.host ?? "");
+  const designMediaAction = url?.pathname === "/design-assets/actions";
+  const bearer = designMediaAction && /^Bearer ([^\s]+)$/i.exec(String(request.headers.authorization ?? ""))?.[1];
   if (
-    credentialRequired(requestHostname, context.dev, context.fullAccess) &&
+    (designMediaAction || credentialRequired(requestHostname, context.dev, context.fullAccess)) &&
     !credentialPresented(
       context.credential,
-      url?.searchParams.get("token"),
+      bearer || url?.searchParams.get("token"),
       request.headers.cookie,
     )
   ) {
@@ -87,6 +90,11 @@ export async function serveHttpRequest(
   }
   if (!url) {
     rejectHttp(response, 404, "Not Found");
+    return;
+  }
+  if (designMediaAction) { await applyDesignMediaAction(request, response, context.port); return; }
+  if (url.pathname.startsWith("/design-assets/")) {
+    await serveDesignAsset(request, response, url, context.port);
     return;
   }
   if (request.method === "GET" && url.pathname === "/session-transfer") {
@@ -144,7 +152,7 @@ export async function serveHttpRequest(
     // route of its own (`/miniapp?plugin=&session=`) and the shell decides what
     // it renders. Mapping it here is what makes the deep link a page rather than
     // a 404.
-    url.pathname === "/miniapp"
+    url.pathname === "/miniapp" || url.pathname === "/design"
       ? "index.html"
       : url.pathname === "/client.js"
         ? "client.js"

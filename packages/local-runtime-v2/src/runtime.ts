@@ -446,6 +446,7 @@ function createStartedHost(
   return {
     ...v1,
     ...(ownerRuntime ? { application: ownerRuntime.services.application } : {}),
+    ...(ownerRuntime?.services.designExecution ? { designExecution: ownerRuntime.services.designExecution } : {}),
     ...(cliService ? { cliService } : {}),
     apiHost: v1.apiHost,
     ready,
@@ -889,6 +890,7 @@ async function initializeOwnerRuntime(input: {
         : {}),
       capabilityProfile: options.capabilityProfile,
       systemPromptOverrides: options.systemPromptOverrides,
+      ...(options.designTool ? { designTool: options.designTool } : {}),
       getRunawayGuardConfig: options.getRunawayGuardConfig,
       ...(options.getToolResultCompactionConfig
         ? {

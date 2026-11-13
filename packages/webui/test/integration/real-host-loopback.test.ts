@@ -40,6 +40,7 @@ import {
 import { WEBUI_PROTOCOL_VERSION } from "../../src/shared/envelope.js";
 import { decodeWebuiOperationResult } from "../../src/shared/operation-codecs.js";
 import { removeRealHostDataDir } from "./remove-real-host-data-dir.js";
+import { DatabaseClient } from "../../../local-runtime-v2/src/infra/db/client.js";
 
 const CREDENTIAL_TOKEN = "real-host-loopback-token";
 
@@ -188,6 +189,61 @@ function connect(url: string): Promise<Client> {
 }
 
 describe("real host over the loopback service", () => {
+  it("renders Agents management with a retired Builtin in the real host database", async () => {
+    const host = await bootRealHost({ dev: true, serveBuiltClient: true });
+    const database = new DatabaseClient({ dataDir: host.dataDir });
+    try {
+      database.rawDb.prepare(`INSERT INTO agents (
+        agent_name, agent_role, framework_type, creation_source, main_session_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`).run("bunny", "bunny", "mavis", "builtin", "retired-builtin-history", 1, 1);
+    } finally {
+      database.close();
+    }
+    const client = await connect(host.url);
+    try {
+      const frame = await client.call("pluginManagement", {
+        action: "listAgents",
+        input: { limit: 100, include: "identity,persona,system_prompt,model" },
+      });
+      expect(frame).toMatchObject({ kind: "response" });
+      const result = decodeWebuiOperationResult("pluginManagement", frame.body) as { agents: { name: string }[] };
+      expect(result.agents.some((agent) => agent.name === "mavis")).toBe(true);
+      expect(result.agents.some((agent) => agent.name === "bunny")).toBe(false);
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const page = await browser.newPage({ locale: "zh-CN", viewport: { width: 1440, height: 900 } });
+        const errors: string[] = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        await page.goto(`http://127.0.0.1:${host.tcpPort}/?token=${CREDENTIAL_TOKEN}`);
+        await page.getByRole("button", { name: "插件", exact: true }).first().click();
+        await page.getByTestId("plugin-manage-trigger").click();
+        await page.locator(".webui-plugin-category-filter button", { hasText: "Agents" }).click();
+        await browserExpect(page.getByTestId("webui-agent-detail-name")).toHaveText("mavis");
+        await browserExpect(page.getByText("Agent configuration agent.md: Agent configuration is missing.", { exact: false })).toHaveCount(0);
+        await browserExpect(page.getByRole("button", { name: "bunny", exact: true })).toHaveCount(0);
+        await browserExpect(page.locator(".webui-agent-list-item")).toHaveCount(4);
+        await page.locator(".webui-agent-list-item").filter({ hasText: "Worker" }).click();
+        await browserExpect(page.getByTestId("webui-agent-detail-name")).toHaveText("worker");
+        expect(errors).toEqual([]);
+        if (process.env.WEBUI_AGENT_REVIEW_DIR) {
+          await mkdir(process.env.WEBUI_AGENT_REVIEW_DIR, { recursive: true });
+          await page.screenshot({ path: join(process.env.WEBUI_AGENT_REVIEW_DIR, "agents-management.png"), fullPage: true });
+        }
+      } finally {
+        await browser.close();
+      }
+      const preserved = new DatabaseClient({ dataDir: host.dataDir });
+      try {
+        expect(preserved.rawDb.prepare("SELECT main_session_id FROM agents WHERE agent_name = ?").get("bunny"))
+          .toEqual({ main_session_id: "retired-builtin-history" });
+      } finally {
+        preserved.close();
+      }
+    } finally {
+      client.close();
+    }
+  }, 120_000);
+
   it("lists builtin models on first boot without runtime environment or a remote catalog", async () => {
     for (const key of ["MAVIS_REGION", "MAVIS_BUILD_ENV", "__MAVIS_RUNTIME_MANAGED"]) {
       vi.stubEnv(key, undefined);

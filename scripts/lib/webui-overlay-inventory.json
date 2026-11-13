@@ -7,6 +7,17 @@
     "pending": "not migrated yet; the reason is recorded"
   },
   "files": {
+    "features/design/ui/DesignPrompt.tsx": { "disposition": "managed", "note": "the caret reference list uses the shared dropdown coordinator without stealing the editable prompt focus" },
+    "features/design/ui/DesignNodeParams.tsx": { "disposition": "managed", "note": "model, parameter and count chips own distinct shared dropdown layers above their triggers" },
+    "features/design/ui/DesignToolPanel.tsx": { "disposition": "managed", "note": "media tool forms and the clip editor use shared dropdown coordination at their source button or card" },
+    "features/design/ui/DesignMenu.tsx": {
+      "disposition": "managed",
+      "note": "source-derived Design node, edge, blank and add menus use the shared dropdown coordinator at a measured pointer or toolbar anchor"
+    },
+    "features/design/ui/DesignDialogs.tsx": {
+      "disposition": "managed",
+      "note": "templates, assets, tools and capabilities retain anchored dropdowns; destructive deletion alone uses WebuiDialog with explicit Escape dismissal"
+    },
     "ui/field.tsx": {
       "disposition": "managed",
       "note": "the shared select menu uses the dropdown coordinator for dismissal and focus return"

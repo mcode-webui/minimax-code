@@ -4216,7 +4216,7 @@ describe("LocalRuntimeTurnExecutor input and tool safety", () => {
     });
   });
 
-  it("applies the host tool-disable safety switch before extension and permission hooks", async () => {
+  it.each(["bash", "design"])("applies the host tool-disable safety switch to %s before extension and permission hooks", async (toolName) => {
     const extensionHook = vi.fn(async () => undefined);
     const permissionGuard = vi.fn(async () => undefined);
     let decision: unknown;
@@ -4225,7 +4225,7 @@ describe("LocalRuntimeTurnExecutor input and tool safety", () => {
         for (const hook of runInput.hooks?.beforeToolCallHook ?? []) {
           decision = await hook(
             {
-              toolCall: { id: "tool-1", name: "bash", type: "toolCall" },
+              toolCall: { id: "tool-1", name: toolName, type: "toolCall" },
               args: { command: "git status" },
             } as never,
             runInput.signal,
@@ -4275,7 +4275,7 @@ describe("LocalRuntimeTurnExecutor input and tool safety", () => {
 
     expect(decision).toEqual({
       block: true,
-      reason: "Local runtime tool execution is disabled: bash",
+      reason: `Local runtime tool execution is disabled: ${toolName}`,
     });
     expect(extensionHook).not.toHaveBeenCalled();
     expect(permissionGuard).not.toHaveBeenCalled();

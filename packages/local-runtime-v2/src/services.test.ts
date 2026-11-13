@@ -468,7 +468,13 @@ const mocked = vi.hoisted(() => {
     },
     ...createSessionAndTurnSystemMocks(vi, events),
     plugin: { marker: "plugin-service" },
-    hostConnectorGateway: { marker: "host-connector-gateway" },
+    hostConnectorGateway: {
+      marker: "host-connector-gateway",
+      registerNativeClient: vi.fn(),
+      releaseNativeClient: vi.fn(),
+      list: vi.fn(async () => ({ tools: [], providerFailures: [], partial: false })),
+      call: vi.fn(async () => ({})),
+    },
     mcp: {
       marker: "mcp-service",
       disposeSession: vi.fn(async () => undefined),
@@ -3348,6 +3354,31 @@ describe("runtime services lifecycle", () => {
       "plan-document-recovery",
       "owner=session-system;component=plan-document;stage=startup-reconcile;error=draft recovery failed",
     );
+  });
+
+  it("registers the native Design extension and exposes its execution only when the host provides the tool", async () => {
+    const compatibility = defaultCompatibility();
+    const services = await createRuntimeServices({
+      db: {} as AppDb,
+      dataDir: "/data",
+      scheduler: {} as SchedulerClient,
+      eventBus: new EventBus<GlobalEvent>(),
+      compatibility,
+      agentService: localAgentService,
+      designTool: { executionWorkspaceDir: "/synthetic/design", execute: async () => ({}) },
+    });
+    try {
+      expect(
+        (
+          mocked.agentHostOptions?.["normalExtensions"] as readonly {
+            readonly id: string;
+          }[]
+        ).map(({ id }) => id),
+      ).toContain("native-design");
+      expect(services.designExecution).toBeDefined();
+    } finally {
+      await services.close();
+    }
   });
 
   it("accepts v1 events through the injected write port once and detaches on close", async () => {

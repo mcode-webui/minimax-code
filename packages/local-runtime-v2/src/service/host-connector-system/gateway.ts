@@ -63,6 +63,23 @@ interface HostCallAdmission {
 }
 
 export class HostConnectorGateway implements HostProcessConnectorGateway {
+  registerNativeClient(input: { readonly clientId: string; readonly processGeneration: string }): void {
+    this.assertOpen();
+    if (!/^[a-z][a-z0-9-]{0,63}$/.test(input.clientId) || !input.processGeneration.trim()) throw new ConnectorGatewayError('CONNECTOR_HOST_PROCESS_NOT_REGISTERED', 'Native client identity is invalid', 'not_dispatched');
+    const key = hostInventoryKey({ kind: 'native-client', ...input });
+    if (this.releasedHostProcessKeys.has(key)) throw new ConnectorGatewayError('CONNECTOR_HOST_PROCESS_RELEASED', 'Native client generation was already released', 'not_dispatched');
+    this.registeredHostProcessKeys.add(key);
+  }
+
+  releaseNativeClient(input: { readonly clientId: string; readonly processGeneration: string }): void {
+    if (this.closed) return;
+    const key = hostInventoryKey({ kind: 'native-client', ...input });
+    this.releasedHostProcessKeys.add(key);
+    this.registeredHostProcessKeys.delete(key);
+    const slot = this.hostProcessSlots.get(key);
+    if (slot) this.releaseHostProcessSlot(slot);
+    this.hostProcessSlots.delete(key);
+  }
   private readonly grants = new WeakMap<object, ToolGrant>();
   private readonly inFlight = new Set<InFlightCall>();
   private readonly pending = new Set<Promise<void>>();
@@ -172,7 +189,7 @@ export class HostConnectorGateway implements HostProcessConnectorGateway {
   }
 
   async call(input: {
-    readonly handle: ConnectorToolHandle;
+    readonly handle: unknown;
     readonly arguments: Readonly<Record<string, unknown>>;
     readonly caller: HostProcessConnectorCaller;
     readonly hostRequest: ConnectorHostRequestContext;
@@ -237,7 +254,7 @@ export class HostConnectorGateway implements HostProcessConnectorGateway {
   }
 
   private async performCall(input: {
-    readonly handle: ConnectorToolHandle;
+    readonly handle: unknown;
     readonly arguments: Readonly<Record<string, unknown>>;
     readonly caller: HostProcessConnectorCaller;
     readonly hostRequest: ConnectorHostRequestContext;
@@ -275,7 +292,7 @@ export class HostConnectorGateway implements HostProcessConnectorGateway {
         invocationId,
         principalEpoch: grant.principalEpoch,
         inventoryRevision: grant.inventoryRevision,
-        callerKind: 'host-process',
+        callerKind: hostAdmission.caller.kind,
         ...hostProcessAuditFields(hostAdmission.caller, clientRequestId),
         provider: grant.descriptor.provider,
         tool: grant.descriptor.providerToolName,
@@ -314,7 +331,7 @@ export class HostConnectorGateway implements HostProcessConnectorGateway {
       await this.recordTerminal(
         auditTerminal({
           grant,
-          callerKind: 'host-process',
+          callerKind: hostAdmission.caller.kind,
           ...hostProcessAuditFields(hostAdmission.caller, clientRequestId),
           invocationId,
           startedAtMs,
@@ -340,7 +357,7 @@ export class HostConnectorGateway implements HostProcessConnectorGateway {
         await this.recordTerminal(
           auditTerminal({
             grant,
-            callerKind: 'host-process',
+            callerKind: hostAdmission.caller.kind,
             ...hostProcessAuditFields(hostAdmission.caller, clientRequestId),
             invocationId,
             startedAtMs,
@@ -627,6 +644,7 @@ function auditTerminal(input: {
   readonly grant: ToolGrant;
   readonly callerKind: ConnectorAuditEvent['callerKind'];
   readonly pluginId?: string;
+  readonly clientId?: string;
   readonly processGeneration?: string;
   readonly clientRequestId?: string;
   readonly invocationId: string;
@@ -643,6 +661,7 @@ function auditTerminal(input: {
     inventoryRevision: input.grant.inventoryRevision,
     callerKind: input.callerKind,
     ...(input.pluginId ? { pluginId: input.pluginId } : {}),
+    ...(input.clientId ? { clientId: input.clientId } : {}),
     ...(input.processGeneration ? { processGeneration: input.processGeneration } : {}),
     ...(input.clientRequestId ? { clientRequestId: input.clientRequestId } : {}),
     provider: input.grant.descriptor.provider,
@@ -658,8 +677,7 @@ function assertCallerBinding(
   caller: HostProcessConnectorCaller,
 ): void {
   if (
-    caller.pluginId === binding.pluginId &&
-    caller.processGeneration === binding.processGeneration
+    hostInventoryKey(caller) === hostInventoryKey(binding)
   ) {
     return;
   }
@@ -701,11 +719,13 @@ function isBoundedInvocationId(value: unknown): value is string {
 }
 
 function hostInventoryKey(caller: HostProcessConnectorCaller): string {
-  return JSON.stringify([caller.pluginId, caller.processGeneration]);
+  return caller.kind === 'native-client'
+    ? JSON.stringify(['native-client', caller.clientId, caller.processGeneration])
+    : JSON.stringify([caller.pluginId, caller.processGeneration]);
 }
 
 function captureHostProcessCaller(caller: HostProcessConnectorCaller): HostProcessConnectorCaller {
-  return Object.freeze({
+  return caller.kind === 'native-client' ? Object.freeze({ kind: 'native-client', clientId: caller.clientId, processGeneration: caller.processGeneration }) : Object.freeze({
     kind: 'host-process',
     pluginId: caller.pluginId,
     processGeneration: caller.processGeneration,
@@ -723,9 +743,9 @@ function connectorToolIdentity(descriptor: ConnectedConnectorTool): string {
 function hostProcessAuditFields(
   caller: HostProcessConnectorCaller,
   clientRequestId: string,
-): Pick<ConnectorAuditEvent, 'pluginId' | 'processGeneration' | 'clientRequestId'> {
+): Pick<ConnectorAuditEvent, 'pluginId' | 'clientId' | 'processGeneration' | 'clientRequestId'> {
   return {
-    pluginId: caller.pluginId,
+    ...(caller.kind === 'native-client' ? { clientId: caller.clientId } : { pluginId: caller.pluginId }),
     processGeneration: caller.processGeneration,
     clientRequestId,
   };

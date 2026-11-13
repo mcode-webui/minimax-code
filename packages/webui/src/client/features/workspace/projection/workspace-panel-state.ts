@@ -221,7 +221,7 @@ export const WEBUI_WORKSPACE_TAB_KINDS: Readonly<
   files: { label: "查看文件", tile: { type: "open-tab", kind: "files" } },
   "file-preview": { label: "文件", tile: null },
   review: { label: "变更", tile: { type: "open-workspace-review" } },
-  canvas: { label: "画布", tile: { type: "open-tab", kind: "canvas" } },
+  canvas: { label: "Design", tile: { type: "open-tab", kind: "canvas" } },
   terminal: { label: "终端", tile: { type: "open-tab", kind: "terminal" } },
   /**
    * A web tab.

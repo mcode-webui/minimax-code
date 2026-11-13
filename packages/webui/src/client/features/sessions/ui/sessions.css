@@ -33,14 +33,16 @@
   }
   .webui-brand-create-button:active { background: var(--bg_interaction_accent_press); }
   .webui-brand-create-mascot {
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    right: var(--spacing_8);
     width: 56px;
     height: 39px;
     object-fit: contain;
     pointer-events: none;
+  }
+  .webui-brand-create-mascot {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: var(--spacing_8);
   }
   .webui-brand-create-mark { width: 20px; height: 20px; flex: 0 0 20px; }
   .webui-brand-create-wordmark {
@@ -73,7 +75,36 @@
     position: relative;
     padding-top: var(--spacing_24);
   }
-  .webui-rail-command-group { padding-bottom: var(--spacing_8); }
+  .webui-rail-design-action {
+    padding-top: var(--spacing_4);
+    padding-bottom: var(--spacing_12);
+  }
+  .webui-brand-design-button {
+    position: relative;
+    overflow: hidden;
+    border-color: color-mix(in srgb, var(--purple_300) 30%, transparent);
+    background: color-mix(in srgb, var(--purple_100) 38%, var(--bg_default_primary));
+    padding-right: var(--spacing_64);
+  }
+  .webui-brand-design-button:hover {
+    border-color: var(--purple_300);
+    background: color-mix(in srgb, var(--purple_100) 58%, var(--bg_default_primary));
+  }
+  .webui-brand-design-button:active {
+    background: color-mix(in srgb, var(--purple_200) 64%, var(--bg_default_primary));
+  }
+  .webui-brand-design-wordmark { overflow: visible; }
+  .webui-brand-design-wordmark > span:last-child { color: var(--text_default_primary); }
+  .webui-brand-design-mascot {
+    position: absolute;
+    right: 0;
+    bottom: calc(-1 * var(--spacing_8));
+    width: 56px;
+    height: 52px;
+    object-fit: contain;
+    opacity: 0.85;
+    pointer-events: none;
+  }
   .webui-rail-navigation-group {
     border-top: 1px solid var(--border_light);
     padding-top: var(--spacing_8);

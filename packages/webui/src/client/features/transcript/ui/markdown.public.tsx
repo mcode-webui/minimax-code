@@ -1,7 +1,7 @@
 import { marked, type Token } from "marked";
 import katex from "katex";
 import { isWebuiMermaidFence, WebuiMermaid } from "./webui-mermaid.js";
-import { WebuiIconFileForName } from "../../../shell/icons.js";
+import { WebuiIconFileReference } from "../../../shell/icons.js";
 import hljs from "highlight.js/lib/core";
 import bash from "highlight.js/lib/languages/bash";
 import c from "highlight.js/lib/languages/c";
@@ -284,7 +284,7 @@ export function WebuiFileMedia({ path }: { readonly path: string }): ReactElemen
 
 function fileReferenceAnchor(key: string, value: string, reference: NonNullable<ReturnType<typeof parseWebuiMessageFileReference>>, onOpenFile: (reference: NonNullable<ReturnType<typeof parseWebuiMessageFileReference>>) => void, showIcon = true): ReactElement {
   const name = reference.path.replace(/\\/gu, "/").split("/").at(-1) ?? reference.path;
-  return <Fragment key={key}><a className="webui-message-file-link" href={value} title={reference.path} data-webui-file-reference={reference.path} onClick={(event) => { event.preventDefault(); onOpenFile(reference); }}>{showIcon ? <span aria-hidden="true"><WebuiIconFileForName fileName={name} /></span> : null}<span>{name}</span></a><WebuiFileMedia path={reference.path} /></Fragment>;
+  return <Fragment key={key}><a className="webui-message-file-link" href={value} title={reference.path} data-webui-file-reference={reference.path} onClick={(event) => { event.preventDefault(); onOpenFile(reference); }}>{showIcon ? <span aria-hidden="true"><WebuiIconFileReference /></span> : null}<span>{name}</span></a><WebuiFileMedia path={reference.path} /></Fragment>;
 }
 
 function inline(tokens: readonly Token[] | undefined, onOpenFile?: (reference: NonNullable<ReturnType<typeof parseWebuiMessageFileReference>>) => void, workspaceDir?: string, lexBareText = true): ReactNode[] {

@@ -28,8 +28,10 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
-  .webui-message-file-link { display: inline-flex; align-items: center; gap: 5px; color: var(--text_default_accent); text-decoration: none; }
-  .webui-message-file-link:hover { text-decoration: underline; }
+  .webui-message-file-link { display: inline-flex; align-items: center; gap: 5px; color: var(--text_default_code_link); text-decoration: none; }
+  /* A code reference underlines dotted on hover: the file is a thing to open,
+   * not a link out of the conversation, and the dotted rule says so. */
+  .webui-message-file-link:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
   .webui-message-file-media { display: block; margin-block-start: 6px; max-width: min(100%, 420px); }
   .webui-message-file-media img,
   .webui-message-file-media video { display: block; max-width: 100%; height: auto; border-radius: 8px; }
@@ -92,8 +94,13 @@
     text-decoration: none;
   }
   .webui-markdown a.webui-message-file-link {
-    color: var(--text_default_accent);
+    color: var(--text_default_code_link);
     align-items: baseline;
+  }
+  .webui-markdown a.webui-message-file-link:hover {
+    color: var(--text_default_code_link);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
   }
   .webui-markdown a.webui-message-file-link > [aria-hidden="true"] { align-self: center; }
   .webui-markdown a:hover {

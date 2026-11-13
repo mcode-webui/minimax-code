@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Banner } from "ascii.rest/react";
+import { HomeOctoCameo } from "./HomeOctoCameo.js";
 import { WebuiIconHomeBrand } from "./icons.js";
 import { WebuiWorkspacePanelControls } from "../features/workspace/ui/WorkspacePanelControls.js";
 import { WebuiInline, WebuiStack } from "../ui/layout-primitives.js";
@@ -84,12 +85,13 @@ export function ConversationSurface(props: {
             <div
               className={
                 props.home
-                  ? "flex min-h-0 w-full flex-1 flex-col items-center relative overflow-hidden"
+                  ? "flex min-h-0 w-full flex-1 flex-col items-center relative isolate overflow-hidden"
                   : `flex min-h-0 w-full flex-1 flex-col items-center relative overflow-hidden pt-spacing_24 ${props.progressOpen ? "webui-session-has-progress-panel" : ""}`
               }
               data-webui-home-content={props.home ? "true" : "false"}
               data-webui-session-layout={!props.home ? "true" : undefined}
             >
+              {props.home ? <HomeOctoCameo /> : null}
               {props.home ? (
                 <div
                   aria-hidden="true"

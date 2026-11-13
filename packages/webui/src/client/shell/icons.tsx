@@ -114,6 +114,13 @@ export function WebuiIconFileForName({ fileName, className }: WebuiFileIconProps
 }
 
 /** A file inside a diff or a stat row: the same glyph the name earns. */
+/**
+ * A file reference in the transcript: the code glyph, not the file-type glyph.
+ * The reference names a file the agent worked on, and the type is already in the
+ * extension the label shows, so the icon says "source file" once.
+ */
+export function WebuiIconFileReference({ className }: WebuiIconProps): ReactElement { return glyph(IconCode, className, 15); }
+
 export function WebuiIconDiffFile({ className, fileName }: WebuiFileIconProps): ReactElement {
   return <WebuiIconFileForName className={className} fileName={fileName} />;
 }

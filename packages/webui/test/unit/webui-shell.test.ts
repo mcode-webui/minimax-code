@@ -1227,9 +1227,9 @@ describe("WebUI shell layout", () => {
   it("uses token-derived colour utilities and the shell's component classes", () => {
     const html = renderShell();
 
-    // The hero title is the ascii banner, and a coloured banner draws on a
-    // canvas whose accessible name is the product name.
-    expect(html).toMatch(/<canvas[^>]*aria-label="MiniMax Code"/u);
+    // 前景文案是可访问的标题，背景品牌字只承担装饰作用。
+    expect(html).toMatch(/<h1[^>]*text-text_default_primary[^>]*>.*让灵感自由生长，.*让创造触手可及.*<\/h1>/u);
+    expect(html).toMatch(/<canvas[^>]*aria-hidden="true"[^>]*data-webui-home-pixel-wordmark="true"/u);
     expect(html).toMatch(/bg-text_default_tertiary/u);
     expect(html).toMatch(/text-icon_default_tertiary/u);
     expect(html).toMatch(/border-border_default/u);
@@ -1248,10 +1248,9 @@ describe("WebUI shell layout", () => {
     expect(styles).toMatch(/color:\s*var\(--text_default_secondary\)/u);
     expect(styles).toMatch(/font-size:\s*var\(--size_12\)/u);
     expect(styles).toMatch(/line-height:\s*var\(--line_height_16\)/u);
-    // A coloured banner takes hex, not custom properties, so the hero's pair is
-    // pinned against the ramp whose steps it names.
+    // 背景像素品牌字的色阶仍与蓝紫基础色保持一致。
     const surface = readFileSync(
-      new URL("../../src/client/shell/ConversationSurface.tsx", import.meta.url),
+      new URL("../../src/client/shell/HomeOctoCameo.tsx", import.meta.url),
       "utf8",
     );
     const tokens = readFileSync(
@@ -1263,7 +1262,7 @@ describe("WebUI shell layout", () => {
       expect(value, `tokens.css has no --${step}`).toBeTruthy();
       expect(
         surface.toLowerCase(),
-        `the hero banner's colour drifted from --${step}`,
+        `the background wordmark's colour drifted from --${step}`,
       ).toContain(value);
     }
 
@@ -1416,9 +1415,8 @@ describe("WebUI shell layout", () => {
 
     expect(html).toMatch(/data-webui-home-content="true"/u);
     expect(html).toContain("MiniMax Code");
-    // The title is the ascii banner: a canvas whose accessible name is the
-    // product name.
-    expect(html).toMatch(/<canvas[^>]*aria-label="MiniMax Code"/u);
+    expect(html).toMatch(/<h1[^>]*>.*让灵感自由生长，.*让创造触手可及.*<\/h1>/u);
+    expect(html).toMatch(/<canvas[^>]*aria-hidden="true"[^>]*data-webui-home-pixel-wordmark="true"/u);
     // The hero column keeps its 743px width, and the home surface centres what
     // it holds vertically: one full-bleed flex spacer above the column and one
     // below take the free height between them, so the block sits in the middle

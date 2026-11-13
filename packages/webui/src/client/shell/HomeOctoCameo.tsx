@@ -1,130 +1,20 @@
-import { useEffect, useRef, type ReactElement } from "react";
+import { useEffect, useRef, type ReactElement, type RefObject } from "react";
+import { banner } from "ascii.rest/banner";
+import { useWebuiBrowserCapabilities, type WebuiBrowserCapabilities } from "../bindings/browser-capabilities.js";
 
 /*
- * A cameo, not a backdrop.
- *
- * The octopus girl is drawn as a field of flat blocks — 64x96 cells sampled
- * from the character sheet and reduced to five tones, so the figure reads as
- * blocks rather than as a downscaled photograph.
- *
- * She is built one cell at a time and taken apart the same way: the build runs
- * as a top-to-bottom scan with a little jitter, the dissolve runs in scattered
- * order, so she assembles like a print and leaves like dust. Between visits
- * nothing is on the surface and no frame loop is running.
+ * 像素只沿品牌字形生长，成形前保持原位，随后随机逐格消散。
+ * 字体复用原首页标题的 ascii.rest block 字体，前景中文文案独立渲染。
  */
 
-const GRID_W = 64;
-const GRID_H = 96;
-
-/** One character per cell: 0 is empty, 1..4 are the tone ramp. */
-const GRID = `0000000000000000000000000010100000000000000000000000000000000000
-0000000000000000000000000001000012000000000000000000000000000000
-0000000000000000000000000022333122201000000000000000000000000000
-0000000000000000000000001234232200221100000000000000000000000000
-0000000000000000000210223242322110123210000000000000000000000000
-0000000000000000001212232322221212113400000000000000000000000000
-0000000000000000003222432222212232212330000000000000000000000000
-0000000000000000013323421213222212221100000000000000000000000000
-0000000000000000314344312232322210222322100000000000000000000000
-0000000000000002201434332332121213331321110122000000000000000000
-0000000000000001311343333331112124322342210012200000000000000000
-0000000000000000133321332324310002122222100002200000000000000000
-0000000000000110233233433244411011123321301001200000000000000000
-0000000000001100122444343321110011023312100002011100000000000000
-0000000000010000324444433331101220133232201121222211100000000000
-0000000001121002103323443322100100241322332323332111110000000000
-0000000022112002323323434432321012434431233332211222310000000000
-0000000122000002332334234431133433333431120121000122120000000000
-0000000232100122334443432210013443432343221120000032210000000000
-0000000223211212343101132200001333342234232200000022100000000000
-0000000133334231232231003321112132223222333210112222100010000000
-0000000012233324111444100002222123111223330322221200012332000000
-0000000000002322310034411000422134100011332233322011211233100000
-0002231100013322100102420000230242010011023222222222000013100000
-0022101132334320101002421010331430111121103332322220100023100000
-0021000012231102310004431000241401111111112433232112110111000000
-0021001233432233213124431011333111222221112333433222221000000000
-0000012233333432033242320103233211344433120233343323221000000000
-0001322243434331133143211123234333444434420033323332422121000000
-0002222333232321231122111132133443233434320123200233331222100000
-0021223310024342322121211232234332224233420142300232123221200000
-0011223200133423332211122423221100343323320340011322003321110000
-0122323001334333444333444332201333424102421242123220002332111000
-0123122003333434443444443310000444133001321332112300010333220000
-0022113233434343323343322210214442232000443331211011200232222000
-0013112333231333331100000001333433342000142332110000111322120000
-0132322132220233312110000133423234421010133232211000112232210000
-0210012223200011000011002444221224200000022133111100012223100000
-1100002331000143431000134343212242000000003212311100112221000000
-1200000211231333343201343443222430000000002411221111121000000000
-1221102222224321222332324444433320002222101240222122343010111000
-0001021121133212111112123444443111211211010133021213341112000000
-0000212222333121101011223342421022342220001013302242321110200000
-0001222212233333000112212334221112131012222102410310000000000000
-0001333332334333433231223344322110123122312011341220000000000000
-0002233321122334344311112333220000012212210233343021000000000000
-0002323310013344444321112332210000101121233233433101100000000000
-0002232300013334344422122223112323331111133224331210010000000000
-0000323320002343444443322232223242234121233244422231002000000000
-0000032222210233343444321223343320001211233433321122000101000000
-0000002222200132434444432134444210101121433332321122112222322000
-0000000000000312233434342234341000000112332332221023222333332200
-0000000000102112334343333243443110101123423232222233323333332220
-0000000002000112223433232333343201000114222333112333233333332211
-0000000022111122223333323342333210101133334442213343322123333221
-0000000212221222222223332332232310010134234433123411000001332321
-0000002111211232201222433332321220101133434443224420000000333231
-0000011111222420000123332322210011010123343434223321011000132221
-0000012112224200100243433333100110111112334333423232221000322220
-0000021012233000132333310112001101111100133323332322110112222200
-0000023232332000133332200000011111212000013333334331000022222000
-0000022223230000001211000000111111121000002322332222000001000000
-0000013122330000000000000001111111221010003320333122000000000000
-0000002212230000000000000001111112220012122200332211000000000000
-0000002212323000210000000011111122210002322000333211000000000000
-0000000222122312210000000011111112110000000001332221000000000000
-0000000022222232200000000021112221110000001002322230000000000000
-0000000000121221000000000111111211010000012112221200000000000000
-0000000000000000000000000111212110100000013222222100000000000000
-0000000000000000000000012201111100000000001222220000000000000000
-0000000000000000000000124321011010100000000010100000000000000000
-0000000000000000000000134442010000000000000000000000000000000000
-0000000000000000000111212342011010100000000000000000000000000000
-0000000000000000001324221112010001000000000000000000000000000000
-0000000000000000000024422222001010000000000000000000000000000000
-0000000000000000000213331220010000000000000000000000000000000000
-0000000000000000012231334420000010000000000000000000000000000000
-0000000000000000021331123400032210000000000000000000000000000000
-0000000000000000023221323310044430000000000000000000000000000000
-0000000000000000023221222210110000000000000000000000000000000000
-0000000000000000003321222111201110000000000000000000000000000000
-0000000000000000000201121001220101000000000000000000000000000000
-0000000000000000002110121001321011000000000000000000000000000000
-0000000000000000002200011003332232000000000000000000000000000000
-0000000000000000003220001033432243200000000000000000000000000000
-0000000000000000002311011034211123110000000000000000000000000000
-0000000000000000000344431013212120030000000000000000000000000000
-0000000000000000000024430013101111020000000000000000000000000000
-0000000000000000000000000023101121000000000000000000000000000000
-0000000000000000000000000013100001000000000000000000000000000000
-0000000000000000000000000122100000100000000000000000000000000000
-0000000000000000000000000232110000010000000000000000000000000000
-0000000000000000000000000043112243310000000000000000000000000000
-0000000000000000000000000003321444430000000000000000000000000000
-0000000000000000000000000000334444430000000000000000000000000000
-0000000000000000000000000000011111000000000000000000000000000000`;
-
-const LIGHT_TONES = [null, "#fdeef4", "#facfde", "#f4a0be", "#e46896"] as const;
-const DARK_TONES = [null, "#241a22", "#3a2430", "#552c3f", "#74394f"] as const;
-
-/** Cells materialise at this rate. One block at a time has to stay legible. */
-const BUILD_RATE = 620;
-/** The dissolve is quicker than the build; leaving should not drag. */
-const DISSOLVE_RATE = 900;
-
-const HOLD_SECONDS = 2.4;
-const FIRST_VISIT_MS = 12_000;
-const VISIT_GAP_MS = 80_000;
+const BRAND_COLORS = ["#0094fc", "#b06add"] as const;
+const SPREAD_SECONDS = 6;
+const HOLD_SECONDS = 2;
+const DISSOLVE_SECONDS = 3;
+const REST_SECONDS = 1;
+const CYCLE_SECONDS = SPREAD_SECONDS + HOLD_SECONDS + DISSOLVE_SECONDS + REST_SECONDS;
+const FRAME_MS = 1000 / 30;
+const COMPACT_WIDTH = 960;
 
 const clamp = (value: number, lo = 0, hi = 1): number =>
   value < lo ? lo : value > hi ? hi : value;
@@ -135,88 +25,129 @@ function hash(x: number, y: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-interface Cell {
-  readonly x: number;
-  readonly y: number;
-  readonly tone: number;
-  /** 0..1, where this cell falls in the top-to-bottom build scan. */
-  readonly buildRank: number;
-  /** 0..1, where this cell falls in the scattered dissolve. */
-  readonly dissolveRank: number;
+interface Wordmark {
+  readonly text: string;
+  readonly columns: number;
+  readonly rows: number;
+  readonly cells: readonly { x: number; y: number }[];
 }
 
-function readCells(): readonly Cell[] {
-  const rows = GRID.split("\n");
-  const raw: Array<{ x: number; y: number; tone: number }> = [];
-  for (let y = 0; y < GRID_H; y += 1) {
-    const row = rows[y] ?? "";
-    for (let x = 0; x < GRID_W; x += 1) {
-      const tone = Number(row[x] ?? "0");
-      if (!tone) continue;
-      raw.push({ x, y, tone });
+function readWordmark(text: string): Wordmark {
+  const piece = banner(text, {
+    font: "block",
+    pixel: 1,
+    gap: 1,
+    pad: 0,
+    fill: "█",
+    shadow: "none",
+    effect: "still",
+  });
+  const cells: Array<{ x: number; y: number }> = [];
+  piece.default()(0).split("\n").forEach((row, y) => {
+    Array.from(row).forEach((value, x) => {
+      if (value === "█") cells.push({ x, y });
+    });
+  });
+  return { text, columns: piece.meta.cols, rows: piece.meta.rows, cells };
+}
+
+const FULL_WORDMARK = readWordmark("MINIMAX CODE");
+const COMPACT_WORDMARK = readWordmark("MCODE");
+
+interface BrandPixel {
+  readonly x: number;
+  readonly y: number;
+  readonly reveal: number;
+  readonly dissolve: number;
+  readonly color: string;
+  readonly alpha: number;
+}
+
+function brandColor(progress: number): string {
+  const channels = [1, 3, 5].map((offset) => {
+    const from = parseInt(BRAND_COLORS[0].slice(offset, offset + 2), 16);
+    const to = parseInt(BRAND_COLORS[1].slice(offset, offset + 2), 16);
+    return Math.round(from + (to - from) * progress);
+  });
+  return "rgb(" + channels.join(",") + ")";
+}
+
+/** 从字形中间向两侧传播；空格仅参与传播计算，不绘制背景块。 */
+function createBrandPixels(wordmark: Wordmark, cycle: number): readonly BrandPixel[] {
+  const { columns, rows } = wordmark;
+  const arrival = new Float64Array(columns * rows).fill(Infinity);
+  const start = Math.floor(rows / 2) * columns + Math.floor(columns / 2);
+  const frontier: Array<{ index: number; time: number }> = [{ index: start, time: 0 }];
+  arrival[start] = 0;
+
+  while (frontier.length > 0) {
+    let first = 0;
+    for (let i = 1; i < frontier.length; i += 1) {
+      if (frontier[i]!.time < frontier[first]!.time) first = i;
+    }
+    const current = frontier[first]!;
+    frontier[first] = frontier[frontier.length - 1]!;
+    frontier.pop();
+    if (current.time !== arrival[current.index]) continue;
+    const x = current.index % columns;
+    const y = Math.floor(current.index / columns);
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || nx >= columns || ny < 0 || ny >= rows) continue;
+      const next = ny * columns + nx;
+      const time = current.time + 0.45 + hash(Math.floor(nx / 3) + cycle * 17, ny + 89) * 1.4;
+      if (time >= arrival[next]!) continue;
+      arrival[next] = time;
+      frontier.push({ index: next, time });
     }
   }
 
-  // Build: a scan down the figure, jittered so the edge is ragged rather than
-  // a ruler-straight wipe.
-  const byScan = raw
-    .map((cell, index) => ({ index, key: cell.y * GRID_W + cell.x + hash(cell.x, cell.y) * 420 }))
-    .sort((a, b) => a.key - b.key);
-  const buildRank = new Array<number>(raw.length);
-  byScan.forEach((entry, rank) => {
-    buildRank[entry.index] = rank / Math.max(1, raw.length - 1);
+  const arrivals = wordmark.cells.map(({ x, y }) => arrival[y * columns + x]!);
+  const firstArrival = Math.min(...arrivals);
+  const duration = Math.max(1, Math.max(...arrivals) - firstArrival);
+  const dissolveOrder = wordmark.cells.map((_, index) => index)
+    .sort((a, b) => hash(a, cycle + 101) - hash(b, cycle + 101));
+  const dissolveRank = new Float64Array(wordmark.cells.length);
+  dissolveOrder.forEach((index, rank) => {
+    dissolveRank[index] = (rank + 1) / wordmark.cells.length;
   });
-
-  // Dissolve: scattered, so she comes apart instead of unrolling backwards.
-  const byScatter = raw
-    .map((cell, index) => ({ index, key: hash(cell.x * 7 + 11, cell.y * 13 + 5) }))
-    .sort((a, b) => a.key - b.key);
-  const dissolveRank = new Array<number>(raw.length);
-  byScatter.forEach((entry, rank) => {
-    dissolveRank[entry.index] = rank / Math.max(1, raw.length - 1);
-  });
-
-  return raw.map((cell, index) => ({
-    ...cell,
-    buildRank: buildRank[index],
-    dissolveRank: dissolveRank[index],
+  return wordmark.cells.map(({ x, y }, index) => ({
+    x,
+    y,
+    reveal: (arrivals[index]! - firstArrival) / duration,
+    dissolve: dissolveRank[index]!,
+    color: brandColor(x / (columns - 1)),
+    alpha: 0.10 + hash(x + 43, y + 53) * 0.04,
   }));
 }
 
-const CELLS = readCells();
-
-const BUILD_SECONDS = CELLS.length / BUILD_RATE;
-const DISSOLVE_SECONDS = CELLS.length / DISSOLVE_RATE;
-const VISIT_SECONDS = BUILD_SECONDS + HOLD_SECONDS + DISSOLVE_SECONDS;
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
-function usesDarkSurface(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.documentElement.classList.contains("dark");
-}
-
-/** Runs one cameo at a time on a repeating schedule. */
-function runCameos(canvas: HTMLCanvasElement): () => void {
+/** 只在首页可见时绘制；后台时间不计入播放进度。 */
+function runWordmark(
+  canvas: HTMLCanvasElement,
+  hero: HTMLDivElement,
+  browserDom: Pick<WebuiBrowserCapabilities["dom"], "readDocumentTheme" | "isPageHidden" | "listenForVisibilityChange">,
+): () => void {
   const context = canvas.getContext("2d");
   if (!context) return () => {};
 
-  const tones = usesDarkSurface() ? DARK_TONES : LIGHT_TONES;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
+  let dpr = 1;
+  let heroCentreY = 0;
+  let backdropReferenceHeight = 0;
   let frame = 0;
-  let startedAt = 0;
-  let scheduleTimer = 0;
+  let elapsed = 0;
+  let lastTick: number | undefined;
   let disposed = false;
+  let pixels: readonly BrandPixel[] = [];
+  let pixelKey = "";
 
   const resize = (): void => {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = canvas.getBoundingClientRect();
+    const heroRect = hero.getBoundingClientRect();
+    heroCentreY = heroRect.top - rect.top + heroRect.height / 2;
+    // 前景恢复大头像后，背景仍保留已确认的小组合尺寸，避免像素字被一起放大。
+    backdropReferenceHeight = window.matchMedia("(max-width: 480px)").matches ? 56 : 72;
     canvas.width = Math.max(1, Math.round(rect.width * dpr));
     canvas.height = Math.max(1, Math.round(rect.height * dpr));
   };
@@ -226,124 +157,122 @@ function runCameos(canvas: HTMLCanvasElement): () => void {
     context.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const draw = (elapsed: number): void => {
-    const widthCss = canvas.width / dpr;
-    const heightCss = canvas.height / dpr;
-    if (widthCss === 0 || heightCss === 0) return;
-
+  const draw = (): void => {
     clear();
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const cell = Math.min((heightCss * 0.62) / GRID_H, (widthCss * 0.34) / GRID_W);
-    const originX = widthCss - GRID_W * cell - widthCss * 0.02;
-    const originY = (heightCss - GRID_H * cell) / 2 + heightCss * 0.05;
-
-    const buildProgress = clamp(elapsed / BUILD_SECONDS);
-    const dissolveProgress = clamp((elapsed - BUILD_SECONDS - HOLD_SECONDS) / DISSOLVE_SECONDS);
-
-    // a single slow breath while she is whole
-    const holdTime = elapsed - BUILD_SECONDS;
-    const breath = holdTime > 0 ? Math.sin(holdTime * 1.5) * 0.012 : 0;
-    const cx = GRID_W / 2;
-
-    for (const info of CELLS) {
-      if (info.buildRank > buildProgress) continue;
-      if (info.dissolveRank < dissolveProgress) continue;
-
-      const px = originX + (cx + (info.x - cx) * (1 + breath)) * cell;
-      const py = originY + info.y * cell;
-
-      const tone = tones[info.tone as 1 | 2 | 3 | 4];
-      if (!tone) continue;
-
-      context.fillStyle = tone;
-      // Integer-aligned so a cell is never a half-lit smear.
-      context.fillRect(Math.round(px), Math.round(py), Math.ceil(cell), Math.ceil(cell));
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+    const wordmark = width < COMPACT_WIDTH ? COMPACT_WORDMARK : FULL_WORDMARK;
+    // 品牌字与前景组合共用中心，作为其背后的低对比度底纹。
+    const pitch = Math.floor(Math.min(
+      (width - 48) / wordmark.columns,
+      (height - 48) / wordmark.rows,
+      (backdropReferenceHeight + 32) / wordmark.rows,
+      36,
+    ));
+    if (pitch < 3) return;
+    const gap = pitch >= 18 ? 4 : Math.min(2, pitch - 1);
+    const size = pitch - gap;
+    const originX = Math.round((width - wordmark.columns * pitch) / 2);
+    const originY = Math.round(clamp(
+      heroCentreY - wordmark.rows * pitch / 2,
+      24,
+      Math.max(24, height - wordmark.rows * pitch - 24),
+    ));
+    const cycle = Math.floor(elapsed / CYCLE_SECONDS);
+    const phase = elapsed % CYCLE_SECONDS;
+    const key = wordmark.text + ":" + cycle;
+    if (pixelKey !== key) {
+      pixels = createBrandPixels(wordmark, cycle);
+      pixelKey = key;
+      canvas.dataset.webuiHomeBrand = wordmark.text;
     }
+    const spread = clamp(phase / SPREAD_SECONDS);
+    const dissolve = clamp((phase - SPREAD_SECONDS - HOLD_SECONDS) / DISSOLVE_SECONDS);
+    const dark = browserDom.readDocumentTheme() === "dark";
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (const pixel of pixels) {
+      if (pixel.reveal > spread || pixel.dissolve <= dissolve) continue;
+      context.globalAlpha = pixel.alpha * (dark ? 1.4 : 1);
+      context.fillStyle = pixel.color;
+      context.fillRect(
+        originX + pixel.x * pitch + gap / 2,
+        originY + pixel.y * pitch + gap / 2,
+        size,
+        size,
+      );
+    }
+    context.globalAlpha = 1;
   };
 
   const tick = (now: number): void => {
-    if (disposed) return;
-    if (startedAt === 0) startedAt = now;
-    const elapsed = (now - startedAt) / 1000;
-    if (elapsed >= VISIT_SECONDS) {
-      clear();
+    if (disposed || browserDom.isPageHidden()) {
       frame = 0;
-      startedAt = 0;
-      schedule(VISIT_GAP_MS);
       return;
     }
-    draw(elapsed);
+    if (lastTick === undefined) lastTick = now;
+    if (now - lastTick >= FRAME_MS) {
+      elapsed += (now - lastTick) / 1000;
+      lastTick = now;
+      draw();
+    }
     frame = window.requestAnimationFrame(tick);
   };
 
-  function schedule(delayMs: number): void {
-    if (disposed) return;
-    window.clearTimeout(scheduleTimer);
-    scheduleTimer = window.setTimeout(() => {
-      if (disposed) return;
-      if (document.hidden) {
-        schedule(VISIT_GAP_MS);
-        return;
-      }
-      startedAt = 0;
-      frame = window.requestAnimationFrame(tick);
-    }, delayMs);
-  }
-
   resize();
-  schedule(FIRST_VISIT_MS);
-
-  const onResize = (): void => {
+  if (!browserDom.isPageHidden()) frame = window.requestAnimationFrame(tick);
+  const observer = new ResizeObserver(() => {
     resize();
-    if (startedAt !== 0) {
-      draw(Math.min((performance.now() - startedAt) / 1000, VISIT_SECONDS));
-    }
-  };
-  window.addEventListener("resize", onResize);
+    draw();
+  });
+  observer.observe(canvas);
+  observer.observe(hero);
 
   const onVisibility = (): void => {
-    if (!document.hidden || !frame) return;
-    // A cameo interrupted by a hidden tab is abandoned, not resumed.
-    window.cancelAnimationFrame(frame);
-    frame = 0;
-    startedAt = 0;
-    clear();
-    schedule(VISIT_GAP_MS);
+    if (frame) window.cancelAnimationFrame(frame);
+    lastTick = undefined;
+    frame = browserDom.isPageHidden() ? 0 : window.requestAnimationFrame(tick);
   };
-  document.addEventListener("visibilitychange", onVisibility);
+  const stopVisibility = browserDom.listenForVisibilityChange(onVisibility);
 
   return () => {
     disposed = true;
     if (frame) window.cancelAnimationFrame(frame);
-    window.clearTimeout(scheduleTimer);
-    window.removeEventListener("resize", onResize);
-    document.removeEventListener("visibilitychange", onVisibility);
+    observer.disconnect();
+    stopVisibility();
     clear();
   };
 }
 
-/**
- * Periodic cameo on the home surface. Decorative only: it announces nothing
- * and takes no pointer events.
- */
-export function HomeOctoCameo(): ReactElement {
+/** 装饰性品牌字不接收指针事件，也不重复播报前景内容。 */
+export function HomeOctoCameo({ heroRef }: {
+  readonly heroRef: RefObject<HTMLDivElement>;
+}): ReactElement {
+  const { dom: browserDom } = useWebuiBrowserCapabilities();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    // Repeating decorative motion is exactly what this preference asks us not
-    // to do, so she does not appear at all.
-    if (prefersReducedMotion()) return undefined;
-    return runCameos(canvas);
-  }, []);
+    const hero = heroRef.current;
+    if (!canvas || !hero) return undefined;
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let stop: (() => void) | undefined;
+    const syncMotion = (): void => {
+      stop?.();
+      stop = preference.matches ? undefined : runWordmark(canvas, hero, browserDom);
+    };
+    syncMotion();
+    preference.addEventListener("change", syncMotion);
+    return () => {
+      preference.removeEventListener("change", syncMotion);
+      stop?.();
+    };
+  }, [heroRef, browserDom]);
 
   return (
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      data-webui-home-octo-cameo="true"
+      data-webui-home-pixel-wordmark="true"
       className="pointer-events-none absolute inset-0 -z-10 h-full w-full select-none"
     />
   );

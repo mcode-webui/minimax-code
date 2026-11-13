@@ -510,6 +510,25 @@ instead of choosing a number.
   `features/transcript/ui/transcript.css`). Static feature rotation, interaction transforms and smooth
   scrolling are not approved anywhere.
 
+The home shell owns a decorative Canvas effect in `shell/HomeOctoCameo.tsx`. Blue-to-purple pixels
+grow from the middle of a large `MINIMAX CODE` wordmark along its letter shapes over six seconds.
+When the home content is narrower than 960 CSS pixels, the wordmark uses `MCODE` instead. The
+letter mask reuses ascii.rest's block font; no pixel character or full-surface field is drawn.
+Revealed pixels stay fixed until the complete wordmark has held for two seconds, then disappear
+individually in a random order over three seconds. A one-second empty interval separates cycles.
+The wordmark shares the centre of the foreground hero group as a low-contrast backdrop, rather
+than occupying a separate banner row. Four-pixel gutters separate its squares, reduced to two
+pixels when the available width or height requires smaller squares. Its size retains the approved
+72-pixel reference group (56 pixels at viewport widths of 480 pixels or less), independently of
+the foreground's size. The foreground stacks a 94-pixel avatar above the centred heading
+“让灵感自由生长，让创造触手可及”, with a wrap opportunity between clauses. The heading uses the
+24-pixel type step, increasing to 32 pixels at viewport widths of 768 pixels or more. The outer
+flex spacers centre the complete foreground and composer group, preserving the backdrop's position
+when the foreground height changes. The backdrop excludes the sidebar and header.
+The effect starts on entry, pauses while the document is hidden, follows the current theme, and
+clears when reduced motion is requested or the home surface unmounts. This illustration has its
+own spatial timing rather than a control-feedback or loading duration.
+
 `pnpm check:webui-motion` compares the stylesheets and the inventory in both directions — a duration or
 `@keyframes` the inventory does not know fails, a recorded entry that has gone fails, and a value that
 claims a family while carrying another number fails — and rejects feature-owned timing declarations,

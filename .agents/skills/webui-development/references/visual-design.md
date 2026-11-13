@@ -26,7 +26,13 @@ never to hide a regression.
   winner. Keep feature imports in `styles/index.css` in their intended order.
 - **Global scrollbars and gutters live in `styles/index.css`.** Do not reserve gutters on every element —
   inline SVG's overflow can collapse its paint area — and preserve the horizontal-only opt-outs. Long
-  content is handled with `min-w-0`/`min-h-0` and real scroll ownership, not global overflow hiding.
+  content is handled with `min-w-0`/`min-h-0` and real scroll ownership, not global overflow hiding. A
+  request to hide a page's scrollbar extends the grouped rule the stylesheet already has (the settings
+  surfaces that draw none are one rule plus its `::-webkit-scrollbar` twin) instead of adding a second
+  hand-written rule; verify with `getComputedStyle(el).scrollbarWidth`,
+  `getComputedStyle(el, "::-webkit-scrollbar").display` and `offsetWidth - clientWidth`, then set
+  `scrollTop` past the fold and read it back — "no bar" and "nothing to scroll" look identical in a
+  screenshot.
 - **Reduced motion goes through the shared tokens**, not per-rule media queries: the families in
   `styles/motion.css` collapse together. A new effect needs a family or a recorded distinct reason. For a
   floating surface start from the existing positioning helpers in `projection/common/` and the

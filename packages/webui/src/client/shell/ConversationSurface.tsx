@@ -1,8 +1,18 @@
 import type { ReactElement, ReactNode } from "react";
+import { Banner } from "ascii.rest/react";
 import { WebuiIconHomeBrand } from "./icons.js";
 import { WebuiWorkspacePanelControls } from "../features/workspace/ui/WorkspacePanelControls.js";
 import { WebuiInline, WebuiStack } from "../ui/layout-primitives.js";
 import { WebuiMotionSlot, WebuiSkeletonProjection } from "../ui/page.js";
+
+/*
+ * The home hero's wordmark is ascii.rest's banner: "MINIMAX CODE" in its
+ * block font, filled blocks with the drop shadow off, so the letters sit on one
+ * grid. A coloured banner takes hex, and it resolves a per-theme pair only when
+ * it mounts, so the hero pins the 400 steps: that pair reads on both surfaces,
+ * where a switch of theme would otherwise leave the canvas on the old one.
+ */
+const HOME_HERO_BANNER_COLOR = ["#0094fc", "#b06add"];
 
 /** Conversation column layout; Shell supplies already-owned feature surfaces and named navigation actions. */
 export function ConversationSurface(props: {
@@ -83,7 +93,7 @@ export function ConversationSurface(props: {
               {props.home ? (
                 <div
                   aria-hidden="true"
-                  className="h-[clamp(96px,24vh,240px)] w-full shrink"
+                  className="min-h-spacing_24 w-full flex-1"
                 />
               ) : null}
               <WebuiStack
@@ -99,7 +109,7 @@ export function ConversationSurface(props: {
                   <WebuiStack
                     gap="small"
                     align="center"
-                    className="text-center [@media(max-height:300px)]:hidden"
+                    className="w-full text-center [@media(max-height:300px)]:hidden"
                   >
                     <div className="group/avatar relative size-[94px] flex-shrink-0">
                       <div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary">
@@ -112,8 +122,17 @@ export function ConversationSurface(props: {
                         </WebuiInline>
                       </div>
                     </div>
-                    <h1 className="text-[28px] font-medium leading-tight text-text_default_primary">
-                      MiniMax Code Web，让工作更简单。
+                    <h1 className="mt-spacing_8 flex w-full justify-center">
+                      <Banner
+                        text="MINIMAX CODE"
+                        label="MiniMax Code"
+                        font="block"
+                        fill="█"
+                        shadow="none"
+                        effect="still"
+                        color={HOME_HERO_BANNER_COLOR}
+                        style={{ width: "75%" }}
+                      />
                     </h1>
                   </WebuiStack>
                 ) : null}
@@ -137,6 +156,12 @@ export function ConversationSurface(props: {
                   ) : null}
                 </div>
               </WebuiStack>
+              {props.home ? (
+                <div
+                  aria-hidden="true"
+                  className="min-h-spacing_24 w-full flex-1"
+                />
+              ) : null}
             </div>
           </WebuiMotionSlot>
         </WebuiStack>

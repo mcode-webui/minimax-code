@@ -25,6 +25,7 @@ Repository development skills are available under [`.agents/skills`](.agents/ski
 | Skill | Use |
 | --- | --- |
 | [cli-guide](.agents/skills/cli-guide/SKILL.md) | Navigate TUI, exec, ACP and their runtime boundary |
+| [changelog-card-publish](.agents/skills/changelog-card-publish/SKILL.md) | Publish a release changelog as a Feishu interactive card with the install command |
 | [cross-layer-drift-sweep](.agents/skills/cross-layer-drift-sweep/SKILL.md) | Check renames, defaults and contracts across consumers |
 | [webui-docs-sync](.agents/skills/webui-docs-sync/SKILL.md) | Synchronize WebUI documentation with source, tests and decisions |
 | [webui-development](.agents/skills/webui-development/SKILL.md) | Develop WebUI features and components with consistent architecture, design tokens and interaction styles |

@@ -1,6 +1,9 @@
 {
   "schemaVersion": 1,
   "files": [
+    ".agents/skills/changelog-card-publish/SKILL.md",
+    ".agents/skills/changelog-card-publish/references/card-layout.md",
+    ".agents/skills/changelog-card-publish/scripts/send-changelog-card.mjs",
     ".agents/skills/cli-guide/SKILL.md",
     ".agents/skills/cross-layer-drift-sweep/SKILL.md",
     ".agents/skills/merge-and-baseline/SKILL.md",
@@ -4387,6 +4390,7 @@
     "packages/webui/src/client/shell/ArchonShell.tsx",
     "packages/webui/src/client/shell/ConnectionStatus.tsx",
     "packages/webui/src/client/shell/ConversationSurface.tsx",
+    "packages/webui/src/client/shell/HomeOctoCameo.tsx",
     "packages/webui/src/client/shell/NotFound.tsx",
     "packages/webui/src/client/shell/StartupFallback.tsx",
     "packages/webui/src/client/shell/WebuiClientFoundationApp.tsx",

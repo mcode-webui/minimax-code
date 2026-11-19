@@ -56,6 +56,7 @@
     ".github/legacy-workflows/source-candidate.yml",
     ".github/legacy-workflows/sync-issue-to-feishu.yml",
     ".github/legacy-workflows/webui-npm-preview.yml",
+    ".github/workflows/update-visual-baselines.yml",
     ".github/workflows/webui-ci.yml",
     ".gitignore",
     ".gitleaks.toml",

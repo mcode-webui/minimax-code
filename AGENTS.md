@@ -91,7 +91,8 @@ For a Fresh Bootstrap, follow only the current machine-issued Plan and live Guid
 ### Minimal entry points
 
 - `aoci_rules`: obtain the session-level runtime contract for the current AOCI version.
-- `aoci_overview`: establish or restore complete cognition for this repository.
+- `aoci_overview`: report index, governance, and delivery state. `check_only=true` returns compact facts; a complete Overview is an explicit, expensive choice, not a default.
+- `aoci_search` and `aoci_get_entries`: locate the Entries a task actually needs. This is the normal way to consult the index.
 - `aoci_maintain`: after managed objects reach their final stable state, check whether cognition needs maintenance.
 - `aoci_update_entry`: submit a complete semantic update batch bound to current evidence and source digests.
 - `aoci_report`: when the current layout and tool state support it, record follow-up work if evidence is insufficient to generate semantics reliably; do not guess.
@@ -102,18 +103,15 @@ This managed block defines only repository integration, cognition use, and task-
 
 ### Establishing, generating, and restoring cognition
 
-1. At the beginning of every new Agent Run, first determine:
+1. At the beginning of every new Agent Run, ask `aoci_overview` with `check_only=true` for the repository's index and governance state. That checkpoint is a compact status fact, not an index load, and its answers must not be inferred from the working tree.
 
-   - whether this repository already has a usable complete AOCI index; and
-   - whether current context already contains complete repository cognition that matches this repository root, current index version, and current AOCI service, and that the model can still use reliably.
+   The index is a searchable asset, not a document to read up front. Start from the task at hand and consult the index for the specific objects it touches.
 
-   Ask `aoci_overview` with `check_only=true` for both answers. Do not infer them from the working tree.
+2. Call `aoci_rules` once per Run for the current session contract, then answer repository questions by locating the affected Entries with `aoci_search` or `aoci_get_entries` and reading the source those Entries point to. A complete Whole-Index delivery is a deliberate and expensive step, not a Run precondition: never pull the entire index into context just to work on a task.
 
-2. When the repository has a usable complete index but the current Run lacks reliable complete cognition, call `aoci_rules` first and then `aoci_overview`.
+   Keep whatever context you already hold; local uncertainty does not by itself require rereading the system-wide view. Read only the source, tests, configuration, and contracts the current task directly needs, widening that evidence only when a specific missing fact could change the answer or the verification; AOCI never replaces direct source evidence for the objects being changed or the behavior being verified.
 
-   Reuse complete cognition directly while it remains reliable. Local uncertainty does not by itself require mechanically rereading the system-wide view. Once reliable cognition is established, use it as the repository-level system context by default and read only the source, tests, configuration, and contracts the current task directly needs, widening that evidence only when a specific missing fact could change the answer or the verification; AOCI never replaces direct source evidence for the objects being changed or the behavior being verified.
-
-   A Run that resumes from a known Host context compaction, including a Host-injected compaction summary, must treat prior model cognition as unreliable. The compacted handoff must not retain or summarize the formal Whole-Index or any Overview Header, Entry, Chunk, Challenge, or Attestation body; it may retain only receipt identity, unfinished write or Recovery state needed for safe continuation, and an instruction to reload immediately. Whole-Index semantics or a receipt copied into that handoff cannot prove that the resumed model's current cognition is reliable. If the runtime contract is no longer reliably present, call `aoci_rules` first. Before continuing the business task, make an ordinary complete Whole-Index `aoci_overview` request (`check_only` absent or false) with `refresh_reasons=["context_compaction"]` and a fresh `refresh_event_id`; do not use `check_only` or a cognition probe. Follow every exact `next_cursor` through `completed=true`, confirm delivery, and submit one Attestation based only on the newly delivered body. After that fresh complete transport, a partial or failed Attestation consumes the generation and permits the existing source-bound continuation without another automatic Overview. If that request answers `delivery_mode=capacity_stop`, the Whole-Index does not fit this Host's context: do not retry or lower `chunk_tokens`; the stop consumes the generation, and the task continues source-bound without an unqualified complete-system claim.
+   A Run that resumes from a known Host context compaction, including a Host-injected compaction summary, must treat prior model cognition as unreliable. The compacted handoff must not retain or summarize the formal Whole-Index or any Overview Header, Entry, Chunk, Challenge, or Attestation body. Recover only what the task needs: read `aoci_rules` if the runtime contract is no longer reliably present, then look up the affected Entries again with `aoci_search` or `aoci_get_entries`. Do not reload the entire index to recover from a compaction.
 
    AOCI can report checkpoint and cognition-status facts for `context_compaction`, the machine `semantic_threshold` under the project `cognition_refresh_threshold`, or a major `phase_transition`. Use `check_only=true` when only those compact facts are needed. They advise the Agent but do not decide whether the model needs the system-wide view.
 
@@ -137,10 +135,10 @@ This managed block defines only repository integration, cognition use, and task-
 
 4. During a long-running task, the model is responsible for preserving the current cognition receipt and using the refresh gate correctly:
 
-   - when the Host reports context compaction or the model knows the system-wide view was lost, follow the mandatory `context_compaction` reload rule above; AOCI cannot infer the Host event;
+   - when the Host reports context compaction or the model knows the system-wide view was lost, re-query the index for the objects the task needs instead of reloading it wholesale; AOCI cannot infer the Host event;
    - when entering a genuinely major phase, declare `phase_transition`, not a function, test run, or small step;
    - at a plausible stable checkpoint, use `check_only=true` to obtain the machine semantic count when that fact is useful;
-   - except for the mandatory known-compaction reload, decide whether the current task needs another explicit scoped or complete Overview; and
+   - decide whether the current task needs another scoped lookup or a complete Overview; and
    - keep the Dirty or Stale reliability state reported by AOCI until maintenance and alignment complete.
 
 ### Task closing and cognition maintenance

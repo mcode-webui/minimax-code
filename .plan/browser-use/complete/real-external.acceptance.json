@@ -13,13 +13,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the host noticed the terminated worker, the surface went down and came back, and a command against the live tab answered again",
     "result": "pass",
-    "at": "2026-11-04T11:20:13.286Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:46.076Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   },
   {
@@ -36,13 +36,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the text the host sent appeared in the page's field, and a non-empty image frame for that page arrived at the host",
     "result": "pass",
-    "at": "2026-11-04T11:20:14.294Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:46.649Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   },
   {
@@ -59,13 +59,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the command in the allowed subset answered with the page's title, and a command outside it was refused as unsupported",
     "result": "pass",
-    "at": "2026-11-04T11:20:14.913Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:46.963Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   },
   {
@@ -82,13 +82,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the host noticed the terminated worker, the surface went down and came back, and a command against the live tab answered again",
     "result": "pass",
-    "at": "2026-11-04T11:20:15.941Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:47.994Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   },
   {
@@ -105,13 +105,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the text the host sent appeared in the page's field, and a non-empty image frame for that page arrived at the host",
     "result": "pass",
-    "at": "2026-11-04T11:20:17.040Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:49.066Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   },
   {
@@ -128,13 +128,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the command in the allowed subset answered with the page's title, and a command outside it was refused as unsupported",
     "result": "pass",
-    "at": "2026-11-04T11:20:17.491Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T14:02:49.497Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-external"
   }
 ]

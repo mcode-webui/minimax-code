@@ -1559,10 +1559,13 @@ export function DesignSurface({
           data={data}
           document={document}
           selectedNodeId={selected[0]}
-          viewportSize={() => ({
-            width: stage.current?.clientWidth ?? 800,
-            height: stage.current?.clientHeight ?? 600,
-          })}
+          // The pane is measured when the surface observes its size, and
+          // not read from the DOM at the insert: a read at the insert can
+          // catch a layout that no frame has drawn yet, and a node placed
+          // against a layout nobody saw lands off the pane's centre. The
+          // observed size is the size the pane is drawn at, and it is the
+          // same size the minimap and the view centring use.
+          viewportSize={() => stageSize}
           onTool={openTool}
           onClose={() => setDialog(undefined)}
           onAction={act}

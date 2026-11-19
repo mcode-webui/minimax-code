@@ -11,8 +11,9 @@
 // The failures and the confirmations are said through the shared toast (ADR
 // 0030), which is raised in an effect and drawn over the page: a server render
 // never sees it. So what a case pins about a failure here is that the layout
-// does not carry it — and, from the surfaces' own sources, that it is still
-// reported at all.
+// does not carry transient errors — and, from the surfaces' own sources, that
+// they are still reported at all. A failed start additionally leaves a persistent
+// not-opened state with an explicit recovery control.
 //
 // The registry half is real: an actual upstream `http.Server`, an actual listener,
 // and a close that has to free its port — because the whole reason it exists is
@@ -439,7 +440,7 @@ describe("the Mini App view the panel frames", () => {
     expect(opens).toBe(1);
   });
 
-  it("reports the refusal through the toast, and shows no frame", async () => {
+  it("keeps an actionable state after another client refuses the start", async () => {
     const workflows = createWebuiMiniAppWorkflows({
       port: port({
         miniApps: [summary("shared", "stopped")],
@@ -456,14 +457,59 @@ describe("the Mini App view the panel frames", () => {
       createElement(MiniAppView, { pluginId: "shared", sessionId: "session-1" }),
       workflows,
     );
-    // The refusal is an event, not a state: it is said once, through the shared
-    // toast (ADR 0030). A server render never sees it.
+    // The toast reports the attempt; the retained state gives a safe next step
+    // without repeating the other process's details.
     expect(markup).not.toContain("pid 99");
     expect(markup).not.toContain("electron");
     expect(markup).not.toContain("miniapp-view-frame");
     // The view itself still renders, so there is a surface to look at.
     expect(markup).toContain('data-testid="miniapp-view"');
-    expect(markup).toContain('data-state="idle"');
+    expect(markup).toContain("应用尚未打开");
+    expect(markup).toContain("请先在其他客户端关闭该应用，再重试。");
+    expect(markup).toContain("重试打开应用");
+  });
+
+  it("does not offer a start retry for a refused stop without a presentation", async () => {
+    const workflows = createWebuiMiniAppWorkflows({
+      port: port({
+        miniApps: [summary("shared", "running")],
+        stop: async () => { throw new Error("Stop was refused"); },
+      }),
+    });
+    await workflows.stop("shared");
+    const markup = render(createElement(MiniAppView, { pluginId: "shared" }), workflows);
+    expect(workflows.getSnapshot().refusals.shared?.message).toBe("Stop was refused");
+    expect(markup).not.toContain("应用尚未打开");
+    expect(markup).not.toContain("重试打开应用");
+  });
+
+  it("retains a preparation failure until an explicit retry succeeds", async () => {
+    let succeeds = false;
+    const workflows = createWebuiMiniAppWorkflows({
+      port: port({
+        miniApps: [summary("shared", "stopped")],
+        open: async () => {
+          if (!succeeds) throw Object.assign(new Error("Mini App publication preparation failed"), {
+            code: "MINIAPP_PREPARATION_FAILED",
+          });
+          return { pluginId: "shared", viewUrl: "http://127.0.0.1:49152" };
+        },
+      }),
+    });
+    await workflows.open("shared");
+    const view = createElement(MiniAppView, { pluginId: "shared", surface: "standalone" });
+    const failed = render(view, workflows);
+    expect(failed).toContain("应用尚未打开");
+    expect(failed).toContain("Mini App publication preparation failed");
+    expect(failed).toContain("重试打开应用");
+    expect(failed).not.toContain("请先在其他客户端关闭");
+    expect(failed).not.toContain("miniapp-view-frame");
+    succeeds = true;
+    await workflows.open("shared");
+    const recovered = render(view, workflows);
+    expect(recovered).toContain("miniapp-view-frame");
+    expect(recovered).not.toContain("应用尚未打开");
+    expect(recovered).not.toContain("重试打开应用");
   });
 });
 

@@ -80,7 +80,7 @@ import {
 import { sessionHash } from "../../../projection/common/router.js";
 import { FeedbackLiveRegion } from "../../../ui/feedback.js";
 import { useWebuiToastError } from "../../../ui/toast.js";
-import { WebuiIconButton } from "../../../ui/button.js";
+import { WebuiButton, WebuiIconButton } from "../../../ui/button.js";
 import { WebuiSkeletonProjection } from "../../../ui/page.js";
 import { FeedbackEmpty } from "../../../ui/feedback.js";
 import {
@@ -737,6 +737,23 @@ export function MiniAppView({
             <FeedbackLiveRegion className="webui-miniapp-view-status">
               正在启动 {name}…
             </FeedbackLiveRegion>
+          </div>
+        ) : null}
+        {presentation?.kind === "failed" && !detached ? (
+          // The toast reports the attempt; this state remains until another
+          // explicit open succeeds. Polling must never restart a failed app.
+          <div className="webui-miniapp-view-state">
+            <FeedbackEmpty
+              testId="miniapp-view-start-failed"
+              title="应用尚未打开"
+              description={presentation.refusal.code === "OWNED_ELSEWHERE"
+                ? "请先在其他客户端关闭该应用，再重试。"
+                : webuiMiniAppRefusalText({ ...presentation.refusal, rows: state.listing.rows })}
+              action={<WebuiButton
+                variant="secondary"
+                onClick={() => workflows?.open(pluginId)}
+              >重试打开应用</WebuiButton>}
+            />
           </div>
         ) : null}
         {detached ? (

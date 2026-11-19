@@ -185,7 +185,7 @@
     "features/miniapp/ui/MiniAppPicker.public.tsx": "7b631ebd095435d5",
     "features/miniapp/ui/MiniAppStandalone.public.tsx": "cb4684d8ffa3f32f",
     "features/miniapp/ui/MiniAppToolApprovals.public.tsx": "a123d341198a1b26",
-    "features/miniapp/ui/MiniAppView.public.tsx": "7245af70ea92ed94",
+    "features/miniapp/ui/MiniAppView.public.tsx": "92707a60570eba49",
     "features/models/ui/ModelEffortSlider.tsx": "4b36ea2127bcc1c3",
     "features/models/ui/ModelListPanel.tsx": "9be8a8e124de5e7e",
     "features/models/ui/ModelPanel.tsx": "8f68051cc0c54706",

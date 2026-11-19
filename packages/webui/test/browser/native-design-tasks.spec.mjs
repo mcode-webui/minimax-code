@@ -54,7 +54,12 @@ async function expectNodeRunSucceeds(read, nodeId, label) {
     throw new Error(
       `${label} never finished: ${error instanceof Error ? error.message : String(error)}\n` +
         `upload evidence: ${JSON.stringify(uploads)}\n` +
-        `understanding: ${JSON.stringify(understanding)}`,
+        `understanding: ${JSON.stringify(understanding)}\n` +
+        // The host's own log is the runtime's account of the run: which
+        // stage it reached and what it was waiting for. A run that never
+        // finishes is reported with that account, so the failure says where
+        // the run stopped and not only that the node stayed idle.
+        `host log:\n${logs.slice(-4000)}`,
     );
   }
 }

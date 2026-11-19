@@ -1559,10 +1559,10 @@ export function DesignSurface({
           data={data}
           document={document}
           selectedNodeId={selected[0]}
-          viewportSize={{
+          viewportSize={() => ({
             width: stage.current?.clientWidth ?? 800,
             height: stage.current?.clientHeight ?? 600,
-          }}
+          })}
           onTool={openTool}
           onClose={() => setDialog(undefined)}
           onAction={act}

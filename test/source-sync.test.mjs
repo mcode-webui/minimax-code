@@ -29,7 +29,9 @@ import { acceptanceRecordFiles, restoreAcceptanceRecords } from '../scripts/lib/
 test('public WebUI CI runs only WebUI checks and cannot publish packages', () => {
   const activeWorkflows = readdirSync(new URL('../.github/workflows/', import.meta.url))
     .filter(name => /\.ya?ml$/.test(name)).sort();
-  assert.deepEqual(activeWorkflows, ['webui-ci.yml']);
+  // The manual baseline refresh is a second active workflow: it records the
+  // pixels the CI compares against, and it cannot publish anything.
+  assert.deepEqual(activeWorkflows, ['update-visual-baselines.yml', 'webui-ci.yml']);
   const workflow = parseYaml(readFileSync(new URL('../.github/workflows/webui-ci.yml', import.meta.url), 'utf8'));
   assert.deepEqual(workflow.on.push.branches, ['main']);
   assert.ok(Object.hasOwn(workflow.on, 'pull_request'));
@@ -58,9 +60,17 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.match(browserConfig, /process\.env\.WEBUI_PLAYWRIGHT_OUTPUT_DIR/);
   assert.match(browserConfig, /cacheDirectory: process\.env\.WEBUI_BROWSER_FONT_CACHE_DIR/);
   assert.doesNotMatch(browserConfig, /process\.env\.WEBUI_BROWSER_OUTPUT_DIR/);
+  // The steps that prepare the machine are not WebUI checks: they install the
+  // dependencies, the browser and the media binary the Design paths run for
+  // real. Every other step has to be a WebUI command from this repository.
+  const ffmpeg = job.steps.find(step => step.name === 'Install FFmpeg');
+  assert.ok(ffmpeg, 'the native Design media paths run FFmpeg for real');
+  assert.match(ffmpeg.run, /ffmpeg/);
+  assert.doesNotMatch(ffmpeg.run, /npm publish|curl |wget /);
   const commands = job.steps.filter(step => step.run && step !== directories).map(step => step.run);
+  const provisioning = ['pnpm install --frozen-lockfile', 'pnpm exec playwright install-deps chromium', ffmpeg.run];
   for (const command of commands) {
-    if (command === 'pnpm install --frozen-lockfile' || command === 'pnpm exec playwright install-deps chromium') continue;
+    if (provisioning.includes(command)) continue;
     assert.match(command, /^pnpm (?:typecheck|check|build|install|test):webui(?:-[a-z]+)?$/);
     assert.ok(Object.hasOwn(manifest.scripts, command.slice('pnpm '.length)), command);
   }
@@ -88,6 +98,33 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
     '${{ runner.temp }}/webui-browser-diagnostics/',
     '${{ runner.temp }}/webui-playwright-results/',
   ]);
+});
+test('the manual baseline refresh renders in the mode the WebUI CI compares against', () => {
+  const refresh = parseYaml(readFileSync(new URL('../.github/workflows/update-visual-baselines.yml', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys(refresh.on), ['workflow_dispatch']);
+  assert.ok(!Object.hasOwn(refresh.on, 'push'));
+  assert.ok(!Object.hasOwn(refresh.on, 'pull_request'));
+  const job = refresh.jobs.update;
+  assert.deepEqual(job.strategy.matrix.os, ['ubuntu-latest', 'macos-latest', 'windows-latest']);
+  const steps = job.steps;
+  const modeStep = steps.findIndex(step => typeof step.run === 'string' && step.run.includes('WEBUI_BROWSER_HEADED='));
+  const refreshStep = steps.findIndex(step => typeof step.run === 'string' && step.run.includes('playwright test'));
+  assert.ok(modeStep >= 0, 'the refresh must select the browser mode the CI compares against');
+  assert.ok(refreshStep >= 0, 'the refresh must render the baselines');
+  assert.ok(modeStep < refreshStep, 'the browser mode must be selected before the baselines are rendered');
+  assert.ok(
+    !steps[refreshStep].run.includes('WEBUI_BROWSER_HEADED'),
+    'a step cannot read back the environment file it writes, so the mode has to be set by an earlier step',
+  );
+  assert.match(steps[refreshStep].env.WEBUI_BROWSER_FONT_CACHE_DIR, /webui-browser-font-cache/);
+  const ci = parseYaml(readFileSync(new URL('../.github/workflows/webui-ci.yml', import.meta.url), 'utf8'));
+  const ciSteps = ci.jobs.webui.steps;
+  const ciModeStep = ciSteps.findIndex(step => typeof step.run === 'string' && step.run.includes('WEBUI_BROWSER_HEADED='));
+  const ciBrowserStep = ciSteps.findIndex(step => step.run === 'pnpm test:webui-browser');
+  assert.ok(ciModeStep >= 0 && ciModeStep < ciBrowserStep, 'the CI must select the browser mode before the browser suite runs');
+  for (const step of steps) {
+    assert.doesNotMatch(String(step.run ?? ''), /npm publish|npm-release|release-cli/);
+  }
 });
 
 test('coverage review distinguishes declared browser scenarios from executed evidence', () => {

@@ -18,7 +18,7 @@
     },
     "observed": "the handshake completed and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-19T14:02:41.469Z",
+    "at": "2026-11-19T14:25:04.290Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -41,7 +41,7 @@
     },
     "observed": "the host refused the extension and reported no connected surface",
     "result": "pass",
-    "at": "2026-11-19T14:02:41.814Z",
+    "at": "2026-11-19T14:25:04.627Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -64,7 +64,7 @@
     },
     "observed": "the extension completed the handshake with no configured identity, and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-19T14:02:42.431Z",
+    "at": "2026-11-19T14:25:04.946Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -87,7 +87,7 @@
     },
     "observed": "the handshake completed and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-19T14:02:43.411Z",
+    "at": "2026-11-19T14:25:05.693Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -110,7 +110,7 @@
     },
     "observed": "the host refused the extension and reported no connected surface",
     "result": "pass",
-    "at": "2026-11-19T14:02:43.854Z",
+    "at": "2026-11-19T14:25:06.091Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -133,7 +133,7 @@
     },
     "observed": "the extension completed the handshake with no configured identity, and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-19T14:02:44.216Z",
+    "at": "2026-11-19T14:25:06.723Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
@@ -156,7 +156,7 @@
     },
     "observed": "both browsers were connected, each on its own surface, and each surface's provider belonged to that surface",
     "result": "pass",
-    "at": "2026-11-19T14:02:44.926Z",
+    "at": "2026-11-19T14:25:07.404Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   }

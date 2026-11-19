@@ -70,9 +70,11 @@ Repository-wide contributor workflows live in `.agents/skills/` and are listed i
 
 AOCI maintains a stable, versioned, incrementally updatable repository-level cognition layer so models can reuse their understanding of this system across tasks.
 
-`aoci.txt` is a structured cognition index for models. It assigns one independent Entry to every managed file, database table, or other managed object. Symbolic tags and F/R/A/S semantics describe the object's core responsibility, important relationships, external contracts, and non-obvious constraints or design decisions needed to understand or modify the system.
+AOCI assigns one independent Entry to every managed file, database table, or other managed object. Symbolic tags and F/R/A/S semantics describe the object's core responsibility, important relationships, external contracts, and non-obvious constraints or design decisions needed to understand or modify the system.
 
-The Header, directory sections, and all Entries form the complete repository index. They can cover frontend, backend, configuration, database structures, and other managed content. When managed content changes, normally only the affected cognition Entries need maintenance; the complete index does not need to be regenerated.
+The complete repository index covers frontend, backend, configuration, database structures, and other managed content. When managed content changes, normally only the affected cognition Entries need maintenance; the complete index does not need to be regenerated.
+
+Read the index only through `aoci_overview`. The on-disk shape of the index assets — root manifests, content volumes, and runtime state — is an implementation detail that varies by AOCI version. Never glob, read, or infer the index from files on disk, and never treat a missing or unreadable asset as evidence that the index is absent; `aoci_overview` is the only authority on whether a usable index exists.
 
 AOCI provides a high-density view of system architecture, object responsibilities, important relationships, external contracts, and key constraints.
 
@@ -104,6 +106,8 @@ This managed block defines only repository integration, cognition use, and task-
 
    - whether this repository already has a usable complete AOCI index; and
    - whether current context already contains complete repository cognition that matches this repository root, current index version, and current AOCI service, and that the model can still use reliably.
+
+   Ask `aoci_overview` with `check_only=true` for both answers. Do not infer them from the working tree.
 
 2. When the repository has a usable complete index but the current Run lacks reliable complete cognition, call `aoci_rules` first and then `aoci_overview`.
 
@@ -160,7 +164,7 @@ This managed block defines only repository integration, cognition use, and task-
 
 9. When the user limits only business-file scope and does not explicitly forbid repository-managed assets, AOCI-managed assets may be updated during closing to preserve cognition consistency. Distinguish them from business files in audits and commits.
 
-   When the user explicitly forbids changes to `aoci.txt`, `.aoci`, metadata, or any additional file, obey that restriction, do not write, and report any remaining inconsistency accurately.
+   When the user explicitly forbids changes to the AOCI-managed index assets, AOCI runtime state, metadata, or any additional file, obey that restriction, do not write, and report any remaining inconsistency accurately. Because the asset layout varies by AOCI version, treat every AOCI-managed file and directory as covered by such a prohibition instead of enumerating a fixed file list.
 
 ### Specialized workflows
 

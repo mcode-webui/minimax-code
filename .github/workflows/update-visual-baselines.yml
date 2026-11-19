@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: "The spec file to regenerate"
+        description: "The spec files to regenerate, separated by spaces"
         required: false
         default: "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs"
 
@@ -55,15 +55,24 @@ jobs:
         env:
           WEBUI_PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/webui-playwright-results
           WEBUI_BROWSER_FONT_CACHE_DIR: ${{ runner.temp }}/webui-browser-font-cache
+          SPECS: ${{ inputs.spec }}
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
             echo "WEBUI_BROWSER_HEADED=1" >> "$GITHUB_ENV"
           fi
+          # The specs come from a manual dispatch, so they are read from the
+          # environment and split here rather than interpolated into the
+          # command line: an unquoted interpolation would let the input
+          # rewrite the command.
+          #
           # A spec that still fails after the refresh must not stop the
           # commit: the refreshed pixels are already on disk, and the webui
           # CI is where a failing spec is reported.
-          pnpm exec playwright test "${{ inputs.spec }}" --update-snapshots \
-            || echo "::warning::a spec still fails after the refresh"
+          for spec in $SPECS; do
+            echo "refreshing $spec"
+            pnpm exec playwright test "$spec" --update-snapshots \
+              || echo "::warning::a spec still fails after the refresh: $spec"
+          done
       - name: Commit the refreshed baselines
         shell: bash
         run: |

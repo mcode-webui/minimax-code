@@ -177,6 +177,10 @@ export function DesignSurface({
   const gesture = useRef<Gesture>();
   const stage = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+  /** Whether the library is open over the pane. */
+  const libraryOpen = useRef(false);
+  /** The pane as it is drawn while the library is open over it. */
+  const libraryPaneSize = useRef<{ readonly width: number; readonly height: number }>();
   const clipboard = useRef<{
     readonly nodes: readonly DesignNode[];
     readonly connections: DesignDocument["connections"];
@@ -187,14 +191,26 @@ export function DesignSurface({
   useEffect(() => {
     const element = stage.current;
     if (!element) return;
-    const measure = () =>
-      setStageSize({
+    const measure = () => {
+      const size = {
         width: element.clientWidth,
         height: element.clientHeight,
-      });
+      };
+      setStageSize(size);
+      // The pane an asset is inserted into is the pane the person was
+      // looking at while they chose it: the library is shown over the
+      // pane, and the pane is measured again while the library closes.
+      // The size the pane is drawn at while the library is open is the
+      // one the insert is placed against.
+      if (libraryOpen.current) libraryPaneSize.current = size;
+    };
     measure();
     return dom.observeSize(element, measure);
   }, [dom, snapshot.status]);
+  useEffect(() => {
+    libraryOpen.current = dialog === "library";
+    if (libraryOpen.current) libraryPaneSize.current = undefined;
+  }, [dialog]);
   useEffect(() => {
     if (rename !== undefined && !renaming.current) {
       renaming.current = true;
@@ -1559,13 +1575,18 @@ export function DesignSurface({
           data={data}
           document={document}
           selectedNodeId={selected[0]}
-          // The pane is measured when the surface observes its size, and
-          // not read from the DOM at the insert: a read at the insert can
-          // catch a layout that no frame has drawn yet, and a node placed
-          // against a layout nobody saw lands off the pane's centre. The
-          // observed size is the size the pane is drawn at, and it is the
-          // same size the minimap and the view centring use.
-          viewportSize={() => stageSize}
+          // The pane is the one the person was looking at while the
+          // library was open: the library is shown over the pane, and the
+          // pane is measured again while the library closes, so a size
+          // read at the insert is the size of a layout in between. The
+          // size the pane is drawn at while the library is open is the one
+          // the insert is placed against.
+          viewportSize={() =>
+            libraryPaneSize.current ?? {
+              width: stage.current?.clientWidth ?? 800,
+              height: stage.current?.clientHeight ?? 600,
+            }
+          }
           onTool={openTool}
           onClose={() => setDialog(undefined)}
           onAction={act}

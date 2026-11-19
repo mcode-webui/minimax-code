@@ -16,7 +16,7 @@
     },
     "observed": "a pointer click and a text input both arrived in the page the provider was driving",
     "result": "pass",
-    "at": "2026-11-19T15:41:59.805Z",
+    "at": "2026-11-19T16:45:42.040Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "isolated-chromium"
   },
@@ -37,7 +37,7 @@
     },
     "observed": "the stale identity was refused with browser_target_stale and the page that replaced it received nothing",
     "result": "pass",
-    "at": "2026-11-19T15:42:01.318Z",
+    "at": "2026-11-19T16:45:43.555Z",
     "os": "linux 7.0.0-43-generic",
     "suite": "isolated-chromium"
   }

@@ -63,6 +63,24 @@ jobs:
       - name: Install Chromium
         id: browsers
         run: pnpm install:webui-browsers
+      - name: Install FFmpeg
+        shell: bash
+        run: |
+          # The native Design media paths run FFmpeg for real: the tests cut a
+          # real clip, draw a real waveform and persist a real poster. Without
+          # the binary on PATH they fail on `spawnSync ffmpeg ENOENT` rather
+          # than on anything about the code under test. The Linux image ships
+          # one already; the macOS and Windows images do not.
+          if command -v ffmpeg >/dev/null 2>&1; then
+            echo "ffmpeg is already present: $(ffmpeg -version | head -1)"
+          elif [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install ffmpeg
+          else
+            choco install ffmpeg -y --no-progress
+          fi
       - name: Install Chromium system dependencies
         if: runner.os == 'Linux'
         run: pnpm exec playwright install-deps chromium

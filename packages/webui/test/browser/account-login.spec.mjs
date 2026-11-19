@@ -47,6 +47,16 @@ test(`usage hover keeps the subscription label stable during refresh (${theme})`
     window.__railLabelChanges = [];
     new MutationObserver(() => window.__railLabelChanges.push(element.querySelector("small")?.textContent ?? null)).observe(element, { childList: true, subtree: true, characterData: true });
   });
+  // The first hover asks for the quota, and the answer is counted only
+  // once it has arrived: a count read while that request is still on its
+  // way reports one request too few, and the case blames the hover loop
+  // for a request the hover itself made.
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(0);
   const requestsBefore = await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length);
   const points = await page.evaluate(() => {
     const center = (testId) => {

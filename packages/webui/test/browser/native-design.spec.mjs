@@ -182,7 +182,7 @@ test("native Design preserves original menus, selected operations, graph gesture
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(ready.url);
   const opened = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: "MiniMax Design", exact: true }).click();
   const design = await opened;
   design.on("pageerror", (error) => errors.push(error.message));
   await expect(design).toHaveURL(/\/design\?/);

@@ -65,7 +65,7 @@ export function SessionRailRegion(props: {
               size="regular"
               title="新建任务"
               onClick={() => props.startNewTask()}
-              className="webui-nav-item webui-brand-create-button"
+              className="webui-nav-item webui-brand-pill webui-brand-create-button"
               data-webui-nav-item="新建任务"
               data-webui-nav-active={props.homeMode && !props.pluginManagementOpen ? "true" : "false"}
             >
@@ -87,14 +87,20 @@ export function SessionRailRegion(props: {
               variant="plain"
               size="regular"
               title="Design"
-              aria-label="Design"
+              aria-label="MiniMax Design"
               onClick={props.openDesign}
-              className="webui-nav-item webui-brand-create-button webui-brand-design-button"
+              className="webui-nav-item webui-brand-pill webui-brand-design-button"
               data-webui-nav-item="Design"
             >
               <img className="webui-brand-create-mark" src="/assets/img/minimax-design-brand.png" alt="" aria-hidden="true" />
+              {/* The wordmark is this button's visible label, so the accessible
+                  name has to carry it: the rule that a visible text must be
+                  part of the accessible name reads the rendered text, and
+                  "MiniMax" and "Design" are two words to it. The space
+                  between them is in the text, not in the layout — the word
+                  mark's own gap still draws them apart. */}
               <span className="webui-brand-create-wordmark webui-brand-design-wordmark" aria-hidden="true">
-                <span>MiniMax</span><span>Design</span>
+                <span>MiniMax</span>{" "}<span>Design</span>
               </span>
               <img className="webui-brand-design-mascot" src="/assets/img/minimax-design-octopus.svg" alt="" aria-hidden="true" />
             </WebuiButton>

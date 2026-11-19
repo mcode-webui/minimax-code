@@ -7,8 +7,12 @@
    * row the reader is at and the gap that keeps a filled row from touching the
    * row beside it are the shared button contract's `selectable-row`
    * appearance (`styles/button.css`); what is left here is the rail's own
-   * brand button, which is not a navigation row. */
-  .webui-brand-create-button {
+   * brand pill, which is not a navigation row. The create-task control and
+   * the Design control are two different buttons that share that pill's
+   * appearance, so the pill carries a class of its own and each button keeps
+   * a class of its own: a class named after the create button must never
+   * select the Design button too. */
+  .webui-brand-pill {
     box-sizing: border-box;
     display: flex;
     width: 100%;

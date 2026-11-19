@@ -95,15 +95,22 @@ export function planBatchPlacement({
  * one, and the user just made it. A card that is pushed onto a third one
  * pushes that one too, so the board ends up without a single overlap.
  *
+ * `keepIds` are the cards the person placed by hand — the asset they just
+ * inserted, the card they just made. They do not move: a placement that is
+ * measured again gives way to them, and the card in the way steps aside
+ * instead. Two of the person's own cards are the person's business, so the
+ * rule leaves them where they are.
+ *
  * The rule is pure: it takes the document and returns the document.
  */
-export function pushAside(doc, placedIds, { gap = NODE_GAP } = {}) {
+export function pushAside(doc, placedIds, { gap = NODE_GAP, keepIds = [] } = {}) {
   const nodes = [...(doc?.nodes ?? [])];
   const placed = new Set(placedIds ?? []);
+  const keep = new Set(keepIds ?? []);
   if (!placed.size) return doc;
   const byId = new Map(nodes.map((node) => [node.id, node]));
-  const kept = (placedIds ?? []).map((id) => byId.get(id)).filter(Boolean);
-  if (!kept.length) return { ...doc, nodes };
+  const placedCards = (placedIds ?? []).map((id) => byId.get(id)).filter(Boolean);
+  if (!placedCards.length) return { ...doc, nodes };
 
   const overlaps = (a, b) => {
     const ax = Number(a.position?.x) || 0;
@@ -120,7 +127,8 @@ export function pushAside(doc, placedIds, { gap = NODE_GAP } = {}) {
 
   // The card in the way steps aside. The new card never does; of two old
   // cards, the one that is further right steps aside, so the board keeps its
-  // order.
+  // order. A card the person placed is newer than the placement that meets
+  // it, so it is the card in the way that steps aside.
   for (let round = 0; round < 64; round += 1) {
     let changed = false;
     for (const node of nodes) {
@@ -128,14 +136,24 @@ export function pushAside(doc, placedIds, { gap = NODE_GAP } = {}) {
       for (const other of nodes) {
         if (other.id === node.id) continue;
         if (!overlaps(node, other)) continue;
-        if (placed.has(other.id)) {
+        if (keep.has(node.id) && keep.has(other.id)) {
+          // Two of the person's own cards: the rule leaves them alone.
+        } else if (keep.has(node.id)) {
+          other.position.x = (Number(node.position?.x) || 0) + (Number(node.width) || 0) + gap;
+          changed = true;
+        } else if (keep.has(other.id)) {
           node.position.x = (Number(other.position?.x) || 0) + (Number(other.width) || 0) + gap;
+          changed = true;
+        } else if (placed.has(other.id)) {
+          node.position.x = (Number(other.position?.x) || 0) + (Number(other.width) || 0) + gap;
+          changed = true;
         } else if ((Number(node.position?.x) || 0) <= (Number(other.position?.x) || 0)) {
           other.position.x = (Number(node.position?.x) || 0) + (Number(node.width) || 0) + gap;
+          changed = true;
         } else {
           node.position.x = (Number(other.position?.x) || 0) + (Number(other.width) || 0) + gap;
+          changed = true;
         }
-        changed = true;
         break;
       }
     }

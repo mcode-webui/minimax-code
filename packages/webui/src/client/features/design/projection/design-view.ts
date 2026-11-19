@@ -33,6 +33,16 @@ export interface DesignProductPlacement {
   readonly tile?: boolean;
   readonly measured?: boolean;
   readonly origin?: { readonly x: number; readonly y: number };
+  /**
+   * The cards the board held when this placement was made.
+   *
+   * A card that is not among them is one the person placed after the
+   * placement: it is theirs, and a placement that is laid out again gives
+   * way to it — the card in the way steps aside instead. The rule reads the
+   * board it is given, so the cards it keeps are the ones that are on the
+   * board when the placement is saved.
+   */
+  readonly known?: readonly string[];
 }
 export const designCreatedNodeIds = (
   state: DesignState | undefined,
@@ -82,6 +92,21 @@ export function designPlaceProducts(
       },
     ]),
   );
+  // The cards the person placed after this placement are theirs: the
+  // placement gives way to them, and the card in the way steps aside. A
+  // product of a run is not theirs — the runtime placed it, and the
+  // placement may still move it.
+  const known = new Set(input.known ?? []);
+  const keep = input.known
+    ? document.nodes
+        .filter(
+          (node) =>
+            !known.has(node.id) &&
+            node.type !== "result" &&
+            !products.some((product) => product.id === node.id),
+        )
+        .map((node) => node.id)
+    : [];
   // The retained collision rule mutates positions, so give it fresh geometry.
   return pushAside(
     {
@@ -93,6 +118,7 @@ export function designPlaceProducts(
       })),
     },
     products.map((node) => node.id),
+    { keepIds: keep },
   );
 }
 export const designAddedNodeId = (

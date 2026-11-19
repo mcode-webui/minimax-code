@@ -126,7 +126,16 @@ export function DesignSurface({
     new Set(),
   );
   const productGroups = useRef(
-    new Map<string, { input: DesignProductPlacement; sizes: string }>(),
+    new Map<
+      string,
+      {
+        input: DesignProductPlacement;
+        sizes: string;
+        // The cards the board held when this placement was made. A card that
+        // appears later is the person's own, and it keeps its place.
+        known: Set<string>;
+      }
+    >(),
   );
   const reportPending = (nodeId: string, pending: boolean): void =>
     setPendingEditors((current) => {
@@ -262,6 +271,7 @@ export function DesignSurface({
     productGroups.current.set(input.ids.join(","), {
       input: placement,
       sizes: "",
+      known: new Set(latest.nodes.map((node) => node.id)),
     });
     const result = await owner.placeProducts(placement);
     if (!result)
@@ -279,7 +289,11 @@ export function DesignSurface({
         .join(";");
       if (sizes === group.sizes) continue;
       group.sizes = sizes;
-      const input = { ...group.input, measured: true };
+      // The cards the person placed after this placement are theirs: the
+      // grid gives way to them, and the card in the way steps aside. The
+      // board that is saved may hold cards the board of the placement did
+      // not, so the rule reads the board it is given.
+      const input = { ...group.input, measured: true, known: [...group.known] };
       const placed = designPlaceProducts(document, input);
       if (
         placed.nodes.some(

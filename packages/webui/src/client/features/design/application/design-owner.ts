@@ -713,8 +713,19 @@ export function createDesignOwner({
       ),
     setViewport: (viewport) => {
       const document = store.getSnapshot().data?.document;
+      // The camera can move while a media tool is still running, so the
+      // document captured here can be older than the one this write reaches
+      // the runtime with. A save carries the revision its content came from,
+      // and a stale revision is the runtime's "another view changed this"
+      // refusal — so the write is rebuilt from the document the queue reaches
+      // it with, the way every other edit here is.
       return document
-        ? execute({ type: "save", document: { ...document, viewport } }, false)
+        ? execute(
+            { type: "save", document: { ...document, viewport } },
+            false,
+            false,
+            (latest) => ({ type: "save", document: { ...latest, viewport } }),
+          )
         : Promise.resolve(undefined);
     },
     undo: () => travel("undo"),

@@ -61,6 +61,27 @@ describe("native Design owner", () => {
     await owner.fitMedia({ nodeId: "tile", sourceUrl: "/design-assets/assets/old.png", width: 160, height: 120 });
     expect(requests).toHaveLength(2); owner.dispose();
   });
+  it("saves the camera against the revision the owner queue reaches it with", async () => {
+    // The camera can move while a media tool is still running, so the save
+    // that carries it reaches the runtime after that tool committed. A save
+    // carries the revision its content came from, and the runtime refuses a
+    // stale one as "another view changed this" — so the camera save has to
+    // carry the revision the queue reaches it with, not the one it captured.
+    const before = { ...document("A"), nodes: [node("source"), node("tile")] }, writing = deferred<DesignState>(), requests: ApplyDesignActionRequest[] = [];
+    let latest: DesignDocument = before;
+    const owner = createDesignOwner({ port: { getDesignState: async () => state(before), applyDesignAction: async (request) => { requests.push(request); if (request.action.type === "save") { if (request.expectedRevision !== latest.updatedAt) throw new Error("CONFLICT: Design changed in another view; reload before saving"); latest = { ...request.action.document, updatedAt: "2" }; return writing.promise; } latest = { ...latest, updatedAt: "3" }; return { ...state(latest), committedRevision: "3" }; } } });
+    await owner.load({ documentId: "A" });
+    const layout = owner.placeProducts({ ids: ["tile"], sourceNodeId: "source", tile: true });
+    const camera = owner.setViewport({ x: 10, y: 20, k: 2 });
+    await Promise.resolve(); await Promise.resolve();
+    writing.resolve({ ...state({ ...latest, updatedAt: "2" }), committedRevision: "2" });
+    await layout; await camera;
+    const saves = requests.filter((request) => request.action.type === "save");
+    expect(saves).toHaveLength(2);
+    expect(saves[1]).toMatchObject({ expectedRevision: "2", action: { type: "save", document: { viewport: { x: 10, y: 20, k: 2 } } } });
+    expect(owner.getSnapshot().error).toBeUndefined();
+    owner.dispose();
+  });
   it("combines same-card editor patches while retaining each declared field's genuine dirty base", async () => {
     const before = { ...document("A"), nodes: [node("source")] }, requests: ApplyDesignActionRequest[] = [], acknowledgements: string[] = [];
     const owner = createDesignOwner({ port: { getDesignState: async () => state(before), applyDesignAction: async (request) => { requests.push(request); return { ...state(before), draft: { document: before, baseDocument: before, revision: "d1", savedAt: "now" } }; } } });

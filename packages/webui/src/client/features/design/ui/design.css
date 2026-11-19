@@ -437,7 +437,7 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--spacing_4);
   }
-  .webui-design-ratio-grid > button {
+  .webui-design-ratio-grid > .webui-design-ratio-button {
     height: auto;
     display: flex;
     flex-direction: column;
@@ -565,7 +565,7 @@
     object-fit: cover;
     border-radius: var(--radius_4);
   }
-  .webui-design-material-strip button {
+  .webui-design-material-strip .webui-design-material-strip-button {
     position: absolute;
     top: 0;
     right: 0;
@@ -620,11 +620,11 @@
     align-items: center;
     gap: var(--spacing_8);
   }
-  .webui-design-template-option > button:first-child {
+  .webui-design-template-option > .webui-design-template-option-button:first-child {
     flex: 1;
     min-width: 0;
   }
-  .webui-design-template-name > input {
+  .webui-design-template-name > .webui-design-template-name-input {
     flex: 1;
     min-width: 0;
   }

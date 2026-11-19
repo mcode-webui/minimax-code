@@ -372,7 +372,7 @@ describe("right workspace panel navigation", () => {
     // The link names the file twice: the type glyph in the leading span (a TS
     // mark for index.ts) and the basename as text.
     expect(markup).toContain('data-webui-file-reference="src/index.ts"><span aria-hidden="true"><svg');
-    expect(markup).toContain('tabler-icon-file-type-ts');
+    expect(markup).toContain('tabler-icon-code');
     expect(markup).toContain('</span><span>index.ts</span></a>');
   });
 

@@ -178,7 +178,7 @@ export function DesignDialogs({
                   <WebuiButton
                     variant="plain"
                     size="inline-dense"
-                    className="webui-design-panel-option"
+                    className="webui-design-panel-option webui-design-template-option-button"
                     onClick={async () => {
                       if (
                         await onAction({
@@ -269,6 +269,7 @@ export function DesignDialogs({
             <div className="webui-design-template-name">
               <WebuiTextInput
                 ref={nameInput}
+                className="webui-design-template-name-input"
                 aria-label="这个模板叫什么"
                 value={name}
                 maxLength={80}

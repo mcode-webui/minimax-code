@@ -138,8 +138,21 @@ function changedDocument(
 /** One browser document's observation and serialized write authority for Design. */
 export function createDesignOwner({
   port,
+  readVersion,
+  subscribeVersion,
 }: {
   readonly port: DesignPort;
+  /**
+   * The handshake version the settings workflow already published.
+   *
+   * The version is one fact with several readers: the settings workflow reads
+   * it from the bridge and publishes it in its snapshot, and the design
+   * surface shows it. A second read would be a second round trip, and two
+   * readers of one fact can disagree about it.
+   */
+  readonly readVersion?: () => WebuiVersionInfo | undefined;
+  /** Called when that published version changes, so the surface follows it. */
+  readonly subscribeVersion?: (listener: () => void) => () => void;
 }): DesignOwner {
   const store = createWebuiSnapshotStore<DesignSnapshot>(initial);
   const history = new Map<
@@ -301,7 +314,14 @@ export function createDesignOwner({
   let timer: ReturnType<typeof setTimeout> | undefined;
   let loading: Promise<void> | undefined;
   let intentId: string | undefined;
-  if (port.version)
+  if (readVersion) {
+    const publish = (runtimeVersion: WebuiVersionInfo | undefined): void => {
+      if (!runtimeVersion || store.isDisposed()) return;
+      store.set((current) => ({ ...current, runtimeVersion }));
+    };
+    publish(readVersion());
+    subscribeVersion?.(() => publish(readVersion()));
+  } else if (port.version)
     void port
       .version()
       .then((runtimeVersion) => {

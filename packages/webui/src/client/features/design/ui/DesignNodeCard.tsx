@@ -620,6 +620,7 @@ export function DesignNodeCard(props: DesignCardProps): ReactElement {
                       <WebuiIconButton
                         tone="bare"
                         size="compact"
+                        className="webui-design-material-strip-button"
                         label={`移除素材 ${index + 1}`}
                         onClick={() => {
                           const current = currentNode();

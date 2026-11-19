@@ -82,7 +82,7 @@ describe("SPEC-C C-5 transcript file/line anchors", () => {
     // The glyph is an SVG, so it contributes no text: what the reader sees in
     // the sentence is the label alone.
     expect(visibleText(html)).toBe("See file.ts for the failing case.");
-    expect(html).toContain("tabler-icon-file-type-ts");
+    expect(html).toContain("tabler-icon-code");
   });
 
   it("carries the parsed reference on the anchor and intercepts the click", () => {

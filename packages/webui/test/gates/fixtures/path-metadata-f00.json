@@ -2,7 +2,7 @@
   "baseline": "f00b1268c28ad15054a8882620c3fb08beb86d58",
   "sourceSha256": "46b86b658adc1611f3531d8dc9844612f7e9ee3de0eec4a532aeec44b5de0a12",
   "nativeDesignDelta": "Adds the native Design feature across its existing application, binding, contract, projection and UI roles, with runtime-owned storage and execution, server adapters, and shared DTOs. Layer rules, role rules and the frozen direction matrix are unchanged.",
-  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, runtime/ssh/authentication remains outside the client, bindings/use-webui-shutdown remains a binding, platform/webui-shutdown remains infrastructure, server/http/shutdown remains outside the client, and client/styles/brand-font remains a stylesheet.",
+  "declaredDelta": "Public marker preserves the original layer and adds only the published- role prefix; publication legality has separate positive/negative fixtures. Post-baseline additions: platform/native-directory-picker remains infrastructure, server/http/native-directory remains outside the client, conversation/pagination remains a mechanism, platform/transport-origin remains infrastructure, runtime/ssh/authentication remains outside the client, bindings/use-webui-shutdown remains a binding, platform/webui-shutdown remains infrastructure, server/http/shutdown remains outside the client, and client/styles/brand-font remains a stylesheet.",
   "cases": [
     { "path": "client/features/design/application/design-owner.ts", "layers": ["application"], "role": "feature-application", "business": "design", "home": "target" },
     { "path": "client/features/design/bindings/use-design.ts", "layers": ["bindings"], "role": "feature-bindings", "business": "design", "home": "target" },
@@ -25,6 +25,20 @@
     { "path": "server/operation/design.ts", "layers": ["server"], "role": "outside", "business": null, "home": "outside" },
     { "path": "shared/contracts/design.ts", "layers": ["shared"], "role": "outside", "business": null, "home": "outside" },
     { "path": "shared/design-input.ts", "layers": ["shared"], "role": "outside", "business": null, "home": "outside" },
+    {
+      "path": "client/platform/native-directory-picker.ts",
+      "layers": ["infrastructure"],
+      "role": "platform",
+      "business": null,
+      "home": "target"
+    },
+    {
+      "path": "server/http/native-directory.ts",
+      "layers": ["server"],
+      "role": "outside",
+      "business": null,
+      "home": "outside"
+    },
     {
       "path": "runtime/native-pty.ts",
       "layers": ["runtime"],

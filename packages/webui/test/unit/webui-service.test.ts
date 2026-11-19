@@ -1149,6 +1149,25 @@ describe("WebUI service", () => {
     };
   }
 
+  it("routes native desktop selection only with both launch grant and credential, including dev mode", async () => {
+    const grant = "11111111-2222-3333-4444-555555555555";
+    const choose = vi.fn(async () => ({ kind: "selected" as const, directory: os.tmpdir() }));
+    const dispose = vi.fn(async () => {});
+    service = new WebuiService({ port, operations: createOperationRegistry(port), dev: true,
+      nativeDirectoryPicker: { grant, choose, dispose } });
+    const info = await service.start();
+    const origin = `http://127.0.0.1:${info.tcpPort}`;
+    const headers = { Origin: origin, "Sec-Fetch-Site": "same-origin", "X-Webui-Native-Grant": grant };
+    const denied = await fetch(`${origin}/native-directory-picker`, { method: "POST", headers });
+    expect(denied.status).toBe(401); expect(choose).not.toHaveBeenCalled();
+    const accepted = await fetch(`${origin}/native-directory-picker`, { method: "POST", headers: {
+      ...headers, "X-Webui-Token": info.credential.token,
+    } });
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toEqual({ kind: "selected", directory: os.tmpdir() });
+    await service.close(); expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
   // Awaits the upgrade promise and asserts the rejection carries the
   // expected guard. The promise is consumed on every refusal path, so the
   // `ws` library's refused-handshake rejection never escapes as an

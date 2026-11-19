@@ -1,10 +1,15 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { EMPTY_WEBUI_BROWSER_DOM, type WebuiBrowserDom } from "../platform/browser-dom.js";
+import type { NativeWorkspaceDirectoryResult } from "../platform/native-directory-picker.js";
 import { createWebuiBrowserStorage, type WebuiBrowserStorage } from "../platform/storage.js";
 
 export interface WebuiBrowserCapabilities {
   readonly dom: WebuiBrowserDom;
   readonly storage: WebuiBrowserStorage;
+  readonly nativeDirectoryPicker?: {
+    readonly available: () => boolean;
+    readonly choose: (signal: AbortSignal) => Promise<NativeWorkspaceDirectoryResult>;
+  };
   /**
    * The runtime's data directory, when the host served the page with one.
    *

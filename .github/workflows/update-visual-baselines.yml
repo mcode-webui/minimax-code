@@ -59,7 +59,11 @@ jobs:
           if [ "$RUNNER_OS" = "macOS" ]; then
             echo "WEBUI_BROWSER_HEADED=1" >> "$GITHUB_ENV"
           fi
-          pnpm exec playwright test "${{ inputs.spec }}" --update-snapshots
+          # A spec that still fails after the refresh must not stop the
+          # commit: the refreshed pixels are already on disk, and the webui
+          # CI is where a failing spec is reported.
+          pnpm exec playwright test "${{ inputs.spec }}" --update-snapshots \
+            || echo "::warning::a spec still fails after the refresh"
       - name: Commit the refreshed baselines
         shell: bash
         run: |

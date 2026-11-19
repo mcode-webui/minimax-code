@@ -260,7 +260,7 @@ export class RcConnection {
   sendFrame(frame: WsEnvelope): boolean {
     const ws = this.ws;
     if (!ws || this.state !== "connected") return false;
-    return this.sendRaw(ws, frame);
+    return this.sendRaw(ws, frame).ok;
   }
 
   /**
@@ -287,20 +287,22 @@ export class RcConnection {
     }
   }
 
-  private sendRaw(ws: RcWebSocketLike, frame: WsEnvelope): boolean {
+  private sendRaw(ws: RcWebSocketLike, frame: WsEnvelope): RcSendResult {
     const encoded = encodeFrame(frame, { maxMessageBytes: this.maxMessageBytes });
     if (!encoded.ok) {
       this.opts.logger.error(
         `[rc.conn] drop outbound ${frame.type}: ${encoded.error.code} ${encoded.error.message}`,
       );
-      return false;
+      return encoded.error.code === "frame_too_large"
+        ? { ok: false, reason: "frame_too_large", sizeBytes: encoded.error.sizeBytes }
+        : { ok: false, reason: "send_failed" };
     }
     try {
       ws.send(encoded.text);
-      return true;
+      return { ok: true };
     } catch (err) {
       this.opts.logger.warn(`[rc.conn] send ${frame.type} failed: ${connectionErrorForLog(err)}`);
-      return false;
+      return { ok: false, reason: "send_failed" };
     }
   }
 
@@ -488,7 +490,17 @@ export class RcConnection {
         .handleCommand(
           frame,
           (reply) => {
-            if (!signal.aborted && this.ws === ws) this.sendRaw(ws, reply);
+            if (signal.aborted || this.ws !== ws) return;
+            const result = this.sendRaw(ws, reply);
+            if (result.ok || result.reason !== "frame_too_large") return;
+            this.opts.logger.error(
+              `[rc.conn] event=reply_frame_too_large rc_cmd_id=${frame.id} cmd_type=${frame.type} size_bytes=${result.sizeBytes ?? 0} max_frame=${this.maxMessageBytes}`,
+            );
+            this.sendRaw(ws, makeFrame(errTypeForCmd(frame.type), {
+              code: "PAYLOAD_TOO_LARGE",
+              message: `the reply is ${result.sizeBytes ?? 0} bytes, over this connection's ${this.maxMessageBytes} byte frame limit`,
+              retryable: false,
+            }, { inReplyTo: frame.id, traceId: frame.trace_id }));
           },
           { streamScope: this.currentConnectionId, signal, commandScope: this.opts.commandScope },
         )

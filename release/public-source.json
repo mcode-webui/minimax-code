@@ -4584,6 +4584,7 @@
     "packages/webui/src/runtime/remote-control/bridge/pairing-client.ts",
     "packages/webui/src/runtime/remote-control/bridge/pairing-session.ts",
     "packages/webui/src/runtime/remote-control/bridge/permission-upstream.ts",
+    "packages/webui/src/runtime/remote-control/bridge/session-history-bounds.ts",
     "packages/webui/src/runtime/remote-control/bridge/stream-pump.ts",
     "packages/webui/src/runtime/remote-control/bridge/types.ts",
     "packages/webui/src/runtime/remote-control/command-router.ts",

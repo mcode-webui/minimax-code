@@ -191,8 +191,12 @@ export function createRemoteControlLocalRuntimeInvoke(
       ...(limit !== undefined ? { limit } : {}),
       ...(before !== undefined ? { before } : {}),
     });
-    return jsonResponse(200, {
-      messages: result.messages ?? [],
+    return protocolViewResponse({
+      messages: (result.messages ?? []).map((message) => ({
+        ...message,
+        toolCalls: message.toolCalls ?? [],
+        attachments: message.attachments ?? [],
+      })),
       ...(result.hasMore !== undefined ? { hasMore: result.hasMore } : {}),
       ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
       ...(result.lastMsgId ? { lastMsgId: result.lastMsgId } : {}),
@@ -204,6 +208,12 @@ export function createRemoteControlLocalRuntimeInvoke(
     ctx: RouteContext,
     match: RegExpExecArray,
   ): Promise<Response> => {
+    if (
+      readString(ctx.body.retry_message_id) || readString(ctx.body.retryMessageId) ||
+      readString(ctx.body.discard_message_id) || readString(ctx.body.discardMessageId)
+    ) {
+      return errorResponse(501, NOT_IMPLEMENTED, "retrying or discarding a side message is not supported by this runtime");
+    }
     const content = readString(ctx.body.content);
     const clientIntent = readString(ctx.body.client_intent ?? ctx.body.clientIntent);
     const attachments = toRuntimeAttachments(ctx.body.attachments);

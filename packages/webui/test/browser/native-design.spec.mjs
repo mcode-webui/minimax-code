@@ -421,7 +421,10 @@ test("native Design preserves original menus, selected operations, graph gesture
     .locator(".webui-design-node-error")
     .getByRole("button", { name: "上报", exact: true })
     .click();
-  expect(await design.evaluate(() => navigator.clipboard.readText())).toBe(
+  // The report itself is written with LF. The Windows clipboard answers
+  // with CRLF, so the two are compared as the same text.
+  const reported = await design.evaluate(() => navigator.clipboard.readText());
+  expect(reported.replace(/\r\n/g, "\n")).toBe(
     `节点：图片\nID：${imageId}\n错误：Synthetic error for real recovery controls`,
   );
   await photograph(design, "design-error-controls-dark");
@@ -710,12 +713,25 @@ test("native Design processes real local media through in-card crop, grid, clip 
         y: (element.clientHeight / 2 - matrix.f) / matrix.a - 90,
       };
     });
-  await page.getByRole("button", { name: "插入", exact: true }).first().click();
-  state = await saved(
-    page,
-    (value) => value.document.nodes.length === priorIds.size + 1,
-  );
-  const inserted = state.document.nodes.find((node) => !priorIds.has(node.id));
+  // The library item names the asset it inserts, so the inserted node is
+  // found by that asset. "The node that is new" is not the same node: the
+  // media tool's tiles keep arriving after the split, and a tile that lands
+  // after this point is new too.
+  const libraryItem = page
+    .locator(".webui-design-library-item")
+    .filter({ has: page.locator("img") })
+    .first();
+  const assetSource = await libraryItem.locator("img").getAttribute("src");
+  const assetName =
+    new URL(assetSource ?? "/", "http://library.invalid").pathname.split("/").pop() ?? "";
+  await libraryItem.getByRole("button", { name: "插入", exact: true }).click();
+  const isInserted = (node) =>
+    !priorIds.has(node.id) &&
+    (node.metadata.output.media ?? []).some((item) =>
+      String(item.url ?? "").endsWith(assetName),
+    );
+  state = await saved(page, (value) => value.document.nodes.some(isInserted));
+  const inserted = state.document.nodes.find(isInserted);
   expect(inserted.position.x).toBeCloseTo(insertPosition.x, 0);
   expect(inserted.position.y).toBeCloseTo(insertPosition.y, 0);
   await expect(

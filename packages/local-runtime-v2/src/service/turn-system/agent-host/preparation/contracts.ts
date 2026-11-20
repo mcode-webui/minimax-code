@@ -113,6 +113,8 @@ export interface AgentHostExecutionRequest {
   };
   readonly input: AgentHostUserInput;
   readonly outputContract?: TurnOutputContract;
+  /** Trusted internal narrowing of the Turn profile; applied server-side, never widening. */
+  readonly capabilitySelection?: import('../../../agent-turn/contracts.js').AgentTurnCapabilitySelection;
   /** Advisory Unix-ms deadline from the process-local cancellation owner. */
   readonly executionDeadlineAtMs?: number;
   readonly genuineUserQueryText: string;

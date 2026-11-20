@@ -368,7 +368,9 @@ test("a completed /compact result stays with its original session after New Task
     (request) => request.operation === "runCommand" && request.body.command === "compact" && request.body.sessionId === "A",
   ))).toBe(true);
 
-  await page.locator(".webui-brand-create-button").click();
+  // The brand button is a style class, not a name: the Design nav item
+  // carries it too, so the locator has to say which button it means.
+  await page.getByRole("button", { name: "新建", exact: true }).click();
   await expect.poll(() => page.evaluate(() => new URLSearchParams(location.hash.replace(/^#/u, "")).get("session"))).toBeNull();
   await expect(page.locator("[data-webui-command-running]")).toHaveCount(0);
   await expect(composer(page)).toBeEnabled();

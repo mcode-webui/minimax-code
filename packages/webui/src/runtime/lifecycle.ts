@@ -85,6 +85,9 @@ export function createWebuiRuntimeLifecycle(
   };
   const closeAcquiredResources = async (): Promise<void> => {
     const failures: unknown[] = [];
+    for (const dispose of resources.splice(0)) {
+      try { await dispose(); } catch (error) { failures.push(error); }
+    }
     try {
       owners.disposeAuth();
     } catch (error) {

@@ -11,6 +11,24 @@ import {
   type TurnExecutionServiceOptions,
 } from './turn-execution.service.js';
 
+describe('trusted per-turn capability narrowing', () => {
+  it('carries the narrowing into the AgentHost request that assembles the tools', async () => {
+    const fixture = harness();
+    await fixture.service.submit({
+      sessionId: 'session-1',
+      input: { text: 'write a poem' },
+      genuineUserQueryText: 'write a poem',
+      provenance: { source: 'webui-design', routingFingerprint: 'probe' },
+      capabilitySelection: { tools: [] },
+    });
+    expect(fixture.coordinator.startTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({ capabilitySelection: { tools: [] } }),
+      }),
+    );
+  });
+});
+
 describe('user stop cascade trigger', () => {
   it('cascades an explicit user stop and hands the abort result to the follow-up', async () => {
     const fixture = harness();

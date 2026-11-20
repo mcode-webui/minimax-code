@@ -981,6 +981,9 @@ function commonHostRequest(input: TurnExecutionSubmission) {
     ...(!isQueueSubmission(input) && input.outputContract
       ? { outputContract: input.outputContract }
       : {}),
+    ...(!isQueueSubmission(input) && input.capabilitySelection
+      ? { capabilitySelection: input.capabilitySelection }
+      : {}),
     ...(!isQueueSubmission(input) && input.executionDeadlineAtMs !== undefined
       ? { executionDeadlineAtMs: input.executionDeadlineAtMs }
       : {}),

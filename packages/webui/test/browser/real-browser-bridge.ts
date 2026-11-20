@@ -37,6 +37,17 @@ export const INSTALLATION_KEY_STORAGE_KEY = "webui.browserBridge.installationKey
 export const CONNECT_TIMEOUT_MS = 20_000;
 
 /**
+ * How long a browser launch may take before it counts as a failure.
+ *
+ * The bound is about the machine, not the browser: the first Edge launch on
+ * a cold runner has to build its profile before the extension answers, and a
+ * loaded runner can spend past a minute on that alone. A launch bound that
+ * reports a slow machine as a broken bridge is a bound that fails for the
+ * wrong reason.
+ */
+export const BROWSER_LAUNCH_BOUND_MS = 120_000;
+
+/**
  * The slice of the extension API the harness uses.
  *
  * The callbacks are serialized and run inside the extension's service worker,
@@ -112,7 +123,9 @@ function extensionIdOf(worker: Worker): string {
  *
  * So every wait in this file that can outlive its case is bounded here, and
  * the message names the step that stopped. The bound is generous enough for a
- * slow machine: the Edge handshake takes 22.6 s on a CI runner.
+ * slow machine: the Edge handshake takes 22.6 s on a CI runner, and the first
+ * Edge launch on a cold runner builds its profile before it answers — 28.1 s
+ * on an idle runner, and past a minute on a loaded one.
  */
 async function bounded<T>(what: string, ms: number, work: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -159,7 +172,7 @@ export async function launchWithExtension(
   const dist = options.dist ?? extensionDist;
   const context = await bounded(
     `the ${channel} browser did not start`,
-    60_000,
+    BROWSER_LAUNCH_BOUND_MS,
     chromium.launchPersistentContext(profileDir, {
       headless: true,
       // "chromium" is the bundled browser and "msedge" is the installed Edge.
@@ -178,7 +191,7 @@ export async function launchWithExtension(
   if (!worker) {
     worker = await bounded(
       `the ${channel} browser did not start the extension's service worker`,
-      60_000,
+      BROWSER_LAUNCH_BOUND_MS,
       context.waitForEvent("serviceworker", { timeout: 30_000 }),
     );
   }

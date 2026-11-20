@@ -247,7 +247,13 @@ To deliberately regenerate only these baselines, use
 `pnpm exec playwright test packages/webui/test/browser/visual-baselines.spec.mjs --update-snapshots`
 on Linux CI Chromium, inspect every resulting image, then run the same command without
 `--update-snapshots` to compare. The font environment is part of the gate, so no extra setup is
-needed to regenerate the baselines — the same files produce the same bytes anywhere. A passing
+needed to regenerate the baselines — the same files produce the same bytes anywhere.
+“The same bytes” holds for the committed typeface, not for the browser mode: macOS compares
+windowed Chromium, and windowed and headless Chromium do not draw the same glyph edges. A macOS
+baseline recorded headless therefore differs from the one the CI compares against, by a handful of
+antialiased pixels per glyph — far more than the eight-pixel budget, and spread over the whole
+capture. Record the macOS baselines in windowed mode, or dispatch
+`.github/workflows/update-visual-baselines.yml`, which selects the mode the CI uses. A passing
 fixture screenshot proves the
 built client's rendered
 state under the in-page deterministic transport; it does not prove the production service or runtime

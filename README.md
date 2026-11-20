@@ -140,7 +140,7 @@ You need Git, a supported Node.js version, and **pnpm 9.12.0**. On Windows, keep
 ```bash
 git clone https://github.com/mcode-webui/minimax-code.git
 cd minimax-code
-git switch webui
+git switch main
 node scripts/check-windows-source-location.mjs
 pnpm install --frozen-lockfile
 pnpm build:webui

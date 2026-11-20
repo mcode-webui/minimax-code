@@ -44,6 +44,7 @@
 // places: `sendMessage?`, `resumeSession?`, `watchEvents?` among them.
 
 import type { AccountPort } from "../features/account/contracts/account-port.js";
+import type { DesignPort } from "../features/design/contracts/design-port.js";
 import type { ComposerPort } from "../features/composer/contracts/command-port.js";
 import type { GoalPort } from "../features/goal/contracts/goal-port.js";
 import type { InteractionPort } from "../features/interactions/contracts/interaction-port.js";
@@ -92,7 +93,8 @@ export interface WebuiPortSliceSource
     MiniAppPort,
     ChannelPort,
     RemoteControlPort,
-    SshPort {}
+    SshPort,
+    DesignPort {}
 
 // The key lists below are the old-to-new mapping as data. Each is checked
 // against its port by `satisfies`, so a renamed or removed member stops the
@@ -364,6 +366,7 @@ export type WebuiTurnSlice = WebuiTurnCapabilitySlice;
 
 /** One slice per business. */
 export interface WebuiPortSlices {
+  readonly design: DesignPort;
   readonly sessions: WebuiSessionsSlice;
   readonly transcript: WebuiTranscriptSlice;
   readonly workspace: WebuiWorkspaceSlice;
@@ -409,6 +412,7 @@ export function createWebuiPortSlices(
   source: WebuiPortSliceSource,
 ): WebuiPortSlices {
   return {
+    design: cut(source, ["version", "getDesignState", "applyDesignAction", "designStandaloneUrl", "designAssetUrl", "designSessionUrl"]),
     sessions: cut(source, SESSIONS_KEYS),
     transcript: cut(source, TRANSCRIPT_KEYS),
     // Two ports, one business: the terminal capability belongs inside

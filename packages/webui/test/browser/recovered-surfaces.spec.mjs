@@ -65,7 +65,7 @@ test("session rail loading uses solid shared pulse skeletons", async ({ page }) 
   expect(geometry.every((rect) => rect.height === 28)).toBe(true);
   expect(geometry.slice(1).every((rect, index) => rect.top - geometry[index].bottom >= 8)).toBe(true);
   await expect(rail.locator(".webui-page-skeleton-node, .webui-page-skeleton-shape")).toHaveCount(0);
-  await expect(rail.locator('[data-webui-rail-brand] button')).toBeVisible();
+  await expect(rail.locator('[data-webui-rail-brand] [data-webui-nav-item="新建任务"]')).toBeVisible();
 });
 
 async function openUserMenu(page) {

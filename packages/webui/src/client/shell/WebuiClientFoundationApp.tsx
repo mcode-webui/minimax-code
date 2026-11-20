@@ -26,6 +26,7 @@ import { WebuiWorkspacePanel } from "../features/workspace/ui/WorkspacePanels.js
 import { webuiWorkspaceAutoOpenBrowser } from "../features/workspace/ui/WebuiWorkspaceTabStrip.public.js";
 
 import { MiniAppView } from "../features/miniapp/ui/MiniAppView.public.js";
+import { openDesignTab } from "../features/design/bindings/use-design.js";
 import { webuiRailIsDrawer, WEBUI_PROGRESS_PANEL_NARROW_QUERY } from "../ui/layout-thresholds.js";
 import { useOverlayLayer } from "../ui/overlay-coordinator.js";
 import { WebuiIconButton } from "../ui/button.js";
@@ -699,6 +700,32 @@ export function WebuiClientFoundationApp(
   // slice for the session it shows and dispatches; it owns neither.
   const workspacePanelOwner = workspaceQueries.panel;
   useEffect(() => {
+    let alive = true;
+    let seen: string | undefined;
+    let selectionEpoch = 0;
+    let selected = application.store.getSelectedSessionId();
+    const stopSelection = application.store.subscribe(() => {
+      const current = application.store.getSelectedSessionId();
+      if (current !== selected) { selected = current; selectionEpoch += 1; }
+    });
+    const present = (): void => {
+      const intent = application.design.getSnapshot().intent;
+      if (!intent || intent.id === seen) return;
+      seen = intent.id;
+      dispatchShellSurface({ type: "show-conversation" });
+      selectSession(intent.sessionId);
+      const claim = selectionEpoch;
+      void application.design.load({ sessionId: intent.sessionId, documentId: intent.documentId }).then(() => {
+        if (!alive || claim !== selectionEpoch || application.store.getSelectedSessionId() !== intent.sessionId) return;
+        workspacePanelOwner.dispatch(intent.sessionId, { type: "open-tab", kind: "canvas", sessionId: intent.sessionId });
+        workspacePanelOwner.dispatch(intent.sessionId, { type: "open-panel" });
+      });
+    };
+    const stop = application.design.subscribe(present);
+    present();
+    return () => { alive = false; stop(); stopSelection(); };
+  }, [application, dispatchShellSurface, selectSession, workspacePanelOwner]);
+  useEffect(() => {
     return application.miniAppPresenter.bind({
       onFailure: (error) => setPageError(error instanceof Error ? error.message : String(error)),
       close: (sessionId, pluginId) => {
@@ -1111,6 +1138,11 @@ export function WebuiClientFoundationApp(
               openScheduling={openScheduling}
               remoteOpen={remoteOpen}
               openRemote={openRemote}
+              openDesign={() => {
+                const href = application.design.standaloneUrl({ sessionId: selectedSessionId, documentId: application.design.getSnapshot().documentId });
+                if (href) openDesignTab(href);
+                else setPageError("当前连接无法打开独立 Design 页面。");
+              }}
               selectedSessionId={selectedSessionId}
               hasSearchResults={railPage.sessions.length > 0}
               projectList={{
@@ -1327,6 +1359,7 @@ export function WebuiClientFoundationApp(
                 workspaceDir={selectedSession?.workspaceDir} workspaceFileUrl={workspacePort.workspaceFileUrl}
                 terminal={terminalOwner} onClose={closeWorkspacePanel}
                 onManageMiniApps={manageMiniApps}
+                onOpenDesignSession={(id) => { selectSession(id); dispatchShellSurface({ type: "show-conversation" }); }}
                 onMiniAppMountTarget={setMiniAppMountTarget}
                 onMiniAppToolbarTarget={setMiniAppToolbarTarget}
               /></WebuiZoneBoundary> : undefined}

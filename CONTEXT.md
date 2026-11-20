@@ -12,6 +12,8 @@ glossary has a gap to fill here.
 
 ## Language
 
+**Design**: The WebUI's native node-graph workspace for arranging inputs, generated text and media, data connections and reusable workflows. A Design document is shared by its standalone browser page, workspace panel and built-in agent tool.
+
 ### Layers and clients
 
 **Harness layer**:

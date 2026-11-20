@@ -17,6 +17,7 @@
 // or carry a stream/terminal/command shape keep dedicated handlers in
 // `./handlers/`; they are not bindings.
 import type { OperationSpec } from "../../shared/operation-names.js";
+import { getDesignStateOperation, applyDesignActionOperation } from "./design.js";
 import type {
   WebuiOperationRegistryEntry,
 } from "./operation-contract.js";
@@ -386,6 +387,8 @@ export const WEBUI_OPERATION_BINDINGS = {
     args: (body) => [body],
     result: identity,
   }),
+  getDesignState: bind("design")("getDesignState")("getDesignState")({ operation: getDesignStateOperation, args: (body) => [body], result: identity }),
+  applyDesignAction: bind("design")("applyDesignAction")("applyDesignAction")({ operation: applyDesignActionOperation, args: (body) => [body], result: identity }),
   applyCanvas: bind("workspace")("applyCanvas")("applyCanvas")({
     operation: applyCanvasOperation,
     args: (body) => [body],

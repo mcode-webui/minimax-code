@@ -266,8 +266,16 @@ export function buildLocalTurnToolCatalog(
     model: `${model.provider}/${model.id}`,
     ...(merged.plan.deferred ? merged.plan.stats : {}),
   });
+  // A disclosure tool (`mcp_invoke`) or a host capability tool (`miniapp`) is
+  // added after the per-turn filter. An explicit tool allow list, including the
+  // empty list that means "no tools", still has to bound the final table.
+  const explicitToolSelection =
+    input.agentProfile?.configSelection?.tools !== undefined;
+  const finalTools = explicitToolSelection
+    ? merged.tools.filter((tool) => inventory.selector.allowsTool(tool.def.name))
+    : merged.tools;
   return {
-    tools: merged.tools,
+    tools: finalTools,
     userPromptPrefix: renderUserPromptPrefix(
       merged.reminder,
       merged.plan.deferred,

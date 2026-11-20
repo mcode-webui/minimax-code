@@ -85,11 +85,15 @@ export interface HostProcessConnectorCloudClient {
   }): Promise<CallConnectorToolResult>;
 }
 
-export interface HostProcessConnectorCaller {
+export type HostProcessConnectorCaller = {
   readonly kind: 'host-process';
   readonly pluginId: string;
   readonly processGeneration: string;
-}
+} | {
+  readonly kind: 'native-client';
+  readonly clientId: string;
+  readonly processGeneration: string;
+};
 
 export interface ConnectorHostRequestContext {
   readonly clientRequestId: string;
@@ -104,6 +108,8 @@ export type ConnectorCallOutcome =
 
 /** Host-process boundary owned by local-runtime-v2. Ordinary Desktop turns do not use this seam. */
 export interface HostProcessConnectorGateway {
+  registerNativeClient(input: { readonly clientId: string; readonly processGeneration: string }): void;
+  releaseNativeClient(input: { readonly clientId: string; readonly processGeneration: string }): void;
   /** Registers the generation before its child process can issue Connector requests. */
   registerHostProcess(input: {
     readonly pluginId: string;
@@ -120,7 +126,7 @@ export interface HostProcessConnectorGateway {
     readonly signal?: AbortSignal;
   }): Promise<ConnectorInventory>;
   call(input: {
-    readonly handle: ConnectorToolHandle;
+    readonly handle: unknown;
     readonly arguments: Readonly<Record<string, unknown>>;
     readonly caller: HostProcessConnectorCaller;
     readonly hostRequest: ConnectorHostRequestContext;

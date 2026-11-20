@@ -70,6 +70,7 @@ const REQUEST_FIELDS = [
   'immediateSendBatch',
   'input',
   'outputContract',
+  'capabilitySelection',
   'executionDeadlineAtMs',
   'genuineUserQueryText',
   'inputSafetyDecision',
@@ -103,6 +104,7 @@ export function captureAgentHostExecutionRequest(
   const queueItemIds = snapshotQueueItemIds(snapshot.queueItemIds);
   const input = snapshotUserInput(snapshot.input);
   const outputContract = snapshotOutputContract(snapshot.outputContract);
+  const capabilitySelection = snapshotCapabilitySelection(snapshot.capabilitySelection);
   const executionDeadline = snapshotExecutionDeadlineField(snapshot.executionDeadlineAtMs);
   const inputSafetyDecision = snapshotInputSafetyDecision(snapshot.inputSafetyDecision);
   const requiresInputReview = snapshotRequiresInputReview(snapshot.requiresInputReview);
@@ -119,6 +121,7 @@ export function captureAgentHostExecutionRequest(
     input,
     immediateSendBatch,
     ...(outputContract ? { outputContract } : {}),
+    ...(capabilitySelection ? { capabilitySelection } : {}),
     ...executionDeadline,
     genuineUserQueryText,
     ...(inputSafetyDecision ? { inputSafetyDecision } : {}),
@@ -323,6 +326,27 @@ function snapshotOutputContract(value: unknown): TurnOutputContract | undefined 
     throw new AgentHostUserInputValidationError('invalid-request');
   }
   return { type: 'json_schema', schema: value.schema };
+}
+
+function snapshotCapabilitySelection(
+  value: unknown,
+): import('../../agent-turn/contracts.js').AgentTurnCapabilitySelection | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new AgentHostUserInputValidationError('invalid-request');
+  }
+  const fields = ['tools', 'disallowedTools', 'mcpServers', 'skills', 'extensionSkills'] as const;
+  assertOnlyFields(value, fields);
+  const selection: Record<string, readonly string[]> = {};
+  for (const field of fields) {
+    const list = value[field];
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.some((entry) => typeof entry !== 'string')) {
+      throw new AgentHostUserInputValidationError('invalid-request');
+    }
+    selection[field] = [...list];
+  }
+  return Object.keys(selection).length > 0 ? selection : undefined;
 }
 
 function snapshotQueue(value: unknown): readonly AgentHostQueuedUserInput[] | undefined {

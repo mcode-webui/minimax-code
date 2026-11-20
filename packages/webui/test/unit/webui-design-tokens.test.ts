@@ -120,10 +120,10 @@ describe("WebUI design tokens", () => {
     expect(rel).toBe("src/client/styles/tokens.css");
   });
 
-  it("carries the 211 semantic tokens that packages/webui/docs/design/design-language.md names", () => {
-    // 211 is the count `packages/webui/docs/design/design-language.md` records.
+  it("carries the 212 semantic tokens that packages/webui/docs/design/design-language.md names", () => {
+    // 212 is the count `packages/webui/docs/design/design-language.md` records.
     // If our count drifts, the test fails loudly rather than silently adjusting.
-    expect(semanticNames().length).toBe(211);
+    expect(semanticNames().length).toBe(212);
   });
 
   it("binds every semantic token in :root, .light, and .dark", () => {

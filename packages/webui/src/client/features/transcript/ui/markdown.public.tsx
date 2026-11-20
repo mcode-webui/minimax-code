@@ -187,8 +187,8 @@ export function isSafeWebuiMarkdownHref(href: string): boolean {
 
 /**
  * The emoji a model writes in front of a file name it links to. The link draws
- * the real file-type glyph, so this is only used to notice that the text
- * already carries the model's own emoji and suppress a second mark.
+ * the code glyph, so this is only used to notice that the text already carries
+ * the model's own emoji and suppress a second mark.
  */
 function fileReferenceEmoji(extension: string | undefined): string {
   if (extension === "py") return "🐍";

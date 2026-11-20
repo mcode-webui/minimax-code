@@ -35,6 +35,7 @@ export function SessionRailRegion(props: {
   readonly openPlugins: () => void;
   readonly openScheduling: () => void;
   readonly openRemote: () => void;
+  readonly openDesign?: () => void;
   readonly selectedSessionId?: string;
   readonly projectList: ProjectListProps;
   readonly hasSearchResults: boolean;
@@ -64,7 +65,7 @@ export function SessionRailRegion(props: {
               size="regular"
               title="新建任务"
               onClick={() => props.startNewTask()}
-              className="webui-nav-item webui-brand-create-button"
+              className="webui-nav-item webui-brand-pill webui-brand-create-button"
               data-webui-nav-item="新建任务"
               data-webui-nav-active={props.homeMode && !props.pluginManagementOpen ? "true" : "false"}
             >
@@ -79,6 +80,29 @@ export function SessionRailRegion(props: {
                 <WebuiIconNewTask />
                 <span>新建</span>
               </span>
+            </WebuiButton>
+          </div>
+          <div className="webui-rail-design-action px-4" data-webui-rail-fixed-row="true">
+            <WebuiButton
+              variant="plain"
+              size="regular"
+              title="Design"
+              aria-label="MiniMax Design"
+              onClick={props.openDesign}
+              className="webui-nav-item webui-brand-pill webui-brand-design-button"
+              data-webui-nav-item="Design"
+            >
+              <img className="webui-brand-create-mark" src="/assets/img/minimax-design-brand.png" alt="" aria-hidden="true" />
+              {/* The wordmark is this button's visible label, so the accessible
+                  name has to carry it: the rule that a visible text must be
+                  part of the accessible name reads the rendered text, and
+                  "MiniMax" and "Design" are two words to it. The space
+                  between them is in the text, not in the layout — the word
+                  mark's own gap still draws them apart. */}
+              <span className="webui-brand-create-wordmark webui-brand-design-wordmark" aria-hidden="true">
+                <span>MiniMax</span>{" "}<span>Design</span>
+              </span>
+              <img className="webui-brand-design-mascot" src="/assets/img/minimax-design-octopus.svg" alt="" aria-hidden="true" />
             </WebuiButton>
           </div>
         </div> : null}
@@ -99,11 +123,9 @@ export function SessionRailRegion(props: {
           <div className="webui-rail-scroll h-full overflow-x-hidden overflow-y-auto px-4">
             <WebuiStack gap="hairline" className="pb-0.5">
               <WebuiFileInput ref={props.importInputRef} accept=".json,application/json" data-webui-session-import-input="true" aria-label="导入会话文件" onChange={props.onImportPicked} />
-              <div className="webui-rail-command-group">
-                <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
-              </div>
               <div className="webui-rail-navigation-group">
                 <div className="webui-rail-group-label">工作区</div>
+                <RailRow label="导入会话" icon={<WebuiIconSessionImport className="flex-shrink-0" />} active={false} inert={props.importBusy} onSelect={props.openImportPicker} />
                 <RailRow label="插件" icon={<WebuiIconPlugins />} active={props.pluginManagementOpen} onSelect={props.openPlugins} />
                 <RailRow label="定时任务" icon={<WebuiIconSchedule />} active={props.schedulingOpen} onSelect={props.openScheduling} />
                 <MiniAppLauncher sessionId={props.selectedSessionId} />

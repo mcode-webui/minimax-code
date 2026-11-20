@@ -28,6 +28,13 @@ export function resolveOfficialPluginAuthState(
   if (auth?.authState === 'logged_out') return 'logged_out';
   if (auth?.accessToken?.trim() && auth.realUserID?.trim()) return 'ready';
 
+  // A credential without an identity is a signed-in account whose identity
+  // lookup has not answered yet, or has failed. Reporting "logged out" here
+  // would tell a signed-in person that their account is gone, so the wait
+  // continues and the refusal that follows says the state could not be
+  // confirmed rather than that it ended.
+  if (auth?.accessToken?.trim()) return 'pending';
+
   // CLI/TUI snapshots predate Electron's propagation state. Preserve their
   // original logged-out behavior instead of treating a missing optional field
   // as an in-flight Renderer -> Main -> Utility rotation.

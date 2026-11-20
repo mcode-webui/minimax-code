@@ -3,6 +3,7 @@
 // the operation's string name and the handler maps are built in
 // `bind-handlers.ts` and `handlers/`.
 export { versionOperation, listSessionsOperation, listVisibleProjectsOperation, getSessionTreeOperation, createSessionOperation, getSessionOperation, getActiveTurnOperation, archiveSessionOperation, deleteSessionOperation, updateSessionOperation, getSessionForkOptionsOperation, forkSessionOperation } from "./session.js";
+export { getDesignStateOperation, applyDesignActionOperation } from "./design.js";
 export { listWorkspaceFileTreeOperation, browseWorkspaceDirsOperation, readWorkspaceFileOperation, getWorkspaceEnvironmentOperation, mutateWorkspaceGitOperation, getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation, readCanvasOperation, applyCanvasOperation, readWorkspaceArchiveOperation, extractWorkspaceArchiveOperation, createTerminalOperation, listTerminalsOperation, writeTerminalOperation, resizeTerminalOperation, disposeTerminalOperation, watchTerminalOperation } from "./workspace.js";
 export { getMessagesOperation, getSessionDiffOperation, getTurnDiffOperation, revertTurnDiffOperation, reapplyTurnDiffOperation, getSessionRewindPreviewOperation, rewindSessionOperation, editSessionMessageOperation } from "./messages.js";
 export { isGoalEnabledOperation, getGoalOperation, createGoalOperation, patchGoalOperation, clearGoalOperation } from "./goal.js";
@@ -421,6 +422,8 @@ export function createOperationRegistry(
   // `unknown_operation` and marked local activity unavailable.
   registerOperation(registry, entry("watchMiniAppAgentObservations"));
   registerOperation(registry, entry("steerQueueItem"));
+  registerOperation(registry, entry("getDesignState"));
+  registerOperation(registry, entry("applyDesignAction"));
   return registry;
 }
 

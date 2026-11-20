@@ -44,9 +44,12 @@ if (!sessionId) throw new Error("Native acceptance session was not created");
 type NativePtyModule = ReturnType<NonNullable<ConstructorParameters<typeof WebuiTerminalManager>[0]>>;
 const native: NativePtyModule = loadWebuiPty();
 const exits: Promise<void>[] = [];
+let exited = 0;
 const terminal = new WebuiTerminalManager(() => ({ spawn: (shell, args, options) => {
   const pty = native.spawn(shell, args, options);
-  exits.push(new Promise<void>((resolve) => { pty.onExit(resolve); }));
+  exits.push(new Promise<void>((resolve) => {
+    pty.onExit(() => { exited++; resolve(); });
+  }));
   return pty;
 } }));
 const operations = new Map(createOperationRegistry(port, terminal));
@@ -80,7 +83,9 @@ async function close() {
     // Each step says where it is before it runs: a shutdown that does not
     // finish is otherwise a silence, and the suite cannot tell which step
     // stopped answering.
-    const step = (name: string) => { process.stderr.write(`[native-host] ${name}\n`); };
+    const step = (name: string) => {
+      process.stderr.write(`[native-host] ${name} (uptime ${process.uptime().toFixed(3)}s)\n`);
+    };
     // The report leaves with the process, so the exit is taken in the send
     // callback: the message has to be flushed first.
     const report = (message: Record<string, unknown>) => {
@@ -110,12 +115,13 @@ async function close() {
       // that is the first thing the close does — so the host reports where it
       // stopped and goes, instead of leaving the suite to time out blind.
       step(`service.close did not finish (at ${owner})`);
-      report({ closed: false, terminals: 0, exited: exits.length, stalledAt: owner });
+      report({ closed: false, terminals: 0, exited, stalledAt: owner });
       return;
     }
     if (outcome !== "closed") throw outcome;
-    step("terminals exited");
+    step(`wait terminal exit events (${exited}/${exits.length} observed)`);
     await Promise.all(exits);
+    step(`terminal exit events received (${exited}/${exits.length})`);
     step("apiHost.close");
     await assembled.host.apiHost.close();
     step("terminals checked");
@@ -132,7 +138,7 @@ async function close() {
     // under load that was enough for the suite's shutdown hook to miss its
     // deadline. The callback runs once the message has been flushed, so the
     // report is not lost by exiting here.
-    report({ closed: true, terminals: 0, exited: exits.length });
+    report({ closed: true, terminals: 0, exited });
   })();
   return closing;
 }

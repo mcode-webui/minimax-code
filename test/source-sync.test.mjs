@@ -85,10 +85,11 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const ffmpeg = job.steps.find(step => step.name === 'Install FFmpeg');
   assert.ok(ffmpeg, 'the native Design media paths run FFmpeg for real');
   assert.match(ffmpeg.run, /ffmpeg/);
-  assert.equal(ffmpeg['timeout-minutes'], "${{ runner.os == 'Linux' && 15 || 8 }}");
-  assert.match(ffmpeg.run, /sudo apt-get install -y --no-install-recommends ffmpeg/);
-  assert.doesNotMatch(ffmpeg.run, /npm publish|wget /);
-  assert.equal((ffmpeg.run.match(/\bcurl /g) ?? []).length, 1);
+  assert.equal(ffmpeg['timeout-minutes'], 8);
+  assert.doesNotMatch(ffmpeg.run, /apt-get|npm publish|wget /);
+  assert.equal((ffmpeg.run.match(/\bcurl /g) ?? []).length, 2);
+  assert.match(ffmpeg.run, /https:\/\/github\.com\/jellyfin\/jellyfin-ffmpeg\/releases\/download\/v\d+\.\d+\.\d+-\d+\/jellyfin-ffmpeg_[\d.-]+_portable_linux64-gpl\.tar\.xz/);
+  assert.match(ffmpeg.run, /[a-f0-9]{64}.*sha256sum --check\s+tar -xJf .* ffmpeg ffprobe/);
   assert.match(ffmpeg.run, /https:\/\/github\.com\/GyanD\/codexffmpeg\/releases\/download\/\d+\.\d+\.\d+\//);
   assert.match(ffmpeg.run, /[a-f0-9]{64}.*sha256sum --check\s+unzip /);
   const commands = job.steps.filter(step => step.run && step !== directories).map(step => step.run);

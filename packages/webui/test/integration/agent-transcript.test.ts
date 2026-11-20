@@ -162,6 +162,7 @@ afterAll(() => {
  * or at this deadline -- never later.
  */
 const BROWSER_FRAME_TIMEOUT_MS = 60_000;
+const BROWSER_INPUT_TIMEOUT_MS = 10_000;
 
 /**
  * One of the browser panel's own states, read from the page.
@@ -1273,7 +1274,10 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
       pageBox.y + pageBox.height * 88 / imageDimensions.height,
     );
     await page.keyboard.type("browser-while-todo-active");
-    await expect.poll(() => browserReportedValues).toContain("browser-while-todo-active");
+    // The browser panel serializes keystrokes through the runtime. Playwright
+    // has finished dispatching keys before the isolated page finishes receiving them.
+    await expect.poll(() => browserReportedValues, { timeout: BROWSER_INPUT_TIMEOUT_MS })
+      .toContain("browser-while-todo-active");
     // The two right-side panels share one surface, and the browser panel
     // holds it now — so the progress card is not on the screen. The todo
     // itself is still reported: the runtime still carries it, and the

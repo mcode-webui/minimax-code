@@ -16,7 +16,7 @@ README_ZH.md[SG4S]: F:Explains MiniMax Code installation, source builds from mai
 SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed-service boundaries. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
 package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:-
-playwright.config.mjs[SE4T]: F:Configures Playwright projects and the browser test server. | R:- | A:- | S:-
+playwright.config.mjs[FQ4T]: F:Configures WebUI browser gates, fixture server, font environment and output directories. | R:code:packages/webui/test/browser/server.mjs | A:- | S:The Windows workaround replaces the pinned disabled-features switch to retain Playwright defaults.
 pnpm-workspace.yaml[SE4T]: F:Declares pnpm workspace package roots. | R:- | A:- | S:-
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-
 tsconfig.standalone.json[SE4L]: F:Configures standalone TypeScript checking and workspace path aliases. | R:- | A:- | S:-
@@ -209,7 +209,7 @@ source-sync.md[SG4T]: F:Defines generation, review, and application of upstream 
 telemetry.md[SO4T]: F:Documents telemetry controls and the fields sent with usage events. | R:- | A:- | S:-
 tui-capabilities.md[SU4M]: F:Catalogues supported TUI behavior including output speed, terminal titles, and notifications. | R:- | A:- | S:-
 verification.md[SQ4S]: F:Records repository verification activities and outcomes by date and change. | R:- | A:- | S:-
-webui-ci.md[SV4S]: F:Documents active WebUI CI, time budgets, runtime diagnostics, archived workflows and manual npm release. | R:code:.github/workflows/webui-ci.yml,code:release/webui-npm/package.json | A:- | S:Verify the exact release directory built with the Chrome store public key.
+webui-ci.md[SV4S]: F:Documents WebUI CI coverage, time budgets, diagnostics and manual npm release. | R:code:.github/workflows/webui-ci.yml,code:playwright.config.mjs | A:- | S:Windows tests on Playwright 1.63.0 backport the Chromium TCP port-randomization fix.
 
 ===/<repository>/docs/community/===
 groups.md[SG4T]: F:Describes community support groups and the public entry point for participation. | R:- | A:- | S:-

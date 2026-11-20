@@ -56,6 +56,14 @@ Linux, Windows and local runs remain headless by default. To reproduce
 the macOS CI browser mode locally, run `WEBUI_BROWSER_HEADED=1 pnpm test:webui-browser`
 after building the client and installing Chromium.
 
+With Playwright 1.63.0, the Windows test browser disables
+`TcpPortRandomizationWin` using the fix from
+[Playwright #43605](https://github.com/microsoft/playwright/pull/43605).
+This addresses intermittent `ERR_NO_BUFFER_SPACE` on local test requests.
+It preserves the original disabled-feature list and does not change
+production Chromium launches. If that error still occurs, the harness
+attaches aggregate TCP state counts to the affected test.
+
 ## Active and archived workflows
 
 Two workflows are active in `.github/workflows/`: `webui-ci.yml`, the gate above,

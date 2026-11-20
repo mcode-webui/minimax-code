@@ -4873,7 +4873,7 @@ miniapp-agent-bridge.ts[SE4L]: F:Bridges Mini App requests to agent operations. 
 miniapp-bridge.ts[SE4S]: F:Constructs Mini App bridge requests. | R:- | A:- | S:-
 miniapp-tool-bridge.ts[SE4T]: F:Bridges Mini App tool calls through the client tool port. | R:- | A:- | S:-
 miniapp-window-bridge.ts[SE4T]: F:Defines Mini App window request messages and bridges window operations. | R:- | A:- | S:-
-miniapp-workflows.ts[SE4L]: F:Coordinates Mini App workflows through a client port slice. | R:- | A:- | S:-
+miniapp-workflows.ts[SE4L]: F:Coordinates Mini App workflows and maps preparation refusal details to client state. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:Only a preparation failure with OWNED_ELSEWHERE is promoted to the takeover refusal code.
 
 ===/<repository>/packages/webui/src/client/features/miniapp/bindings/===
 use-miniapp-catalogue.public.ts[SE4T]: F:Exposes Mini App catalogue summaries to React consumers. | R:- | A:- | S:-
@@ -5250,7 +5250,7 @@ app-mode.ts[SE4T]: F:Defines coding and work application modes. | R:- | A:- | S:
 browser-auto-open.ts[SE4T]: F:Persists the browser auto-open preference. | R:- | A:- | S:-
 browser-dom.ts[SE4L]: F:Provides browser drawing helpers and exports canvas and image types. | R:- | A:- | S:-
 connection-health.ts[SE4S]: F:Provides connection health helpers including unref for timers. | R:- | A:- | S:-
-event-channel.ts[SE4L]: F:Adapts and exposes client event watching for the browser. | R:- | A:- | S:-
+event-channel.ts[SE4L]: F:Defines WebUI socket and wire frame contracts, including optional refusal reason codes, and adapts event watching. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:-
 miniapp-frame-url.ts[SE4T]: F:Builds the URL for a Mini App frame. | R:- | A:- | S:-
 no-project.ts[SE4T]: F:Recognizes the flag for a session without a project. | R:- | A:- | S:-
 page-host.ts[SE4T]: F:Reads the hostname of the hosting page. | R:- | A:- | S:-
@@ -5263,7 +5263,7 @@ team-mode.ts[SE4T]: F:Models and resolves team mode for sessions. | R:- | A:- | 
 transport-origin.ts[SE4T]: F:Converts WebSocket URLs to HTTP transport origins. | R:- | A:- | S:-
 transport.ts[SE4L]: F:Implements the browser transport over the WebUI wire. | R:- | A:- | S:-
 webui-shutdown.ts[SE4T]: F:Requests WebUI service shutdown and reports refusals. | R:- | A:- | S:-
-wire.ts[SE4L]: F:Defines and implements the WebSocket wire and its options. | R:- | A:- | S:-
+wire.ts[SE4L]: F:Manages the browser WebSocket wire and preserves refusal codes when rejecting a pending request. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:-
 
 ===/<repository>/packages/webui/src/client/projection/common/===
 context-menu.ts[SE4T]: F:Places browser context menus relative to the viewport. | R:- | A:- | S:-
@@ -5560,7 +5560,7 @@ messages.ts[SE4S]: F:Defines message history retrieval. | R:- | A:- | S:-
 miniapp-agent.ts[SE4S]: F:Defines Mini App agent turn operations. | R:- | A:- | S:-
 miniapp.ts[SE4M]: F:Defines Mini App catalogue and runtime operations. | R:- | A:- | S:-
 operation-contract.ts[SE4S]: F:Defines server operation and context contracts. | R:- | A:- | S:-
-operation-dispatch.ts[SE4M]: F:Dispatches WebUI transport frames to operations. | R:- | A:- | S:-
+operation-dispatch.ts[SE4M]: F:Dispatches WebUI frames and carries validated Mini App preparation refusal reasons back to the caller. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:Surfaces reasonCode only for open Mini App preparation failures, using a bounded uppercase identifier.
 operations.ts[SE4L]: F:Exports the server operation catalogue. | R:- | A:- | S:-
 permission-mode.ts[SE4T]: F:Defines permission mode operations. | R:- | A:- | S:-
 personalization.ts[SE4T]: F:Defines personalization and global instructions operations. | R:- | A:- | S:-
@@ -5598,7 +5598,7 @@ usage.ts[SE4T]: F:Projects turn usage and identifies compaction messages. | R:- 
 account-legal-links.ts[SE4T]: F:Resolves account legal links by scope. | R:- | A:- | S:-
 capability-manifest.ts[SE4M]: F:Enumerates capabilities exposed by the WebUI. | R:- | A:- | S:-
 design-input.ts[SE4T]: F:Validates Design input and caps media bytes. | R:- | A:- | S:-
-envelope.ts[SE4M]: F:Defines the versioned WebUI transport envelope. | R:- | A:- | S:-
+envelope.ts[SE4M]: F:Defines and decodes versioned WebUI frames and request errors with an optional refusal reason. | R:- | A:WebuiWireError,decodeWebuiServerFrame | S:-
 operation-codecs.ts[SE4M]: F:Defines result codecs for WebUI operations. | R:- | A:- | S:-
 operation-names.ts[SE4L]: F:Enumerates operation names used by the WebUI protocol. | R:- | A:- | S:-
 plugin-management.ts[SE4T]: F:Defines plugin management action payloads. | R:- | A:- | S:-

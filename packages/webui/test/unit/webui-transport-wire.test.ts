@@ -664,6 +664,26 @@ describe("an inbound frame is judged before it is believed", () => {
     );
   });
 
+  it("carries the Mini App preparation reason to the request caller", async () => {
+    const transport = transportWith(ControllableSocket);
+    const pending = transport.openMiniApp!({ pluginId: "fixture" });
+    const refused = expect(pending).rejects.toMatchObject({
+      code: "MINIAPP_PREPARATION_FAILED",
+      reasonCode: "OWNED_ELSEWHERE",
+    });
+    await tick();
+    const socket = ControllableSocket.latest!;
+    socket.deliver({
+      protocolVersion: 1,
+      kind: "error",
+      requestId: socket.request.requestId,
+      code: "MINIAPP_PREPARATION_FAILED",
+      message: "Mini App publication preparation failed",
+      reasonCode: "OWNED_ELSEWHERE",
+    });
+    await refused;
+  });
+
   it("refuses a frame from a different protocol version instead of reading it as an answer", async () => {
     // The client used to `JSON.parse(...) as WireFrame` and check nothing else,
     // so a frame from a service speaking another version was accepted as though

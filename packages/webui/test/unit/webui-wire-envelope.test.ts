@@ -34,6 +34,26 @@ function socket(): { readyState: number; OPEN: number; sent: string[]; send(payl
 }
 
 describe("the service judges an inbound frame", () => {
+  it("preserves the reason of a Mini App publication refusal", async () => {
+    const ws = socket();
+    const entry = {
+      operation: { validate: () => ({ ok: true, body: {} }) },
+      handle: async () => {
+        throw Object.assign(new Error("Mini App publication preparation failed"), {
+          code: "MINIAPP_PREPARATION_FAILED",
+          reasonCode: "OWNED_ELSEWHERE",
+        });
+      },
+    } as unknown as WebuiOperationRegistryEntry;
+    await dispatchWebuiFrame(ws as unknown as WebSocket,
+      { protocolVersion: 1, kind: "request", requestId: "open", operation: "openMiniApp", body: {} },
+      new Map([["openMiniApp", entry]]), true, () => undefined);
+    expect(JSON.parse(ws.sent[0]!)).toMatchObject({
+      code: "MINIAPP_PREPARATION_FAILED",
+      reasonCode: "OWNED_ELSEWHERE",
+    });
+  });
+
   it("observes a rejecting finalizer once when abort interrupts a parked pull", async () => {
     const ws = socket();
     const controller = new AbortController();

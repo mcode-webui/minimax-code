@@ -169,6 +169,10 @@ class RecordingProvider implements WebuiBrowserSurfaceProvider {
     });
   }
 
+  async captureStreamInitialFrame(): Promise<WebuiBrowserImageFrame | undefined> {
+    return undefined;
+  }
+
   async stopImageStream(targetId: string): Promise<void> {
     this.stoppedStreams.push(targetId);
     this.frameHandlers.delete(targetId);
@@ -1557,6 +1561,75 @@ describe("browser frame subscription handoff", () => {
       await service.close();
     }
   });
+
+  it("shows an already-streaming static tab to an overlapping watcher without a new paint", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    vi.spyOn(provider, "captureStreamInitialFrame").mockResolvedValue({
+      target, data: "AAAA", format: "jpeg", sequence: 2,
+    });
+    const controller = new AbortController();
+    const a = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const b = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    try {
+      const first = a.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      provider.pushFrame(1);
+      await expect(first).resolves.toMatchObject({ done: false, value: { sequence: 1 } });
+      const successor = b.next();
+      let received = false;
+      void successor.then((result) => { received = !result.done; }, () => undefined);
+      await waitUntil(() => received);
+      await expect(successor).resolves.toMatchObject({ done: false, value: { sequence: 2 } });
+      await a.return!();
+      expect(provider.stoppedStreams).toEqual([]);
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+    } finally {
+      controller.abort();
+      await Promise.allSettled([a.return?.(), b.return?.()]);
+      await service.close();
+    }
+  });
+
+  it.each(["rejects", "wrong-generation", "late"] as const)(
+    "keeps live delivery when an initial frame capture is %s",
+    async (mode) => {
+      const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+      await service.listTargets("isolated-chromium");
+      const target = tab("tab-1");
+      const captured = Promise.withResolvers<WebuiBrowserImageFrame | undefined>();
+      const capture = vi.spyOn(provider, "captureStreamInitialFrame").mockReturnValue(captured.promise);
+      const controller = new AbortController();
+      const a = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+      const b = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+      try {
+        const first = a.next();
+        await waitUntil(() => provider.startedStreams.length === 1);
+        provider.pushFrame(1);
+        await expect(first).resolves.toMatchObject({ done: false });
+        const successor = b.next();
+        let received = false;
+        void successor.then((frame) => { received = !frame.done; }, () => undefined);
+        await waitUntil(() => capture.mock.calls.length === 1);
+        const snapshot = { target, data: "BBBB", format: "jpeg", sequence: 2 } as const;
+        if (mode === "rejects") captured.reject(new Error("Synthetic capture failure"));
+        if (mode === "wrong-generation") {
+          captured.resolve({ ...snapshot, target: { ...target, generation: target.generation + 1 } });
+        }
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(received).toBe(false);
+        provider.pushFrame(1);
+        if (mode === "late") captured.resolve(snapshot);
+        await expect(successor).resolves.toMatchObject({ done: false, value: { data: "AAAA", target } });
+      } finally {
+        captured.resolve(undefined);
+        controller.abort();
+        await Promise.allSettled([a.return?.(), b.return?.()]);
+        await service.close();
+      }
+    },
+  );
 
   it("does not stop a provider stream while a second watcher remains", async () => {
     const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });

@@ -141,6 +141,7 @@ jobs:
         env:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/browser
           WEBUI_BROWSER_SHARD: ${{ matrix.lane.shard }}
+          WEBUI_NATIVE_SHUTDOWN_EVIDENCE: ${{ runner.os == 'Windows' && '1' || '0' }}
         run: pnpm test:webui-browser --shard="$WEBUI_BROWSER_SHARD"
       - name: Verify WebUI package installation
         if: matrix.lane.name == 'package'

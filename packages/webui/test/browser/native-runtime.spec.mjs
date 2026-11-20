@@ -106,6 +106,26 @@ test.afterAll(async ({}, testInfo) => {
     2_000,
     () => new Error(`the native host did not exit\n${logs}`),
   );
+  if (process.env.WEBUI_NATIVE_SHUTDOWN_EVIDENCE === "1") {
+    // Passing tests do not retain Playwright traces. Print only the bounded
+    // phase timeline, never the full runtime output, to the CI log.
+    const phase = /^(\[runtime-shutdown\]|\[native-host\]) (.{1,80}) \(uptime \d{1,7}\.\d{3}s\)$/;
+    const runtime = /^(?:stop_v1_producers|stop_background|close_services|close_sandbox|close_background|await_background_maintenance|release_runtime_owner|close_v1_host|close_database(?:_returned|_threw)?|closed)$/;
+    const host = /^(?:service\.close|apiHost\.close|terminals checked|data dir removed|reported)$/;
+    const owner = /^owner (?:terminal|websocket-connections|websocket|browser-bridge|miniapp-proxies|http-listener|harness)$/;
+    const exits = /^(?:wait terminal exit events \(\d{1,3}\/\d{1,3} observed\)|terminal exit events received \(\d{1,3}\/\d{1,3}\))$/;
+    const timeline = logs.split(/\r?\n/).filter((line) => {
+      const match = phase.exec(line);
+      if (!match) return false;
+      return match[1] === "[runtime-shutdown]"
+        ? runtime.test(match[2])
+        : host.test(match[2]) || owner.test(match[2]) || exits.test(match[2]);
+    }).slice(-64);
+    console.log(`[native-host-success] ${JSON.stringify({
+      receipt: { closed: true, terminals: 0, exited: message.exited },
+      timeline,
+    })}`);
+  }
 });
 
 async function rpc(page, operation, body = operation === "listTerminals" ? {} : undefined) {

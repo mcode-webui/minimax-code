@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T03:50:00Z",
+  "updated_at": "2026-11-20T04:00:47Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -29360,9 +29360,9 @@
     },
     "packages/webui/test/integration/browser-core-agent-actions.test.ts": {
       "role": "observe",
-      "sha256": "0657f926e13151b25f32d8b0ab217b511bac35395f4105f9c7c8cf9add3342e7",
-      "size": 11723,
-      "normalized_sha256": "0657f926e13151b25f32d8b0ab217b511bac35395f4105f9c7c8cf9add3342e7"
+      "sha256": "1e78053cec4cb72c3d1af3b5d86f56bb10fe7a9371e97335356869cc971012ae",
+      "size": 11980,
+      "normalized_sha256": "1e78053cec4cb72c3d1af3b5d86f56bb10fe7a9371e97335356869cc971012ae"
     },
     "packages/webui/test/integration/browser-panel-live-navigation.test.ts": {
       "role": "observe",

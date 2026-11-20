@@ -960,7 +960,7 @@ export function installFixtureTransport() {
     replies,
     pending,
     setResponse(operation, value) { responses.set(operation, clone(value)); },
-    refuseOperation(operation, code, message) { refusals.set(operation, { code, message }); },
+    refuseOperation(operation, code, message, reasonCode) { refusals.set(operation, { code, message, reasonCode }); },
     /**
      * Answers an operation again after `refuseOperation`.
      *

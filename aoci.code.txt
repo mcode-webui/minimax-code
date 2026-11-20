@@ -4541,7 +4541,7 @@ releasing.md[SE4T]: F:Documents publication of the WebUI npm package. | R:- | A:
 0017-webui-fences-resource-results-and-separates-delivery-from-execution.md[SE4T]: F:Defines resource result fences and separates delivery from execution settlement. | R:- | A:- | S:-
 0018-webui-business-cohesion-owners-and-measured-observation.md[SE4T]: F:Defines single business ownership and submission paths and evidence requirements for observation. | R:- | A:- | S:-
 0019-webui-browser-use-surfaces-and-external-browser-bridge.md[SE4L]: F:Documents Browser Use surfaces, extension distribution, and external browser bridging. | R:- | A:- | S:-
-0020-webui-miniapp-view-and-runtime-seams.md[SE4L]: F:Defines WebUI Mini App browser hosting and presentation boundaries. | R:- | A:- | S:-
+0020-webui-miniapp-view-and-runtime-seams.md[SE4L]: F:Defines WebUI Mini App runtime, hosting and presentation boundaries. | R:code:packages/webui/src/client/features/miniapp/application/miniapp-workflows.ts | A:- | S:An explicit retry uses ordinary open. Polling does not restart failed presentations.
 0021-webui-model-picker-is-one-popup-with-two-states.md[SE4T]: F:Combines provider and model selection into two states in one popup. | R:- | A:- | S:-
 0022-webui-workspace-panel-is-a-browser-tab-strip.md[SE4M]: F:Models the WebUI workspace panel as a browser-style tab strip. | R:- | A:- | S:-
 0023-webui-test-coverage-follows-user-workflows-and-evidence-levels.md[SE4S]: F:Defines WebUI workflow test coverage and evidence levels. | R:- | A:- | S:-
@@ -4873,7 +4873,7 @@ miniapp-agent-bridge.ts[SE4L]: F:Bridges Mini App requests to agent operations. 
 miniapp-bridge.ts[SE4S]: F:Constructs Mini App bridge requests. | R:- | A:- | S:-
 miniapp-tool-bridge.ts[SE4T]: F:Bridges Mini App tool calls through the client tool port. | R:- | A:- | S:-
 miniapp-window-bridge.ts[SE4T]: F:Defines Mini App window request messages and bridges window operations. | R:- | A:- | S:-
-miniapp-workflows.ts[SE4L]: F:Coordinates Mini App workflows and maps preparation refusal details to client state. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:Only a preparation failure with OWNED_ELSEWHERE is promoted to the takeover refusal code.
+miniapp-workflows.ts[SE4L]: F:Coordinates Mini App workflows and retains preparation refusals for explicit recovery. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:Retain failed presentation independently of the toast. Polling must not retry failed starts.
 
 ===/<repository>/packages/webui/src/client/features/miniapp/bindings/===
 use-miniapp-catalogue.public.ts[SE4T]: F:Exposes Mini App catalogue summaries to React consumers. | R:- | A:- | S:-
@@ -4890,7 +4890,7 @@ MiniAppAppsList.public.tsx[SE4M]: F:Lists installed plugins that expose Mini App
 MiniAppPicker.public.tsx[SE4M]: F:Renders the Mini App launcher for a session. | R:- | A:- | S:-
 MiniAppStandalone.public.tsx[SE4S]: F:Hosts standalone Mini App presentation. | R:- | A:- | S:-
 MiniAppToolApprovals.public.tsx[SE4T]: F:Renders approval controls for Mini App tool calls. | R:- | A:- | S:-
-MiniAppView.public.tsx[SE4L]: F:Renders Mini Apps inline or as standalone surfaces. | R:- | A:- | S:-
+MiniAppView.public.tsx[SE4L]: F:Renders inline and standalone Mini App views and persistent start recovery. | R:code:packages/webui/src/client/features/miniapp/application/miniapp-workflows.ts | A:MiniAppView | S:Only OWNED_ELSEWHERE asks the user to close another client.
 
 ===/<repository>/packages/webui/src/client/features/models/application/===
 models-workflows.ts[SE4L]: F:Coordinates WebUI model workflows through a client port slice. | R:- | A:- | S:-
@@ -5680,11 +5680,11 @@ context-usage-ring.spec.mjs[SE4M]: F:Tests context usage ring rendering from run
 dropdown-dismissal.spec.mjs[SE4T]: F:Tests dismissal of WebUI dropdowns through their triggers. | R:- | A:- | S:-
 feedback.spec.mjs[SE4S]: F:Tests accessible field error feedback. | R:- | A:- | S:-
 field-contract.spec.mjs[SE4S]: F:Tests that form controls have accessible names. | R:- | A:- | S:-
-fixture.mjs[SE4L]: F:Installs the browser fixture transport. | R:- | A:- | S:-
+fixture.mjs[SE4L]: F:Installs the browser fixture transport and supports named Mini App refusal reasons. | R:- | A:- | S:-
 goal-retention.spec.mjs[SE4S]: F:Tests retention of session goal state during a pending refresh. | R:- | A:- | S:-
 harness.mjs[TQ4M]: F:Provides built-client browser fixtures, readiness checks and failure artifacts. | R:code:playwright.config.mjs | A:openApp, waitForLocalImages | S:Windows buffer errors trigger a bounded TCP-state census. Image evidence omits URL query parameters.
 miniapp-panel.spec.mjs[SE4L]: F:Tests Mini App launcher refresh behavior. | R:- | A:- | S:-
-miniapp-standalone-tab.spec.mjs[SE4S]: F:Tests promotion of inline Mini Apps to standalone tabs. | R:- | A:- | S:-
+miniapp-standalone-tab.spec.mjs[SE4M]: F:Exercises standalone Mini App presentation and explicit retry after preparation refusal. | R:code:packages/webui/test/browser/fixture.mjs | A:- | S:Verifies the failed view persists after toast dismissal.
 model-picker-interactions.spec.mjs[SE4M]: F:Tests model picker interactions and display of the selected model. | R:- | A:- | S:-
 motion.spec.mjs[SE4S]: F:Tests shared WebUI motion contracts. | R:- | A:- | S:-
 native-design-tasks.spec.mjs[TB6L]: F:Exercises native Design node runs, reference understanding, authenticated media and cancellation through the browser. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Wait for the connected image reference to render after an out-of-band setup write before triggering the slow understanding run. Preserve provider and host evidence for uncompleted runs.
@@ -5838,7 +5838,7 @@ webui-font-environment.mjs[SE4S]: F:Configures the font environment used for Web
 webui-overlay-inventory.json[SE4S]: F:Inventories overlays covered by WebUI checks. | R:- | A:- | S:-
 webui-presentation-coverage.d.mts[SE4S]: F:Declares the shared presentation coverage API. | R:- | A:- | S:-
 webui-presentation-coverage.mjs[SE4L]: F:Calculates coverage of shared WebUI presentation contracts. | R:- | A:- | S:-
-webui-presentation-inventory.json[SE4M]: F:Inventories WebUI presentation surfaces. | R:- | A:- | S:-
+webui-presentation-inventory.json[SE4M]: F:Records classified WebUI presentation surfaces and their reviewed content digests. | R:code:packages/webui/src/client/features/miniapp/ui/MiniAppView.public.tsx | A:- | S:-
 webui-publication.d.mts[SE4S]: F:Declares helpers for WebUI package publication. | R:- | A:- | S:-
 webui-publication.mjs[SE4M]: F:Implements validation and preparation for WebUI publication. | R:- | A:- | S:-
 webui-raw-control-budget.json[SE4T]: F:Tracks allowances for raw WebUI controls. | R:- | A:- | S:-

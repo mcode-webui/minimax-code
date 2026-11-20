@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T07:48:05Z",
+  "updated_at": "2026-11-20T10:44:13Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -317,9 +317,9 @@
     },
     ".github/workflows/webui-ci.yml": {
       "role": "index",
-      "sha256": "f25bb83c77e06d4b82def3deba39f334f28097256ba55e6613a33fee91d8026e",
-      "size": 6206,
-      "normalized_sha256": "f25bb83c77e06d4b82def3deba39f334f28097256ba55e6613a33fee91d8026e"
+      "sha256": "d145b227385b4c57b26af11ffc25cc5736fa83adf6cc7975a5ee98d78a5ae298",
+      "size": 6267,
+      "normalized_sha256": "d145b227385b4c57b26af11ffc25cc5736fa83adf6cc7975a5ee98d78a5ae298"
     },
     ".gitignore": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "25e7e75372030b87a948820132e14caa2af625c328e19786fe7b2abae01b647a",
-      "size": 637855,
-      "normalized_sha256": "25e7e75372030b87a948820132e14caa2af625c328e19786fe7b2abae01b647a"
+      "sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7",
+      "size": 638265,
+      "normalized_sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -28542,9 +28542,9 @@
     },
     "packages/webui/test/browser/harness.mjs": {
       "role": "index",
-      "sha256": "5a07df7ef468852002734de03fb83c9092a6b672db1832a9f95e8ab331bda343",
-      "size": 13075,
-      "normalized_sha256": "5a07df7ef468852002734de03fb83c9092a6b672db1832a9f95e8ab331bda343"
+      "sha256": "af0e95b49485c650378c0e9ab38f1087001d78616e3707c9f8dedea166766fba",
+      "size": 13137,
+      "normalized_sha256": "af0e95b49485c650378c0e9ab38f1087001d78616e3707c9f8dedea166766fba"
     },
     "packages/webui/test/browser/miniapp-panel.spec.mjs": {
       "role": "index",
@@ -28953,9 +28953,9 @@
     },
     "packages/webui/test/browser/select-dynamic-options.spec.mjs": {
       "role": "index",
-      "sha256": "b9490b52fd607543ed707f7f24a86a52a74df02dc5838a4c31f6d1b539f03497",
-      "size": 6219,
-      "normalized_sha256": "b9490b52fd607543ed707f7f24a86a52a74df02dc5838a4c31f6d1b539f03497"
+      "sha256": "926d2dcdfa97cdbb27fa6f31ebd583dc5017ce909a7a50cc4f98085d64ddba81",
+      "size": 6373,
+      "normalized_sha256": "926d2dcdfa97cdbb27fa6f31ebd583dc5017ce909a7a50cc4f98085d64ddba81"
     },
     "packages/webui/test/browser/select-keyboard.spec.mjs": {
       "role": "index",
@@ -31820,9 +31820,9 @@
     },
     "test/source-sync.test.mjs": {
       "role": "index",
-      "sha256": "44f2309463aa1089caef099c49c0b92c6250ded6fcd8927b14826edefa105441",
-      "size": 97004,
-      "normalized_sha256": "44f2309463aa1089caef099c49c0b92c6250ded6fcd8927b14826edefa105441"
+      "sha256": "571fadf30890f870b4d50292dd435a4666f2ac92973dd51c43e9146fcfd6532a",
+      "size": 97175,
+      "normalized_sha256": "571fadf30890f870b4d50292dd435a4666f2ac92973dd51c43e9146fcfd6532a"
     },
     "test/sqlite-message-contention.test.ts": {
       "role": "observe",

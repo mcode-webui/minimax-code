@@ -49,6 +49,7 @@ export interface WebuiErrorFrame {
   readonly requestId: string;
   readonly code: string;
   readonly message: string;
+  readonly reasonCode?: string;
 }
 
 export interface WebuiEventFrame {
@@ -218,6 +219,7 @@ export function decodeWebuiServerFrame(text: string): WebuiFrameDecode {
         requestId: candidate.requestId,
         code: candidate.code,
         message: candidate.message,
+        ...(typeof candidate.reasonCode === "string" ? { reasonCode: candidate.reasonCode } : {}),
       },
     };
   }
@@ -245,16 +247,19 @@ export class WebuiWireError extends Error {
   readonly code: WebuiWireErrorCode;
   /** The request this refusal answers, or {@link WEBUI_ANONYMOUS_REQUEST_ID} for one that could not be attributed. */
   readonly requestId: string;
+  readonly reasonCode: string | undefined;
 
   constructor(
     code: WebuiWireErrorCode,
     message: string,
     requestId: string = WEBUI_ANONYMOUS_REQUEST_ID,
+    reasonCode?: string,
   ) {
     super(message);
     this.name = "WebuiWireError";
     this.code = code;
     this.requestId = requestId;
+    this.reasonCode = reasonCode;
   }
 }
 

@@ -9,6 +9,7 @@ import {
   type WebuiWireErrorCode,
 } from "../../shared/envelope.js";
 import type { WebuiOperationRegistryEntry } from "./operations.js";
+import { OPEN_MINI_APP_OPERATION_NAME } from "../../shared/operation-names.js";
 
 /**
  * The stable code a thrown failure carries, if it names one.
@@ -150,11 +151,21 @@ export async function dispatchWebuiFrame(
       sendFrame(ws, responseFrame(parsed.requestId, result.body));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const code = stableCodeOf(error);
+      const reason = (error as { reasonCode?: unknown } | null)?.reasonCode;
+      const reasonCode = parsed.operation === OPEN_MINI_APP_OPERATION_NAME &&
+        code === "MINIAPP_PREPARATION_FAILED" &&
+        typeof reason === "string" && /^[A-Z][A-Z0-9_]{0,63}$/u.test(reason)
+        ? reason
+        : undefined;
+      if (parsed.operation === OPEN_MINI_APP_OPERATION_NAME && code === "MINIAPP_PREPARATION_FAILED") {
+        console.warn("[webui] Mini App publication preparation failed", { code, reasonCode });
+      }
       // The capability's own stable code is preserved; only a failure that names
       // no code at all becomes `harness_error`.
       sendFrame(
         ws,
-        errorFrame(parsed.requestId, stableCodeOf(error), message),
+        errorFrame(parsed.requestId, code, message, reasonCode),
       );
     }
 }
@@ -201,6 +212,7 @@ export function errorFrame(
   requestId: string,
   code: string,
   message: string,
+  reasonCode?: string,
 ): WebuiErrorFrame {
   return {
     protocolVersion: WEBUI_PROTOCOL_VERSION,
@@ -208,5 +220,6 @@ export function errorFrame(
     requestId,
     code,
     message,
+    ...(reasonCode !== undefined ? { reasonCode } : {}),
   };
 }

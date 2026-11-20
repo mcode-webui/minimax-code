@@ -467,7 +467,7 @@ export function createWebuiWire({
             // stable code intact instead of turning every refusal into one shape.
             fail(
               session,
-              new WebuiWireError(frame.code, frame.message, frame.requestId),
+              new WebuiWireError(frame.code, frame.message, frame.requestId, frame.reasonCode),
             );
             return;
           }

@@ -360,33 +360,38 @@ describe("the Mini App business", () => {
     expect(workflows.getSnapshot().presentations.fourth?.kind).toBe("open");
   });
 
-  it("reports an app another client owns, naming that client, in both surfaces' state", async () => {
-    const port = scriptedPort({
-      miniApps: [miniApp("shared-app", "stopped")],
-      open: async () => {
-        throw Object.assign(
-          new Error("Mini App shared-app is already running in electron (pid 4242)"),
-          { code: "OWNED_ELSEWHERE" },
-        );
-      },
-    });
-    const workflows = createWebuiMiniAppWorkflows({ port });
-    await workflows.loadListing();
-    expect(await workflows.open("shared-app")).toBe(false);
+  it.each(["OWNED_ELSEWHERE", "MINIAPP_PREPARATION_FAILED"])(
+    "reports an app another client owns when the runtime returns %s",
+    async (code) => {
+      const wrapped = code === "MINIAPP_PREPARATION_FAILED";
+      const port = scriptedPort({
+        miniApps: [miniApp("shared-app", "stopped")],
+        open: async () => {
+          throw Object.assign(
+            new Error(wrapped
+              ? "Mini App publication preparation failed"
+              : "Mini App shared-app is already running in electron (pid 4242)"),
+            { code, ...(wrapped ? { reasonCode: "OWNED_ELSEWHERE" } : {}) },
+          );
+        },
+      });
+      const workflows = createWebuiMiniAppWorkflows({ port });
+      await workflows.loadListing();
+      expect(await workflows.open("shared-app")).toBe(false);
 
-    const snapshot = workflows.getSnapshot();
-    const refusal = snapshot.refusals["shared-app"];
-    expect(refusal?.code).toBe("OWNED_ELSEWHERE");
-    const text = webuiMiniAppRefusalText({
-      code: refusal!.code,
-      message: refusal!.message,
-      rows: snapshot.listing.rows,
-    });
-    // Keep diagnostics while presenting a neutral client name.
-    expect(text).not.toContain("electron");
-    expect(text).toContain("4242");
-    expect(snapshot.presentations["shared-app"]).toBeUndefined();
-  });
+      const snapshot = workflows.getSnapshot();
+      const refusal = snapshot.refusals["shared-app"];
+      expect(refusal?.code).toBe("OWNED_ELSEWHERE");
+      const text = webuiMiniAppRefusalText({
+        code: refusal!.code,
+        message: refusal!.message,
+        rows: snapshot.listing.rows,
+      });
+      expect(text).not.toContain("electron");
+      expect(text).toContain(wrapped ? "OWNED_ELSEWHERE" : "4242");
+      expect(snapshot.presentations["shared-app"]).toBeUndefined();
+    },
+  );
 
   it("offers to stop a Mini App another client is running", () => {
     const rows = webuiMiniAppRows([

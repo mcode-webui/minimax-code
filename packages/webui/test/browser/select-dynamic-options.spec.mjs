@@ -61,6 +61,7 @@ async function openProjectForm(page, alias) {
   await page.locator(`[data-webui-ssh-new-project="${alias}"]`).click();
   const dialog = page.getByTestId("ssh-create-project-dialog");
   await expect(dialog).toBeVisible();
+  await dialog.locator('[data-webui-ssh-project-name="true"]').fill("远程项目");
   return dialog;
 }
 
@@ -96,8 +97,9 @@ async function reloadHosts(page, aliases) {
     window.__fixture.setResponse("saveSshProject", { success: false, error: "没有权限保存项目。" });
   }, hosts(aliases));
   const dialog = page.getByTestId("ssh-create-project-dialog");
-  await dialog.locator('[data-webui-ssh-project-name="true"]').fill("远程项目");
-  await dialog.locator('[data-webui-ssh-project-submit="true"]').click();
+  // Submit through the native form event while the listbox is open. Clicking
+  // the footer would also dismiss the listbox as an outside pointer action.
+  await dialog.locator("form").evaluate((form) => form.requestSubmit());
   // The save failed, so the form is still open: the list behind it is what
   // changed, not the form.
   await expect(dialog).toBeVisible();

@@ -119,7 +119,8 @@ async function assertHarnessServerHealth(page) {
 /** The harness server and the page must both report this run's server id. */
 async function assertHarnessServer(page) {
   await assertHarnessServerHealth(page);
-  await expect.poll(() => page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId());
+  // The fixture HTML sets this synchronously before page.goto resolves.
+  expect(await page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId());
 }
 
 // The server half runs before the test body, so a run aimed at the wrong server

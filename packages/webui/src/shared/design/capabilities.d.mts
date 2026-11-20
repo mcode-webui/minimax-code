@@ -1,0 +1,10 @@
+export const NODE_SIZE: Readonly<Record<string, { width: number; height: number; title: string }>>;
+export const PROMPT_TEMPLATES: readonly Readonly<Record<string, unknown>>[];
+export const CAPABILITIES: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+export const TOOLS: readonly Readonly<Record<string, unknown>>[];
+export const NODE_TYPES: readonly string[];
+export const NODE_FORMS: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+export function limitsForNodeType(type: string, modelId?: string | null): Record<string, unknown>;
+export function palette(): Record<string, unknown>;
+export function findTool(key: string): Readonly<Record<string, unknown>> | undefined;
+export function resolveLimits(mode: string, modelId?: string | null): Record<string, unknown>;

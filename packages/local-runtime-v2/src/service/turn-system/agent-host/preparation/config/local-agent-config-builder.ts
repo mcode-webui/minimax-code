@@ -223,7 +223,7 @@ export class LocalAgentConfigBuilder {
       ...input,
       ...(promptRead ? { promptRead } : {}),
     });
-    const profile = profileAndBinding.profile;
+    const profile = narrowProfile(profileAndBinding.profile, input.capabilitySelection);
     const turnInput = input;
     const frozenModel = await this.readSavedModel(turnInput, profileAndBinding.binding);
     const frozenSession = sessionWithFrozenModel(turnInput.session, frozenModel);
@@ -391,6 +391,8 @@ type AgentConfigBuildInput = {
   readonly isSessionFirstTurn: boolean;
   readonly desktopCapabilities?: AgentHostTurnCapabilityView;
   readonly clientIntent?: string;
+  /** Trusted internal narrowing of this Turn's profile; can only remove capability. */
+  readonly capabilitySelection?: import('../../../../agent-turn/contracts.js').AgentTurnCapabilitySelection;
   /** Internal Greeting scope captured before its content was rendered. */
   readonly promptRead?: PromptReadScope;
 };
@@ -873,6 +875,54 @@ function profilePromptMetadata(profile: LocalAgentExecutionProfile | undefined) 
       capability_ceiling: profile.capabilityCeiling,
     },
   };
+}
+
+/**
+ * Applies a trusted per-Turn restriction to the profile the session already owns.
+ * Every list is intersected (or the disallow list unioned), so the result can
+ * only be a subset of the profile's capability; an empty allow list means none.
+ */
+export function narrowProfile(
+  profile: LocalAgentExecutionProfile | undefined,
+  restriction: import('../../../../agent-turn/contracts.js').AgentTurnCapabilitySelection | undefined,
+): LocalAgentExecutionProfile | undefined {
+  if (!profile || !restriction) return profile;
+  const base = profile.configSelection;
+  const intersect = (left: readonly string[] | undefined, right: readonly string[] | undefined) => {
+    if (right === undefined) return left;
+    if (left === undefined) return [...right];
+    const allowed = new Set(right.map(normalizedSelection));
+    return left.filter((value) => allowed.has(normalizedSelection(value)));
+  };
+  const union = (left: readonly string[] | undefined, right: readonly string[] | undefined) => {
+    if (right === undefined) return left;
+    return [...new Set([...(left ?? []), ...right])];
+  };
+  return {
+    ...profile,
+    configSelection: {
+      ...base,
+      ...(intersect(base?.tools, restriction.tools) === undefined
+        ? {}
+        : { tools: intersect(base?.tools, restriction.tools) }),
+      ...(union(base?.disallowedTools, restriction.disallowedTools) === undefined
+        ? {}
+        : { disallowedTools: union(base?.disallowedTools, restriction.disallowedTools) }),
+      ...(intersect(base?.mcpServers, restriction.mcpServers) === undefined
+        ? {}
+        : { mcpServers: intersect(base?.mcpServers, restriction.mcpServers) }),
+      ...(intersect(base?.skills, restriction.skills) === undefined
+        ? {}
+        : { skills: intersect(base?.skills, restriction.skills) }),
+      ...(intersect(base?.extensionSkills, restriction.extensionSkills) === undefined
+        ? {}
+        : { extensionSkills: intersect(base?.extensionSkills, restriction.extensionSkills) }),
+    },
+  };
+}
+
+function normalizedSelection(value: string): string {
+  return value.trim().normalize('NFKC').toLocaleLowerCase('en-US');
 }
 
 function createAgentConfig(scope: {

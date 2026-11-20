@@ -70,6 +70,7 @@ export const CAPABILITY_SURFACE_BASELINE: CapabilitySurfaceBaseline = {
     "xlsx",
   ],
   tools: [
+    "design",
     "ask_user",
     "bash",
     "edit",

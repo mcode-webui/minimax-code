@@ -81,6 +81,10 @@ function filesIn(directory, prefix = "") {
     )
       return [];
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    // Codex's AOCI launcher contains machine-specific absolute paths.
+    if (relative === ".codex/config.toml") return [];
+    // Keep the formal AOCI assets in the inventory and omit runtime state.
+    if (prefix === ".aoci" && !AOCI_SOURCE_FILES.has(entry.name)) return [];
     if (entry.isSymbolicLink())
       throw new Error(`Source symlink requires explicit review: ${relative}`);
     return entry.isDirectory()
@@ -88,6 +92,13 @@ function filesIn(directory, prefix = "") {
       : [relative];
   });
 }
+const AOCI_SOURCE_FILES = new Set([
+  ".gitignore",
+  "baseline.json",
+  "config.json",
+  "curation.json",
+  "database-baseline.json",
+]);
 const files = filesIn(root).sort();
 const violations = suiteInventoryViolations(files, readSuites(root));
 // Standard MIT text with the reviewed first-party attribution.

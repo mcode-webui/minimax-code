@@ -1,0 +1,12 @@
+import type { DesignTask } from "../contracts/design.js";
+export const FINISHED_KEEP_MS: number;
+export function taskIsExpired(task: DesignTask, options?: { now?: number }): boolean;
+export function panelTasks(tasks: Iterable<DesignTask>, options?: { now?: number; max?: number }): DesignTask[];
+export function panelIsShown(options?: { closed?: boolean; tasks?: readonly DesignTask[] }): boolean;
+export function panelClosed(options?: { closed?: boolean; event?: string }): boolean;
+export function withDeadline<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T>;
+export function runIsGone(error: unknown): boolean;
+export function isBusyRefusal(error: unknown): boolean;
+export function theRunToWaitFor(options?: { taskId?: string; nodeId?: string; known?: ReadonlyMap<string, string> }): string;
+export function theRunThatIsGoing(error: unknown): string;
+export function waitForTheRun(options: { taskId: string; readTask(id: string): DesignTask | undefined; timeoutMs?: number; intervalMs?: number; now?(): number; schedule?(callback: () => void, ms: number): unknown }): Promise<DesignTask | null>;

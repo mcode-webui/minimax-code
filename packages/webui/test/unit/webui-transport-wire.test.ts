@@ -11,11 +11,83 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createWebuiTransport } from "../../src/client/platform/transport.js";
 import { createWebuiWire } from "../../src/client/platform/wire.js";
+import { DESIGN_MAX_KEEPALIVE_BYTES } from "../../src/shared/design-input.js";
 import { runWebuiMutation } from "../../src/client/conversation/request-freshness.js";
 import {
   WebuiErrorCode,
   WebuiWireError,
 } from "../../src/shared/envelope.js";
+
+describe("native Design media HTTP transport", () => {
+  it("uses keepalive for bounded compact drafts and measures UTF-8 before starting an oversized request", async () => {
+    const original = globalThis.fetch, fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ draft: { revision: "d1" } }), { status: 200 }));
+    globalThis.fetch = fetcher;
+    try {
+      const transport = transportWith(ControllableSocket), body = { documentId: "A", action: { type: "save_draft_edits" as const, edits: [] } };
+      await transport.applyDesignAction(body);
+      expect(fetcher.mock.calls[0]?.[1]?.keepalive).toBe(true);
+      const large = { ...body, documentId: "汉".repeat(Math.ceil(DESIGN_MAX_KEEPALIVE_BYTES / 3)) };
+      await expect(transport.applyDesignAction(large)).rejects.toMatchObject({ code: "draft_too_large" });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    } finally { globalThis.fetch = original; }
+  });
+  it("carries a normal audio payload beyond the websocket envelope limit through the authenticated native action endpoint", async () => {
+    const original = globalThis.fetch, result = { documents: [], tasks: [], library: [] };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }));
+    globalThis.fetch = fetcher;
+    try {
+      const transport = transportWith(ControllableSocket), body = { documentId: "synthetic", action: { type: "upload" as const, kind: "audio" as const, name: "four-seconds.wav", base64: "A".repeat(400_000) } };
+      expect(await transport.applyDesignAction(body)).toEqual(result);
+      const [url, request] = fetcher.mock.calls[0]!;
+      expect(String(url)).toBe("http://127.0.0.1:1/design-assets/actions");
+      expect(new Headers(request?.headers).get("Authorization")).toBe("Bearer fixture-token");
+      expect(JSON.parse(String(request?.body))).toEqual(body);
+    } finally { globalThis.fetch = original; }
+  });
+  it("explains a plain-text 405 as a page/host version mismatch instead of failing on JSON parsing", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("Method Not Allowed", { status: 405, headers: { "content-type": "text/plain; charset=utf-8" } }),
+    );
+    try {
+      await expect(
+        transportWith(ControllableSocket).applyDesignAction({ action: { type: "upload", kind: "image", name: "a.png", base64: "AA==" } }),
+      ).rejects.toMatchObject({ code: "host_version_mismatch", status: 405 });
+      await expect(
+        transportWith(ControllableSocket).applyDesignAction({ action: { type: "upload", kind: "image", name: "a.png", base64: "AA==" } }),
+      ).rejects.toThrow(/405.*版本|版本.*405/u);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("keeps a plain-text 401 as an authentication failure and a non-JSON 200 as an invalid response", async () => {
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("Unauthorized", { status: 401, headers: { "content-type": "text/plain" } }),
+      );
+      await expect(
+        transportWith(ControllableSocket).applyDesignAction({ action: { type: "upload", kind: "image", name: "a.png", base64: "AA==" } }),
+      ).rejects.toMatchObject({ code: "unauthorized", status: 401 });
+      globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("<html>not json</html>", { status: 200, headers: { "content-type": "text/html" } }),
+      );
+      await expect(
+        transportWith(ControllableSocket).applyDesignAction({ action: { type: "upload", kind: "image", name: "a.png", base64: "AA==" } }),
+      ).rejects.toMatchObject({ code: "invalid_response", status: 200 });
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("preserves structured size refusal instead of reporting a disconnected websocket", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ code: "payload_too_large", message: "Media exceeds the native limit" }), { status: 413 }));
+    try { await expect(transportWith(ControllableSocket).applyDesignAction({ action: { type: "publish", name: "too-large.png", base64: "AA==" } })).rejects.toMatchObject({ code: "payload_too_large", status: 413, message: "payload_too_large: Media exceeds the native limit" }); }
+    finally { globalThis.fetch = original; }
+  });
+});
 
 /** A socket that records what was sent and lets a test deliver frames. */
 class ControllableSocket {

@@ -1,7 +1,8 @@
-import { lstat, realpath, open, link, rename, rm } from "node:fs/promises";
+import { lstat, realpath, open, link, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
+import { replaceFile } from "./atomic-file.mjs";
 import type { DesignExportPlaces } from "../../shared/contracts/design.js";
 
 /** Host paths are resolved by the runtime; browser paths are never treated as source filenames. */
@@ -25,7 +26,7 @@ export async function exportDesignBytes(target: string, bytes: Uint8Array, overw
   try {
     const handle = await open(temporary, "wx", 0o600);
     try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
-    if (overwrite) await rename(temporary, destination);
+    if (overwrite) await replaceFile(temporary, destination);
     else { try { await link(temporary, destination); } catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") throw Object.assign(new Error("Design export destination already exists; explicitly confirm replacement"), { code: "EXISTS" }); throw error; } }
     return { path: destination, name, bytes: bytes.byteLength };
   } finally { await rm(temporary, { force: true }); }

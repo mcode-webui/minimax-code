@@ -30,6 +30,40 @@ async function ipc(input) {
   });
   host.send({ requestId, ...input }); return response;
 }
+/**
+ * Wait for a node run to finish, and say where it stopped when it does not.
+ *
+ * The provider's media understanding runs in the runtime, behind the connector:
+ * the upload, the description and the run that consumes it are three steps
+ * that report separately. A run that never finishes is therefore reported
+ * with the evidence of the steps behind it, so the failure says which step
+ * stopped instead of only that the node stayed idle.
+ */
+async function expectNodeRunSucceeds(read, nodeId, label) {
+  try {
+    await expect
+      .poll(async () => {
+        const output = (await read()).document.nodes.find((node) => node.id === nodeId).metadata.output;
+        if (output.status === "error") throw new Error(`node run failed: ${JSON.stringify(output.error)}`);
+        return output.status;
+      }, { timeout: 60_000 })
+      .toBe("success");
+  } catch (error) {
+    const uploads = await ipc({ readUploadEvidence: true }).catch(() => undefined);
+    const understanding = await ipc({ readUnderstandingState: true }).catch(() => undefined);
+    throw new Error(
+      `${label} never finished: ${error instanceof Error ? error.message : String(error)}\n` +
+        `upload evidence: ${JSON.stringify(uploads)}\n` +
+        `understanding: ${JSON.stringify(understanding)}\n` +
+        // The host's own log is the runtime's account of the run: which
+        // stage it reached and what it was waiting for. A run that never
+        // finishes is reported with that account, so the failure says where
+        // the run stopped and not only that the node stayed idle.
+        `host log:\n${logs.slice(-4000)}`,
+    );
+  }
+}
+
 async function rpc(page, operation, body) {
   return page.evaluate(({ operation, body }) => new Promise((resolve, reject) => {
     const config = window.__WEBUI_CONFIG__, url = new URL(config.websocketUrl); url.searchParams.set("token", config.token);
@@ -198,13 +232,7 @@ test("native Design sends an uploaded image's understood content to a connected 
   await card.click({ position: { x: 80, y: 80 } });
   await expect(card.getByRole("button", { name: "生成", exact: true })).toBeEnabled();
   await card.getByRole("button", { name: "生成", exact: true }).click();
-  await expect
-    .poll(async () => {
-      const output = (await read()).document.nodes.find((node) => node.id === textId).metadata.output;
-      if (output.status === "error") throw new Error(`node run failed: ${JSON.stringify(output.error)}`);
-      return output.status;
-    }, { timeout: 20_000 })
-    .toBe("success");
+  await expectNodeRunSucceeds(read, textId, "the connected text node's run");
   const prompt = await ipc({ readModelPrompt: true });
   expect(prompt).toContain("合成理解：一只橘猫坐在窗台上");
   expect(prompt).toContain(`节点 ${imageId}`);
@@ -302,14 +330,7 @@ test("native Design image-mimic template keeps describe mode and sends the image
   await reloadedCard.click({ position: { x: 80, y: 80 } });
   await expect(reloadedCard.getByRole("button", { name: "生成", exact: true })).toBeEnabled();
   await reloadedCard.getByRole("button", { name: "生成", exact: true }).click();
-  await expect
-    .poll(async () => {
-      const current = await read();
-      const output = current.document.nodes.find((node) => node.id === reverseNode.id).metadata.output;
-      if (output.status === "error") throw new Error(`node run failed: ${JSON.stringify(output.error)}`);
-      return output.status;
-    }, { timeout: 20_000 })
-    .toBe("success");
+  await expectNodeRunSucceeds(read, reverseNode.id, "the template's reverse-prompt node run");
   const prompt = await ipc({ readModelPrompt: true });
   expect(prompt).toContain("合成理解：一只橘猫坐在窗台上");
   expect(prompt).toContain(`节点 ${imageNode.id}`);
@@ -321,14 +342,7 @@ test("native Design image-mimic template keeps describe mode and sends the image
   const renderCard = page.locator(`[data-design-node="${renderNode.id}"]`);
   await renderCard.click({ position: { x: 80, y: 80 } });
   await renderCard.getByRole("button", { name: "生成", exact: true }).click();
-  await expect
-    .poll(async () => {
-      const current = await read();
-      const output = current.document.nodes.find((node) => node.id === renderNode.id).metadata.output;
-      if (output.status === "error") throw new Error(`render node failed: ${JSON.stringify(output.error)}`);
-      return output.status;
-    }, { timeout: 20_000 })
-    .toBe("success");
+  await expectNodeRunSucceeds(read, renderNode.id, "the template's render node run");
   const rendered = (await read()).document.nodes.find((node) => node.id === renderNode.id).metadata.output;
   expect(rendered.media).toHaveLength(1);
   expect(rendered.media[0].kind).toBe("image");

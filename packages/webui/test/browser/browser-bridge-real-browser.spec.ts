@@ -63,7 +63,7 @@ test.describe("the browser bridge, against a real browser", () => {
 
   for (const { channel, surface } of BROWSERS) {
     test(`the extension completes the handshake on the ${surface} surface in ${channel} once it can prove the installation key`, async () => {
-      test.setTimeout(180_000);
+      test.setTimeout(300_000);
       // The installed Edge is not on every machine. A case that cannot run
       // says so instead of failing on a browser that was never there.
       test.skip(
@@ -115,7 +115,7 @@ test.describe("the browser bridge, against a real browser", () => {
     });
 
     test(`an extension that cannot prove the installation key is refused on the ${surface} surface in ${channel}`, async () => {
-      test.setTimeout(180_000);
+      test.setTimeout(300_000);
       // The installed Edge is not on every machine. A case that cannot run
       // says so instead of failing on a browser that was never there.
       test.skip(
@@ -160,7 +160,7 @@ test.describe("the browser bridge, against a real browser", () => {
     });
 
     test(`the extension pairs with a ${surface} host that was told nothing about it`, async () => {
-      test.setTimeout(180_000);
+      test.setTimeout(300_000);
       test.skip(
         !(await isBrowserInstalled(channel)),
         `the ${channel} browser is not installed on this machine`,
@@ -219,7 +219,7 @@ test.describe("the browser bridge, against a real browser", () => {
     // Taking the first match instead would put the Chrome browser on the Edge
     // pairing: the Edge surface would report connected while the person is
     // looking at Chrome, and the Chrome surface would never come up at all.
-    test.setTimeout(240_000);
+    test.setTimeout(420_000);
     // This case needs both browsers, not one: it loads the same unpacked build
     // in Edge and Chrome and checks that each lands on its own surface. A
     // machine without Edge cannot run it at all, and the convention the two

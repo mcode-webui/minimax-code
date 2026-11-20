@@ -72,7 +72,7 @@ export function DesignDialogs({
   readonly onAction: (action: DesignAction) => Promise<DesignState | undefined>;
   readonly assetUrl: (url: string) => string;
   readonly selectedNodeId?: string;
-  readonly viewportSize: { readonly width: number; readonly height: number };
+  readonly viewportSize: () => { readonly width: number; readonly height: number };
   readonly viewport: DesignDocument["viewport"];
   readonly onInserted: (id: string) => void;
   readonly onTool: (
@@ -359,9 +359,15 @@ export function DesignDialogs({
                       variant="plain"
                       size="inline-tiny"
                       onClick={async () => {
+                        // The pane is measured here, at the insert, and
+                        // not when this dialog rendered: the pane can be
+                        // re-laid-out in between, and a size read at render
+                        // time is a size the pane no longer has. A node
+                        // placed from a stale size lands off the pane's
+                        // centre, which is where the insert put it.
                         const position = designLibraryPosition(
                           viewport,
-                          viewportSize,
+                          viewportSize(),
                         );
                         const created = await onAction({
                           type: "add_node",

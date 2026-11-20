@@ -49,7 +49,13 @@ after building the client and installing Chromium.
 
 ## Active and archived workflows
 
-Only `webui-ci.yml` remains in `.github/workflows/`. The following inherited
+Two workflows are active in `.github/workflows/`: `webui-ci.yml`, the gate above,
+and `update-visual-baselines.yml`, a manual dispatch that re-records the
+per-platform screenshot baselines. The refresh runs the same specs on the same
+three runners and commits what each of them produced, because a baseline can
+only be regenerated on the platform that compares against it. It renders in
+the browser mode the CI compares with — windowed Chromium on macOS — and it
+cannot publish anything. The following inherited
 workflows are archived under `.github/legacy-workflows/`: Source verification,
 CLI release, Node compatibility, Performance,
 Release audit, Source candidate, Label issue product, Sync GitHub issues to

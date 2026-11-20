@@ -15,8 +15,10 @@
 // surfaced to the page and is only answered after the user decides, with
 // `allowOnce` — never automatically.
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+
+import { writeFileAtomically } from './atomic-file.mjs';
 
 import {
   CAPABILITIES,
@@ -747,9 +749,7 @@ export function createAgentRunner(context) {
   async function writePending(list) {
     if (!pendingFile) return;
     await mkdir(dirname(pendingFile), { recursive: true });
-    const temp = `${pendingFile}.${randomUUID()}.tmp`;
-    try { await writeFile(temp, JSON.stringify(list, null, 2), { encoding: 'utf8', flag: 'wx', mode: 0o600 }); await rename(temp, pendingFile); }
-    finally { await rm(temp, { force: true }); }
+    await writeFileAtomically(pendingFile, JSON.stringify(list, null, 2));
   }
 
   // The pending book is written through one queue. Two writes that overlap

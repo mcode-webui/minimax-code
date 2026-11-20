@@ -1,6 +1,7 @@
-import { lstat, readFile, rename, rm, writeFile, readdir } from "node:fs/promises";
+import { lstat, readFile, rm, readdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { writeFileAtomically } from "./atomic-file.mjs";
 import type { DesignDocument, DesignDraft, DesignDraftEdit, DesignNode } from "../../shared/contracts/design.js";
 
 /** Reconstruct only declared editor fields; runtime outputs never become an unsaved edit. */
@@ -70,8 +71,7 @@ export function createDesignDraftStore(root: string) {
       if (current && expected !== current.revision) conflict("draftRevision");
       if (!current && expected !== undefined) conflict("draftRevision");
       const draft: DesignDraft = { document, baseDocument, revision: randomUUID(), savedAt: new Date().toISOString() };
-      const temp = `${file(document.id)}.${randomUUID()}.tmp`;
-      try { await writeFile(temp, JSON.stringify(draft), { flag: "wx", mode: 0o600 }); await rename(temp, file(document.id)); } finally { await rm(temp, { force: true }); }
+      await writeFileAtomically(file(document.id), JSON.stringify(draft));
       return draft;
     },
     async remove(id: string, revision: string) { const draft = await read(id); if (!draft || draft.revision !== revision) conflict("draftRevision"); await rm(file(id)); },

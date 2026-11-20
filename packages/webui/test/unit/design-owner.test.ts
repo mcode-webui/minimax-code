@@ -137,6 +137,24 @@ describe("native Design owner", () => {
     const measured = designPlaceProducts({ ...placed, nodes: placed.nodes.map((node) => node.id === ids[0] ? { ...node, height: 500 } : node) }, { ids, sourceNodeId: source.id, columns, tile: true, measured: true });
     expect(measured.nodes.find((node) => node.id === ids[columns])!.position.y).toBe(80 + 500 + 80);
   });
+  it("leaves the card the person placed where it is when the products are laid out again", () => {
+    // The card the person just inserted is theirs: a grid that is laid out
+    // again gives way to it, and the card in the way steps aside instead.
+    // The board held the source and the two products when the placement was
+    // made; the card of the person is not among them.
+    const source = { ...node("source"), position: { x: 20, y: 40 } },
+      mine = { ...node("mine"), position: { x: 450, y: 90 } },
+      before = { ...document("A"), nodes: [source, mine, node("t1"), node("t2")] };
+    const kept = designPlaceProducts(before, { ids: ["t1", "t2"], sourceNodeId: source.id, known: ["source", "t1", "t2"] });
+    expect(kept.nodes.find((item) => item.id === "mine")!.position).toEqual({ x: 450, y: 90 });
+    expect(kept.nodes.find((item) => item.id === "t1")!.position.x).toBeGreaterThan(450);
+    // Without the card of the person in the way, the rule is the one it was:
+    // the card that was just placed keeps its place, and the card in the way
+    // steps aside.
+    const pushed = designPlaceProducts(before, { ids: ["t1", "t2"], sourceNodeId: source.id });
+    expect(pushed.nodes.find((item) => item.id === "mine")!.position.x).toBeGreaterThan(450);
+    expect(pushed.nodes.find((item) => item.id === "t1")!.position.x).toBe(420);
+  });
   it("resolves a queued batch placement against the newest product snapshot", async () => {
     let current = { ...document("A"), nodes: [node("source"), node("tile")] };
     const writing = deferred<DesignState>(), requests: ApplyDesignActionRequest[] = [];

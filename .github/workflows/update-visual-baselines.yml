@@ -50,6 +50,21 @@ jobs:
       - name: Install Chromium system dependencies
         if: runner.os == 'Linux'
         run: pnpm exec playwright install-deps chromium
+      - name: Match the CI browser mode
+        shell: bash
+        run: |
+          # The visual baselines are compared against the pixels the CI
+          # produces, so the refresh has to render in the same mode. macOS
+          # runs windowed Chromium in the CI, and the two modes do not draw
+          # the same glyph edges.
+          #
+          # The flag goes into the environment file from a step of its own:
+          # a step cannot read back what it writes, so writing it here
+          # would have left the refresh below in headless mode while the CI
+          # compared windowed pixels.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            echo "WEBUI_BROWSER_HEADED=1" >> "$GITHUB_ENV"
+          fi
       - name: Refresh the visual baselines
         shell: bash
         env:
@@ -57,9 +72,6 @@ jobs:
           WEBUI_BROWSER_FONT_CACHE_DIR: ${{ runner.temp }}/webui-browser-font-cache
           SPECS: ${{ inputs.spec }}
         run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            echo "WEBUI_BROWSER_HEADED=1" >> "$GITHUB_ENV"
-          fi
           # The specs come from a manual dispatch, so they are read from the
           # environment and split here rather than interpolated into the
           # command line: an unquoted interpolation would let the input

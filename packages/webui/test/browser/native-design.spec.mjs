@@ -117,7 +117,12 @@ async function read(page) {
   });
 }
 async function saved(page, predicate) {
-  await expect.poll(async () => predicate(await read(page))).toBe(true);
+  // A design write crosses the runtime and comes back, and a loaded runner
+  // can take longer than the default poll allows. The wait is for the write
+  // to land, not for it to be quick.
+  await expect
+    .poll(async () => predicate(await read(page)), { timeout: 30_000 })
+    .toBe(true);
   return read(page);
 }
 async function choose(page, name, label) {
@@ -421,7 +426,10 @@ test("native Design preserves original menus, selected operations, graph gesture
     .locator(".webui-design-node-error")
     .getByRole("button", { name: "上报", exact: true })
     .click();
-  expect(await design.evaluate(() => navigator.clipboard.readText())).toBe(
+  // The report itself is written with LF. The Windows clipboard answers
+  // with CRLF, so the two are compared as the same text.
+  const reported = await design.evaluate(() => navigator.clipboard.readText());
+  expect(reported.replace(/\r\n/g, "\n")).toBe(
     `节点：图片\nID：${imageId}\n错误：Synthetic error for real recovery controls`,
   );
   await photograph(design, "design-error-controls-dark");
@@ -696,8 +704,9 @@ test("native Design processes real local media through in-card crop, grid, clip 
     page.getByText("画布在用", { exact: false }).first(),
   ).toBeVisible();
   await photograph(page, "design-library-dark");
-  const beforeInsert = await read(page),
-    priorIds = new Set(beforeInsert.document.nodes.map((node) => node.id));
+  // The pane's own transform says where the pane's centre is, and the
+  // pane places an inserted node there. The rounding is the pane's own
+  // rounding, so the two agree on the pixel and not on its neighbourhood.
   const insertPosition = await page
     .getByTestId("design-viewport")
     .evaluate((element) => {
@@ -706,16 +715,41 @@ test("native Design processes real local media through in-card crop, grid, clip 
           .transform,
       );
       return {
-        x: (element.clientWidth / 2 - matrix.e) / matrix.a - 150,
-        y: (element.clientHeight / 2 - matrix.f) / matrix.a - 90,
+        x: Math.round((element.clientWidth / 2 - matrix.e) / matrix.a) - 150,
+        y: Math.round((element.clientHeight / 2 - matrix.f) / matrix.a) - 90,
       };
     });
-  await page.getByRole("button", { name: "插入", exact: true }).first().click();
+  const libraryItem = page
+    .locator(".webui-design-library-item")
+    .filter({ has: page.locator("img") })
+    .first();
+  const assetSource = await libraryItem.locator("img").getAttribute("src");
+  const assetName =
+    new URL(assetSource ?? "/", "http://library.invalid").pathname.split("/").pop() ?? "";
+  await libraryItem.getByRole("button", { name: "插入", exact: true }).click();
+  // The inserted node is the one the insert selected. "The node that is
+  // new" is not the same node: the media tool's tiles keep arriving after
+  // the split, and a tile that lands after this point is new too, and it
+  // carries the very file the library item names.
+  let insertedId = "";
+  await expect
+    .poll(
+      async () => {
+        const selected = page.locator('[data-design-node][data-selected="true"]');
+        if ((await selected.count()) !== 1) return "";
+        insertedId = (await selected.getAttribute("data-design-node")) ?? "";
+        return insertedId;
+      },
+      { timeout: 30_000 },
+    )
+    .toBeTruthy();
   state = await saved(
     page,
-    (value) => value.document.nodes.length === priorIds.size + 1,
+    (value) => value.document.nodes.some((node) => node.id === insertedId),
   );
-  const inserted = state.document.nodes.find((node) => !priorIds.has(node.id));
+  const inserted = state.document.nodes.find((node) => node.id === insertedId);
+  expect(inserted.metadata.output.media ?? []).toHaveLength(1);
+  expect(String(inserted.metadata.output.media[0].url ?? "")).toContain(assetName);
   expect(inserted.position.x).toBeCloseTo(insertPosition.x, 0);
   expect(inserted.position.y).toBeCloseTo(insertPosition.y, 0);
   await expect(

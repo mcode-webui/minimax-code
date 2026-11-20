@@ -25,6 +25,12 @@ After a successful build and Chromium installation, browser checks still run if
 unit tests fail. Package verification also runs after a successful build even if
 an earlier test suite failed. Each failure still makes the job fail; this keeps
 independent failures visible in one run instead of masking later suites.
+The macOS job has a 60-minute budget because its unit and windowed browser
+steps can consume the previous 40-minute job budget together. The browser step
+has its own 30-minute limit so a stalled test run can still leave artifacts.
+The development-server shutdown integration test reports bounded startup
+phase timings on timeout or early exit. It omits child output, including the
+credential printed by the launcher.
 Linux additionally installs Chromium system dependencies. Every platform runs
 the browser and package suites. This coverage declaration
 does not establish a passing run; platform and visual-baseline failures remain

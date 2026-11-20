@@ -46,6 +46,8 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const job = workflow.jobs.webui;
   assert.equal(job.env, undefined);
   assert.deepEqual(job.strategy.matrix.os, ['ubuntu-latest', 'macos-latest', 'windows-latest']);
+  assert.equal(job['timeout-minutes'], "${{ matrix.os == 'macos-latest' && 60 || 40 }}");
+  assert.equal(job.steps.find(step => step.run === 'pnpm test:webui-browser')['timeout-minutes'], 30);
   const directories = job.steps.find(step => step.name === 'Set isolated WebUI output directories');
   assert.equal(directories.shell, 'bash');
   assert.match(directories.run, /MCODE_WEBUI_VERIFY_DIR=\$RUNNER_TEMP\//);

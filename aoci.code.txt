@@ -109,7 +109,7 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs WebUI checks on Linux, macOS and Windows for main pushes, pull requests and manual dispatch. | R:code:packages/webui/package.json,code:.github/workflows/update-visual-baselines.yml | A:- | S:Main runs may finish while a newer run waits. Native Design media tests require a real ffmpeg binary.
+webui-ci.yml[FV4S]: F:Runs WebUI checks on Linux, macOS and Windows for main pushes, pull requests and manual dispatch. | R:code:packages/webui/package.json,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS has a longer job deadline and the browser step has its own deadline to leave time for artifact upload.
 update-visual-baselines.yml[FV4S]: F:Re-records the per-platform Playwright visual baselines of the named WebUI browser specs on the three CI runners and commits each runner's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh selects the browser mode the CI compares with — windowed Chromium on macOS — in a step of its own, because a step cannot read back the environment file it writes.
 
 ===/<repository>/.plan/browser-use/board/===
@@ -209,7 +209,7 @@ source-sync.md[SG4T]: F:Defines generation, review, and application of upstream 
 telemetry.md[SO4T]: F:Documents telemetry controls and the fields sent with usage events. | R:- | A:- | S:-
 tui-capabilities.md[SU4M]: F:Catalogues supported TUI behavior including output speed, terminal titles, and notifications. | R:- | A:- | S:-
 verification.md[SQ4S]: F:Records repository verification activities and outcomes by date and change. | R:- | A:- | S:-
-webui-ci.md[SV4T]: F:Documents active WebUI CI, archived workflows, platform baselines and the manual npm release checklist. | R:code:.github/workflows/webui-ci.yml,code:release/webui-npm/package.json | A:- | S:Verify the exact release directory built with the Chrome store public key.
+webui-ci.md[SV4S]: F:Documents active WebUI CI, time budgets, runtime diagnostics, archived workflows and manual npm release. | R:code:.github/workflows/webui-ci.yml,code:release/webui-npm/package.json | A:- | S:Verify the exact release directory built with the Chrome store public key.
 
 ===/<repository>/docs/community/===
 groups.md[SG4T]: F:Describes community support groups and the public entry point for participation. | R:- | A:- | S:-
@@ -5801,7 +5801,7 @@ prepare-source-sync.mjs[SE4S]: F:Prepares an incoming public source synchronizat
 publish-cli-release.mjs[SE4T]: F:Publishes CLI release artifacts. | R:- | A:- | S:-
 release-cli.mjs[SE4T]: F:Coordinates the CLI release workflow. | R:- | A:- | S:-
 run-vitest-suite.mjs[SE4T]: F:Runs a named declared Vitest suite. | R:- | A:- | S:-
-run-webui-server.mjs[SE4M]: F:Starts the WebUI server for local verification. | R:- | A:- | S:-
+run-webui-server.mjs[EV4M]: F:Boots the WebUI development service, browser bridge and Mini App proxy, and coordinates shutdown. | R:code:packages/webui/src/server/service.ts | A:WEBUI_STARTUP_DIAGNOSTICS | S:Opt-in startup phase labels omit credentials and child output.
 source-candidate.mjs[SE4T]: F:Validates an incoming source candidate. | R:- | A:- | S:-
 source-inventory.mjs[SE4M]: F:Generates and checks the public source inventory. | R:- | A:- | S:-
 verify-cli-release.mjs[SE4T]: F:Verifies packaged CLI release artifacts. | R:- | A:- | S:-
@@ -5860,7 +5860,7 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, public CI policies and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:The public workflow contract permits only WebUI checks and named provisioning steps, protects active main runs from cancellation, and prevents the baseline refresh from publishing.
+source-sync.test.mjs[TV6L]: F:Tests source synchronization, public CI policies and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:The workflow contract protects active main runs and reserves time for diagnostics after a browser step timeout.
 vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 

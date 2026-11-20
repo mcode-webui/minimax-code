@@ -31,6 +31,7 @@ import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createInterface } from "node:readline";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import type { RawData } from "ws";
@@ -268,14 +269,31 @@ describe("loopback to harness-port evidence", () => {
     await writeFile(path.join(directory, "config.yaml"), "beta:\n  mcodeTools: false\n");
     const child = spawn(process.execPath, ["--import", "tsx/esm", "scripts/run-webui-server.mjs"], {
       cwd: process.cwd(),
-      env: { ...process.env, MINIMAX_DATA_DIR: directory, WEBUI_SERVER_TSX: "1", WEBUI_SERVER_PORT: "0", WEBUI_MINIAPP_PORT: "0", WEBUI_HOST: "127.0.0.1", TSX_TSCONFIG_PATH: path.resolve("tsconfig.standalone.json") },
+      env: {
+        ...process.env,
+        MINIMAX_DATA_DIR: directory,
+        __MAVIS_RUNTIME_MANAGED: "0",
+        WEBUI_SERVER_TSX: "1",
+        WEBUI_STARTUP_DIAGNOSTICS: "1",
+        WEBUI_SERVER_PORT: "0",
+        WEBUI_MINIAPP_PORT: "0",
+        WEBUI_HOST: "127.0.0.1",
+        TSX_TSCONFIG_PATH: path.resolve("tsconfig.standalone.json"),
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const exited = once(child, "exit");
     // The launcher prints its synthetic credential. Capture it for the request,
     // but never include the process output in test diagnostics.
     let output = "";
-    child.stderr.resume();
+    const started = performance.now();
+    const phases: string[] = [];
+    const stderr = createInterface({ input: child.stderr });
+    stderr.on("line", (line) => {
+      const match = /^\[webui-startup\] ([a-z-]+)$/u.exec(line);
+      if (match && phases.length < 12) phases.push(`${match[1]} @ ${Math.round(performance.now() - started)}ms`);
+    });
+    const diagnostics = () => `platform=${process.platform} node=${process.version} elapsed=${Math.round(performance.now() - started)}ms phases=${phases.join(" -> ") || "none"}`;
     const ready = new Promise<{ port: string; token: string }>((resolve, reject) => {
       child.on("error", reject);
       child.stdout.on("data", (chunk) => {
@@ -284,15 +302,15 @@ describe("loopback to harness-port evidence", () => {
         const token = output.match(/credential token: (\S+)/u)?.[1];
         if (port && token) resolve({ port, token });
       });
-      child.once("exit", (code) => reject(new Error(`Development server exited before readiness (${code})`)));
+      child.once("exit", (code, signal) => reject(new Error(`Development server exited before readiness (${code ?? signal}); ${diagnostics()}`)));
     });
-    const bounded = async <T,>(work: Promise<T>, label: string): Promise<T> => {
+    const bounded = async <T,>(work: Promise<T>, label: string, timeoutMs = 20_000): Promise<T> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
-      try { return await Promise.race([work, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(label)), 20_000); })]); }
+      try { return await Promise.race([work, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`${label}; ${diagnostics()}`)), timeoutMs); })]); }
       finally { clearTimeout(timer); }
     };
     try {
-      const { port, token } = await bounded(ready, "Development server did not become ready");
+      const { port, token } = await bounded(ready, "Development server did not become ready", 40_000);
       const unauthorized = await fetch(`http://127.0.0.1:${port}/webui-shutdown`, { method: "POST" });
       expect(unauthorized.status).toBe(401);
       expect(child.exitCode).toBeNull();
@@ -302,13 +320,14 @@ describe("loopback to harness-port evidence", () => {
       expect(await bounded(exited, "Development server did not exit after shutdown")).toEqual([0, null]);
       await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow();
     } finally {
+      stderr.close();
       if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGTERM");
         await bounded(exited, "Development server cleanup timed out");
       }
       await rm(directory, { recursive: true, force: true });
     }
-  }, 45_000);
+  }, 85_000);
 
   it("opens an external absolute reference through the real file reader and authenticated byte route", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "webui-file-reference-"));

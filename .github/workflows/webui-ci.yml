@@ -17,7 +17,7 @@ jobs:
   webui:
     name: WebUI (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: ${{ matrix.os == 'macos-latest' && 60 || 40 }}
     strategy:
       fail-fast: false
       matrix:
@@ -89,6 +89,7 @@ jobs:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/units
         run: pnpm test:webui
       - name: Test WebUI browser interactions
+        timeout-minutes: 30
         env:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/browser
         if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' }}

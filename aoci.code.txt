@@ -5250,7 +5250,7 @@ app-mode.ts[SE4T]: F:Defines coding and work application modes. | R:- | A:- | S:
 browser-auto-open.ts[SE4T]: F:Persists the browser auto-open preference. | R:- | A:- | S:-
 browser-dom.ts[SE4L]: F:Provides browser drawing helpers and exports canvas and image types. | R:- | A:- | S:-
 connection-health.ts[SE4S]: F:Provides connection health helpers including unref for timers. | R:- | A:- | S:-
-event-channel.ts[SE4L]: F:Adapts and exposes client event watching for the browser. | R:- | A:- | S:-
+event-channel.ts[IN4L]: F:Manages reusable WebUI WebSocket sessions and event watchers. | R:code:packages/webui/src/shared/envelope.ts,code:packages/webui/src/client/platform/wire.ts | A:WireFrame | S:The error frame may include a diagnostic reason beside its primary code.
 miniapp-frame-url.ts[SE4T]: F:Builds the URL for a Mini App frame. | R:- | A:- | S:-
 no-project.ts[SE4T]: F:Recognizes the flag for a session without a project. | R:- | A:- | S:-
 page-host.ts[SE4T]: F:Reads the hostname of the hosting page. | R:- | A:- | S:-
@@ -5560,7 +5560,7 @@ messages.ts[SE4S]: F:Defines message history retrieval. | R:- | A:- | S:-
 miniapp-agent.ts[SE4S]: F:Defines Mini App agent turn operations. | R:- | A:- | S:-
 miniapp.ts[SE4M]: F:Defines Mini App catalogue and runtime operations. | R:- | A:- | S:-
 operation-contract.ts[SE4S]: F:Defines server operation and context contracts. | R:- | A:- | S:-
-operation-dispatch.ts[EN4M]: F:Validates WebUI requests, dispatches operations and sends response, event or error frames. | R:code:packages/webui/src/shared/envelope.ts | A:dispatchWebuiFrame | S:Only Mini App open preparation errors forward a validated reason code.
+operation-dispatch.ts[EN4M]: F:Validates WebUI requests, dispatches operations and sends response, event or error frames. | R:code:packages/webui/src/shared/envelope.ts | A:dispatchWebuiFrame | S:Mini App preparation failures forward a validated reason or immediate cause code, never the cause payload.
 operations.ts[SE4L]: F:Exports the server operation catalogue. | R:- | A:- | S:-
 permission-mode.ts[SE4T]: F:Defines permission mode operations. | R:- | A:- | S:-
 personalization.ts[SE4T]: F:Defines personalization and global instructions operations. | R:- | A:- | S:-

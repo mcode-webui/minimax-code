@@ -161,6 +161,7 @@ describe("the Mini App business flow against the real host", () => {
     // person has to act on: the entry refused to start.
     const cause = await openCause(host, name);
     expect(cause.join(" <- ")).toContain("RUNNER_START_FAILED");
+    expect(opened.reasonCode, cause.join(" <- ")).toBe("RUNNER_START_FAILED");
 
     // And the Mini App is not left claiming to be running: the row says the
     // start failed, and names the reason, instead of reading as a Mini App

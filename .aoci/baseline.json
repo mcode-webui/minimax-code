@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T02:10:53Z",
+  "updated_at": "2026-11-20T02:16:33Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "1096faf618c5db652d3c6e8e1b7e9f6f25480ea7836b90c9126e92f62cc391d9",
-      "size": 636926,
-      "normalized_sha256": "1096faf618c5db652d3c6e8e1b7e9f6f25480ea7836b90c9126e92f62cc391d9"
+      "sha256": "f003c01b3753937b3cdbd229e454f084b9c8dff9cf5027a716e8d9be620f4fcb",
+      "size": 637134,
+      "normalized_sha256": "f003c01b3753937b3cdbd229e454f084b9c8dff9cf5027a716e8d9be620f4fcb"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -26211,9 +26211,9 @@
     },
     "packages/webui/src/client/platform/event-channel.ts": {
       "role": "index",
-      "sha256": "fae86f2709bfc7b79babb225d00591b93a8a963883b81165e41c012f690595a7",
-      "size": 24078,
-      "normalized_sha256": "fae86f2709bfc7b79babb225d00591b93a8a963883b81165e41c012f690595a7"
+      "sha256": "aaa819d1d116843220db7f4a9bdbb8896f565731ccff39b6cbcfada33c123b08",
+      "size": 24114,
+      "normalized_sha256": "aaa819d1d116843220db7f4a9bdbb8896f565731ccff39b6cbcfada33c123b08"
     },
     "packages/webui/src/client/platform/miniapp-frame-url.ts": {
       "role": "index",
@@ -27902,9 +27902,9 @@
     },
     "packages/webui/src/server/operation/operation-dispatch.ts": {
       "role": "index",
-      "sha256": "4f447ebb0cb8b7cecac1b97f20c48b669e4e6af94961e4cd527ade362d5716ed",
-      "size": 7540,
-      "normalized_sha256": "4f447ebb0cb8b7cecac1b97f20c48b669e4e6af94961e4cd527ade362d5716ed"
+      "sha256": "f069d78ac61b888848e2c6824b6ddb5c1eb3dc922c0628beb2a77e3f28c0d5cf",
+      "size": 7610,
+      "normalized_sha256": "f069d78ac61b888848e2c6824b6ddb5c1eb3dc922c0628beb2a77e3f28c0d5cf"
     },
     "packages/webui/src/server/operation/operations.ts": {
       "role": "index",
@@ -29456,9 +29456,9 @@
     },
     "packages/webui/test/integration/miniapp-real-flow.test.ts": {
       "role": "observe",
-      "sha256": "b25bdbed07987d6c1538d449164a355c83145dcec1fe392965b0dee0bd0538df",
-      "size": 10215,
-      "normalized_sha256": "b25bdbed07987d6c1538d449164a355c83145dcec1fe392965b0dee0bd0538df"
+      "sha256": "e32a53d120e03fcd3390a17c355bbcce8bd1d3f567092c4484d3a66462d7079c",
+      "size": 10294,
+      "normalized_sha256": "e32a53d120e03fcd3390a17c355bbcce8bd1d3f567092c4484d3a66462d7079c"
     },
     "packages/webui/test/integration/miniapp-ui-flow.test.ts": {
       "role": "observe",

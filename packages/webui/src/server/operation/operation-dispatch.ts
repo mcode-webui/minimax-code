@@ -152,13 +152,15 @@ export async function dispatchWebuiFrame(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const code = stableCodeOf(error);
-      const reason = (error as { reasonCode?: unknown } | null)?.reasonCode;
-      const reasonCode = parsed.operation === OPEN_MINI_APP_OPERATION_NAME &&
-        code === "MINIAPP_PREPARATION_FAILED" &&
-        typeof reason === "string" && /^[A-Z][A-Z0-9_]{0,63}$/u.test(reason)
-        ? reason
-        : undefined;
-      if (parsed.operation === OPEN_MINI_APP_OPERATION_NAME && code === "MINIAPP_PREPARATION_FAILED") {
+      const miniAppPreparationFailed = parsed.operation === OPEN_MINI_APP_OPERATION_NAME &&
+        code === "MINIAPP_PREPARATION_FAILED";
+      let reasonCode: string | undefined;
+      if (miniAppPreparationFailed) {
+        const reason = (error as { reasonCode?: unknown }).reasonCode ??
+          (error instanceof Error ? stableCodeOf(error.cause) : undefined);
+        if (typeof reason === "string" && /^[A-Z][A-Z0-9_]{0,63}$/u.test(reason)) {
+          reasonCode = reason;
+        }
         console.warn("[webui] Mini App publication preparation failed", { code, reasonCode });
       }
       // The capability's own stable code is preserved; only a failure that names

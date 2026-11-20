@@ -64,6 +64,7 @@ jobs:
         id: browsers
         run: pnpm install:webui-browsers
       - name: Install FFmpeg
+        timeout-minutes: 8
         shell: bash
         run: |
           # The native Design media paths run FFmpeg for real: the tests cut a
@@ -71,15 +72,28 @@ jobs:
           # the binary on PATH they fail on `spawnSync ffmpeg ENOENT` rather
           # than on anything about the code under test. The Linux image ships
           # one already; the macOS and Windows images do not.
-          if command -v ffmpeg >/dev/null 2>&1; then
-            echo "ffmpeg is already present: $(ffmpeg -version | head -1)"
+          verify_ffmpeg() {
+            node -e 'require("node:child_process").execFileSync("ffmpeg", ["-version"], { stdio: "inherit" })'
+          }
+          if verify_ffmpeg; then
+            exit 0
           elif [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update
             sudo apt-get install -y ffmpeg
           elif [ "$RUNNER_OS" = "macOS" ]; then
             brew install ffmpeg
           else
-            choco install ffmpeg -y --no-progress
+            for attempt in 1 2 3; do
+              echo "Installing FFmpeg with Chocolatey (attempt ${attempt}/3)"
+              if choco install ffmpeg -y --no-progress && verify_ffmpeg; then
+                exit 0
+              fi
+              if [ "$attempt" -lt 3 ]; then sleep "$((attempt * 10))"; fi
+            done
+          fi
+          if ! verify_ffmpeg; then
+            echo "::error::FFmpeg is unavailable to Node after installation"
+            exit 1
           fi
       - name: Install Chromium system dependencies
         if: runner.os == 'Linux'

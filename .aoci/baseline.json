@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T02:59:10Z",
+  "updated_at": "2026-11-20T03:21:33Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -317,9 +317,9 @@
     },
     ".github/workflows/webui-ci.yml": {
       "role": "index",
-      "sha256": "67206edc989e11ae09c21b44c72c5068f2f42fd3898354aaaecfbb5bb01dcb85",
-      "size": 4339,
-      "normalized_sha256": "67206edc989e11ae09c21b44c72c5068f2f42fd3898354aaaecfbb5bb01dcb85"
+      "sha256": "dc8a4b1298f1dcd52e9a7aa38add4a11e02ee76b0624eb01d0461e5e2a798969",
+      "size": 4859,
+      "normalized_sha256": "dc8a4b1298f1dcd52e9a7aa38add4a11e02ee76b0624eb01d0461e5e2a798969"
     },
     ".gitignore": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "99e9be378543c79b2b6c76c19d8a42c885974e99a385d890dd3017c540de7172",
-      "size": 636814,
-      "normalized_sha256": "99e9be378543c79b2b6c76c19d8a42c885974e99a385d890dd3017c540de7172"
+      "sha256": "651df0dee5ea246e613acece4d6166b27f0ae682eda0d7b67b1cf02a32a2f632",
+      "size": 636864,
+      "normalized_sha256": "651df0dee5ea246e613acece4d6166b27f0ae682eda0d7b67b1cf02a32a2f632"
     },
     "aoci.meta.txt": {
       "role": "index",

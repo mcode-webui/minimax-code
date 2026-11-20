@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T16:36:34Z",
+  "updated_at": "2026-11-20T17:04:18Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "ab067c58dac202f2337272200395e89f569334f378206604a0bbb9e5406c4b81",
-      "size": 638707,
-      "normalized_sha256": "ab067c58dac202f2337272200395e89f569334f378206604a0bbb9e5406c4b81"
+      "sha256": "70dea33809344412e2289c0848c49ccf40956f36982100918468657e74e432bb",
+      "size": 639385,
+      "normalized_sha256": "70dea33809344412e2289c0848c49ccf40956f36982100918468657e74e432bb"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -5649,9 +5649,9 @@
     },
     "packages/local-runtime-v2/src/infra/shutdown-diagnostics.ts": {
       "role": "index",
-      "sha256": "e1b5da492e3ac36fcc418436da15957af153f8795fbf0be8661fc6d875f39c84",
-      "size": 277,
-      "normalized_sha256": "e1b5da492e3ac36fcc418436da15957af153f8795fbf0be8661fc6d875f39c84"
+      "sha256": "bf4ec3b5cfaa2954868576c1e1c034defda3bb49aa3d1e0852dc392f356bd11d",
+      "size": 594,
+      "normalized_sha256": "bf4ec3b5cfaa2954868576c1e1c034defda3bb49aa3d1e0852dc392f356bd11d"
     },
     "packages/local-runtime-v2/src/infra/sse/bounded-ring.ts": {
       "role": "index",
@@ -5721,9 +5721,9 @@
     },
     "packages/local-runtime-v2/src/runtime.ts": {
       "role": "index",
-      "sha256": "b802e88e552dd869780546d60803e5a268f8c87a73fbf91437cf78bb00ae6bf1",
-      "size": 35740,
-      "normalized_sha256": "b802e88e552dd869780546d60803e5a268f8c87a73fbf91437cf78bb00ae6bf1"
+      "sha256": "d2da6a7c4ad34faae5824567e74459e1437f49e91cbb6a071d65b9b6fc31d5a3",
+      "size": 35853,
+      "normalized_sha256": "d2da6a7c4ad34faae5824567e74459e1437f49e91cbb6a071d65b9b6fc31d5a3"
     },
     "packages/local-runtime-v2/src/service/agent-turn/contracts.ts": {
       "role": "index",
@@ -28584,9 +28584,9 @@
     },
     "packages/webui/test/browser/native-runtime.spec.mjs": {
       "role": "index",
-      "sha256": "42e93ba4c5dc0d0923b58ad61bf57499b3b50f5431fe5c67715a18d00ea0aa05",
-      "size": 14379,
-      "normalized_sha256": "42e93ba4c5dc0d0923b58ad61bf57499b3b50f5431fe5c67715a18d00ea0aa05"
+      "sha256": "751f0c3e43d2eaf4d56e01306102d41d2e75538fb8eb7f3daead9a2cd980b536",
+      "size": 14681,
+      "normalized_sha256": "751f0c3e43d2eaf4d56e01306102d41d2e75538fb8eb7f3daead9a2cd980b536"
     },
     "packages/webui/test/browser/overlay-coordination.spec.mjs": {
       "role": "index",
@@ -29042,9 +29042,9 @@
     },
     "packages/webui/test/browser/support/native-browser-host.ts": {
       "role": "index",
-      "sha256": "0bdfaa062b39de9e45eabad4fce1a9795c65ed5f921de27fd377a549e1feb7df",
-      "size": 7937,
-      "normalized_sha256": "0bdfaa062b39de9e45eabad4fce1a9795c65ed5f921de27fd377a549e1feb7df"
+      "sha256": "d017e3fa3a4b6020d5e17df31bb68cc3682b24525e3135ff8424a664468852b4",
+      "size": 8122,
+      "normalized_sha256": "d017e3fa3a4b6020d5e17df31bb68cc3682b24525e3135ff8424a664468852b4"
     },
     "packages/webui/test/browser/support/native-design-browser-host.ts": {
       "role": "index",

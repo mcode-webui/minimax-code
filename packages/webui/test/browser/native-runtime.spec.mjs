@@ -61,7 +61,7 @@ async function within(promise, ms, makeError) {
   }
 }
 
-test.afterAll(async () => {
+test.afterAll(async ({}, testInfo) => {
   if (!child || child.exitCode !== null || !child.connected) return;
   const stopped = once(child, "message");
   child.send("close");
@@ -75,7 +75,12 @@ test.afterAll(async () => {
     stopped,
     25_000,
     () => new Error(`the native host did not finish closing\n${logs}`),
-  );
+  ).catch(async (error) => {
+    // The child may be blocked in a native call and unable to send its
+    // receipt. Preserve the received trace in the parent before rethrowing.
+    await testInfo.attach("native-host-shutdown", { body: logs, contentType: "text/plain" });
+    throw error;
+  });
   // The host reports the step it stopped at when its own shutdown does not
   // finish, so a stall says which step it was instead of leaving the hook
   // with a bare timeout and no way to tell what is stuck.

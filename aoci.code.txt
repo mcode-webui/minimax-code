@@ -5418,7 +5418,7 @@ provider-audio.mjs[SE4T]: F:Defines supported audio extensions and prepares prov
 provider-upload.mjs[SE4M]: F:Creates the media uploader used by Design providers. | R:- | A:- | S:-
 store.d.mts[SE4T]: F:Declares the Design canvas store and normalization interfaces. | R:- | A:- | S:-
 store.mjs[PD7L]: F:Normalizes and persists the Design canvas documents, their revisions and their conflicts. | R:code:packages/webui/src/runtime/design/atomic-file.mjs | A:- | S:Every document is written atomically through the retrying helper, and a save based on an older revision is refused as a conflict instead of merged.
-templates.ts[SE4T]: F:Reads and saves Design templates. | R:- | A:- | S:-
+templates.ts[SE4T]: F:Reads, saves and removes stored Design templates. | R:code:packages/webui/src/runtime/design/design-service.ts | A:- | S:Listing skips templates deleted during the scan and still rejects malformed or non-regular entries.
 understand-media.mjs[SE4S]: F:Implements media understanding with configurable limits and tiers. | R:- | A:- | S:-
 video-request.mjs[SE4S]: F:Builds video requests for frame and collection input modes. | R:- | A:- | S:-
 voices.ts[SE4T]: F:Reads the voices available to native Design. | R:- | A:- | S:-

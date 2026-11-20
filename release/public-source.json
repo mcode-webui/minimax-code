@@ -3588,7 +3588,6 @@
     "packages/tui/src/tui/features/transcript/panel.ts",
     "packages/tui/src/tui/features/update/panel.ts",
     "packages/tui/src/tui/foundation/bordered-table.ts",
-    "packages/tui/src/tui/foundation/locale.ts",
     "packages/tui/src/tui/goal-composition.ts",
     "packages/tui/src/tui/interaction/permission.ts",
     "packages/tui/src/tui/interaction/questionnaire.ts",

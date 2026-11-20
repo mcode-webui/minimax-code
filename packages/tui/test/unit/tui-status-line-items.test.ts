@@ -89,15 +89,9 @@ describe('TuiStatusLine default items', () => {
     const locale = vi
       .spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions')
       .mockReturnValue({ locale: 'zh-CN' } as Intl.ResolvedDateTimeFormatOptions);
-    const previousOverride = process.env.MCODE_TUI_LOCALE;
     try {
-      delete process.env.MCODE_TUI_LOCALE;
       expect(stripAnsi(render({ ...BASE_STATE, lightweightMode: true }))).toContain('轻量模式');
-      process.env.MCODE_TUI_LOCALE = 'en-US';
-      expect(stripAnsi(render({ ...BASE_STATE, lightweightMode: true }))).toContain('Lightweight');
     } finally {
-      if (previousOverride === undefined) delete process.env.MCODE_TUI_LOCALE;
-      else process.env.MCODE_TUI_LOCALE = previousOverride;
       locale.mockRestore();
     }
   });

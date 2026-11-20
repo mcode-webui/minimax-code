@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T10:44:13Z",
+  "updated_at": "2026-11-20T13:38:41Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7",
-      "size": 638265,
-      "normalized_sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7"
+      "sha256": "26fbada301fdabaef4f9619b3207e6212d1a8d6a90cfb2953b8669e9b1efe3e7",
+      "size": 638332,
+      "normalized_sha256": "26fbada301fdabaef4f9619b3207e6212d1a8d6a90cfb2953b8669e9b1efe3e7"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -28572,21 +28572,21 @@
     },
     "packages/webui/test/browser/native-design-tasks.spec.mjs": {
       "role": "index",
-      "sha256": "c099778ab1c5e59204d729bf3e292cf7ab009af134b3c550b53be576e5701eab",
-      "size": 45314,
-      "normalized_sha256": "c099778ab1c5e59204d729bf3e292cf7ab009af134b3c550b53be576e5701eab"
+      "sha256": "33cea674d64f367ca42bc585def06b9d2cd3d61750fd87438adb0210eee5a44f",
+      "size": 45239,
+      "normalized_sha256": "33cea674d64f367ca42bc585def06b9d2cd3d61750fd87438adb0210eee5a44f"
     },
     "packages/webui/test/browser/native-design.spec.mjs": {
       "role": "index",
-      "sha256": "239b0eb75c18a5fbb3704f73bf500fa8adc0b48d3b62c9a7929dc82abba81929",
-      "size": 30847,
-      "normalized_sha256": "239b0eb75c18a5fbb3704f73bf500fa8adc0b48d3b62c9a7929dc82abba81929"
+      "sha256": "4e919f583a0816d306e1682b3b98a23a32736d4ac151e51b019011310df9975d",
+      "size": 30726,
+      "normalized_sha256": "4e919f583a0816d306e1682b3b98a23a32736d4ac151e51b019011310df9975d"
     },
     "packages/webui/test/browser/native-runtime.spec.mjs": {
       "role": "index",
-      "sha256": "42e93ba4c5dc0d0923b58ad61bf57499b3b50f5431fe5c67715a18d00ea0aa05",
-      "size": 14379,
-      "normalized_sha256": "42e93ba4c5dc0d0923b58ad61bf57499b3b50f5431fe5c67715a18d00ea0aa05"
+      "sha256": "e37947e6bf06fb5f2f1c4e6c564520d0db202600eb6f9c8d30406aa49990bb74",
+      "size": 14304,
+      "normalized_sha256": "e37947e6bf06fb5f2f1c4e6c564520d0db202600eb6f9c8d30406aa49990bb74"
     },
     "packages/webui/test/browser/overlay-coordination.spec.mjs": {
       "role": "index",
@@ -29408,9 +29408,9 @@
     },
     "packages/webui/test/integration/design-loopback.test.ts": {
       "role": "observe",
-      "sha256": "7b3edc01cc9e3919222f0b1be7bf1944216effd3be7957bdf25c3746d061e498",
-      "size": 15809,
-      "normalized_sha256": "7b3edc01cc9e3919222f0b1be7bf1944216effd3be7957bdf25c3746d061e498"
+      "sha256": "de5a85a35d1853ffa57e45399557ad62b287f75523a5b32ee673a969fceee957",
+      "size": 15689,
+      "normalized_sha256": "de5a85a35d1853ffa57e45399557ad62b287f75523a5b32ee673a969fceee957"
     },
     "packages/webui/test/integration/isolated-chromium-profile.test.ts": {
       "role": "observe",

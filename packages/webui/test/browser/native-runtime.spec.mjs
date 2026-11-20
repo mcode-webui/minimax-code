@@ -1,7 +1,7 @@
 import { fork } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { test } from "./harness.mjs";
 
@@ -32,7 +32,7 @@ let ready;
 let logs = "";
 test.beforeAll(async () => {
   child = fork(path.join(root, "packages/webui/test/browser/support/native-browser-host.ts"), [], {
-    execArgv: ["--import", pathToFileURL(path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs")).href],
+    execArgv: ["--import", import.meta.resolve("tsx")],
     env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), SHELL: process.platform === "win32" ? "powershell.exe" : "/bin/sh" },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
   });

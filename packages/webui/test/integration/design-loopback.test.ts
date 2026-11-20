@@ -30,7 +30,7 @@ import { acquireWebuiStorageLock } from ${JSON.stringify(pathToFileURL(path.join
 const service = await createWebuiDesignService(process.env.DESIGN_WORKER_DIR); let release;
 process.on('message', async ({id,operation,input}) => { try { const result = operation === 'lock' ? (release = await acquireWebuiStorageLock(input), true) : operation === 'unlock' ? (release(), true) : await service.apply(input); process.send({id,result}); } catch(error) {process.send({id,error:{code:error.code,message:error.message}});} });
 process.send({ready:true});`);
-  const child = fork(script, [], { execArgv: ["--import", pathToFileURL(path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs")).href], env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), DESIGN_WORKER_DIR: dataDir }, stdio: ["ignore", "pipe", "pipe", "ipc"] });
+  const child = fork(script, [], { execArgv: ["--import", import.meta.resolve("tsx")], env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), DESIGN_WORKER_DIR: dataDir }, stdio: ["ignore", "pipe", "pipe", "ipc"] });
   children.push(child);
   const [ready] = await once(child, "message"); expect(ready).toEqual({ ready: true });
   return { child, request(operation: string, input: unknown): Promise<{ result?: unknown; error?: { code: string } }> { const id = Math.random(); return new Promise((resolve) => { const listener = (message: { id: number; result?: unknown; error?: { code: string } }) => { if (message.id === id) { child.off("message", listener); resolve(message); } }; child.on("message", listener); child.send({ id, operation, input }); }); } };
@@ -38,7 +38,7 @@ process.send({ready:true});`);
 describe("native Design real boundaries", () => {
   it("executes the registered Design tool in a real production turn with only a local model endpoint substituted", async () => {
     const dataDir = await directory();
-    const child = fork(path.join(root, "packages/webui/test/browser/support/native-design-browser-host.ts"), [], { execArgv: ["--import", pathToFileURL(path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs")).href], env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), WEBUI_DESIGN_BROWSER_DATA_DIR: dataDir }, stdio: ["ignore", "pipe", "pipe", "ipc"] });
+    const child = fork(path.join(root, "packages/webui/test/browser/support/native-design-browser-host.ts"), [], { execArgv: ["--import", import.meta.resolve("tsx")], env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), WEBUI_DESIGN_BROWSER_DATA_DIR: dataDir }, stdio: ["ignore", "pipe", "pipe", "ipc"] });
     children.push(child); let logs = ""; child.stderr!.on("data", (bytes) => { logs += String(bytes); });
     const ready = await Promise.race([once(child, "message").then(([value]) => value as { sessionId: string }), once(child, "exit").then(() => { throw new Error(logs); })]);
     const response = once(child, "message"); child.send({ requestId: "registered-open", input: { action: "open" } });

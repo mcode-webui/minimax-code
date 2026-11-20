@@ -389,7 +389,7 @@ describe("the Mini App business", () => {
       });
       expect(text).not.toContain("electron");
       expect(text).toContain(wrapped ? "OWNED_ELSEWHERE" : "4242");
-      expect(snapshot.presentations["shared-app"]).toBeUndefined();
+      expect(snapshot.presentations["shared-app"]).toEqual({ kind: "failed", refusal });
     },
   );
 

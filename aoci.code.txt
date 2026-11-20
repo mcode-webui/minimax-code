@@ -17,7 +17,7 @@ SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
 package.json[FV5T]: F:Pins the pnpm version and declares root dependencies and build, release and verification commands. | R:code:pnpm-workspace.yaml | A:- | S:-
 playwright.config.mjs[SE4T]: F:Configures Playwright projects and the browser test server. | R:- | A:- | S:-
-pnpm-workspace.yaml[FV5T]: F:Declares workspace package roots, hoisted linking, dependency overrides and the native build allowlist. | R:code:package.json | A:- | S:Build permissions use allowBuilds because pnpm 11 ignores the legacy allowlist keys.
+pnpm-workspace.yaml[FV5T]: F:Declares pnpm workspace roots, hoisted linking, dependency overrides and dependency build permissions. | R:code:package.json | A:- | S:pnpm 11 requires explicit denial for known unapproved install scripts when strict build checks are active.
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-
 tsconfig.standalone.json[SE4L]: F:Configures standalone TypeScript checking and workspace path aliases. | R:- | A:- | S:-
 vitest.oss.config.mjs[SE4T]: F:Configures the public distribution Vitest environment and module resolution. | R:- | A:- | S:-

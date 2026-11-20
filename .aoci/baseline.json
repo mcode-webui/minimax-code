@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T01:53:35Z",
+  "updated_at": "2026-11-20T01:56:16Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "288c8e5e441122c9efc2ed8bc083e603be4c5eb1e11ab74e53c7b2b2dfb1b980",
-      "size": 636621,
-      "normalized_sha256": "288c8e5e441122c9efc2ed8bc083e603be4c5eb1e11ab74e53c7b2b2dfb1b980"
+      "sha256": "3bc831dadbb52d19cd648c85e77c68b61e81cde8938050925cf239238ed4b20b",
+      "size": 636642,
+      "normalized_sha256": "3bc831dadbb52d19cd648c85e77c68b61e81cde8938050925cf239238ed4b20b"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -32016,9 +32016,9 @@
     },
     "pnpm-workspace.yaml": {
       "role": "index",
-      "sha256": "1206a71467d8535c12cf15c89bda62b06a67d2a0fde52236229af8d0406f8837",
-      "size": 1516,
-      "normalized_sha256": "1206a71467d8535c12cf15c89bda62b06a67d2a0fde52236229af8d0406f8837"
+      "sha256": "fd103bbe6e1724be5a358d277bdd51d69805b3f5db41546e65a22bb8a1b4de6c",
+      "size": 1577,
+      "normalized_sha256": "fd103bbe6e1724be5a358d277bdd51d69805b3f5db41546e65a22bb8a1b4de6c"
     },
     "release/dependency-licenses.json": {
       "role": "index",

@@ -36,9 +36,12 @@ packages:
 nodeLinker: hoisted
 
 allowBuilds:
+  '@google/genai': false
   better-sqlite3: true
+  canvas: false
   esbuild: true
   node-pty: true
+  protobufjs: false
 
 overrides:
   react: 18.3.1

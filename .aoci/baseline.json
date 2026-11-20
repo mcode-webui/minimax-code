@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T10:44:13Z",
+  "updated_at": "2026-11-20T13:44:59Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -31280,9 +31280,9 @@
     },
     "pnpm-lock.yaml": {
       "role": "observe",
-      "sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a",
-      "size": 325615,
-      "normalized_sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a"
+      "sha256": "0624d55ba9446027691a4afdcbe19574f854ee56635c8bd891876aa89ffdea98",
+      "size": 331044,
+      "normalized_sha256": "0624d55ba9446027691a4afdcbe19574f854ee56635c8bd891876aa89ffdea98"
     },
     "pnpm-workspace.yaml": {
       "role": "index",
@@ -32216,9 +32216,9 @@
     },
     "third_party/pi-mono/packages/ai/package.json": {
       "role": "observe",
-      "sha256": "82458b298e5d19fbc0c9d91a6fb0b472b18957faabd17d6b15e5f96c939c4587",
+      "sha256": "e8d058d20f6043a84e5129b3ea99a18d4a0a6064a4c59f07e4a82d9ad9f2a0c9",
       "size": 2615,
-      "normalized_sha256": "82458b298e5d19fbc0c9d91a6fb0b472b18957faabd17d6b15e5f96c939c4587"
+      "normalized_sha256": "e8d058d20f6043a84e5129b3ea99a18d4a0a6064a4c59f07e4a82d9ad9f2a0c9"
     },
     "third_party/pi-mono/packages/ai/scripts/generate-image-models.ts": {
       "role": "observe",
@@ -32378,9 +32378,9 @@
     },
     "third_party/pi-mono/packages/ai/src/providers/mistral.ts": {
       "role": "observe",
-      "sha256": "e06b77b62224a561a3ee9e6f19aea73ab007d0a1d1bd870a9651561b2644ad79",
-      "size": 20327,
-      "normalized_sha256": "e06b77b62224a561a3ee9e6f19aea73ab007d0a1d1bd870a9651561b2644ad79"
+      "sha256": "f9a22a0c9bb67c3d01135f00a9230bc9d88037b893d602b1a11a80e380d5c595",
+      "size": 20445,
+      "normalized_sha256": "f9a22a0c9bb67c3d01135f00a9230bc9d88037b893d602b1a11a80e380d5c595"
     },
     "third_party/pi-mono/packages/ai/src/providers/openai-codex-responses.ts": {
       "role": "observe",

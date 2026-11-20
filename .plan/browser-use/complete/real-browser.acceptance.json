@@ -13,13 +13,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the handshake completed and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-04T11:20:09.342Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:51.990Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -36,13 +36,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": false
     },
     "observed": "the host refused the extension and reported no connected surface",
     "result": "pass",
-    "at": "2026-11-04T11:20:09.682Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:52.310Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -59,13 +59,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the extension completed the handshake with no configured identity, and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-04T11:20:10.013Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:52.607Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -82,13 +82,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the handshake completed and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-04T11:20:10.501Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:53.516Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -105,13 +105,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": false
     },
     "observed": "the host refused the extension and reported no connected surface",
     "result": "pass",
-    "at": "2026-11-04T11:20:10.916Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:53.906Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -128,13 +128,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "the extension completed the handshake with no configured identity, and the host reported the surface connected",
     "result": "pass",
-    "at": "2026-11-04T11:20:11.324Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:54.256Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   },
   {
@@ -151,13 +151,13 @@
       "fullCdp": "enforced in the runtime service, not in the bridge",
       "allowlist": "development, on both surfaces",
       "build": "development",
-      "extensionId": "dejpmdkbdhkjjhkjkodimegojblnglde",
+      "extensionId": "clhddcofpopmlmnjfmbjonhmcpnehpdi",
       "installationKeyProved": true
     },
     "observed": "both browsers were connected, each on its own surface, and each surface's provider belonged to that surface",
     "result": "pass",
-    "at": "2026-11-04T11:20:11.942Z",
-    "os": "linux 7.0.0-38-generic",
+    "at": "2026-11-19T19:06:54.857Z",
+    "os": "linux 7.0.0-43-generic",
     "suite": "real-browser"
   }
 ]

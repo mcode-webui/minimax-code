@@ -25,7 +25,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chromium, expect as browserExpect } from "@playwright/test";
 import { WebSocket } from "ws";
 import type { RawData } from "ws";
@@ -65,6 +65,26 @@ interface Booted {
 
 const booted: Booted[] = [];
 const previousDataDir = process.env.MINIMAX_DATA_DIR;
+
+/**
+ * Every case in this file runs offline.
+ *
+ * The real host fetches the official MiniMax model catalog on demand, and
+ * that request is asynchronous: the host it was booted for can still be
+ * waiting on it when the next case has already booted its own host in a
+ * different data directory. The catalog is then persisted through
+ * `replaceLocalManagedMinimaxProvider`, which resolves the config path at
+ * write time — so the late write lands in whichever directory the process
+ * points at by then, and a case finds its own fixture file replaced by the
+ * previous case's model catalog.
+ *
+ * Nothing in this file is about the network, so the network is cut at the
+ * door: a case that cannot reach a remote catalog cannot have one written
+ * into its directory, whatever the runner's network happens to allow.
+ */
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline catalog")));
+});
 
 afterEach(async () => {
   for (const entry of booted.splice(0)) await entry.close();
@@ -244,11 +264,21 @@ describe("real host over the loopback service", () => {
     }
   }, 120_000);
 
-  it("lists builtin models on first boot without runtime environment or a remote catalog", async () => {
-    for (const key of ["MAVIS_REGION", "MAVIS_BUILD_ENV", "__MAVIS_RUNTIME_MANAGED"]) {
-      vi.stubEnv(key, undefined);
-    }
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline catalog")));
+  it("lists builtin models on first boot without a reachable model catalog", async () => {
+    // The scope is pinned to a test preset instead of being left unset. The
+    // WebUI assembly resolves an unset scope to cn/prod, whose managed base
+    // URL is the real production endpoint
+    // (`https://agent.minimax.cn/mavis/api/v1/llm/v1`,
+    // `packages/config/src/config.ts`), and the managed runtime fetches the
+    // official model catalog from it on demand. A runner with internet would
+    // therefore fetch that catalog and persist it into this data directory —
+    // the one write the fixture below forbids — while a machine without it
+    // would not. The test preset's endpoint does not resolve, so the first
+    // boot has no remote catalog either way, and the case stops depending on
+    // the machine's network.
+    vi.stubEnv("MAVIS_REGION", "cn");
+    vi.stubEnv("MAVIS_BUILD_ENV", "test");
+    vi.stubEnv("__MAVIS_RUNTIME_MANAGED", undefined);
     let client: Client | undefined;
     try {
       const host = await bootRealHost();

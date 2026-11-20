@@ -289,6 +289,7 @@ export function DesignNodeParams({
                             key={option.value}
                             variant="plain"
                             size="inline-dense"
+                            className="webui-design-ratio-button"
                             title={option.hint}
                             aria-pressed={field.value === option.value}
                             onClick={() => select(field, option.value)}

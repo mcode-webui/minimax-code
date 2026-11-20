@@ -72,7 +72,7 @@ export function DesignDialogs({
   readonly onAction: (action: DesignAction) => Promise<DesignState | undefined>;
   readonly assetUrl: (url: string) => string;
   readonly selectedNodeId?: string;
-  readonly viewportSize: { readonly width: number; readonly height: number };
+  readonly viewportSize: () => { readonly width: number; readonly height: number };
   readonly viewport: DesignDocument["viewport"];
   readonly onInserted: (id: string) => void;
   readonly onTool: (
@@ -178,7 +178,7 @@ export function DesignDialogs({
                   <WebuiButton
                     variant="plain"
                     size="inline-dense"
-                    className="webui-design-panel-option"
+                    className="webui-design-panel-option webui-design-template-option-button"
                     onClick={async () => {
                       if (
                         await onAction({
@@ -269,6 +269,7 @@ export function DesignDialogs({
             <div className="webui-design-template-name">
               <WebuiTextInput
                 ref={nameInput}
+                className="webui-design-template-name-input"
                 aria-label="这个模板叫什么"
                 value={name}
                 maxLength={80}
@@ -358,9 +359,15 @@ export function DesignDialogs({
                       variant="plain"
                       size="inline-tiny"
                       onClick={async () => {
+                        // The pane is measured here, at the insert, and
+                        // not when this dialog rendered: the pane can be
+                        // re-laid-out in between, and a size read at render
+                        // time is a size the pane no longer has. A node
+                        // placed from a stale size lands off the pane's
+                        // centre, which is where the insert put it.
                         const position = designLibraryPosition(
                           viewport,
-                          viewportSize,
+                          viewportSize(),
                         );
                         const created = await onAction({
                           type: "add_node",

@@ -126,7 +126,16 @@ export function DesignSurface({
     new Set(),
   );
   const productGroups = useRef(
-    new Map<string, { input: DesignProductPlacement; sizes: string }>(),
+    new Map<
+      string,
+      {
+        input: DesignProductPlacement;
+        sizes: string;
+        // The cards the board held when this placement was made. A card that
+        // appears later is the person's own, and it keeps its place.
+        known: Set<string>;
+      }
+    >(),
   );
   const reportPending = (nodeId: string, pending: boolean): void =>
     setPendingEditors((current) => {
@@ -177,6 +186,10 @@ export function DesignSurface({
   const gesture = useRef<Gesture>();
   const stage = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+  /** Whether the library is open over the pane. */
+  const libraryOpen = useRef(false);
+  /** The pane as it is drawn while the library is open over it. */
+  const libraryPaneSize = useRef<{ readonly width: number; readonly height: number }>();
   const clipboard = useRef<{
     readonly nodes: readonly DesignNode[];
     readonly connections: DesignDocument["connections"];
@@ -187,14 +200,26 @@ export function DesignSurface({
   useEffect(() => {
     const element = stage.current;
     if (!element) return;
-    const measure = () =>
-      setStageSize({
+    const measure = () => {
+      const size = {
         width: element.clientWidth,
         height: element.clientHeight,
-      });
+      };
+      setStageSize(size);
+      // The pane an asset is inserted into is the pane the person was
+      // looking at while they chose it: the library is shown over the
+      // pane, and the pane is measured again while the library closes.
+      // The size the pane is drawn at while the library is open is the
+      // one the insert is placed against.
+      if (libraryOpen.current) libraryPaneSize.current = size;
+    };
     measure();
     return dom.observeSize(element, measure);
   }, [dom, snapshot.status]);
+  useEffect(() => {
+    libraryOpen.current = dialog === "library";
+    if (libraryOpen.current) libraryPaneSize.current = undefined;
+  }, [dialog]);
   useEffect(() => {
     if (rename !== undefined && !renaming.current) {
       renaming.current = true;
@@ -246,6 +271,7 @@ export function DesignSurface({
     productGroups.current.set(input.ids.join(","), {
       input: placement,
       sizes: "",
+      known: new Set(latest.nodes.map((node) => node.id)),
     });
     const result = await owner.placeProducts(placement);
     if (!result)
@@ -263,7 +289,11 @@ export function DesignSurface({
         .join(";");
       if (sizes === group.sizes) continue;
       group.sizes = sizes;
-      const input = { ...group.input, measured: true };
+      // The cards the person placed after this placement are theirs: the
+      // grid gives way to them, and the card in the way steps aside. The
+      // board that is saved may hold cards the board of the placement did
+      // not, so the rule reads the board it is given.
+      const input = { ...group.input, measured: true, known: [...group.known] };
       const placed = designPlaceProducts(document, input);
       if (
         placed.nodes.some(
@@ -1559,10 +1589,18 @@ export function DesignSurface({
           data={data}
           document={document}
           selectedNodeId={selected[0]}
-          viewportSize={{
-            width: stage.current?.clientWidth ?? 800,
-            height: stage.current?.clientHeight ?? 600,
-          }}
+          // The pane is the one the person was looking at while the
+          // library was open: the library is shown over the pane, and the
+          // pane is measured again while the library closes, so a size
+          // read at the insert is the size of a layout in between. The
+          // size the pane is drawn at while the library is open is the one
+          // the insert is placed against.
+          viewportSize={() =>
+            libraryPaneSize.current ?? {
+              width: stage.current?.clientWidth ?? 800,
+              height: stage.current?.clientHeight ?? 600,
+            }
+          }
           onTool={openTool}
           onClose={() => setDialog(undefined)}
           onAction={act}

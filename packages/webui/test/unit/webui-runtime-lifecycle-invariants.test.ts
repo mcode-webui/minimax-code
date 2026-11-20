@@ -141,6 +141,7 @@ describe("WebUI runtime single-owner invariants", () => {
       vi.stubEnv("MINIMAX_DATA_DIR", dataDir);
       vi.stubEnv("DISABLE_GIT_AUTO_CONFIG", "1");
       resetDefaultLocalRuntimeConfig();
+      const before = { ...counters };
 
       const assembled = await createWebuiRuntimeHost({
         dataDir,
@@ -165,10 +166,12 @@ describe("WebUI runtime single-owner invariants", () => {
         }),
       });
 
+      // The counters are module-level and the case above built an auth
+      // session of its own, so what this case owns is what it added.
       // (1) Exactly one OAuth core construction.
-      expect(counters.oauthCoreConstructions).toBe(1);
+      expect(counters.oauthCoreConstructions - before.oauthCoreConstructions).toBe(1);
       // (2) Exactly one refresh-timer owner (the single auth session).
-      expect(counters.authSessionCreations).toBe(1);
+      expect(counters.authSessionCreations - before.authSessionCreations).toBe(1);
 
       // (3) Exactly one close owner. Both public entry points reach the same
       // wrapper, so the factory host's close runs once — two independent close
@@ -178,13 +181,13 @@ describe("WebUI runtime single-owner invariants", () => {
       expect(runtimeCloseCalls).toBe(1);
       // The refresh-timer owner's teardown ran exactly once, through that same
       // single close owner.
-      expect(counters.authDisposeCalls).toBe(1);
+      expect(counters.authDisposeCalls - before.authDisposeCalls).toBe(1);
 
       // Idempotent re-close: nothing runs a second time.
       await assembled.host.apiHost.close();
       await assembled.harnessPort.close();
       expect(runtimeCloseCalls).toBe(1);
-      expect(counters.authDisposeCalls).toBe(1);
+      expect(counters.authDisposeCalls - before.authDisposeCalls).toBe(1);
     } finally {
       resetDefaultLocalRuntimeConfig();
       vi.unstubAllEnvs();

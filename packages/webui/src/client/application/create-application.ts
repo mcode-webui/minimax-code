@@ -957,7 +957,14 @@ export function createWebuiApplication(
     selected: () => store.getSelectedSessionId(),
     open: miniAppWorkflows.open,
   });
-  const design = createDesignOwner({ port: slices.design });
+  const design = createDesignOwner({
+    port: slices.design,
+    // The settings workflow owns the handshake version: it reads it from the
+    // bridge and publishes it. The design surface shows the same fact, so it
+    // reads that snapshot rather than asking the bridge a second time.
+    readVersion: () => settingsWorkflows.getSnapshot().runtimeVersion.value,
+    subscribeVersion: settingsWorkflows.subscribe,
+  });
   // The composer's view of what is installed and what the agent can run: a
   // separate read model from `pluginWorkflows` on purpose, so neither overwrites
   // the other when one reloads.

@@ -45,10 +45,10 @@ for (const scenario of [
     await waitForLocalImages(page);
     const rail = page.locator('[data-webui-shell-region="rail"]:visible');
     const create = rail.locator('[data-webui-nav-item="新建任务"]');
-    const design = rail.getByRole("button", { name: "Design", exact: true });
+    const design = rail.getByRole("button", { name: "MiniMax Design", exact: true });
     const imported = rail.locator('[data-webui-nav-item="导入会话"]');
     await expect(design).toBeVisible();
-    await expect(rail.locator(".webui-rail-navigation-group").getByRole("button", { name: "Design", exact: true })).toHaveCount(0);
+    await expect(rail.locator(".webui-rail-navigation-group").getByRole("button", { name: "MiniMax Design", exact: true })).toHaveCount(0);
     await expect(rail.locator(".webui-rail-navigation-group [data-webui-nav-item]").first()).toHaveAttribute("data-webui-nav-item", "导入会话");
     const geometry = await rail.evaluate((element) => {
       const box = (selector) => element.querySelector(selector).getBoundingClientRect().toJSON();

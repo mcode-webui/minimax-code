@@ -45,7 +45,7 @@ export function planBatchPlacement(input: {
 export function pushAside(
   document: DesignDocument,
   placedIds: readonly string[],
-  options?: { readonly gap?: number },
+  options?: { readonly gap?: number; readonly keepIds?: readonly string[] },
 ): DesignDocument;
 export const BATCH_COUNTS: readonly string[];
 export const BATCH_MODES: readonly string[];

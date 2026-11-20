@@ -522,6 +522,7 @@
       "packages/webui/test/unit/webui-workspace-canvas.test.tsx",
       "packages/webui/test/unit/design-owner.test.ts",
       "packages/webui/test/unit/design-runtime.test.ts",
+      "packages/webui/test/unit/design-atomic-file.test.ts",
       "packages/webui/test/unit/design-media-runtime.test.ts",
       "packages/webui/test/unit/design-capability-discovery.test.ts",
       "packages/webui/test/unit/design-text-material.test.ts",

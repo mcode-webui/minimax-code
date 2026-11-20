@@ -175,31 +175,60 @@ const uploadServer = createServer(async (request, response) => {
     return;
   }
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
   try {
-    const form = await new Request("http://127.0.0.1/upload", {
-      method: "POST",
-      headers: { "content-type": String(request.headers["content-type"] ?? "") },
-      body: Buffer.concat(chunks),
-    }).formData();
-    const file = form.get("file");
-    if (file && typeof file !== "string") {
-      const bytes = Buffer.from(await file.arrayBuffer());
-      uploads.push({
-        mime: file.type,
-        filename: file.name,
-        bytes: bytes.length,
-        magic: bytes.subarray(0, 8).toString("hex"),
-      });
-    } else {
-      uploadError = "multipart did not carry a file field";
-    }
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
   } catch (error) {
     uploadError = error instanceof Error ? error.message : String(error);
   }
+  // The multipart body is read here rather than through a `Request` whose
+  // `formData()` parses it: that parser is the one dependency in this path
+  // that behaves differently across platforms, and the provider waits for an
+  // answer it never gets when it does. The body is a small, known shape, so
+  // it is read directly.
+  const file = parseMultipartFile(
+    Buffer.concat(chunks),
+    String(request.headers["content-type"] ?? ""),
+  );
+  if (file) uploads.push(file);
+  else if (!uploadError) uploadError = "multipart did not carry a file field";
   response.writeHead(200);
   response.end();
 });
+
+/**
+ * Read the one file part out of a multipart body.
+ *
+ * The bytes are kept as they arrived: the evidence the acceptance checks is
+ * the part's own type, name and leading bytes, so the parser reads the
+ * headers and leaves the content alone.
+ */
+function parseMultipartFile(
+  body: Buffer,
+  contentType: string,
+): { readonly mime: string; readonly filename: string; readonly bytes: number; readonly magic: string } | undefined {
+  const boundary = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
+  const delimiter = boundary ? `--${(boundary[1] ?? boundary[2] ?? "").trim()}` : "";
+  if (!delimiter) return undefined;
+  const raw = body.toString("latin1");
+  for (const part of raw.split(delimiter)) {
+    const separator = part.indexOf("\r\n\r\n");
+    if (separator < 0) continue;
+    const headers = part.slice(0, separator);
+    const disposition = /content-disposition:([^\r\n]*)/i.exec(headers)?.[1] ?? "";
+    const name = /name="([^"]*)"/i.exec(disposition)?.[1] ?? "";
+    if (name !== "file") continue;
+    const filename = /filename="([^"]*)"/i.exec(disposition)?.[1] ?? "";
+    const mime = /content-type:\s*([^\r\n;]+)/i.exec(headers)?.[1]?.trim() ?? "";
+    const content = Buffer.from(part.slice(separator + 4).replace(/\r\n$/, ""), "latin1");
+    return {
+      mime,
+      filename,
+      bytes: content.length,
+      magic: content.subarray(0, 8).toString("hex"),
+    };
+  }
+  return undefined;
+}
 await new Promise<void>((resolve) => uploadServer.listen(0, "127.0.0.1", resolve));
 const uploadAddress = uploadServer.address();
 if (!uploadAddress || typeof uploadAddress === "string") throw new Error("Synthetic provider upload did not bind");

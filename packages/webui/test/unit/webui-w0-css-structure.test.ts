@@ -1113,7 +1113,11 @@ describe("W0 · stacking order", () => {
       // The band above 100 is the shared dialog shell's. Every `WebuiDialog`
       // registers at the shell's 100 mask and 111 surface instead of declaring
       // a layer of its own.
-      0, 1, 2, 3, 5, 20, 40, 45, 50, 60, 61, 70, 80, 90, 100, 111, 120, 121, 130,
+      // 6 is `.webui-design-crop-overlay`, the crop tool's scrim over the
+      // canvas it is cropping. It is the design panel's own child, so its
+      // value is local to that panel's stacking context and it sits above the
+      // panel's content — the same local band the resize handle's 5 uses.
+      0, 1, 2, 3, 5, 6, 20, 40, 45, 50, 60, 61, 70, 80, 90, 100, 111, 120, 121, 130,
       140, 150, 155, 160,
     ]);
   });

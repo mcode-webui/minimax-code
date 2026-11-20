@@ -248,7 +248,9 @@ for (const [destination, sourceState] of [["home", "copied"], ["B", "copied"], [
     await page.getByRole("button", { name: "移除 source.txt", exact: true }).click();
     await page.getByRole("button", { name: "移除 URL 引用", exact: true }).click();
     if (destination === "home") {
-      await page.locator(".webui-brand-create-button").click();
+      // The brand button is a style class, not a name: the Design nav item
+      // carries it too, so the locator has to say which button it means.
+      await page.getByRole("button", { name: "新建", exact: true }).click();
       await expect(page).not.toHaveURL(/#session=/u);
     } else {
       await page.locator('[data-webui-session-link="B"]').first().click({ position: { x: 12, y: 12 } });

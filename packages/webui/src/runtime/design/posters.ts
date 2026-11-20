@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { replaceFile } from "./atomic-file.mjs";
 import { imageSize } from "./image-size.mjs";
 
 export const isDesignPosterName = (name: string): boolean => /^thumb_[a-f0-9]{64}\.jpg$/.test(name) || name.startsWith(".thumb-");
@@ -22,7 +23,7 @@ export async function publishDesignPoster(root: string, content: ReturnType<type
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     const temporary = path.join(root, "assets", `.thumb-${randomUUID()}.tmp`);
-    try { await writeFile(temporary, content.bytes, { flag: "wx", mode: 0o600 }); await rename(temporary, target); }
+    try { await writeFile(temporary, content.bytes, { flag: "wx", mode: 0o600 }); await replaceFile(temporary, target); }
     finally { await rm(temporary, { force: true }); }
   }
   return `/design-assets/assets/${content.name}`;

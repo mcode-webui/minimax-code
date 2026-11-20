@@ -31,7 +31,7 @@ nothing to rebind per theme. The semantic token is the opposite case — it
 follows the surface it sits on, so it is bound in `.light` and `.dark` like
 every other semantic token.
 
-**3. Semantic tokens.** 211 of them, named `<role>_<group>_<component>_<state>`:
+**3. Semantic tokens.** 212 of them, named `<role>_<group>_<component>_<state>`:
 
 - roles `bg`, `text`, `icon`, `border`, `utility`, `terminal`, `shadow`
 - groups `default`, `grouped`, `interaction`, `label`, `status`

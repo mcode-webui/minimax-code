@@ -11,9 +11,10 @@
 // All state lives under `context.dataDir`, a directory the Host creates and
 // owns. The location is treated as opaque: it is only ever used as a base
 // path, never parsed for meaning.
-import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { lstat, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { writeFileAtomically } from './atomic-file.mjs';
 
 import { NODE_FORMS, NODE_ROLES, NODE_TYPES as NODE_FORM_TYPES, currentModeId, kindOf, modeForKinds, modesFor } from '../../shared/design/forms.mjs';
 import { limitsForNodeType } from '../../shared/design/capabilities.mjs';
@@ -362,13 +363,7 @@ export function createCanvasStore(context) {
   }
 
   async function atomicWrite(file, text) {
-    const temp = `${file}.${randomUUID()}.tmp`;
-    try {
-      await writeFile(temp, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-      await rename(temp, file);
-    } finally {
-      await rm(temp, { force: true });
-    }
+    await writeFileAtomically(file, text);
   }
 
   function fileFor(id) {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { acquireWebuiStorageLock, withWebuiStorageTransaction } from "../storage-transaction.js";
 import type { NativeDesignExecution, NativeDesignToolAdapter } from "@mavis/local-runtime-v2/process-local";
@@ -9,6 +9,7 @@ import { CAPABILITIES, NODE_SIZE, PROMPT_TEMPLATES, findTool, palette } from "..
 import { createAgentRunner, type DesignExecutionContext } from "./agent-runner.mjs";
 import { createMediaRunner } from "./media-runner.mjs";
 import { createCanvasStore } from "./store.mjs";
+import { replaceFile } from "./atomic-file.mjs";
 import { createDesignEvents } from "./events.js";
 import { readDesignTemplates, removeDesignTemplate, saveDesignTemplate } from "./templates.js";
 import { prepareWebuiDesignPaths } from "../webui-paths.js";
@@ -114,7 +115,7 @@ export async function createWebuiDesignService(dataDir: string): Promise<WebuiDe
       const journal = await readJournal();
       update(journal);
       const temp = path.join(root, `.state-${randomUUID()}.tmp`);
-      try { await writeFile(temp, JSON.stringify(journal), { encoding: "utf8", flag: "wx", mode: 0o600 }); await rename(temp, journalFile); }
+      try { await writeFile(temp, JSON.stringify(journal), { encoding: "utf8", flag: "wx", mode: 0o600 }); await replaceFile(temp, journalFile); }
       finally { await rm(temp, { force: true }); }
     });
   }

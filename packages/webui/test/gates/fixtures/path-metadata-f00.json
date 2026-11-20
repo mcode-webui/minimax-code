@@ -6448,7 +6448,29 @@
       "role": "styles",
       "business": null,
       "home": "current"
-    }
+    },
+    { "path": "client/features/design/bindings/design-hit.ts", "layers": ["bindings"], "role": "feature-bindings", "business": "design", "home": "target" },
+    { "path": "client/features/design/bindings/design-prompt.ts", "layers": ["bindings"], "role": "feature-bindings", "business": "design", "home": "target" },
+    { "path": "client/features/design/projection/design-commands.ts", "layers": ["view"], "role": "feature-projection", "business": "design", "home": "target" },
+    { "path": "client/features/design/projection/design-questionnaire.ts", "layers": ["view"], "role": "feature-projection", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignClipPanel.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignCrop.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignLocalSave.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignMedia.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignMenu.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignNodeParams.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignPrompt.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignTaskPanel.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignTextTemplate.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/DesignToolPanel.tsx", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/design-media.css", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/features/design/ui/design-task-panel.css", "layers": ["bindings"], "role": "feature-ui", "business": "design", "home": "target" },
+    { "path": "client/shell/HomeOctoCameo.tsx", "layers": ["bindings"], "role": "shell", "business": null, "home": "target" },
+    { "path": "runtime/design/drafts.ts", "layers": ["runtime"], "role": "outside", "business": null, "home": "outside" },
+    { "path": "runtime/design/export.ts", "layers": ["runtime"], "role": "outside", "business": null, "home": "outside" },
+    { "path": "runtime/design/posters.ts", "layers": ["runtime"], "role": "outside", "business": null, "home": "outside" },
+    { "path": "runtime/design/voices.ts", "layers": ["runtime"], "role": "outside", "business": null, "home": "outside" },
+    { "path": "runtime/remote-control/bridge/session-history-bounds.ts", "layers": ["runtime"], "role": "outside", "business": null, "home": "outside" }
   ],
   "directions": [
     {

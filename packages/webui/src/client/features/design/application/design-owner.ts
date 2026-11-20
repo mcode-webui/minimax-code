@@ -138,8 +138,21 @@ function changedDocument(
 /** One browser document's observation and serialized write authority for Design. */
 export function createDesignOwner({
   port,
+  readVersion,
+  subscribeVersion,
 }: {
   readonly port: DesignPort;
+  /**
+   * The handshake version the settings workflow already published.
+   *
+   * The version is one fact with several readers: the settings workflow reads
+   * it from the bridge and publishes it in its snapshot, and the design
+   * surface shows it. A second read would be a second round trip, and two
+   * readers of one fact can disagree about it.
+   */
+  readonly readVersion?: () => WebuiVersionInfo | undefined;
+  /** Called when that published version changes, so the surface follows it. */
+  readonly subscribeVersion?: (listener: () => void) => () => void;
 }): DesignOwner {
   const store = createWebuiSnapshotStore<DesignSnapshot>(initial);
   const history = new Map<
@@ -301,7 +314,14 @@ export function createDesignOwner({
   let timer: ReturnType<typeof setTimeout> | undefined;
   let loading: Promise<void> | undefined;
   let intentId: string | undefined;
-  if (port.version)
+  if (readVersion) {
+    const publish = (runtimeVersion: WebuiVersionInfo | undefined): void => {
+      if (!runtimeVersion || store.isDisposed()) return;
+      store.set((current) => ({ ...current, runtimeVersion }));
+    };
+    publish(readVersion());
+    subscribeVersion?.(() => publish(readVersion()));
+  } else if (port.version)
     void port
       .version()
       .then((runtimeVersion) => {
@@ -693,8 +713,19 @@ export function createDesignOwner({
       ),
     setViewport: (viewport) => {
       const document = store.getSnapshot().data?.document;
+      // The camera can move while a media tool is still running, so the
+      // document captured here can be older than the one this write reaches
+      // the runtime with. A save carries the revision its content came from,
+      // and a stale revision is the runtime's "another view changed this"
+      // refusal — so the write is rebuilt from the document the queue reaches
+      // it with, the way every other edit here is.
       return document
-        ? execute({ type: "save", document: { ...document, viewport } }, false)
+        ? execute(
+            { type: "save", document: { ...document, viewport } },
+            false,
+            false,
+            (latest) => ({ type: "save", document: { ...latest, viewport } }),
+          )
         : Promise.resolve(undefined);
     },
     undo: () => travel("undo"),

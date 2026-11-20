@@ -1,0 +1,100 @@
+name: Update visual baselines
+
+# The visual baselines are per-platform pixel comparisons, so a baseline can
+# only be regenerated on the platform that will compare against it. This
+# workflow runs the same suite on the three runners and commits what each of
+# them produced. It is manual on purpose: a baseline is a claim about the
+# design, and refreshing it is a decision rather than a side effect of a push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "The spec files to regenerate, separated by spaces"
+        required: false
+        default: "packages/webui/test/browser/plugin-catalogue-layout.spec.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-visual-baselines
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Baselines (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build WebUI
+        run: pnpm build:webui
+      - name: Install Chromium
+        run: pnpm install:webui-browsers
+      - name: Install Chromium system dependencies
+        if: runner.os == 'Linux'
+        run: pnpm exec playwright install-deps chromium
+      - name: Match the CI browser mode
+        shell: bash
+        run: |
+          # The visual baselines are compared against the pixels the CI
+          # produces, so the refresh has to render in the same mode. macOS
+          # runs windowed Chromium in the CI, and the two modes do not draw
+          # the same glyph edges.
+          #
+          # The flag goes into the environment file from a step of its own:
+          # a step cannot read back what it writes, so writing it here
+          # would have left the refresh below in headless mode while the CI
+          # compared windowed pixels.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            echo "WEBUI_BROWSER_HEADED=1" >> "$GITHUB_ENV"
+          fi
+      - name: Refresh the visual baselines
+        shell: bash
+        env:
+          WEBUI_PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/webui-playwright-results
+          WEBUI_BROWSER_FONT_CACHE_DIR: ${{ runner.temp }}/webui-browser-font-cache
+          SPECS: ${{ inputs.spec }}
+        run: |
+          # The specs come from a manual dispatch, so they are read from the
+          # environment and split here rather than interpolated into the
+          # command line: an unquoted interpolation would let the input
+          # rewrite the command.
+          #
+          # A spec that still fails after the refresh must not stop the
+          # commit: the refreshed pixels are already on disk, and the webui
+          # CI is where a failing spec is reported.
+          for spec in $SPECS; do
+            echo "refreshing $spec"
+            pnpm exec playwright test "$spec" --update-snapshots \
+              || echo "::warning::a spec still fails after the refresh: $spec"
+          done
+      - name: Commit the refreshed baselines
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash
+          if git diff --quiet -- packages/webui/test/browser; then
+            echo "no baseline changed on $RUNNER_OS"
+            exit 0
+          fi
+          git add packages/webui/test/browser
+          git commit -m "test(webui): refresh the $RUNNER_OS visual baselines"
+          git push

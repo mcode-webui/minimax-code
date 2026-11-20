@@ -41,6 +41,12 @@ Opaque extension records and methods whose upstream result is explicitly `unknow
 bounded runtime conversion. `webui-host-contract-derivation.test.ts` pins that remaining set and
 requires zero request or result assignability mismatches.
 
+Agent management and Agent pickers consume the runtime's available-definition list. A stored
+built-in owner that is no longer in the current built-in roster remains available to historical
+records but is excluded from that list; it is never reinterpreted as a Custom Agent requiring
+`agent.md`. Genuine Custom definitions remain listed, including a Custom Agent with a retired
+built-in's name.
+
 ## What the browser can ask for
 
 Every operation has a descriptor in `server/operation/<domain>.ts`, a binding in

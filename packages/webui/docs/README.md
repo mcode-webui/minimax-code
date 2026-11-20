@@ -38,6 +38,7 @@ facets as directed there. The repository glossary is `CONTEXT.md` at the reposit
 | Document | Owns | Read it when |
 | --- | --- | --- |
 | [`client/ownership.md`](client/ownership.md) | Businesses, roles, application lifetime, interest leases, generation and freshness fences | You are changing client state, ownership or a business workflow |
+| [`client/design.md`](client/design.md) | Native node-graph documents, both presentations, agent intents, graph interactions and media workflows | You are changing Design or the right panel's historical canvas entry |
 | [`client/submission.md`](client/submission.md) | Creation origins, guarded adoption, the submission decision and completion vocabulary | You are touching send, queue, goal submission or session creation |
 | [`client/composer.md`](client/composer.md) | The Composer's per-field contract | You are changing the input area or its state |
 | [`client/floating-surfaces.md`](client/floating-surfaces.md) | The shared dropdown skeleton: the surface, the motion, the dismissal, the anchor and the placement rules | You are adding a menu, a panel, a list or a fly-out |

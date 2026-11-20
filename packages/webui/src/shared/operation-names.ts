@@ -40,6 +40,8 @@ export const GET_WORKSPACE_REVIEW_FILE_CONTENT_OPERATION_NAME = "getWorkspaceRev
 export const SEARCH_WORKSPACE_REVIEW_DIFFS_OPERATION_NAME = "searchWorkspaceReviewDiffs" as const;
 export const READ_CANVAS_OPERATION_NAME = "readCanvas" as const;
 export const APPLY_CANVAS_OPERATION_NAME = "applyCanvas" as const;
+export const GET_DESIGN_STATE_OPERATION_NAME = "getDesignState" as const;
+export const APPLY_DESIGN_ACTION_OPERATION_NAME = "applyDesignAction" as const;
 export const READ_WORKSPACE_ARCHIVE_OPERATION_NAME = "readWorkspaceArchive" as const;
 export const EXTRACT_WORKSPACE_ARCHIVE_OPERATION_NAME = "extractWorkspaceArchive" as const;
 export const CREATE_TERMINAL_OPERATION_NAME = "createTerminal" as const;
@@ -361,6 +363,7 @@ import type {
   WebuiWorkspaceReviewSummary,
 } from "./contracts/review.js";
 import type { WebuiCanvasDocument } from "./contracts/canvas.js";
+import type { GetDesignStateRequest, ApplyDesignActionRequest, DesignState } from "./contracts/design.js";
 import type {
   WebuiCreateUserModelProviderRequest,
   WebuiDiscoverUserModelsCandidateRequest,
@@ -621,6 +624,8 @@ export interface OperationSpec {
     request: { readonly sessionId: string };
     response: WebuiCanvasDocument;
   };
+  getDesignState: { request: GetDesignStateRequest; response: DesignState };
+  applyDesignAction: { request: ApplyDesignActionRequest; response: DesignState };
   applyCanvas: {
     request: { readonly sessionId: string; readonly operation: Record<string, unknown> };
     response: { readonly operationId: string; readonly document: WebuiCanvasDocument };

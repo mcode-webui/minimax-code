@@ -143,6 +143,12 @@ export interface TurnMessageSubmission {
   readonly input: AgentHostUserInput;
   readonly inputSafetyDecision?: InputSafetyDecision;
   readonly provenance: AgentHostTurnProvenance;
+  /**
+   * Trusted internal narrowing of this Turn's own Agent profile. It is applied
+   * on the server and can only remove capability, never add it; wire callers do
+   * not expose this field.
+   */
+  readonly capabilitySelection?: import('../agent-turn/contracts.js').AgentTurnCapabilitySelection;
   readonly requestedTurnId?: string;
   readonly clientRequestId?: string;
   readonly clientIntent?: string;

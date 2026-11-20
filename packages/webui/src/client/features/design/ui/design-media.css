@@ -1,0 +1,219 @@
+@layer components {
+  .webui-design-material {
+    width: 100%;
+    min-width: 0;
+  }
+  .webui-design-material-preview {
+    position: relative;
+    width: 100%;
+    border-radius: var(--radius_12);
+    overflow: hidden;
+    background: var(--bg_default_secondary);
+  }
+  .webui-design-material-image,
+  .webui-design-material-video {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    user-select: none;
+  }
+  .webui-design-video-play {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    border-radius: var(--radius_full);
+    background: color-mix(in srgb, var(--bg_default_primary) 80%, transparent);
+  }
+  .webui-design-video-duration {
+    position: absolute;
+    right: var(--spacing_8);
+    bottom: var(--spacing_6);
+    padding: 2px 5px;
+    border-radius: var(--radius_4);
+    background: color-mix(in srgb, var(--bg_default_primary) 80%, transparent);
+    color: var(--text_default_primary);
+    font-size: var(--size_12);
+  }
+  .webui-design-material-missing {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: var(--spacing_16);
+    background: var(--bg_default_secondary);
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    text-align: center;
+  }
+  .webui-design-material-preview:has(.webui-design-audio-wave) {
+    min-height: 120px;
+  }
+  .webui-design-audio-wave,
+  .webui-design-clip-strip {
+    --mcode-bg-secondary: var(--bg_default_secondary);
+    --nxc-wave-color: var(--text_default_primary);
+    --nxc-wave-alpha: 0.62;
+    display: block;
+    width: 100%;
+    height: 120px;
+  }
+  .webui-design-audio-ahead {
+    position: absolute;
+    inset: 0 0 0 auto;
+    background: color-mix(in srgb, var(--bg_default_primary) 55%, transparent);
+    pointer-events: none;
+  }
+  .webui-design-audio-head {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--icon_default_accent);
+    pointer-events: none;
+  }
+  .webui-design-audio-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_8);
+    padding: var(--spacing_6) var(--spacing_8);
+  }
+  .webui-design-audio-clock {
+    margin-right: auto;
+    color: var(--text_default_secondary);
+    font-size: var(--size_12);
+    font-variant-numeric: tabular-nums;
+  }
+  .webui-design-material-text {
+    white-space: pre-wrap;
+    padding: var(--spacing_12);
+  }
+  .webui-design-media-empty {
+    padding: var(--spacing_24);
+    text-align: center;
+    color: var(--text_default_tertiary);
+  }
+  .webui-design-clip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_8);
+    width: min(520px, calc(100vw - 40px));
+    max-width: 100%;
+  }
+  .webui-design-clip-engine {
+    display: none;
+  }
+  .webui-design-clip-track {
+    position: relative;
+    height: 56px;
+    overflow: hidden;
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_8);
+    background: var(--bg_default_secondary);
+    touch-action: none;
+  }
+  .webui-design-clip-strip {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+  .webui-design-clip-shade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    background: color-mix(in srgb, var(--bg_default_primary) 62%, transparent);
+    pointer-events: none;
+  }
+  .webui-design-clip-region {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    background: color-mix(in srgb, var(--icon_default_accent) 10%, transparent);
+    pointer-events: none;
+  }
+  .webui-design-clip-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    min-width: 12px;
+    height: auto;
+    margin-left: -6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+    z-index: 4;
+  }
+  .webui-design-clip-handle::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 50%;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--icon_default_accent);
+  }
+  .webui-design-clip-handle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3px;
+    height: 3px;
+    margin: -1.5px 0 0 -1.5px;
+    border-radius: var(--radius_full);
+    background: var(--text_default_primary);
+    box-shadow:
+      0 -6px 0 var(--text_default_primary),
+      0 6px 0 var(--text_default_primary);
+  }
+  .webui-design-clip-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    margin-left: -0.75px;
+    background: var(--icon_default_accent);
+    box-shadow: 0 0 0 1px var(--border_default);
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+  }
+  .webui-design-clip-playhead::before {
+    content: "";
+    position: absolute;
+    inset: 0 -16px;
+  }
+  .webui-design-clip-playhead:focus-visible {
+    outline: 2px solid var(--icon_default_accent);
+    outline-offset: 3px;
+  }
+  .webui-design-clip-transport,
+  .webui-design-clip-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_8);
+    flex-wrap: wrap;
+  }
+  .webui-design-clip-actions {
+    margin-left: auto;
+  }
+  .webui-design-clip-clock,
+  .webui-design-clip-range {
+    font-size: var(--size_12);
+    font-variant-numeric: tabular-nums;
+    color: var(--text_default_secondary);
+  }
+  .webui-design-clip-range,
+  .webui-design-clip-hint {
+    font-size: var(--size_12);
+    color: var(--text_default_tertiary);
+  }
+  .webui-design-clip-error {
+    color: var(--text_status_error);
+    font-size: var(--size_12);
+  }
+}

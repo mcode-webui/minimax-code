@@ -44,7 +44,7 @@ import { focusWebuiFileLine, webuiFileLineTargetId } from "../../../bindings/bro
 import type { WebuiTerminalOwner } from "../../terminal/contracts/terminal-owner.js";
 import { WebuiIconChevronRight, WebuiIconClose, WebuiIconFolder, WebuiIconSearch, WebuiIconSidebarToggle, WebuiIconWorkspaceExpand } from "../../../shell/icons.js";
 import { FileTree, filterWorkspaceFiles, findWorkspaceFile, getWorkspaceFileParentPaths, mergeWorkspaceFileChildren } from "./WorkspaceFileTree.js";
-import { WorkspaceCanvas } from "./WorkspaceCanvas.js";
+import { DesignSurface } from "../../design/ui/DesignSurface.public.js";
 import { WebuiWorkspaceLauncher, WebuiWorkspaceTabStrip, webuiWorkspaceLauncherOpenPage, webuiWorkspaceLauncherUrl } from "./WebuiWorkspaceTabStrip.public.js";
 import { WebuiDiffFileSection } from "./WorkspaceDiffFileSection.js";
 import { WebuiFilePreview } from "./WorkspaceFilePreview.js";
@@ -94,7 +94,7 @@ function isMiniAppPickerTab(
   return tab?.content.kind === "miniapp-picker";
 }
 
-function WebuiWorkspacePanelView({ state, dispatch, sessionId, workspaceDir, workspaceFileUrl, terminal: terminalOwner, onClose, onManageMiniApps, onMiniAppMountTarget, onMiniAppToolbarTarget }: {
+function WebuiWorkspacePanelView({ state, dispatch, sessionId, workspaceDir, workspaceFileUrl, terminal: terminalOwner, onClose, onManageMiniApps, onMiniAppMountTarget, onMiniAppToolbarTarget, onOpenDesignSession }: {
   readonly state: WorkspacePanelState;
   readonly dispatch: (command: WorkspacePanelCommand) => void;
   readonly sessionId?: string; readonly workspaceDir?: string;
@@ -108,6 +108,7 @@ function WebuiWorkspacePanelView({ state, dispatch, sessionId, workspaceDir, wor
   readonly terminal?: WebuiTerminalOwner;
   readonly onClose?: () => void;
   readonly onManageMiniApps?: () => void;
+  readonly onOpenDesignSession?: (sessionId: string) => void;
   readonly onMiniAppMountTarget?: (target: HTMLDivElement | null) => void;
   readonly onMiniAppToolbarTarget?: (target: HTMLDivElement | null) => void;
 }): ReactElement {
@@ -587,7 +588,7 @@ function WebuiWorkspacePanelView({ state, dispatch, sessionId, workspaceDir, wor
         dispatch({ type: "open-file", sessionId: activeTurnReviewSessionId, workspaceDir: normalized.slice(0, separator), path: basenamePath(normalized) });
       }} />)}</div> : <FeedbackEmpty className="webui-turn-review-empty" title={"本轮没有可审查的文件差异。"} />}
     </div> : null}
-    {tab === "canvas" ? <WorkspaceCanvas sessionId={activeSessionId} /> : null}
+    {tab === "canvas" ? <DesignSurface sessionId={activeSessionId} openSession={onOpenDesignSession} /> : null}
     {browserTab ? <div className="webui-workspace-web-tab" data-testid="workspace-web-tab" data-tab-id={browserTab.id} data-inactive={!activeWebTab ? "true" : undefined} aria-hidden={!activeWebTab}>
       <BrowserPanelHost
         target={browserTab.content.target}

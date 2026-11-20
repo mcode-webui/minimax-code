@@ -1,0 +1,105 @@
+@layer components {
+  .webui-design-task-panel {
+    position: absolute;
+    z-index: 22;
+    left: var(--spacing_12);
+    bottom: var(--spacing_12);
+    width: min(280px, calc(100% - 24px));
+    max-height: 46%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_12);
+    background: var(--bg_default_primary);
+    box-shadow: var(--elevation_md);
+    color: var(--text_default_primary);
+    font-size: var(--size_12);
+  }
+  .webui-design-task-panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing_8);
+    padding: var(--spacing_8) var(--spacing_12);
+    border-bottom: 1px solid var(--border_default);
+  }
+  .webui-design-task-panel-items {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .webui-design-task-panel-item {
+    padding: var(--spacing_8) var(--spacing_12);
+  }
+  .webui-design-task-panel-item + .webui-design-task-panel-item {
+    border-top: 1px solid var(--border_default);
+  }
+  .webui-design-task-panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing_8);
+  }
+  .webui-design-task-panel-head strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .webui-design-task-panel-head span {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    color: var(--text_default_tertiary);
+  }
+  .webui-design-task-panel-line {
+    margin: var(--spacing_4) 0;
+    color: var(--text_default_secondary);
+    overflow-wrap: anywhere;
+  }
+  .webui-design-task-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing_8);
+    flex-wrap: wrap;
+  }
+  .webui-design-task-panel-error {
+    color: var(--text_status_error);
+    overflow-wrap: anywhere;
+    margin: var(--spacing_4) 0;
+  }
+  .webui-design-task-request {
+    border: 1px solid var(--border_default);
+    border-radius: var(--radius_8);
+    padding: var(--spacing_8);
+    margin-top: var(--spacing_8);
+  }
+  .webui-design-task-request p {
+    color: var(--text_default_secondary);
+    margin-block: var(--spacing_6);
+    overflow-wrap: anywhere;
+  }
+  .webui-design-questionnaire {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_12);
+    margin-top: var(--spacing_8);
+  }
+  .webui-design-questionnaire-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing_6);
+    min-width: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+  .webui-design-questionnaire-step legend {
+    font-weight: var(--weight_medium);
+    margin-bottom: var(--spacing_6);
+  }
+  .webui-design-questionnaire-step .webui-design-choice {
+    align-items: flex-start;
+  }
+  .webui-design-questionnaire-step small {
+    display: block;
+    color: var(--text_default_tertiary);
+  }
+}

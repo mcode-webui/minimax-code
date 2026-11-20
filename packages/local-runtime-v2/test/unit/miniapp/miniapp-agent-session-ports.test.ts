@@ -809,7 +809,7 @@ describe('createMiniAppAgentSessionPorts questions', () => {
         errorName: 'Error',
         error: 'db locked',
       },
-      'Mini App Agent pending questionnaire lookup failed',
+      'Agent pending questionnaire lookup failed',
     );
     expect(fake.options.turns.abort).not.toHaveBeenCalled();
   });
@@ -1033,7 +1033,7 @@ describe('createMiniAppAgentSessionPorts unconfirmed outcomes', () => {
       expect(onEvent).not.toHaveBeenCalled();
       expect(fake.options.logger.warn).toHaveBeenCalledWith(
         expect.objectContaining({ stage: 'answer-continuation', requestId: 'question-1' }),
-        'Mini App Agent answer continuation turn was not observed',
+        'Agent answer continuation turn was not observed',
       );
     }));
 
@@ -1109,7 +1109,7 @@ describe('createMiniAppAgentSessionPorts unconfirmed outcomes', () => {
         turnId: 'turn-1',
         terminalStatus: 'exploded',
       },
-      'Mini App Agent turn terminal has no known status',
+      'Agent turn terminal has no known status',
     );
   });
 });
@@ -1285,6 +1285,8 @@ function fakes() {
       isDefaultWorkspace?: boolean;
       parentSessionId?: string;
       purpose?: string;
+      visibility?: 'hidden';
+      archived?: boolean;
       effectiveModel?: string | null;
       effectiveModelVariant?: string | null;
       effectiveModelThinking?: { effort?: string } | null;

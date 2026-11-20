@@ -56,7 +56,9 @@ function collectCustomCandidates(
 ): AgentListCandidate[] {
   const search = options.search?.trim().toLowerCase();
   return metas.flatMap((meta) => {
-    if (consumed.has(meta.name)) return [];
+    // Unmatched Builtins are historical owners, not Custom definitions. Keep
+    // their stored history without advertising a definition absent from the roster.
+    if (consumed.has(meta.name) || isTrustedBuiltinCreationSource(meta.creationSource)) return [];
     if (search && !meta.name.toLowerCase().includes(search)) return [];
     return [
       { meta, canonicalViewName: canonicalBuiltinName(meta.name), exactOwnerName: meta.name },

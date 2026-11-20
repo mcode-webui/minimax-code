@@ -26,6 +26,7 @@ import { DatabaseClient } from "../../../../src/infra/db/client.js";
 import { initializeDatabase } from "../../../../src/infra/db/initialize.js";
 import { readLegacyHistoryNoticeCutoff } from "../../../../src/infra/db/legacy-history-notice-cutoff.js";
 import { AgentApplication } from "../../../../src/application/agent/agent-application.js";
+import { AgentManagementApplication } from "../../../../src/application/agent/management-application.js";
 import { createV2AgentExecutionSource } from "../../../../src/application/agent/execution-source.js";
 import { createV2AgentProfileSource } from "../../../../src/application/agent/profile-source.js";
 import { createSessionRepository } from "../../../../src/service/session-system/sessions/repo/drizzle.js";
@@ -167,6 +168,47 @@ async function seed(repository: DrizzleAgentRepository): Promise<void> {
     updatedAtMs: 30,
   });
 }
+
+describe("Agent management roster", () => {
+  it("lists content and models without treating retired Builtins as Custom Agents", async () => {
+    const { repository, database } = await createRepository();
+    const service = createTestAgentService({ repository });
+    await service.ensureBuiltinRows();
+    await repository.insert({
+      name: "bunny",
+      agentRole: "bunny",
+      creationSource: "builtin",
+      rootSessionId: "retired-builtin-history",
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    });
+    await service.create({ name: "custom-survivor", systemPrompt: "Custom prompt" });
+    const application = new AgentApplication({
+      service,
+      root: { getRootSessionByAgent: async () => { throw new Error("Unexpected root read"); } },
+    });
+    const management = new AgentManagementApplication(application);
+    const before = database.rawDb.prepare("SELECT * FROM agents ORDER BY agent_name").all();
+    for (const include of ["identity,persona,system_prompt,model", "identity,persona,system_prompt", "identity,model", "identity"]) {
+      const result = await management.listAgents({} as never, { include, limit: 100 });
+      expect(result.agents.map((agent) => agent.name).sort()).toEqual([
+        "custom-survivor", "explore", "mavis", "verifier", "worker",
+      ]);
+      if (include.includes("system_prompt")) {
+        expect(result.agents.find((agent) => agent.name === "custom-survivor")?.systemPrompt).toBe("Custom prompt");
+      }
+    }
+    expect(database.rawDb.prepare("SELECT * FROM agents ORDER BY agent_name").all()).toEqual(before);
+    await expect(repository.get("bunny")).resolves.toMatchObject({ rootSessionId: "retired-builtin-history" });
+  });
+
+  it("keeps a genuine Custom Agent with the same name as a retired Builtin", async () => {
+    const { repository } = await createRepository();
+    const service = createTestAgentService({ repository });
+    await service.create({ name: "bunny", systemPrompt: "Custom bunny prompt" });
+    await expect(service.list()).resolves.toContainEqual(expect.objectContaining({ name: "bunny", creationSource: "manual" }));
+  });
+});
 
 describe("Frozen Session deletion continuity", () => {
   // This real-database create/delete/recreate sequence exceeded 5s on Windows CI.

@@ -1,4 +1,4 @@
-export type WebuiRoute = "archon" | "miniapp" | "404";
+export type WebuiRoute = "archon" | "miniapp" | "design" | "404";
 
 export function route(pathname: string): WebuiRoute {
   if (pathname === "/archon" || pathname === "/") return "archon";
@@ -6,6 +6,7 @@ export function route(pathname: string): WebuiRoute {
   // route to render only the Mini App view. The service maps the path to this
   // bundle (`server/http/router.ts`), so the tab is an ordinary client.
   if (pathname === "/miniapp") return "miniapp";
+  if (pathname === "/design") return "design";
   return "404";
 }
 

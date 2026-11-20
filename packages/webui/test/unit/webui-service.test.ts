@@ -88,6 +88,11 @@ import { WebuiTerminalManager } from "../../src/runtime/terminal.js";
 import { getWorkspaceReviewSummaryOperation, listWorkspaceReviewFileDiffsOperation, getWorkspaceReviewFileContentOperation, searchWorkspaceReviewDiffsOperation } from "../../src/server/operation/workspace.js";
 
 type CloseEvent = [number, Buffer];
+const NO_DESIGN = {
+  async getDesignState(): Promise<never> { throw new Error("No native Design authority in this port fixture"); },
+  async applyDesignAction(): Promise<never> { throw new Error("No native Design authority in this port fixture"); },
+  async readDesignAsset() { return null; },
+};
 // `once` from `node:events` is overloaded and not generic, so
 // `ReturnType<typeof onceFn<T>>` does not type-check; the concrete
 // return shape is `Promise<unknown[]>` (the args tuple), which is
@@ -143,6 +148,9 @@ const NO_SCHEDULED_TASKS: Pick<
 };
 
 class ScriptedHarnessPort implements WebuiHarnessPort {
+  getDesignState = NO_DESIGN.getDesignState;
+  applyDesignAction = NO_DESIGN.applyDesignAction;
+  readDesignAsset = NO_DESIGN.readDesignAsset;
   /**
    * The host services this scripted harness holds. Answered as a fact rather than inferred
    * from the methods below, which is the distinction the availability derivation rests on: a
@@ -4298,6 +4306,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
       resolveConnectionClosed = resolve;
     });
     const recordingPort: WebuiHarnessPort = {
+      ...NO_DESIGN,
       ...NO_SCHEDULED_TASKS,
       ...NO_REMOTE_SURFACES,
       version() {
@@ -4712,6 +4721,7 @@ describe("WebUI shutdown order (criterion 7)", () => {
     });
     let versionCalls = 0;
     const recordingPort: WebuiHarnessPort = {
+      ...NO_DESIGN,
       ...NO_SCHEDULED_TASKS,
       ...NO_REMOTE_SURFACES,
       version() {

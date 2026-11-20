@@ -1,5 +1,6 @@
 import { defineConfig } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { prepareFontEnvironment } from "./scripts/lib/webui-font-environment.mjs";
@@ -34,6 +35,23 @@ const fontEnvironment = prepareFontEnvironment(root, {
 // reuses: it is a fresh machine per run and has nothing to reuse.
 const reuseExistingServer = !process.env.CI && process.env.WEBUI_BROWSER_REUSE === "1";
 const headedBrowser = process.env.WEBUI_BROWSER_HEADED === "1";
+const playwrightVersion = createRequire(import.meta.url)("@playwright/test/package.json").version;
+// Backport Playwright #43605 for the pinned 1.63.0 browser. Chromium treats
+// repeated disable-features switches as last-wins, so preserve the existing
+// feature list and replace that exact switch instead of adding a second one.
+const pinnedDisabledFeatures = "--disable-features=" + [
+  "AvoidUnnecessaryBeforeUnloadCheckSync", "DestroyProfileOnBrowserClose",
+  "DialMediaRouteProvider", "GlobalMediaControls", "HttpsUpgrades",
+  "LensOverlay", "MediaRouter", "PaintHolding", "ThirdPartyStoragePartitioning",
+  "BlockOriginHeaderModificationOnRedirect", "Translate", "AutoDeElevate",
+  "OptimizationHints", "msForceBrowserSignIn", "msEdgeUpdateLaunchServicesPreferredVersion",
+].join(",");
+const windowsTcpWorkaround = process.platform === "win32" && playwrightVersion === "1.63.0"
+  ? {
+      ignoreDefaultArgs: [pinnedDisabledFeatures],
+      args: [`${pinnedDisabledFeatures},TcpPortRandomizationWin`],
+    }
+  : {};
 
 export default defineConfig({
   testDir: "./packages/webui/test/browser",
@@ -55,6 +73,7 @@ export default defineConfig({
     headless: !headedBrowser,
     trace: "retain-on-failure",
     launchOptions: {
+      ...windowsTcpWorkaround,
       env: { ...process.env, ...fontEnvironment.env },
     },
   },

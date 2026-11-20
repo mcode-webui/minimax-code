@@ -485,8 +485,23 @@ export class LocalRuntimeTurnExecutor<
     });
     const readTaskOutputTaskIds = new Set<string>();
     const toolResolution = preparedExecution.toolResolution;
+    // Final fence for a trusted per-turn narrowing: a tool added by an
+    // extension after the catalog assembled cannot escape an explicit allow
+    // list (including the empty list that means "no tools").
+    const narrowedSelection = input.request.capabilitySelection;
+    const selectedToolNames =
+      narrowedSelection?.tools === undefined ? undefined : new Set(narrowedSelection.tools);
+    const blockedToolNames = new Set(narrowedSelection?.disallowedTools ?? []);
+    const routedTools =
+      selectedToolNames === undefined && blockedToolNames.size === 0
+        ? input.assembly.tools
+        : input.assembly.tools.filter(
+            (tool) =>
+              (selectedToolNames === undefined || selectedToolNames.has(tool.def.name)) &&
+              !blockedToolNames.has(tool.def.name),
+          );
     const admittedTools = applyProcessLocalToolResultPolicy(
-      validateRoutedTurnTools(input.assembly.tools),
+      validateRoutedTurnTools(routedTools),
       this.options.cliProductPolicy === true,
     );
     const canConsumeBackgroundBashOutput = admittedTools.some(

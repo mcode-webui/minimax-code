@@ -18,8 +18,13 @@ import type {
   WebuiClientProject,
 } from "../features/sessions/contracts/session-view.js";
 import type { WebuiTransport } from "../contracts/transport.js";
+import { httpBaseFromWebsocketUrl } from "./transport-origin.js";
 import type { WebuiVersionInfo } from "../../shared/contracts/version.js";
+import type { DesignState } from "../../shared/contracts/design.js";
+import { DESIGN_MAX_KEEPALIVE_BYTES } from "../../shared/design-input.js";
 import {
+  GET_DESIGN_STATE_OPERATION_NAME,
+  APPLY_DESIGN_ACTION_OPERATION_NAME,
   ABORT_SESSION_OPERATION_NAME,
   APPLY_REMOTE_CONTROL_CREDENTIALS_OPERATION_NAME,
   CHECK_CHANNEL_CONFIG_OPERATION_NAME,
@@ -230,6 +235,39 @@ export function createWebuiTransport(options: WebuiTransportOptions): Required<W
     wireRequest(operation, body, requestOptions ?? { reuseConnection: true });
 
   return {
+    getDesignState: (body) => request(GET_DESIGN_STATE_OPERATION_NAME, body),
+    applyDesignAction: async (body) => {
+      if (!["upload", "publish", "set_media_poster", "save_draft_edits"].includes(body.action.type)) return request(APPLY_DESIGN_ACTION_OPERATION_NAME, body);
+      const json = JSON.stringify(body), keepalive = body.action.type === "save_draft_edits";
+      if (keepalive && new TextEncoder().encode(json).byteLength > DESIGN_MAX_KEEPALIVE_BYTES) throw Object.assign(new Error("draft_too_large: 未保存的编辑超过页面关闭时的 64 KiB 提交上限，请保持页面打开并等待正常保存。"), { code: "draft_too_large" });
+      const response = await fetch(`${httpBaseFromWebsocketUrl(options.websocketUrl)}/design-assets/actions`, {
+        method: "POST", headers: { Authorization: `Bearer ${options.token}`, "Content-Type": "application/json" }, body: json, ...(keepalive ? { keepalive: true } : {}),
+      });
+      const responseBody = await response.text().catch(() => "");
+      if (!response.ok) {
+        const failure = designHttpFailure(response, responseBody);
+        throw Object.assign(new Error(`${failure.code}: ${failure.message}`), { code: failure.code, status: response.status });
+      }
+      try {
+        return JSON.parse(responseBody) as DesignState;
+      } catch {
+        throw Object.assign(
+          new Error("invalid_response: 宿主返回了无法解析的 Design 响应；页面与宿主可能不是同一版本，请重启/升级 WebUI 宿主后重试。"),
+          { code: "invalid_response", status: response.status },
+        );
+      }
+    },
+    designStandaloneUrl: (body) => {
+      const query = new URLSearchParams({ token: options.token });
+      if (body.sessionId) query.set("session", body.sessionId);
+      if (body.documentId) query.set("document", body.documentId);
+      return `${httpBaseFromWebsocketUrl(options.websocketUrl)}/design?${query.toString()}`;
+    },
+    designAssetUrl: (value) => {
+      if (!value.startsWith("/design-assets/")) return value;
+      return `${httpBaseFromWebsocketUrl(options.websocketUrl)}${value}${value.includes("?") ? "&" : "?"}token=${encodeURIComponent(options.token)}`;
+    },
+    designSessionUrl: (sessionId) => `${httpBaseFromWebsocketUrl(options.websocketUrl)}/?${new URLSearchParams({ token: options.token })}#${new URLSearchParams({ session: sessionId })}`,
     version: () => request(VERSION_OPERATION_NAME, undefined),
     loadProjects: () =>
       request(LIST_VISIBLE_PROJECTS_OPERATION_NAME, { limit: 100 }),
@@ -482,4 +520,57 @@ export function createWebuiTransport(options: WebuiTransportOptions): Required<W
     cancelAccountLogin: () => request(CANCEL_ACCOUNT_LOGIN_OPERATION_NAME, {}),
     runCommand: (body) => request(RUN_COMMAND_OPERATION_NAME, body),
   } satisfies Required<WebuiTransport>;
+}
+
+/**
+ * Reads an HTTP failure from the native Design media endpoint.
+ *
+ * The endpoint is served by the same host that serves the page, so a plain-text
+ * 405 is the signature of a page newer than its host: the old host does not
+ * recognise the route at all. Parsing that as JSON produced `Unexpected token M`
+ * and told the person nothing. A structured JSON error keeps its code; anything
+ * else becomes a diagnosable transport error that names the version mismatch.
+ */
+function designHttpFailure(
+  response: Response,
+  body: string,
+): { readonly code: string; readonly message: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    parsed = undefined;
+  }
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record = parsed as { readonly code?: unknown; readonly message?: unknown };
+    const code = typeof record.code === "string" && record.code ? record.code : undefined;
+    const message =
+      typeof record.message === "string" && record.message ? record.message : undefined;
+    if (code) return { code, message: message ?? response.statusText };
+    if (message) return { code: `http_${response.status}`, message };
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (response.status === 405 || /method not allowed/i.test(body)) {
+    return {
+      code: "host_version_mismatch",
+      message:
+        "当前 WebUI 宿主不认识原生 Design 媒体上传路由（HTTP 405）。这通常表示页面已更新而宿主仍是旧版本：请重启或升级 WebUI 宿主后重试；已安装的 Mini App 数据不受影响。",
+    };
+  }
+  if (response.status === 401) {
+    return {
+      code: "unauthorized",
+      message: "宿主拒绝了这次 Design 请求的凭据；请从宿主重新打开页面后再试。",
+    };
+  }
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return {
+      code: `http_${response.status}`,
+      message: `宿主返回了非 JSON 响应（HTTP ${response.status}${contentType ? `，${contentType}` : ""}）：${body.slice(0, 200) || response.statusText}`,
+    };
+  }
+  return {
+    code: `http_${response.status}`,
+    message: `HTTP ${response.status} ${response.statusText}`.trim(),
+  };
 }

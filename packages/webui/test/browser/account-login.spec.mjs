@@ -35,19 +35,25 @@ test.beforeEach(async ({ page }) => {
 
 for (const theme of ["light", "dark"]) {
 test(`usage hover keeps the subscription label stable during refresh (${theme})`, async ({ page }) => {
+  await page.clock.install();
   await page.addInitScript((value) => window.localStorage.setItem("webui-theme", value), theme);
   await configureFixture(page, () => window.__fixture.setUsageQuotaResult({ signedIn: true, hasTokenPlan: true, tokenPlanTier: "Explore" }));
   await openApp(page);
   const trigger = page.getByTestId("sidebar-user-menu-trigger");
+  const usageRequestCount = () =>
+    page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length);
+  await expect(trigger.locator("small")).toHaveText("Explore");
+  const requestsAtStartup = await usageRequestCount();
   await trigger.click();
   const usage = page.getByTestId("user-menu-usage");
   await usage.hover();
-  await expect(trigger.locator("small")).toHaveText("Explore");
+  await expect.poll(usageRequestCount).toBeGreaterThan(requestsAtStartup);
+  await expect(page.getByTestId("usage-popover-content")).toBeVisible();
   await trigger.evaluate((element) => {
     window.__railLabelChanges = [];
     new MutationObserver(() => window.__railLabelChanges.push(element.querySelector("small")?.textContent ?? null)).observe(element, { childList: true, subtree: true, characterData: true });
   });
-  const requestsBefore = await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length);
+  const requestsBefore = await usageRequestCount();
   const points = await page.evaluate(() => {
     const center = (testId) => {
       const element = document.querySelector(`[data-testid="${testId}"]`);
@@ -57,13 +63,18 @@ test(`usage hover keeps the subscription label stable during refresh (${theme})`
     };
     return { settings: center("user-menu-settings"), usage: center("user-menu-usage") };
   });
+  // Test a return within the hover grace period independently of runner latency.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   for (let index = 0; index < 12; index += 1) {
     await page.mouse.move(points.settings.x, points.settings.y);
+    await page.clock.runFor(40);
     await page.mouse.move(points.usage.x, points.usage.y);
   }
-  expect(await page.evaluate(() => window.__fixture.requests.filter((r) => r.operation === "getUsageQuota").length)).toBe(requestsBefore);
+  expect(await usageRequestCount()).toBe(requestsBefore);
   expect(await page.evaluate(() => window.__railLabelChanges.filter((label) => label !== "Explore"))).toEqual([]);
   await page.mouse.move(700, 150);
+  await page.clock.runFor(250);
+  await page.clock.resume();
   await expect(page.getByTestId("usage-popover")).toHaveCount(0);
   await page.evaluate(() => window.__fixture.delayEvery("getUsageQuota", {}));
   await usage.hover();

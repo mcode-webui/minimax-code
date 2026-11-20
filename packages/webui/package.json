@@ -40,6 +40,7 @@
     "lottie-web": "^5.13.0",
     "marked": "18.0.12",
     "mermaid": "12.3.0",
+    "node-abi": "3.96.0",
     "node-pty": "1.1.0",
     "qrcode.react": "4.2.0",
     "react": "18.3.1",

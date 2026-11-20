@@ -76,6 +76,7 @@
 @import "../features/transcript/ui/transcript.css";
 @import "../features/sessions/ui/sessions.css";
 @import "../features/workspace/ui/workspace.css";
+@import "../features/design/ui/design.css";
 @import "../features/scheduling/ui/scheduling.css";
 @import "../features/workspace/ui/workspace-progress.css";
 @import "../features/browser/ui/browser.css";

@@ -54,6 +54,9 @@ export class LocalAgentPreparationService
       ...(input.desktopCapabilities ? { desktopCapabilities: input.desktopCapabilities } : {}),
       ...(model ? { model } : {}),
       ...(input.request.clientIntent ? { clientIntent: input.request.clientIntent } : {}),
+      ...(input.request.capabilitySelection
+        ? { capabilitySelection: input.request.capabilitySelection }
+        : {}),
       ...(input.promptRead ? { promptRead: input.promptRead } : {}),
     });
   }
@@ -75,6 +78,7 @@ export class LocalAgentPreparationService
     readonly isSessionFirstTurn?: boolean;
     readonly desktopCapabilities?: LocalTurnPreparationInput['desktopCapabilities'];
     readonly clientIntent?: string;
+    readonly capabilitySelection?: LocalTurnPreparationInput['request']['capabilitySelection'];
     readonly promptRead?: LocalTurnPreparationInput['promptRead'];
   }): Promise<IAgentConfig> {
     return this.options.configBuilder.build({
@@ -95,6 +99,7 @@ export class LocalAgentPreparationService
     readonly isSessionFirstTurn: boolean;
     readonly desktopCapabilities?: LocalTurnPreparationInput['desktopCapabilities'];
     readonly clientIntent?: string;
+    readonly capabilitySelection?: LocalTurnPreparationInput['request']['capabilitySelection'];
     readonly promptRead?: LocalTurnPreparationInput['promptRead'];
   }): Promise<LocalTurnPreparation> {
     const built = await this.options.configBuilder.buildPrepared(input);

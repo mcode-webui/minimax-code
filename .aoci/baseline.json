@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T02:16:33Z",
+  "updated_at": "2026-11-20T02:19:56Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -29456,9 +29456,9 @@
     },
     "packages/webui/test/integration/miniapp-real-flow.test.ts": {
       "role": "observe",
-      "sha256": "e32a53d120e03fcd3390a17c355bbcce8bd1d3f567092c4484d3a66462d7079c",
-      "size": 10294,
-      "normalized_sha256": "e32a53d120e03fcd3390a17c355bbcce8bd1d3f567092c4484d3a66462d7079c"
+      "sha256": "dce9b2952cc6327ad0cd3644207fcb64d458dbcfd45fe8607bcaf3fda5c12e30",
+      "size": 11867,
+      "normalized_sha256": "dce9b2952cc6327ad0cd3644207fcb64d458dbcfd45fe8607bcaf3fda5c12e30"
     },
     "packages/webui/test/integration/miniapp-ui-flow.test.ts": {
       "role": "observe",

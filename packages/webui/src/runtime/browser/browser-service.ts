@@ -312,6 +312,8 @@ export class WebuiBrowserService {
     WebuiBrowserSurface,
     Map<string, (frame: WebuiBrowserImageFrame) => void>
   >();
+  /** An old screencast must stop before a replacement starts on the same provider and target. */
+  readonly #frameStops = new WeakMap<WebuiBrowserSurfaceProvider, Map<string, Promise<void>>>();
   /** How many frames each surface dropped, per surface. */
   readonly #droppedFrames = new Map<WebuiBrowserSurface, number>();
   /**
@@ -916,6 +918,7 @@ export class WebuiBrowserService {
     this.#providers.delete(surface);
     this.#selected.delete(surface);
     this.#frameSubscribers.delete(surface);
+    this.#frameHandlers.delete(surface);
     this.#webTabs.delete(surface);
     this.#webTabSubscribers.delete(surface);
     for (const target of this.#registry.list(surface)) {
@@ -1135,6 +1138,21 @@ export class WebuiBrowserService {
         true,
       );
     }
+    const targetKey = target.targetId;
+    const stops = this.#frameStops.get(provider) ?? new Map<string, Promise<void>>();
+    this.#frameStops.set(provider, stops);
+    for (let pending = stops.get(targetKey); pending; pending = stops.get(targetKey)) {
+      await waitForFrameStop(pending, signal);
+      if (signal?.aborted) return;
+    }
+    if (signal?.aborted) return;
+    if (this.#closed || this.#providers.get(surface) !== provider) {
+      throw browserOperationError(
+        "browser_provider_unavailable",
+        `Browser surface "${surface}" has no connected browser.`,
+        true,
+      );
+    }
     // The target has to be a page this service knows. A stream for a target
     // that does not exist would deliver nothing at all, and a panel waiting
     // for a picture that cannot arrive looks like a panel that is broken.
@@ -1187,7 +1205,6 @@ export class WebuiBrowserService {
     // subscribers: the provider holds one frame handler per page, so two
     // subscriptions for the same page would otherwise take each other's
     // frames away.
-    const targetKey = target.targetId;
     const surfaceSubscribers =
       this.#frameSubscribers.get(surface) ??
       new Map<string, Set<(frame: WebuiBrowserImageFrame) => void>>();
@@ -1206,8 +1223,8 @@ export class WebuiBrowserService {
       surfaceHandlers.get(targetKey) ??
       ((frame: WebuiBrowserImageFrame) => {
         const current = this.#frameSubscribers.get(surface)?.get(targetKey);
-        if (!current) return;
-        for (const subscriber of [...current]) subscriber(frame);
+        if (current !== subscribers || this.#providers.get(surface) !== provider) return;
+        for (const subscriber of [...subscribers]) subscriber(frame);
       });
     surfaceHandlers.set(targetKey, handler);
     this.#frameHandlers.set(surface, surfaceHandlers);
@@ -1280,12 +1297,24 @@ export class WebuiBrowserService {
     } finally {
       if (firstFrameDeadline) clearTimeout(firstFrameDeadline);
       subscribers.delete(deliver);
-      if (subscribers.size === 0) {
+      if (
+        subscribers.size === 0 &&
+        this.#providers.get(surface) === provider &&
+        this.#frameSubscribers.get(surface)?.get(targetKey) === subscribers &&
+        this.#frameHandlers.get(surface)?.get(targetKey) === handler
+      ) {
         // Cancelling the stream releases the provider-side resources it held:
-        // the screencast is stopped, not merely ignored.
-        await provider.stopImageStream(targetKey).catch(() => undefined);
+        // detach the old maps before yielding, then serialize a replacement's
+        // start after the old provider stop. A late stop must not erase a new
+        // subscriber or turn off the stream it just started.
         surfaceSubscribers.delete(targetKey);
         surfaceHandlers.delete(targetKey);
+        const stopping = Promise.resolve()
+          .then(() => provider.stopImageStream(targetKey))
+          .catch(() => undefined)
+          .finally(() => { stops.delete(targetKey); });
+        stops.set(targetKey, stopping);
+        await stopping;
       }
     }
   }
@@ -1932,6 +1961,22 @@ function describeBrowserFailure(error: unknown): WebuiBrowserFailureRecord {
 
 function sameTab(left: WebuiBrowserTargetId, right: WebuiBrowserTargetId): boolean {
   return left.surface === right.surface && left.browserId === right.browserId && left.targetId === right.targetId;
+}
+
+/** Waits for the old stream to stop without holding a canceled replacement open. */
+async function waitForFrameStop(stop: Promise<void>, signal?: AbortSignal): Promise<void> {
+  if (!signal) return stop;
+  if (signal.aborted) return;
+  let onAbort: () => void = () => undefined;
+  const aborted = new Promise<void>((resolve) => {
+    onAbort = () => resolve();
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    await Promise.race([stop, aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 /**

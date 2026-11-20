@@ -368,6 +368,7 @@
   --terminal_foreground: var(--gray_700);
   --terminal_selection: var(--blue_50);
   --text_default_accent: var(--blue_400);
+  --text_default_code_link: #4d76cc;
   --text_default_inverted: var(--gray_0);
   --text_default_inverted_static: var(--opacity_white_0_95);
   --text_default_primary: var(--gray_1000);
@@ -583,6 +584,7 @@
   --terminal_foreground: var(--gray_700);
   --terminal_selection: var(--blue_50);
   --text_default_accent: var(--blue_400);
+  --text_default_code_link: #4d76cc;
   --text_default_inverted: var(--gray_0);
   --text_default_inverted_static: var(--opacity_white_0_95);
   --text_default_primary: var(--gray_1000);
@@ -801,6 +803,7 @@
   --terminal_foreground: var(--gray_100);
   --terminal_selection: var(--blue_800);
   --text_default_accent: var(--blue_500);
+  --text_default_code_link: #7f9de0;
   --text_default_inverted: var(--gray_1000);
   --text_default_inverted_static: var(--opacity_white_0_95);
   --text_default_primary: var(--gray_100);

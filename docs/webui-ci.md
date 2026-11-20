@@ -5,6 +5,9 @@ The public `mcode-webui/minimax-code` repository uses
 runs. It executes existing WebUI commands directly. It does not invoke the
 repository-wide `pnpm verify` pipeline or publish packages.
 
+An active run on `main` can finish while another run on `main` is pending.
+Pull requests retain cancellation of superseded runs.
+
 | Coverage | Linux / Node 24 | macOS / Node 24 | Windows / Node 24 |
 | --- | --- | --- | --- |
 | WebUI server, client and test types | Yes | Yes | Yes |
@@ -15,13 +18,25 @@ repository-wide `pnpm verify` pipeline or publish packages.
 | npm package build, installation and launcher verification | Yes | Yes | Yes |
 
 Package verification uses an isolated installation and does not publish to npm.
+Each platform runs six independent jobs: checks and build boundaries, unit and
+integration tests, three Playwright file shards, and package verification. Test
+and browser jobs build the client locally so each tests the current revision
+without waiting for another job's build. The package job builds and installs its
+own package. Chromium and FFmpeg are provisioned only for the jobs that need them.
+The matrix keeps running when one job fails, and each failure fails the workflow.
+
+Browser shards retain the suite's one-worker setting. Each shard has its own
+runner, fixture server, and output directories. Run a shard locally with
+`pnpm test:webui-browser --shard=2/3` after building and provisioning the browser.
 Browser diagnostics and raw performance samples are retained as Actions artifacts
-for seven days on successful and failed runs. Samples are written to the output
+for seven days on successful and failed runs. Artifact names include the platform,
+job and run attempt. Samples are written to the output
 directory explicitly so the list reporter cannot discard in-memory attachments.
-After a successful build and Chromium installation, browser checks still run if
-unit tests fail. Package verification also runs after a successful build even if
-an earlier test suite failed. Each failure still makes the job fail; this keeps
-independent failures visible in one run instead of masking later suites.
+Each browser step has a 30-minute limit so a stalled test run can still leave
+artifacts.
+The development-server shutdown integration test reports bounded startup
+phase timings on timeout or early exit. It omits child output, including the
+credential printed by the launcher.
 Linux additionally installs Chromium system dependencies. Every platform runs
 the browser and package suites. This coverage declaration
 does not establish a passing run; platform and visual-baseline failures remain
@@ -47,9 +62,23 @@ Linux, Windows and local runs remain headless by default. To reproduce
 the macOS CI browser mode locally, run `WEBUI_BROWSER_HEADED=1 pnpm test:webui-browser`
 after building the client and installing Chromium.
 
+With Playwright 1.63.0, the Windows test browser disables
+`TcpPortRandomizationWin` using the fix from
+[Playwright #43605](https://github.com/microsoft/playwright/pull/43605).
+This addresses intermittent `ERR_NO_BUFFER_SPACE` on local test requests.
+It preserves the original disabled-feature list and does not change
+production Chromium launches. If that error still occurs, the harness
+attaches aggregate TCP state counts to the affected test.
+
 ## Active and archived workflows
 
-Only `webui-ci.yml` remains in `.github/workflows/`. The following inherited
+Two workflows are active in `.github/workflows/`: `webui-ci.yml`, the gate above,
+and `update-visual-baselines.yml`, a manual dispatch that re-records the
+per-platform screenshot baselines. The refresh runs the same specs on the same
+three runners and commits what each of them produced, because a baseline can
+only be regenerated on the platform that compares against it. It renders in
+the browser mode the CI compares with — windowed Chromium on macOS — and it
+cannot publish anything. The following inherited
 workflows are archived under `.github/legacy-workflows/`: Source verification,
 CLI release, Node compatibility, Performance,
 Release audit, Source candidate, Label issue product, Sync GitHub issues to
@@ -71,3 +100,17 @@ outside this CI scope and have not been remediated by disabling Release audit.
 
 Automatic CI does not impose merge protection. Required checks and branch rules
 remain a separate repository setting.
+
+## Manual WebUI npm release checklist
+
+1. Check the published versions with
+   `npm view @minimax-webui/minimax-code versions --json`. Set the next unused
+   release version in `release/webui-npm/package.json` and include that change in
+   the reviewed source revision.
+2. Build from that revision with `pnpm package:webui-npm` and verify the exact
+   release directory with
+   `pnpm test:webui-package --package-dir dist-webui-npm`. Supply the Chrome store
+   public key through `MAVIS_BROWSER_STORE_CHROME_PUBLIC_KEY` when building.
+3. Check that the installed version reported by verification matches the version
+   in the source manifest. After publishing the verified artifact, confirm the
+   registry reports the same version for the intended dist-tag.

@@ -197,6 +197,7 @@ function steerActivationInput(
       ? { admissionPriority: { kind: 'paused-queue-send' as const } }
       : {}),
     ...(input.outputContract ? { outputContract: input.outputContract } : {}),
+    ...(input.capabilitySelection ? { capabilitySelection: input.capabilitySelection } : {}),
     ...(input.admissionPriority ? { admissionPriority: input.admissionPriority } : {}),
     ...(input.sourceMessageId ? { sourceMessageId: input.sourceMessageId } : {}),
     ...(input.userMessageId ? { userMessageId: input.userMessageId } : {}),

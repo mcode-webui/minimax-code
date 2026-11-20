@@ -251,7 +251,7 @@ describe("WebUI shell", () => {
     const markup = renderToStaticMarkup(createElement(WebuiWorkspacePanel, { state, dispatch: () => undefined, workspaceDir: "/tmp" }));
     expect(markup).toContain('data-testid="workspace-panel"');
     expect(markup).toContain("查看文件");
-    expect(markup).toContain("画布");
+    expect(markup).toContain("Design");
     expect(markup).toContain("终端");
     expect(markup).not.toContain('data-webui-progress-panel="true"');
     // The browser tool tab is gone: the panel's tabs are web tabs now, and a
@@ -1227,10 +1227,9 @@ describe("WebUI shell layout", () => {
   it("uses token-derived colour utilities and the shell's component classes", () => {
     const html = renderShell();
 
-    expect(html).toMatch(/text-text_default_primary/u);
-    // The tertiary text token is used as a fill here (the rail grip); the shell
-    // no longer paints a tertiary *text* colour, so the sample follows the
-    // declaration that carries it.
+    // 前景文案是可访问的标题，背景品牌字只承担装饰作用。
+    expect(html).toMatch(/<h1[^>]*text-text_default_primary[^>]*>.*让灵感自由生长，.*让创造触手可及.*<\/h1>/u);
+    expect(html).toMatch(/<canvas[^>]*aria-hidden="true"[^>]*data-webui-home-pixel-wordmark="true"/u);
     expect(html).toMatch(/bg-text_default_tertiary/u);
     expect(html).toMatch(/text-icon_default_tertiary/u);
     expect(html).toMatch(/border-border_default/u);
@@ -1249,6 +1248,23 @@ describe("WebUI shell layout", () => {
     expect(styles).toMatch(/color:\s*var\(--text_default_secondary\)/u);
     expect(styles).toMatch(/font-size:\s*var\(--size_12\)/u);
     expect(styles).toMatch(/line-height:\s*var\(--line_height_16\)/u);
+    // 背景像素品牌字的色阶仍与蓝紫基础色保持一致。
+    const surface = readFileSync(
+      new URL("../../src/client/shell/HomeOctoCameo.tsx", import.meta.url),
+      "utf8",
+    );
+    const tokens = readFileSync(
+      new URL("../../src/client/styles/tokens.css", import.meta.url),
+      "utf8",
+    );
+    for (const step of ["blue_400", "purple_400"]) {
+      const value = new RegExp(`--${step}:\\s*(#[0-9a-f]{6})`, "iu").exec(tokens)?.[1];
+      expect(value, `tokens.css has no --${step}`).toBeTruthy();
+      expect(
+        surface.toLowerCase(),
+        `the background wordmark's colour drifted from --${step}`,
+      ).toContain(value);
+    }
 
     expect(html).toMatch(/webui-nav-item/u);
     expect(html).toMatch(/webui-composer-input/u);
@@ -1343,7 +1359,9 @@ describe("WebUI shell layout", () => {
     // what left a user staring at a chip that would not open -- and a reload
     // was the only thing that brought it back.
     // The 应用 launcher joined the ledger when it replaced the inert 网站 row.
-    expect(operable).toHaveLength(14);
+    // Native Design opens its authenticated standalone browser page.
+    expect(operable).toHaveLength(15);
+    expect(html).toMatch(/data-webui-nav-item="Design"/u);
     expect(html).toMatch(/data-webui-nav-item="应用"/u);
     expect(html).toMatch(/data-webui-model-selector="true"/u);
     expect(html).not.toMatch(/data-webui-model-selector="true"[^>]*\sdisabled/u);
@@ -1398,26 +1416,20 @@ describe("WebUI shell layout", () => {
     const html = renderShell();
 
     expect(html).toMatch(/data-webui-home-content="true"/u);
-    expect(html).toContain("MiniMax Code Web，让工作更简单。");
-    // The hero column keeps its 743px width below a 240px spacer.
+    expect(html).toContain("MiniMax Code");
+    expect(html).toMatch(/<h1[^>]*>.*让灵感自由生长，.*让创造触手可及.*<\/h1>/u);
+    expect(html).toMatch(/<canvas[^>]*aria-hidden="true"[^>]*data-webui-home-pixel-wordmark="true"/u);
+    // The hero column keeps its 743px width, and the home surface centres what
+    // it holds vertically: one full-bleed flex spacer above the column and one
+    // below take the free height between them, so the block sits in the middle
+    // of the surface instead of below the fixed 240px lead it used to have.
     expect(html).toMatch(/max-w-\[743px\]/u);
-    // The spacer is decorative, full-bleed, and holds its size in the flex
-    // column. Its height is 240px as a *cap*, not a literal:
-    // d9b9519 ("update onboarding layout and responsive design") made the
-    // spacer responsive with `h-[clamp(96px,24vh,240px)]`, which still resolves
-    // to 240px on a tall window and only shrinks on short ones.
-    // Asserting the cap keeps the 240px headroom under test while leaving the
-    // responsive expression free to move; pinning the exact utility string
-    // would fail again on the next viewport pass without catching a real
-    // regression.
-    const spacerMatch = html.match(/<div aria-hidden="true" class="([^"]*)"><\/div>/u);
-    expect(spacerMatch, "home hero spacer is missing").not.toBeNull();
-    const spacerClasses = spacerMatch?.[1] ?? "";
-    // h-[…] whose expression names 240px, so the headroom is bounded by that
-    // value and never grows past it.
-    expect(spacerClasses, "spacer height must stay capped at 240px").toMatch(/(?:^|\s)h-\[[^\]]*\b240px\b[^\]]*\]/u);
-    expect(spacerClasses, "spacer must stay full-bleed").toMatch(/(?:^|\s)w-full(?:\s|$)/u);
-    expect(spacerClasses, "spacer must not shrink in the flex column").toMatch(/(?:^|\s)shrink(?:\s|$)/u);
+    const spacers = [...html.matchAll(/<div aria-hidden="true" class="([^"]*)"><\/div>/gu)];
+    expect(spacers, "home needs a spacer above and below the column").toHaveLength(2);
+    for (const [, spacerClasses] of spacers) {
+      expect(spacerClasses, "spacer must be full-bleed").toMatch(/(?:^|\s)w-full(?:\s|$)/u);
+      expect(spacerClasses, "spacer must take the free height").toMatch(/(?:^|\s)flex-1(?:\s|$)/u);
+    }
     expect(html).not.toMatch(/data-webui-recommendations="true"/u);
     expect(html).not.toMatch(/data-webui-conversation-source="true"/u);
     // New Task is the clean home state, not the WebUI-only create-session

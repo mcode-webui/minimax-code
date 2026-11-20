@@ -12,6 +12,7 @@ import type {
   AskQuestionnaireRequest,
 } from '@mavis/shared/questionnaire';
 import type { MiniAppAgentPolicy, MiniAppPermissionSwitchPort } from '../contracts.js';
+import { AgentTurnError } from '../../agent-turn/contracts.js';
 
 
 /**
@@ -274,10 +275,9 @@ export function isMiniAppAgentBusyReason(value: unknown): value is MiniAppAgentB
   return value === 'session_busy' || value === 'queue_full';
 }
 
-export class MiniAppAgentError extends Error {
+export class MiniAppAgentError extends AgentTurnError {
   override readonly name = 'MiniAppAgentError';
-  readonly code: MiniAppAgentErrorCode;
-  readonly retryable: boolean;
+  declare readonly code: MiniAppAgentErrorCode;
   /** Set on every `BUSY`; absent (not an own property) otherwise. */
   declare readonly reason?: MiniAppAgentBusyReason;
 
@@ -287,10 +287,7 @@ export class MiniAppAgentError extends Error {
     retryable = false,
     reason?: MiniAppAgentBusyReason,
   ) {
-    super(message);
-    this.code = code;
-    this.retryable = retryable;
-    if (reason !== undefined) this.reason = reason;
+    super(code, message, retryable, reason);
   }
 }
 

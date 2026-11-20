@@ -10,6 +10,7 @@ import {
 } from './infra/runtime-owner/index.js';
 import { Scheduler, type SchedulerClient, type SchedulerOptions } from './infra/scheduler/index.js';
 import { pruneTransientStorage } from './infra/storage-retention/index.js';
+import { traceRuntimeShutdownPhase } from './infra/shutdown-diagnostics.js';
 
 interface BackgroundRuntimeClients {
   /** Scheduler is an Electron-owned capability; embedded CLI keeps only the event bus. */
@@ -142,11 +143,13 @@ export async function createBackgroundRuntime(
       firstError = error;
     }
     try {
+      traceRuntimeShutdownPhase('await_background_maintenance');
       await maintenancePromise;
     } catch (error) {
       firstError ??= error;
     }
     try {
+      traceRuntimeShutdownPhase('release_runtime_owner');
       await runtimeOwnerIdentity.close();
     } catch (error) {
       firstError ??= error;

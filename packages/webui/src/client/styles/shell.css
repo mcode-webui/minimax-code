@@ -46,6 +46,26 @@
     box-shadow: 0 0 20px 0 var(--shadow_default);
   }
 
+  .webui-home-avatar {
+    width: 94px;
+    height: 94px;
+  }
+
+  .webui-home-tagline {
+    margin: 0;
+    font-size: var(--size_24);
+    font-weight: var(--weight_medium);
+    line-height: var(--line_height_36);
+    text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .webui-home-tagline {
+      font-size: var(--size_32);
+      line-height: var(--line_height_40);
+    }
+  }
+
   /* Resizer affordance: a 48px pill that appears on rail hover. */
   .webui-rail-grip {
     width: 3px;

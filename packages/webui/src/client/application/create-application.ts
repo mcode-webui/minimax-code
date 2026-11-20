@@ -16,6 +16,7 @@
 
 import { createWebuiPortSlices, type WebuiPortSlices } from "./port-slices.js";
 import { createWebuiMiniAppPresenterCoordinator } from "./miniapp-presenter.js";
+import { createDesignOwner } from "../features/design/application/design-owner.js";
 import {
   createWebuiSessionComposerAccess,
   createWebuiSessionWorkflows,
@@ -393,6 +394,7 @@ export interface WebuiApplication {
   /** The Mini App business's owner: catalogue, presentations and refusals. */
   readonly miniAppWorkflows: ReturnType<typeof createWebuiMiniAppWorkflows>;
   readonly miniAppPresenter: ReturnType<typeof createWebuiMiniAppPresenterCoordinator>;
+  readonly design: ReturnType<typeof createDesignOwner>;
   /** The composer's plugin/skill read model, separate from the manager's. */
   readonly composerPluginCatalogue: ReturnType<typeof createWebuiComposerPluginCatalogue>;
   /** The plan-review reply workflow. */
@@ -595,6 +597,11 @@ export function createWebuiApplication(
     // The permanent routes, installed here — before `start` opens ingress —
     // and outside anything a view can replace, so no surface can displace them.
     routes: {
+      designEvent: (event) => {
+        if (event.type === "design.changed") { design.invalidate(); return; }
+        const payload = event.payload;
+        if (typeof payload.id === "string" && typeof payload.sessionId === "string" && typeof payload.documentId === "string") design.present({ id: payload.id, sessionId: payload.sessionId, documentId: payload.documentId, createdAt: String(payload.createdAt ?? "") });
+      },
       setGoal: (sessionId, goal) => goals.owner(sessionId).applyGoal(goal),
       refreshGoal: (sessionId) => goals.owner(sessionId).refreshGoal(),
       invalidatePending: (sessionId) => interactions.owner(sessionId).invalidatePendingReads(),
@@ -950,6 +957,14 @@ export function createWebuiApplication(
     selected: () => store.getSelectedSessionId(),
     open: miniAppWorkflows.open,
   });
+  const design = createDesignOwner({
+    port: slices.design,
+    // The settings workflow owns the handshake version: it reads it from the
+    // bridge and publishes it. The design surface shows the same fact, so it
+    // reads that snapshot rather than asking the bridge a second time.
+    readVersion: () => settingsWorkflows.getSnapshot().runtimeVersion.value,
+    subscribeVersion: settingsWorkflows.subscribe,
+  });
   // The composer's view of what is installed and what the agent can run: a
   // separate read model from `pluginWorkflows` on purpose, so neither overwrites
   // the other when one reloads.
@@ -1107,6 +1122,7 @@ export function createWebuiApplication(
     pluginWorkflows,
     miniAppWorkflows,
     miniAppPresenter,
+    design,
     composerPluginCatalogue,
     activeTurnProbe,
     planReviewWorkflow,
@@ -1173,6 +1189,7 @@ export function createWebuiApplication(
       shutDown("settings owner", () => settingsWorkflows.dispose());
       shutDown("Mini App owner", () => miniAppWorkflows.dispose());
       shutDown("Mini App presenter", () => miniAppPresenter.dispose());
+      shutDown("Design owner", () => design.dispose());
       shutDown("channel owner", () => channelOwner.dispose());
       shutDown("workspace owners", () => workspaceQueries.dispose());
       shutDown("workspace review resource", () => workspaceReview.dispose());

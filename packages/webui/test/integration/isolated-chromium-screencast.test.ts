@@ -82,12 +82,54 @@ describe.skipIf(!available)("the isolated Chromium's screencast", () => {
     const selected = (await provider.listTargets()).find((entry) => entry.selected);
     if (!selected) throw new Error("the provider reported no selected target");
     await provider.sendCommand(selected.id, "Page.navigate", { url });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const current = (await provider.listTargets()).find(
-      (entry) => entry.id.targetId === selected.id.targetId,
-    );
-    if (!current) throw new Error("the navigated page is not in the target list");
-    return { targetId: current.id.targetId, id: current.id };
+    const id = await waitForLoadedPage(selected.id.targetId, selected.id);
+    return { targetId: id.targetId, id };
+  }
+
+  /**
+   * Wait for the page to finish loading, and say the page that is there now.
+   *
+   * The navigation is answered before the page has loaded, so a fixed wait
+   * hands the next action to a page that is not there yet: the click is lost
+   * and the case reports that the click did not land, when the page was
+   * simply not ready for it. A loaded machine and a loaded runner differ by
+   * exactly that much time.
+   */
+  async function waitForLoadedPage(
+    targetId: string,
+    before: WebuiBrowserTargetId,
+  ): Promise<WebuiBrowserTargetId> {
+    const deadline = Date.now() + 15_000;
+    for (;;) {
+      const current = (await provider.listTargets()).find(
+        (entry) => entry.id.targetId === targetId,
+      );
+      if (!current) throw new Error("the navigated page is not in the target list");
+      // A page that navigated is a different page: it carries a new
+      // generation, and an input aimed at the previous one is refused. The
+      // new generation is therefore part of what "the page is there now"
+      // means, and waiting for it is what keeps the click deliverable.
+      if (current.id.generation === before.generation) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (Date.now() >= deadline) {
+          throw new Error("the navigated page did not become the page that is there now");
+        }
+        continue;
+      }
+      try {
+        const ready = (await provider.sendCommand(current.id, "Runtime.evaluate", {
+          expression: "document.readyState",
+          returnByValue: true,
+        })) as { result?: { value?: unknown } } | undefined;
+        if (ready?.result?.value === "complete") return current.id;
+      } catch {
+        // The page is navigating: there is no context to answer in yet.
+      }
+      if (Date.now() >= deadline) {
+        throw new Error("the navigated page did not finish loading");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
 
   it("keeps delivering frames while the page changes", async () => {
@@ -154,13 +196,23 @@ describe.skipIf(!available)("the isolated Chromium's screencast", () => {
       y: onSurface.y,
       button: "left",
     });
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const clicked = (await provider.sendCommand(id, "Runtime.evaluate", {
-      expression: "document.getElementById('log').textContent",
-      returnByValue: true,
-    })) as { result?: { value?: unknown } } | undefined;
-    expect(clicked?.result?.value).toBe("clicked");
+    // The page is polled for the click, not slept through: the click is
+    // delivered to the browser and the page answers in its own time, and a
+    // fixed wait reports a click that has not been handled yet as a click
+    // that never landed.
+    const deadline = Date.now() + 15_000;
+    let clicked: unknown;
+    for (;;) {
+      const read = (await provider.sendCommand(id, "Runtime.evaluate", {
+        expression: "document.getElementById('log').textContent",
+        returnByValue: true,
+      })) as { result?: { value?: unknown } } | undefined;
+      clicked = read?.result?.value;
+      if (clicked === "clicked") break;
+      if (Date.now() >= deadline) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(clicked).toBe("clicked");
     expect(targetId).toBeTruthy();
   });
 });

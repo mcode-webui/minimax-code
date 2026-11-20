@@ -33,6 +33,7 @@ import type { MiniAppPort } from "../features/miniapp/contracts/miniapp-port.js"
 import type { ChannelPort } from "../features/channel/contracts/channel-port.js";
 import type { RemoteControlPort } from "../features/remote-control/contracts/remote-control-port.js";
 import type { SshPort } from "../features/ssh/contracts/ssh-port.js";
+import type { DesignPort } from "../features/design/contracts/design-port.js";
 
 export interface WebuiTransport
   extends SessionPort,
@@ -53,4 +54,5 @@ export interface WebuiTransport
     MiniAppPort,
     ChannelPort,
     RemoteControlPort,
-    SshPort {}
+    SshPort,
+    DesignPort {}

@@ -1,4 +1,5 @@
-import type { ReactElement, ReactNode } from "react";
+import { useRef, type ReactElement, type ReactNode } from "react";
+import { HomeOctoCameo } from "./HomeOctoCameo.js";
 import { WebuiIconHomeBrand } from "./icons.js";
 import { WebuiWorkspacePanelControls } from "../features/workspace/ui/WorkspacePanelControls.js";
 import { WebuiInline, WebuiStack } from "../ui/layout-primitives.js";
@@ -23,6 +24,7 @@ export function ConversationSurface(props: {
   readonly progressPanel: ReactNode;
   readonly workspacePanel?: ReactElement;
 }): ReactElement {
+  const heroRef = useRef<HTMLDivElement | null>(null);
   return (
     <WebuiSkeletonProjection>
       <>
@@ -74,20 +76,21 @@ export function ConversationSurface(props: {
             <div
               className={
                 props.home
-                  ? "flex min-h-0 w-full flex-1 flex-col items-center relative overflow-hidden"
+                  ? "flex min-h-0 w-full flex-1 flex-col items-center relative isolate overflow-hidden"
                   : `flex min-h-0 w-full flex-1 flex-col items-center relative overflow-hidden pt-spacing_24 ${props.progressOpen ? "webui-session-has-progress-panel" : ""}`
               }
               data-webui-home-content={props.home ? "true" : "false"}
               data-webui-session-layout={!props.home ? "true" : undefined}
             >
+              {props.home ? <HomeOctoCameo heroRef={heroRef} /> : null}
               {props.home ? (
                 <div
                   aria-hidden="true"
-                  className="h-[clamp(96px,24vh,240px)] w-full shrink"
+                  className="min-h-spacing_24 w-full flex-1"
                 />
               ) : null}
               <WebuiStack
-                gap="small"
+                gap={props.home ? "none" : "small"}
                 align="center"
                 className={
                   props.home
@@ -96,26 +99,29 @@ export function ConversationSurface(props: {
                 }
               >
                 {props.home ? (
-                  <WebuiStack
-                    gap="small"
-                    align="center"
-                    className="text-center [@media(max-height:300px)]:hidden"
+                  <div
+                    ref={heroRef}
+                    className="webui-home-hero w-full [@media(max-height:300px)]:hidden"
                   >
-                    <div className="group/avatar relative size-[94px] flex-shrink-0">
-                      <div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary">
-                        <WebuiInline
-                          as="span"
-                          justify="center"
-                          className="absolute inset-0 overflow-hidden rounded-full"
-                        >
-                          <WebuiIconHomeBrand className="h-full w-full" />
-                        </WebuiInline>
+                    <WebuiStack gap="small" align="center">
+                      <div className="webui-home-avatar group/avatar relative flex-shrink-0">
+                        <div className="webui-hero-avatar relative h-full w-full overflow-visible rounded-full bg-bg_grouped_tertiary">
+                          <WebuiInline
+                            as="span"
+                            justify="center"
+                            className="absolute inset-0 overflow-hidden rounded-full"
+                          >
+                            <WebuiIconHomeBrand className="h-full w-full" />
+                          </WebuiInline>
+                        </div>
                       </div>
-                    </div>
-                    <h1 className="text-[28px] font-medium leading-tight text-text_default_primary">
-                      MiniMax Code Web，让工作更简单。
-                    </h1>
-                  </WebuiStack>
+                      <h1 className="webui-home-tagline mt-spacing_8 w-full text-text_default_primary">
+                        <span className="inline-block">让灵感自由生长，</span>
+                        <wbr />
+                        <span className="inline-block">让创造触手可及</span>
+                      </h1>
+                    </WebuiStack>
+                  </div>
                 ) : null}
                 {props.usageBanner}
                 {props.connectionStatus}
@@ -137,6 +143,12 @@ export function ConversationSurface(props: {
                   ) : null}
                 </div>
               </WebuiStack>
+              {props.home ? (
+                <div
+                  aria-hidden="true"
+                  className="min-h-spacing_24 w-full flex-1"
+                />
+              ) : null}
             </div>
           </WebuiMotionSlot>
         </WebuiStack>

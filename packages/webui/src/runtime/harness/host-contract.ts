@@ -12,6 +12,8 @@
 // the profile files itself (`harness/settings.ts` -> `profile-files.ts`).
 
 import type { CliService } from "@mavis/local-runtime-v2/cli-service";
+import type { WebuiDesignService } from "../design/design-service.js";
+import type { NativeDesignExecution } from "@mavis/local-runtime-v2/process-local";
 /**
  * The request one host member takes, as the host itself declares it.
  *
@@ -724,6 +726,8 @@ export interface WebuiRuntimeCliService {
 }
 
 export interface WebuiRuntimeHostHandle {
+  readonly designExecution?: NativeDesignExecution;
+  readonly design?: WebuiDesignService;
   /** Register a process resource with the assembly's close owner. */
   readonly registerShutdownResource?: (dispose: () => Promise<void>) => void;
   readonly apiHost: { close(): Promise<void> };

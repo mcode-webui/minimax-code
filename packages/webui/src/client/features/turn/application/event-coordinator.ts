@@ -247,6 +247,7 @@ export interface WebuiWorkspaceGitChangedPayload {
  * `createWebuiApplication` always installs them.
  */
 export interface WebuiDomainEventRoutes {
+  readonly designEvent?: (event: WebuiRuntimeEvent) => void;
   /** The goal write path for one session, through that session's owner. */
   readonly setGoal: (sessionId: string, goal: WebuiGoal | undefined) => void;
   /** The steering re-read for one session, through that session's owner. */
@@ -349,6 +350,10 @@ export function createWebuiEventCoordinator(
   const handleEvent = (event: WebuiRuntimeEvent): void => {
     if (store.isDisposed()) return;
     activity.recordEvent(event);
+    if (event.type === "design.open" || event.type === "design.changed") {
+      deps.routes.designEvent?.(event);
+      return;
+    }
     // A workspace-git event carries no session id. It is routed to the
     // application-wide invalidation hook, not a per-session effect, so the
     // workspace panels' git and review queries are invalidated through the

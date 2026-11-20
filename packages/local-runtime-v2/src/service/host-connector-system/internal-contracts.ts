@@ -10,7 +10,8 @@ export interface ConnectorAuditEvent {
   readonly invocationId: string;
   readonly principalEpoch: number;
   readonly inventoryRevision: number;
-  readonly callerKind: 'host-process';
+  readonly callerKind: 'host-process' | 'native-client';
+  readonly clientId?: string;
   readonly pluginId?: string;
   readonly processGeneration?: string;
   readonly clientRequestId?: string;

@@ -1,4 +1,6 @@
 import type { RunawayGuardOverride } from '@mavis/config';
+import type { NativeDesignToolAdapter, NativeDesignExecution } from './design-host-contract.js';
+export type { NativeDesignToolAdapter, NativeDesignExecution } from './design-host-contract.js';
 import type {
   CreateLocalRuntimeHostOptions as V1CreateLocalRuntimeHostOptions,
   CreatedLocalRuntimeHost as V1CreatedLocalRuntimeHost,
@@ -43,6 +45,7 @@ interface LocalRuntimeSystemPromptOverrides {
 
 /** Product-facing options owned by the Runtime V2 process-local host. */
 interface LocalRuntimeProductHostOptions extends V1LocalRuntimeProductHostOptions {
+  readonly designTool?: NativeDesignToolAdapter;
   /** Best-effort DB upgrade observations; never awaited by startup. */
   onDatabaseMigration?: (event: DatabaseMigrationObservation) => undefined;
   configSource?: 'default' | 'explicit';
@@ -62,6 +65,7 @@ interface LocalRuntimeProductHostOptions extends V1LocalRuntimeProductHostOption
 
 /** Runtime V2 host options after process-local compatibility wiring. */
 interface CreateLocalRuntimeHostOptions extends V1CreateLocalRuntimeHostOptions {
+  readonly designTool?: NativeDesignToolAdapter;
   /** Best-effort DB upgrade observations; never awaited by startup. */
   onDatabaseMigration?: (event: DatabaseMigrationObservation) => undefined;
   configSource?: 'default' | 'explicit';
@@ -80,6 +84,7 @@ interface CreateLocalRuntimeHostOptions extends V1CreateLocalRuntimeHostOptions 
 
 /** Runtime V2 owner host with its process-local application facade. */
 interface CreatedLocalRuntimeHost extends V1CreatedLocalRuntimeHost {
+  readonly designExecution?: NativeDesignExecution;
   application?: LocalRuntimeApplication;
   cliService?: import('./cli-service.js').CliService;
 }

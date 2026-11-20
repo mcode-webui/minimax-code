@@ -28,15 +28,19 @@ const WEBUI_MAX_IMPORT_BYTES = 256 * 1024 * 1024;
 export function readRequestBody(
   request: IncomingMessage,
   maxBytes: number = WEBUI_MAX_IMPORT_BYTES,
+  options: { readonly keepConnectionOnLimit?: boolean } = {},
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
+    let exceeded = false;
     request.on("data", (chunk: Buffer) => {
+      if (exceeded) return;
       size += chunk.length;
       if (size > maxBytes) {
-        reject(new Error("Request body too large"));
-        request.destroy();
+        exceeded = true;
+        reject(Object.assign(new Error("Request body too large"), { code: "payload_too_large" }));
+        if (!options.keepConnectionOnLimit) request.destroy();
         return;
       }
       chunks.push(chunk);

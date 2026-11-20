@@ -80,6 +80,7 @@
  * DAEMON_UNAVAILABLE, …).
  */
 import { ackTypeForCmd, errTypeForCmd, makeFrame } from "./frame-codec.js";
+import { boundHistoryPage } from "./session-history-bounds.js";
 import type { AttachmentFetcher, RcFetchedAttachment } from "./attachment-fetch.js";
 import type {
   CommandRouter,
@@ -96,6 +97,11 @@ export const DEFAULT_AGENT_NAME = "mavis";
 
 export const CMD_DEDUP_TTL_MS = 5 * 60 * 1000;
 export const CMD_DEDUP_MAX_ENTRIES = 512;
+const REPLY_CACHE_MAX_FRAME_BYTES = 64 * 1024;
+const READ_ONLY_COMMAND_TYPES = new Set([
+  "cmd.session.list", "cmd.session.history", "cmd.session.get", "cmd.workspace.list",
+  "cmd.model.list", "cmd.projects.list", "cmd.pinned.list", "cmd.skill.list",
+]);
 
 /** Synthetic origin for in-process Requests — routing is pathname-only. */
 const LOCAL_ORIGIN = "http://rc-bridge.local";
@@ -160,12 +166,16 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
   const nowMs = deps.nowMs ?? Date.now;
   // owner + cmd.id → cached reply frame (ack or err), 5min TTL LRU (Map keeps
   // insertion order; refreshed entries are re-inserted at the tail).
-  const replyCache = new Map<string, { frame: WsEnvelope; expiresAtMs: number }>();
+  const replyCache = new Map<string, { frame?: WsEnvelope; expiresAtMs: number }>();
   const inFlight = new Set<string>();
 
   function cacheReply(cmdId: string, frame: WsEnvelope): void {
     replyCache.delete(cmdId);
-    replyCache.set(cmdId, { frame, expiresAtMs: nowMs() + CMD_DEDUP_TTL_MS });
+    const keepFrame = Buffer.byteLength(JSON.stringify(frame), "utf8") <= REPLY_CACHE_MAX_FRAME_BYTES;
+    replyCache.set(cmdId, {
+      ...(keepFrame ? { frame } : {}),
+      expiresAtMs: nowMs() + CMD_DEDUP_TTL_MS,
+    });
     while (replyCache.size > CMD_DEDUP_MAX_ENTRIES) {
       const oldest = replyCache.keys().next().value;
       if (oldest === undefined) break;
@@ -173,14 +183,14 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
     }
   }
 
-  function cachedReply(cmdId: string): WsEnvelope | undefined {
+  function cachedReply(cmdId: string) {
     const entry = replyCache.get(cmdId);
     if (!entry) return undefined;
     if (entry.expiresAtMs <= nowMs()) {
       replyCache.delete(cmdId);
       return undefined;
     }
-    return entry.frame;
+    return entry;
   }
 
   return {
@@ -210,7 +220,7 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
         outcome: "started",
       });
       const cached = cachedReply(commandKey);
-      if (cached) {
+      if (cached?.frame) {
         logRcCase(deps.logger, "info", {
           ...caseBase,
           stage: "command_deduplicated",
@@ -218,9 +228,17 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
           elapsed_ms: Math.max(0, nowMs() - startedAtMs),
         });
         deps.logger.info(
-          `[rc.router] duplicate cmd id=${cmd.id} → re-sending cached ${cached.type}`,
+          `[rc.router] duplicate cmd id=${cmd.id} → re-sending cached ${cached.frame.type}`,
         );
-        reply(cached);
+        reply(cached.frame);
+        return;
+      }
+      if (cached && !isReadOnlyCommand(cmd)) {
+        reply(makeFrame(errTypeForCmd(cmd.type), {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "the command already ran; its reply was too large to keep, refresh to read the result",
+          retryable: false,
+        }, { inReplyTo: cmd.id, traceId }));
         return;
       }
       if (inFlight.has(commandKey)) {
@@ -364,6 +382,12 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
       }
     },
   };
+}
+
+function isReadOnlyCommand(cmd: WsEnvelope): boolean {
+  if (!cmd.route) return READ_ONLY_COMMAND_TYPES.has(cmd.type);
+  const method = cmd.route.method.toUpperCase();
+  return method === "GET" || method === "HEAD";
 }
 
 type DispatchOutcome =
@@ -621,14 +645,15 @@ async function sessionHistory(
   if (!response.ok) return { kind: "err", err: await toErrShape(response, "session") };
   const body = await readJson(response);
   const messages = Array.isArray(body.messages) ? body.messages : [];
+  const page = boundHistoryPage(messages);
   deps.logger.info(
-    `[rc.router] ${cmd.type} id=${cmd.id} route=${routeForLog(url)} status=${response.status} count=${messages.length}`,
+    `[rc.router] ${cmd.type} id=${cmd.id} route=${routeForLog(url)} status=${response.status} count=${messages.length - page.droppedMessages} bytes=${Buffer.byteLength(page.messagesJson, "utf8")} dropped_messages=${page.droppedMessages}`,
   );
   // GetMessages pages come back ascending/chronological — the sqlite reader
   // (listDisplayMessageRows) selects newest-first then reverses, and sets
   // its own nextCursor to messages[0].msg_id. So the page's oldest row is
   // messages[0]; its msg_id is the IDL oldest_msg_id (next before_msg_id).
-  const first = messages[0];
+  const first = messages[page.droppedMessages];
   const oldestMsgId =
     first && typeof first === "object" && !Array.isArray(first)
       ? (readString((first as Payload).msg_id) ?? readString((first as Payload).msgId))
@@ -636,11 +661,9 @@ async function sessionHistory(
   return {
     kind: "ack",
     payload: {
-      // AgentMessageProtocol[] passed through verbatim — rgw re-embeds
-      // messages_json byte-for-byte into `messages`; individual message
-      // objects are never reshaped here.
-      messages_json: JSON.stringify(messages),
-      has_more: readBoolean(body.has_more) ?? readBoolean(body.hasMore) ?? false,
+      messages_json: page.messagesJson,
+      has_more: page.droppedMessages > 0 ||
+        (readBoolean(body.has_more) ?? readBoolean(body.hasMore) ?? false),
       oldest_msg_id: oldestMsgId ?? "",
     },
   };
@@ -655,6 +678,19 @@ async function sessionSend(
 ): Promise<DispatchOutcome> {
   const sessionId = readString(payload.session_id);
   if (!sessionId) return missingField("session_id");
+  if (
+    readString(payload.retry_message_id) || readString(payload.retryMessageId) ||
+    readString(payload.discard_message_id) || readString(payload.discardMessageId)
+  ) {
+    return {
+      kind: "err",
+      err: {
+        code: "NOT_IMPLEMENTED",
+        message: "retrying or discarding a side message is not supported by this runtime",
+        retryable: false,
+      },
+    };
+  }
   const content = readString(payload.content);
   if (content === undefined) return missingField("content");
   // The protocol and legacy endpoints deliberately receive separately-
@@ -720,7 +756,7 @@ async function sessionSend(
     };
   }
   const sendErr = await readErrorBody(sendResponse);
-  if (sendResponse.status === 409 && isBusyCode(sendErr.rawCode)) {
+  if (sendResponse.status === 409 && canQueueSend(sendErr.rawCode, protocolBody.client_intent !== undefined)) {
     // D-8: busy path — enqueue instead (the protocol queue keeps turn
     // ordering).
     const protocolQueuePath = `${PROTOCOL_API}/session/${encodeURIComponent(sessionId)}/queue`;
@@ -2069,6 +2105,12 @@ type ErrDomain = "session" | "permission" | "workspace" | "model" | "projects" |
 
 function isBusyCode(rawCode: string | undefined): boolean {
   return rawCode === "local_session_busy" || rawCode === "local_session_has_queued_messages";
+}
+
+function canQueueSend(code: string | undefined, hasClientIntent: boolean): boolean {
+  return isBusyCode(code) || (!hasClientIntent && (
+    code === "local_turn_ingress_conflict" || code === "local_turn_continuation_unavailable"
+  ));
 }
 
 function toProtocolBatchPermissionDecision(decision: string): 0 | 1 | 2 | undefined {

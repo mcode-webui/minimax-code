@@ -1,75 +1,63 @@
-# Verification and delivery
+# Verification
 
-Read current `packages/webui/AGENTS.md`, `docs/verification/gates.md`, `docs/verification/browser-suite.md`, root `CONTRIBUTING.md`, `scripts/verify.mjs` and applicable `.agents/skills/testing-workflow/SKILL.md`. The tables below route work; current commands and required gates remain repository authority.
+Gate commands, what each one rejects, and the browser suite's own rules live in
+`packages/webui/docs/verification/{gates,browser-suite}.md` — read them rather than a copy of them. This
+file holds only the traps in running those checks and the boundaries of what the evidence proves.
 
-## Select the narrowest relevant checks
+## Traps in running the checks
 
-Reuse passing gate evidence: before starting a check, inspect results for the same commit, gate and
-platform. Run each applicable check once for unchanged inputs; after a passing `pnpm verify`, do not
-repeat its constituent checks for reassurance. Rerun when relevant source, configuration or generated
-inputs change, a result failed or did not finish, or the required platform is uncovered. Select only
-the smallest gates that cover the files and behavior changed in this task. The latest direct user
-instruction overrides older repository or skill wording that asks for broader verification. Do not
-run aggregate gates or full suites by default; run a full gate only when the user explicitly asks.
+- **The fixture port is shared.** It is hard-coded in `playwright.config.mjs` and `test/browser/server.mjs`
+  and used by every session on the machine. Check it before blaming a change: a run ending in
+  `ECONNREFUSED`, or a missing server id in the harness `afterEach`, is a scheduling collision, not a
+  result. Run the non-browser gates, then re-run the spec unchanged once the port is clear.
+- **A browser observation is only about the current build.** The dev entry serves the prebuilt bundle and
+  the client script carries no cache headers, so a plain reload after a rebuild still runs the old
+  `client.js`. Build (`pnpm build:webui`; `pnpm --filter @mavis/webui build:styles` for CSS), then navigate
+  with `?cachebust=<Date.now()>` before treating an absent element as evidence. Never drive the user's
+  running instance: their page cannot separate a wiring bug from a stale bundle.
+- **`check:webui-presentation --accept-review` records the whole tree**, so it cannot run while another
+  session's edits are in flight. Check whether *your* module is in the `REVIEW REQUIRED` list (cross-check
+  `git status --porcelain`; a flagged file you never touched is someone else's drift) and report the list.
+- **The accessibility gate fails in both directions.** `test/browser/rendering-integrity.spec.mjs` produces
+  contrast, `target-size` and `aria-required-children` findings; `test/gates/webui-accessibility-gate.test.ts`
+  proves the dispositions. An undispositioned finding fails, and a recorded finding that has gone also
+  fails — so a fix requires updating the recording in the same change.
+- **A new Vitest file must join the `webui` group in `test/vitest-suites.json`**, or no gate ever runs it.
+  For a focused run use the root config:
+  `pnpm exec vitest run --config vitest.oss.config.mjs <file>`.
 
-| Change | Focused verification, followed by applicable delivery gates |
-| --- | --- |
-| Client TypeScript | `pnpm --filter @mavis/webui typecheck:client` |
-| Server/runtime TypeScript | `pnpm --filter @mavis/webui typecheck:server` |
-| Changed TypeScript tests | `pnpm --filter @mavis/webui typecheck:test` |
-| Business behavior | Relevant declared Vitest file |
-| Imports, roles, publication, file movement | `pnpm check:webui-dependency` |
-| A client UI module added, moved or reclassified | `pnpm check:webui-presentation` |
-| A duration, easing, `@keyframes`, motion family or an animating component | `pnpm check:webui-motion` |
-| A dialog, popup, menu, tooltip or a changed dismissal path | `pnpm check:webui-overlays` |
-| A new announcement, empty/error/busy state, or a feedback migration | `pnpm check:webui-feedback` |
-| A shared control adopted, or a business stylesheet taking on a raw `button`/`input`/`select`/`textarea` selector | the raw-control ratchet in `pnpm test:webui` |
-| Rendered UI, CSS, theme or browser behavior | `pnpm build:webui` when the built artifact is affected, then only the relevant browser scenario; inspect actual screenshots for visual claims |
-| Bundle/entries | `pnpm build:webui` then `pnpm check:webui-boundary` |
-| npm package/launcher | `pnpm test:webui-package`; do not confuse local packaging with publishing |
-| New/removed/renamed repo files | Review paths, `node scripts/source-inventory.mjs --write`, `pnpm check:source` |
-| Changed exports | `pnpm gen:tsconfig`, `pnpm check:tsconfig` |
-| Host events | `pnpm --filter @mavis/webui gen:host-events`, server freshness/type checks and decoder tests |
+Aggregate gates (`pnpm verify`, `pnpm test:webui`, the full browser suite) are not the default for a local
+change. `pnpm lint` is not a WebUI ESLint gate. Build artifact checks need a current build: Vite
+development behavior is not the shipped esbuild artifact.
 
-For a focused Vitest run use the root config, e.g. `pnpm exec vitest run --config vitest.oss.config.mjs packages/webui/test/unit/webui-design-tokens.test.ts`. Every new Vitest file goes in the `webui` group of `test/vitest-suites.json`; otherwise it never joins the declared suite.
-
-`pnpm verify`, `pnpm test:webui`, and the full `pnpm test:webui-browser` suite are aggregate gates; do
-not run them by default for a local change. Before a PR, follow the separate delivery workflow for
-reviewed-commit and source-export requirements, but do not expand local verification beyond the
-user's requested scope. Preserve unrelated dirty work. Report any requested check that could not run
-and the exact coverage that remains. An external personal skill with no repository source changes
-does not warrant inventing a repository code change just to run its full delivery pipeline.
-
-`pnpm verify --list` shows current platform gates. `pnpm lint`/TUI lint is not a WebUI ESLint gate. Build artifact checks require a current build; Vite development behavior is not the shipped esbuild artifact.
-
-## Test conventions
-
-Unit/integration/gate/browser tests live in `packages/webui/test/{unit,integration,gates,browser}`. The shared Vitest environment is Node. Use pure transitions and `renderToStaticMarkup` for deterministic state/render branches; browser interaction uses Playwright. Do not add jsdom/happy-dom/testing-library or change the shared root environment for convenience.
-
-Browser specs import `test` from `test/browser/harness.mjs`, with `expect` as needed from Playwright. The harness checks both health and page run IDs, not mere port reachability. Default server reuse is off; deliberate reuse must still match its run ID. Keep reports/state outside the repository. Set `WEBUI_BROWSER_OUTPUT_DIR` to a task-specific external directory instead of inheriting a system-temp default where task instructions forbid that.
-
-Assert outcomes users/consumers observe. Existing validators' code-only tests do not pin messages/predicates: add exact rejection assertions for touched validators. Async scenarios should deliberately control delayed answers, navigation, invalidation and disposal, not use arbitrary sleeps. A testid or helper-name string check does not establish behavior.
-
-## Evidence boundaries
+## What each kind of evidence establishes
 
 | Evidence | Establishes | Does not establish |
 | --- | --- | --- |
-| Pure unit behavior | Reducer/projection/mechanism contract | Assembly, DOM or wire |
-| Assembled application with injected capabilities | Owner/command/lifecycle collaboration | Real loopback/host |
-| `loopback-harness-path.test.ts` | Real service/socket/envelope/registry/event delivery with scripted leaf | Real provider/account |
-| Built-browser fixture | Rendering, navigation and interactions of built client | Actual service/host/cloud behavior |
-| Production host with controlled model HTTP endpoint | Real local host/turn path to that endpoint | Real provider authorization |
-| `native-runtime.spec.mjs` | Production host/service and native PTY on executing platform | Other OSes, real account/provider |
-| `test/integration/browser-core-agent-actions.test.ts` | The Agent's `inspect` → `click` → `type` against a **real** Chromium through Browser Core, and the stale-reference refusal. It **requires** a browser — it has no `describe.skipIf`, so on a machine with no Chrome it fails rather than skipping | The bridge path; any platform other than the one it ran on |
-| `test/unit/browser-bridge-core-actions.test.ts` | The bridge's **wiring** through Browser Core, the navigation fence, and the screenshot's source | That a real browser performed any of it — the extension is a test double |
-| `test/unit/browser-restricted-commands.test.ts` | That the restricted vocabulary cannot drift | That any action behaves correctly at runtime |
+| Pure unit behavior | Reducer, projection or mechanism contract | Assembly, DOM or wire |
+| Assembled application with injected capabilities | Owner/command/lifecycle collaboration | Real loopback or host |
+| `loopback-harness-path.test.ts` | Real service, socket, envelope, registry and event delivery with a scripted leaf | A real provider or account |
+| Built-browser fixture | Rendering, navigation and interaction of the built client | Actual service, host or cloud behavior |
+| Production host with a controlled model endpoint | Real local host and turn path to that endpoint | Real provider authorization |
+| `native-runtime.spec.mjs` | Production host/service and native PTY on the platform that ran it | Other OSes, real account |
 
-Keep each claim at its actual seam. HTTP 200 or a listener is not browser readiness. A screenshot is not interaction coverage. One-page session switching is not independent-page ownership evidence. Native terminal coverage in one scenario does not turn every fixture scenario into native evidence.
+The three browser-bridge suites are easy to double-count: `integration/browser-core-agent-actions.test.ts`
+drives a real Chromium and needs one; `unit/browser-bridge-core-actions.test.ts` proves the wiring with the
+extension as a test double; `unit/browser-restricted-commands.test.ts` proves only that the vocabulary
+cannot drift.
 
-For behavior preservation, compare actual contracts: AST bodies with TypeScript tooling for moved logic; frame count/order/UTF-8 payloads and iterator/capability calls for wire; effective declarations and rendered geometry for CSS. Use a targeted fault/mutation when needed to prove a consolidation really owns behavior. These are selected techniques, not a universal obligation to mutate every change.
+HTTP 200 or a listening socket is not browser readiness, a screenshot is not interaction coverage, and one
+scenario's native coverage does not make the rest of the fixture suite native. For behavior preservation —
+markup, wire payloads, effective CSS — use [module-refactor.md](module-refactor.md)'s evidence layers, and
+a targeted mutation only where consolidating ownership demands proof.
 
 ## Delivery scope
 
-This is a reviewed public source projection: source inventory scans untracked files, so keep scratch/reports outside the repo. Review assets and licenses; do not add real sessions/accounts/credentials. Generated inventory and tsconfig paths are regenerated, not hand edited. Documentation and commit messages are English; preserve product localization and runtime prompt requirements.
+This is a reviewed public source projection: the source inventory scans untracked files, so keep scratch,
+reports and browser output outside the repository. Do not add real sessions, accounts or credentials, and
+review any added asset's provenance and license. Documentation and commit messages are English; product
+localization stays as it is.
 
-Respect explicit authorization. Default repository workflow uses purpose-prefixed feature branches and PRs, not direct default-branch pushes. Issue/PR operations target the private fork identified by the package guide; inspect remotes and pass its explicit repo argument. A task to code or create this skill is not authorization to file public issues, open PRs, send team messages or push. Read the appropriate dedicated workflow if such delivery is requested.
+Authorization is explicit and narrow: coding or creating this skill is not permission to file issues, open
+PRs, push, or change production. Follow the repository's delivery workflow when a delivery is actually
+requested.

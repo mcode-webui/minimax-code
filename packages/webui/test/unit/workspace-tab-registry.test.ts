@@ -118,7 +118,7 @@ describe("the registry answers for the whole closed set", () => {
       "应用",
       "变更",
       "终端",
-      "画布",
+      "Design",
       "查看文件",
     ]);
     expect(tiles.map((tile) => tile.opens)).toEqual([

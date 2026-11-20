@@ -73,8 +73,15 @@ export const screenshotOptions = { animations: "disabled", ...PIXEL_BUDGET };
  */
 export async function waitForLocalImages(page) {
   await expect.poll(() => page.locator('img[src^="/assets/"]').evaluateAll((images) =>
-    images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0),
-  )).toBe(true);
+    images
+      .filter((image) => !image.complete || image.naturalWidth === 0)
+      .map((image) => ({
+        src: new URL(image.currentSrc || image.src).pathname,
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        loading: image.loading,
+      })),
+  ), { message: "Local images must load before geometry and screenshot checks" }).toEqual([]);
 }
 
 export async function configureFixture(page, setup) {

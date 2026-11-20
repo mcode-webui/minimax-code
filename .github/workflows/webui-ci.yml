@@ -64,6 +64,7 @@ jobs:
         id: browsers
         run: pnpm install:webui-browsers
       - name: Install FFmpeg
+        id: ffmpeg
         timeout-minutes: 8
         shell: bash
         run: |
@@ -106,7 +107,7 @@ jobs:
         timeout-minutes: 30
         env:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/browser
-        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' && steps.ffmpeg.outcome == 'success' }}
         run: pnpm test:webui-browser
       - name: Verify WebUI package installation
         env:

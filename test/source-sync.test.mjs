@@ -86,9 +86,10 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.ok(commands.indexOf('pnpm build:webui') < commands.indexOf('pnpm test:webui-browser'));
   assert.equal(job.steps.find(step => step.run === 'pnpm build:webui').id, 'build');
   assert.equal(job.steps.find(step => step.run === 'pnpm install:webui-browsers').id, 'browsers');
+  assert.equal(job.steps.find(step => step.name === 'Install FFmpeg').id, 'ffmpeg');
   const testConditions = {
     'pnpm test:webui': undefined,
-    'pnpm test:webui-browser': "${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' }}",
+    'pnpm test:webui-browser': "${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' && steps.ffmpeg.outcome == 'success' }}",
     'pnpm test:webui-package': "${{ !cancelled() && steps.build.outcome == 'success' }}",
   };
   for (const [command, condition] of Object.entries(testConditions)) {

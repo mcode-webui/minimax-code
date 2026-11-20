@@ -135,7 +135,7 @@ npm uninstall --global @minimax-webui/minimax-code
 
 ## 从源码构建
 
-需要 Git、支持的 Node.js 版本以及 **pnpm 9.12.0**。Windows 上请把仓库放在本地 NTFS 卷中，并避开云同步目录。
+需要 Git、支持的 Node.js 版本以及 **pnpm 10.34.9**。Windows 上请把仓库放在本地 NTFS 卷中，并避开云同步目录。
 
 ```bash
 git clone https://github.com/mcode-webui/minimax-code.git

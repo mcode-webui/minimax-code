@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T01:35:42Z",
+  "updated_at": "2026-11-20T01:53:35Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -311,15 +311,15 @@
     },
     ".github/workflows/update-visual-baselines.yml": {
       "role": "index",
-      "sha256": "337dc5296a75179117225dc39301867b3e21cb8899beabc3e1ae2180d5baf8e5",
-      "size": 3977,
-      "normalized_sha256": "337dc5296a75179117225dc39301867b3e21cb8899beabc3e1ae2180d5baf8e5"
+      "sha256": "e40ef7f76a516b911e87f146443665089120372b3a2d458cec2267244410d881",
+      "size": 3978,
+      "normalized_sha256": "e40ef7f76a516b911e87f146443665089120372b3a2d458cec2267244410d881"
     },
     ".github/workflows/webui-ci.yml": {
       "role": "index",
-      "sha256": "e2865cc4e50add9047c5465b698ad43e78e2db0a43d742e48620475dcd41ac59",
-      "size": 4267,
-      "normalized_sha256": "e2865cc4e50add9047c5465b698ad43e78e2db0a43d742e48620475dcd41ac59"
+      "sha256": "1dc540cf7f06145ca67cc607675582cf824fd5bca0c852519d99027f533d1a10",
+      "size": 4268,
+      "normalized_sha256": "1dc540cf7f06145ca67cc607675582cf824fd5bca0c852519d99027f533d1a10"
     },
     ".gitignore": {
       "role": "index",
@@ -749,15 +749,15 @@
     },
     "README.md": {
       "role": "index",
-      "sha256": "700ab9c2c1d50e19bcfa06352317356de4eaac125ba2c7c60620b305dbbfff2b",
-      "size": 10399,
-      "normalized_sha256": "700ab9c2c1d50e19bcfa06352317356de4eaac125ba2c7c60620b305dbbfff2b"
+      "sha256": "fe69e95184d0ed3fded5d59807f23408a722aabf0af9b5f2b6a6e6659e75b759",
+      "size": 10400,
+      "normalized_sha256": "fe69e95184d0ed3fded5d59807f23408a722aabf0af9b5f2b6a6e6659e75b759"
     },
     "README_ZH.md": {
       "role": "index",
-      "sha256": "b65f5f21b16e1385d380377d26177d4cc828dc709bc74e5464b02659800df182",
-      "size": 9738,
-      "normalized_sha256": "b65f5f21b16e1385d380377d26177d4cc828dc709bc74e5464b02659800df182"
+      "sha256": "6a22ecc0e3a8bbffa342d05cae54dd09aff5dc70f4a30ee8d76e79488511a167",
+      "size": 9739,
+      "normalized_sha256": "6a22ecc0e3a8bbffa342d05cae54dd09aff5dc70f4a30ee8d76e79488511a167"
     },
     "SECURITY.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "251d96fb088590d8761d51f2d6033c31857b5c6cc4d3c7265f303fd80292731c",
-      "size": 636382,
-      "normalized_sha256": "251d96fb088590d8761d51f2d6033c31857b5c6cc4d3c7265f303fd80292731c"
+      "sha256": "288c8e5e441122c9efc2ed8bc083e603be4c5eb1e11ab74e53c7b2b2dfb1b980",
+      "size": 636621,
+      "normalized_sha256": "288c8e5e441122c9efc2ed8bc083e603be4c5eb1e11ab74e53c7b2b2dfb1b980"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1660,9 +1660,9 @@
     },
     "docs/installation.md": {
       "role": "index",
-      "sha256": "668b1ce5ee5c9b96cd2a5384f82bf059a26e9a2b6b6d95d565254e0421606bc5",
-      "size": 13733,
-      "normalized_sha256": "668b1ce5ee5c9b96cd2a5384f82bf059a26e9a2b6b6d95d565254e0421606bc5"
+      "sha256": "87ccff10faf12c4682aaf58f51f493cea66696109213d8b166a5f3b2919a2f8d",
+      "size": 13735,
+      "normalized_sha256": "87ccff10faf12c4682aaf58f51f493cea66696109213d8b166a5f3b2919a2f8d"
     },
     "docs/maintainers.md": {
       "role": "index",
@@ -1876,9 +1876,9 @@
     },
     "package.json": {
       "role": "index",
-      "sha256": "36e566e563cb4071ef3200a5eaa07e8796189ef01d236e8cfc1d149e562230ff",
-      "size": 3910,
-      "normalized_sha256": "36e566e563cb4071ef3200a5eaa07e8796189ef01d236e8cfc1d149e562230ff"
+      "sha256": "d2029d72dd16bbe09e7634248aa9cf1d1ee8e36fe941e2c740f0eecfc494b04c",
+      "size": 3412,
+      "normalized_sha256": "d2029d72dd16bbe09e7634248aa9cf1d1ee8e36fe941e2c740f0eecfc494b04c"
     },
     "packages/agent-core/package.json": {
       "role": "index",
@@ -32010,15 +32010,15 @@
     },
     "pnpm-lock.yaml": {
       "role": "observe",
-      "sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a",
+      "sha256": "0f18b7c807876024dcd5f3dc734ffeaac2f313550657eb3dd3302dd63cf8884f",
       "size": 325615,
-      "normalized_sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a"
+      "normalized_sha256": "0f18b7c807876024dcd5f3dc734ffeaac2f313550657eb3dd3302dd63cf8884f"
     },
     "pnpm-workspace.yaml": {
       "role": "index",
-      "sha256": "7aee9e0cf42db40701270cfffdecec2f2dfa7dd41c657879c365fa4f3a0379f4",
-      "size": 1131,
-      "normalized_sha256": "7aee9e0cf42db40701270cfffdecec2f2dfa7dd41c657879c365fa4f3a0379f4"
+      "sha256": "1206a71467d8535c12cf15c89bda62b06a67d2a0fde52236229af8d0406f8837",
+      "size": 1516,
+      "normalized_sha256": "1206a71467d8535c12cf15c89bda62b06a67d2a0fde52236229af8d0406f8837"
     },
     "release/dependency-licenses.json": {
       "role": "index",

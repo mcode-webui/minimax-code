@@ -15,9 +15,9 @@ README.md[SG4S]: F:Introduces MiniMax Code and explains installation, source bui
 README_ZH.md[SG4S]: F:Explains MiniMax Code installation, source builds from main, sign-in, model configuration and usage in Chinese. | R:- | A:- | S:-
 SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed-service boundaries. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
-package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:-
+package.json[FV5T]: F:Pins the pnpm version and declares root dependencies and build, release and verification commands. | R:code:pnpm-workspace.yaml | A:- | S:-
 playwright.config.mjs[SE4T]: F:Configures Playwright projects and the browser test server. | R:- | A:- | S:-
-pnpm-workspace.yaml[SE4T]: F:Declares pnpm workspace package roots. | R:- | A:- | S:-
+pnpm-workspace.yaml[FV5T]: F:Declares workspace package roots, hoisted linking, dependency overrides and the native build allowlist. | R:code:package.json | A:- | S:Build permissions use allowBuilds because pnpm 11 ignores the legacy allowlist keys.
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-
 tsconfig.standalone.json[SE4L]: F:Configures standalone TypeScript checking and workspace path aliases. | R:- | A:- | S:-
 vitest.oss.config.mjs[SE4T]: F:Configures the public distribution Vitest environment and module resolution. | R:- | A:- | S:-
@@ -197,7 +197,7 @@ architecture.md[SG4T]: F:Explains package boundaries and integration among clien
 demo.md[SG4T]: F:Walks through a recorded product demo that turns a request into a verified code change. | R:- | A:- | S:-
 examples.md[SG4M]: F:Provides practical examples for editing code, running tests, and using a custom model. | R:- | A:- | S:-
 hooks.md[SG4T]: F:Specifies how hook messages reach the TUI and model context, including event limits. | R:- | A:- | S:-
-installation.md[SG4S]: F:Documents checksum-verified release archive installation and source builds. | R:- | A:- | S:-
+installation.md[SG4S]: F:Documents verified release installation and source builds with the repository-pinned package manager. | R:code:package.json | A:- | S:-
 maintainers.md[SG4T]: F:Defines maintainer responsibilities, issue triage, and release and review ownership. | R:- | A:- | S:-
 open-source-status.md[SG4T]: F:Records the public source release baseline, supported scope, and evidence boundaries. | R:- | A:- | S:-
 performance-ci.md[SG4S]: F:Defines performance CI profiles, suite selection, and required comparison evidence. | R:- | A:- | S:-

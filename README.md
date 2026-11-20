@@ -135,7 +135,7 @@ Plugins and Mini Apps can depend on platform capabilities, additional setup, or 
 
 ## Build from source
 
-You need Git, a supported Node.js version, and **pnpm 9.12.0**. On Windows, keep the checkout on a local NTFS volume outside cloud-synced folders.
+You need Git, a supported Node.js version, and **pnpm 10.34.9**. On Windows, keep the checkout on a local NTFS volume outside cloud-synced folders.
 
 ```bash
 git clone https://github.com/mcode-webui/minimax-code.git

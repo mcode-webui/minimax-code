@@ -121,6 +121,40 @@ describe.skipIf(!chromeAvailable)("the browser panel's real Chromium navigation 
     }
   });
 
+  it.each(["unchanged", "resized"] as const)("gives a late watcher its first frame on a static Chromium tab (%s)", async (mode) => {
+    const target = await openHome();
+    const controller = new AbortController();
+    const oldViewport = { width: 600, height: 500 };
+    const requested = mode === "resized" ? { width: 700, height: 550 } : oldViewport;
+    const a = service.watchFrames("isolated-chromium", target, controller.signal, oldViewport)[Symbol.asyncIterator]();
+    const b = service.watchFrames("isolated-chromium", target, controller.signal, requested)[Symbol.asyncIterator]();
+    try {
+      const first = await a.next();
+      expect(first.done).toBe(false);
+      // Wait for initial compositor paints to settle without modifying the page.
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      const next = b.next();
+      let replacement: IteratorResult<WebuiBrowserImageFrame> | undefined;
+      void next.then((frame) => { replacement = frame; }, () => undefined);
+      await waitFor(async () => replacement !== undefined, "replacement watch's first image");
+      expect(replacement).toMatchObject({ done: false, value: { target, format: "jpeg" } });
+      expect(replacement?.value.sequence).toBeGreaterThan(first.value.sequence);
+      const viewport = await evaluate(target, "JSON.stringify([innerWidth, innerHeight])");
+      expect(viewport).toBe(JSON.stringify([requested.width, requested.height]));
+      if (!replacement || replacement.done) throw new Error("the replacement watch closed without an image");
+      const image = await evaluate(target, `(async () => {
+        const image = new Image();
+        image.src = ${JSON.stringify("data:image/jpeg;base64," + replacement.value.data)};
+        await image.decode();
+        return JSON.stringify([image.naturalWidth, image.naturalHeight]);
+      })()`);
+      expect(image).toBe(viewport);
+    } finally {
+      controller.abort();
+      await Promise.allSettled([a.return?.(), b.return?.()]);
+    }
+  }, 30_000);
+
   async function openHome(): Promise<WebuiBrowserTargetId> {
     const opened = await service.openWebTab(undefined, { url: `${homeOrigin}/` }, undefined, "person");
     await waitFor(async () => (await readTitle(opened.target)) === "Browser panel start", "home page load");

@@ -1176,6 +1176,7 @@ export class WebuiBrowserService {
     // second. A frame that is already superseded when it is read is not worth
     // delivering, so the queue holds the latest and drops the rest.
     const queue: WebuiBrowserImageFrame[] = [];
+    let receivedFrame = false;
     let notify: (() => void) | undefined;
     const deliver = (frame: WebuiBrowserImageFrame) => {
       // The fence. A frame belongs to the page behind the target the
@@ -1190,6 +1191,7 @@ export class WebuiBrowserService {
         this.#scheduleDiagnostics();
         return;
       }
+      receivedFrame = true;
       const index = queue.findIndex(
         (queued) =>
           queued.target.targetId === frame.target.targetId &&
@@ -1258,6 +1260,16 @@ export class WebuiBrowserService {
         resolve();
       }, firstFrameBudgetMs);
     });
+    // A shared cast need not paint again when another panel joins a static
+    // page. Ask only for this subscriber's first picture, at its live size.
+    // Live images still win and keep flowing if the capture fails.
+    let watching = true;
+    const needsInitialFrame = () => watching && !receivedFrame && !signal?.aborted;
+    if (!first && needsInitialFrame() && provider.captureStreamInitialFrame) {
+      void provider.captureStreamInitialFrame(target, viewport, needsInitialFrame).then((frame) => {
+        if (frame && needsInitialFrame()) deliver(frame);
+      }).catch(() => undefined);
+    }
     try {
       while (!signal?.aborted) {
         while (queue.length > 0) {
@@ -1295,6 +1307,7 @@ export class WebuiBrowserService {
         notify = undefined;
       }
     } finally {
+      watching = false;
       if (firstFrameDeadline) clearTimeout(firstFrameDeadline);
       subscribers.delete(deliver);
       if (

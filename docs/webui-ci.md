@@ -5,6 +5,9 @@ The public `mcode-webui/minimax-code` repository uses
 runs. It executes existing WebUI commands directly. It does not invoke the
 repository-wide `pnpm verify` pipeline or publish packages.
 
+An active run on `main` can finish while another run on `main` is pending.
+Pull requests retain cancellation of superseded runs.
+
 | Coverage | Linux / Node 24 | macOS / Node 24 | Windows / Node 24 |
 | --- | --- | --- | --- |
 | WebUI server, client and test types | Yes | Yes | Yes |
@@ -77,3 +80,17 @@ outside this CI scope and have not been remediated by disabling Release audit.
 
 Automatic CI does not impose merge protection. Required checks and branch rules
 remain a separate repository setting.
+
+## Manual WebUI npm release checklist
+
+1. Check the published versions with
+   `npm view @minimax-webui/minimax-code versions --json`. Set the next unused
+   release version in `release/webui-npm/package.json` and include that change in
+   the reviewed source revision.
+2. Build from that revision with `pnpm package:webui-npm` and verify the exact
+   release directory with
+   `pnpm test:webui-package --package-dir dist-webui-npm`. Supply the Chrome store
+   public key through `MAVIS_BROWSER_STORE_CHROME_PUBLIC_KEY` when building.
+3. Check that the installed version reported by verification matches the version
+   in the source manifest. After publishing the verified artifact, confirm the
+   registry reports the same version for the intended dist-tag.

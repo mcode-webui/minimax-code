@@ -81,6 +81,12 @@ try {
   );
   const manifest = JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf8"));
   const installed = resolveInstalledPackage(prefix, manifest.name);
+  run(process.execPath, ["--input-type=module", "-e",
+    `const sdk = await import("@larksuiteoapi/node-sdk");
+    for (const name of ["WSClient", "EventDispatcher"]) {
+      if (typeof sdk[name] !== "function") throw new Error(\`Feishu SDK does not export \${name}\`);
+    }`,
+  ], { cwd: path.join(installed, "server") });
   const launcher = path.join(installed, manifest.bin["mcode-webui"]);
   const helpDataDir = path.join(work, "help-must-not-create-data");
   const infoEnvironment = { ...process.env, MINIMAX_DATA_DIR: helpDataDir, WEBUI_SERVER_PORT: "invalid" };

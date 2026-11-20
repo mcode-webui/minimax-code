@@ -37,6 +37,10 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.ok(Object.hasOwn(workflow.on, 'pull_request'));
   assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
   assert.deepEqual(workflow.permissions, { contents: 'read' });
+  assert.deepEqual(workflow.concurrency, {
+    group: 'webui-ci-${{ github.ref }}',
+    'cancel-in-progress': "${{ github.ref != 'refs/heads/main' }}",
+  });
   assert.deepEqual(Object.keys(workflow.jobs), ['webui']);
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   const job = workflow.jobs.webui;

@@ -140,7 +140,7 @@ npm uninstall --global @minimax-webui/minimax-code
 ```bash
 git clone https://github.com/mcode-webui/minimax-code.git
 cd minimax-code
-git switch webui
+git switch main
 node scripts/check-windows-source-location.mjs
 pnpm install --frozen-lockfile
 pnpm build:webui

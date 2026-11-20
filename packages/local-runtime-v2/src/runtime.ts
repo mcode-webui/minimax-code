@@ -16,6 +16,7 @@ import {
   createBackgroundRuntime,
   type BackgroundRuntime,
 } from "./background-runtime.js";
+import { traceRuntimeShutdownPhase } from "./infra/shutdown-diagnostics.js";
 import {
   cleanupFailedV1Startup,
   createDeferredAgentRuntimeTelemetry,
@@ -958,6 +959,7 @@ async function closeRuntime({
   database,
 }: RuntimeResourceState): Promise<void> {
   let firstError: unknown;
+  traceRuntimeShutdownPhase("stop_v1_producers");
   await stopV1Producers(v1, (error) => {
     firstError ??= error;
   });
@@ -980,16 +982,19 @@ async function closeRuntime({
     firstError ??= error;
   }
   try {
+    traceRuntimeShutdownPhase("close_v1_host");
     await closeV1?.();
   } catch (error) {
     firstError ??= error;
   }
   try {
+    traceRuntimeShutdownPhase("close_database");
     database?.close();
   } catch (error) {
     firstError ??= error;
   }
   if (firstError !== undefined) throw firstError;
+  traceRuntimeShutdownPhase("closed");
 }
 
 async function closeOwnerResources(
@@ -1005,6 +1010,7 @@ async function closeOwnerResources(
   ];
   for (const [cleanupStep, step] of steps) {
     try {
+      if (operation === "close") traceRuntimeShutdownPhase(cleanupStep);
       await step();
     } catch (err) {
       recordError?.(err);

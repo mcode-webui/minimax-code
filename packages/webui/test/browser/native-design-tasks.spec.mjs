@@ -397,6 +397,9 @@ test("native Design shows and cancels a task while slow material understanding i
   await action({ type: "connect", from: imageId, to: textId });
   const card = page.locator(`[data-design-node="${textId}"]`);
   await card.click({ position: { x: 80, y: 80 } });
+  // The setup RPC writes through a separate socket. Wait for the UI to
+  // observe the reference before clicking Generate on the text node.
+  await expect(card.getByText("引用 1 图", { exact: true })).toBeVisible();
   await expect(card.getByRole("button", { name: "生成", exact: true })).toBeEnabled();
   await card.getByRole("button", { name: "生成", exact: true }).click();
   const panel = page.getByRole("complementary", { name: "运行进度" });

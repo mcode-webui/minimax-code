@@ -17,6 +17,7 @@ await mkdir(workspaceDir);
 await mkdir(clientDir);
 await writeFile(path.join(directory, "config.yaml"), "# isolated WebUI native acceptance; no credentials\n");
 process.env.MINIMAX_DATA_DIR = directory;
+process.env.MCODE_RUNTIME_SHUTDOWN_DIAGNOSTICS = "1";
 (await import("@mavis/config")).resetConfig();
 // Serve this exact build with the browser harness identity. Config and WebSocket
 // are still injected by the production service; no synthetic transport is installed.

@@ -16,9 +16,17 @@ export async function readDesignTemplates(dataDir: string): Promise<DesignTempla
     if (!entry.endsWith(".json")) continue;
     identifier(entry.slice(0, -5));
     const file = path.join(directory, entry);
-    const info = await lstat(file);
-    if (!info.isFile() || info.isSymbolicLink()) throw new Error("Design template must be a regular file");
-    const template = JSON.parse(await readFile(file, "utf8")) as DesignTemplate;
+    let contents: string;
+    try {
+      const info = await lstat(file);
+      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Design template must be a regular file");
+      contents = await readFile(file, "utf8");
+    } catch (error) {
+      // Another request can remove a template after readdir listed it.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    const template = JSON.parse(contents) as DesignTemplate;
     const error = templateStepsError(template.actions);
     if (error) throw new Error(`Invalid stored Design template ${entry}: ${error}`);
     own.push({ ...template, id: entry.slice(0, -5), own: true });

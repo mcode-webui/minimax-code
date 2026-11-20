@@ -373,11 +373,15 @@ test("native Design preserves original menus, selected operations, graph gesture
     design.getByRole("dialog", { name: "删除模板", exact: true }),
   ).toHaveCount(0);
   await design.keyboard.press("Escape");
+  // Return to the conversation before exercising the tool's presentation.
+  // A headed browser may throttle the conversation while the Design popup is active.
+  await page.bringToFront();
   const turn = await authority({ action: "open", documentId });
   expect(turn.acceptance).toEqual({
     registeredTool: true,
     productionTurn: true,
   });
+  expect(turn.openIntent).toMatchObject({ sessionId: ready.sessionId, documentId });
   const panel = page.getByTestId("workspace-panel");
   await expect(panel.getByTestId("design-surface")).toHaveAttribute(
     "data-design-document",
@@ -390,6 +394,7 @@ test("native Design preserves original menus, selected operations, graph gesture
   const rightImage = panel.locator(`[data-design-node="${imageId}"]`);
   await rightImage.click({ position: { x: 30, y: 30 } });
   await photograph(page, "design-right-panel-dark");
+  await design.bringToFront();
   await design.reload();
   await expect(design.locator("[data-design-edge]")).toHaveCount(1);
   state = await read(design);

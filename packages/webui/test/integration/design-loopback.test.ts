@@ -16,6 +16,13 @@ const scratch = process.env.WEBUI_DESIGN_TEST_ROOT ?? path.join(homedir(), ".cac
 const children: ChildProcess[] = [];
 afterEach(async () => { for (const child of children.splice(0)) { if (child.exitCode === null && child.signalCode === null) { const exited = once(child, "exit"); child.kill("SIGKILL"); await exited; } } });
 async function directory() { await mkdir(scratch, { recursive: true }); return mkdtemp(path.join(scratch, "integration-")); }
+async function requestDesign(label: string, url: string, options?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    throw new Error(`Design loopback request failed: ${label}`, { cause: error });
+  }
+}
 async function worker(dataDir: string) {
   const script = path.join(dataDir, `worker-${Math.random()}.mjs`);
   await writeFile(script, `import { createWebuiDesignService } from ${JSON.stringify(pathToFileURL(path.join(root, "packages/webui/src/runtime/design/design-service.ts")).href)};
@@ -92,8 +99,10 @@ describe("native Design real boundaries", () => {
       const rebuilt = createHarnessPortFromHost(assembled.host); expect((await rebuilt.getDesignState({ sessionId: "synthetic-session" })).document!.id).toBe(frame.body!.document!.id);
       const published = await rebuilt.applyDesignAction({ documentId: frame.body!.document!.id, action: { type: "publish", name: "image.png", base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==" } });
       const assetUrl = (published.result as { url: string }).url;
-      expect((await fetch(base + assetUrl)).status).toBe(401);
-      const bytes = await fetch(`${base}${assetUrl}?token=synthetic-design-token`, { headers: { range: "bytes=0-7" } });
+      const unauthenticatedAsset = await requestDesign("unauthenticated asset", base + assetUrl);
+      expect(unauthenticatedAsset.status).toBe(401);
+      await unauthenticatedAsset.text();
+      const bytes = await requestDesign("asset byte range", `${base}${assetUrl}?token=synthetic-design-token`, { headers: { range: "bytes=0-7" } });
       expect(bytes.status).toBe(206); expect((await bytes.arrayBuffer()).byteLength).toBe(8);
       const wav = path.join(dataDir, "large-real-audio.wav");
       execFileSync("ffmpeg", ["-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=4", "-c:a", "pcm_s16le", wav], { stdio: "pipe" });
@@ -101,22 +110,30 @@ describe("native Design real boundaries", () => {
       const mediaBody = JSON.stringify({ documentId: frame.body!.document!.id, action: { type: "upload", name: "large-real-audio.wav", kind: "audio", base64: wavBytes.toString("base64") } });
       expect(Buffer.byteLength(mediaBody)).toBeGreaterThan(256 * 1024);
       const headers = { authorization: "Bearer synthetic-design-token", "content-type": "application/json" };
-      const large = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: mediaBody });
+      const large = await requestDesign("authenticated audio upload", `${base}/design-assets/actions`, { method: "POST", headers, body: mediaBody });
       expect(large.status).toBe(200);
       const uploaded = await large.json() as { result: { url: string } };
-      const stored = await fetch(`${base}${uploaded.result.url}?token=synthetic-design-token`); expect(Buffer.from(await stored.arrayBuffer())).toEqual(wavBytes);
+      const stored = await requestDesign("stored audio", `${base}${uploaded.result.url}?token=synthetic-design-token`); expect(Buffer.from(await stored.arrayBuffer())).toEqual(wavBytes);
       const editable = await rebuilt.applyDesignAction({ documentId: frame.body!.document!.id, action: { type: "add_node", nodeType: "text", prompt: "genuine base" } });
       const baseNode = editable.document!.nodes.find((node) => node.type === "text")!;
       const draftRequest = { documentId: frame.body!.document!.id, action: { type: "save_draft_edits", edits: [{ nodeId: baseNode.id, baseNode, patch: { metadata: { prompt: "last pagehide edit" } } }] } };
-      const compact = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify(draftRequest), keepalive: true }); expect(compact.status).toBe(200);
+      const compact = await requestDesign("compact draft", `${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify(draftRequest), keepalive: true }); expect(compact.status).toBe(200);
       expect(await compact.json()).toMatchObject({ draft: { document: { nodes: expect.arrayContaining([expect.objectContaining({ id: baseNode.id, metadata: expect.objectContaining({ prompt: "last pagehide edit" }) })]) } } });
-      const tooLargeDraft = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ ...draftRequest, action: { ...draftRequest.action, edits: [{ nodeId: baseNode.id, baseNode, patch: { metadata: { prompt: "汉".repeat(24000) } } }] } }) });
+      const tooLargeDraft = await requestDesign("oversized draft", `${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ ...draftRequest, action: { ...draftRequest.action, edits: [{ nodeId: baseNode.id, baseNode, patch: { metadata: { prompt: "汉".repeat(24000) } } }] } }) });
       expect(tooLargeDraft.status).toBe(413); expect(await tooLargeDraft.json()).toMatchObject({ code: "payload_too_large", message: "Design close-page draft exceeds the 64 KiB JSON limit" });
-      expect((await fetch(`${base}/design-assets/actions`, { method: "POST", body: mediaBody })).status).toBe(401);
-      const illegal = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ action: { type: "remove" } }) }); expect(illegal.status).toBe(400); expect(await illegal.json()).toMatchObject({ code: "invalid_body" });
-      const malformed = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: "{" }); expect(malformed.status).toBe(400); expect(await malformed.json()).toMatchObject({ code: "invalid_body" });
-      const invalid = await fetch(`${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ action: { type: "upload", name: "bad.wav", kind: "audio", base64: "not base64!" } }) }); expect(invalid.status).toBe(400); expect(await invalid.json()).toMatchObject({ code: "INVALID_ARGUMENTS" });
-      const foreign = await fetch(`${base}/design-assets/actions`, { method: "POST", headers: { ...headers, origin: "https://untrusted.invalid" }, body: mediaBody }); expect(foreign.status).toBe(403);
+      // These guards reject from the headers and close the connection. Send a
+      // compact body so that the client can read the rejection without racing
+      // the close while still writing the large upload tested above.
+      const rejectedUpload = JSON.stringify({ documentId: frame.body!.document!.id, action: { type: "upload", name: "denied.wav", kind: "audio", base64: "AA==" } });
+      const unauthorized = await requestDesign("unauthenticated upload", `${base}/design-assets/actions`, { method: "POST", body: rejectedUpload });
+      expect(unauthorized.status).toBe(401);
+      await unauthorized.text();
+      const illegal = await requestDesign("unsupported action", `${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ action: { type: "remove" } }) }); expect(illegal.status).toBe(400); expect(await illegal.json()).toMatchObject({ code: "invalid_body" });
+      const malformed = await requestDesign("malformed JSON", `${base}/design-assets/actions`, { method: "POST", headers, body: "{" }); expect(malformed.status).toBe(400); expect(await malformed.json()).toMatchObject({ code: "invalid_body" });
+      const invalid = await requestDesign("invalid audio", `${base}/design-assets/actions`, { method: "POST", headers, body: JSON.stringify({ action: { type: "upload", name: "bad.wav", kind: "audio", base64: "not base64!" } }) }); expect(invalid.status).toBe(400); expect(await invalid.json()).toMatchObject({ code: "INVALID_ARGUMENTS" });
+      const foreign = await requestDesign("foreign-origin upload", `${base}/design-assets/actions`, { method: "POST", headers: { ...headers, origin: "https://untrusted.invalid" }, body: rejectedUpload });
+      expect(foreign.status).toBe(403);
+      await foreign.text();
       const oversized = await new Promise<{ status: number; body: unknown }>((resolve, reject) => {
         const request = httpRequest(`${base}/design-assets/actions`, { method: "POST", headers: { ...headers, "content-length": DESIGN_MAX_HTTP_ACTION_BYTES + 1 } }, (response) => { let content = ""; response.on("data", (chunk) => { content += String(chunk); }); response.on("end", () => resolve({ status: response.statusCode!, body: JSON.parse(content) })); });
         request.on("error", reject); request.end("{}");

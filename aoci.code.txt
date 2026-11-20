@@ -109,7 +109,7 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs independent WebUI checks, integration, browser shard and package jobs on three platforms. | R:code:package.json,code:playwright.config.mjs | A:- | S:Each shard owns its runner and diagnostics. macOS uses windowed Chromium. The installer uses pnpm 10.34.9.
+webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux skips recommended FFmpeg packages and allows a longer install for slow mirrors. Diagnostics isolate platform, lane and attempt.
 update-visual-baselines.yml[FV4S]: F:Regenerates WebUI Playwright visual baselines on three native CI runners. | R:code:.github/workflows/webui-ci.yml,code:package.json | A:- | S:Select windowed Chromium on macOS before the test step. The installer uses pnpm 10.34.9.
 
 ===/<repository>/.plan/browser-use/board/===
@@ -5682,7 +5682,7 @@ feedback.spec.mjs[SE4S]: F:Tests accessible field error feedback. | R:- | A:- | 
 field-contract.spec.mjs[SE4S]: F:Tests that form controls have accessible names. | R:- | A:- | S:-
 fixture.mjs[SE4L]: F:Installs the browser fixture transport. | R:- | A:- | S:-
 goal-retention.spec.mjs[SE4S]: F:Tests retention of session goal state during a pending refresh. | R:- | A:- | S:-
-harness.mjs[TQ4M]: F:Provides built-client browser fixtures, readiness checks and failure artifacts. | R:code:playwright.config.mjs | A:openApp, waitForLocalImages | S:Windows buffer errors trigger a bounded TCP-state census. Image evidence omits URL query parameters.
+harness.mjs[TQ4M]: F:Provides built-client browser fixtures, readiness checks and failure artifacts. | R:code:playwright.config.mjs,code:packages/webui/test/browser/server.mjs | A:openApp, waitForLocalImages | S:Assert the synchronously injected server ID after navigation without polling. Windows buffer errors trigger a bounded TCP census; image evidence omits URL queries.
 miniapp-panel.spec.mjs[SE4L]: F:Tests Mini App launcher refresh behavior. | R:- | A:- | S:-
 miniapp-standalone-tab.spec.mjs[SE4S]: F:Tests promotion of inline Mini Apps to standalone tabs. | R:- | A:- | S:-
 model-picker-interactions.spec.mjs[SE4M]: F:Tests model picker interactions and display of the selected model. | R:- | A:- | S:-
@@ -5708,7 +5708,7 @@ responsive-layout.spec.mjs[SE4L]: F:Tests responsive layout at supported viewpor
 review-consumers.spec.mjs[SE4S]: F:Tests that review consumers read data through the review owner. | R:- | A:- | S:-
 review-diff-colors.spec.mjs[SE4S]: F:Tests diff color presentation in the browser. | R:- | A:- | S:-
 scheduling-panel.spec.mjs[SE4S]: F:Tests interactions in the scheduled tasks panel. | R:- | A:- | S:-
-select-dynamic-options.spec.mjs[SE4S]: F:Tests that select options track changes to available hosts. | R:- | A:- | S:-
+select-dynamic-options.spec.mjs[TE4S]: F:Verifies the SSH project host picker as the available host list shrinks or becomes empty. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/src/client/features/ssh/ui/ssh-project-form.tsx | A:- | S:Submit through the form event to trigger a rejected save and refresh without dismissing the open popup with an outside click.
 select-keyboard.spec.mjs[SE4M]: F:Tests keyboard navigation and focus behavior in select controls. | R:- | A:- | S:-
 server.mjs[SE4T]: F:Starts the server used by WebUI browser tests. | R:- | A:- | S:-
 settings-account-tab.spec.mjs[SE4L]: F:Tests account settings navigation. | R:- | A:- | S:-
@@ -5860,7 +5860,7 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires all three browser shards per OS, native test provisioning before suites, independent lane failures, unique diagnostics, and read-only workflow permissions.
+source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, native provisioning before suites, a Linux-only FFmpeg timeout increase, independent lane failures, unique diagnostics, and read-only workflow permissions.
 vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 

@@ -83,7 +83,7 @@ jobs:
         run: pnpm install:webui-browsers
       - name: Install FFmpeg
         if: matrix.lane.name == 'units' || matrix.lane.shard
-        timeout-minutes: 8
+        timeout-minutes: ${{ runner.os == 'Linux' && 15 || 8 }}
         shell: bash
         run: |
           # The native Design media paths run FFmpeg for real: the tests cut a
@@ -98,7 +98,7 @@ jobs:
             exit 0
           elif [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get install -y ffmpeg
+            sudo apt-get install -y --no-install-recommends ffmpeg
           elif [ "$RUNNER_OS" = "macOS" ]; then
             brew install ffmpeg
           else

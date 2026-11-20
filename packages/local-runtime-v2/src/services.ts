@@ -19,6 +19,12 @@ import type {
 } from "@mavis/shared/global-events";
 import { isOrdinaryQuestionnaireResponseOrigin } from "@mavis/shared/questionnaire";
 import { createGoalBudgetSummaryExtension } from "./application/agent/goal-budget-summary-reminder.js";
+import { createNativeDesignControlExtension } from "./application/agent/design-control-extension.js";
+import type { NativeDesignToolAdapter } from "./local/design-host-contract.js";
+import type { NativeDesignExecution } from "./local/design-host-contract.js";
+import { createNativeDesignExecution } from "./application/agent/native-design-execution.js";
+import { createNativeDesignAgentPorts } from "./service/native-design/agent-ports.js";
+import type { MiniAppAgentSessionPortsOptions } from "./service/miniapp/agent/session-ports.js";
 import { createGoalFinalReply } from "./application/agent/goal-final-reply.js";
 import {
   combineLocalTurnToolPolicyGuards,
@@ -226,6 +232,7 @@ export {
   type DeferredLocalSandboxBashOperationsFactory,
 } from "./service/sandbox/index.js";
 export interface RuntimeServices extends RuntimeMiniAppServices {
+  readonly designExecution?: NativeDesignExecution;
   /** V2 Agent owner and cross-capability Agent workflows. */
   readonly agent: AgentApplication;
   readonly safety: ContentSafetyService;
@@ -289,6 +296,7 @@ export interface RuntimeServicesTestOverrides {
 }
 export interface CreateRuntimeServicesOptions
   extends RuntimeMiniAppServiceOptions {
+  readonly designTool?: NativeDesignToolAdapter;
   readonly db: AppDb;
   readonly logger?: PluginServiceLogger;
   readonly scheduler?: SchedulerClient;
@@ -390,6 +398,7 @@ interface RuntimeServiceState {
 }
 
 interface InitializedRuntimeServiceOwners {
+  readonly designExecution?: NativeDesignExecution;
   readonly plan: PlanService;
   readonly turnSystem: TurnSystemOwner;
   /** Electron-only scheduled execution capability; absent on embedded CLI. */
@@ -622,6 +631,7 @@ export async function createRuntimeServices(
   ownerLifecycle.bind(promptLifecycle);
   return {
     agent: owners.agentApplication,
+    ...(owners.designExecution ? { designExecution: owners.designExecution } : {}),
     safety,
     canvas,
     cron: owners.cron?.service,
@@ -810,7 +820,7 @@ async function initializeRuntimeServiceOwners(
     turnSystem = await initializeRuntimeTurnSystem(input, {
       plan,
       planEntryEnabled: input.planEntryEnabled,
-      normalExtensions: miniAppExtensions,
+      normalExtensions: [...miniAppExtensions, ...(input.options.designTool ? [createNativeDesignControlExtension(input.options.designTool)] : [])],
       resumeSessionDeletion: (sessionId) => {
         if (!resumeSessionDeletion) {
           throw new Error(
@@ -833,6 +843,9 @@ async function initializeRuntimeServiceOwners(
     // Ports last: they read the session applications the turn owner just built.
     if (miniAppAgent)
       bindMiniAppAgentSessions(miniAppAgent, input, turnSystem, sessionApplications);
+    const designExecution = input.options.designTool
+      ? createNativeDesignExecution(createNativeDesignAgentPorts(createRuntimeAgentExecutionSessionOptions(input, turnSystem, sessionApplications), input.options.designTool.executionWorkspaceDir), plugin.hostConnectorGateway, input.options.designTool.clientId)
+      : undefined;
     cron = input.enableCron
       ? initializeRuntimeCron(
           input,
@@ -870,6 +883,7 @@ async function initializeRuntimeServiceOwners(
     );
     return {
       plan,
+      ...(designExecution ? { designExecution } : {}),
       turnSystem,
       cron,
       plugin,
@@ -916,10 +930,17 @@ function bindMiniAppAgentSessions(
   turnSystem: TurnSystemOwner,
   sessionApplications: Awaited<ReturnType<typeof initializeSessionApplications>>,
 ): void {
+  gateway.bind(createMiniAppAgentSessionPorts(createRuntimeAgentExecutionSessionOptions(input, turnSystem, sessionApplications)));
+}
+
+function createRuntimeAgentExecutionSessionOptions(
+  input: RuntimeServiceOwnerInitializationInput,
+  turnSystem: TurnSystemOwner,
+  sessionApplications: Awaited<ReturnType<typeof initializeSessionApplications>>,
+): MiniAppAgentSessionPortsOptions {
   const questionnaires = input.options.compatibility.questionnaires.createService();
   const permissions = input.options.compatibility.peripherals.permissions;
-  gateway.bind(
-    createMiniAppAgentSessionPorts({
+  return {
       records: input.sessionSystem.sessions.records,
       lifecycle: sessionApplications.sessionApplications.session.lifecycle,
       repository: input.sessionSystem.sessions.repository,
@@ -950,8 +971,7 @@ function bindMiniAppAgentSessions(
       models: { list: () => input.modelProviderApplication.list() },
       agents: sessionApplications.agentApplication,
       nowMs: input.nowMs,
-    }),
-  );
+  };
 }
 
 type PromptBoundRuntimeServiceOwnerInput = Omit<

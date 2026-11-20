@@ -34,6 +34,10 @@ import { resetDefaultLocalRuntimeConfig } from "@mavis/local-runtime-v2";
 import { createWebuiRuntimeHost } from "../../src/runtime/index.js";
 import { createWebuiAuthSession } from "../../src/runtime/auth-session.js";
 import { createWebuiRuntimeLifecycle } from "../../src/runtime/lifecycle.js";
+import { webuiPluginFailureTextFrom } from "../../src/client/projection/common/plugin-failure-text.js";
+import { PluginDesktopFacade } from "../../../local-runtime-v2/src/service/plugin-system/plugin/runtime/desktop-facade.js";
+import { OfficialPluginAuthBarrier, resolveOfficialPluginAuthState } from "../../../local-runtime-v2/src/service/plugin-system/plugin/runtime/official-operations.js";
+import { InstalledPluginSource } from "@mavis/protocol/local";
 
 // `vi.mock` factories are hoisted above the imports, so the counters they
 // close over must be hoisted too.
@@ -86,6 +90,45 @@ vi.mock("../../src/runtime/auth-session.js", async (importOriginal) => {
 });
 
 describe("WebUI runtime single-owner invariants", () => {
+  it("does not report a signed-in account as logged out when plugin identity lookup fails", async () => {
+    const session = createWebuiAuthSession({ dataDir: "unused-synthetic-auth", region: "en", buildEnv: "dev" });
+    const lease = { accessToken: "synthetic-token", expiresAtMs: Date.now() + 120_000, generation: 1 };
+    vi.spyOn(session.oauthCore, "getAccessToken").mockResolvedValue(lease as never);
+    vi.spyOn(session.usageQuota, "resolveAccountIdentity").mockRejectedValue(new Error("identity lookup unavailable"));
+    try {
+      await session.start();
+      expect(session.authContext.getter()?.accessToken).toBe(lease.accessToken);
+      const state = () => resolveOfficialPluginAuthState(session.authContext.getter());
+      const barrier = new OfficialPluginAuthBarrier({
+        isReady: () => state() === "ready",
+        isLoggedOut: () => state() === "logged_out",
+        timeoutMs: 10,
+      });
+      const system = { captureOfficialScope: () => ({ principalId: "synthetic-user", deployment: "test" }) };
+      const registryClient = { mutate: async () => { throw new Error("identity lookup unavailable"); } };
+      const facade = new PluginDesktopFacade({
+        system: system as never,
+        registryClient: registryClient as never,
+        listStandaloneSkills: async () => ({ skills: [], hasMore: false }),
+        standaloneSkillIdentities: async () => ({ names: new Set(), sourceUrls: new Set() }),
+        waitForOfficialAuth: () => barrier.waitUntilReady(),
+      });
+      let failure: unknown;
+      try {
+        await facade.installPlugin({ pluginName: "synthetic-plugin", source: InstalledPluginSource.OFFICIAL });
+      } catch (error) {
+        failure = error;
+      } finally {
+        barrier.dispose();
+      }
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure).not.toBeInstanceOf(TypeError);
+      expect(webuiPluginFailureTextFrom(failure)).not.toBe("官方账号未登录，无法操作市场插件。");
+    } finally {
+      session.dispose();
+      vi.restoreAllMocks();
+    }
+  });
   it("constructs one OAuth core and one refresh-timer owner, and one idempotent close owner", async () => {
     const dataDir = await mkdtemp(
       path.join(os.tmpdir(), "webui-runtime-invariants-"),
@@ -98,6 +141,7 @@ describe("WebUI runtime single-owner invariants", () => {
       vi.stubEnv("MINIMAX_DATA_DIR", dataDir);
       vi.stubEnv("DISABLE_GIT_AUTO_CONFIG", "1");
       resetDefaultLocalRuntimeConfig();
+      const before = { ...counters };
 
       const assembled = await createWebuiRuntimeHost({
         dataDir,
@@ -122,10 +166,12 @@ describe("WebUI runtime single-owner invariants", () => {
         }),
       });
 
+      // The counters are module-level and the case above built an auth
+      // session of its own, so what this case owns is what it added.
       // (1) Exactly one OAuth core construction.
-      expect(counters.oauthCoreConstructions).toBe(1);
+      expect(counters.oauthCoreConstructions - before.oauthCoreConstructions).toBe(1);
       // (2) Exactly one refresh-timer owner (the single auth session).
-      expect(counters.authSessionCreations).toBe(1);
+      expect(counters.authSessionCreations - before.authSessionCreations).toBe(1);
 
       // (3) Exactly one close owner. Both public entry points reach the same
       // wrapper, so the factory host's close runs once — two independent close
@@ -135,13 +181,13 @@ describe("WebUI runtime single-owner invariants", () => {
       expect(runtimeCloseCalls).toBe(1);
       // The refresh-timer owner's teardown ran exactly once, through that same
       // single close owner.
-      expect(counters.authDisposeCalls).toBe(1);
+      expect(counters.authDisposeCalls - before.authDisposeCalls).toBe(1);
 
       // Idempotent re-close: nothing runs a second time.
       await assembled.host.apiHost.close();
       await assembled.harnessPort.close();
       expect(runtimeCloseCalls).toBe(1);
-      expect(counters.authDisposeCalls).toBe(1);
+      expect(counters.authDisposeCalls - before.authDisposeCalls).toBe(1);
     } finally {
       resetDefaultLocalRuntimeConfig();
       vi.unstubAllEnvs();

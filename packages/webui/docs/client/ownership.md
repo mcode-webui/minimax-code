@@ -76,11 +76,12 @@ selection still supersedes it, and disposal prevents publication.
 
 ## Temporal ownership
 
-Workspace files, archives, canvases and environments use the terminal snapshot-store lifetime:
-disposal freezes publication, releases subscriptions/timers and refuses new IO. Canvas reads,
-writes and release share a destination revision; accepted writes still settle even when their
-document can no longer be shown. The canvas component separately fences draft/preview callbacks
-by its mounted session and operation lifetime; a settled write alone cannot clear current input.
+Workspace files, archives and environments use the terminal snapshot-store lifetime:
+disposal freezes publication, releases subscriptions/timers and refuses new IO. Native Design owns
+the document shown by the right panel's historical canvas entry and by `/design`. Its serialized
+writes and revision-fenced reads share one application owner; accepted writes settle when a
+document can no longer be shown, and undo/error outcomes cannot publish into a different scope.
+Its view separately owns uncommitted prompts, selection and gesture previews. See [Design](design.md).
 Archive extraction publishes only for its originating listing
 and extraction revision. Channel filter writes use the selected bot's detail revision.
 

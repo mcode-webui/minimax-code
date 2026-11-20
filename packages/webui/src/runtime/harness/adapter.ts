@@ -28,6 +28,7 @@ import { createCronAdapter } from "./cron.js";
 import { createSshAdapter } from "./ssh.js";
 import { createRemoteControlAdapter } from "./remote-control.js";
 import { createChannelAdapter } from "./channel.js";
+import { createDesignAdapter } from "./design.js";
 import { runWebuiCommand } from "../commands/runner.js";
 import { importWebuiSessionTransfer } from "../session-transfer.js";
 
@@ -85,6 +86,7 @@ export function createHarnessPortFromHost(
     ...createExecutionAdapter(host),
     ...createInteractionsAdapter(host),
     ...createWorkspaceAdapter(host),
+    ...createDesignAdapter(host),
     ...createSettingsAdapter(host),
     ...createModelsPluginsAdapter(host),
     ...createMiniAppAdapter(host),

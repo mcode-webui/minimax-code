@@ -70,6 +70,8 @@ export type WebuiOperationPort = Pick<
   | "searchWorkspaceReviewDiffs"
   | "readCanvas"
   | "applyCanvas"
+  | "getDesignState"
+  | "applyDesignAction"
   | "readWorkspaceArchive"
   | "extractWorkspaceArchive"
   | "sendMessage"
@@ -251,6 +253,7 @@ export interface RuntimeGroups {
     | "readWorkspaceArchive"
     | "extractWorkspaceArchive"
   >;
+  readonly design: Pick<WebuiHarnessPort, "getDesignState" | "applyDesignAction">;
   readonly execution: Pick<
     WebuiHarnessPort,
     | "getActiveTurn"

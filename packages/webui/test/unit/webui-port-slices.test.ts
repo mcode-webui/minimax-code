@@ -62,6 +62,7 @@ const EXPECTED: Record<
     // than an operation: the route answers with the archive itself.
     "browserExtensionPackageUrl",
   ],
+  design: ["version", "getDesignState", "applyDesignAction", "designStandaloneUrl", "designAssetUrl", "designSessionUrl"],
   miniapp: [
     "listMiniApps", "openMiniApp", "stopMiniApp",
     // ADR 0020's standalone presentation: the lease this document holds, and the

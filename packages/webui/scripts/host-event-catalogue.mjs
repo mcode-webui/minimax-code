@@ -22,6 +22,12 @@ const excludedSources = [
   path.join("service", "miniapp", "agent", "observations.ts"),
   path.join("service", "miniapp", "agent", "session-ports.ts"),
   path.join("service", "miniapp", "agent", "session-ports-projection.ts"),
+  // The neutral Agent-turn seam keeps the same projected run vocabulary for
+  // every internal consumer; those events are not host-bus events.
+  path.join("service", "agent-turn", "contracts.ts"),
+  path.join("service", "agent-turn", "session-turn.ts"),
+  path.join("service", "agent-turn", "session-frame-projection.ts"),
+  path.join("service", "native-design", "agent-ports.ts"),
   // The child IPC connector answers those same run frames over the parent/child channel.
   path.join("service", "miniapp", "process", "host-connector", "host-connector-agent.ts"),
 ];

@@ -69,6 +69,9 @@ import { testUserModelCandidateOperation } from "../../src/server/operation/prov
  * compile instead of silently returning `undefined`.
  */
 class FullPort implements WebuiHarnessPort {
+  async getDesignState(): Promise<never> { throw new Error("No native Design authority in this port fixture"); }
+  async applyDesignAction(): Promise<never> { throw new Error("No native Design authority in this port fixture"); }
+  async readDesignAsset() { return null; }
   version() {
     return { version: "invariant-test", protocolVersion: 1 };
   }
@@ -783,7 +786,7 @@ describe("WebUI host-shape invariant (batch C seam)", () => {
     // The bindings materialise from the operation descriptors; we only need
     // to verify the port is accepted and every binding is registered.
     const entries = createBindingEntries(port);
-    expect(entries.size).toBe(132);
+    expect(entries.size).toBe(134);
   });
 
   // --------------------------------------------------------------------

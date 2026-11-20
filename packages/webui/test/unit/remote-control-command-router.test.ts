@@ -9,6 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createRemoteControlLocalRuntimeInvoke } from "../../src/runtime/remote-control/command-router.js";
+import { createCommandRouter } from "../../src/runtime/remote-control/bridge/command-router.js";
+import type { WsEnvelope } from "../../src/runtime/remote-control/bridge/types.js";
 
 const REMOTE_API = "http://localhost/minimax-desktop/api/v1";
 
@@ -371,9 +373,126 @@ describe("本地运行时入口", () => {
 
     expect(response.status).toBe(200);
     const body = await json(response);
-    expect(body.messages).toEqual([{ msgId: "m-1", msgContent: "继续" }]);
-    expect(body.hasMore).toBe(false);
+    expect(body.messages).toEqual([{
+      msg_id: "m-1", msg_content: "继续", tool_calls: [], attachments: [],
+    }]);
+    expect(body.has_more).toBe(false);
     expect(calls[0]).toEqual({ method: "getMessages", args: { id: "s-1", limit: 15 } });
+  });
+
+  it("远控历史使用 Desktop 字段，并从实际返回的最早消息继续分页", async () => {
+    const messages = [
+      { msgId: "m-1", msgContent: "旧".repeat(500_000) },
+      {
+        msgId: "m-2",
+        msgContent: "新".repeat(400_000),
+        toolCalls: [{
+          toolCallArgs: JSON.stringify({ file_path: "example.txt", content: "😀".repeat(40_000) }),
+          toolCallResultData: "😀".repeat(40_000),
+        }],
+      },
+    ];
+    const requested: unknown[] = [];
+    const { invoke } = harness({
+      getMessages: async (args: { before?: string }) => {
+        requested.push(args);
+        return { messages: args.before ? messages.slice(0, 1) : messages, hasMore: false };
+      },
+    });
+    const noop = () => {};
+    const router = createCommandRouter({
+      invoke,
+      logger: { debug: noop, info: noop, warn: noop, error: noop },
+      pump: { start: noop, abortSession: noop, abortAll: noop, getActiveCmdId: () => undefined },
+    });
+    async function history(id: string, before?: string) {
+      const frames: WsEnvelope[] = [];
+      await router.handleCommand({
+        v: 1, id, ts: 0, type: "cmd.session.history",
+        payload: { session_id: "s-1", ...(before ? { before_msg_id: before } : {}) },
+      }, (frame) => frames.push(frame));
+      expect(frames.map((frame) => frame.type)).toEqual(["ack.session.history"]);
+      return frames[0]?.payload as { messages_json: string; has_more: boolean; oldest_msg_id: string };
+    }
+    const first = await history("first");
+    expect(first).toMatchObject({ has_more: true, oldest_msg_id: "m-2" });
+    expect(Buffer.byteLength(first.messages_json)).toBeLessThanOrEqual(2 * 1024 * 1024);
+    const current = JSON.parse(first.messages_json);
+    expect(current).toHaveLength(1);
+    expect(current[0]).toMatchObject({ msg_id: "m-2", msg_content: messages[1]?.msgContent });
+    const tool = current[0].tool_calls[0];
+    expect(JSON.parse(tool.tool_call_args).file_path).toBe("example.txt");
+    expect(tool.tool_call_result_data).not.toContain("�");
+    expect(Buffer.byteLength(tool.tool_call_result_data)).toBeLessThanOrEqual(64 * 1024);
+    expect(await history("first")).toEqual(first);
+    const previous = await history("previous", first.oldest_msg_id);
+    expect(previous).toMatchObject({ has_more: false, oldest_msg_id: "m-1" });
+    expect(requested).toEqual([{ id: "s-1" }, { id: "s-1" }, { id: "s-1", before: "m-2" }]);
+  });
+
+  it("普通远控消息遇到回合切换冲突时入队，显式意图和补发操作不会入队", async () => {
+    const requests: string[] = [];
+    const noop = () => {};
+    const router = createCommandRouter({
+      invoke: async (request) => {
+        const path = new URL(request.url).pathname;
+        requests.push(path);
+        return path.endsWith("/queue")
+          ? Response.json({ item_id: "q-1" })
+          : Response.json({ key: "local_turn_ingress_conflict" }, { status: 409 });
+      },
+      logger: { debug: noop, info: noop, warn: noop, error: noop },
+      pump: { start: noop, abortSession: noop, abortAll: noop, getActiveCmdId: () => undefined },
+    });
+    async function send(id: string, payload: Record<string, unknown>) {
+      const frames: WsEnvelope[] = [];
+      await router.handleCommand({
+        v: 1, id, ts: 0, type: "cmd.session.send",
+        payload: { session_id: "s-1", content: "继续", ...payload },
+      }, (frame) => frames.push(frame));
+      return frames[0];
+    }
+    expect(await send("plain", {})).toMatchObject({
+      type: "ack.session.send", payload: { disposition: "queued", item_id: "q-1" },
+    });
+    expect(await send("intent", { client_intent: "retry-continuation" }))
+      .toMatchObject({ type: "err.session.send" });
+    expect(await send("side", { retry_message_id: "m-1" })).toMatchObject({
+      type: "err.session.send", payload: { code: "NOT_IMPLEMENTED" },
+    });
+    expect(requests).toEqual([
+      "/minimax-desktop/api/v1/session/s-1/message",
+      "/minimax-desktop/api/v1/session/s-1/queue",
+      "/minimax-desktop/api/v1/session/s-1/message",
+    ]);
+    const { invoke, calls } = harness();
+    const reply = await invoke(request("POST", "/session/s-1/message", { discard_message_id: "m-1" }));
+    expect(reply.status).toBe(501);
+    expect(calls).toEqual([]);
+  });
+
+  it("重连重复投递时不会重做已完成且回包过大的写命令", async () => {
+    let writes = 0;
+    const noop = () => {};
+    const router = createCommandRouter({
+      invoke: async () => {
+        writes += 1;
+        return Response.json({ data: "x".repeat(70 * 1024) });
+      },
+      logger: { debug: noop, info: noop, warn: noop, error: noop },
+      pump: { start: noop, abortSession: noop, abortAll: noop, getActiveCmdId: () => undefined },
+    });
+    const command: WsEnvelope = {
+      v: 1, id: "write", ts: 0, type: "cmd.route",
+      route: { kind: "http", method: "POST", path: "/minimax-desktop/api/v1/session/s-1/queue" },
+    };
+    const replies: WsEnvelope[] = [];
+    const reply = (frame: WsEnvelope) => replies.push(frame);
+    await router.handleCommand(command, reply, { commandScope: "device", streamScope: "prior" });
+    await router.handleCommand(command, reply, { commandScope: "device", streamScope: "new" });
+    expect(writes).toBe(1);
+    expect(replies.map((frame) => frame.type)).toEqual(["ack.route", "err.route"]);
+    expect(replies[1]?.payload).toMatchObject({ code: "PAYLOAD_TOO_LARGE", retryable: false });
   });
 
   it("发消息时回一串 SSE 帧，而不是 JSON", async () => {

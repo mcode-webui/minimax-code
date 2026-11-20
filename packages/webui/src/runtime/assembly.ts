@@ -49,6 +49,7 @@ import type {
 } from "./harness/host-contract.js";
 import type { WebuiHarnessPort } from "./port.js";
 import { configureWebuiRuntimeEnvironment } from "./runtime-environment.js";
+import { createWebuiDesignService } from "./design/design-service.js";
 import { DailyCheckinClient } from "./check-in.js";
 import {
   createWebuiAuthLeaseSession,
@@ -156,6 +157,7 @@ export type WebuiForwardedRuntimeHostOptions = Pick<
   | "browserAdapter"
   | "browserToolExposure"
   | "miniAppSurface"
+  | "designTool"
 >;
 
 /**
@@ -248,6 +250,7 @@ export async function createWebuiRuntimeHost(
   options: CreateWebuiRuntimeHostOptions,
 ): Promise<WebuiRuntimeHost> {
   const factory = options.factory ?? defaultWebuiRuntimeHostFactory;
+  const design = await createWebuiDesignService(options.dataDir);
   // Reflect the installed client's scope into this process's environment
   // before the host is built, so `getRuntimeRegion()` /
   // `getRuntimeBuildEnv()` / `isManagedRuntime()` see the same scope the
@@ -279,6 +282,7 @@ export async function createWebuiRuntimeHost(
     disposeMcodeTools: () => mcodeTools?.dispose(),
     closeBrowserProvider: browser.closeBrowserProvider,
   });
+  lifecycle.registerShutdownResource(() => design.close());
   const requestedMcodeTools =
     options.mcodeToolsRequested ?? baseConfig.beta?.mcodeTools === true;
   try {
@@ -329,6 +333,7 @@ export async function createWebuiRuntimeHost(
       elicitation: true,
     },
     enableLiveMcp: true,
+    designTool: design.tool,
     configGetter: () => {
       // Model selection updates the shared config file while the runtime is
       // still alive. Re-read the config on every access so listModels and
@@ -407,6 +412,7 @@ export async function createWebuiRuntimeHost(
   lifecycle.registerHostClose(runtimeClose);
   host.apiHost.close = () => lifecycle.close();
   try {
+    await design.attachExecution(host.designExecution);
     mcodeTools.ensureCommandPath();
   } catch (error) {
     const failures: unknown[] = [error];
@@ -451,6 +457,7 @@ export async function createWebuiRuntimeHost(
   const accountLogin = createWebuiAccountLoginSession(authSession.oauthCore);
   const hostHandle = {
     ...host,
+    design,
     registerShutdownResource: lifecycle.registerShutdownResource,
     appVersion: options.appVersion ?? host.appVersion ?? "webui",
     // The scope the resolver settled on, so the handshake can name the

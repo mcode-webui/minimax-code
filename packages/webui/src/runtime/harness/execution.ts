@@ -3,6 +3,7 @@
 // Split out of the former `server/host.ts` `createHarnessPortFromHost`; the
 // bodies are unchanged, only the module boundary moved.
 import type { WebuiHarnessPort } from "../port.js";
+import { mergeDesignEvents } from "../design/events.js";
 import type { WebuiRuntimeHostHandle } from "./host-contract.js";
 import { requireCliService, requireHostSlot } from "./requirements.js";
 import {
@@ -72,7 +73,8 @@ export function createExecutionAdapter(
       // collected. The runtime's payload is a per-type union of interfaces and
       // the wire declares an open record — a union of interfaces cannot satisfy
       // an index signature however alike the two look.
-      return toWebuiEventStream(requireCliService(host).watchEvents(signal));
+      const source = toWebuiEventStream(requireCliService(host).watchEvents(signal));
+      return host.design ? mergeDesignEvents(source, host.design.events.watch(signal), signal) : source;
     },
 
     async abortSession(request) {

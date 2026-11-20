@@ -209,6 +209,10 @@ describe("the Agent's browser tools over Browser Core", () => {
     tools = {
       execute: (action, input) => adapter.execute(context, action as never, input),
     };
+    await waitFor(
+      async () => (await readSelectionTitle()) === "agent driven",
+      "the newly opened fixture document to become the selected page",
+    );
   }
 
   it("inspects the page and gets a reference it can act on", { timeout: BROWSER_CASE_BUDGET_MS }, async () => {
@@ -216,7 +220,7 @@ describe("the Agent's browser tools over Browser Core", () => {
 
     const answer = await inspectElements();
     const elements = answer.elements ?? [];
-    expect(elements.length).toBeGreaterThan(0);
+    expect(elements.length, `Browser Core returned no elements for fixture page titled "${await readSelectionTitle()}"`).toBeGreaterThan(0);
 
     // The reference is the opaque form Browser Core issues. A CSS selector or
     // a coordinate would be a different thing: the reference is what carries

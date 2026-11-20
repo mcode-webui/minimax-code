@@ -13,6 +13,8 @@ import { createWebuiTransport } from "./platform/transport.js";
 import { importWebuiSessionFile } from "./platform/session-import.js";
 import { startWebuiSessionTransferDownload } from "./platform/session-transfer-download.js";
 import { route, miniAppDeepLink, type WebuiMiniAppDeepLink } from "./projection/common/router.js";
+import { DesignSurface } from "./features/design/ui/DesignSurface.public.js";
+import type { GetDesignStateRequest } from "../shared/contracts/design.js";
 import { NotFound } from "./shell/NotFound.js";
 import { ArchonPage } from "./shell/ArchonPage.js";
 import { WebuiErrorBoundary } from "./shell/WebuiErrorBoundary.js";
@@ -167,6 +169,7 @@ function WebuiClientRoot({
   storage,
   initialSessionId,
   standalone,
+  design,
 }: {
   readonly transport: ReturnType<typeof createWebuiTransport>;
   readonly dataDir?: string;
@@ -182,6 +185,7 @@ function WebuiClientRoot({
    * application.
    */
   readonly standalone?: WebuiMiniAppDeepLink;
+  readonly design?: GetDesignStateRequest;
 }): JSX.Element {
   const slices = React.useMemo(
     () => createWebuiPortSlices(transport),
@@ -266,7 +270,7 @@ function WebuiClientRoot({
       <OverlayListenerHost />
       <WebuiApplicationProvider application={application}>
         <WebuiPortSlicesProvider slices={slices}>
-          {standalone ? (
+          {design ? <DesignSurface standalone {...design} /> : standalone ? (
             // ADR 0020's standalone presentation: one published surface, the same
             // owner and the same port slices, and none of the workspace.
             <WebuiMiniAppWorkflowsProvider workflows={application.miniAppWorkflows}>
@@ -343,6 +347,7 @@ const app = <WebuiClientRoot
   dataDir={runtimeConfig.dataDir}
   storage={browserCapabilities.storage}
   {...(standalone ? { standalone } : { initialSessionId: sessionId })}
+  {...(currentRoute === "design" ? { design: { sessionId: new URLSearchParams(location.search).get("session") ?? undefined, documentId: new URLSearchParams(location.search).get("document") ?? undefined } } : {})}
 />;
 /**
  * A route that resolved to nothing.

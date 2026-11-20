@@ -164,6 +164,7 @@ import type {
   WebuiWorkspaceReviewSummary,
 } from "../shared/contracts/review.js";
 import type { WebuiCanvasDocument } from "../shared/contracts/canvas.js";
+import type { GetDesignStateRequest, ApplyDesignActionRequest, DesignState, DesignAssetRequest, DesignAsset } from "../shared/contracts/design.js";
 import type {
   WebuiCreateUserModelProviderRequest,
   WebuiDiscoverUserModelsCandidateRequest,
@@ -221,6 +222,9 @@ import type {
 // contracts private to the harness adapter.
 
 export interface WebuiHarnessPort {
+  getDesignState(request: GetDesignStateRequest): Promise<DesignState>;
+  applyDesignAction(request: ApplyDesignActionRequest): Promise<DesignState>;
+  readDesignAsset(request: DesignAssetRequest): Promise<DesignAsset | null>;
   version(): WebuiVersionInfo;
   listVisibleProjects?(request: {
     readonly limit?: number;

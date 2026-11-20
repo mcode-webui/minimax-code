@@ -1,3 +1,4 @@
+import { traceRuntimeShutdownPhase } from "../../infra/shutdown-diagnostics.js";
 import type { InitializedCronService } from "../../service/cron/index.js";
 import type { InitializedMcpService } from "../../service/mcp/index.js";
 import type { RuntimeMiniAppServices } from "../../service/miniapp/index.js";
@@ -212,7 +213,10 @@ export function createRuntimeServicesLifecycle(
       () => Promise.resolve(input.agentApplication.close()),
       () => Promise.resolve(input.workspaceGit.close()),
       () => Promise.resolve(input.sessionSystem.close()),
-      () => Promise.resolve(input.sandbox.close()),
+      () => {
+        traceRuntimeShutdownPhase("close_sandbox");
+        return Promise.resolve(input.sandbox.close());
+      },
     ];
     for (const close of closeSteps) {
       try {

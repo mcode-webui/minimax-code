@@ -50,6 +50,12 @@ if (!process.env.WEBUI_SERVER_TSX) {
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
 } else {
+  const startupStage = (stage) => {
+    if (process.env.WEBUI_STARTUP_DIAGNOSTICS === "1") {
+      console.error(`[webui-startup] ${stage}`);
+    }
+  };
+  startupStage("importing-runtime");
   const os = await import("node:os");
   const path = await import("node:path");
   const { readFileSync } = await import("node:fs");
@@ -131,6 +137,7 @@ if (!process.env.WEBUI_SERVER_TSX) {
     dataDir,
     ...(extensionVersion ? { expectedExtensionVersion: extensionVersion } : {}),
   });
+  startupStage("starting-browser-bridge");
   await browserBridge.start();
   // The browser adapter is built before the runtime host, because the host is
   // what takes the browser provider: the adapter reads its authorization
@@ -157,6 +164,7 @@ if (!process.env.WEBUI_SERVER_TSX) {
     port: miniappPort,
     credential,
   });
+  startupStage("starting-runtime-host");
   const assembled = await createWebuiRuntimeHost({
     dataDir,
     appVersion: "webui-dev",
@@ -190,6 +198,7 @@ const port = createHarnessPortFromHost(assembled.host, {
   //
   // The bridge's pairings follow the switches, so the persisted authorization
   // has to reach them before the service starts serving.
+  startupStage("initializing-browser");
   await browser.initialize();
   const service = new WebuiService({
     port,
@@ -254,10 +263,13 @@ const port = createHarnessPortFromHost(assembled.host, {
   process.once("SIGTERM", shutdown);
 
   // Register cleanup before accepting a shutdown request from the page.
+  startupStage("binding-service");
   const info = await service.start();
   // The Mini App listener is bound before the first Mini App opens, so the
   // runtime cannot take this port for one of its own Mini Apps first.
+  startupStage("preparing-miniapp-proxy");
   await miniappProxies.prepare();
+  startupStage("ready");
   console.log(`[webui] server listening at ${info.boundUrl}`);
   console.log(`[webui] Mini App port: ${miniappPort}`);
   printAccess(info, bindHost);

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T04:00:47Z",
+  "updated_at": "2026-11-20T04:53:50Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "fd65ad13daae90f670004eecf0ba71d4bb7edcc08b175db82d45aaa9b3182342",
-      "size": 637047,
-      "normalized_sha256": "fd65ad13daae90f670004eecf0ba71d4bb7edcc08b175db82d45aaa9b3182342"
+      "sha256": "5daeae6a37fff9d9cc1a8319c689162082f938929a3d8741274f1b4e9f8268df",
+      "size": 637644,
+      "normalized_sha256": "5daeae6a37fff9d9cc1a8319c689162082f938929a3d8741274f1b4e9f8268df"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -4923,9 +4923,9 @@
     },
     "packages/local-runtime-v2/src/application/session/runtime-services-lifecycle.ts": {
       "role": "index",
-      "sha256": "8cb4c6a12a5af5af8e9017b394958e074a5611e5967d49a357035a40e1f27b10",
-      "size": 14998,
-      "normalized_sha256": "8cb4c6a12a5af5af8e9017b394958e074a5611e5967d49a357035a40e1f27b10"
+      "sha256": "8d75fb6874f0543b46ebac2bf7dd1f510ef2513f3bed230c84ccde254ce65493",
+      "size": 15157,
+      "normalized_sha256": "8d75fb6874f0543b46ebac2bf7dd1f510ef2513f3bed230c84ccde254ce65493"
     },
     "packages/local-runtime-v2/src/application/session/runtime-session-composition.ts": {
       "role": "index",
@@ -5007,9 +5007,9 @@
     },
     "packages/local-runtime-v2/src/background-runtime.ts": {
       "role": "index",
-      "sha256": "4232e2064f02521185bfa6d12cc9004fd5c3b10c63ba6adc41deaca39f9d5753",
-      "size": 6690,
-      "normalized_sha256": "4232e2064f02521185bfa6d12cc9004fd5c3b10c63ba6adc41deaca39f9d5753"
+      "sha256": "77840f4939dfb288c02a866b9beead46f7886f5154221dc2f23ac4cbe17d1b5a",
+      "size": 6890,
+      "normalized_sha256": "77840f4939dfb288c02a866b9beead46f7886f5154221dc2f23ac4cbe17d1b5a"
     },
     "packages/local-runtime-v2/src/compat/v1/agent-host.test.ts": {
       "role": "observe",
@@ -5647,6 +5647,12 @@
       "size": 31436,
       "normalized_sha256": "9f29d2319003fa4d022f50cd852b359e482c346a604aa5f890a306089bd93edb"
     },
+    "packages/local-runtime-v2/src/infra/shutdown-diagnostics.ts": {
+      "role": "index",
+      "sha256": "e1b5da492e3ac36fcc418436da15957af153f8795fbf0be8661fc6d875f39c84",
+      "size": 277,
+      "normalized_sha256": "e1b5da492e3ac36fcc418436da15957af153f8795fbf0be8661fc6d875f39c84"
+    },
     "packages/local-runtime-v2/src/infra/sse/bounded-ring.ts": {
       "role": "index",
       "sha256": "7b5e1b749aeacdc73939b560d8771580cdf713e5f99a2ae9fa8aa6fd1e4c18c9",
@@ -5715,9 +5721,9 @@
     },
     "packages/local-runtime-v2/src/runtime.ts": {
       "role": "index",
-      "sha256": "e29b437be6aa6473017031184571631432bf8dab82454c875deb0e93c43f8c4d",
-      "size": 35404,
-      "normalized_sha256": "e29b437be6aa6473017031184571631432bf8dab82454c875deb0e93c43f8c4d"
+      "sha256": "b802e88e552dd869780546d60803e5a268f8c87a73fbf91437cf78bb00ae6bf1",
+      "size": 35740,
+      "normalized_sha256": "b802e88e552dd869780546d60803e5a268f8c87a73fbf91437cf78bb00ae6bf1"
     },
     "packages/local-runtime-v2/src/service/agent-turn/contracts.ts": {
       "role": "index",
@@ -29036,9 +29042,9 @@
     },
     "packages/webui/test/browser/support/native-browser-host.ts": {
       "role": "index",
-      "sha256": "5b5dce9cb2ab1762eabc3035faf06c215d5b870259d7f91dafdac064720ea15b",
-      "size": 7883,
-      "normalized_sha256": "5b5dce9cb2ab1762eabc3035faf06c215d5b870259d7f91dafdac064720ea15b"
+      "sha256": "0bdfaa062b39de9e45eabad4fce1a9795c65ed5f921de27fd377a549e1feb7df",
+      "size": 7937,
+      "normalized_sha256": "0bdfaa062b39de9e45eabad4fce1a9795c65ed5f921de27fd377a549e1feb7df"
     },
     "packages/webui/test/browser/support/native-design-browser-host.ts": {
       "role": "index",
@@ -31298,9 +31304,9 @@
     },
     "release/public-source.json": {
       "role": "index",
-      "sha256": "889a7423fe6d64dbe26a6e07d6df22b4bef6bc8194a06fc04c0e3fb2c287785d",
-      "size": 457094,
-      "normalized_sha256": "889a7423fe6d64dbe26a6e07d6df22b4bef6bc8194a06fc04c0e3fb2c287785d"
+      "sha256": "508672275a7ccee0e795d51d42a7379311c8d4956642c050076cdc22aff8eba1",
+      "size": 457161,
+      "normalized_sha256": "508672275a7ccee0e795d51d42a7379311c8d4956642c050076cdc22aff8eba1"
     },
     "release/webui-npm/README.md": {
       "role": "index",

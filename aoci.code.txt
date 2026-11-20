@@ -1023,7 +1023,7 @@ runtime-plugin-hook-composition.ts[AE4T]: F:Configures runtime plugin hook handl
 runtime-prompt-support.ts[AW4T]: F:Initializes prompt support for the local runtime's services. | R:- | A:initializeRuntimeServicePromptSupport | S:-
 runtime-queue-selection.ts[AW4T]: F:Builds the queue selection used by session runtime services. | R:- | A:createRuntimeQueueSelection | S:-
 runtime-services-composition.ts[AG4T]: F:Resolves service compatibility and builds agent reference and workspace projections. | R:- | A:resolveServicesCompatibility,createRuntimeAgentReferenceProjection,createServiceWorkspace | S:-
-runtime-services-lifecycle.ts[AR4L]: F:Coordinates plugin session lifecycle, auth notifications, and owner cleanup after initialization failure. | R:- | A:closeRuntimeServiceOwnersAfterFailure,createRuntimePluginSessionLifecycle,createRuntimePluginAuthContextNotifier | S:-
+runtime-services-lifecycle.ts[AR4L]: F:Coordinates plugin session lifecycle, auth notifications and runtime owner shutdown. | R:- | A:closeRuntimeServiceOwnersAfterFailure,createRuntimePluginSessionLifecycle,createRuntimePluginAuthContextNotifier | S:Reports a shutdown phase just before the sandbox close call.
 runtime-session-composition.ts[AG4L]: F:Composes the production runtime session services from their host inputs. | R:- | A:createProductionSessionComposition,ProductionSessionComposition,RuntimeSessionCompositionInput | S:-
 runtime-skill-application.ts[AE4S]: F:Exposes runtime skill actions and plugin skill summary through the application boundary. | R:- | A:RuntimeSkillApplication,RuntimePluginSkillSummary,createRuntimeSkillApplication | S:-
 runtime-user-applications.ts[AG4T]: F:Composes the user-facing application services for the local runtime. | R:- | A:createRuntimeUserApplications | S:-
@@ -1037,9 +1037,9 @@ view-contract.ts[LD4S]: F:Defines session views and preserves the status values 
 wire.ts[MD4M]: F:Projects session and project records into their public view and tree representations. | R:- | A:toSessionInfoView,toProjectDetail,projectDisplayName,toSessionTreeNodeView | S:-
 
 ===/<repository>/packages/local-runtime-v2/src/===
-background-runtime.ts[ER4M]: F:Creates a background runtime from supplied options and exposes its lifecycle contract. | R:- | A:createBackgroundRuntime,CreateBackgroundRuntimeOptions,BackgroundRuntime | S:-
+background-runtime.ts[ER4M]: F:Creates and owns background runtime infrastructure. | R:- | A:createBackgroundRuntime,CreateBackgroundRuntimeOptions,BackgroundRuntime | S:Shutdown drains deferred maintenance before releasing the runtime owner lease and can report both phases.
 index.ts[LG4T]: F:Exports local runtime host creation and rootless runtime generation switching. | R:- | A:createLocalRuntimeHost,createLocalRuntimeHostV2,switchRootlessV2Generation | S:-
-runtime.ts[AG4L]: F:Constructs the V2 local runtime host and provides a factory with test overrides. | R:- | A:createLocalRuntimeHostV2,createLocalRuntimeHostV2ForTest,LocalRuntimeV2TestOverrides | S:-
+runtime.ts[AG4L]: F:Constructs and closes the V2 local runtime host and provides a factory with test overrides. | R:code:packages/local-runtime-v2/src/background-runtime.ts | A:createLocalRuntimeHostV2,createLocalRuntimeHostV2ForTest,LocalRuntimeV2TestOverrides | S:Opt-in shutdown phase markers precede owner, legacy host and database teardown.
 services.ts[AG4L]: F:Defines the local runtime service assembly, creation options, and test overrides. | R:- | A:RuntimeServices,RuntimeServicesTestOverrides,CreateRuntimeServicesOptions | S:-
 
 ===/<repository>/packages/local-runtime-v2/src/compat/v1/===
@@ -5738,7 +5738,7 @@ accessibility-review.json[SE4T]: F:Records browser accessibility review evidence
 accessibility.d.mts[SE4T]: F:Declares types for browser accessibility test helpers. | R:- | A:- | S:-
 accessibility.mjs[SE4M]: F:Implements browser accessibility checks and loads their exceptions. | R:- | A:- | S:-
 composer-mascot-opaque.webm.asset.json[SE4T]: F:Describes the opaque composer mascot video test asset. | R:- | A:- | S:-
-native-browser-host.ts[SE4S]: F:Provides a native browser host for testing Browser Use. | R:- | A:- | S:-
+native-browser-host.ts[SE4S]: F:Runs the real WebUI service and native PTYs for browser acceptance. | R:- | A:- | S:Enables runtime shutdown phase markers and reports the current service owner if teardown times out.
 native-design-browser-host.ts[SE4M]: F:Provides a native WebUI host for testing Design, including the synthetic provider that receives the media upload. | R:- | A:- | S:The synthetic provider reads the multipart upload body itself: the platform multipart parser differs across platforms and leaves the provider waiting.
 rendering-integrity.json[SE4L]: F:Stores the recorded browser rendering integrity expectations for each surface, state and theme. | R:- | A:- | S:It is re-recorded with RECORD_RENDERING_INTEGRITY=1 when the surfaces move, and every value is compared against what the run measures.
 rendering-integrity.mjs[SE4M]: F:Loads and checks browser rendering integrity requirements. | R:- | A:- | S:-
@@ -5760,7 +5760,7 @@ source-text.ts[SE4T]: F:Reads source text for WebUI unit checks. | R:- | A:- | S
 ===/<repository>/release/===
 dependency-licenses.json[SE4L]: F:Records third-party dependency licenses for release. | R:- | A:- | S:-
 extraction.json[SE4T]: F:Pins the extracted source baseline and public package scope. | R:- | A:- | S:-
-public-source.json[FV6L]: F:Inventories the files in the reviewed public source projection and the published path of every one of them. | R:- | A:- | S:The inventory is generated by `node scripts/source-inventory.mjs --write`; recording a file does not make it fit for publication.
+public-source.json[FV6L]: F:Inventories reviewed public source paths, including runtime shutdown diagnostics. | R:- | A:- | S:Regenerate with node scripts/source-inventory.mjs --write after reviewing which files are suitable for publication.
 
 ===/<repository>/release/webui-npm/===
 README.md[SE4T]: F:Documents installation and use of the WebUI npm package. | R:- | A:- | S:-
@@ -5866,3 +5866,6 @@ windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runti
 
 ===/<repository>/tools/plugins/===
 validate-plugin.mjs[SE4L]: F:Validates plugin packages against their manifest and schema contracts. | R:- | A:- | S:-
+
+===/<repository>/packages/local-runtime-v2/src/infra/===
+shutdown-diagnostics.ts[SE4T]: F:Writes opt-in runtime shutdown phase markers to stderr. | R:- | A:traceRuntimeShutdownPhase | S:Enabled only by MCODE_RUNTIME_SHUTDOWN_DIAGNOSTICS=1. Callers supply static phase names.

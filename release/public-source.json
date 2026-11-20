@@ -949,6 +949,7 @@
     "packages/local-runtime-v2/src/infra/runtime-owner/rootless-v2-generation.ts",
     "packages/local-runtime-v2/src/infra/runtime-owner/runtime-owner-lease.ts",
     "packages/local-runtime-v2/src/infra/scheduler/index.ts",
+    "packages/local-runtime-v2/src/infra/shutdown-diagnostics.ts",
     "packages/local-runtime-v2/src/infra/sse/bounded-ring.ts",
     "packages/local-runtime-v2/src/infra/sse/index.ts",
     "packages/local-runtime-v2/src/infra/sse/subscriber-registry.ts",

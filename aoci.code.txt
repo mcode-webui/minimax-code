@@ -5673,7 +5673,7 @@ architecture-acceptance.spec.mjs[TE4M]: F:Tests terminal readiness, roster permi
 browser-notice-layer.spec.mjs[SE4T]: F:Tests Browser Use notice layering over page content. | R:- | A:- | S:-
 browser-workspace.spec.mjs[SE4L]: F:Tests opening and operating Browser Use in the workspace panel. | R:- | A:- | S:-
 composer-goal-mode.spec.mjs[SE4S]: F:Tests entering goal mode from the WebUI composer. | R:- | A:- | S:-
-composer.spec.mjs[SE4L]: F:Tests the composer's slash palette, history and drafts, attachments, @ mentions, shared field feedback and submit gate as browser workflows. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:-
+composer.spec.mjs[TU4L]: F:Exercises composer menus, slash palette, drafts, attachments, mentions, and submit gating in the built browser client. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Arms a listener on the current submenu before hover, then verifies its named exit event and DOM removal separately so a late style sample cannot erase animation evidence.
 connection-status.spec.mjs[SE4S]: F:Tests connection status and recovery after an interrupted stream. | R:- | A:- | S:-
 content-page.spec.mjs[SE4S]: F:Tests the shared content page in the browser. | R:- | A:- | S:-
 context-usage-ring.spec.mjs[SE4M]: F:Tests context usage ring rendering from runtime data. | R:- | A:- | S:-

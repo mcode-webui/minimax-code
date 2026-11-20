@@ -489,10 +489,32 @@ test("the composer's second-level menu has an opaque shared surface", async ({ p
     expect(submenuBackground, `${name} submenu has an opaque surface`).not.toBe("rgba(0, 0, 0, 0)");
     expect(submenuBackground, `${name} submenu matches the root menu surface`).toBe(rootBackground);
 
-    await root.getByRole("menuitem", { name: "添加文件或图片" }).hover();
-    await expect(submenu).toHaveAttribute("data-webui-motion-state", "exit");
-    expect(await submenu.evaluate((node) => getComputedStyle(node).animationName)).toBe("webui-motion-surface-exit");
-    await expect(submenu).toHaveCount(0, { timeout: 500 });
+    // Capture the short exit on this instance before hovering away. Reading
+    // style or state after the hover can miss it on a busy runner.
+    const exit = await submenu.evaluateHandle((node) => {
+      const observed = { name: "", state: "" };
+      node.addEventListener("animationstart", (event) => {
+        if (
+          event.target === node &&
+          !event.pseudoElement &&
+          event.animationName === "webui-motion-surface-exit"
+        ) {
+          observed.name = event.animationName;
+          observed.state = node.dataset.webuiMotionState;
+        }
+      });
+      return observed;
+    });
+    try {
+      await root.getByRole("menuitem", { name: "添加文件或图片" }).hover();
+      await expect.poll(() => exit.jsonValue()).toEqual({
+        name: "webui-motion-surface-exit",
+        state: "exit",
+      });
+      await expect(submenu).toHaveCount(0);
+    } finally {
+      await exit.dispose();
+    }
   }
 });
 

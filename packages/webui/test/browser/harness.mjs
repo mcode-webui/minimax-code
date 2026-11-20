@@ -13,11 +13,29 @@
 // process happens to answer on the harness port.
 
 import { expect, test as base } from "@playwright/test";
+import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { promisify } from "node:util";
 
 /** The suite's `test`, carrying the harness-server guard for every test. */
 export const test = base;
+
+const windowsSocketSnapshots = new WeakMap();
+const execFileAsync = promisify(execFile);
+
+async function snapshotWindowsTcpStates() {
+  const capturedAt = new Date().toISOString();
+  try {
+    const { stdout } = await execFileAsync("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-Command",
+      "$ErrorActionPreference = 'Stop'; ConvertTo-Json -InputObject @(Get-NetTCPConnection | Group-Object State | Select-Object Name,Count) -Compress",
+    ], { timeout: 5_000, maxBuffer: 16_384, windowsHide: true });
+    return { capturedAt, states: JSON.parse(stdout) };
+  } catch (error) {
+    return { capturedAt, unavailable: typeof error?.code === "string" ? error.code : "collection-failed" };
+  }
+}
 
 export async function attachJsonEvidence(name, value) {
   // list reporter 不落盘 body 附件；显式写入 outputDir 供 CI artifact 保留。
@@ -110,10 +128,20 @@ async function assertHarnessServer(page) {
 // fixtures first, some call `page.goto` directly), so it runs after the body has
 // navigated -- which is also what covers the tests that never reach `openApp`.
 test.beforeEach(async ({ page }) => {
+  if (process.platform === "win32") {
+    page.on("requestfailed", (request) => {
+      if (windowsSocketSnapshots.has(page) || request.failure()?.errorText !== "net::ERR_NO_BUFFER_SPACE") return;
+      windowsSocketSnapshots.set(page, snapshotWindowsTcpStates());
+    });
+  }
   await assertHarnessServerHealth(page);
 });
 
 test.afterEach(async ({ page }) => {
+  const snapshot = windowsSocketSnapshots.get(page);
+  if (snapshot) {
+    await attachJsonEvidence("windows-tcp-no-buffer-space.json", await snapshot);
+  }
   expect(await page.evaluate(() => window.__WEBUI_TEST_SERVER_ID__)).toBe(expectedServerId());
 });
 

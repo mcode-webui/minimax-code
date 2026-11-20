@@ -5682,7 +5682,7 @@ feedback.spec.mjs[SE4S]: F:Tests accessible field error feedback. | R:- | A:- | 
 field-contract.spec.mjs[SE4S]: F:Tests that form controls have accessible names. | R:- | A:- | S:-
 fixture.mjs[SE4L]: F:Installs the browser fixture transport. | R:- | A:- | S:-
 goal-retention.spec.mjs[SE4S]: F:Tests retention of session goal state during a pending refresh. | R:- | A:- | S:-
-harness.mjs[TQ4M]: F:Provides built-client Playwright fixtures, test helpers and startup guards. | R:code:playwright.config.mjs | A:openApp, waitForLocalImages | S:Image readiness failures show path and decode state without query parameters.
+harness.mjs[TQ4M]: F:Provides built-client browser fixtures, readiness checks and failure artifacts. | R:code:playwright.config.mjs | A:openApp, waitForLocalImages | S:Windows buffer errors trigger a bounded TCP-state census. Image evidence omits URL query parameters.
 miniapp-panel.spec.mjs[SE4L]: F:Tests Mini App launcher refresh behavior. | R:- | A:- | S:-
 miniapp-standalone-tab.spec.mjs[SE4S]: F:Tests promotion of inline Mini Apps to standalone tabs. | R:- | A:- | S:-
 model-picker-interactions.spec.mjs[SE4M]: F:Tests model picker interactions and display of the selected model. | R:- | A:- | S:-

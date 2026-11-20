@@ -11,13 +11,13 @@ CONTRIBUTING.md[SG4S]: F:Defines contributor eligibility, review workflow, verif
 LICENSE[SG4T]: F:Grants the MIT license for MiniMax Code. | R:- | A:- | S:-
 LICENSE-STATUS.md[SG4T]: F:Records license coverage and third-party exceptions for the published source. | R:- | A:- | S:-
 NOTICE[SG4T]: F:Records MiniMax Code copyright and distribution notices. | R:- | A:- | S:-
-README.md[SG4S]: F:Introduces MiniMax Code and explains installation, source builds from main, account or model setup, and supported workflows. | R:- | A:- | S:-
-README_ZH.md[SG4S]: F:Explains MiniMax Code installation, source builds from main, sign-in, model configuration and usage in Chinese. | R:- | A:- | S:-
+README.md[SG4S]: F:Introduces MiniMax Code installation, source builds and usage. | R:code:package.json | A:- | S:Source builds require pnpm 10.34.9.
+README_ZH.md[SG4S]: F:Documents MiniMax Code installation, builds and usage in Chinese. | R:code:package.json | A:- | S:Source builds require pnpm 10.34.9.
 SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed-service boundaries. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
-package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:-
+package.json[FV5T]: F:Declares root scripts, dependency versions and the pnpm version for the distribution. | R:code:pnpm-workspace.yaml | A:- | S:Workspace install policy lives in pnpm-workspace.yaml.
 playwright.config.mjs[FQ4T]: F:Configures WebUI browser gates, fixture server, font environment and output directories. | R:code:packages/webui/test/browser/server.mjs | A:- | S:The Windows workaround replaces the pinned disabled-features switch to retain Playwright defaults.
-pnpm-workspace.yaml[SE4T]: F:Declares pnpm workspace package roots. | R:- | A:- | S:-
+pnpm-workspace.yaml[FV4T]: F:Declares workspace members, hoisted linking, dependency overrides and build script policy. | R:code:package.json | A:- | S:Uses pnpm 10 allowBuilds for native install scripts.
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-
 tsconfig.standalone.json[SE4L]: F:Configures standalone TypeScript checking and workspace path aliases. | R:- | A:- | S:-
 vitest.oss.config.mjs[SE4T]: F:Configures the public distribution Vitest environment and module resolution. | R:- | A:- | S:-
@@ -109,8 +109,8 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs WebUI CI as independent checks, integration, browser shard, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:Browser file shards isolate single-worker fixture servers; macOS keeps windowed Chromium. Test jobs save diagnostics by platform, lane, and attempt even on failure.
-update-visual-baselines.yml[FV4S]: F:Re-records the per-platform Playwright visual baselines of the named WebUI browser specs on the three CI runners and commits each runner's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh selects the browser mode the CI compares with — windowed Chromium on macOS — in a step of its own, because a step cannot read back the environment file it writes.
+webui-ci.yml[FV4S]: F:Runs independent WebUI checks, integration, browser shard and package jobs on three platforms. | R:code:package.json,code:playwright.config.mjs | A:- | S:Each shard owns its runner and diagnostics. macOS uses windowed Chromium. The installer uses pnpm 10.34.9.
+update-visual-baselines.yml[FV4S]: F:Regenerates WebUI Playwright visual baselines on three native CI runners. | R:code:.github/workflows/webui-ci.yml,code:package.json | A:- | S:Select windowed Chromium on macOS before the test step. The installer uses pnpm 10.34.9.
 
 ===/<repository>/.plan/browser-use/board/===
 .notes-numbers[FV4T]: F:Records the tracker link for the Browser Use notes board. | R:- | A:- | S:-
@@ -197,7 +197,7 @@ architecture.md[SG4T]: F:Explains package boundaries and integration among clien
 demo.md[SG4T]: F:Walks through a recorded product demo that turns a request into a verified code change. | R:- | A:- | S:-
 examples.md[SG4M]: F:Provides practical examples for editing code, running tests, and using a custom model. | R:- | A:- | S:-
 hooks.md[SG4T]: F:Specifies how hook messages reach the TUI and model context, including event limits. | R:- | A:- | S:-
-installation.md[SG4S]: F:Documents checksum-verified release archive installation and source builds. | R:- | A:- | S:-
+installation.md[SG4S]: F:Documents checksum-verified archive installation and source builds. | R:code:package.json | A:- | S:Source builds require pnpm 10.34.9.
 maintainers.md[SG4T]: F:Defines maintainer responsibilities, issue triage, and release and review ownership. | R:- | A:- | S:-
 open-source-status.md[SG4T]: F:Records the public source release baseline, supported scope, and evidence boundaries. | R:- | A:- | S:-
 performance-ci.md[SG4S]: F:Defines performance CI profiles, suite selection, and required comparison evidence. | R:- | A:- | S:-

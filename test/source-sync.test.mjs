@@ -85,6 +85,8 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const ffmpeg = job.steps.find(step => step.name === 'Install FFmpeg');
   assert.ok(ffmpeg, 'the native Design media paths run FFmpeg for real');
   assert.match(ffmpeg.run, /ffmpeg/);
+  assert.equal(ffmpeg['timeout-minutes'], "${{ runner.os == 'Linux' && 15 || 8 }}");
+  assert.match(ffmpeg.run, /sudo apt-get install -y --no-install-recommends ffmpeg/);
   assert.doesNotMatch(ffmpeg.run, /npm publish|wget /);
   assert.equal((ffmpeg.run.match(/\bcurl /g) ?? []).length, 1);
   assert.match(ffmpeg.run, /https:\/\/github\.com\/GyanD\/codexffmpeg\/releases\/download\/\d+\.\d+\.\d+\//);

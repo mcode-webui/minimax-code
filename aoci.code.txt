@@ -5708,7 +5708,7 @@ responsive-layout.spec.mjs[SE4L]: F:Tests responsive layout at supported viewpor
 review-consumers.spec.mjs[SE4S]: F:Tests that review consumers read data through the review owner. | R:- | A:- | S:-
 review-diff-colors.spec.mjs[SE4S]: F:Tests diff color presentation in the browser. | R:- | A:- | S:-
 scheduling-panel.spec.mjs[SE4S]: F:Tests interactions in the scheduled tasks panel. | R:- | A:- | S:-
-select-dynamic-options.spec.mjs[SE4S]: F:Tests that select options track changes to available hosts. | R:- | A:- | S:-
+select-dynamic-options.spec.mjs[TE4S]: F:Verifies the SSH project host picker as the available host list shrinks or becomes empty. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/src/client/features/ssh/ui/ssh-project-form.tsx | A:- | S:Submit through the form event to trigger a rejected save and refresh without dismissing the open popup with an outside click.
 select-keyboard.spec.mjs[SE4M]: F:Tests keyboard navigation and focus behavior in select controls. | R:- | A:- | S:-
 server.mjs[SE4T]: F:Starts the server used by WebUI browser tests. | R:- | A:- | S:-
 settings-account-tab.spec.mjs[SE4L]: F:Tests account settings navigation. | R:- | A:- | S:-

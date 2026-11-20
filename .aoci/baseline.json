@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T03:23:32Z",
+  "updated_at": "2026-11-20T03:34:27Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -317,9 +317,9 @@
     },
     ".github/workflows/webui-ci.yml": {
       "role": "index",
-      "sha256": "a95e151062eea7fe55a87e43b9d329c5c34c6e531c939392821587aef7257eae",
-      "size": 4915,
-      "normalized_sha256": "a95e151062eea7fe55a87e43b9d329c5c34c6e531c939392821587aef7257eae"
+      "sha256": "9a3fabe4d4160d97fcb30dc9603135c1e18379f066186dd0c6ba51cdcbf1ae50",
+      "size": 5390,
+      "normalized_sha256": "9a3fabe4d4160d97fcb30dc9603135c1e18379f066186dd0c6ba51cdcbf1ae50"
     },
     ".gitignore": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "a60489cbe8bf199fe6b7c51061b8989ac4da78ec99112b1175f51d6aa4f43b3c",
-      "size": 636888,
-      "normalized_sha256": "a60489cbe8bf199fe6b7c51061b8989ac4da78ec99112b1175f51d6aa4f43b3c"
+      "sha256": "b9eb846eeac4548ce7aafc87595a19571fb3ede2aa944dc69d88cc9add95886b",
+      "size": 636878,
+      "normalized_sha256": "b9eb846eeac4548ce7aafc87595a19571fb3ede2aa944dc69d88cc9add95886b"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -31814,9 +31814,9 @@
     },
     "test/source-sync.test.mjs": {
       "role": "index",
-      "sha256": "2dfcaa3b46583d5d6a4c789d6b59107571a6ce64704e3fdea54ed94d9db9e2db",
-      "size": 95782,
-      "normalized_sha256": "2dfcaa3b46583d5d6a4c789d6b59107571a6ce64704e3fdea54ed94d9db9e2db"
+      "sha256": "dbcf0ef2fac7f8e3f090772fae358cf1be35e32e8a42016e7b25d4a0846aaec3",
+      "size": 96022,
+      "normalized_sha256": "dbcf0ef2fac7f8e3f090772fae358cf1be35e32e8a42016e7b25d4a0846aaec3"
     },
     "test/sqlite-message-contention.test.ts": {
       "role": "observe",

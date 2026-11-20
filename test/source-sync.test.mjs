@@ -72,7 +72,10 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const ffmpeg = job.steps.find(step => step.name === 'Install FFmpeg');
   assert.ok(ffmpeg, 'the native Design media paths run FFmpeg for real');
   assert.match(ffmpeg.run, /ffmpeg/);
-  assert.doesNotMatch(ffmpeg.run, /npm publish|curl |wget /);
+  assert.doesNotMatch(ffmpeg.run, /npm publish|wget /);
+  assert.equal((ffmpeg.run.match(/\bcurl /g) ?? []).length, 1);
+  assert.match(ffmpeg.run, /https:\/\/github\.com\/GyanD\/codexffmpeg\/releases\/download\/\d+\.\d+\.\d+\//);
+  assert.match(ffmpeg.run, /[a-f0-9]{64}.*sha256sum --check\s+unzip /);
   const commands = job.steps.filter(step => step.run && step !== directories).map(step => step.run);
   const provisioning = ['pnpm install --frozen-lockfile', 'pnpm exec playwright install-deps chromium', ffmpeg.run];
   for (const command of commands) {

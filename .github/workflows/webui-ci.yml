@@ -84,13 +84,18 @@ jobs:
           elif [ "$RUNNER_OS" = "macOS" ]; then
             brew install ffmpeg
           else
-            for attempt in 1 2 3; do
-              echo "Installing FFmpeg with Chocolatey (attempt ${attempt}/3)"
-              if choco install ffmpeg -y --no-progress && verify_ffmpeg; then
-                exit 0
-              fi
-              if [ "$attempt" -lt 3 ]; then sleep "$((attempt * 10))"; fi
-            done
+            # Use the Gyan build linked from ffmpeg.org/download.html.
+            ffmpeg_build="ffmpeg-9.0.2-essentials_build"
+            ffmpeg_dir="$(mktemp -d "$(cygpath -u "$RUNNER_TEMP")/webui-ffmpeg.XXXXXX")"
+            archive="$ffmpeg_dir/$ffmpeg_build.zip"
+            curl --fail --location --retry 3 --retry-max-time 240 --max-time 90 \
+              --output "$archive" \
+              "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/$ffmpeg_build.zip"
+            echo "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba  $archive" | sha256sum --check
+            unzip -q "$archive" -d "$ffmpeg_dir"
+            ffmpeg_bin="$ffmpeg_dir/$ffmpeg_build/bin"
+            export PATH="$ffmpeg_bin:$PATH"
+            cygpath -w "$ffmpeg_bin" >> "$GITHUB_PATH"
           fi
           if ! verify_ffmpeg; then
             echo "::error::FFmpeg is unavailable to Node after installation"

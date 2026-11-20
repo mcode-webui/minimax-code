@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T02:30:36Z",
+  "updated_at": "2026-11-20T02:35:44Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "f558e7dae48a2c6177c540f185cc6f220f0d3c75bda577e0abbc1bd53c3ac78a",
-      "size": 636650,
-      "normalized_sha256": "f558e7dae48a2c6177c540f185cc6f220f0d3c75bda577e0abbc1bd53c3ac78a"
+      "sha256": "c5b68e3ad7c42eca6302e86aeef54bc99903531ea73adaadefb8acf8a087c1e5",
+      "size": 636644,
+      "normalized_sha256": "c5b68e3ad7c42eca6302e86aeef54bc99903531ea73adaadefb8acf8a087c1e5"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -28400,9 +28400,9 @@
     },
     "packages/webui/test/browser/account-login.spec.mjs": {
       "role": "index",
-      "sha256": "f1242746a1495dd3256d29ea8c396a3c1a39a10affcd71547dba32a0c5ffbad0",
-      "size": 15081,
-      "normalized_sha256": "f1242746a1495dd3256d29ea8c396a3c1a39a10affcd71547dba32a0c5ffbad0"
+      "sha256": "c30c4ae40493e993216f45107568e6390a25eaa887433a5ad48a843fa7e12be6",
+      "size": 15084,
+      "normalized_sha256": "c30c4ae40493e993216f45107568e6390a25eaa887433a5ad48a843fa7e12be6"
     },
     "packages/webui/test/browser/api-key-feedback.spec.mjs": {
       "role": "index",

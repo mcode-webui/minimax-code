@@ -5665,7 +5665,7 @@ tools.mjs[LB6L]: F:Holds the pure Design rules: how a batch is laid out, where t
 ===/<repository>/packages/webui/test/browser/===
 README.md[SE4T]: F:Documents the WebUI browser test suite. | R:- | A:- | S:-
 acceptance-record.ts[SE4M]: F:Defines acceptance observations for browser workflow evidence. | R:- | A:- | S:-
-account-login.spec.mjs[TU4M]: F:Tests the account login and the subscription display in the browser, including the hover that refreshes the quota. | R:- | A:- | S:The hover's first request is awaited before the requests are counted, so a count read while that request was still on its way does not blame the hover loop.
+account-login.spec.mjs[TU4M]: F:Tests account login and subscription quota rendering in the built WebUI. | R:code:packages/webui/src/client/features/account/ui/UserMenu.tsx | A:- | S:The hover test controls the browser clock on both sides of the close grace period so runner input latency cannot reopen the panel.
 api-key-feedback.spec.mjs[SE4M]: F:Tests presentation of API key connection feedback. | R:- | A:- | S:-
 application-observation.spec.mjs[SE4T]: F:Tests application observation and stale presenter results. | R:- | A:- | S:-
 application-performance.mjs[SE4S]: F:Defines application performance measurement thresholds and helpers. | R:- | A:- | S:-

@@ -94,6 +94,9 @@ To locate data safely:
 
 For tests, explicitly set `MINIMAX_DATA_DIR` to a temporary directory to keep normal sessions separate. Use `$env:MINIMAX_DATA_DIR = 'C:\path\to\test-profile'` in PowerShell or `export MINIMAX_DATA_DIR=/path/to/test-profile` in a POSIX shell.
 
+The TUI uses the host locale by default. Set `MCODE_TUI_LOCALE` to `en-US` or
+`zh-CN` before starting the CLI to select its display language explicitly.
+
 ## macOS terminal shortcuts: Ghostty Option+M
 
 In the composer, `Alt+M` (`Option+M` on macOS) cycles permission modes through Ask, Auto, and Full access. Its binding ID is `composer.cycle-permission`. `Shift+Tab` toggles **Plan mode**, a separate setting. You can also use `/permission` to choose a permission mode and `/permission status` to inspect it without an Option shortcut.

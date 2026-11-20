@@ -24,6 +24,7 @@ environment.LANG = "C";
 environment.LANGUAGE = "C";
 environment.LC_ALL = "C";
 environment.LC_MESSAGES = "C";
+environment.MCODE_TUI_LOCALE = "en-US";
 if (process.platform === "win32") {
   environment.TEMP = environment.TMP = realpathSync.native(tmpdir());
 }

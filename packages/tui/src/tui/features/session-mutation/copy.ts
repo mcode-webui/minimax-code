@@ -1,4 +1,5 @@
 import { getRuntimeLocaleLanguage } from '@mavis/shared/runtime-i18n';
+import { resolveTuiLocale } from '../../foundation/locale.js';
 
 import {
   SESSION_HISTORY_COPY,
@@ -10,13 +11,7 @@ import { ZH_HANS_SESSION_HISTORY_COPY, ZH_HANS_SESSION_MUTATION_COPY } from './c
 
 export type { SessionHistoryCopyKey } from './copy.en.js';
 
-export function sessionMutationLocale(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale;
-  } catch {
-    return 'en';
-  }
-}
+export { resolveTuiLocale as sessionMutationLocale };
 
 function isChineseLocale(locale: string): boolean {
   return getRuntimeLocaleLanguage(locale) === 'zh';
@@ -24,14 +19,14 @@ function isChineseLocale(locale: string): boolean {
 
 export function sessionHistoryText(
   key: SessionHistoryCopyKey,
-  locale = sessionMutationLocale(),
+  locale = resolveTuiLocale(),
 ): string {
   return isChineseLocale(locale) ? ZH_HANS_SESSION_HISTORY_COPY[key] : SESSION_HISTORY_COPY[key];
 }
 
 export function sessionMutationText(
   key: SessionMutationCopyKey,
-  locale = sessionMutationLocale(),
+  locale = resolveTuiLocale(),
 ): string {
   return isChineseLocale(locale) ? ZH_HANS_SESSION_MUTATION_COPY[key] : SESSION_MUTATION_COPY[key];
 }
@@ -39,7 +34,7 @@ export function sessionMutationText(
 export function sessionMutationTemplate(
   key: SessionMutationCopyKey,
   values: Readonly<Record<string, string | number>>,
-  locale = sessionMutationLocale(),
+  locale = resolveTuiLocale(),
 ): string {
   return Object.entries(values).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),

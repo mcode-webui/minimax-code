@@ -1269,7 +1269,16 @@ test('suite runner pins its locale, preserves gate arguments and canonicalizes W
     copyFileSync(new URL(`../${file}`, import.meta.url), path.join(root, file));
   writeFileSync(path.join(root, 'test/vitest-suites.json'), JSON.stringify({ suites: { fixture: ['test/example.test.ts'] } }));
   writeFileSync(path.join(root, 'node_modules/vitest/package.json'), JSON.stringify({ bin: { vitest: 'cli.cjs' } }));
-  writeFileSync(path.join(root, 'node_modules/vitest/cli.cjs'), 'console.log(JSON.stringify({args:process.argv.slice(2),temp:process.env.TEMP,tmp:process.env.TMP,cwd:process.cwd(),lang:process.env.LANG,language:process.env.LANGUAGE,lcAll:process.env.LC_ALL,lcMessages:process.env.LC_MESSAGES,locale:Intl.DateTimeFormat().resolvedOptions().locale})); process.exit(17);');
+  writeFileSync(path.join(root, 'node_modules/vitest/cli.cjs'), `
+    console.log(JSON.stringify({
+      args: process.argv.slice(2), temp: process.env.TEMP, tmp: process.env.TMP,
+      cwd: process.cwd(), lang: process.env.LANG, language: process.env.LANGUAGE,
+      lcAll: process.env.LC_ALL, lcMessages: process.env.LC_MESSAGES,
+      locale: Intl.DateTimeFormat().resolvedOptions().locale,
+      tuiLocale: process.env.MCODE_TUI_LOCALE,
+    }));
+    process.exit(17);
+  `);
   const alias = path.join(root, 'temporary-alias');
   symlinkSync(path.join(root, 'temporary'), alias, process.platform === 'win32' ? 'junction' : 'dir');
   for (const platform of ['linux', 'darwin', 'win32']) {
@@ -1283,6 +1292,7 @@ test('suite runner pins its locale, preserves gate arguments and canonicalizes W
         LANGUAGE: 'zh_CN:zh',
         LC_ALL: 'zh_CN.UTF-8',
         LC_MESSAGES: 'zh_CN.UTF-8',
+        MCODE_TUI_LOCALE: 'zh-CN',
         TEMP: alias,
         TMP: alias,
         TMPDIR: alias,
@@ -1290,6 +1300,7 @@ test('suite runner pins its locale, preserves gate arguments and canonicalizes W
     });
     assert.equal(result.status, 17, result.stderr);
     const child = JSON.parse(result.stdout);
+    assert.equal(child.tuiLocale, 'en-US');
     assert.deepEqual(child.args, ['run', '--config', 'vitest.oss.config.mjs',
       ...(platform === 'win32' ? ['--maxWorkers', '1'] : []), 'test/example.test.ts']);
     assert.equal(realpathSync(child.cwd), realpathSync(root));

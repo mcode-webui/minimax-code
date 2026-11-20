@@ -197,7 +197,7 @@ architecture.md[SG4T]: F:Explains package boundaries and integration among clien
 demo.md[SG4T]: F:Walks through a recorded product demo that turns a request into a verified code change. | R:- | A:- | S:-
 examples.md[SG4M]: F:Provides practical examples for editing code, running tests, and using a custom model. | R:- | A:- | S:-
 hooks.md[SG4T]: F:Specifies how hook messages reach the TUI and model context, including event limits. | R:- | A:- | S:-
-installation.md[SG4S]: F:Documents checksum-verified release archive installation and source builds. | R:- | A:- | S:-
+installation.md[SG4S]: F:Documents verified release installation, source builds, data directories and the TUI language override. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 maintainers.md[SG4T]: F:Defines maintainer responsibilities, issue triage, and release and review ownership. | R:- | A:- | S:-
 open-source-status.md[SG4T]: F:Records the public source release baseline, supported scope, and evidence boundaries. | R:- | A:- | S:-
 performance-ci.md[SG4S]: F:Defines performance CI profiles, suite selection, and required comparison evidence. | R:- | A:- | S:-
@@ -4267,14 +4267,14 @@ codex-login.ts[SE4M]: F:Renders the Codex login component. | R:- | A:- | S:-
 login-region-picker.ts[SE4T]: F:Presents the login region picker. | R:- | A:- | S:-
 
 ===/<repository>/packages/tui/src/tui/features/changelog/===
-content.ts[SE4S]: F:Loads and extracts localized TUI changelog content. | R:- | A:- | S:-
+content.ts[SL4S]: F:Loads localized TUI changelog content and extracts release sections. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 panel.ts[SE4S]: F:Implements the TUI changelog panel. | R:- | A:- | S:-
 
 ===/<repository>/packages/tui/src/tui/features/composer/===
 attachments.ts[SE4S]: F:Formats attachment labels for the TUI composer. | R:- | A:- | S:-
 clipboard-image-draft.ts[SE4M]: F:Coordinates clipboard image reads and insertion into composer drafts. | R:- | A:- | S:-
 copy.en.ts[SE4T]: F:Defines English composer strings and their translation keys. | R:- | A:- | S:-
-copy.ts[SE4T]: F:Looks up localized composer strings. | R:- | A:- | S:-
+copy.ts[SL4T]: F:Selects English or Chinese composer copy using the explicit or resolved TUI locale. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 copy.zh-Hans.ts[SE4T]: F:Defines Simplified Chinese composer strings. | R:- | A:- | S:-
 draft-lifecycle.ts[SE4L]: F:Manages TUI composer draft lifecycle. | R:- | A:- | S:-
 draft-recovery.ts[SE4L]: F:Recovers composer drafts and reports typed recovery errors. | R:- | A:- | S:-
@@ -4332,7 +4332,7 @@ paused-send-panel.ts[SE4T]: F:Presents send choices when the message queue is pa
 
 ===/<repository>/packages/tui/src/tui/features/session-mutation/===
 copy.en.ts[SE4S]: F:Defines English session history text and translation keys. | R:- | A:- | S:-
-copy.ts[SE4T]: F:Selects locale and supplies session history and mutation text. | R:- | A:- | S:-
+copy.ts[SL4T]: F:Supplies localized session history and mutation copy. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 copy.zh-Hans.ts[SE4S]: F:Defines Simplified Chinese session history and mutation text. | R:- | A:- | S:-
 format.ts[SE4S]: F:Formats session timestamps and truncates prompt previews for display. | R:- | A:- | S:-
 history-explorer.ts[SE4L]: F:Presents session history and exposes available history actions. | R:- | A:- | S:-
@@ -4347,7 +4347,7 @@ manager.ts[SE4L]: F:Implements the interactive session manager. | R:- | A:- | S:
 ===/<repository>/packages/tui/src/tui/features/settings/===
 hotkeys-picker.ts[SE4M]: F:Presents configurable TUI hotkeys. | R:- | A:- | S:-
 picker.ts[SE4S]: F:Implements the TUI settings picker. | R:- | A:- | S:-
-status-line-copy.ts[SE4T]: F:Looks up localized status line labels and item descriptions. | R:- | A:- | S:-
+status-line-copy.ts[SL4T]: F:Supplies localized status line settings labels and item descriptions. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 status-line-picker.ts[SE4M]: F:Implements interactive selection of status line items. | R:- | A:- | S:-
 theme-picker.ts[SE4M]: F:Models automatic and explicit theme appearance choices and provides a picker. | R:- | A:- | S:-
 
@@ -4359,6 +4359,7 @@ panel.ts[SE4L]: F:Presents TUI software update status and actions. | R:- | A:- |
 
 ===/<repository>/packages/tui/src/tui/foundation/===
 bordered-table.ts[SE4S]: F:Renders bordered terminal tables from rows and sections. | R:- | A:- | S:-
+locale.ts[CL5T]: F:Resolves the default TUI display locale. | R:- | A:resolveTuiLocale | S:A nonempty MCODE_TUI_LOCALE overrides the host ICU locale.
 
 ===/<repository>/packages/tui/src/tui/interaction/===
 permission.ts[SE4T]: F:Formats pending permission requests and their resolutions. | R:- | A:- | S:-
@@ -4390,7 +4391,7 @@ url.ts[SE4T]: F:Sanitizes URLs displayed by the TUI. | R:- | A:- | S:-
 ===/<repository>/packages/tui/src/tui/shell/===
 activity-line.ts[SE4M]: F:Defines activity phases and renders turn controls and status. | R:- | A:- | S:-
 chat-layout.ts[SE4L]: F:Defines chat surface types and computes viewport layout. | R:- | A:- | S:-
-chrome.ts[SE4L]: F:Composes the shell chrome and exposes the welcome component. | R:- | A:- | S:-
+chrome.ts[SU4L]: F:Composes TUI shell chrome, including localized lightweight-mode labels, and exports the welcome component. | R:code:packages/tui/src/tui/foundation/locale.ts | A:- | S:-
 composer.ts[SE4M]: F:Implements the TUI composer and defines its interaction modes and state. | R:- | A:- | S:-
 contracts.ts[SE4T]: F:Defines runtime status and shell state contracts. | R:- | A:- | S:-
 custom-status-text.ts[SE4T]: F:Renders custom terminal status lines. | R:- | A:- | S:-
@@ -5800,7 +5801,7 @@ package-webui-npm.mjs[SE4M]: F:Packages the WebUI npm distribution. | R:- | A:- 
 prepare-source-sync.mjs[SE4S]: F:Prepares an incoming public source synchronization. | R:- | A:- | S:-
 publish-cli-release.mjs[SE4T]: F:Publishes CLI release artifacts. | R:- | A:- | S:-
 release-cli.mjs[SE4T]: F:Coordinates the CLI release workflow. | R:- | A:- | S:-
-run-vitest-suite.mjs[SE4T]: F:Runs a named declared Vitest suite. | R:- | A:- | S:-
+run-vitest-suite.mjs[XQ4T]: F:Starts a declared Vitest suite with deterministic test settings. | R:code:test/vitest-suites.json | A:- | S:MCODE_TUI_LOCALE fixes TUI copy independently of the host ICU locale on Windows.
 run-webui-server.mjs[SE4M]: F:Starts the WebUI server for local verification. | R:- | A:- | S:-
 source-candidate.mjs[SE4T]: F:Validates an incoming source candidate. | R:- | A:- | S:-
 source-inventory.mjs[SE4M]: F:Generates and checks the public source inventory. | R:- | A:- | S:-
@@ -5860,7 +5861,7 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, public CI policies and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:The public workflow contract permits only WebUI checks and named provisioning steps, protects active main runs from cancellation, and prevents the baseline refresh from publishing.
+source-sync.test.mjs[TV6L]: F:Tests source synchronization, CI policies, suite runner environment and release tooling. | R:code:scripts/run-vitest-suite.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Runner tests fake the platform for startup logic but the child ICU locale still comes from the actual host.
 vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 

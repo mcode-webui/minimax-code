@@ -1,4 +1,5 @@
 import { getRuntimeLocaleLanguage } from '@mavis/shared/runtime-i18n';
+import { resolveTuiLocale } from '../../foundation/locale.js';
 import type { TuiStatusLineItem } from '../../shell/status-line-items.js';
 
 const en = {
@@ -58,7 +59,7 @@ const descriptions: Record<Exclude<TuiStatusLineItem, 'build-mode'>, readonly [s
 
 function isChinese(locale?: string): boolean {
   return (
-    getRuntimeLocaleLanguage(locale ?? Intl.DateTimeFormat().resolvedOptions().locale) === 'zh'
+    getRuntimeLocaleLanguage(locale ?? resolveTuiLocale()) === 'zh'
   );
 }
 

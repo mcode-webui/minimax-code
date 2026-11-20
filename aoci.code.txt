@@ -109,7 +109,7 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux skips recommended FFmpeg packages and allows a longer install for slow mirrors. Diagnostics isolate platform, lane and attempt.
+webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux provisions a checksum-pinned portable FFmpeg when absent to avoid APT mirrors. Diagnostics isolate platform, lane and attempt.
 update-visual-baselines.yml[FV4S]: F:Re-records the per-platform Playwright visual baselines of the named WebUI browser specs on the three CI runners and commits each runner's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh selects the browser mode the CI compares with — windowed Chromium on macOS — in a step of its own, because a step cannot read back the environment file it writes.
 
 ===/<repository>/.plan/browser-use/board/===
@@ -5860,7 +5860,7 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, native provisioning before suites, a Linux-only FFmpeg timeout increase, independent lane failures, unique diagnostics, and read-only workflow permissions.
+source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, checksum-verified Linux and Windows FFmpeg provisioning, independent lane failures, unique diagnostics, and read-only workflow permissions.
 vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 

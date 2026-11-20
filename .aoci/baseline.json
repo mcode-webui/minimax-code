@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T10:44:13Z",
+  "updated_at": "2026-11-20T14:51:47Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7",
-      "size": 638265,
-      "normalized_sha256": "a8c909897c9fd56baac348d81d13888fe6a67cface1601909d50041cacd43ff7"
+      "sha256": "2a627133585c58a332f09395ec7a0f08120563689e17bc2d2945830b0569c50e",
+      "size": 638352,
+      "normalized_sha256": "2a627133585c58a332f09395ec7a0f08120563689e17bc2d2945830b0569c50e"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1140,9 +1140,9 @@
     },
     "package.json": {
       "role": "index",
-      "sha256": "36e566e563cb4071ef3200a5eaa07e8796189ef01d236e8cfc1d149e562230ff",
-      "size": 3910,
-      "normalized_sha256": "36e566e563cb4071ef3200a5eaa07e8796189ef01d236e8cfc1d149e562230ff"
+      "sha256": "da57122c04ccdc787fc42786863d4efe51371c98c0554c4e4bdc573179783188",
+      "size": 3911,
+      "normalized_sha256": "da57122c04ccdc787fc42786863d4efe51371c98c0554c4e4bdc573179783188"
     },
     "packages/agent-core/package.json": {
       "role": "index",
@@ -4443,9 +4443,9 @@
     },
     "packages/local-runtime-v2/package.json": {
       "role": "index",
-      "sha256": "f36365e16d0892f9c4a2144df0932e4a11a3f0995102716bb4eda69faae969d2",
+      "sha256": "573881172a5c87a65bdb97f40523a9b2df1956c3d12bae0942fa9b1872a06f46",
       "size": 3699,
-      "normalized_sha256": "f36365e16d0892f9c4a2144df0932e4a11a3f0995102716bb4eda69faae969d2"
+      "normalized_sha256": "573881172a5c87a65bdb97f40523a9b2df1956c3d12bae0942fa9b1872a06f46"
     },
     "packages/local-runtime-v2/src/application/agent/agent-application.ts": {
       "role": "index",
@@ -19458,9 +19458,9 @@
     },
     "packages/tui/package.json": {
       "role": "index",
-      "sha256": "b7c8547c31c1c8bc92afaa6751ddcd01655cabfdcdf61f7e77ec92573d6957af",
+      "sha256": "087c925833d69d86f47961ccc6a07ee541b3054024d4f0cc1a41a0519aa69440",
       "size": 1555,
-      "normalized_sha256": "b7c8547c31c1c8bc92afaa6751ddcd01655cabfdcdf61f7e77ec92573d6957af"
+      "normalized_sha256": "087c925833d69d86f47961ccc6a07ee541b3054024d4f0cc1a41a0519aa69440"
     },
     "packages/tui/src/account/matrix-account-client.ts": {
       "role": "index",
@@ -23076,9 +23076,9 @@
     },
     "packages/webui/package.json": {
       "role": "index",
-      "sha256": "9f7aa49d2c8eb313b4b20cf5b66f4350b003dfece4b22fe6db1a866f36c6e2ba",
-      "size": 2189,
-      "normalized_sha256": "9f7aa49d2c8eb313b4b20cf5b66f4350b003dfece4b22fe6db1a866f36c6e2ba"
+      "sha256": "3cfe92a53d9a30ab5aba2451660b032c8eed807b79aa0804767c5d7b9668cc56",
+      "size": 2188,
+      "normalized_sha256": "3cfe92a53d9a30ab5aba2451660b032c8eed807b79aa0804767c5d7b9668cc56"
     },
     "packages/webui/scripts/host-event-catalogue.mjs": {
       "role": "index",
@@ -31280,9 +31280,9 @@
     },
     "pnpm-lock.yaml": {
       "role": "observe",
-      "sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a",
-      "size": 325615,
-      "normalized_sha256": "191de049eae2276a8742a8673e423c524051e932f555c5b30ba79de44683ce1a"
+      "sha256": "6a535aad4e9d93cf65fa66c9ae12fc51c2eaee07ab3b40bc915121050d808dbc",
+      "size": 324788,
+      "normalized_sha256": "6a535aad4e9d93cf65fa66c9ae12fc51c2eaee07ab3b40bc915121050d808dbc"
     },
     "pnpm-workspace.yaml": {
       "role": "index",

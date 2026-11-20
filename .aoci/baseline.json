@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T07:48:05Z",
+  "updated_at": "2026-11-20T08:48:22Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -10563,9 +10563,9 @@
     },
     "packages/local-runtime-v2/test/unit/miniapp/owner-lease.test.ts": {
       "role": "observe",
-      "sha256": "f7ece5e8cdec8aae4b063db9edcb373342e3f734d4afcd01c9aadcff9b9126bf",
-      "size": 4150,
-      "normalized_sha256": "f7ece5e8cdec8aae4b063db9edcb373342e3f734d4afcd01c9aadcff9b9126bf"
+      "sha256": "f1977a37942145b6ff1ef435c3f2627367a49108ac88b3836b4755687b7d6336",
+      "size": 4594,
+      "normalized_sha256": "f1977a37942145b6ff1ef435c3f2627367a49108ac88b3836b4755687b7d6336"
     },
     "packages/local-runtime-v2/test/unit/miniapp/port-owner-pid.test.ts": {
       "role": "observe",

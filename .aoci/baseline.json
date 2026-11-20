@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-20T07:02:00Z",
+  "updated_at": "2026-11-20T07:26:27Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -317,9 +317,9 @@
     },
     ".github/workflows/webui-ci.yml": {
       "role": "index",
-      "sha256": "9a3fabe4d4160d97fcb30dc9603135c1e18379f066186dd0c6ba51cdcbf1ae50",
-      "size": 5390,
-      "normalized_sha256": "9a3fabe4d4160d97fcb30dc9603135c1e18379f066186dd0c6ba51cdcbf1ae50"
+      "sha256": "f25bb83c77e06d4b82def3deba39f334f28097256ba55e6613a33fee91d8026e",
+      "size": 6206,
+      "normalized_sha256": "f25bb83c77e06d4b82def3deba39f334f28097256ba55e6613a33fee91d8026e"
     },
     ".gitignore": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "5daeae6a37fff9d9cc1a8319c689162082f938929a3d8741274f1b4e9f8268df",
-      "size": 637644,
-      "normalized_sha256": "5daeae6a37fff9d9cc1a8319c689162082f938929a3d8741274f1b4e9f8268df"
+      "sha256": "c3b65aa87af61e6d9b932f4d4b67ffaaa636353e1591978f7e10c2fc16487ed6",
+      "size": 637766,
+      "normalized_sha256": "c3b65aa87af61e6d9b932f4d4b67ffaaa636353e1591978f7e10c2fc16487ed6"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1032,9 +1032,9 @@
     },
     "docs/webui-ci.md": {
       "role": "index",
-      "sha256": "4584cfa08e132cdb59a5dd8ae44f06e708cb5d1ffd7dbc86a4e8ae03ec615c8d",
-      "size": 6739,
-      "normalized_sha256": "4584cfa08e132cdb59a5dd8ae44f06e708cb5d1ffd7dbc86a4e8ae03ec615c8d"
+      "sha256": "af314274b218865c18d5e1ed5db06d37a87483cc3e36449d3bf08fb0cc3e4441",
+      "size": 7057,
+      "normalized_sha256": "af314274b218865c18d5e1ed5db06d37a87483cc3e36449d3bf08fb0cc3e4441"
     },
     "examples/clamp/README.md": {
       "role": "index",
@@ -31820,9 +31820,9 @@
     },
     "test/source-sync.test.mjs": {
       "role": "index",
-      "sha256": "dbcf0ef2fac7f8e3f090772fae358cf1be35e32e8a42016e7b25d4a0846aaec3",
-      "size": 96022,
-      "normalized_sha256": "dbcf0ef2fac7f8e3f090772fae358cf1be35e32e8a42016e7b25d4a0846aaec3"
+      "sha256": "44f2309463aa1089caef099c49c0b92c6250ded6fcd8927b14826edefa105441",
+      "size": 97004,
+      "normalized_sha256": "44f2309463aa1089caef099c49c0b92c6250ded6fcd8927b14826edefa105441"
     },
     "test/sqlite-message-contention.test.ts": {
       "role": "observe",

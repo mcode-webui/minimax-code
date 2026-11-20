@@ -44,10 +44,23 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.deepEqual(Object.keys(workflow.jobs), ['webui']);
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   const job = workflow.jobs.webui;
+  const browserCommand = 'pnpm test:webui-browser --shard="$WEBUI_BROWSER_SHARD"';
+  const browser = job.steps.find(step => step.run === browserCommand);
   assert.equal(job.env, undefined);
+  assert.equal(job.strategy['fail-fast'], false);
+  assert.equal(job.needs, undefined);
   assert.deepEqual(job.strategy.matrix.os, ['ubuntu-latest', 'macos-latest', 'windows-latest']);
+  assert.deepEqual(job.strategy.matrix.lane, [
+    { name: 'checks' },
+    { name: 'units' },
+    { name: 'browser-1', shard: '1/3' },
+    { name: 'browser-2', shard: '2/3' },
+    { name: 'browser-3', shard: '3/3' },
+    { name: 'package' },
+  ]);
   assert.equal(job['timeout-minutes'], "${{ matrix.os == 'macos-latest' && 60 || 40 }}");
-  assert.equal(job.steps.find(step => step.run === 'pnpm test:webui-browser')['timeout-minutes'], 30);
+  assert.equal(browser['timeout-minutes'], 30);
+  assert.equal(browser.env.WEBUI_BROWSER_SHARD, '${{ matrix.lane.shard }}');
   const directories = job.steps.find(step => step.name === 'Set isolated WebUI output directories');
   assert.equal(directories.shell, 'bash');
   assert.match(directories.run, /MCODE_WEBUI_VERIFY_DIR=\$RUNNER_TEMP\//);
@@ -56,7 +69,7 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.doesNotMatch(directories.run, /WEBUI_BROWSER_OUTPUT_DIR=/);
   for (const [command, directory] of [
     ['pnpm test:webui', 'units'],
-    ['pnpm test:webui-browser', 'browser'],
+    [browserCommand, 'browser'],
     ['pnpm test:webui-package', 'package'],
   ]) {
     assert.equal(job.steps.find(step => step.run === command).env.WEBUI_BROWSER_OUTPUT_DIR,
@@ -80,29 +93,42 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   const provisioning = ['pnpm install --frozen-lockfile', 'pnpm exec playwright install-deps chromium', ffmpeg.run];
   for (const command of commands) {
     if (provisioning.includes(command)) continue;
-    assert.match(command, /^pnpm (?:typecheck|check|build|install|test):webui(?:-[a-z]+)?$/);
-    assert.ok(Object.hasOwn(manifest.scripts, command.slice('pnpm '.length)), command);
+    const script = command === browserCommand ? 'pnpm test:webui-browser' : command;
+    assert.match(script, /^pnpm (?:typecheck|check|build|install|test):webui(?:-[a-z]+)?$/);
+    assert.ok(Object.hasOwn(manifest.scripts, script.slice('pnpm '.length)), command);
   }
-  for (const command of ['pnpm typecheck:webui', 'pnpm build:webui', 'pnpm test:webui', 'pnpm test:webui-browser', 'pnpm test:webui-package']) {
-    assert.ok(commands.includes(command), `Missing ${command}`);
-  }
-  assert.ok(commands.indexOf('pnpm build:webui') < commands.indexOf('pnpm test:webui-browser'));
-  assert.equal(job.steps.find(step => step.run === 'pnpm build:webui').id, 'build');
-  assert.equal(job.steps.find(step => step.run === 'pnpm install:webui-browsers').id, 'browsers');
-  assert.equal(job.steps.find(step => step.name === 'Install FFmpeg').id, 'ffmpeg');
-  const testConditions = {
-    'pnpm test:webui': undefined,
-    'pnpm test:webui-browser': "${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' && steps.ffmpeg.outcome == 'success' }}",
-    'pnpm test:webui-package': "${{ !cancelled() && steps.build.outcome == 'success' }}",
+  const nativeTests = "matrix.lane.name == 'units' || matrix.lane.shard";
+  const checks = "matrix.lane.name == 'checks'";
+  const laneConditions = {
+    'pnpm typecheck:webui': checks,
+    'pnpm check:webui-dependency': checks,
+    'pnpm check:webui-presentation': checks,
+    'pnpm check:webui-motion': checks,
+    'pnpm check:webui-overlays': checks,
+    'pnpm check:webui-feedback': checks,
+    'pnpm check:webui-boundary': checks,
+    'pnpm build:webui': "matrix.lane.name != 'package'",
+    'pnpm install:webui-browsers': nativeTests,
+    [ffmpeg.run]: nativeTests,
+    'pnpm exec playwright install-deps chromium': "runner.os == 'Linux' && (" + nativeTests + ")",
+    'pnpm test:webui': "matrix.lane.name == 'units'",
+    [browserCommand]: 'matrix.lane.shard',
+    'pnpm test:webui-package': "matrix.lane.name == 'package'",
   };
-  for (const [command, condition] of Object.entries(testConditions)) {
+  for (const [command, condition] of Object.entries(laneConditions)) {
     const step = job.steps.find(step => step.run === command);
-    assert.equal(step.if, condition, `${command} must run on every platform and preserve independent failures`);
+    assert.equal(step?.if, condition, `${command} must run in its assigned jobs`);
     assert.equal(step['continue-on-error'], undefined, `${command} must fail the job on a regression`);
+  }
+  for (const prerequisite of ['pnpm build:webui', 'pnpm install:webui-browsers', ffmpeg.run, 'pnpm exec playwright install-deps chromium']) {
+    for (const command of ['pnpm test:webui', browserCommand]) {
+      assert.ok(commands.indexOf(prerequisite) < commands.indexOf(command), `Run ${prerequisite} before ${command}`);
+    }
   }
   assert.equal(job['continue-on-error'], undefined);
   const diagnostics = job.steps.find(step => step.name === 'Upload WebUI browser diagnostics');
-  assert.equal(diagnostics.if, '${{ !cancelled() }}', 'Successful runs must retain raw performance samples too');
+  assert.equal(diagnostics.if, "${{ !cancelled() && matrix.lane.name != 'checks' }}", 'Successful tests must retain raw performance samples too');
+  assert.equal(diagnostics.with.name, 'webui-${{ matrix.os }}-${{ matrix.lane.name }}-${{ github.run_attempt }}');
   assert.equal(diagnostics.with['retention-days'], 7);
   assert.deepEqual(diagnostics.with.path.trim().split(/\r?\n/), [
     '${{ runner.temp }}/webui-browser-diagnostics/',
@@ -130,7 +156,7 @@ test('the manual baseline refresh renders in the mode the WebUI CI compares agai
   const ci = parseYaml(readFileSync(new URL('../.github/workflows/webui-ci.yml', import.meta.url), 'utf8'));
   const ciSteps = ci.jobs.webui.steps;
   const ciModeStep = ciSteps.findIndex(step => typeof step.run === 'string' && step.run.includes('WEBUI_BROWSER_HEADED='));
-  const ciBrowserStep = ciSteps.findIndex(step => step.run === 'pnpm test:webui-browser');
+  const ciBrowserStep = ciSteps.findIndex(step => step.run?.startsWith('pnpm test:webui-browser '));
   assert.ok(ciModeStep >= 0 && ciModeStep < ciBrowserStep, 'the CI must select the browser mode before the browser suite runs');
   for (const step of steps) {
     assert.doesNotMatch(String(step.run ?? ''), /npm publish|npm-release|release-cli/);

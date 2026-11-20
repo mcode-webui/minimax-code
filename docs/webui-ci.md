@@ -18,16 +18,22 @@ Pull requests retain cancellation of superseded runs.
 | npm package build, installation and launcher verification | Yes | Yes | Yes |
 
 Package verification uses an isolated installation and does not publish to npm.
+Each platform runs six independent jobs: checks and build boundaries, unit and
+integration tests, three Playwright file shards, and package verification. Test
+and browser jobs build the client locally so each tests the current revision
+without waiting for another job's build. The package job builds and installs its
+own package. Chromium and FFmpeg are provisioned only for the jobs that need them.
+The matrix keeps running when one job fails, and each failure fails the workflow.
+
+Browser shards retain the suite's one-worker setting. Each shard has its own
+runner, fixture server, and output directories. Run a shard locally with
+`pnpm test:webui-browser --shard=2/3` after building and provisioning the browser.
 Browser diagnostics and raw performance samples are retained as Actions artifacts
-for seven days on successful and failed runs. Samples are written to the output
+for seven days on successful and failed runs. Artifact names include the platform,
+job and run attempt. Samples are written to the output
 directory explicitly so the list reporter cannot discard in-memory attachments.
-After a successful build and Chromium installation, browser checks still run if
-unit tests fail. Package verification also runs after a successful build even if
-an earlier test suite failed. Each failure still makes the job fail; this keeps
-independent failures visible in one run instead of masking later suites.
-The macOS job has a 60-minute budget because its unit and windowed browser
-steps can consume the previous 40-minute job budget together. The browser step
-has its own 30-minute limit so a stalled test run can still leave artifacts.
+Each browser step has a 30-minute limit so a stalled test run can still leave
+artifacts.
 The development-server shutdown integration test reports bounded startup
 phase timings on timeout or early exit. It omits child output, including the
 credential printed by the launcher.

@@ -5669,7 +5669,7 @@ account-login.spec.mjs[TU4M]: F:Tests account login and subscription quota rende
 api-key-feedback.spec.mjs[SE4M]: F:Tests presentation of API key connection feedback. | R:- | A:- | S:-
 application-observation.spec.mjs[SE4T]: F:Tests application observation and stale presenter results. | R:- | A:- | S:-
 application-performance.mjs[SE4S]: F:Defines application performance measurement thresholds and helpers. | R:- | A:- | S:-
-architecture-acceptance.spec.mjs[SE4M]: F:Tests the WebUI architecture contracts (terminal readiness, roster permissions, probe economy, transfer retention) as browser workflows. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Case names carry roadmap requirement IDs (V13-V36, C11); this repository defines none of them.
+architecture-acceptance.spec.mjs[TE4M]: F:Tests terminal readiness, roster permissions, probe economy and transfer retention as browser workflows. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Wait for panel exit to unmount before reopening after a terminal reconnect. Case IDs refer to roadmap requirements.
 browser-notice-layer.spec.mjs[SE4T]: F:Tests Browser Use notice layering over page content. | R:- | A:- | S:-
 browser-workspace.spec.mjs[SE4L]: F:Tests opening and operating Browser Use in the workspace panel. | R:- | A:- | S:-
 composer-goal-mode.spec.mjs[SE4S]: F:Tests entering goal mode from the WebUI composer. | R:- | A:- | S:-
@@ -5715,7 +5715,7 @@ settings-account-tab.spec.mjs[SE4L]: F:Tests account settings navigation. | R:- 
 settings-shortcuts.spec.mjs[SE4M]: F:Tests keyboard shortcut settings and bindings. | R:- | A:- | S:-
 settings-theme.spec.mjs[SE4S]: F:Tests theme settings and selected navigation styling. | R:- | A:- | S:-
 ssh-terminal.spec.mjs[SE4M]: F:Tests SSH terminal presentation and connection status. | R:- | A:- | S:-
-streaming-performance.spec.mjs[SE4L]: F:Measures responsiveness during streamed replies. | R:- | A:- | S:-
+streaming-performance.spec.mjs[TE4L]: F:Measures streaming responsiveness in the built browser client and validates blocking attribution with positive and negative controls. | R:code:packages/webui/test/browser/application-performance.mjs,code:packages/webui/test/browser/harness.mjs | A:- | S:Start the first stream chunk in a timer task so the measured window excludes the DevTools task that injects and configures the fixture.
 surface-appearance.spec.mjs[SE4S]: F:Tests appearance contracts for shared WebUI surfaces. | R:- | A:- | S:-
 terminal-cross-page.spec.mjs[SE4S]: F:Tests that PTY sessions can be observed across pages. | R:- | A:- | S:-
 toast.spec.mjs[SE4T]: F:Tests toast placement and failed-read feedback. | R:- | A:- | S:-

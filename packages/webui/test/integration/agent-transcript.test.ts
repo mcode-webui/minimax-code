@@ -10,6 +10,12 @@ import path from "node:path";
 import { chromium, expect as browserExpect, type Browser, type Locator, type Page } from "@playwright/test";
 import { afterAll, expect, it } from "vitest";
 import type { WebuiBrowserAdapterBinding } from "../../src/runtime/harness/browser.js";
+import { WEBUI_BROWSER_ERROR_CODES } from "../../src/shared/contracts/browser.js";
+import {
+  OPEN_BROWSER_WEB_TAB_OPERATION_NAME,
+  WATCH_BROWSER_FRAMES_OPERATION_NAME,
+  WATCH_BROWSER_WEB_TABS_OPERATION_NAME,
+} from "../../src/shared/operation-names.js";
 
 const MODEL_ID = "stub-model";
 const PROVIDER_NAME = "stub";
@@ -162,6 +168,7 @@ afterAll(() => {
  * or at this deadline -- never later.
  */
 const BROWSER_FRAME_TIMEOUT_MS = 60_000;
+const BROWSER_INPUT_TIMEOUT_MS = 10_000;
 
 /**
  * One of the browser panel's own states, read from the page.
@@ -285,6 +292,61 @@ async function waitForBrowserFrameOrFailure(
     // than the single budget it was given.
     await page.waitForTimeout(Math.min(250, remaining));
   }
+}
+
+type WireObservation = { at: number; direction: string; frame: unknown };
+
+/** Correlate startup requests with wire outcomes without serializing any payload or identifier. */
+function browserStartupWireEvidence(wire: readonly WireObservation[], from: number, startedAt: number) {
+  const operations: ReadonlySet<string> = new Set([
+    OPEN_BROWSER_WEB_TAB_OPERATION_NAME,
+    WATCH_BROWSER_FRAMES_OPERATION_NAME,
+    WATCH_BROWSER_WEB_TABS_OPERATION_NAME,
+  ]);
+  const knownCodes: ReadonlySet<string> = new Set(WEBUI_BROWSER_ERROR_CODES);
+  const probes = new Map<string, {
+    operation: string;
+    sentAtMs: number;
+    responseAtMs?: number;
+    error?: { atMs: number; code: string };
+    events: number;
+    imageFrames: number;
+    firstEventAtMs?: number;
+    firstImageAtMs?: number;
+  }>();
+  for (const [index, { at, direction, frame }] of wire.entries()) {
+    if (!frame || typeof frame !== "object") continue;
+    const { requestId, kind, operation, code, body } = frame as Record<string, unknown>;
+    if (typeof requestId !== "string") continue;
+    const atMs = at - startedAt;
+    if (direction === "sent" && kind === "request") {
+      if (typeof operation === "string" && operations.has(operation) &&
+          (index >= from || operation === WATCH_BROWSER_WEB_TABS_OPERATION_NAME)) {
+        probes.set(requestId, { operation, sentAtMs: atMs, events: 0, imageFrames: 0 });
+      }
+      continue;
+    }
+    if (direction !== "received" || index < from) continue;
+    const probe = probes.get(requestId);
+    if (!probe) continue;
+    if (kind === "response") probe.responseAtMs ??= atMs;
+    if (kind === "error") {
+      probe.error ??= { atMs, code: typeof code === "string" && knownCodes.has(code) ? code : "other" };
+    }
+    if (kind === "event") {
+      probe.events++;
+      probe.firstEventAtMs ??= atMs;
+      if (probe.operation === WATCH_BROWSER_FRAMES_OPERATION_NAME && body && typeof body === "object") {
+        const { format, data, sequence } = body as Record<string, unknown>;
+        if ((format === "jpeg" || format === "png") &&
+            typeof data === "string" && data.length > 0 && Number.isSafeInteger(sequence)) {
+          probe.imageFrames++;
+          probe.firstImageAtMs ??= atMs;
+        }
+      }
+    }
+  }
+  return { requestCount: probes.size, requests: [...probes.values()].slice(-12) };
 }
 
 it.each(["transcript", "cross-client", "external-active-mutation", "external-active-mutation-gap"] as const)("real agent rendering and recovery: %s", async (scenario) => {
@@ -502,6 +564,7 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
 
   const dataDir = await mkdtemp(path.join(tmpdir(), "webui-agent-transcript-e2e-"));
   const previousDataDir = process.env.MINIMAX_DATA_DIR;
+  const previousBrowserOutputDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;
   const workspaceDir = path.join(dataDir, "workspace");
   await mkdir(workspaceDir, { recursive: true });
   await writeFile(path.join(workspaceDir, "reference-target.md"), "Synthetic workspace reference body.\n");
@@ -550,6 +613,10 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
   let runtimeEventAbort: AbortController | undefined;
   try {
     process.env.MINIMAX_DATA_DIR = dataDir;
+    if (previousBrowserOutputDir?.trim()) {
+      // Other tests in this job otherwise overwrite the same diagnostic filenames.
+      process.env.WEBUI_BROWSER_OUTPUT_DIR = path.join(previousBrowserOutputDir, "agent-transcript", scenario);
+    }
     (await import("@mavis/config")).resetConfig();
     const { createWebuiRuntimeHost } = await import("../../src/runtime/assembly.js");
     const { createHarnessPortFromHost } = await import("../../src/runtime/harness/adapter.js");
@@ -647,7 +714,7 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
       body?: Record<string, unknown>;
     }[] = [];
     const received: { requestId?: string; kind?: string; body?: unknown }[] = [];
-    const wireTimeline: { at: number; direction: string; frame: unknown }[] = [];
+    const wireTimeline: WireObservation[] = [];
     page.on("websocket", (socket) => {
       socket.on("framesent", ({ payload }) => {
         try {
@@ -1195,6 +1262,8 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
     await browserExpect(browserLauncher).toBeVisible();
     const pageUrl = `http://127.0.0.1:${pageAddress.port}/`;
     await page.getByTestId("workspace-launcher-url").fill(pageUrl);
+    const browserStartupIndex = wireTimeline.length;
+    const browserStartupAt = Date.now();
     await page.getByTestId("workspace-launcher-url-submit").click();
     const browserFrame = page.getByTestId("browser-panel-frame");
     // The panel can only render a frame after the isolated Chromium has
@@ -1223,7 +1292,10 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
         `notice: ${notice?.text ?? "(none)"}`,
         `toast: ${toast?.text ?? "(none)"}`,
         `error code: ${toast?.errorCode ?? "(none)"}`,
-        JSON.stringify({ panelState: browserPanel.nodes }),
+        JSON.stringify({
+          panelState: browserPanel.nodes,
+          wire: browserStartupWireEvidence(wireTimeline, browserStartupIndex, browserStartupAt),
+        }),
       ].join("\n"));
     }
     if (browserPanel.outcome === "timeout") {
@@ -1235,6 +1307,7 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
             .filter((node) => node.id === "browser-panel-unknown" || node.id === "browser-panel-unauthorized")
             .map((node) => node.text),
           panelState: browserPanel.nodes,
+          wire: browserStartupWireEvidence(wireTimeline, browserStartupIndex, browserStartupAt),
         }),
       ].join("\n"));
     }
@@ -1273,7 +1346,10 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
       pageBox.y + pageBox.height * 88 / imageDimensions.height,
     );
     await page.keyboard.type("browser-while-todo-active");
-    await expect.poll(() => browserReportedValues).toContain("browser-while-todo-active");
+    // The browser panel serializes keystrokes through the runtime. Playwright
+    // has finished dispatching keys before the isolated page finishes receiving them.
+    await expect.poll(() => browserReportedValues, { timeout: BROWSER_INPUT_TIMEOUT_MS })
+      .toContain("browser-while-todo-active");
     // The two right-side panels share one surface, and the browser panel
     // holds it now — so the progress card is not on the screen. The todo
     // itself is still reported: the runtime still carries it, and the
@@ -2061,22 +2137,27 @@ it.each(["transcript", "cross-client", "external-active-mutation", "external-act
     }
     await observerContext.close();
   } finally {
-    runtimeEventAbort?.abort();
-    releaseAnswer();
-    releaseTodoAnswer();
-    releaseStoppedAnswer();
-    releaseCrossClientHold();
-    releaseImmediateAnswer();
-    releaseGoalFollowUp();
-    await browser?.close();
-    await service?.close().catch(() => undefined);
-    await browserAdapter?.close().catch(() => undefined);
-    await assembled?.host.apiHost.close().catch(() => undefined);
-    await new Promise((resolve) => modelServer.close(resolve));
-    if (pageServer) await new Promise<void>((resolve) => pageServer!.close(() => resolve()));
-    await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    if (previousDataDir === undefined) delete process.env.MINIMAX_DATA_DIR;
-    else process.env.MINIMAX_DATA_DIR = previousDataDir;
-    (await import("@mavis/config")).resetConfig();
+    try {
+      runtimeEventAbort?.abort();
+      releaseAnswer();
+      releaseTodoAnswer();
+      releaseStoppedAnswer();
+      releaseCrossClientHold();
+      releaseImmediateAnswer();
+      releaseGoalFollowUp();
+      await browser?.close();
+      await service?.close().catch(() => undefined);
+      await browserAdapter?.close().catch(() => undefined);
+      await assembled?.host.apiHost.close().catch(() => undefined);
+      await new Promise((resolve) => modelServer.close(resolve));
+      if (pageServer) await new Promise<void>((resolve) => pageServer!.close(() => resolve()));
+      await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      if (previousDataDir === undefined) delete process.env.MINIMAX_DATA_DIR;
+      else process.env.MINIMAX_DATA_DIR = previousDataDir;
+      (await import("@mavis/config")).resetConfig();
+    } finally {
+      if (previousBrowserOutputDir === undefined) delete process.env.WEBUI_BROWSER_OUTPUT_DIR;
+      else process.env.WEBUI_BROWSER_OUTPUT_DIR = previousBrowserOutputDir;
+    }
   }
 }, 120_000);

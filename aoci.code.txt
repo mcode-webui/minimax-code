@@ -109,7 +109,7 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux skips recommended FFmpeg packages and allows a longer install for slow mirrors. Diagnostics isolate platform, lane and attempt.
+webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux provisions a checksum-pinned portable FFmpeg when absent to avoid APT mirrors. Diagnostics isolate platform, lane and attempt.
 update-visual-baselines.yml[FV4S]: F:Re-records the per-platform Playwright visual baselines of the named WebUI browser specs on the three CI runners and commits each runner's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh selects the browser mode the CI compares with — windowed Chromium on macOS — in a step of its own, because a step cannot read back the environment file it writes.
 
 ===/<repository>/.plan/browser-use/board/===
@@ -1039,7 +1039,7 @@ wire.ts[MD4M]: F:Projects session and project records into their public view and
 ===/<repository>/packages/local-runtime-v2/src/===
 background-runtime.ts[ER4M]: F:Creates and owns background runtime infrastructure. | R:- | A:createBackgroundRuntime,CreateBackgroundRuntimeOptions,BackgroundRuntime | S:Shutdown drains deferred maintenance before releasing the runtime owner lease and can report both phases.
 index.ts[LG4T]: F:Exports local runtime host creation and rootless runtime generation switching. | R:- | A:createLocalRuntimeHost,createLocalRuntimeHostV2,switchRootlessV2Generation | S:-
-runtime.ts[AG4L]: F:Constructs and closes the V2 local runtime host and provides a factory with test overrides. | R:code:packages/local-runtime-v2/src/background-runtime.ts | A:createLocalRuntimeHostV2,createLocalRuntimeHostV2ForTest,LocalRuntimeV2TestOverrides | S:Opt-in shutdown phase markers precede owner, legacy host and database teardown.
+runtime.ts[AG4L]: F:Constructs and closes the V2 local runtime host and provides a factory with test overrides. | R:code:packages/local-runtime-v2/src/background-runtime.ts,code:packages/local-runtime-v2/src/infra/shutdown-diagnostics.ts | A:createLocalRuntimeHostV2,createLocalRuntimeHostV2ForTest,LocalRuntimeV2TestOverrides | S:Opt-in shutdown tracing marks entry, return and throw around synchronous database close without changing cleanup order or the first-error outcome.
 services.ts[AG4L]: F:Defines the local runtime service assembly, creation options, and test overrides. | R:- | A:RuntimeServices,RuntimeServicesTestOverrides,CreateRuntimeServicesOptions | S:-
 
 ===/<repository>/packages/local-runtime-v2/src/compat/v1/===
@@ -5669,11 +5669,11 @@ account-login.spec.mjs[TU4M]: F:Tests account login and subscription quota rende
 api-key-feedback.spec.mjs[SE4M]: F:Tests presentation of API key connection feedback. | R:- | A:- | S:-
 application-observation.spec.mjs[SE4T]: F:Tests application observation and stale presenter results. | R:- | A:- | S:-
 application-performance.mjs[SE4S]: F:Defines application performance measurement thresholds and helpers. | R:- | A:- | S:-
-architecture-acceptance.spec.mjs[SE4M]: F:Tests the WebUI architecture contracts (terminal readiness, roster permissions, probe economy, transfer retention) as browser workflows. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Case names carry roadmap requirement IDs (V13-V36, C11); this repository defines none of them.
+architecture-acceptance.spec.mjs[TE4M]: F:Tests terminal readiness, roster permissions, probe economy and transfer retention as browser workflows. | R:code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Wait for panel exit to unmount before reopening after a terminal reconnect. Case IDs refer to roadmap requirements.
 browser-notice-layer.spec.mjs[SE4T]: F:Tests Browser Use notice layering over page content. | R:- | A:- | S:-
 browser-workspace.spec.mjs[SE4L]: F:Tests opening and operating Browser Use in the workspace panel. | R:- | A:- | S:-
 composer-goal-mode.spec.mjs[SE4S]: F:Tests entering goal mode from the WebUI composer. | R:- | A:- | S:-
-composer.spec.mjs[SE4L]: F:Tests the composer's slash palette, history and drafts, attachments, @ mentions, shared field feedback and submit gate as browser workflows. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:-
+composer.spec.mjs[TU4L]: F:Exercises composer menus, slash palette, drafts, attachments, mentions, and submit gating in the built browser client. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Arms a listener on the current submenu before hover, then verifies its named exit event and DOM removal separately so a late style sample cannot erase animation evidence.
 connection-status.spec.mjs[SE4S]: F:Tests connection status and recovery after an interrupted stream. | R:- | A:- | S:-
 content-page.spec.mjs[SE4S]: F:Tests the shared content page in the browser. | R:- | A:- | S:-
 context-usage-ring.spec.mjs[SE4M]: F:Tests context usage ring rendering from runtime data. | R:- | A:- | S:-
@@ -5687,9 +5687,9 @@ miniapp-panel.spec.mjs[SE4L]: F:Tests Mini App launcher refresh behavior. | R:- 
 miniapp-standalone-tab.spec.mjs[SE4S]: F:Tests promotion of inline Mini Apps to standalone tabs. | R:- | A:- | S:-
 model-picker-interactions.spec.mjs[SE4M]: F:Tests model picker interactions and display of the selected model. | R:- | A:- | S:-
 motion.spec.mjs[SE4S]: F:Tests shared WebUI motion contracts. | R:- | A:- | S:-
-native-design-tasks.spec.mjs[TB6L]: F:Exercises native Design node runs, reference understanding, authenticated media and cancellation through the browser. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Wait for the connected image reference to render after out-of-band setup before starting the slow run. Preserve provider and host evidence. Resolve tsx through its package export.
-native-design.spec.mjs[SE4L]: F:Exercises native Design menus, graph gestures, real tool presentation, media operations and library controls. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Requires FFmpeg on PATH. Focus the conversation before a real tool turn in headed Chromium. Normalize clipboard CRLF and resolve tsx through its package export.
-native-runtime.spec.mjs[SE4M]: F:Tests the native runtime path and persistence of terminal sessions. | R:- | A:- | S:Resolve tsx through its package export before starting the TypeScript host in a child process.
+native-design-tasks.spec.mjs[TB6L]: F:Exercises native Design node runs, reference understanding, authenticated media and cancellation through the browser. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Wait for the connected image reference to render after an out-of-band setup write before triggering the slow understanding run. Preserve provider and host evidence for uncompleted runs.
+native-design.spec.mjs[SE4L]: F:Exercises native Design menus, graph gestures, real tool presentation, media operations and library controls. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:FFmpeg must be on PATH. Focus the conversation before the production tool turn so headed Chromium does not defer the panel in a background tab. Clipboard assertions normalize CRLF.
+native-runtime.spec.mjs[TH4M]: F:Exercises terminal lifecycle and persistence against the actual WebUI host and native PTYs. | R:code:packages/webui/test/browser/support/native-browser-host.ts | A:- | S:The parent requires the close receipt and process exit separately, and preserves captured shutdown logs in the Playwright trace if the receipt is missing.
 overlay-coordination.spec.mjs[SE4M]: F:Tests Escape dismissal order for stacked overlays. | R:- | A:- | S:-
 plugin-catalogue-layout.spec.mjs[SE4L]: F:Tests category layout in plugin marketplace and management views. | R:- | A:- | S:-
 plugin-mcp-status.spec.mjs[SE4M]: F:Tests failed MCP connection status and its displayed reason. | R:- | A:- | S:-
@@ -5715,7 +5715,7 @@ settings-account-tab.spec.mjs[SE4L]: F:Tests account settings navigation. | R:- 
 settings-shortcuts.spec.mjs[SE4M]: F:Tests keyboard shortcut settings and bindings. | R:- | A:- | S:-
 settings-theme.spec.mjs[SE4S]: F:Tests theme settings and selected navigation styling. | R:- | A:- | S:-
 ssh-terminal.spec.mjs[SE4M]: F:Tests SSH terminal presentation and connection status. | R:- | A:- | S:-
-streaming-performance.spec.mjs[SE4L]: F:Measures responsiveness during streamed replies. | R:- | A:- | S:-
+streaming-performance.spec.mjs[TE4L]: F:Measures streaming responsiveness in the built browser client and validates blocking attribution with positive and negative controls. | R:code:packages/webui/test/browser/application-performance.mjs,code:packages/webui/test/browser/harness.mjs | A:- | S:Start the first stream chunk in a timer task so the measured window excludes the DevTools task that injects and configures the fixture.
 surface-appearance.spec.mjs[SE4S]: F:Tests appearance contracts for shared WebUI surfaces. | R:- | A:- | S:-
 terminal-cross-page.spec.mjs[SE4S]: F:Tests that PTY sessions can be observed across pages. | R:- | A:- | S:-
 toast.spec.mjs[SE4T]: F:Tests toast placement and failed-read feedback. | R:- | A:- | S:-
@@ -5738,7 +5738,7 @@ accessibility-review.json[SE4T]: F:Records browser accessibility review evidence
 accessibility.d.mts[SE4T]: F:Declares types for browser accessibility test helpers. | R:- | A:- | S:-
 accessibility.mjs[SE4M]: F:Implements browser accessibility checks and loads their exceptions. | R:- | A:- | S:-
 composer-mascot-opaque.webm.asset.json[SE4T]: F:Describes the opaque composer mascot video test asset. | R:- | A:- | S:-
-native-browser-host.ts[SE4S]: F:Runs the real WebUI service and native PTYs for browser acceptance. | R:- | A:- | S:Enables runtime shutdown phase markers and reports the current service owner if teardown times out.
+native-browser-host.ts[XQ4S]: F:Runs the actual loopback WebUI service and native PTYs for browser acceptance. | R:code:packages/webui/src/server/service.ts,code:packages/webui/src/runtime/terminal.ts | A:- | S:Close tracing distinguishes waiting on a service owner from waiting for real PTY exit events, which must be observed before acknowledging successful teardown.
 native-design-browser-host.ts[SE4M]: F:Provides a native WebUI host for testing Design, including the synthetic provider that receives the media upload. | R:- | A:- | S:The synthetic provider reads the multipart upload body itself: the platform multipart parser differs across platforms and leaves the provider waiting.
 rendering-integrity.json[SE4L]: F:Stores the recorded browser rendering integrity expectations for each surface, state and theme. | R:- | A:- | S:It is re-recorded with RECORD_RENDERING_INTEGRITY=1 when the surfaces move, and every value is compared against what the run measures.
 rendering-integrity.mjs[SE4M]: F:Loads and checks browser rendering integrity requirements. | R:- | A:- | S:-
@@ -5860,7 +5860,7 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, native provisioning before suites, a Linux-only FFmpeg timeout increase, independent lane failures, unique diagnostics, and read-only workflow permissions.
+source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, checksum-verified Linux and Windows FFmpeg provisioning, independent lane failures, unique diagnostics, and read-only workflow permissions.
 vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 
@@ -5868,4 +5868,4 @@ windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runti
 validate-plugin.mjs[SE4L]: F:Validates plugin packages against their manifest and schema contracts. | R:- | A:- | S:-
 
 ===/<repository>/packages/local-runtime-v2/src/infra/===
-shutdown-diagnostics.ts[SE4T]: F:Writes opt-in runtime shutdown phase markers to stderr. | R:- | A:traceRuntimeShutdownPhase | S:Enabled only by MCODE_RUNTIME_SHUTDOWN_DIAGNOSTICS=1. Callers supply static phase names.
+shutdown-diagnostics.ts[RO4T]: F:Writes opt-in shutdown phase markers with process uptime to the parent stderr stream. | R:code:packages/local-runtime-v2/src/runtime.ts | A:traceRuntimeShutdownPhase | S:Enabled only by MCODE_RUNTIME_SHUTDOWN_DIAGNOSTICS=1. Synchronous writes make markers observable before native blocking; broken diagnostic pipes cannot alter shutdown.

@@ -15,11 +15,12 @@
 // a layer of its own, so the coordinator dismisses it and it keeps no listener.
 // The menu's open state stays a prop because the shell owns it.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiButton } from "../../../ui/button.js";
 import { WebuiDialog } from "../../../ui/dialog.js";
+import { useWebuiToastError } from "../../../ui/toast.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { workspaceProjectName } from "../../../features/workspace/projection/workspace-name.public.js";
 import { WebuiWorkspaceDirectoryBrowser } from "../../../features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.js";
@@ -44,8 +45,63 @@ export function WebuiComposerProjectRow({
   onMenuOpenChange,
   onSelectProject,
 }: WebuiComposerProjectRowProps) {
+  const { dom, nativeDirectoryPicker } = useWebuiBrowserCapabilities();
   const [browserOpen, setBrowserOpen] = useState(false);
-  const { dom } = useWebuiBrowserCapabilities();
+  const [nativeMode, setNativeMode] = useState(false);
+  const [nativePending, setNativePending] = useState(false);
+  const [nativeError, setNativeError] = useState("");
+  useWebuiToastError(nativeError);
+  const request = useRef<AbortController | null>(null);
+  const nativeAddButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => () => {
+    request.current?.abort();
+    request.current = null;
+  }, []);
+
+  function closeBrowser() {
+    request.current?.abort();
+    request.current = null;
+    setNativePending(false);
+    setNativeError("");
+    setBrowserOpen(false);
+  }
+
+  function showServerBrowser() {
+    request.current?.abort();
+    request.current = null;
+    setNativePending(false);
+    setNativeError("");
+    setNativeMode(false);
+  }
+
+  async function addFolder() {
+    if (!nativeDirectoryPicker || request.current) return;
+    const current = new AbortController();
+    request.current = current;
+    setNativePending(true);
+    setNativeError("");
+    try {
+      const result = await nativeDirectoryPicker.choose(current.signal);
+      if (request.current !== current) return;
+      if (result.kind === "selected") {
+        closeBrowser();
+        onSelectProject(result.directory);
+      } else if (result.kind === "unavailable") {
+        showServerBrowser();
+      }
+    } catch (error) {
+      if (request.current === current) {
+        setNativeError(error instanceof Error && !(error instanceof TypeError)
+          ? error.message
+          : "无法打开系统目录选择，请重试或选择服务端目录。");
+      }
+    } finally {
+      if (request.current === current) {
+        request.current = null;
+        setNativePending(false);
+      }
+    }
+  }
 
   return (
     <div className="webui-workspace-bar" data-webui-workspace-toolbar="true">
@@ -125,6 +181,7 @@ export function WebuiComposerProjectRow({
             className="webui-workspace-option"
             onClick={() => {
               onMenuOpenChange(false);
+              setNativeMode(nativeDirectoryPicker?.available() ?? false);
               setBrowserOpen(true);
             }}
           >
@@ -150,25 +207,41 @@ export function WebuiComposerProjectRow({
         <WebuiDialog
           id="composer-directory-browser"
           open={browserOpen}
-          title="选择项目目录"
-          description="选择要用于新会话的工作目录"
+          title={nativeMode ? "选择新项目" : "选择项目目录"}
+          description={nativeMode ? "选择此电脑上的文件夹" : "选择运行 WebUI 的主机上用于新会话的工作目录"}
           width="standard"
           portalTarget={dom.portalTarget()}
-          onClose={() => setBrowserOpen(false)}
+          initialFocusRef={nativeMode ? nativeAddButton : undefined}
+          onClose={closeBrowser}
           dismissOnEscape
           dismissOnBackdrop
           testId="webui-workspace-browser-dialog"
           dataAttributes={{ "data-webui-workspace-browser-dialog": "true" }}
           bodyClassName="webui-workspace-browser-dialog-body"
         >
-          <WebuiWorkspaceDirectoryBrowser
-            initialDir={projectDir}
-            onSelect={(dir) => {
-              setBrowserOpen(false);
-              onSelectProject(dir);
-            }}
-            onCancel={() => setBrowserOpen(false)}
-          />
+          {nativeMode ? (
+            <div className="flex flex-col gap-3 p-4" aria-busy={nativePending}>
+              <div className="flex flex-wrap items-center gap-2">
+                <WebuiButton ref={nativeAddButton} type="button" variant="primary" loading={nativePending}
+                  loadingLabel="正在等待系统选择窗口…" onClick={() => void addFolder()}>
+                  {nativePending ? "正在等待系统选择窗口…" : "+ 添加文件夹"}
+                </WebuiButton>
+                <WebuiButton type="button" variant="plain" disabled={nativePending}
+                  onClick={showServerBrowser}>
+                  浏览服务端目录
+                </WebuiButton>
+              </div>
+            </div>
+          ) : (
+            <WebuiWorkspaceDirectoryBrowser
+              initialDir={projectDir}
+              onSelect={(dir) => {
+                closeBrowser();
+                onSelectProject(dir);
+              }}
+              onCancel={closeBrowser}
+            />
+          )}
         </WebuiDialog>
       </div>
     </div>

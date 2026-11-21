@@ -9,10 +9,11 @@ import { createServer, type Server } from "node:http";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { WebuiBrowserService } from "../../src/runtime/browser/browser-service.js";
 import { WebuiBrowserOperationError } from "../../src/runtime/browser/errors.js";
+import { WebuiIsolatedChromiumProvider } from "../../src/runtime/browser/isolated-chromium/provider.js";
 import type {
   WebuiBrowserAuthorization,
   WebuiBrowserImageFrame,
@@ -120,6 +121,58 @@ describe.skipIf(!chromeAvailable)("the browser panel's real Chromium navigation 
       });
     }
   });
+
+  it.each(["unchanged", "resized"] as const)("gives a late watcher its first frame on a static Chromium tab (%s)", async (mode) => {
+    const target = await openHome();
+    const controller = new AbortController();
+    const oldViewport = { width: 600, height: 500 };
+    const requested = mode === "resized" ? { width: 700, height: 550 } : oldViewport;
+    const a = service.watchFrames("isolated-chromium", target, controller.signal, oldViewport)[Symbol.asyncIterator]();
+    const b = service.watchFrames("isolated-chromium", target, controller.signal, requested)[Symbol.asyncIterator]();
+    const startImageStream = WebuiIsolatedChromiumProvider.prototype.startImageStream;
+    let relayLiveFrames = true;
+    // Gate delivery after the real provider handles and ACKs CDP live frames.
+    // A platform may otherwise paint on resize and exercise only live delivery.
+    const liveCast = vi.spyOn(WebuiIsolatedChromiumProvider.prototype, "startImageStream")
+      .mockImplementation(function (this: WebuiIsolatedChromiumProvider, targetId, receive) {
+        return startImageStream.call(this, targetId, (frame) => {
+          if (relayLiveFrames) receive(frame);
+        });
+      });
+    const capture = vi.spyOn(WebuiIsolatedChromiumProvider.prototype, "captureStreamInitialFrame");
+    try {
+      const first = await a.next();
+      expect(first.done).toBe(false);
+      relayLiveFrames = false;
+      const next = b.next();
+      let replacement: IteratorResult<WebuiBrowserImageFrame> | undefined;
+      void next.then((frame) => { replacement = frame; }, () => undefined);
+      await waitFor(async () => replacement !== undefined, "replacement watch's first image");
+      expect(replacement).toMatchObject({ done: false, value: { target, format: "jpeg" } });
+      expect(replacement?.value.sequence).toBeGreaterThan(first.value.sequence);
+      const viewport = await evaluate(target, "JSON.stringify([innerWidth, innerHeight])");
+      expect(viewport).toBe(JSON.stringify([requested.width, requested.height]));
+      if (!replacement || replacement.done) throw new Error("the replacement watch closed without an image");
+      expect(capture).toHaveBeenCalledTimes(1);
+      // Verify the particular image is the capture, not an earlier live frame.
+      expect(replacement.value).toBe(await capture.mock.results[0]?.value);
+      const image = await evaluate(target, `(async () => {
+        const image = new Image();
+        image.src = ${JSON.stringify("data:image/jpeg;base64," + replacement.value.data)};
+        await image.decode();
+        return JSON.stringify([image.naturalWidth, image.naturalHeight]);
+      })()`);
+      expect(image).toBe(viewport);
+    } finally {
+      controller.abort();
+      try {
+        await Promise.allSettled([a.return?.(), b.return?.()]);
+      } finally {
+        liveCast.mockRestore();
+        capture.mockRestore();
+      }
+    }
+  }, 30_000);
 
   async function openHome(): Promise<WebuiBrowserTargetId> {
     const opened = await service.openWebTab(undefined, { url: `${homeOrigin}/` }, undefined, "person");

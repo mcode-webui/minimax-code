@@ -1,3 +1,4 @@
+import type { createNativeDirectoryRoute } from "./native-directory.js";
 // HTTP router for the loopback service: dispatch one admitted request to the
 // session-transfer, workspace-file or static client-asset route. Split from
 // `service.ts` with no behaviour change — the admission order, route order,
@@ -26,6 +27,7 @@ import type { WebuiBrowserExtensionPackage } from "../browser-bridge/extension-p
 
 export interface WebuiHttpRouterContext {
   readonly host: string;
+  readonly nativeDirectoryRoute?: ReturnType<typeof createNativeDirectoryRoute>;
   /** The TCP port the kernel allocated, once `start()` has resolved. */
   readonly boundTcpPort: () => number | undefined;
   /** The configured TCP port, used as the client-asset fallback before bind. */
@@ -95,6 +97,16 @@ export async function serveHttpRequest(
   if (designMediaAction) { await applyDesignMediaAction(request, response, context.port); return; }
   if (url.pathname.startsWith("/design-assets/")) {
     await serveDesignAsset(request, response, url, context.port);
+    return;
+  }
+  if (url.pathname === "/native-directory-picker") {
+    if (request.method !== "POST" || url.search || !context.nativeDirectoryRoute) {
+      rejectHttp(response, 404, "Not Found"); return;
+    }
+    await context.nativeDirectoryRoute.handle(request, response, {
+      host: context.host, port: context.boundTcpPort(), credential: context.credential,
+      fullAccess: context.fullAccess,
+    });
     return;
   }
   if (request.method === "GET" && url.pathname === "/session-transfer") {

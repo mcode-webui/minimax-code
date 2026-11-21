@@ -42,6 +42,7 @@ for (const state of ["absent", "not-ready"]) {
     // And the action works again: the terminal opens for the tab that asked
     // for it, and the panel watches it.
     await page.getByRole("button", { name: "关闭面板" }).click();
+    await expect(page.getByTestId("workspace-panel")).toHaveCount(0);
     await page.getByTestId("workspace-panel-controls").getByRole("button", { name: "浏览器" }).click();
     await expect.poll(() => page.evaluate(() => window.__fixture.terminals().length)).toBe(1);
     await expect.poll(() => page.evaluate(() => window.__fixture.watchedTerminalIds().length)).toBe(1);

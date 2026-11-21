@@ -990,7 +990,9 @@ async function closeRuntime({
   try {
     traceRuntimeShutdownPhase("close_database");
     database?.close();
+    traceRuntimeShutdownPhase("close_database_returned");
   } catch (error) {
+    traceRuntimeShutdownPhase("close_database_threw");
     firstError ??= error;
   }
   if (firstError !== undefined) throw firstError;

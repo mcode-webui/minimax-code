@@ -81,10 +81,12 @@ const MINIAPP_PRESENTATION_RECONNECT_GRACE_MS = 300;
  * `open` carries the proxy's view URL and nothing else — not the Mini App's
  * origin, not its surface path, not the credential its guard demands. `stopped`
  * is a cleared view that remembers why, which is what the panel renders instead
- * of a dead frame.
+ * of a dead frame. `failed` retains an unsuccessful start until the person
+ * retries; a stop or lease failure cannot create that state.
  */
 export type WebuiMiniAppPresentation =
   | { readonly kind: "opening" }
+  | { readonly kind: "failed"; readonly refusal: WebuiMiniAppRefusal }
   | {
       readonly kind: "open";
       readonly viewUrl: string;
@@ -663,7 +665,7 @@ export function createWebuiMiniAppWorkflows(deps: {
     } catch (error) {
       if (!isCurrent()) return false;
       const refusal = refusalOf(error);
-      setPresentation(pluginId, undefined);
+      setPresentation(pluginId, { kind: "failed", refusal });
       setRefusal(pluginId, refusal);
       // The runtime refused to start, so the row it refused about is stale: a
       // capacity refusal names the running apps, and those names come from here.
@@ -873,7 +875,7 @@ export function createWebuiMiniAppWorkflows(deps: {
     const existing = current.presentations[pluginId];
     if (existing?.kind === "opening") return "presented";
     // A cleared presentation or a refusal is the person's to retry, never a timer's.
-    if (existing?.kind === "stopped" || current.refusals[pluginId] !== undefined) return "blocked";
+    if (existing?.kind === "stopped" || existing?.kind === "failed" || current.refusals[pluginId] !== undefined) return "blocked";
     let catalogue: WebuiMiniAppCatalogue | undefined;
     try {
       catalogue = observed ? observed.catalogue : await readCatalogue();

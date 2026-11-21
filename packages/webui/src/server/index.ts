@@ -130,3 +130,5 @@ export type {
   WebuiPermissionDecision,
 } from "../shared/contracts/interactions.js";
 export type { WebuiModelEntry } from "../shared/contracts/models.js";
+
+export type { WebuiNativeDirectoryPicker } from "./http/native-directory.js";

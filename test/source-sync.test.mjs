@@ -1587,3 +1587,112 @@ test('the desktop version the marketplace is filtered by is declared in exactly 
   );
   assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
 });
+
+test('native folder launcher grant is restricted to authenticated interactive Windows loopback', async () => {
+  const { nativeDirectoryPickerEligible: eligible, nativeDirectoryLaunchUrl } = await import('../release/webui-npm/bin/native-directory-picker.mjs');
+  const local = { platform: 'win32', tty: true, bindHost: '127.0.0.1', fullAccess: false };
+  assert.equal(eligible(local), true);
+  for (const change of [{ platform: 'linux' }, { platform: 'darwin' }, { tty: false }, { fullAccess: true }, { bindHost: '0.0.0.0' }, { bindHost: '192.168.1.1' }, { browserSetting: 'off' }]) {
+    assert.equal(eligible({ ...local, ...change }), false);
+  }
+  assert.equal(eligible({ ...local, tty: false, browserSetting: '1' }), false);
+  const plain = 'http://127.0.0.1:2233/?token=fixture';
+  const granted = nativeDirectoryLaunchUrl(plain, 'synthetic-native-grant');
+  assert.equal(granted.split('#')[0], plain);
+  assert.equal(new URLSearchParams(new URL(granted).hash.slice(1)).get('nativeDirectoryGrant'), 'synthetic-native-grant');
+  const launcher = readFileSync(new URL('../release/webui-npm/bin/mcode-webui.mjs', import.meta.url), 'utf8');
+  assert.match(launcher, /openBrowser\(nativeDirectoryPicker \? nativeDirectoryLaunchUrl\(browserUrl, nativeDirectoryPicker.grant\) : browserUrl, browserUrl\)/);
+  assert.doesNotMatch(launcher, /console\.(?:log|warn|error)\([^\n]*(?:nativeDirectoryPicker.grant|\$\{url\}|error.message)/);
+});
+
+test('native folder chooser uses a fixed STA program and narrow selected/cancel results', async () => {
+  const { EventEmitter } = await import('node:events');
+  const { PassThrough } = await import('node:stream');
+  const { createWindowsDirectoryPicker } = await import('../release/webui-npm/bin/native-directory-picker.mjs');
+  let child; let invocation;
+  const picker = createWindowsDirectoryPicker({ windowsRoot: 'C:\\Windows', architecture: 'ia32', readScript: async () => 'fixed script', spawnProcess: (...args) => {
+    invocation = args; child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => true; return child;
+  } });
+  const selected = picker.choose(new AbortController().signal);
+  await Promise.resolve();
+  assert.match(invocation[0], /Sysnative\\WindowsPowerShell\\v1.0\\powershell.exe$/);
+  assert.deepEqual(invocation[1].slice(0, 5), ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand']);
+  assert.equal(Buffer.from(invocation[1][5], 'base64').toString('utf16le'), 'fixed script');
+  assert.equal(invocation[2].shell, false);
+  child.stdout.write(JSON.stringify({ kind: 'selected', directory: 'D:\\项目\\work' })); child.emit('close', 0);
+  assert.deepEqual(await selected, { kind: 'selected', directory: 'D:\\项目\\work' });
+  const cancelled = picker.choose(new AbortController().signal); await Promise.resolve();
+  child.stdout.write('{"kind":"cancelled"}'); child.emit('close', 0);
+  assert.deepEqual(await cancelled, { kind: 'cancelled' });
+  await picker.dispose();
+  await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
+  const script = readFileSync(new URL('../release/webui-npm/bin/native-directory-picker.ps1', import.meta.url), 'utf8');
+  assert.match(script, /UserInteractive/); assert.match(script, /SessionId -eq 0/);
+  assert.match(script, /0x20u \| 0x40u \| 0x800u \| 0x2000000u/);
+  assert.match(script, /0x800704C7/); assert.match(script, /dialog.Show\(IntPtr.Zero\)/);
+  assert.doesNotMatch(script, /\$args|Invoke-Expression|Start-Process/);
+});
+
+test('native folder abort kills its child and keeps it busy until close; failures disclose no output', async () => {
+  const { EventEmitter } = await import('node:events');
+  const { PassThrough } = await import('node:stream');
+  const { createWindowsDirectoryPicker } = await import('../release/webui-npm/bin/native-directory-picker.mjs');
+  let child; let killed = 0;
+  const picker = createWindowsDirectoryPicker({ windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
+    child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => { killed++; return true; }; return child;
+  } });
+  const controller = new AbortController(); const pending = picker.choose(controller.signal); await Promise.resolve();
+  let settled = false;
+  pending.then(() => { settled = true; }, () => { settled = true; });
+  const rejection = assert.rejects(pending, /^Error: Native folder selection is unavailable$/);
+  controller.abort();
+  assert.equal(killed, 1);
+  await Promise.resolve(); assert.equal(settled, false);
+  await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
+  child.emit('close', 1); await rejection;
+  const malformed = picker.choose(new AbortController().signal); await Promise.resolve();
+  child.stdout.write('private-path-or-error'); child.emit('close', 0);
+  await assert.rejects(malformed, /^Error: Native folder selection is unavailable$/);
+  await picker.dispose();
+});
+
+test('native folder chooser rejects pre-abort and malformed output and waits for disposal close', async () => {
+  const { EventEmitter } = await import('node:events');
+  const { PassThrough } = await import('node:stream');
+  const { createWindowsDirectoryPicker } = await import('../release/webui-npm/bin/native-directory-picker.mjs');
+  let child; let launches = 0;
+  const picker = createWindowsDirectoryPicker({ windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
+    launches++; child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => true; return child;
+  } });
+  const aborted = new AbortController(); aborted.abort();
+  await assert.rejects(picker.choose(aborted.signal), /unavailable/); assert.equal(launches, 0);
+  for (const output of ['{"kind":"selected","directory":"relative"}', '{"kind":"unexpected"}']) {
+    const pending = picker.choose(new AbortController().signal); await Promise.resolve();
+    child.stdout.write(output); child.emit('close', 0);
+    await assert.rejects(pending, /unavailable/);
+  }
+  const pending = picker.choose(new AbortController().signal); await Promise.resolve();
+  const rejected = assert.rejects(pending, /unavailable/);
+  let disposed = false;
+  const disposal = picker.dispose().then(() => { disposed = true; });
+  await Promise.resolve(); assert.equal(disposed, false);
+  child.emit('close', 1); await rejected; await disposal; assert.equal(disposed, true);
+});
+
+test('native folder termination watchdog permanently fails closed if the process does not exit', async () => {
+  const { EventEmitter } = await import('node:events');
+  const { PassThrough } = await import('node:stream');
+  const { createWindowsDirectoryPicker } = await import('../release/webui-npm/bin/native-directory-picker.mjs');
+  let child; let kills = 0;
+  const picker = createWindowsDirectoryPicker({ windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
+    child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => { kills++; return false; }; return child;
+  } });
+  const controller = new AbortController();
+  const pending = picker.choose(controller.signal); await Promise.resolve();
+  const rejected = assert.rejects(pending, /unavailable/);
+  controller.abort(); await rejected;
+  assert.equal(kills, 1);
+  child.emit('close', 1);
+  await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
+  await picker.dispose();
+});

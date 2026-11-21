@@ -18,6 +18,8 @@
 // Shutdown order is the close order `../docs/runtime/boot.md` states: stop accepting
 // new operations, then close every connection, then close the harness.
 
+import { createNativeDirectoryRoute, type WebuiNativeDirectoryPicker } from "./http/native-directory.js";
+
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 
 import type { WebuiOperationRegistryEntry } from "./operation/operations.js";
@@ -152,6 +154,7 @@ export interface WebuiServiceOptions {
    * it. Absent when the host has none.
    */
   readonly requestShutdown?: () => void;
+  readonly nativeDirectoryPicker?: WebuiNativeDirectoryPicker;
   /** Optional server factory; tests inject an HTTP server without listening. */
   readonly httpServerFactory?: () => Server;
   /**
@@ -279,6 +282,7 @@ export class WebuiService {
       ...(this.browserBridge ? { browserBridge: this.browserBridge } : {}),
     });
     this.httpContext = {
+      ...(options.nativeDirectoryPicker ? { nativeDirectoryRoute: createNativeDirectoryRoute(options.nativeDirectoryPicker) } : {}),
       host: this.host,
       boundTcpPort: () => this.bound?.info.tcpPort,
       configuredTcpPort: this.tcpPort,
@@ -367,6 +371,9 @@ export class WebuiService {
     };
 
     this.accepting = false;
+    if (this.httpContext.nativeDirectoryRoute) {
+      await attempt("native-directory-picker", () => this.httpContext.nativeDirectoryRoute!.dispose());
+    }
     await attempt("terminal", () => this.terminal?.disposeBySession());
     // Terminate sockets before waiting for their listener to close.
     await attempt("websocket-connections", () => this.wsServer.closeConnections());

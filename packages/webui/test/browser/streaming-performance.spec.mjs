@@ -202,6 +202,10 @@ async function measureStreamedReply(page, options) {
         };
         probe();
 
+        // Start the first chunk in its own browser task, like subsequent
+        // chunks. The DevTools task that injects this fixture can otherwise
+        // overlap the marker and charge its setup time to application work.
+        await new Promise((resolve) => setTimeout(resolve, 0));
         performance.mark(measureStart);
         const started = performance.now();
         for (let index = 0; index < count; index += 1) {

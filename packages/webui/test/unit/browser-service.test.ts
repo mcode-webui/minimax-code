@@ -169,6 +169,10 @@ class RecordingProvider implements WebuiBrowserSurfaceProvider {
     });
   }
 
+  async captureStreamInitialFrame(): Promise<WebuiBrowserImageFrame | undefined> {
+    return undefined;
+  }
+
   async stopImageStream(targetId: string): Promise<void> {
     this.stoppedStreams.push(targetId);
     this.frameHandlers.delete(targetId);
@@ -1429,6 +1433,268 @@ describe("the surface a run is working on", () => {
     await service.close();
   });
 
+});
+
+describe("browser frame subscription handoff", () => {
+  it("waits for a pending start before stopping its cancelled last watcher", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    const controller = new AbortController();
+    const watch = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const startEntered = Promise.withResolvers<void>();
+    const releaseStart = Promise.withResolvers<void>();
+    const startImageStream = provider.startImageStream.bind(provider);
+    vi.spyOn(provider, "startImageStream").mockImplementationOnce(async (targetId, handler) => {
+      startEntered.resolve();
+      await releaseStart.promise;
+      await startImageStream(targetId, handler);
+    });
+    try {
+      const firstFrame = watch.next();
+      await startEntered.promise;
+      controller.abort();
+      expect(provider.stoppedStreams).toEqual([]);
+      releaseStart.resolve();
+      await expect(firstFrame).resolves.toMatchObject({ done: true });
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+      expect(provider.stoppedStreams).toEqual(["tab-1"]);
+    } finally {
+      releaseStart.resolve();
+      controller.abort();
+      await watch.return?.();
+      await service.close();
+    }
+  });
+
+  it.each(["resolves", "rejects"] as const)("delivers frames to a replacement watcher after an in-progress stop that %s", async (outcome) => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    const previous = service.watchFrames("isolated-chromium", target)[Symbol.asyncIterator]();
+    const replacementAbort = new AbortController();
+    const replacement = service.watchFrames("isolated-chromium", target, replacementAbort.signal)[Symbol.asyncIterator]();
+    const stopEntered = Promise.withResolvers<void>();
+    const releaseStop = Promise.withResolvers<void>();
+    const startImageStream = vi.spyOn(provider, "startImageStream");
+    const stopImageStream = provider.stopImageStream.bind(provider);
+    vi.spyOn(provider, "stopImageStream").mockImplementationOnce(async (targetId) => {
+      stopEntered.resolve();
+      await releaseStop.promise;
+      await stopImageStream(targetId);
+      if (outcome === "rejects") throw new Error("Synthetic stop failure");
+    });
+    try {
+      const first = previous.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      provider.pushFrame(1);
+      const firstResult = await first;
+      expect(firstResult.done).toBe(false);
+      const previousClosed = previous.return!();
+      await stopEntered.promise;
+      const replacementFrame = replacement.next();
+      // Let the replacement reach the service while the first stop is gated.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+      releaseStop.resolve();
+      await previousClosed;
+      await waitUntil(() => provider.startedStreams.length === 2);
+      let receivedFrame = false;
+      void replacementFrame.then((result) => { receivedFrame = !result.done; }, () => undefined);
+      // A provider callback retained by the old stream cannot feed the new watcher.
+      startImageStream.mock.calls[0]![1](firstResult.value);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(receivedFrame).toBe(false);
+      provider.pushFrame(1);
+      await waitUntil(() => receivedFrame);
+      await expect(replacementFrame).resolves.toMatchObject({ done: false });
+      expect(provider.stoppedStreams).toEqual(["tab-1"]);
+      await replacement.return!();
+      expect(provider.stoppedStreams).toEqual(["tab-1", "tab-1"]);
+    } finally {
+      releaseStop.resolve();
+      replacementAbort.abort();
+      await Promise.allSettled([previous.return?.(), replacement.return?.()]);
+      await service.close();
+    }
+  });
+
+  it("cancels a replacement watcher without waiting for the old provider stop", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    const controller = new AbortController();
+    const previous = service.watchFrames("isolated-chromium", target)[Symbol.asyncIterator]();
+    const replacement = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const stopEntered = Promise.withResolvers<void>();
+    const releaseStop = Promise.withResolvers<void>();
+    const stopImageStream = provider.stopImageStream.bind(provider);
+    vi.spyOn(provider, "stopImageStream").mockImplementationOnce(async (targetId) => {
+      stopEntered.resolve();
+      await releaseStop.promise;
+      await stopImageStream(targetId);
+    });
+    try {
+      const first = previous.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      provider.pushFrame(1);
+      await expect(first).resolves.toMatchObject({ done: false });
+      const previousClosed = previous.return!();
+      await stopEntered.promise;
+      const next = replacement.next();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+      controller.abort();
+      let cancelled = false;
+      void next.then((result) => { cancelled = Boolean(result.done); }, () => undefined);
+      await waitUntil(() => cancelled);
+      await expect(next).resolves.toMatchObject({ done: true });
+      expect(provider.stoppedStreams).toEqual([]);
+      releaseStop.resolve();
+      await previousClosed;
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+      expect(provider.stoppedStreams).toEqual(["tab-1"]);
+    } finally {
+      releaseStop.resolve();
+      controller.abort();
+      await Promise.allSettled([previous.return?.(), replacement.return?.()]);
+      await service.close();
+    }
+  });
+
+  it("shows an already-streaming static tab to an overlapping watcher without a new paint", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    vi.spyOn(provider, "captureStreamInitialFrame").mockResolvedValue({
+      target, data: "AAAA", format: "jpeg", sequence: 2,
+    });
+    const controller = new AbortController();
+    const a = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const b = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    try {
+      const first = a.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      provider.pushFrame(1);
+      await expect(first).resolves.toMatchObject({ done: false, value: { sequence: 1 } });
+      const successor = b.next();
+      let received = false;
+      void successor.then((result) => { received = !result.done; }, () => undefined);
+      await waitUntil(() => received);
+      await expect(successor).resolves.toMatchObject({ done: false, value: { sequence: 2 } });
+      await a.return!();
+      expect(provider.stoppedStreams).toEqual([]);
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+    } finally {
+      controller.abort();
+      await Promise.allSettled([a.return?.(), b.return?.()]);
+      await service.close();
+    }
+  });
+
+  it.each(["rejects", "wrong-generation", "late"] as const)(
+    "keeps live delivery when an initial frame capture is %s",
+    async (mode) => {
+      const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+      await service.listTargets("isolated-chromium");
+      const target = tab("tab-1");
+      const captured = Promise.withResolvers<WebuiBrowserImageFrame | undefined>();
+      const capture = vi.spyOn(provider, "captureStreamInitialFrame").mockReturnValue(captured.promise);
+      const controller = new AbortController();
+      const a = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+      const b = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+      try {
+        const first = a.next();
+        await waitUntil(() => provider.startedStreams.length === 1);
+        provider.pushFrame(1);
+        await expect(first).resolves.toMatchObject({ done: false });
+        const successor = b.next();
+        let received = false;
+        void successor.then((frame) => { received = !frame.done; }, () => undefined);
+        await waitUntil(() => capture.mock.calls.length === 1);
+        const snapshot = { target, data: "BBBB", format: "jpeg", sequence: 2 } as const;
+        if (mode === "rejects") captured.reject(new Error("Synthetic capture failure"));
+        if (mode === "wrong-generation") {
+          captured.resolve({ ...snapshot, target: { ...target, generation: target.generation + 1 } });
+        }
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(received).toBe(false);
+        provider.pushFrame(1);
+        if (mode === "late") captured.resolve(snapshot);
+        await expect(successor).resolves.toMatchObject({ done: false, value: { data: "AAAA", target } });
+      } finally {
+        captured.resolve(undefined);
+        controller.abort();
+        await Promise.allSettled([a.return?.(), b.return?.()]);
+        await service.close();
+      }
+    },
+  );
+
+  it("does not stop a provider stream while a second watcher remains", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    const controller = new AbortController();
+    const a = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const b = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    try {
+      const first = a.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      const second = b.next();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      provider.pushFrame(1);
+      await expect(Promise.all([first, second])).resolves.toMatchObject([{ done: false }, { done: false }]);
+      await a.return!();
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+      expect(provider.stoppedStreams).toEqual([]);
+      const next = b.next();
+      provider.pushFrame(1);
+      await expect(next).resolves.toMatchObject({ done: false });
+      await b.return!();
+      expect(provider.stoppedStreams).toEqual(["tab-1"]);
+    } finally {
+      controller.abort();
+      await Promise.allSettled([a.return?.(), b.return?.()]);
+      await service.close();
+    }
+  });
+
+  it("does not restart a provider closed while a replacement watcher is waiting", async () => {
+    const { service, provider } = createService({ ...ALL_OFF, isolatedChromium: true });
+    await service.listTargets("isolated-chromium");
+    const target = tab("tab-1");
+    const controller = new AbortController();
+    const previous = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const replacement = service.watchFrames("isolated-chromium", target, controller.signal)[Symbol.asyncIterator]();
+    const stopEntered = Promise.withResolvers<void>();
+    const releaseStop = Promise.withResolvers<void>();
+    vi.spyOn(provider, "stopImageStream").mockImplementationOnce(async () => {
+      stopEntered.resolve();
+      await releaseStop.promise;
+    });
+    try {
+      const first = previous.next();
+      await waitUntil(() => provider.startedStreams.length === 1);
+      provider.pushFrame(1);
+      await expect(first).resolves.toMatchObject({ done: false });
+      const previousClosed = previous.return!();
+      await stopEntered.promise;
+      const failure = expect(replacement.next()).rejects.toMatchObject({ code: "browser_provider_unavailable" });
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      await service.close();
+      releaseStop.resolve();
+      await previousClosed;
+      await failure;
+      expect(provider.closed).toBe(true);
+      expect(provider.startedStreams).toEqual(["tab-1"]);
+    } finally {
+      releaseStop.resolve();
+      controller.abort();
+      await Promise.allSettled([previous.return?.(), replacement.return?.()]);
+      await service.close();
+    }
+  });
 });
 
 /** One open stream, plus what it has delivered so far. */

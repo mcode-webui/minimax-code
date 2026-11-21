@@ -38,11 +38,12 @@ function catalogueRow(detached, presentationRevision) {
 }
 
 /** Install the fixture answers in every document this test opens. */
-async function configureDocuments(page) {
+async function configureDocuments(page, refusal) {
   await page.context().addInitScript({
     content: `
       window.__WEBUI_FIXTURE_SETUP__ ??= [];
       window.__WEBUI_FIXTURE_SETUP__.push(() => {
+        ${refusal ? `window.__fixture.refuseOperation("openMiniApp", ${JSON.stringify(refusal.code)}, ${JSON.stringify(refusal.message)});` : ""}
         window.__fixture.setResponse("listMiniApps", {
           miniApps: [${JSON.stringify(catalogueRow(false, 0))}],
         });
@@ -191,3 +192,49 @@ test("a deep link naming a session that has ended still shows the Mini App", asy
   // Still no way back inline.
   await expect(page.getByTestId("miniapp-switch-standalone")).toHaveCount(0);
 });
+
+for (const [code, message] of [
+  ["MINIAPP_PREPARATION_FAILED", "Mini App publication preparation failed"],
+  ["OWNED_ELSEWHERE", "Mini App is running in another client"],
+]) {
+  test(`a standalone start refusal stays actionable and an explicit retry recovers (${code})`, async ({ page }) => {
+    await configureDocuments(page, { code, message });
+    await page.goto(`/miniapp?token=synthetic-token&plugin=${PLUGIN}`);
+    const failed = page.getByTestId("miniapp-view-start-failed");
+    await expect(failed).toBeVisible();
+    await expect(failed).toContainText("应用尚未打开");
+    if (code === "OWNED_ELSEWHERE") {
+      await expect(failed).toContainText("请先在其他客户端关闭该应用，再重试。");
+    } else {
+      await expect(failed).toContainText(message);
+      await expect(failed).not.toContainText("请先在其他客户端关闭");
+    }
+    await expect(page.getByTestId("miniapp-view-frame")).toHaveCount(0);
+    await page.getByTestId("miniapp-view-refusal").getByRole("button", { name: "关闭", exact: true }).click();
+    await expect(failed).toBeVisible();
+    // A repeated refusal keeps the recovery control instead of erasing the page.
+    const retry = page.getByRole("button", { name: "重试打开应用" });
+    await retry.click();
+    await expect(failed).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__fixture.requests.filter(
+      (request) => request.operation === "openMiniApp",
+    ).length)).toBe(2);
+    await page.evaluate(() => {
+      window.__fixture.allowOperation("openMiniApp");
+      window.__fixture.delayNext("openMiniApp", {});
+    });
+    await retry.click();
+    await expect(page.getByTestId("miniapp-view-opening")).toBeVisible();
+    await expect(retry).toHaveCount(0);
+    await expect(failed).toHaveCount(0);
+    await page.evaluate(({ pluginId, path }) => window.__fixture.resolve("openMiniApp", {}, {
+      pluginId, viewUrl: window.location.origin + path,
+    }), { pluginId: PLUGIN, path: STANDALONE_STUB });
+    await expect(page.getByTestId("miniapp-view-frame")).toBeVisible();
+    await expect(failed).toHaveCount(0);
+    await expect(retry).toHaveCount(0);
+    expect(await page.evaluate(() => window.__fixture.requests.filter(
+      (request) => request.operation === "openMiniApp",
+    ).length)).toBe(3);
+  });
+}

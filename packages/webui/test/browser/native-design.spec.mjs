@@ -2,7 +2,7 @@ import { execFileSync, fork } from "node:child_process";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { test, attachJsonEvidence } from "./harness.mjs";
 
@@ -18,12 +18,7 @@ test.beforeAll(async () => {
     ),
     [],
     {
-      execArgv: [
-        "--import",
-        pathToFileURL(
-          path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs"),
-        ).href,
-      ],
+      execArgv: ["--import", import.meta.resolve("tsx")],
       env: {
         ...process.env,
         TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"),

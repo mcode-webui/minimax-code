@@ -170,10 +170,12 @@ export async function launchWithExtension(
 }> {
   const profileDir = await mkdtemp(join(tmpdir(), "webui-bridge-real-"));
   const dist = options.dist ?? extensionDist;
-  const context = await bounded(
-    `the ${channel} browser did not start`,
-    BROWSER_LAUNCH_BOUND_MS,
-    chromium.launchPersistentContext(profileDir, {
+  let context: BrowserContext | undefined;
+  try {
+    // Give Playwright the launch budget so a timeout aborts its own launch
+    // and reports the browser logs. Racing the promise only abandoned it.
+    context = await chromium.launchPersistentContext(profileDir, {
+      timeout: BROWSER_LAUNCH_BOUND_MS,
       headless: true,
       // "chromium" is the bundled browser and "msedge" is the installed Edge.
       // The extension is one package for both, and the only thing that differs
@@ -185,17 +187,23 @@ export async function launchWithExtension(
         "--no-first-run",
         "--no-default-browser-check",
       ],
-    }),
-  );
-  let worker = context.serviceWorkers()[0];
-  if (!worker) {
-    worker = await bounded(
-      `the ${channel} browser did not start the extension's service worker`,
-      BROWSER_LAUNCH_BOUND_MS,
-      context.waitForEvent("serviceworker", { timeout: 30_000 }),
-    );
+    });
+    let worker = context.serviceWorkers()[0];
+    if (!worker) {
+      worker = await bounded(
+        `the ${channel} browser did not start the extension's service worker`,
+        BROWSER_LAUNCH_BOUND_MS,
+        context.waitForEvent("serviceworker", { timeout: 30_000 }),
+      );
+    }
+    return { context, worker, extensionId: extensionIdOf(worker), profileDir };
+  } catch (error) {
+    // The caller cannot close a browser or profile it never received.
+    if (context) await closeBrowser(context).catch(() => undefined);
+    await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+      .catch(() => undefined);
+    throw error;
   }
-  return { context, worker, extensionId: extensionIdOf(worker), profileDir };
 }
 
 /**

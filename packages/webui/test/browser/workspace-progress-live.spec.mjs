@@ -147,26 +147,85 @@ test("environment and progress collapse through the shared disclosure height ani
   await page.emulateMedia({ reducedMotion: "no-preference" });
   for (const selector of [".webui-environment-panel", ".webui-progress-panel"]) {
     const section = page.locator(selector);
+    const body = section.locator(".webui-progress-section-body");
+    const title = section.locator(".webui-workspace-section-title");
     for (const expanded of [true, false]) {
-    await section.evaluate(element => {
-      window.__sectionMotionDone = false;
-      window.__sectionHeights = [];
-      element.querySelector(".webui-workspace-section-title").addEventListener("click", () => {
-        const start = performance.now();
-        const sample = () => {
-          window.__sectionHeights.push(element.getBoundingClientRect().height);
-          if (performance.now() - start < 300) requestAnimationFrame(sample);
-          else window.__sectionMotionDone = true;
+      const start = await section.evaluate(element => {
+        const style = getComputedStyle(element);
+        const header = element.querySelector(".webui-workspace-section-title");
+        return {
+          height: element.getBoundingClientRect().height,
+          collapsedHeight: header.getBoundingClientRect().height +
+            Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth),
         };
-        sample();
-      }, { once: true });
-    });
-    await section.getByRole("button", { expanded }).first().click();
-    await expect.poll(() => page.evaluate(() => window.__sectionMotionDone)).toBe(true);
-    const heights = await page.evaluate(() => window.__sectionHeights);
-    const initial = heights[0], final = heights.at(-1);
-    expect(Math.abs(initial - final)).toBeGreaterThan(20);
-    expect(heights.filter(height => height > Math.min(initial, final) + 1 && height < Math.max(initial, final) - 1).length, JSON.stringify(heights)).toBeGreaterThan(1);
+      });
+      const targetState = expanded ? "collapse" : "expand";
+      // Capture the real CSS transition on the state change, before a busy
+      // runner's next paint can skip its interior frames. Seek the browser's
+      // own effect rather than inferring interpolation from wall-clock frames.
+      const probe = await body.evaluateHandle((element, state) => {
+        const section = element.closest(".webui-progress-section");
+        const result = { measurement: null };
+        const observer = new MutationObserver(() => {
+          if (element.getAttribute("data-webui-motion-state") !== state) return;
+          observer.disconnect();
+          const token = getComputedStyle(element).getPropertyValue("--webui-motion-duration-disclosure").trim();
+          const timingToken = Number.parseFloat(token) * (token.endsWith("ms") ? 1 : 1000);
+          const animation = element.getAnimations().find(candidate =>
+            candidate instanceof CSSTransition && candidate.transitionProperty === "grid-template-rows");
+          if (!animation) {
+            result.measurement = { timingToken, duration: null, frames: [] };
+            return;
+          }
+          const duration = animation.effect.getTiming().duration;
+          animation.pause();
+          const content = element.querySelector(".webui-disclosure-content");
+          const frames = [0, 0.25, 0.5, 0.75, 1].map(fraction => {
+            animation.currentTime = duration * fraction;
+            return {
+              height: section.getBoundingClientRect().height,
+              track: content.getBoundingClientRect().height,
+            };
+          });
+          animation.finish();
+          result.measurement = { timingToken, duration, frames };
+        });
+        observer.observe(element, { attributes: true, attributeFilter: ["data-webui-motion-state"] });
+        return result;
+      }, targetState);
+
+      try {
+        await expect(title).toHaveAttribute("aria-expanded", String(expanded));
+        await title.click();
+        await expect(title).toHaveAttribute("aria-expanded", String(!expanded));
+        await expect(body).toHaveAttribute("data-webui-motion-state", targetState);
+        await expect.poll(() => probe.evaluate(result => result.measurement)).not.toBeNull();
+        const { timingToken, duration, frames } = await probe.evaluate(result => result.measurement);
+        expect(duration, `${selector}: no grid-template-rows transition on ${targetState}`).not.toBeNull();
+        expect(duration).toBe(timingToken);
+        // Reaching a selected point on a 0.01ms transition is not visible
+        // motion. In normal-motion mode allow at least two 60Hz frame times.
+        expect(duration).toBeGreaterThan(2 * (1000 / 60));
+
+        const [first, quarter, middle, threeQuarters, last] = frames;
+        const direction = expanded ? -1 : 1;
+        for (const [from, to] of [[first, quarter], [quarter, middle], [middle, threeQuarters], [threeQuarters, last]]) {
+          expect(direction * (to.track - from.track), `${selector} ${targetState}: ${JSON.stringify(frames)}`).toBeGreaterThanOrEqual(0);
+        }
+        expect(expanded ? last.track : first.track).toBeCloseTo(0, 0);
+        expect(expanded ? last.height : start.height).toBeCloseTo(start.collapsedHeight, 0);
+        expect(direction * (last.height - start.height)).toBeGreaterThan(20);
+        // The expanded wrapper has a min-height, which can change on click.
+        // Check visible intermediate heights against the rendered endpoints.
+        const visibleHeights = [start.height, quarter.height, middle.height, last.height];
+        for (let index = 1; index < visibleHeights.length; index++) {
+          expect(direction * (visibleHeights[index] - visibleHeights[index - 1]), `${selector} ${targetState}: ${JSON.stringify(frames)}`).toBeGreaterThan(1);
+        }
+        expect(await section.evaluate(element => element.getBoundingClientRect().height)).toBeCloseTo(last.height, 0);
+        expect(await body.evaluate(element => element.inert)).toBe(expanded);
+      } finally {
+        await probe.dispose();
+      }
     }
   }
 });

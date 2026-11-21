@@ -330,8 +330,10 @@ A failed start leaves an actionable “not opened” state in the mounted view, 
 attempt's error toast. Dismissing the toast does not remove the state or its explicit retry
 control. Only an `OWNED_ELSEWHERE` refusal tells the user to close the other client's app;
 a generic preparation failure does not establish ownership. Retry uses the normal open
-operation, never a takeover, and polling does not restart a failed presentation. Stop or
-lease failures do not create this failed-start state.
+operation, never a takeover, and polling does not restart a failed presentation. If
+another tab holds the presentation lease, the failed inline view only reads until the
+lease releases, then reveals the retry control. Stop or lease failures do not create
+this failed-start state.
 
 
 ### The standalone presentation is a lease

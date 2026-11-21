@@ -196,14 +196,12 @@ export function UserMenu({
     setShutdownError(undefined);
     try {
       const outcome = await shutdown();
-      if (outcome.kind === "stopped") {
-        // The service is not running. It says so before it stops, and it
-        // says nothing at all when it was already down -- both leave the
-        // page here without a backend, which is what was asked for.
+      if (outcome.kind === "accepted") {
+        // The host accepted the request, not necessarily stopped already.
         setShutdownOpen(false);
-        return;
+      } else {
+        setShutdownError(outcome.message);
       }
-      setShutdownError(outcome.message);
     } finally {
       setShutdownBusy(false);
     }

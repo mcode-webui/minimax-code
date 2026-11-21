@@ -393,6 +393,72 @@ describe("the Mini App business", () => {
     },
   );
 
+  it.each(["observer", "explicit"] as const)(
+    "observes a detached lease after a failed inline start via %s without opening again",
+    async (entry) => {
+      vi.useFakeTimers();
+      let detached = false;
+      let refuse = true;
+      let takeLease = entry === "observer";
+      const pluginId = "shared-app";
+      const attempts = vi.fn(async () => {
+        if (refuse) {
+          // Another browser document took the lease while the inline start was pending.
+          detached = takeLease;
+          throw Object.assign(new Error("Mini App publication preparation failed"), {
+            code: "MINIAPP_PREPARATION_FAILED",
+          });
+        }
+        return { pluginId, viewUrl: "http://127.0.0.1:49152" };
+      });
+      const list = vi.fn(async () => ({
+        miniApps: [miniApp(pluginId, "running", { detached, presentationRevision: 1 })],
+      }));
+      const workflows = createWebuiMiniAppWorkflows({
+        port: {
+          openMiniApp: attempts,
+          listMiniApps: list,
+          stopMiniApp: async () => ({ success: true }),
+        },
+      });
+      let release: (() => void) | undefined;
+      try {
+        if (entry === "explicit") {
+          // A retained previous failure does not start or poll again on mount.
+          expect(await workflows.open(pluginId)).toBe(false);
+          release = workflows.acquirePresentation(pluginId, false);
+          takeLease = true;
+          expect(await workflows.open(pluginId)).toBe(false);
+        } else {
+          release = workflows.acquirePresentation(pluginId, false);
+          await vi.advanceTimersByTimeAsync(0);
+        }
+        const attemptsBeforeRelease = entry === "explicit" ? 2 : 1;
+        expect(workflows.getSnapshot().presentations[pluginId]?.kind).toBe("failed");
+        expect(workflows.getSnapshot().listing.rows[0]?.detached).toBe(true);
+        expect(attempts).toHaveBeenCalledTimes(attemptsBeforeRelease);
+
+        detached = false;
+        await vi.advanceTimersByTimeAsync(2_000);
+        expect(workflows.getSnapshot().listing.rows[0]?.detached).toBe(false);
+        expect(workflows.getSnapshot().presentations[pluginId]?.kind).toBe("failed");
+        expect(attempts).toHaveBeenCalledTimes(attemptsBeforeRelease);
+        const readsAfterRelease = list.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(4_000);
+        expect(list).toHaveBeenCalledTimes(readsAfterRelease);
+
+        refuse = false;
+        expect(await workflows.open(pluginId)).toBe(true);
+        expect(workflows.getSnapshot().presentations[pluginId]?.kind).toBe("open");
+        expect(attempts).toHaveBeenCalledTimes(attemptsBeforeRelease + 1);
+      } finally {
+        release?.();
+        workflows.dispose();
+        vi.useRealTimers();
+      }
+    },
+  );
+
   it("offers to stop a Mini App another client is running", () => {
     const rows = webuiMiniAppRows([
       miniApp("shared", "stopped", {

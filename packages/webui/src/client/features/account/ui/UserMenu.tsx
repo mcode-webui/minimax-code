@@ -195,12 +195,13 @@ export function UserMenu({
     setShutdownBusy(true);
     setShutdownError(undefined);
     try {
-      await shutdown();
-      // The service answers before it stops, so the page is still alive here;
-      // the connection drop is what tells the person the server is gone.
-      setShutdownOpen(false);
-    } catch (error: unknown) {
-      setShutdownError(error instanceof Error ? error.message : String(error));
+      const outcome = await shutdown();
+      if (outcome.kind === "accepted") {
+        // The host accepted the request, not necessarily stopped already.
+        setShutdownOpen(false);
+      } else {
+        setShutdownError(outcome.message);
+      }
     } finally {
       setShutdownBusy(false);
     }

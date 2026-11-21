@@ -71,3 +71,67 @@ test("a refused shutdown can be dismissed by clicking outside after the error", 
   await page.locator('[data-webui-dialog-scrim="true"]').click({ position: { x: 8, y: 8 } });
   await expect(dialog).toHaveCount(0);
 });
+
+test("a failed shutdown transport is unconfirmed even when the backend is still up; retry is manual", async ({ page }) => {
+  let posts = 0;
+  await page.route("**/webui-shutdown?*", (route) => {
+    expect(route.request().method()).toBe("POST");
+    posts += 1;
+    return posts === 1
+      ? route.abort("connectionrefused")
+      : route.fulfill({ json: { ok: true, closing: true } });
+  });
+  await openApp(page);
+  await page.locator('[data-testid="sidebar-user-menu-trigger"], [data-testid="sidebar-user-menu-trigger-rail"]').first().click();
+  await page.getByTestId("user-menu-shutdown").click();
+  const dialog = page.getByRole("alertdialog");
+  const confirm = dialog.getByRole("button", { name: "关闭服务", exact: true });
+  await confirm.click();
+
+  await expect(dialog).toContainText("未收到关闭确认，无法确定服务是否已停止。");
+  await expect(confirm).toBeEnabled();
+  const health = await page.request.get("/health");
+  expect(health.ok()).toBe(true);
+  expect((await health.json()).status).toBe("ok");
+  expect(posts).toBe(1);
+
+  await confirm.click();
+  await expect(dialog).toHaveCount(0);
+  expect(posts).toBe(2);
+});
+
+for (const [label, status] of [["2xx without the receipt", 200], ["gateway timeout", 504]]) {
+  test(`${label} cannot dismiss the confirmation`, async ({ page }) => {
+    await page.route("**/webui-shutdown?*", (route) => route.fulfill({
+      status, json: { ok: true, closing: false },
+    }));
+    await openApp(page);
+    await page.locator('[data-testid="sidebar-user-menu-trigger"], [data-testid="sidebar-user-menu-trigger-rail"]').first().click();
+    await page.getByTestId("user-menu-shutdown").click();
+    const dialog = page.getByRole("alertdialog");
+    await dialog.getByRole("button", { name: "关闭服务", exact: true }).click();
+    await expect(dialog).toContainText("未收到关闭确认，无法确定服务是否已停止。");
+  });
+}
+
+test("no shutdown response releases the dialog at the receipt deadline", async ({ page }) => {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  await page.route("**/webui-shutdown?*", async (route) => {
+    await pending;
+    await route.abort().catch(() => {});
+  });
+  try {
+    await openApp(page);
+    await page.locator('[data-testid="sidebar-user-menu-trigger"], [data-testid="sidebar-user-menu-trigger-rail"]').first().click();
+    await page.getByTestId("user-menu-shutdown").click();
+    const dialog = page.getByRole("alertdialog");
+    const confirm = dialog.getByRole("button", { name: "关闭服务", exact: true });
+    await confirm.click();
+    await expect(confirm).toBeDisabled();
+    await expect(dialog).toContainText("未收到关闭确认，无法确定服务是否已停止。", { timeout: 10_000 });
+    await expect(confirm).toBeEnabled();
+  } finally {
+    release();
+  }
+});

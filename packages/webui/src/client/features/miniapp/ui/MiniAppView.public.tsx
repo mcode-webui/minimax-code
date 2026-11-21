@@ -164,8 +164,8 @@ export function MiniAppView({
    * so reporting itself as "open elsewhere" would be the one wrong answer.
    */
   const detached = !standalone && row?.detached === true;
-  /* The app that stopped and the start that was refused are events, not
-   * states: each is said once, and the view keeps the surface it has. */
+  /* The toasts report individual operations. A failed start separately
+   * keeps an explicit recovery action in the view. */
   useWebuiToastError(
     presentation?.kind === "stopped" && !detached ? presentation.reason : undefined,
     { testId: "miniapp-view-stopped" },

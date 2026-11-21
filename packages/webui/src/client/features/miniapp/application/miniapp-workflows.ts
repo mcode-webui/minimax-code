@@ -1251,9 +1251,14 @@ export function createWebuiMiniAppWorkflows(deps: {
   });
 
   // One clock for interested readers. A slow read never overlaps the next tick.
-  const needsClock = (): boolean => [...presentationInterests.keys()].some((pluginId) => {
+  const needsClock = (): boolean => [...presentationInterests].some(([pluginId, interest]) => {
     const presentation = state.presentations[pluginId];
-    return presentation?.kind === "open" ||
+    // A failed inline start can race with another document taking the lease.
+    // Keep reading while that document owns the view so its departure can
+    // reveal the manual retry. The observer never opens a failed presentation.
+    const waitingForDetachedLease = presentation?.kind === "failed" && !interest.standalone &&
+      state.listing.rows.some((row) => row.pluginId === pluginId && row.detached);
+    return presentation?.kind === "open" || waitingForDetachedLease ||
       (presentation === undefined && state.refusals[pluginId] === undefined);
   }) ||
     [...listingInterests.values()].some((kind) => kind === "launcher");

@@ -32,10 +32,11 @@
 // is `miniapp-ui-flow.test.ts`. The data directory is a temporary one, so a
 // run can never reach the operator's own `~/.minimax`.
 
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { acquireMiniAppOwner } from "../../../local-runtime-v2/src/service/miniapp/process/node-runtime/owner-lease.js";
 
 import {
   LOCAL_SOURCE,
@@ -138,7 +139,7 @@ describe("the Mini App business flow against the real host", () => {
     expect(rowsOf(await client.call("listMiniApps"))).toEqual([]);
   }, 60_000);
 
-  it("reports another client's ownership and opens after that client releases the lease", async () => {
+  it("reports ownership held by a separate desktop-labelled process and opens after its release", async () => {
     const host = await bootRealHost();
     const client = await connect(host.url);
     const name = "ownership-flow.miniapp";
@@ -149,21 +150,69 @@ describe("the Mini App business flow against the real host", () => {
     }));
     const pluginDataDir = join(host.dataDir, "v2", "plugin-data", "liveboards", name);
     await mkdir(pluginDataDir, { recursive: true });
-    const owner = await acquireMiniAppOwner({
-      pluginDataDir,
-      pluginId: name,
-      identity: { client: "desktop" },
+    // A separate process exercises the production OS lease endpoint, not an
+    // in-memory owner. It only stands in for Desktop's ownership capability,
+    // so this is not an acceptance run against the Desktop application.
+    const leaseModule = new URL(
+      "../../../local-runtime-v2/src/service/miniapp/process/node-runtime/owner-lease.ts",
+      import.meta.url,
+    ).href;
+    const contender = spawn(process.execPath, [
+      "--import", "tsx", "--input-type=module", "-e", `
+        const [leaseModule, pluginDataDir, pluginId] = process.argv.slice(1);
+        const { acquireMiniAppOwner } = await import(leaseModule);
+        const owner = await acquireMiniAppOwner({
+          pluginDataDir,
+          pluginId,
+          identity: { client: "desktop" },
+        });
+        if (owner.kind !== "acquired") throw new Error("Expected to acquire the fixture lease");
+        process.once("message", async (message) => {
+          if (message !== "release") throw new Error("Unexpected fixture command");
+          await owner.release();
+          process.disconnect();
+        });
+        process.send({ ownerPid: process.pid });
+      `, leaseModule, pluginDataDir, name,
+    ], { stdio: ["ignore", "ignore", "pipe", "ipc"] });
+    let stderr = "";
+    contender.stderr?.setEncoding("utf8");
+    contender.stderr?.on("data", (chunk: string) => { stderr = (stderr + chunk).slice(-4_096); });
+    const closed = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
+      contender.once("close", (code, signal) => resolve({ code, signal }));
     });
-    if (owner.kind !== "acquired") throw new Error("The fixture could not acquire the ownership lease");
     try {
+      const [ready] = await Promise.race([
+        once(contender, "message", { signal: AbortSignal.timeout(10_000) }),
+        closed.then((outcome) => {
+          throw new Error(`Lease contender exited before acquiring: ${JSON.stringify(outcome)} — ${stderr}`);
+        }),
+      ]);
+      expect(ready).toEqual({ ownerPid: contender.pid });
+      expect(contender.pid).not.toBe(process.pid);
       const refused = await client.call("openMiniApp", { pluginId: name });
       expect(refused).toMatchObject({
         kind: "error",
         code: "MINIAPP_PREPARATION_FAILED",
         reasonCode: "OWNED_ELSEWHERE",
       });
+      await new Promise<void>((resolve, reject) => {
+        contender.send("release", (error) => error ? reject(error) : resolve());
+      });
+      let exitDeadline: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await expect(Promise.race([
+          closed,
+          new Promise<never>((_, reject) => {
+            exitDeadline = setTimeout(() => reject(new Error(`Lease contender did not exit after release — ${stderr}`)), 10_000);
+          }),
+        ])).resolves.toEqual({ code: 0, signal: null });
+      } finally {
+        clearTimeout(exitDeadline);
+      }
     } finally {
-      await owner.release();
+      if (contender.exitCode === null && contender.signalCode === null) contender.kill("SIGKILL");
+      await closed;
     }
     const opened = await client.call("openMiniApp", { pluginId: name });
     expectAnswered(opened);

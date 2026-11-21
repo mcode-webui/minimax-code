@@ -11,13 +11,13 @@ CONTRIBUTING.md[SG4S]: F:Defines contributor eligibility, review workflow, verif
 LICENSE[SG4T]: F:Grants the MIT license for MiniMax Code. | R:- | A:- | S:-
 LICENSE-STATUS.md[SG4T]: F:Records license coverage and third-party exceptions for the published source. | R:- | A:- | S:-
 NOTICE[SG4T]: F:Records MiniMax Code copyright and distribution notices. | R:- | A:- | S:-
-README.md[SG4S]: F:Introduces MiniMax Code and explains installation, source builds from main, account or model setup, and supported workflows. | R:- | A:- | S:-
-README_ZH.md[SG4S]: F:Explains MiniMax Code installation, source builds from main, sign-in, model configuration and usage in Chinese. | R:- | A:- | S:-
+README.md[SG4S]: F:Introduces MiniMax Code, its workflows and model setup; source builds require supported Node and pnpm 10.34.9. | R:code:docs/installation.md | A:- | S:Windows users should work in a local NTFS checkout outside cloud synchronization.
+README_ZH.md[SG4S]: F:Introduces MiniMax Code installation, source build, sign-in, configuration and client workflows in Chinese. | R:code:docs/installation.md | A:- | S:Source builds pin pnpm 10.34.9; Windows should use a local NTFS checkout outside synced folders.
 SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed-service boundaries. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
-package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:Keep the browser test engine and reviewed per-platform screenshots on the same revision.
+package.json[FV5T]: F:Declares root workspace dependencies and commands for build, release and verification; pins the pnpm version. | R:code:pnpm-workspace.yaml | A:- | S:The pinned package manager is pnpm 10.34.9.
 playwright.config.mjs[FQ4T]: F:Configures WebUI browser gates, fixture server, font environment and output directories. | R:code:packages/webui/test/browser/server.mjs | A:- | S:The Windows workaround replaces the pinned disabled-features switch to retain Playwright defaults.
-pnpm-workspace.yaml[SE4T]: F:Declares pnpm workspace package roots. | R:- | A:- | S:-
+pnpm-workspace.yaml[SE4T]: F:Declares workspace packages, hoisted linking, reviewed dependency overrides and the pnpm dependency build allowlist. | R:code:package.json | A:- | S:The package manager migration keeps native dependency builds explicit instead of granting a blanket script allowance.
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-
 tsconfig.standalone.json[SE4L]: F:Configures standalone TypeScript checking and workspace path aliases. | R:- | A:- | S:-
 vitest.oss.config.mjs[SE4T]: F:Configures the public distribution Vitest environment and module resolution. | R:- | A:- | S:-
@@ -109,8 +109,8 @@ sync-issue-to-feishu.yml[FV4M]: F:Defines legacy Feishu notification for eligibl
 webui-npm-preview.yml[FV4S]: F:Defines legacy npm preview package verification for the WebUI branch. | R:- | A:- | S:-
 
 ===/<repository>/.github/workflows/===
-webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs on three operating systems. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux provisions a checksum-pinned portable FFmpeg when absent to avoid APT mirrors. Diagnostics isolate platform, lane and attempt.
-update-visual-baselines.yml[FV4S]: F:Re-records the per-platform Playwright visual baselines of the named WebUI browser specs on the three CI runners and commits each runner's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh selects the browser mode the CI compares with — windowed Chromium on macOS — in a step of its own, because a step cannot read back the environment file it writes.
+webui-ci.yml[FV4S]: F:Runs independent WebUI checks, unit and integration tests, browser shards, and package jobs with pinned pnpm 10.34.9. | R:code:package.json,code:playwright.config.mjs,code:.github/workflows/update-visual-baselines.yml | A:- | S:macOS uses windowed Chromium. Linux provisions checksum-pinned portable FFmpeg when absent; diagnostics retain the platform, lane and attempt.
+update-visual-baselines.yml[FV4S]: F:Re-records named WebUI Playwright visual baselines on each runner with pnpm 10.34.9 and commits each platform's own pixels. | R:code:.github/workflows/webui-ci.yml | A:- | S:The refresh sets macOS windowed Chromium in a separate step because a step cannot read back the environment file it writes.
 
 ===/<repository>/.plan/browser-use/board/===
 .notes-numbers[FV4T]: F:Records the tracker link for the Browser Use notes board. | R:- | A:- | S:-
@@ -197,7 +197,7 @@ architecture.md[SG4T]: F:Explains package boundaries and integration among clien
 demo.md[SG4T]: F:Walks through a recorded product demo that turns a request into a verified code change. | R:- | A:- | S:-
 examples.md[SG4M]: F:Provides practical examples for editing code, running tests, and using a custom model. | R:- | A:- | S:-
 hooks.md[SG4T]: F:Specifies how hook messages reach the TUI and model context, including event limits. | R:- | A:- | S:-
-installation.md[SG4S]: F:Documents checksum-verified release archive installation and source builds. | R:- | A:- | S:-
+installation.md[SG4S]: F:Documents checksum-verified release installation and the Node and pnpm prerequisites for source builds. | R:code:package.json | A:- | S:Source builds require pnpm 10.34.9; regular Linux and macOS CI use Node 24.
 maintainers.md[SG4T]: F:Defines maintainer responsibilities, issue triage, and release and review ownership. | R:- | A:- | S:-
 open-source-status.md[SG4T]: F:Records the public source release baseline, supported scope, and evidence boundaries. | R:- | A:- | S:-
 performance-ci.md[SG4S]: F:Defines performance CI profiles, suite selection, and required comparison evidence. | R:- | A:- | S:-
@@ -938,7 +938,7 @@ agent-entry.md[SW4T]: F:Explains the EnterPlanMode and ExitPlanMode tool workflo
 project-mcp.md[SW4T]: F:Documents how the local runtime discovers project MCP configuration across supported clients. | R:- | A:- | S:-
 
 ===/<repository>/packages/local-runtime-v2/===
-package.json[FV4S]: F:Declares the local runtime workspace package and its public entry points. | R:- | A:- | S:-
+package.json[FV4S]: F:Declares local runtime public entry points, workspace dependencies and dev tooling for dependency, duplicate code and unused-code checks. | R:- | A:- | S:-
 
 ===/<repository>/packages/local-runtime-v2/src/application/agent/===
 agent-application.ts[AW4L]: F:Implements local runtime agent application operations and coordinates agent identity and configuration. | R:- | A:- | S:-
@@ -3922,7 +3922,7 @@ index.ts[SE4T]: F:Exports runtime transport interfaces and operations. | R:- | A
 CHANGELOG.md[SE4L]: F:Records MCode TUI release changes in English. | R:- | A:- | S:-
 CHANGELOG.zh-CN.md[SE4L]: F:Records MCode TUI release changes in Simplified Chinese. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SE4T]: F:Lists third-party notices for the TUI distribution. | R:- | A:- | S:-
-package.json[SE4T]: F:Declares the TUI package metadata, entry points, and dependencies. | R:- | A:- | S:-
+package.json[SE4T]: F:Defines TUI package entry points, runtime dependencies and its development toolchain. | R:- | A:- | S:-
 
 ===/<repository>/packages/tui/configs/===
 data-minimal.yaml[SE4T]: F:Defines a minimal data-generation baseline intended for an isolated data directory. | R:- | A:- | S:-
@@ -4510,7 +4510,7 @@ virtual-terminal.ts[SE4M]: F:Implements a virtual terminal adapter. | R:- | A:- 
 AGENTS.md[SE4M]: F:Documents WebUI architecture constraints, development workflows, and verification gates. | R:- | A:- | S:-
 LICENSE[SE4T]: F:Contains the WebUI package license. | R:- | A:- | S:-
 README.md[SE4M]: F:Describes the WebUI package and how to run it. | R:- | A:- | S:-
-package.json[SE4T]: F:Declares the WebUI package scripts and dependencies. | R:- | A:- | S:The published package asks for node-abi by name: the newest version in prebuild-install's range is published without its tarball, so an install that resolves it fails on a 404.
+package.json[SE4T]: F:Declares WebUI scripts, workspace dependencies and build/test tooling including the public tsx loader. | R:code:package.json | A:- | S:The published package asks for node-abi by name because the newest version in prebuild-install's range has no published tarball.
 tailwind.config.cjs[SE4L]: F:Configures Tailwind for WebUI stylesheet generation. | R:- | A:- | S:-
 tsconfig.client.json[SE4T]: F:Configures TypeScript for the WebUI browser client. | R:- | A:- | S:-
 tsconfig.json[SE4T]: F:Defines base WebUI TypeScript configuration. | R:- | A:- | S:-
@@ -4541,7 +4541,7 @@ releasing.md[SE4T]: F:Documents publication of the WebUI npm package. | R:- | A:
 0017-webui-fences-resource-results-and-separates-delivery-from-execution.md[SE4T]: F:Defines resource result fences and separates delivery from execution settlement. | R:- | A:- | S:-
 0018-webui-business-cohesion-owners-and-measured-observation.md[SE4T]: F:Defines single business ownership and submission paths and evidence requirements for observation. | R:- | A:- | S:-
 0019-webui-browser-use-surfaces-and-external-browser-bridge.md[SE4L]: F:Documents Browser Use surfaces, extension distribution, and external browser bridging. | R:- | A:- | S:-
-0020-webui-miniapp-view-and-runtime-seams.md[SE4L]: F:Defines WebUI Mini App browser hosting and presentation boundaries. | R:- | A:- | S:-
+0020-webui-miniapp-view-and-runtime-seams.md[SE4L]: F:Defines Mini App browser hosting, presentation and explicit recovery after failed startup. | R:code:packages/webui/src/client/features/miniapp/application/miniapp-workflows.ts | A:- | S:Only ownership refusal advises closing another client's app. A failed inline view reads a detached lease until release; retry is manual and never takes ownership forcibly.
 0021-webui-model-picker-is-one-popup-with-two-states.md[SE4T]: F:Combines provider and model selection into two states in one popup. | R:- | A:- | S:-
 0022-webui-workspace-panel-is-a-browser-tab-strip.md[SE4M]: F:Models the WebUI workspace panel as a browser-style tab strip. | R:- | A:- | S:-
 0023-webui-test-coverage-follows-user-workflows-and-evidence-levels.md[SE4S]: F:Defines WebUI workflow test coverage and evidence levels. | R:- | A:- | S:-
@@ -4580,7 +4580,7 @@ module-map.md[SE4S]: F:Maps WebUI modules to their responsibilities and location
 README.md[SE4S]: F:Indexes validated Browser Use technical contracts. | R:- | A:- | S:-
 
 ===/<repository>/packages/webui/docs/client/===
-composer.md[SE4T]: F:Documents WebUI composer behavior and ownership. | R:- | A:- | S:-
+composer.md[SE4T]: F:Documents WebUI composer ownership and local Windows versus server workspace folder selection. | R:code:packages/webui/src/client/features/composer/ui/ComposerProjectRow.tsx | A:- | S:The native picker is available only to locally granted Windows launches; cancellation keeps the workspace, and server fallback paths belong to the host.
 design.md[SE4T]: F:Describes the native WebUI Design feature, its ownership, its graph rules and its interaction contract. | R:- | A:- | S:The centred insertion is a contract the browser case compares against the pane's centre, and a placement laid out again does not move a card the person placed after it.
 floating-surfaces.md[SE4M]: F:Documents WebUI floating surfaces and their presentation contracts. | R:- | A:- | S:-
 ownership.md[SE4M]: F:Defines browser client ownership and application work lifetimes. | R:- | A:- | S:-
@@ -4595,7 +4595,7 @@ motion-inventory.json[SE4T]: F:Lists motion instances for the WebUI design langu
 plugin-action-inventory.md[SE4S]: F:Inventories actions exposed through the plugin port. | R:- | A:- | S:-
 
 ===/<repository>/packages/webui/docs/runtime/===
-boot.md[SE4S]: F:Describes service boot and shutdown. | R:- | A:- | S:-
+boot.md[SE4S]: F:Documents WebUI launch modes, service assembly and contract for bounded shutdown. | R:code:packages/webui/src/client/platform/webui-shutdown.ts | A:- | S:The authenticated route acknowledges before teardown. An affirmative receipt is not exit proof, and the browser deadline does not cancel cleanup.
 harness-boundary.md[SE4T]: F:Defines the WebUI boundary with the harness. | R:- | A:- | S:-
 owner-identity.md[SE4T]: F:Explains how the WebUI identifies its runtime owner. | R:- | A:- | S:-
 remote-control.md[SE4T]: F:Documents the WebUI remote-control link. | R:- | A:- | S:-
@@ -4640,7 +4640,7 @@ streaming-rose-loader.json[SE4T]: F:Defines the streaming rose loading animation
 
 ===/<repository>/packages/webui/src/client/bindings/===
 application-context.tsx[SE4T]: F:Provides browser application and session store React context. | R:- | A:- | S:-
-browser-capabilities.tsx[SE4T]: F:Exposes browser client capabilities through React context. | R:- | A:- | S:-
+browser-capabilities.tsx[SE4T]: F:Exposes host-injected browser capabilities through React context, including an optional abortable native workspace chooser. | R:code:packages/webui/src/client/platform/native-directory-picker.ts | A:- | S:Consumers must handle absence of the chooser separately from selection results.
 browser-effects.ts[SE4T]: F:Implements browser effects including file and line targeting. | R:- | A:- | S:-
 composer-store.ts[SE4T]: F:Exposes the browser composer store to React consumers. | R:- | A:- | S:-
 event-channel-adapter.ts[SE4T]: F:Adapts the WebUI transport to an application event channel. | R:- | A:- | S:-
@@ -4651,13 +4651,13 @@ ssh-owner-context.tsx[SE4T]: F:Provides access to the browser SSH owner. | R:- |
 use-connection-health.ts[SE4T]: F:Exposes degraded event channel health to the browser client. | R:- | A:- | S:-
 use-query-state.tsx[SE4M]: F:Provides workspace query state to React consumers. | R:- | A:- | S:-
 use-session-state.ts[SE4S]: F:Exposes session state and the transcript history owner. | R:- | A:- | S:-
-use-webui-shutdown.ts[SE4T]: F:Exposes a client-side WebUI shutdown action. | R:- | A:- | S:-
+use-webui-shutdown.ts[SE4T]: F:Maps shutdown receipts to accepted or actionable unconfirmed and refused outcomes for React controls. | R:code:packages/webui/src/client/platform/webui-shutdown.ts,code:packages/webui/src/client/features/account/ui/UserMenu.tsx | A:useWebuiShutdown | S:Do not infer success or failure from an unavailable listener; a missing receipt is unconfirmed.
 
 ===/<repository>/packages/webui/src/client/===
 client.js[SE4T]: F:Loads main.tsx as the Vite development entry. The packaged build substitutes the bundled client artifact. | R:- | A:- | S:-
 global.d.ts[SE4T]: F:Declares browser client ambient types. | R:- | A:- | S:-
 index.html[SE4T]: F:Provides the WebUI browser HTML entry document. | R:- | A:- | S:-
-main.tsx[SE4L]: F:Bootstraps the React client and exposes its session transcript. | R:- | A:- | S:-
+main.tsx[SE4L]: F:Bootstraps the React web client and injects platform capabilities, including the optional native workspace picker. | R:code:packages/webui/src/client/platform/native-directory-picker.ts,code:packages/webui/src/client/bindings/browser-capabilities.tsx | A:- | S:Capture the native launch grant at bootstrap before browser state is initialized.
 
 ===/<repository>/packages/webui/src/client/contracts/===
 browser-drawing.ts[SE4T]: F:Defines the browser drawing canvas contract. | R:- | A:- | S:-
@@ -4691,7 +4691,7 @@ usage.public.ts[SE4T]: F:Formats account usage labels for the session rail. | R:
 ===/<repository>/packages/webui/src/client/features/account/ui/===
 AccountLoginPage.tsx[SE4M]: F:Renders the account login page. | R:- | A:- | S:-
 ConversationUsageBanner.tsx[SE4M]: F:Renders account usage notices and actions in a conversation. | R:- | A:- | S:-
-UserMenu.tsx[SE4L]: F:Renders the account menu. | R:- | A:- | S:-
+UserMenu.tsx[SE4L]: F:Renders account controls and tracks pending, accepted and unresolved shutdown confirmation. | R:code:packages/webui/src/client/bindings/use-webui-shutdown.ts | A:- | S:Dismiss on an affirmative receipt only; unresolved outcomes stay visible and allow manual retry.
 UserMenuSignin.tsx[SE4L]: F:Models and displays daily sign-in in the user menu. | R:- | A:- | S:-
 UserMenuUsage.tsx[SE4M]: F:Models and displays account usage in the user menu. | R:- | A:- | S:-
 account.css[SE4L]: F:Styles account login and user menu surfaces. | R:- | A:- | S:-
@@ -4775,7 +4775,7 @@ Composer.tsx[SE4T]: F:Renders the shared composer wrapper. | R:- | A:- | S:-
 ComposerEditorStaging.tsx[SE4M]: F:Renders staged composer input and mention choices. | R:- | A:- | S:-
 ComposerMenus.tsx[SE4S]: F:Renders the composer menus for commands, skills, and plugins. | R:- | A:- | S:-
 ComposerPermissionControl.tsx[SE4S]: F:Renders controls for selecting the composer permission mode. | R:- | A:- | S:-
-ComposerProjectRow.tsx[SE4S]: F:Renders the project selection row in the composer. | R:- | A:- | S:-
+ComposerProjectRow.tsx[SE4M]: F:Renders composer workspace selection, coordinating the granted native chooser with the server directory picker. | R:code:packages/webui/src/client/bindings/browser-capabilities.tsx | A:- | S:Closing, switching to server browsing or unmounting aborts a pending native selection; only confirmed selection changes workspace.
 ComposerSubmissionControls.tsx[SE4S]: F:Renders submit controls and mode selectors for the composer. | R:- | A:- | S:-
 ContextUsageIndicator.tsx[SE4M]: F:Displays context usage alongside quota and token plan information. | R:- | A:- | S:-
 QueuePanel.tsx[SE4S]: F:Renders the panel for queued messages. | R:- | A:- | S:-
@@ -4873,7 +4873,7 @@ miniapp-agent-bridge.ts[SE4L]: F:Bridges Mini App requests to agent operations. 
 miniapp-bridge.ts[SE4S]: F:Constructs Mini App bridge requests. | R:- | A:- | S:-
 miniapp-tool-bridge.ts[SE4T]: F:Bridges Mini App tool calls through the client tool port. | R:- | A:- | S:-
 miniapp-window-bridge.ts[SE4T]: F:Defines Mini App window request messages and bridges window operations. | R:- | A:- | S:-
-miniapp-workflows.ts[SE4L]: F:Coordinates Mini App workflows through a client port slice. | R:- | A:- | S:-
+miniapp-workflows.ts[SE4L]: F:Coordinates Mini App operations and per-plugin presentation state through the client port. | R:code:packages/webui/src/client/features/miniapp/ui/MiniAppView.public.tsx | A:- | S:Failed inline starts, including failed explicit retries, may read a detached lease until release without reopening. Only explicit retry can restart the failed app.
 
 ===/<repository>/packages/webui/src/client/features/miniapp/bindings/===
 use-miniapp-catalogue.public.ts[SE4T]: F:Exposes Mini App catalogue summaries to React consumers. | R:- | A:- | S:-
@@ -4890,7 +4890,7 @@ MiniAppAppsList.public.tsx[SE4M]: F:Lists installed plugins that expose Mini App
 MiniAppPicker.public.tsx[SE4M]: F:Renders the Mini App launcher for a session. | R:- | A:- | S:-
 MiniAppStandalone.public.tsx[SE4S]: F:Hosts standalone Mini App presentation. | R:- | A:- | S:-
 MiniAppToolApprovals.public.tsx[SE4T]: F:Renders approval controls for Mini App tool calls. | R:- | A:- | S:-
-MiniAppView.public.tsx[SE4L]: F:Renders Mini Apps inline or as standalone surfaces. | R:- | A:- | S:-
+MiniAppView.public.tsx[SE4L]: F:Renders inline and standalone Mini Apps with actionable failed-open and detached presentation states. | R:code:packages/webui/src/client/features/miniapp/application/miniapp-workflows.ts | A:- | S:An inline detached lease takes precedence over retry until it releases. Only an ownership refusal gives close-other-client guidance.
 
 ===/<repository>/packages/webui/src/client/features/models/application/===
 models-workflows.ts[SE4L]: F:Coordinates WebUI model workflows through a client port slice. | R:- | A:- | S:-
@@ -5250,7 +5250,7 @@ app-mode.ts[SE4T]: F:Defines coding and work application modes. | R:- | A:- | S:
 browser-auto-open.ts[SE4T]: F:Persists the browser auto-open preference. | R:- | A:- | S:-
 browser-dom.ts[SE4L]: F:Provides browser drawing helpers and exports canvas and image types. | R:- | A:- | S:-
 connection-health.ts[SE4S]: F:Provides connection health helpers including unref for timers. | R:- | A:- | S:-
-event-channel.ts[SE4L]: F:Adapts and exposes client event watching for the browser. | R:- | A:- | S:-
+event-channel.ts[SE4L]: F:Adapts WebUI request and event watching to browser consumers and exposes typed protocol failures with a reason code when present. | R:code:packages/webui/src/client/platform/wire.ts,code:packages/webui/src/shared/envelope.ts | A:- | S:A preparation-specific reason may accompany the general rejection code; consumers cannot rely on its presence.
 miniapp-frame-url.ts[SE4T]: F:Builds the URL for a Mini App frame. | R:- | A:- | S:-
 no-project.ts[SE4T]: F:Recognizes the flag for a session without a project. | R:- | A:- | S:-
 page-host.ts[SE4T]: F:Reads the hostname of the hosting page. | R:- | A:- | S:-
@@ -5262,8 +5262,9 @@ storage.ts[SE4M]: F:Defines browser storage utilities and the no-project prefere
 team-mode.ts[SE4T]: F:Models and resolves team mode for sessions. | R:- | A:- | S:-
 transport-origin.ts[SE4T]: F:Converts WebSocket URLs to HTTP transport origins. | R:- | A:- | S:-
 transport.ts[SE4L]: F:Implements the browser transport over the WebUI wire. | R:- | A:- | S:-
-webui-shutdown.ts[SE4T]: F:Requests WebUI service shutdown and reports refusals. | R:- | A:- | S:-
-wire.ts[SE4L]: F:Defines and implements the WebSocket wire and its options. | R:- | A:- | S:-
+webui-shutdown.ts[SE4T]: F:Requests shutdown and classifies affirmative service receipts, explicit rejection and unknown outcomes. | R:code:packages/webui/src/client/bindings/use-webui-shutdown.ts | A:requestWebuiShutdown | S:Only ok=true and closing=true confirm acceptance within the receipt deadline. Never infer from a probe, retry automatically, or treat acceptance as exit.
+wire.ts[SE4L]: F:Implements the WebSocket wire and carries typed request errors to callers, preserving the optional preparation reason. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:-
+native-directory-picker.ts[IS5T]: F:Captures a local desktop launch grant and invokes the same-origin WebUI native workspace chooser with cancellation. | R:code:packages/webui/src/server/http/native-directory.ts | A:pickNativeWorkspaceDirectory | S:The grant is ephemeral; strip it from the loaded fragment and never persist it.
 
 ===/<repository>/packages/webui/src/client/projection/common/===
 context-menu.ts[SE4T]: F:Places browser context menus relative to the viewport. | R:- | A:- | S:-
@@ -5365,7 +5366,7 @@ runtime-environment.ts[SE4S]: F:Resolves runtime scope from environment, OAuth n
 session-transfer.ts[SE4S]: F:Adapts runtime capabilities for session import and export. | R:- | A:- | S:-
 signing.ts[SE4T]: F:Provides digest helpers used in WebUI request signing. | R:- | A:- | S:-
 storage-transaction.ts[SE4T]: F:Acquires filesystem locks for WebUI storage transactions. | R:- | A:- | S:-
-terminal.ts[SE4T]: F:Manages WebUI terminal processes. | R:- | A:- | S:-
+terminal.ts[SE4S]: F:Manages WebUI terminal processes and tears them down even when individual native kills fail. | R:- | A:- | S:Attempt every kill before rethrowing one failure or aggregating multiple errors.
 usage-quota-projection.ts[SE4M]: F:Projects account membership and usage quota data. | R:- | A:- | S:-
 usage-quota.ts[SE4L]: F:Retrieves usage quota using the runtime token context. | R:- | A:- | S:-
 usage-summary-projection.ts[SE4S]: F:Projects WebUI usage summaries from response data. | R:- | A:- | S:-
@@ -5375,7 +5376,7 @@ workspace-real-path.ts[SE4S]: F:Resolves real workspace paths and classifies bou
 
 ===/<repository>/packages/webui/src/runtime/browser/===
 authorization.ts[SE4S]: F:Maps Browser Use surfaces to their authorization switches. | R:- | A:- | S:-
-browser-service.ts[SE4L]: F:Provides the browser service and manages authorization and run state. | R:- | A:- | S:-
+browser-service.ts[SE4L]: F:Provides browser operations, authorization, run state and shared frame subscriptions across controlling clients. | R:code:packages/webui/src/runtime/browser/isolated-chromium/provider.ts | A:- | S:Serialize an old screencast stop before replacement startup on its provider/target. A late watcher on an idle stream needs a fresh first frame.
 errors.ts[SE4T]: F:Defines and builds typed Browser Use operation errors. | R:- | A:- | S:-
 input.ts[SE4S]: F:Validates browser input commands. | R:- | A:- | S:-
 tool-adapter.ts[SE4M]: F:Adapts browser tool requests to WebUI command surfaces. | R:- | A:- | S:-
@@ -5383,7 +5384,7 @@ tool-adapter.ts[SE4M]: F:Adapts browser tool requests to WebUI command surfaces.
 ===/<repository>/packages/webui/src/runtime/browser/isolated-chromium/===
 cdp-connection.ts[SE4M]: F:Manages CDP connections and command and input timeouts. | R:- | A:- | S:-
 core-transport.ts[SE4M]: F:Adapts isolated Chromium to the Browser Core transport. | R:- | A:- | S:-
-provider.ts[SE4L]: F:Manages isolated Chromium browser targets and target changes. | R:- | A:- | S:-
+provider.ts[SE4L]: F:Owns isolated Chromium page targets, viewport updates, screencasts and the initial capture for an idle late subscriber. | R:code:packages/webui/src/runtime/browser/browser-service.ts | A:- | S:At most one initial capture per page is in flight; do not deliver it when identity or viewport changes invalidate it.
 
 ===/<repository>/packages/webui/src/runtime/commands/===
 descriptors.ts[SE4T]: F:Defines WebUI command descriptors. | R:- | A:- | S:-
@@ -5506,8 +5507,8 @@ credentials.ts[SE4S]: F:Models and verifies WebUI connection credentials. | R:- 
 envelope.ts[SE4T]: F:Validates WebUI transport frame envelopes. | R:- | A:- | S:-
 frame-handler.ts[SE4T]: F:Dispatches WebUI transport frames through the server context. | R:- | A:- | S:-
 http-server.ts[SE4T]: F:Constructs the HTTP listener. | R:- | A:- | S:-
-index.ts[SE4S]: F:Exports WebUI infrastructure interfaces. | R:- | A:- | S:-
-service.ts[SE4M]: F:Assembles the WebUI server and bounds message sizes. | R:- | A:- | S:-
+index.ts[SE4S]: F:Exports server infrastructure interfaces, including the native desktop directory-picker capability type. | R:code:packages/webui/src/server/http/native-directory.ts | A:WebuiNativeDirectoryPicker | S:-
+service.ts[SE4M]: F:Assembles the WebUI server, bounds transport messages and owns disposal of any launcher-supplied native folder chooser. | R:code:packages/webui/src/server/http/native-directory.ts | A:- | S:Do not configure the desktop route without a native picker capability.
 websocket-server.ts[SE4S]: F:Creates WebUI WebSocket handling from the server context. | R:- | A:- | S:-
 
 ===/<repository>/packages/webui/src/server/browser-bridge/===
@@ -5528,10 +5529,11 @@ browser-extension.ts[SE4T]: F:Serves the browser extension package over HTTP. | 
 client-assets.ts[SE4S]: F:Serves built WebUI client assets. | R:- | A:- | S:-
 design-assets.ts[SE4T]: F:Routes Design media actions and asset requests. | R:- | A:- | S:-
 responses.ts[SE4T]: F:Writes HTTP response helpers including rejection responses. | R:- | A:- | S:-
-router.ts[SE4S]: F:Routes HTTP requests to WebUI service handlers. | R:- | A:- | S:-
+router.ts[SE4S]: F:Routes WebUI HTTP traffic and delegates native directory selection only through its configured desktop route. | R:code:packages/webui/src/server/http/native-directory.ts | A:- | S:Native directory selection accepts POST without query data when the handler is available.
 session-transfer.ts[SE4S]: F:Reads request bodies for session transfers. | R:- | A:- | S:-
 shutdown.ts[SE4T]: F:Handles HTTP requests for WebUI shutdown. | R:- | A:- | S:-
 workspace-file.ts[SE4S]: F:Serves workspace files through the WebUI HTTP route. | R:- | A:- | S:-
+native-directory.ts[IS6S]: F:Admits authorized local native chooser requests, owns one cancellable dialog and validates the returned directory. | R:code:packages/webui/src/server/http/router.ts | A:createNativeDirectoryRoute | S:An ordinary WebUI credential does not grant native desktop access; require the separate launch grant and local request.
 
 ===/<repository>/packages/webui/src/server/miniapp/===
 agent-connections.ts[SE4T]: F:Manages agent connections for Mini Apps. | R:- | A:- | S:-
@@ -5560,7 +5562,7 @@ messages.ts[SE4S]: F:Defines message history retrieval. | R:- | A:- | S:-
 miniapp-agent.ts[SE4S]: F:Defines Mini App agent turn operations. | R:- | A:- | S:-
 miniapp.ts[SE4M]: F:Defines Mini App catalogue and runtime operations. | R:- | A:- | S:-
 operation-contract.ts[SE4S]: F:Defines server operation and context contracts. | R:- | A:- | S:-
-operation-dispatch.ts[SE4M]: F:Dispatches WebUI transport frames to operations. | R:- | A:- | S:-
+operation-dispatch.ts[SE4M]: F:Dispatches WebUI protocol frames and emits an optional bounded reason for Mini App publication preparation errors. | R:code:packages/webui/src/shared/envelope.ts | A:- | S:Preserve the stable outer refusal code. Propagate only a valid reason code for openMiniApp preparation failure.
 operations.ts[SE4L]: F:Exports the server operation catalogue. | R:- | A:- | S:-
 permission-mode.ts[SE4T]: F:Defines permission mode operations. | R:- | A:- | S:-
 personalization.ts[SE4T]: F:Defines personalization and global instructions operations. | R:- | A:- | S:-
@@ -5598,7 +5600,7 @@ usage.ts[SE4T]: F:Projects turn usage and identifies compaction messages. | R:- 
 account-legal-links.ts[SE4T]: F:Resolves account legal links by scope. | R:- | A:- | S:-
 capability-manifest.ts[SE4M]: F:Enumerates capabilities exposed by the WebUI. | R:- | A:- | S:-
 design-input.ts[SE4T]: F:Validates Design input and caps media bytes. | R:- | A:- | S:-
-envelope.ts[SE4M]: F:Defines the versioned WebUI transport envelope. | R:- | A:- | S:-
+envelope.ts[SE4M]: F:Defines the versioned WebUI transport envelope and validates and retains optional error reasons for request callers. | R:code:packages/webui/src/client/platform/wire.ts | A:WebuiWireError | S:The reason augments the stable code and message; its absence is supported.
 operation-codecs.ts[SE4M]: F:Defines result codecs for WebUI operations. | R:- | A:- | S:-
 operation-names.ts[SE4L]: F:Enumerates operation names used by the WebUI protocol. | R:- | A:- | S:-
 plugin-management.ts[SE4T]: F:Defines plugin management action payloads. | R:- | A:- | S:-
@@ -5673,23 +5675,23 @@ architecture-acceptance.spec.mjs[TE4M]: F:Tests terminal readiness, roster permi
 browser-notice-layer.spec.mjs[SE4T]: F:Tests Browser Use notice layering over page content. | R:- | A:- | S:-
 browser-workspace.spec.mjs[SE4L]: F:Tests opening and operating Browser Use in the workspace panel. | R:- | A:- | S:-
 composer-goal-mode.spec.mjs[SE4S]: F:Tests entering goal mode from the WebUI composer. | R:- | A:- | S:-
-composer.spec.mjs[TU4L]: F:Exercises composer menus, slash palette, drafts, attachments, mentions, and submit gating in the built browser client. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs,code:packages/webui/docs/verification/browser-suite.md | A:- | S:Arms a listener on the current submenu before hover, then verifies its named exit event and DOM removal separately so a late style sample cannot erase animation evidence.
+composer.spec.mjs[TU4L]: F:Exercises composer menus, drafts, attachments, submission and the local native workspace chooser with cancellation and selection. | R:code:packages/webui/docs/client/composer.md,code:packages/webui/test/browser/harness.mjs | A:- | S:Arm the submenu exit listener before hover. The chooser test verifies the synthetic grant is cleared and cancellation does not change the workspace.
 connection-status.spec.mjs[SE4S]: F:Tests connection status and recovery after an interrupted stream. | R:- | A:- | S:-
 content-page.spec.mjs[SE4S]: F:Tests the shared content page in the browser. | R:- | A:- | S:-
 context-usage-ring.spec.mjs[SE4M]: F:Tests context usage ring rendering from runtime data. | R:- | A:- | S:-
 dropdown-dismissal.spec.mjs[SE4T]: F:Tests dismissal of WebUI dropdowns through their triggers. | R:- | A:- | S:-
 feedback.spec.mjs[SE4S]: F:Tests accessible field error feedback. | R:- | A:- | S:-
 field-contract.spec.mjs[SE4S]: F:Tests that form controls have accessible names. | R:- | A:- | S:-
-fixture.mjs[SE4L]: F:Installs the browser fixture transport. | R:- | A:- | S:-
+fixture.mjs[SE4L]: F:Installs browser fixture transport and can simulate operation refusals with an optional stable reason. | R:code:packages/webui/test/browser/miniapp-standalone-tab.spec.mjs | A:- | S:-
 goal-retention.spec.mjs[SE4S]: F:Tests retention of session goal state during a pending refresh. | R:- | A:- | S:-
 harness.mjs[TQ4M]: F:Provides built-client browser fixtures, readiness checks and failure artifacts. | R:code:playwright.config.mjs,code:packages/webui/test/browser/server.mjs | A:openApp, waitForLocalImages | S:Assert the synchronously injected server ID after navigation without polling. Windows buffer errors trigger a bounded TCP census; image evidence omits URL queries.
 miniapp-panel.spec.mjs[SE4L]: F:Tests Mini App launcher refresh behavior. | R:- | A:- | S:-
-miniapp-standalone-tab.spec.mjs[SE4S]: F:Tests promotion of inline Mini Apps to standalone tabs. | R:- | A:- | S:-
+miniapp-standalone-tab.spec.mjs[SE4M]: F:Tests promotion to standalone Mini App tabs and explicit recovery after generic or ownership-specific start failures. | R:code:packages/webui/test/browser/fixture.mjs | A:- | S:Only an ownership refusal should advise closing another client; successful manual retry returns a presentable app.
 model-picker-interactions.spec.mjs[SE4M]: F:Tests model picker interactions and display of the selected model. | R:- | A:- | S:-
 motion.spec.mjs[SE4S]: F:Tests shared WebUI motion contracts. | R:- | A:- | S:-
-native-design-tasks.spec.mjs[TB6L]: F:Exercises native Design node runs, reference understanding, authenticated media and cancellation through the browser. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Wait for the connected image reference to render after an out-of-band setup write before triggering the slow understanding run. Preserve provider and host evidence for uncompleted runs.
-native-design.spec.mjs[SE4L]: F:Exercises native Design menus, graph gestures, real tool presentation, media operations and library controls. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:FFmpeg must be on PATH. Focus the conversation before the production tool turn so headed Chromium does not defer the panel in a background tab. Clipboard assertions normalize CRLF.
-native-runtime.spec.mjs[TH4M]: F:Exercises terminal lifecycle and persistence against the actual WebUI host and native PTYs. | R:code:packages/webui/test/browser/support/native-browser-host.ts | A:- | S:The parent requires the close receipt and process exit separately, and preserves captured shutdown logs in the Playwright trace if the receipt is missing.
+native-design-tasks.spec.mjs[TB6L]: F:Exercises native Design node runs, reference understanding, authenticated media and cancellation through a real browser host. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Use the public tsx loader. Wait for the reference to render after the setup write before triggering understanding and retain failure evidence.
+native-design.spec.mjs[SE4L]: F:Exercises native Design graph gestures, real tool and media presentation, and component library controls. | R:code:packages/webui/test/browser/support/native-design-browser-host.ts | A:- | S:Use public tsx and FFmpeg on PATH. Focus the conversation before the production tool turn; normalize CRLF for clipboard assertions.
+native-runtime.spec.mjs[TH4M]: F:Exercises terminal persistence and lifecycle against native PTYs and an actual WebUI host launched with public tsx. | R:code:packages/webui/test/browser/support/native-browser-host.ts | A:- | S:Require both close receipt and process exit; preserve shutdown logs when the receipt is absent.
 overlay-coordination.spec.mjs[SE4M]: F:Tests Escape dismissal order for stacked overlays. | R:- | A:- | S:-
 plugin-catalogue-layout.spec.mjs[SE4L]: F:Tests category layout in plugin marketplace and management views. | R:- | A:- | S:-
 plugin-mcp-status.spec.mjs[SE4M]: F:Tests failed MCP connection status and its displayed reason. | R:- | A:- | S:-
@@ -5700,7 +5702,7 @@ rail-pin.spec.mjs[SE4L]: F:Tests pin actions and markers on session rows. | R:- 
 rail-search.spec.mjs[SE4S]: F:Tests searching and rendering sessions grouped by project. | R:- | A:- | S:-
 rail-session-navigation.spec.mjs[SE4S]: F:Tests session rail navigation back to the conversation and the Design control's pill in the rail. | R:- | A:- | S:-
 rail-transfer.spec.mjs[SE4T]: F:Tests session import and export through rail actions. | R:- | A:- | S:-
-real-browser-bridge.ts[SE4L]: F:Provides browser test support for the real extension bridge, including the launch bound and the step-named timeouts. | R:- | A:- | S:A browser launch is bounded by BROWSER_LAUNCH_BOUND_MS because the first Edge launch on a cold runner builds its profile before the extension answers.
+real-browser-bridge.ts[SE4L]: F:Provides browser tests a real extension bridge, step-named timeout evidence and persistent context setup and teardown. | R:- | A:- | S:Use Playwright's own bounded launch so it cancels with browser logs; clean up a partially acquired context.
 recovered-surfaces.spec.mjs[SE4M]: F:Tests recovered WebUI surfaces and shared loading skeletons. | R:- | A:- | S:-
 rendering-integrity.spec.mjs[SE4L]: F:Tests rendering contracts and persistence of Browser Use preferences. | R:- | A:- | S:-
 responsive-baselines.spec.mjs[SE4T]: F:Checks responsive visual baselines for the browser client. | R:- | A:- | S:-
@@ -5723,7 +5725,7 @@ transcript-file-media.spec.mjs[SE4L]: F:Tests transcript file and media reconcil
 transcript-scroll.spec.mjs[SE4S]: F:Tests transcript scroll following during growth. | R:- | A:- | S:-
 transcript.spec.mjs[SE4L]: F:Tests transcript rendering and goal message deduplication. | R:- | A:- | S:-
 turn-lifecycle.spec.mjs[SE4L]: F:Tests turn submission, retry, and lifecycle behavior. | R:- | A:- | S:-
-user-menu-shutdown.spec.mjs[SE4T]: F:Tests shutdown confirmation from the user menu. | R:- | A:- | S:-
+user-menu-shutdown.spec.mjs[SE4S]: F:Tests shutdown confirmation, explicit acceptance and retained retry on transport failure, deadline and invalid replies. | R:code:packages/webui/src/client/platform/webui-shutdown.ts | A:- | S:An ambiguous result triggers neither a second POST nor a browser status probe; retry requires user action.
 visual-baselines.spec.mjs[SE4M]: F:Captures browser visual baselines for the shell and session rail. | R:- | A:- | S:-
 workspace-canvas.spec.mjs[SE4T]: F:Tests workspace canvas interactions. | R:- | A:- | S:-
 workspace-panel-actions.spec.mjs[SE4L]: F:Tests workspace panel actions and file tree presentation. | R:- | A:- | S:-
@@ -5760,14 +5762,16 @@ source-text.ts[SE4T]: F:Reads source text for WebUI unit checks. | R:- | A:- | S
 ===/<repository>/release/===
 dependency-licenses.json[SE4L]: F:Records third-party dependency licenses for release. | R:- | A:- | S:-
 extraction.json[SE4T]: F:Pins the extracted source baseline and public package scope. | R:- | A:- | S:-
-public-source.json[FV6L]: F:Inventories reviewed public source paths, including runtime shutdown diagnostics. | R:- | A:- | S:Regenerate with node scripts/source-inventory.mjs --write after reviewing which files are suitable for publication.
+public-source.json[FV6L]: F:Inventories public source paths vetted for release, including native folder-picker assets and tests. | R:code:scripts/source-inventory.mjs | A:- | S:Review additions for release suitability before regenerating this inventory.
 
 ===/<repository>/release/webui-npm/===
 README.md[SE4T]: F:Documents installation and use of the WebUI npm package. | R:- | A:- | S:-
 package.json[FV4T]: F:Declares the WebUI npm release version, launcher mapping, published files and runtime dependencies. | R:code:scripts/package-webui-npm.mjs | A:- | S:The Feishu SDK must be installed because the runtime loads it through a computed import.
 
 ===/<repository>/release/webui-npm/bin/===
-mcode-webui.mjs[SE4L]: F:Launches the packaged WebUI command. | R:- | A:- | S:-
+mcode-webui.mjs[SE4L]: F:Launches packaged WebUI, selects eligible desktop capabilities and shuts down browser and host resources on exit. | R:code:release/webui-npm/bin/native-directory-picker.mjs | A:- | S:Do not create a native folder grant for remote, unattended or full-access launches.
+native-directory-picker.mjs[IS5S]: F:Selects eligible Windows launches, creates a desktop grant and manages the bounded native chooser process for the packaged command. | R:code:release/webui-npm/bin/native-directory-picker.ps1 | A:createWindowsDirectoryPicker | S:Only an interactive Windows loopback launch can opt into the chooser; shutdown cancels the owned process.
+native-directory-picker.ps1[IS5T]: F:Runs the fixed interactive Windows folder chooser and emits the selected directory or a cancellation result. | R:code:release/webui-npm/bin/native-directory-picker.mjs | A:- | S:Decline a noninteractive session; the fixed program does not evaluate browser-supplied text.
 
 ===/<repository>/schemas/plugins/===
 app-v1.schema.json[SE4T]: F:Defines the v1 plugin app schema. | R:- | A:- | S:-
@@ -5838,7 +5842,7 @@ webui-font-environment.mjs[SE4S]: F:Configures the font environment used for Web
 webui-overlay-inventory.json[SE4S]: F:Inventories overlays covered by WebUI checks. | R:- | A:- | S:-
 webui-presentation-coverage.d.mts[SE4S]: F:Declares the shared presentation coverage API. | R:- | A:- | S:-
 webui-presentation-coverage.mjs[SE4L]: F:Calculates coverage of shared WebUI presentation contracts. | R:- | A:- | S:-
-webui-presentation-inventory.json[SE4M]: F:Inventories WebUI presentation surfaces. | R:- | A:- | S:-
+webui-presentation-inventory.json[SE4M]: F:Inventories WebUI presentation surfaces with reviewed fingerprints including Mini App presentation recovery changes. | R:code:packages/webui/src/client/features/miniapp/ui/MiniAppView.public.tsx | A:- | S:-
 webui-publication.d.mts[SE4S]: F:Declares helpers for WebUI package publication. | R:- | A:- | S:-
 webui-publication.mjs[SE4M]: F:Implements validation and preparation for WebUI publication. | R:- | A:- | S:-
 webui-raw-control-budget.json[SE4T]: F:Tracks allowances for raw WebUI controls. | R:- | A:- | S:-
@@ -5860,8 +5864,8 @@ network-deny.mjs[SE4T]: F:Provides test helpers that deny network access. | R:- 
 offline-environment.mjs[SE4T]: F:Prepares an offline environment for verification. | R:- | A:- | S:-
 public-artifact.test.mjs[SE4T]: F:Checks the contents and contracts of public artifacts. | R:- | A:- | S:-
 smoke.test.mjs[SE4M]: F:Runs smoke checks for the public distribution. | R:- | A:- | S:-
-source-sync.test.mjs[TV6L]: F:Tests source synchronization, WebUI workflow contracts, and release tooling. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Requires three browser shards per OS, checksum-verified Linux and Windows FFmpeg provisioning, independent lane failures, unique diagnostics, and read-only workflow permissions.
-vitest-suites.json[FQ6L]: F:Declares the Vitest files every verification suite runs, per group. | R:- | A:- | S:A new Vitest file is registered in its group here; the Vitest config and the package scripts read this file instead of naming files themselves.
+source-sync.test.mjs[TV6L]: F:Verifies source synchronization, CI contracts, release tooling and Windows native folder-chooser launcher eligibility. | R:code:scripts/lib/acceptance-records.mjs,code:.github/workflows/webui-ci.yml | A:- | S:Preserve lane isolation, three browser shards per OS, verified FFmpeg assets, unique diagnostics and read-only workflow permissions.
+vitest-suites.json[FQ6L]: F:Declares named Vitest verification groups and registers the native directory-picker unit coverage. | R:- | A:- | S:Register new Vitest files here rather than embedding independent file lists in the suite commands.
 windows-contract.test.mjs[SE4S]: F:Tests Windows-specific distribution and runtime contracts. | R:- | A:- | S:-
 
 ===/<repository>/tools/plugins/===

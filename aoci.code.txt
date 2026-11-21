@@ -15,7 +15,7 @@ README.md[SG4S]: F:Introduces MiniMax Code and explains installation, source bui
 README_ZH.md[SG4S]: F:Explains MiniMax Code installation, source builds from main, sign-in, model configuration and usage in Chinese. | R:- | A:- | S:-
 SECURITY.md[SG4T]: F:Defines security reporting and source, account, and managed-service boundaries. | R:- | A:- | S:-
 THIRD_PARTY_NOTICES.md[SG4T]: F:Preserves third-party license and attribution notices, including AI Node Canvas. | R:- | A:- | S:-
-package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:-
+package.json[FV5T]: F:Declares workspace dependencies and root scripts for builds, releases, and verification. | R:- | A:- | S:Keep the browser test engine and reviewed per-platform screenshots on the same revision.
 playwright.config.mjs[FQ4T]: F:Configures WebUI browser gates, fixture server, font environment and output directories. | R:code:packages/webui/test/browser/server.mjs | A:- | S:The Windows workaround replaces the pinned disabled-features switch to retain Playwright defaults.
 pnpm-workspace.yaml[SE4T]: F:Declares pnpm workspace package roots. | R:- | A:- | S:-
 tsconfig.node.json[SE4T]: F:Configures TypeScript for Node-side code. | R:- | A:- | S:-

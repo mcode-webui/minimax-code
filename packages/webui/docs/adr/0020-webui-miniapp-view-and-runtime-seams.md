@@ -326,6 +326,13 @@ An absent session is reported as `none`; no session lookup or ended-session noti
 A runtime that stops while the tab is open clears the view and reports the stop reason; it does not
 restart the Mini App, because the tab may be unattended and a retry would start work the user did not
 ask for. A retry is a user action.
+A failed start leaves an actionable “not opened” state in the mounted view, alongside the
+attempt's error toast. Dismissing the toast does not remove the state or its explicit retry
+control. Only an `OWNED_ELSEWHERE` refusal tells the user to close the other client's app;
+a generic preparation failure does not establish ownership. Retry uses the normal open
+operation, never a takeover, and polling does not restart a failed presentation. Stop or
+lease failures do not create this failed-start state.
+
 
 ### The standalone presentation is a lease
 

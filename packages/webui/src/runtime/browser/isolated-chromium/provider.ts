@@ -176,6 +176,12 @@ export interface WebuiBrowserSurfaceProvider {
     targetId: string,
     onFrame: (frame: WebuiBrowserImageFrame) => void,
   ): Promise<void>;
+  /** One fresh frame for a late subscriber to a live but visually idle stream. */
+  captureStreamInitialFrame?(
+    target: WebuiBrowserTargetId,
+    viewport?: WebuiBrowserViewport,
+    stillNeeded?: () => boolean,
+  ): Promise<WebuiBrowserImageFrame | undefined>;
   /** Stops the live images and releases what the stream held. */
   stopImageStream(targetId: string): Promise<void>;
   /** Delivers one validated input command to the target. */
@@ -231,6 +237,16 @@ interface WebuiIsolatedChromiumPage {
   frameSequence: number;
   /** Whether a subscriber is currently asking for this page's pictures. */
   streaming: boolean;
+  /** The requested geometry and whether its CDP change completed. */
+  viewport?: { width: number; height: number; ready: boolean };
+  pendingViewportChanges?: number;
+  /** At most one native initial-frame capture can be in flight per page. */
+  initialCapture?: {
+    generation: number;
+    viewport: WebuiIsolatedChromiumPage["viewport"];
+    handler: WebuiIsolatedChromiumPage["frameHandler"];
+    result: Promise<WebuiBrowserImageFrame | undefined>;
+  };
   /** The subscriber that asked for this page's pictures. */
   frameHandler?: (frame: WebuiBrowserImageFrame) => void;
   /**
@@ -757,18 +773,33 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
     }
     const connection = this.#connection;
     if (!connection) return;
-    await this.#withAttachmentRetry(() =>
-      connection.send(
-        "Emulation.setDeviceMetricsOverride",
-        {
-          width: Math.max(1, Math.round(viewport.width)),
-          height: Math.max(1, Math.round(viewport.height)),
-          deviceScaleFactor: 1,
-          mobile: false,
-        },
-        page.sessionId,
-      ),
-    );
+    const dimensions = {
+      width: Math.max(1, Math.round(viewport.width)),
+      height: Math.max(1, Math.round(viewport.height)),
+      ready: false,
+    };
+    const hadPendingChange = (page.pendingViewportChanges ?? 0) > 0;
+    page.pendingViewportChanges = (page.pendingViewportChanges ?? 0) + 1;
+    page.viewport = dimensions;
+    try {
+      await this.#withAttachmentRetry(() =>
+        connection.send(
+          "Emulation.setDeviceMetricsOverride",
+          {
+            width: dimensions.width,
+            height: dimensions.height,
+            deviceScaleFactor: 1,
+            mobile: false,
+          },
+          page.sessionId,
+        ),
+      );
+      // Attachment retries can reorder overlapping writes. The last request
+      // does not prove its geometry won if another reply was still pending.
+      dimensions.ready = !hadPendingChange;
+    } finally {
+      page.pendingViewportChanges -= 1;
+    }
   }
 
   async startImageStream(
@@ -806,6 +837,51 @@ export class WebuiIsolatedChromiumProvider implements WebuiBrowserSurfaceProvide
         page.sessionId,
       ),
     );
+  }
+
+  async captureStreamInitialFrame(
+    target: WebuiBrowserTargetId,
+    viewport?: WebuiBrowserViewport,
+    stillNeeded: () => boolean = () => true,
+  ): Promise<WebuiBrowserImageFrame | undefined> {
+    const page = this.#pageOf(target.targetId);
+    const connection = this.#connection;
+    if (!page?.streaming || !connection || target.surface !== this.surface ||
+        target.browserId !== this.browserId || page.generation !== target.generation) return;
+    const geometry = page.viewport;
+    if (geometry && !geometry.ready) return;
+    if (viewport && (!geometry ||
+        geometry.width !== Math.max(1, Math.round(viewport.width)) ||
+        geometry.height !== Math.max(1, Math.round(viewport.height)))) return;
+    const handler = page.frameHandler;
+    const current = () => this.#connection === connection && this.#pageOf(target.targetId) === page &&
+      page.streaming && page.frameHandler === handler && page.viewport === geometry &&
+      page.generation === target.generation;
+
+    while (page.initialCapture) {
+      if (!current() || !stillNeeded()) return;
+      const pending = page.initialCapture;
+      const frame = await pending.result;
+      if (pending.generation === target.generation && pending.viewport === geometry &&
+          pending.handler === handler) return current() && stillNeeded() ? frame : undefined;
+    }
+    if (!current() || !stillNeeded()) return;
+    const result = (async (): Promise<WebuiBrowserImageFrame | undefined> => {
+      try {
+        const screenshot = await connection.send(
+          "Page.captureScreenshot",
+          { format: "jpeg", quality: 70, captureBeyondViewport: false },
+          page.sessionId,
+        ) as { data?: unknown } | undefined;
+        if (!current() || typeof screenshot?.data !== "string" || !screenshot.data) return;
+        return { target: { ...target }, data: screenshot.data, format: "jpeg", sequence: ++page.frameSequence };
+      } catch {
+        // A one-shot image is opportunistic; the real screencast can still deliver.
+        return undefined;
+      }
+    })().finally(() => { page.initialCapture = undefined; });
+    page.initialCapture = { generation: target.generation, viewport: geometry, handler, result };
+    return result;
   }
 
   async stopImageStream(targetId: string): Promise<void> {

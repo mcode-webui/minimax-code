@@ -48,7 +48,7 @@ jobs:
           fi
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          version: 9.12.0
+          version: 10.34.9
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
@@ -83,22 +83,29 @@ jobs:
         run: pnpm install:webui-browsers
       - name: Install FFmpeg
         if: matrix.lane.name == 'units' || matrix.lane.shard
-        timeout-minutes: ${{ runner.os == 'Linux' && 15 || 8 }}
+        timeout-minutes: 8
         shell: bash
         run: |
           # The native Design media paths run FFmpeg for real: the tests cut a
           # real clip, draw a real waveform and persist a real poster. Without
           # the binary on PATH they fail on `spawnSync ffmpeg ENOENT` rather
-          # than on anything about the code under test. The Linux image ships
-          # one already; the macOS and Windows images do not.
+          # than on anything about the code under test.
           verify_ffmpeg() {
             node -e 'require("node:child_process").execFileSync("ffmpeg", ["-version"], { stdio: "inherit" })'
           }
           if verify_ffmpeg; then
             exit 0
           elif [ "$RUNNER_OS" = "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg
+            # Avoid the Ubuntu mirror and its large graph of FFmpeg packages.
+            ffmpeg_dir="$(mktemp -d "$RUNNER_TEMP/webui-ffmpeg.XXXXXX")"
+            archive="$ffmpeg_dir/ffmpeg.tar.xz"
+            curl --fail --location --retry 3 --retry-max-time 240 --connect-timeout 15 --max-time 120 \
+              --output "$archive" \
+              "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-2/jellyfin-ffmpeg_8.1.3-2_portable_linux64-gpl.tar.xz"
+            printf '%s  %s\n' 1df84d04c4322902dba81c290508cdf3d89524d210b9fe03154bea6c4e3bfbb6 "$archive" | sha256sum --check
+            tar -xJf "$archive" -C "$ffmpeg_dir" ffmpeg ffprobe
+            export PATH="$ffmpeg_dir:$PATH"
+            printf '%s\n' "$ffmpeg_dir" >> "$GITHUB_PATH"
           elif [ "$RUNNER_OS" = "macOS" ]; then
             brew install ffmpeg
           else
@@ -134,6 +141,7 @@ jobs:
         env:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/browser
           WEBUI_BROWSER_SHARD: ${{ matrix.lane.shard }}
+          WEBUI_NATIVE_SHUTDOWN_EVIDENCE: ${{ runner.os == 'Windows' && '1' || '0' }}
         run: pnpm test:webui-browser --shard="$WEBUI_BROWSER_SHARD"
       - name: Verify WebUI package installation
         if: matrix.lane.name == 'package'

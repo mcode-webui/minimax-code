@@ -20,6 +20,7 @@ import { ArchonPage } from "./shell/ArchonPage.js";
 import { WebuiErrorBoundary } from "./shell/WebuiErrorBoundary.js";
 import { WebuiStartupFallback } from "./shell/StartupFallback.js";
 import { WebuiBrowserCapabilitiesProvider } from "./bindings/browser-capabilities.js";
+import { canPickNativeWorkspaceDirectory, captureNativeDirectoryLaunchGrant, pickNativeWorkspaceDirectory } from "./platform/native-directory-picker.js";
 import { createWebuiBrowserDom } from "./platform/browser-dom.js";
 import { MiniAppStandalone } from "./features/miniapp/ui/MiniAppStandalone.public.js";
 import { WebuiMiniAppWorkflowsProvider } from "./features/miniapp/bindings/use-miniapp-workflows.js";
@@ -137,6 +138,7 @@ function installWebuiStallDiagnostics(): void {
   }, 1_000);
 }
 
+captureNativeDirectoryLaunchGrant();
 installWebuiStallDiagnostics();
 
 const rootElement = document.getElementById("webui-root");
@@ -324,6 +326,10 @@ const root: Root = createRoot(rootElement);
 const browserCapabilities = {
   dom: createWebuiBrowserDom(globalThis.document, globalThis.window),
   storage: createWebuiBrowserStorage(getWebuiBrowserStorage()),
+  nativeDirectoryPicker: {
+    available: canPickNativeWorkspaceDirectory,
+    choose: pickNativeWorkspaceDirectory,
+  },
   // The runtime's data directory is a fact about this host: the composition
   // root is the one place that may read the injected config, and the surfaces
   // that need it read it from the capabilities.

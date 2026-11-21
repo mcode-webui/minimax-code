@@ -1,7 +1,7 @@
 import { fork } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { test } from "./harness.mjs";
 
@@ -32,7 +32,7 @@ let ready;
 let logs = "";
 test.beforeAll(async () => {
   child = fork(path.join(root, "packages/webui/test/browser/support/native-browser-host.ts"), [], {
-    execArgv: ["--import", pathToFileURL(path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs")).href],
+    execArgv: ["--import", import.meta.resolve("tsx")],
     env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), SHELL: process.platform === "win32" ? "powershell.exe" : "/bin/sh" },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
@@ -61,7 +61,7 @@ async function within(promise, ms, makeError) {
   }
 }
 
-test.afterAll(async () => {
+test.afterAll(async ({}, testInfo) => {
   if (!child || child.exitCode !== null || !child.connected) return;
   const stopped = once(child, "message");
   child.send("close");
@@ -75,7 +75,12 @@ test.afterAll(async () => {
     stopped,
     25_000,
     () => new Error(`the native host did not finish closing\n${logs}`),
-  );
+  ).catch(async (error) => {
+    // The child may be blocked in a native call and unable to send its
+    // receipt. Preserve the received trace in the parent before rethrowing.
+    await testInfo.attach("native-host-shutdown", { body: logs, contentType: "text/plain" });
+    throw error;
+  });
   // The host reports the step it stopped at when its own shutdown does not
   // finish, so a stall says which step it was instead of leaving the hook
   // with a bare timeout and no way to tell what is stuck.
@@ -101,6 +106,26 @@ test.afterAll(async () => {
     2_000,
     () => new Error(`the native host did not exit\n${logs}`),
   );
+  if (process.env.WEBUI_NATIVE_SHUTDOWN_EVIDENCE === "1") {
+    // Passing tests do not retain Playwright traces. Print only the bounded
+    // phase timeline, never the full runtime output, to the CI log.
+    const phase = /^(\[runtime-shutdown\]|\[native-host\]) (.{1,80}) \(uptime \d{1,7}\.\d{3}s\)$/;
+    const runtime = /^(?:stop_v1_producers|stop_background|close_services|close_sandbox|close_background|await_background_maintenance|release_runtime_owner|close_v1_host|close_database(?:_returned|_threw)?|closed)$/;
+    const host = /^(?:service\.close|apiHost\.close|terminals checked|data dir removed|reported)$/;
+    const owner = /^owner (?:terminal|websocket-connections|websocket|browser-bridge|miniapp-proxies|http-listener|harness)$/;
+    const exits = /^(?:wait terminal exit events \(\d{1,3}\/\d{1,3} observed\)|terminal exit events received \(\d{1,3}\/\d{1,3}\))$/;
+    const timeline = logs.split(/\r?\n/).filter((line) => {
+      const match = phase.exec(line);
+      if (!match) return false;
+      return match[1] === "[runtime-shutdown]"
+        ? runtime.test(match[2])
+        : host.test(match[2]) || owner.test(match[2]) || exits.test(match[2]);
+    }).slice(-64);
+    console.log(`[native-host-success] ${JSON.stringify({
+      receipt: { closed: true, terminals: 0, exited: message.exited },
+      timeline,
+    })}`);
+  }
 });
 
 async function rpc(page, operation, body = operation === "listTerminals" ? {} : undefined) {

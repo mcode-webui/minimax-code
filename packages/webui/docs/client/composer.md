@@ -33,6 +33,18 @@ text preserves the target draft. Synchronous subscribers can edit the committed 
 later transfer write replacing their changes. Conflicts publish nothing and keep the retained source;
 the notice shows a transfer error beside its action so the user can select another destination and retry.
 
+## Workspace folder selection
+
+For a locally launched Windows WebUI with a native directory-picker grant, opening
+`选择新项目` offers `选择此电脑上的文件夹` and `添加文件夹`. The add action opens the
+native Windows directory chooser; confirming a folder changes the next session's work
+directory. Cancelling the system chooser, dismissing the WebUI dialog or failing to
+open the chooser does not change the current workspace.
+
+Remote browsers and launches without the local grant use the existing server
+directory browser instead. Its paths refer to the machine running WebUI, not
+to the browser's device. The native entry also offers this fallback explicitly.
+
 ## Where the pieces live
 
 - The surface is `client/features/composer/ui/WebuiComposer.tsx`, with the editor staging, menus,

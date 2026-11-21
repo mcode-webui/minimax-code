@@ -1,0 +1,35 @@
+name: Native shutdown diagnostic (#30)
+
+on:
+  push:
+    branches: [diag/native-shutdown-30-20261121]
+
+permissions:
+  contents: read
+
+jobs:
+  native-shutdown:
+    if: github.repository == 'mcode-webui/minimax-code' && github.ref == 'refs/heads/diag/native-shutdown-30-20261121' && github.event_name == 'push'
+    name: Windows native shutdown (${{ matrix.lane }})
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [wal, wal-reader, pty, negative-watchdog]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run the isolated native probe
+        env:
+          NATIVE_SHUTDOWN_LANE: ${{ matrix.lane }}
+        run: node --import tsx scripts/diagnostics/native-shutdown-probe.mjs $env:NATIVE_SHUTDOWN_LANE

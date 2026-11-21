@@ -28,10 +28,10 @@ async function pluginDataDir(): Promise<string> {
   return dir;
 }
 
-async function acquire(dir: string, client = 'webui'): Promise<MiniAppOwnerAcquisition> {
+async function acquire(dir: string, client = 'webui', pluginId = 'fixture.miniapp'): Promise<MiniAppOwnerAcquisition> {
   const acquisition = await acquireMiniAppOwner({
     pluginDataDir: dir,
-    pluginId: 'fixture.miniapp',
+    pluginId,
     identity: { client },
   });
   if (acquisition.kind === 'acquired') held.push(acquisition);
@@ -92,18 +92,26 @@ describe('Mini App ownership', () => {
     const second = await pluginDataDir();
 
     expect((await acquire(first)).kind).toBe('acquired');
-    expect((await acquire(second)).kind).toBe('acquired');
+    expect((await acquire(second, 'webui', 'fixture.second-miniapp')).kind).toBe('acquired');
   });
 
   it('names the endpoint after the plugin data directory, not a global path', async () => {
     const first = await pluginDataDir();
     const second = await pluginDataDir();
 
-    expect(resolveMiniAppOwnerEndpoint(first, 'fixture.miniapp')).not.toBe(
-      resolveMiniAppOwnerEndpoint(second, 'fixture.miniapp'),
+    expect(resolveMiniAppOwnerEndpoint(first, 'fixture.miniapp', 'linux')).not.toBe(
+      resolveMiniAppOwnerEndpoint(second, 'fixture.miniapp', 'linux'),
     );
-    expect(resolveMiniAppOwnerEndpoint(first, 'fixture.miniapp', 'win32')).toMatch(
+  });
+
+  it('names the Windows pipe after the plugin ID', async () => {
+    const first = await pluginDataDir();
+    const second = await pluginDataDir();
+    const endpoint = resolveMiniAppOwnerEndpoint(first, 'fixture.miniapp', 'win32');
+    expect(endpoint).toMatch(
       /^\\\\\.\\pipe\\mcode-miniapp-owner-[a-f0-9]{16}$/u,
     );
+    expect(resolveMiniAppOwnerEndpoint(second, 'fixture.miniapp', 'win32')).toBe(endpoint);
+    expect(resolveMiniAppOwnerEndpoint(first, 'fixture.second-miniapp', 'win32')).not.toBe(endpoint);
   });
 });

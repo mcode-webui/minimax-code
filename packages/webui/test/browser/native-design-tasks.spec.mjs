@@ -2,7 +2,7 @@ import { execFileSync, fork } from "node:child_process";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { once } from "node:events";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { test, attachJsonEvidence } from "./harness.mjs";
 
@@ -11,7 +11,7 @@ let host, ready;
 let logs = "";
 test.beforeAll(async () => {
   host = fork(path.join(root, "packages/webui/test/browser/support/native-design-browser-host.ts"), [], {
-    execArgv: ["--import", pathToFileURL(path.join(root, "packages/webui/node_modules/tsx/dist/loader.mjs")).href],
+    execArgv: ["--import", import.meta.resolve("tsx")],
     env: { ...process.env, TSX_TSCONFIG_PATH: path.join(root, "tsconfig.standalone.json"), WEBUI_DESIGN_BROWSER_DATA_DIR: process.env.WEBUI_DESIGN_BROWSER_DATA_DIR ?? path.join(test.info().project.outputDir, "native-design-task-host") },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
   });

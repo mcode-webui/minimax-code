@@ -1,4 +1,5 @@
-import { Mistral } from "@mistralai/mistralai";
+import { MistralCore } from "@mistralai/mistralai/core.js";
+import { chatStream } from "@mistralai/mistralai/funcs/chatStream.js";
 import type {
 	ChatCompletionStreamRequest,
 	ChatCompletionStreamRequestMessage,
@@ -63,7 +64,7 @@ export const streamMistral: StreamFunction<"mistral-conversations", MistralOptio
 			}
 
 			// Intentionally per-request: avoids shared SDK mutable state across concurrent consumers.
-			const mistral = new Mistral({
+			const mistral = new MistralCore({
 				apiKey,
 				serverURL: model.baseUrl,
 			});
@@ -76,9 +77,10 @@ export const streamMistral: StreamFunction<"mistral-conversations", MistralOptio
 			if (nextPayload !== undefined) {
 				payload = nextPayload as ChatCompletionStreamRequest;
 			}
-			const mistralStream = await mistral.chat.stream(payload, buildRequestOptions(model, options));
+			const result = await chatStream(mistral, payload, buildRequestOptions(model, options));
+			if (!result.ok) throw result.error;
 			stream.push({ type: "start", partial: output });
-			await consumeChatStream(model, output, stream, mistralStream);
+			await consumeChatStream(model, output, stream, result.value);
 
 			if (options?.signal?.aborted) {
 				throw new Error("Request was aborted");

@@ -385,7 +385,7 @@ describe("the Mini App business", () => {
     // Keep diagnostics while presenting a neutral client name.
     expect(text).not.toContain("electron");
     expect(text).toContain("4242");
-    expect(snapshot.presentations["shared-app"]).toBeUndefined();
+    expect(snapshot.presentations["shared-app"]).toEqual({ kind: "failed", refusal });
   });
 
   it("offers to stop a Mini App another client is running", () => {

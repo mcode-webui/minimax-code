@@ -43,7 +43,7 @@ async function configureDocuments(page, refusal) {
     content: `
       window.__WEBUI_FIXTURE_SETUP__ ??= [];
       window.__WEBUI_FIXTURE_SETUP__.push(() => {
-        ${refusal ? `window.__fixture.refuseOperation("openMiniApp", ${JSON.stringify(refusal.code)}, ${JSON.stringify(refusal.message)});` : ""}
+        ${refusal ? `window.__fixture.refuseOperation("openMiniApp", ${JSON.stringify(refusal.code)}, ${JSON.stringify(refusal.message)}, ${JSON.stringify(refusal.reasonCode)});` : ""}
         window.__fixture.setResponse("listMiniApps", {
           miniApps: [${JSON.stringify(catalogueRow(false, 0))}],
         });
@@ -193,17 +193,18 @@ test("a deep link naming a session that has ended still shows the Mini App", asy
   await expect(page.getByTestId("miniapp-switch-standalone")).toHaveCount(0);
 });
 
-for (const [code, message] of [
+for (const [code, message, reasonCode] of [
   ["MINIAPP_PREPARATION_FAILED", "Mini App publication preparation failed"],
   ["OWNED_ELSEWHERE", "Mini App is running in another client"],
+  ["MINIAPP_PREPARATION_FAILED", "Mini App publication preparation failed", "OWNED_ELSEWHERE"],
 ]) {
-  test(`a standalone start refusal stays actionable and an explicit retry recovers (${code})`, async ({ page }) => {
-    await configureDocuments(page, { code, message });
+  test(`a standalone start refusal stays actionable and an explicit retry recovers (${code}${reasonCode ? "/" + reasonCode : ""})`, async ({ page }) => {
+    await configureDocuments(page, { code, message, reasonCode });
     await page.goto(`/miniapp?token=synthetic-token&plugin=${PLUGIN}`);
     const failed = page.getByTestId("miniapp-view-start-failed");
     await expect(failed).toBeVisible();
     await expect(failed).toContainText("应用尚未打开");
-    if (code === "OWNED_ELSEWHERE") {
+    if (code === "OWNED_ELSEWHERE" || reasonCode === "OWNED_ELSEWHERE") {
       await expect(failed).toContainText("请先在其他客户端关闭该应用，再重试。");
     } else {
       await expect(failed).toContainText(message);

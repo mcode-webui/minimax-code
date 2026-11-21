@@ -676,6 +676,9 @@ export function createWebuiMiniAppWorkflows(deps: {
       await loadListing(true);
       if (!isCurrent()) return false;
       setRefusal(pluginId, refusal);
+      // An explicit retry does not run inside the observer. Restart the
+      // read-only clock if this fresh catalogue reported a detached lease.
+      scheduleObservation();
       return false;
     } finally {
       if (currentOperation(pluginId, revision) && !isInterested() && state.presentations[pluginId]?.kind === "opening")

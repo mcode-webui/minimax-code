@@ -221,9 +221,13 @@ function refusalOf(error: unknown): WebuiMiniAppRefusal {
     error && typeof error === "object" && typeof (error as { code?: unknown }).code === "string"
       ? ((error as { code: string }).code)
       : "harness_error";
+  const message = error instanceof Error ? error.message : String(error);
+  const reasonCode = code === "MINIAPP_PREPARATION_FAILED" && error instanceof Error
+    ? (error as { reasonCode?: unknown }).reasonCode
+    : undefined;
   return {
-    code,
-    message: error instanceof Error ? error.message : String(error),
+    code: reasonCode === "OWNED_ELSEWHERE" ? reasonCode : code,
+    message: typeof reasonCode === "string" ? `${message} (${reasonCode})` : message,
   };
 }
 

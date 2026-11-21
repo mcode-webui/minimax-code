@@ -256,7 +256,15 @@ const terminal = new WebuiTerminalManager();
 // The bridge's pairings follow the switches, so the persisted authorization has
 // to reach them before the service starts serving.
 await browser.initialize();
+// Kept out of help/version and disabled for unattended, remote and full-access runs.
+const { nativeDirectoryPickerEligible, createWindowsDirectoryPicker, nativeDirectoryLaunchUrl } =
+  await import("./native-directory-picker.mjs");
+const nativeDirectoryPicker = nativeDirectoryPickerEligible({
+  platform: process.platform, tty: Boolean(process.stdout.isTTY), bindHost,
+  fullAccess: args["full-access"], browserSetting: process.env.WEBUI_OPEN_BROWSER,
+}) ? createWindowsDirectoryPicker() : undefined;
 const service = new WebuiService({
+  nativeDirectoryPicker,
   port,
   operations: createOperationRegistry(port, terminal, browser.port, browserBridge, miniappProxies, miniAppPresenter),
   terminal,
@@ -289,9 +297,12 @@ const service = new WebuiService({
 let closing;
 const close = () => {
   closing ??= (async () => {
-    await service.close();
-    await browser.close();
-    await assembled.host.apiHost.close();
+    try {
+      await service.close();
+    } finally {
+      try { await browser.close(); }
+      finally { await assembled.host.apiHost.close(); }
+    }
   })();
   return closing;
 };
@@ -314,7 +325,8 @@ try {
     `[mcode-webui] Mini App port: ${miniappPort} — forward it, or a Mini App loads blank`,
   );
   printAccess(info, bindHost);
-  openBrowser(browserUrl);
+  // Only the automatically opened local tab receives this separate ephemeral grant.
+  openBrowser(nativeDirectoryPicker ? nativeDirectoryLaunchUrl(browserUrl, nativeDirectoryPicker.grant) : browserUrl, browserUrl);
   console.log("Press Ctrl+C to stop the server.");
   process.once("SIGINT", () => void close().finally(() => process.exit(0)));
   process.once("SIGTERM", () => void close().finally(() => process.exit(0)));
@@ -398,7 +410,7 @@ function lanAddresses() {
  * The server is already serving by this point, and failing the run because a
  * browser could not start would turn a convenience into an outage.
  */
-function openBrowser(url) {
+function openBrowser(url, printableUrl = url) {
   const setting = process.env.WEBUI_OPEN_BROWSER?.trim().toLowerCase();
   const disabled = setting === "0" || setting === "false" || setting === "no" || setting === "off" || setting === "never";
   const enabled = setting === undefined || setting === "" ? Boolean(process.stdout.isTTY) : !disabled;
@@ -415,14 +427,14 @@ function openBrowser(url) {
   try {
     const child = spawn(command, args, { stdio: "ignore", detached: true });
     child.on("error", (error) => {
-      console.warn(`[mcode-webui] could not open a browser (${command}): ${error.message}`);
-      console.warn(`[mcode-webui] open ${url} yourself, or set WEBUI_OPEN_BROWSER=0 to stop this attempt.`);
+      console.warn(`[mcode-webui] could not open a browser (${command})`);
+      console.warn(`[mcode-webui] open ${printableUrl} yourself, or set WEBUI_OPEN_BROWSER=0 to stop this attempt.`);
     });
     // Detached so the browser is not a child of this server: closing the page
     // must not signal the process, and stopping the server must not close the
     // page the person is still reading.
     child.unref();
   } catch (error) {
-    console.warn(`[mcode-webui] could not open a browser (${command}): ${error.message}`);
+    console.warn(`[mcode-webui] could not open a browser (${command})`);
   }
 }

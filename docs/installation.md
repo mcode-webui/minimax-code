@@ -39,7 +39,7 @@ For npm, use the command in the README: it explicitly selects the public registr
 
 This guide builds the 0.6.3 source preview. Workspace/local build manifests remain `private: true` to prevent accidental publishing. A source checkout may contain additional reviewed distribution changes; matching version strings alone do not establish byte-for-byte or build-provenance equivalence with the official npm tarball. Use the committed source revision and release receipt to identify a source build.
 
-For a source build, you need Git, Node.js 22.19+ (22.x), 24.2+ (24.x), 25, or 26, and pnpm 9.12.0. Regular CI uses Node.js 24 across Linux and macOS. The weekly and manual compatibility matrix covers Node.js 22.19.0, 24.2.0, 25, and 26 on both platforms. Windows CI and source-candidate validation are temporarily paused while their checks are made reliable. Initial installation and build require access to public npm.
+For a source build, you need Git, Node.js 22.19+ (22.x), 24.2+ (24.x), 25, or 26, and pnpm 10.34.9. Regular CI uses Node.js 24 across Linux and macOS. The weekly and manual compatibility matrix covers Node.js 22.19.0, 24.2.0, 25, and 26 on both platforms. Windows CI and source-candidate validation are temporarily paused while their checks are made reliable. Initial installation and build require access to public npm.
 
 On Windows, check out this repository on a local NTFS volume before running `pnpm install`. The repository uses pnpm workspace links for vendored packages, and those links require NTFS junctions. FAT32/exFAT volumes, network shares, and other non-local Windows volumes cannot create the required junctions. The preflight command below verifies the volume and stops with a clear message before pnpm creates workspace links; run it immediately before `pnpm install`. It queries structured volume properties through Windows PowerShell and CIM, without requiring an elevated shell or parsing localized `fsutil` output. If PowerShell or CIM is unavailable or blocked, verification fails with the query error. A local NTFS volume can still contain a cloud-synced folder, which the preflight cannot identify reliably; keep the checkout outside OneDrive, Google Drive, Dropbox, and similar synced folders.
 
@@ -49,7 +49,7 @@ Node 24.0 and 24.1 are unsupported: their bundled libuv can return inconsistent 
 git clone https://github.com/MiniMax-AI/minimax-code.git
 cd minimax-code
 corepack enable
-corepack prepare pnpm@9.12.0 --activate
+corepack prepare pnpm@10.34.9 --activate
 node scripts/check-windows-source-location.mjs
 pnpm install --frozen-lockfile
 pnpm build

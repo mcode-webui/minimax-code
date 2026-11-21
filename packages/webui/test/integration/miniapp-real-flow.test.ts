@@ -32,7 +32,10 @@
 // is `miniapp-ui-flow.test.ts`. The data directory is a temporary one, so a
 // run can never reach the operator's own `~/.minimax`.
 
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { acquireMiniAppOwner } from "../../../local-runtime-v2/src/service/miniapp/process/node-runtime/owner-lease.js";
 
 import {
   LOCAL_SOURCE,
@@ -135,6 +138,40 @@ describe("the Mini App business flow against the real host", () => {
     expect(rowsOf(await client.call("listMiniApps"))).toEqual([]);
   }, 60_000);
 
+  it("reports another client's ownership and opens after that client releases the lease", async () => {
+    const host = await bootRealHost();
+    const client = await connect(host.url);
+    const name = "ownership-flow.miniapp";
+    await publishLocalPackage(host.dataDir, name);
+    expectAnswered(await client.call("pluginManagement", {
+      action: "enablePlugin",
+      input: { pluginName: name, source: LOCAL_SOURCE },
+    }));
+    const pluginDataDir = join(host.dataDir, "v2", "plugin-data", "liveboards", name);
+    await mkdir(pluginDataDir, { recursive: true });
+    const owner = await acquireMiniAppOwner({
+      pluginDataDir,
+      pluginId: name,
+      identity: { client: "desktop" },
+    });
+    if (owner.kind !== "acquired") throw new Error("The fixture could not acquire the ownership lease");
+    try {
+      const refused = await client.call("openMiniApp", { pluginId: name });
+      expect(refused).toMatchObject({
+        kind: "error",
+        code: "MINIAPP_PREPARATION_FAILED",
+        reasonCode: "OWNED_ELSEWHERE",
+      });
+    } finally {
+      await owner.release();
+    }
+    const opened = await client.call("openMiniApp", { pluginId: name });
+    expectAnswered(opened);
+    const page = await fetch(String(bodyOf(opened).viewUrl));
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain(PAGE_MARKER);
+  }, 120_000);
+
   it("keeps a Mini App that failed to start out of the running set", async () => {
     const host = await bootRealHost();
     const client = await connect(host.url);
@@ -161,6 +198,7 @@ describe("the Mini App business flow against the real host", () => {
     // person has to act on: the entry refused to start.
     const cause = await openCause(host, name);
     expect(cause.join(" <- ")).toContain("RUNNER_START_FAILED");
+    expect(opened.reasonCode, cause.join(" <- ")).toBe("RUNNER_START_FAILED");
 
     // And the Mini App is not left claiming to be running: the row says the
     // start failed, and names the reason, instead of reading as a Mini App

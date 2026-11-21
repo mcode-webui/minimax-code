@@ -78,6 +78,7 @@ export type WireFrame =
       readonly requestId: string;
       readonly code: WebuiWireErrorCode;
       readonly message: string;
+      readonly reasonCode?: string;
     };
 
 export interface WebuiSocket {

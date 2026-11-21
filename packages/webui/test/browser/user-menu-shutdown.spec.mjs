@@ -71,3 +71,32 @@ test("a refused shutdown can be dismissed by clicking outside after the error", 
   await page.locator('[data-webui-dialog-scrim="true"]').click({ position: { x: 8, y: 8 } });
   await expect(dialog).toHaveCount(0);
 });
+
+test("a shutdown request that gets no answer closes the dialog when the service is gone", async ({ page }) => {
+  await openApp(page);
+  // The service is not running any more: the page is still open, but
+  // nothing answers on the address it came from. That is the state the
+  // request was asking for, so it is not a failure to report -- and the
+  // browser's own wording for a request that got no answer says nothing
+  // about it either way.
+  await page.route("**/webui-shutdown?*", (route) => route.abort("connectionrefused"));
+  await page.route("**/", (route) => route.abort("connectionrefused"));
+  await page.locator('[data-testid="sidebar-user-menu-trigger"], [data-testid="sidebar-user-menu-trigger-rail"]').first().click();
+  await page.getByTestId("user-menu-shutdown").click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByRole("button", { name: "关闭服务", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("a shutdown request that gets no answer while the service still answers reports the failure in the page's own words", async ({ page }) => {
+  await openApp(page);
+  // The request did not get through, but the service is there and still
+  // answering: the person is told to retry, in the page's language rather
+  // than the browser's.
+  await page.route("**/webui-shutdown?*", (route) => route.abort("connectionrefused"));
+  await page.locator('[data-testid="sidebar-user-menu-trigger"], [data-testid="sidebar-user-menu-trigger-rail"]').first().click();
+  await page.getByTestId("user-menu-shutdown").click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByRole("button", { name: "关闭服务", exact: true }).click();
+  await expect(dialog).toContainText("关闭服务失败：本地服务仍在运行，请重试。");
+});

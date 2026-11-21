@@ -551,9 +551,15 @@ describe.skipIf(!available)("the browser service, streaming two pages of one Chr
       );
       if (!current) return false;
       await service.selectTarget(current.id, "run-1");
+      // Discovery and selection can succeed while the new tab is still
+      // loading. A repaint of the initial document is lost on navigation.
+      const ready = await readSelection(
+        'document.title === "second page" && document.readyState === "complete"',
+      );
+      if (ready !== true) return false;
       second = current.id;
       return true;
-    }, "the second page to become the run's selection");
+    }, "the second page to load in the run's selection");
 
     const secondStream = (async () => {
       for await (const frame of service.watchFrames(

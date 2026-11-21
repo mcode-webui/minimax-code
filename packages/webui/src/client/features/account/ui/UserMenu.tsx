@@ -195,12 +195,15 @@ export function UserMenu({
     setShutdownBusy(true);
     setShutdownError(undefined);
     try {
-      await shutdown();
-      // The service answers before it stops, so the page is still alive here;
-      // the connection drop is what tells the person the server is gone.
-      setShutdownOpen(false);
-    } catch (error: unknown) {
-      setShutdownError(error instanceof Error ? error.message : String(error));
+      const outcome = await shutdown();
+      if (outcome.kind === "stopped") {
+        // The service is not running. It says so before it stops, and it
+        // says nothing at all when it was already down -- both leave the
+        // page here without a backend, which is what was asked for.
+        setShutdownOpen(false);
+        return;
+      }
+      setShutdownError(outcome.message);
     } finally {
       setShutdownBusy(false);
     }

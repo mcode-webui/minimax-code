@@ -88,12 +88,22 @@ export class WebuiTerminalManager implements WebuiTerminalProcessPort {
   disposeBySession() {
     const execArgv = process.execArgv;
     process.execArgv = [];
+    const failures: unknown[] = [];
     try {
-      for (const terminal of this.terminals.values()) terminal.pty.kill();
+      for (const terminal of this.terminals.values()) {
+        try {
+          terminal.pty.kill();
+        } catch (error) {
+          // One failed kill must not prevent closing the other terminals.
+          failures.push(error);
+        }
+      }
     } finally {
       process.execArgv = execArgv;
       this.terminals.clear();
     }
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, "WebUI terminal shutdown failed");
   }
   private get(id: string) { const terminal = this.terminals.get(id); if (!terminal) throw new Error("终端不存在"); return terminal; }
 }

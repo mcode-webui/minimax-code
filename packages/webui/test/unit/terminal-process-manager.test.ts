@@ -48,6 +48,7 @@ interface FakePty {
   data: (data: string) => void;
   exit: () => void;
   kills: number;
+  killError?: Error;
   readonly resizes: Array<readonly [number, number]>;
   readonly writes: string[];
 }
@@ -81,6 +82,7 @@ function fakePtyModule(trace: string[]) {
         kill: () => {
           pty.kills += 1;
           trace.push(`kill:${pty.pid}`);
+          if (pty.killError) throw pty.killError;
         },
         onData: (listener: (data: string) => void) => {
           pty.data = listener;
@@ -170,6 +172,47 @@ describe("the terminal process manager — disposal", () => {
     manager.create("/tmp/a");
     manager.disposeBySession();
     expect(fake.ptys.every((pty) => pty.kills === 1)).toBe(true);
+    expect(manager.list()).toHaveLength(0);
+  });
+
+  it("attempts later terminal kills before reporting an early native failure", () => {
+    const trace: string[] = [];
+    const fake = fakePtyModule(trace);
+    const manager = new WebuiTerminalManager(() => fake.module);
+    for (let i = 0; i < 3; i++) manager.create("/tmp/a");
+    const nativeFailure = new Error("first native kill failed");
+    fake.ptys[0].killError = nativeFailure;
+    const execArgv = process.execArgv;
+    let error: unknown;
+    try {
+      manager.disposeBySession();
+    } catch (failure) {
+      error = failure;
+    }
+    expect(error).toBe(nativeFailure);
+    expect(trace.filter((entry) => entry.startsWith("kill:"))).toEqual(["kill:1000", "kill:1001", "kill:1002"]);
+    expect(process.execArgv).toBe(execArgv);
+    expect(manager.list()).toHaveLength(0);
+  });
+
+  it("reports both native failures while still killing the remaining terminal", () => {
+    const trace: string[] = [];
+    const fake = fakePtyModule(trace);
+    const manager = new WebuiTerminalManager(() => fake.module);
+    for (let i = 0; i < 3; i++) manager.create("/tmp/a");
+    const failures = [new Error("native kill 1 failed"), new Error("native kill 2 failed")];
+    [fake.ptys[0].killError, fake.ptys[1].killError] = failures;
+    let error: unknown;
+    try {
+      manager.disposeBySession();
+    } catch (failure) {
+      error = failure;
+    }
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).errors[0]).toBe(failures[0]);
+    expect((error as AggregateError).errors[1]).toBe(failures[1]);
+    expect((error as AggregateError).errors).toHaveLength(2);
+    expect(trace.filter((entry) => entry.startsWith("kill:"))).toEqual(["kill:1000", "kill:1001", "kill:1002"]);
     expect(manager.list()).toHaveLength(0);
   });
 

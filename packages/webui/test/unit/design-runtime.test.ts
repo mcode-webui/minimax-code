@@ -182,13 +182,21 @@ describe("native Design persistence and execution", () => {
     state = await service.apply({ documentId: id, action: { type: "add_node", nodeType: "text", prompt: "downstream" } }); const second = state.document!.nodes[1];
     state = await service.apply({ documentId: id, action: { type: "connect", from: first.id, to: second.id } });
     state = await service.apply({ documentId: id, action: { type: "update_node", nodeId: first.id, patch: { metadata: { output: { status: "idle", text: "previous product", media: [], error: "" } } } } });
-    await service.apply({ documentId: id, action: { type: "run", nodeId: first.id } });
-    await eventually(async () => expect((await service.getState({ documentId: id })).document!.nodes[0].metadata.output.status).toBe("error"));
-    state = await service.getState({ documentId: id }); expect(state.document!.nodes[0].metadata.output.text).toBe("previous product"); expect(calls).toHaveLength(1);
-    expect(typeof state.tasks[0].startedAt).toBe("number"); expect(typeof state.tasks[0].finishedAt).toBe("number");
-    const finishedAt = state.tasks[0].finishedAt;
+    const run = await service.apply({ documentId: id, action: { type: "run", nodeId: first.id } });
+    const taskId = (run.result as { id: string }).id;
+    await eventually(async () => {
+      const settled = await service.getState({ documentId: id });
+      expect(settled.document!.nodes[0].metadata.output.status).toBe("error");
+      // The node product is saved before the task journal records settlement.
+      expect(settled.tasks.find((task) => task.id === taskId)).toMatchObject({
+        status: "error", startedAt: expect.any(Number), finishedAt: expect.any(Number),
+      });
+      state = settled;
+    });
+    expect(state.document!.nodes[0].metadata.output.text).toBe("previous product"); expect(calls).toHaveLength(1);
+    const finishedAt = state.tasks.find((task) => task.id === taskId)!.finishedAt;
     const revision = state.document!.updatedAt; await new Promise((resolve) => setTimeout(resolve, 600));
-    const after = await service.getState({ documentId: id }); expect(after.document!.updatedAt).toBe(revision); expect(after.tasks[0].finishedAt).toBe(finishedAt);
+    const after = await service.getState({ documentId: id }); expect(after.document!.updatedAt).toBe(revision); expect(after.tasks.find((task) => task.id === taskId)?.finishedAt).toBe(finishedAt);
   });
 
   it("executes upstream chains in order and preserves populated boards when applying templates", async () => {

@@ -18,29 +18,19 @@ export interface WebuiShutdownOptions {
   readonly token?: string;
 }
 
-/**
- * What the request found.
- *
- * - `stopping` -- the service took the request and is on its way down.
- * - `gone` -- nothing is listening any more: the service is not running.
- * - `still-running` -- the request got no answer, but the service is still
- *   there and still answering.
- *
- * The last two are the same question asked twice. Asking a service that is
- * already down to stop is not a failure, and a request that never reached a
- * service that is still up is not a success either; which of the two happened
- * is what the person needs to be told.
- */
-export type WebuiShutdownState = "stopping" | "gone" | "still-running";
+export type WebuiShutdownReceipt =
+  | { readonly kind: "accepted" }
+  | { readonly kind: "refused"; readonly status: number }
+  | { readonly kind: "not-connected" }
+  | { readonly kind: "unknown" };
 
-/** The server answered, and it refused. */
-export class WebuiShutdownRefused extends Error {
-  override readonly name = "WebuiShutdownRefused";
-}
+// This bounds how long the confirmation stays busy, not how long the
+// server may take to stop. Aborting cannot revoke an already sent request.
+const SHUTDOWN_RECEIPT_TIMEOUT_MS = 5_000;
 
 export async function requestWebuiShutdown(
   options: WebuiShutdownOptions = {},
-): Promise<WebuiShutdownState> {
+): Promise<WebuiShutdownReceipt> {
   // Presence is checked, not truthiness: an injected empty token is a valid
   // dev target, and falling back to the global for it would silently ignore
   // the caller's origin.
@@ -48,54 +38,40 @@ export async function requestWebuiShutdown(
     options.origin !== undefined && options.token !== undefined
       ? { origin: options.origin, token: options.token }
       : readWebuiSessionTransferTarget();
-  if (!target) {
-    throw new WebuiShutdownRefused("当前 WebUI 未连接运行时，无法关闭服务。");
-  }
+  if (!target) return { kind: "not-connected" };
 
   const query = new URLSearchParams({ token: target.token });
   const doFetch = options.fetchImpl ?? globalThis.fetch;
-  let response: Response;
   try {
-    response = await doFetch(
+    const response = await doFetch(
       `${target.origin}/webui-shutdown?${query.toString()}`,
-      { method: "POST" },
+      {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(SHUTDOWN_RECEIPT_TIMEOUT_MS),
+      },
     );
-  } catch {
-    // The request got no answer. That is what a service that is already
-    // down looks like, and it is also what a service that went down before
-    // its answer arrived looks like: the answer and the teardown race, and
-    // a browser that reads the answer late loses that race. A second
-    // question settles which of the two it was -- the listener that is
-    // still there answers, the one that is gone does not.
-    return (await isListening(target.origin, doFetch))
-      ? "still-running"
-      : "gone";
-  }
-  if (!response.ok) {
-    throw new WebuiShutdownRefused(
-      response.status === 404
-        ? "当前 WebUI 不支持关闭服务。"
-        : `关闭服务失败（HTTP ${response.status}）。`,
-    );
-  }
-  return "stopping";
-}
+    if (!response.ok) {
+      // A gateway failure or timeout can happen after the origin received
+      // the POST. Only an explicit client rejection is definitive.
+      return response.status >= 400 && response.status < 500 && response.status !== 408
+        ? { kind: "refused", status: response.status }
+        : { kind: "unknown" };
+    }
 
-/**
- * Whether the service still answers on that address.
- *
- * Any HTTP answer counts, including a refusal: the question is whether the
- * listener is there, and a listener that refuses is still a listener. A HEAD
- * keeps the answer empty.
- */
-async function isListening(
-  origin: string,
-  doFetch: typeof fetch,
-): Promise<boolean> {
-  try {
-    await doFetch(`${origin}/`, { method: "HEAD", cache: "no-store" });
-    return true;
+    // A proxy or stale page can answer 200 without accepting the request.
+    // The host's receipt also does not claim the process has stopped yet.
+    const body: unknown = await response.json();
+    if (
+      typeof body === "object" && body !== null &&
+      "ok" in body && body.ok === true &&
+      "closing" in body && body.closing === true
+    ) {
+      return { kind: "accepted" };
+    }
   } catch {
-    return false;
+    // A network failure, timeout or unreadable reply proves neither that
+    // the request was rejected nor that the service stopped. No auto-retry.
   }
+  return { kind: "unknown" };
 }

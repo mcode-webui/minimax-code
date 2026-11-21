@@ -10,42 +10,38 @@
 
 import { useCallback } from "react";
 
-import {
-  requestWebuiShutdown,
-  WebuiShutdownRefused,
-} from "../platform/webui-shutdown.js";
+import { requestWebuiShutdown } from "../platform/webui-shutdown.js";
 
-/**
- * What the shutdown request found, in the terms the confirmation can show.
- *
- * `stopped` is the state the request was after: the service is not running,
- * whether it said so or simply stopped answering. `failed` carries a
- * message the person can act on -- never the browser's own wording, which
- * describes the network rather than what happened here.
- */
-export type WebuiShutdownOutcome =
-  | { readonly kind: "stopped" }
-  | { readonly kind: "failed"; readonly message: string };
+type WebuiShutdownOutcome =
+  | { readonly kind: "accepted" }
+  | { readonly kind: "unconfirmed" | "refused"; readonly message: string };
+
+const unconfirmed: WebuiShutdownOutcome = {
+  kind: "unconfirmed",
+  message: "未收到关闭确认，无法确定服务是否已停止。你可以关闭此提示，或手动重试。",
+};
 
 export function useWebuiShutdown(): () => Promise<WebuiShutdownOutcome> {
   return useCallback(async (): Promise<WebuiShutdownOutcome> => {
     try {
-      const state = await requestWebuiShutdown();
-      if (state === "still-running") {
-        return {
-          kind: "failed",
-          message: "关闭服务失败：本地服务仍在运行，请重试。",
-        };
+      const receipt = await requestWebuiShutdown();
+      switch (receipt.kind) {
+        case "accepted":
+          return { kind: "accepted" };
+        case "not-connected":
+          return { kind: "refused", message: "当前 WebUI 未连接运行时，无法关闭服务。" };
+        case "refused":
+          return {
+            kind: "refused",
+            message: receipt.status === 404
+              ? "当前 WebUI 不支持关闭服务。"
+              : `关闭服务失败（HTTP ${receipt.status}）。`,
+          };
+        case "unknown":
+          return unconfirmed;
       }
-      return { kind: "stopped" };
-    } catch (error: unknown) {
-      if (error instanceof WebuiShutdownRefused) {
-        return { kind: "failed", message: error.message };
-      }
-      // An error the platform did not name is a defect rather than an
-      // answer, and its wording is not something to put in front of a
-      // person: they are told the request did not go through.
-      return { kind: "failed", message: "关闭服务失败，请重试。" };
+    } catch {
+      return unconfirmed;
     }
   }, []);
 }

@@ -117,7 +117,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/node": "^20",
     "@types/proper-lockfile": "^4",
-    "dependency-cruiser": "18.7.2",
+    "dependency-cruiser": "18.8.0",
     "jscpd": "^5.4.3",
     "knip": "^6.45.1",
     "typescript": "^5",

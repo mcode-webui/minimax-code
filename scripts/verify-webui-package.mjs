@@ -247,13 +247,18 @@ async function verifyWindowsProjectSelection(installed) {
     const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
       "-LauncherPid", String(browser.launcherPid), "-PickerScript", pickerScript, "-Action", action];
     if (action === "select") args.push("-Directory", directory);
-    await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
+    const { stdout } = await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
+    console.log(stdout.trim());
   };
   await withCleanup(async () => {
     console.log("Opened the installed launcher's home page in the Windows default browser.");
     try {
       const result = await verifyNativeProjectJourney({ page: browser.page, directory, driveDialog });
-      console.log(`Windows home project selection passed: native select and cancel, persisted session ${result.sessionId}`);
+      console.log(`Windows home project selection passed: native select and cancel, reloaded session ${result.sessionId} under ${result.directory}`);
+      if (process.env.WEBUI_BROWSER_OUTPUT_DIR) {
+        await browser.page.screenshot({ path: path.join(process.env.WEBUI_BROWSER_OUTPUT_DIR, "windows-project-session.png"), timeout: 5000 })
+          .catch(() => console.warn("Could not capture the verified project and session."));
+      }
     } catch (error) {
       console.error(`Windows home project selection failed: ${error.message}`);
       const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;

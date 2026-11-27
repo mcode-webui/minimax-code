@@ -135,7 +135,7 @@ jobs:
           WEBUI_BROWSER_SHARD: ${{ matrix.lane.shard }}
           WEBUI_NATIVE_SHUTDOWN_EVIDENCE: ${{ runner.os == 'Windows' && '1' || '0' }}
         run: pnpm test:webui-browser --shard="$WEBUI_BROWSER_SHARD"
-      - name: Reproduce the home project picker with the published 0.1.11 archive
+      - name: Build and verify the Windows project picker candidate
         if: matrix.lane.name == 'package'
         env:
           WEBUI_BROWSER_OUTPUT_DIR: ${{ runner.temp }}/webui-browser-diagnostics/package
@@ -143,25 +143,21 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Host "Windows interactive desktop session $([Diagnostics.Process]::GetCurrentProcess().SessionId), UserInteractive=$([Environment]::UserInteractive)"
-          npm pack @minimax-webui/minimax-code@0.1.11 --pack-destination "$env:RUNNER_TEMP" --ignore-scripts --registry=https://registry.npmjs.org/ --silent
+          $package = Join-Path $env:RUNNER_TEMP 'candidate-package'
+          node scripts/package-webui-npm.mjs --version 0.1.12-rc.1 --outdir "$package"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $archive = Join-Path $env:RUNNER_TEMP 'minimax-webui-minimax-code-0.1.11.tgz'
-          $integrity = [Convert]::ToBase64String([Convert]::FromHexString((Get-FileHash -Algorithm SHA512 $archive).Hash))
-          if ($integrity -cne '3fM1LSAYEq6eHJdIlJXKUK3AoxZxXg9WTpzTv/LNzd2ce77Amdp27inKqep8CIlqisNAvw7WKy7o6AvDLqapaQ==') { throw 'Unexpected release archive' }
+          npm pack "$package" --pack-destination "$env:RUNNER_TEMP" --ignore-scripts --silent
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $env:RUNNER_TEMP 'minimax-webui-minimax-code-0.1.12-rc.1.tgz'
           node scripts/verify-webui-package.mjs --archive "$archive"
           exit $LASTEXITCODE
-      - name: Diagnose the published Windows script after a failed journey
-        if: failure()
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $archive = Join-Path $env:RUNNER_TEMP 'minimax-webui-minimax-code-0.1.11.tgz'
-          $script = tar -xOf "$archive" package/bin/native-directory-picker.ps1 | Out-String
-          $compiler = [ScriptBlock]::Create($script).Ast.Find({
-            param($node)
-            $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'Add-Type'
-          }, $true)
-          & ([ScriptBlock]::Create($compiler.Extent.Text))
+      - name: Save the verified npm archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-verified-npm
+          path: ${{ runner.temp }}/minimax-webui-minimax-code-0.1.12-rc.1.tgz
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload WebUI browser diagnostics
         if: ${{ !cancelled() && matrix.lane.name != 'checks' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

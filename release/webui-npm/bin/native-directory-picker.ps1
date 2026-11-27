@@ -56,6 +56,7 @@ namespace WebuiFolderPicker {
    }
   }
  }
+}
 '@
 try {
  $directory = [WebuiFolderPicker.Picker]::Choose()

@@ -12,7 +12,8 @@ function publicMessage(error) {
     .replace(/((?:token|nativeDirectoryGrant|browserKey)=)[^\s&"']+/giu, '$1[redacted]');
 }
 
-async function chooseFromHome({ page, directory, action, driveDialog, timeoutMs }) {
+async function chooseFromHome({ page, directory, action, driveDialog, beforeChoose, timeoutMs }) {
+  await page.bringToFront();
   await page.locator(projectButton).click({ timeout: timeoutMs });
   const origin = new URL(page.url()).origin;
   const controller = new AbortController();
@@ -40,6 +41,7 @@ async function chooseFromHome({ page, directory, action, driveDialog, timeoutMs 
     .filter({ hasText: /系统(?:文件夹选择器|目录选择)/u }).last();
   const deadline = Date.now() + timeoutMs;
   try {
+    await beforeChoose?.();
     await page.getByRole('option', { name: '选择新项目', exact: true }).click({ timeout: timeoutMs });
     while (Date.now() < deadline) {
       if (duplicate) throw new Error('One project selection sent multiple chooser requests.');
@@ -116,8 +118,7 @@ export async function verifyNativeProjectJourney({ page, directory, driveDialog,
     const label = directory.split(/[\\/]/u).filter(Boolean).at(-1) || directory;
     assert.notEqual(before, label, 'Choose a folder whose label differs from the initial workspace.');
     for (const action of ['select', 'cancel']) {
-      await beforeChoose?.();
-      await chooseFromHome({ page, directory, action, driveDialog, timeoutMs });
+      await chooseFromHome({ page, directory, action, driveDialog, beforeChoose, timeoutMs });
       await expect(row).toHaveText(label, { timeout: timeoutMs });
     }
     const sessionId = await createAndReadSession(page, directory, timeoutMs);

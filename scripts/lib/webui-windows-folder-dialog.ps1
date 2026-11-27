@@ -5,9 +5,13 @@ param(
     [Parameter(Mandatory)][int]$LauncherPid,
     [Parameter(Mandatory)][string]$LauncherEntry,
     [Parameter(Mandatory)][ValidateSet('baseline', 'select', 'cancel')][string]$Action,
+    [int]$BrowserPid,
     [string]$Directory
 )
 $ErrorActionPreference = 'Stop'
+if ($Action -eq 'baseline' -and $BrowserPid -le 0) {
+    throw 'Browser foreground precondition requires the PID of the tested browser.'
+}
 if ($Action -eq 'select' -and ($Directory -notmatch '^(?:[A-Za-z]:[\\/]|\\\\)' -or -not [IO.Directory]::Exists($Directory))) {
     throw 'The selected test directory must be an existing absolute path.'
 }
@@ -62,9 +66,12 @@ public static class WebuiTestDesktop {
         GetClassName(hwnd, name, name.Capacity);
         return name.ToString();
     }
-    public static bool OwnsDialog(IntPtr hwnd, uint expected) {
+    public static uint WindowProcessId(IntPtr hwnd) {
         uint pid;
-        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out pid) != 0 && pid == expected && Class(hwnd) == "#32770";
+        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out pid) != 0 ? pid : 0u;
+    }
+    public static bool OwnsDialog(IntPtr hwnd, uint expected) {
+        return WindowProcessId(hwnd) == expected && Class(hwnd) == "#32770";
     }
     public static bool HasShellControls(IntPtr dialog) {
         bool found = false;
@@ -227,7 +234,17 @@ while ($clock.Elapsed.TotalSeconds -lt 20) {
     })
     if ($Action -eq 'baseline') {
         if ($visible.Count -gt 0) { throw 'The installed launcher already owns a visible dialog before the project selection.' }
-        return
+        $activation = [Diagnostics.Stopwatch]::StartNew()
+        do {
+            $foreground = [WebuiTestDesktop]::GetForegroundWindow()
+            $owner = [WebuiTestDesktop]::WindowProcessId($foreground)
+            if ($owner -eq $BrowserPid) {
+                Write-Output "Project selection precondition: browser PID $BrowserPid owns foreground HWND $foreground."
+                return
+            }
+            Start-Sleep -Milliseconds 50
+        } while ($activation.ElapsedMilliseconds -lt 3000)
+        throw "Browser foreground precondition failed before the chooser click: expected PID $BrowserPid, last foreground HWND $foreground owned by PID $owner."
     }
     if ($visible.Count -gt 1) { throw 'The installed launcher owns multiple visible Shell dialogs; the chooser is ambiguous.' }
     if ($visible.Count -eq 1) {

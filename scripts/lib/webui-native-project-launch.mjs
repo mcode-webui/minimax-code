@@ -285,6 +285,20 @@ function startBackgroundCommand(installed, work, port, miniappPort, entry) {
   };
 }
 
+async function readBrowserPid(context) {
+  const session = await context.browser().newBrowserCDPSession();
+  try {
+    const { processInfo } = await session.send('SystemInfo.getProcessInfo');
+    const browsers = processInfo.filter(({ type }) => type === 'browser');
+    if (browsers.length !== 1 || !Number.isSafeInteger(browsers[0].id) || browsers[0].id <= 0) {
+      throw new Error('The isolated browser did not report one browser process PID.');
+    }
+    return browsers[0].id;
+  } finally {
+    await session.detach();
+  }
+}
+
 export async function launchNativeProjectBrowser({ installed, work, port, miniappPort, entry = 'terminal' }) {
   const hosted = process.env.GITHUB_ACTIONS === 'true' && process.env.RUNNER_ENVIRONMENT === 'github-hosted';
   if (process.platform !== 'win32' || (!hosted && process.env.WEBUI_TEST_DISPOSABLE_DESKTOP !== '1')) {
@@ -312,6 +326,7 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
     const actualProfile = await version.locator('#profile_path').innerText({ timeout: 10_000 });
     if (path.relative(profile, path.dirname(actualProfile)) !== '') throw new Error('The browser did not open in the test profile.');
     await version.close();
+    const browserPid = await readBrowserPid(context);
     console.log(`Verified the isolated profile of the default HTTP browser (${path.basename(executable)}).`);
     if (entry !== 'terminal') {
       launcher = startBackgroundCommand(installed, work, port, miniappPort, entry);
@@ -322,7 +337,7 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
       catch { throw new Error(`Could not open the ${entry} page supplied by the background launcher.`); }
       await page.bringToFront();
       console.log(`Opened the installed background launcher through the ${entry} entry in a fresh browser profile.`);
-      return { page, launcherPid: launcher.pid, close };
+      return { page, launcherPid: launcher.pid, browserPid, close };
     }
     launcher = startTerminalDriver(installed, work, port, miniappPort);
     const launcherPid = await launcher.launcherPid();
@@ -334,7 +349,7 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
       const page = context.pages().find((tab) => tab.url().startsWith(origin + '/'));
       if (page) {
         console.log('Observed the WebUI tab automatically opened by the launcher.');
-        return { page, launcherPid, close };
+        return { page, launcherPid, browserPid, close };
       }
       await delay(100);
     } while (Date.now() < deadline);

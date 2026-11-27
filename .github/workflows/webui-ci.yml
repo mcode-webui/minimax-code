@@ -53,6 +53,9 @@ jobs:
         with:
           node-version: "24"
           cache: pnpm
+      - name: Verify the public source inventory on the clean checkout
+        if: runner.os == 'Linux' && matrix.lane.name == 'checks'
+        run: pnpm check:source
       - run: pnpm install --frozen-lockfile
       - name: Check WebUI types
         if: matrix.lane.name == 'checks'

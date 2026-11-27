@@ -237,31 +237,50 @@ async function availablePort() {
 }
 
 async function verifyWindowsProjectSelection(installed) {
+  // Each entry gets a fresh browser, launcher and project. A broken entry must
+  // neither borrow another entry's pairing nor prevent the others from running.
+  const failures = [];
+  for (const entry of ["terminal", "manual", "desktop-handoff"]) {
+    console.log(`Checking Windows project selection from ${entry}.`);
+    try {
+      await verifyWindowsProjectEntry(installed, entry);
+    } catch (error) {
+      failures.push(`${entry}: ${error.message}`);
+      console.error(`Windows ${entry} project selection failed: ${error.message}`);
+    }
+  }
+  if (failures.length) throw new Error(`Windows project selection failed:\n${failures.join("\n")}`);
+}
+
+async function verifyWindowsProjectEntry(installed, entry) {
   const { launchNativeProjectBrowser } = await import("./lib/webui-native-project-launch.mjs");
   const { verifyNativeProjectJourney } = await import("./lib/webui-native-project-journey.mjs");
   const directory = mkdtempSync(path.join(work, "Project 示例 "));
-  const browser = await launchNativeProjectBrowser({ installed, work, port: await availablePort(), miniappPort: await availablePort() });
+  const browser = await launchNativeProjectBrowser({ installed, work, port: await availablePort(), miniappPort: await availablePort(), entry });
+  const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR && path.join(process.env.WEBUI_BROWSER_OUTPUT_DIR, entry);
   const driver = path.join(root, "scripts/lib/webui-windows-folder-dialog.ps1");
-  const pickerWorker = path.join(installed, "bin/native-directory-picker-worker.cjs");
+  const launcherEntry = path.join(installed, "bin/mcode-webui.mjs");
   const driveDialog = async ({ action, signal }) => {
     const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
-      "-LauncherPid", String(browser.launcherPid), "-PickerWorker", pickerWorker, "-Action", action];
+      "-LauncherPid", String(browser.launcherPid), "-LauncherEntry", launcherEntry, "-Action", action];
     if (action === "select") args.push("-Directory", directory);
-    const { stdout } = await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
+    const { stdout } = await promisify(execFile)("powershell.exe", args, {
+      signal, timeout: 45_000, windowsHide: true,
+      env: { ...process.env, WEBUI_BROWSER_OUTPUT_DIR: evidenceDir ?? "" },
+    });
     console.log(stdout.trim());
   };
   await withCleanup(async () => {
-    console.log("Opened the installed launcher's home page in the Windows default browser.");
     try {
-      const result = await verifyNativeProjectJourney({ page: browser.page, directory, driveDialog });
-      console.log(`Windows home project selection passed: native select and cancel, reloaded session ${result.sessionId} under ${result.directory}`);
-      if (process.env.WEBUI_BROWSER_OUTPUT_DIR) {
-        await browser.page.screenshot({ path: path.join(process.env.WEBUI_BROWSER_OUTPUT_DIR, "windows-project-session.png"), timeout: 5000 })
+      const result = await verifyNativeProjectJourney({
+        page: browser.page, directory, driveDialog, beforeChoose: () => driveDialog({ action: "baseline" }),
+      });
+      console.log(`Windows ${entry} passed: foreground select and cancel; session ${result.sessionId} under ${result.directory} visible before and after reload.`);
+      if (evidenceDir) {
+        await browser.page.screenshot({ path: path.join(evidenceDir, "windows-project-session.png"), timeout: 5000 })
           .catch(() => console.warn("Could not capture the verified project and session."));
       }
     } catch (error) {
-      console.error(`Windows home project selection failed: ${error.message}`);
-      const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;
       if (evidenceDir) {
         // Playwright creates the parent directory when saving a screenshot.
         await browser.page.screenshot({ path: path.join(evidenceDir, "windows-project-picker.png"), timeout: 5000 })

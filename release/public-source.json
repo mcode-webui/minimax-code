@@ -5284,6 +5284,7 @@
     "release/extraction.json",
     "release/public-source.json",
     "release/webui-npm/README.md",
+    "release/webui-npm/bin/desktop-launch.mjs",
     "release/webui-npm/bin/mcode-webui.mjs",
     "release/webui-npm/bin/native-directory-picker-win32.mjs",
     "release/webui-npm/bin/native-directory-picker-worker.cjs",

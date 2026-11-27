@@ -25,6 +25,8 @@ Start the MiniMax Code WebUI. Configuration is read from environment variables:
   WEBUI_HOST          Bind address (default: 127.0.0.1)
   WEBUI_SERVER_PORT   WebUI port (default: 2233)
   WEBUI_MINIAPP_PORT  Mini App port (default: 49152)
+  WEBUI_DESKTOP_HOST  Set to 1 when a local desktop host embeds the page
+  WEBUI_LAUNCH_URL_FILE  Absolute path for the private launch URL handoff
 
   -h, --help          Show help without starting the runtime
   -v, --version       Show the installed version
@@ -35,6 +37,8 @@ if (args.version) {
   console.log(version);
   process.exit(0);
 }
+
+const { browserOpenEnabled, handoffDesktopLaunchUrl } = await import("./desktop-launch.mjs");
 
 // Help/version must not load native modules, access user data or open listeners.
 const {
@@ -75,6 +79,8 @@ const dataDir = process.env.MINIMAX_DATA_DIR?.trim() || path.join(os.homedir(), 
 // a request that did not arrive over loopback presents the per-start
 // credential, so the printed URL carries it.
 const bindHost = process.env.WEBUI_HOST?.trim() || "127.0.0.1";
+const desktopHost = process.env.WEBUI_DESKTOP_HOST?.trim() === "1";
+const launchUrlFile = process.env.WEBUI_LAUNCH_URL_FILE?.trim() || undefined;
 process.env.MAVIS_BUILTIN_AGENTS_V2_DIR ??= path.join(packageRoot, "assets/agents");
 process.env.MAVIS_BUILTIN_AGENTS_DIR ??= path.join(packageRoot, "assets/agents");
 
@@ -261,7 +267,8 @@ await browser.initialize();
 const { nativeDirectoryPickerEligible, createNativeDirectoryPicker, nativeDirectoryLaunchUrl } =
   await import("./native-directory-picker.mjs");
 const nativeDirectoryPicker = nativeDirectoryPickerEligible({
-  platform: process.platform, bindHost, fullAccess: args["full-access"],
+  platform: process.platform, tty: Boolean(process.stdout.isTTY), desktopHost,
+  bindHost, fullAccess: args["full-access"],
 }) ? createNativeDirectoryPicker() : undefined;
 const service = new WebuiService({
   nativeDirectoryPicker,
@@ -320,6 +327,15 @@ try {
   // runtime draws its own Mini App ports from the same range, and a listener
   // that waited would lose this one.
   await miniappProxies.prepare();
+  const handoff = await handoffDesktopLaunchUrl({
+    desktopHost, picker: nativeDirectoryPicker, file: launchUrlFile, browserUrl,
+  });
+  if (handoff.kind === "failed") {
+    console.warn(
+      `[mcode-webui] could not write WEBUI_LAUNCH_URL_FILE (${launchUrlFile}); ` +
+      `the desktop host should use the printed WebUI URL instead: ${handoff.error.message}`,
+    );
+  }
   console.log(`[mcode-webui] WebUI running at ${browserUrl}`);
   console.log(
     `[mcode-webui] Mini App port: ${miniappPort} — forward it, or a Mini App loads blank`,
@@ -411,10 +427,7 @@ function lanAddresses() {
  * browser could not start would turn a convenience into an outage.
  */
 function openBrowser(url, printableUrl = url) {
-  const setting = process.env.WEBUI_OPEN_BROWSER?.trim().toLowerCase();
-  const disabled = setting === "0" || setting === "false" || setting === "no" || setting === "off" || setting === "never";
-  const enabled = setting === undefined || setting === "" ? Boolean(process.stdout.isTTY) : !disabled;
-  if (!enabled) return;
+  if (!browserOpenEnabled(process.env.WEBUI_OPEN_BROWSER, process.stdout.isTTY)) return;
   // Each platform names its launcher differently, and Windows' `start` is a
   // shell builtin, so it needs a command interpreter in front of it. The empty
   // argument is `start`'s window-title slot: without it a quoted URL is read as

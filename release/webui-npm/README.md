@@ -63,4 +63,23 @@ listening. Set `WEBUI_OPEN_BROWSER=0` to keep it from doing that; with the
 variable unset it stays quiet when the command's output is not a terminal, so a
 script, a service supervisor or a CI job never takes over the desktop.
 
+### Desktop host handoff
+
+A local desktop host that embeds the page cannot rely on the system browser to
+open the one-time native-directory grant URL. It can start the launcher with
+`WEBUI_DESKTOP_HOST=1` and `WEBUI_LAUNCH_URL_FILE=<absolute path>`; after the
+server is listening, the launcher writes the page URL with its
+`#nativeDirectoryGrant` fragment to that private file with owner-only access
+(0600 on POSIX; the user-profile ACL on Windows) and does not log it. The host
+opens that URL in its own embedded page, and the existing grant/cookie/browserKey
+pairing completes. The file contains only the URL — no JSON, no extra fields.
+
+`WEBUI_DESKTOP_HOST=1` also lets the native-directory picker be created without
+an interactive TTY; ordinary launches still require one. `WEBUI_OPEN_BROWSER=0`
+still only means "do not open the system browser" and never disables the picker.
+The HTTP route's loopback, Host, Origin, `Sec-Fetch-Site`, cookie, grant and
+browserKey checks are unchanged. If the handoff file cannot be written, the
+launcher logs the path and the host should fall back to the printed bare WebUI
+URL; the native picker may then be unavailable.
+
 The package requires a supported Node.js version shown in its `engines` field.

@@ -52,6 +52,12 @@ same origin use that pairing. After a restart, the launcher tab renews it for
 the browser. A remote or unpaired browser can select a recent project or
 `不需要项目`. Requesting a new folder without a native chooser displays a notice.
 
+A local desktop host that embeds the page can receive the same grant URL through
+`WEBUI_LAUNCH_URL_FILE` when it starts `mcode-webui` with `WEBUI_DESKTOP_HOST=1`.
+The file is owner-only and the grant remains one-time; the route's loopback,
+Host, Origin, cookie, grant and browserKey checks are unchanged. `WEBUI_OPEN_BROWSER`
+still controls only the system browser.
+
 ## Where the pieces live
 
 - The surface is `client/features/composer/ui/WebuiComposer.tsx`, with the editor staging, menus,

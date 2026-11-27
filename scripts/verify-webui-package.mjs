@@ -65,8 +65,26 @@ function packCandidate() {
   return path.join(work, packed[0].filename);
 }
 
+// A locked file or a slow browser shutdown must not replace the error from the user's action.
+async function withCleanup(operation, cleanup) {
+  let failure;
+  try {
+    return await operation();
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    try {
+      await cleanup();
+    } catch (error) {
+      if (!failure) throw error;
+      console.warn(`Additional cleanup failure: ${error.code ?? error.name}`);
+    }
+  }
+}
+
 let child;
-try {
+await withCleanup(async () => {
   const archive = values.archive ? path.resolve(values.archive) : packCandidate();
   const prefix = path.join(work, "install");
   // npm 12 blocks dependency install scripts unless they are named, and the two
@@ -200,14 +218,14 @@ try {
   if (code !== 0 || signal !== null) throw new Error(`Installed WebUI shutdown failed: ${code ?? signal}`);
   child = undefined;
   console.log(`Installed WebUI package PASS: ${manifest.name}@${manifest.version}; archive installation, real runtime startup, HTTP assets, full-access=${values["full-access"]}, the packaged bridge's admission and shutdown`);
-} finally {
+}, async () => {
   if (child?.pid && child.exitCode === null && child.signalCode === null) {
     const exited = once(child, "exit");
     child.kill("SIGKILL");
     await exited;
   }
-  rmSync(work, { recursive: true, force: true });
-}
+  rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
+});
 
 async function availablePort() {
   const probe = createServer();
@@ -223,28 +241,30 @@ async function verifyWindowsProjectSelection(installed) {
   const { verifyNativeProjectJourney } = await import("./lib/webui-native-project-journey.mjs");
   const directory = mkdtempSync(path.join(work, "Project 示例 "));
   const browser = await launchNativeProjectBrowser({ installed, work, port: await availablePort(), miniappPort: await availablePort() });
-  try {
-    const driver = path.join(root, "scripts/lib/webui-windows-folder-dialog.ps1");
-    const pickerScript = path.join(installed, "bin/native-directory-picker.ps1");
-    const driveDialog = async ({ action, signal }) => {
-      const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
-        "-LauncherPid", String(browser.launcherPid), "-PickerScript", pickerScript, "-Action", action];
-      if (action === "select") args.push("-Directory", directory);
-      await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
-    };
-    const result = await verifyNativeProjectJourney({ page: browser.page, directory, driveDialog });
-    console.log(`Windows home project selection passed: native select and cancel, persisted session ${result.sessionId}`);
-  } catch (error) {
-    const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;
-    if (evidenceDir) {
-      mkdirSync(evidenceDir, { recursive: true });
-      await browser.page.screenshot({ path: path.join(evidenceDir, "windows-project-picker.png"), timeout: 5000 })
-        .catch(() => console.warn("Could not capture the isolated WebUI page."));
+  const driver = path.join(root, "scripts/lib/webui-windows-folder-dialog.ps1");
+  const pickerScript = path.join(installed, "bin/native-directory-picker.ps1");
+  const driveDialog = async ({ action, signal }) => {
+    const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
+      "-LauncherPid", String(browser.launcherPid), "-PickerScript", pickerScript, "-Action", action];
+    if (action === "select") args.push("-Directory", directory);
+    await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
+  };
+  await withCleanup(async () => {
+    console.log("Opened the installed launcher's home page in the Windows default browser.");
+    try {
+      const result = await verifyNativeProjectJourney({ page: browser.page, directory, driveDialog });
+      console.log(`Windows home project selection passed: native select and cancel, persisted session ${result.sessionId}`);
+    } catch (error) {
+      console.error(`Windows home project selection failed: ${error.message}`);
+      const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;
+      if (evidenceDir) {
+        // Playwright creates the parent directory when saving a screenshot.
+        await browser.page.screenshot({ path: path.join(evidenceDir, "windows-project-picker.png"), timeout: 5000 })
+          .catch(() => console.warn("Could not capture the isolated WebUI page."));
+      }
+      throw error;
     }
-    throw error;
-  } finally {
-    await browser.close();
-  }
+  }, browser.close);
 }
 
 /**

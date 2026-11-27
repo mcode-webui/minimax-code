@@ -23,6 +23,13 @@ document: [`browser-suite.md`](browser-suite.md).
 | `pnpm test:webui-browser` | Every Playwright spec collected under `packages/webui/test/browser/`: the built client and deterministic in-page transport, plus explicit real-browser bridge and production-host/native-PTY harnesses. The screenshot comparisons run against the font files committed under `packages/webui/test/browser/fonts/`, so their result does not depend on the fonts the machine has installed | Behaviour change in the built bundle, a real bridge path, or native lifecycle |
 | `pnpm check:source` | `release/public-source.json` lists exactly the delivered files | A new, moved or deleted file without inventory regeneration |
 
+To check a specific npm release, pass its tarball to `node scripts/verify-webui-package.mjs --archive <file.tgz>`.
+On Windows the installed launcher opens its default Edge or Chrome browser. The gate chooses a new
+folder from the home page, cancels a second selection, creates a session, then reloads and finds the
+session under the selected directory. The browser uses a temporary per-user profile policy during
+the check. Outside a GitHub-hosted Windows runner, use a disposable Windows desktop account and set
+`WEBUI_TEST_DISPOSABLE_DESKTOP=1` in that account.
+
 `pnpm check:webui-dependency` reads the resolved source graph; `pnpm check:webui-boundary` reads the
 combined esbuild metafile. The dependency check enforces import direction, including type-only edges,
 while the boundary check validates the aggregate build inputs and artifact integrity. Because the

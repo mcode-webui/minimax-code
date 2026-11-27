@@ -80,7 +80,8 @@ if ((Get-ItemPropertyValue -LiteralPath $userKey -Name UserDataDir) -cne $env:WE
 `, env);
     return restore;
   } catch (error) {
-    restore();
+    try { restore(); }
+    catch (cleanupError) { console.warn('Browser policy cleanup also failed:', cleanupError.message); }
     throw error;
   }
 }
@@ -90,7 +91,9 @@ function startInstalledCommand(installed, work, port, miniappPort) {
   const shimDirectory = [path.join(modules, '.bin'), path.dirname(modules)]
     .find((dir) => existsSync(path.join(dir, 'mcode-webui.cmd')));
   if (!shimDirectory) throw new Error('npm did not install a Windows mcode-webui command shim.');
-  const { spawn } = createRequire(path.join(installed, 'package.json'))('node-pty');
+  // Windows keeps the driver's loaded native DLL mapped until this verifier exits.
+  // Use the checkout's test driver so the temporary npm installation can be removed.
+  const { spawn } = createRequire(new URL('../../packages/webui/package.json', import.meta.url))('node-pty');
   const env = {
     ...process.env, MINIMAX_DATA_DIR: path.join(work, 'native-data'), WEBUI_HOST: '127.0.0.1',
     WEBUI_SERVER_PORT: String(port), WEBUI_MINIAPP_PORT: String(miniappPort), WEBUI_OPEN_BROWSER: '',
@@ -112,17 +115,23 @@ function startInstalledCommand(installed, work, port, miniappPort) {
       term.write('\x03');
       await Promise.race([exited, delay(2000, undefined, { ref: false })]);
       if (!exit) {
-        term.kill();
+        // node-pty's kill() tries to attach to a console which Ctrl+C may already
+        // have closed. Stop any remaining processes in this launcher's tree.
+        const result = spawnSync(path.join(process.env.SystemRoot, 'System32', 'taskkill.exe'),
+          ['/T', '/F', '/PID', String(term.pid), '/FI', 'IMAGENAME eq cmd.exe'], {
+            stdio: 'ignore', windowsHide: true, timeout: 5000,
+          });
         await Promise.race([exited, delay(5000, undefined, { ref: false })]);
-        if (!exit) throw new Error('Could not stop the test launcher.');
+        if (!exit) throw result.error ?? new Error(`Could not stop the test launcher (taskkill exit ${result.status}).`);
       }
     },
   };
 }
 
 export async function launchNativeProjectBrowser({ installed, work, port, miniappPort }) {
-  if (process.platform !== 'win32' || process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_ENVIRONMENT !== 'github-hosted') {
-    throw new Error('The Windows native project-selection gate requires a disposable GitHub-hosted Windows desktop.');
+  const hosted = process.env.GITHUB_ACTIONS === 'true' && process.env.RUNNER_ENVIRONMENT === 'github-hosted';
+  if (process.platform !== 'win32' || (!hosted && process.env.WEBUI_TEST_DISPOSABLE_DESKTOP !== '1')) {
+    throw new Error('Run the Windows project-selection gate on a hosted Windows runner or set WEBUI_TEST_DISPOSABLE_DESKTOP=1 in a disposable Windows desktop account.');
   }
   const { executable, policy, versionUrl } = defaultHttpBrowser();
   const profile = mkdtempSync(path.join(work, 'native-browser-'));
@@ -144,18 +153,24 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
     const actualProfile = await version.locator('#profile_path').innerText({ timeout: 10_000 });
     if (path.relative(profile, path.dirname(actualProfile)) !== '') throw new Error('The browser did not open in the test profile.');
     await version.close();
+    console.log(`Verified the isolated profile of the default HTTP browser (${path.basename(executable)}).`);
     terminal = startInstalledCommand(installed, work, port, miniappPort);
+    console.log('Started the installed mcode-webui command in a Windows terminal.');
     const origin = `http://127.0.0.1:${port}`;
     const deadline = Date.now() + 60_000;
     do {
       terminal.assertRunning();
       const page = context.pages().find((tab) => tab.url().startsWith(origin + '/'));
-      if (page) return { page, launcherPid: terminal.pid, close };
+      if (page) {
+        console.log('Observed the WebUI tab automatically opened by the launcher.');
+        return { page, launcherPid: terminal.pid, close };
+      }
       await delay(100);
     } while (Date.now() < deadline);
     throw new Error('The installed mcode-webui command did not open a tab in the isolated default browser.');
   } catch (error) {
-    await close();
+    try { await close(); }
+    catch (cleanupError) { console.warn('Launcher cleanup also failed:', cleanupError.message); }
     throw error;
   }
 }

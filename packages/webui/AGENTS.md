@@ -124,13 +124,25 @@ does not make it publishable.
 
 ## Verification
 
-Run only the smallest gates that directly cover the changed files and behavior; name them when you
+**Green requires the real user workflow.** For every WebUI acceptance decision and gate, start
+from the entry point users actually use on the candidate build. Perform the action through the
+production code and verify the observable result where the user or downstream consumer receives
+it. Exercise the workflow on each platform covered by the claim. For example, accepting the
+Windows project picker requires launching the installed WebUI on Windows, choosing a folder from
+the home page in the actual system dialog, and confirming the new session uses that folder.
+
+Mocks, stubs, intercepted responses and fixture-generated results may help diagnose components.
+They must never count toward a green gate or acceptance result. If a required workflow fails,
+report failure. If it was skipped, simulated or could not run, report it as unverified and keep
+the gate non-passing. Record the candidate, platform, entry point and observed result for each pass.
+
+Use the table below to select the smallest supporting checks for the change. Name them in your
 report. Do not run aggregate or full WebUI gates by default. The latest direct user instruction
 overrides older repository or skill wording that asks for broader verification. Run a full gate only
 when the user explicitly requests it.
 
-**Reuse passing gate evidence.** Before starting a gate, check whether it has already passed for the
-same commit, gate and platform. Run each applicable gate once for unchanged inputs; after a passing
+**Reuse passing gate evidence.** Check whether the required workflow already passed for the same
+commit, build, gate and platform. Run each applicable gate once for unchanged inputs; after a passing
 `pnpm verify`, do not rerun its constituent gates just for reassurance. Rerun only when relevant
 source, configuration or generated inputs have changed, the prior result failed or did not finish,
 the needed platform is not covered, or CI requires a result for a newer commit. When only one gate
@@ -169,10 +181,9 @@ carry what a linter would otherwise catch.
 - **Register every new Vitest file** in the `webui` group of `test/vitest-suites.json`. It is an
   explicit list, not a glob: an unregistered file never runs.
 - **No DOM framework.** Do not add jsdom, happy-dom or `@testing-library/*`, and do not change the
-  repository-root `vitest.oss.config.mjs` (`environment: "node"` is shared by every suite). Interaction
-  coverage takes two shapes: extract the transitions into exported pure functions and test those, and
-  assert each render branch through `renderToStaticMarkup`. What SSR cannot reach belongs in the
-  untested-boundary section of your report.
+  repository-root `vitest.oss.config.mjs` (`environment: "node"` is shared by every suite). In unit
+  tests, exercise pure transitions and assert render branches through `renderToStaticMarkup`.
+  Verify the interaction itself through the real user entry point as required under Verification.
 - **Assert the observable outcome.** An assertion that a testid string exists survives every mutation
   and reads as manufactured coverage. When you touch a validator, pin its message text with
   `assert.deepEqual` — `webui-service.test.ts` checks error codes only, so a changed message or a

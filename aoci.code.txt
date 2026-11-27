@@ -4507,7 +4507,7 @@ virtual-terminal.ts[SE4T]: F:Models a virtual terminal screen for testing. | R:-
 virtual-terminal.ts[SE4M]: F:Implements a virtual terminal adapter. | R:- | A:- | S:-
 
 ===/<repository>/packages/webui/===
-AGENTS.md[SE4M]: F:Documents WebUI architecture constraints, development workflows, and verification gates. | R:- | A:- | S:-
+AGENTS.md[SQ4M]: F:Defines WebUI development boundaries, test conventions and the real user workflow required for acceptance and green gates. | R:code:packages/webui/docs/verification/gates.md | A:- | S:A simulated or skipped workflow stays unverified even if its supporting checks passed.
 LICENSE[SE4T]: F:Contains the WebUI package license. | R:- | A:- | S:-
 README.md[SE4M]: F:Describes the WebUI package and how to run it. | R:- | A:- | S:-
 package.json[SE4T]: F:Declares WebUI scripts, workspace dependencies and build/test tooling including the public tsx loader. | R:code:package.json | A:- | S:The published package asks for node-abi by name because the newest version in prebuild-install's range has no published tarball.
@@ -4603,7 +4603,7 @@ remote-control.md[SE4T]: F:Documents the WebUI remote-control link. | R:- | A:- 
 ===/<repository>/packages/webui/docs/verification/===
 browser-suite.md[SE4M]: F:Describes browser verification against the built client, its determinism and its evidence levels. | R:- | A:- | S:The committed typeface makes the baseline bytes reproducible, but the browser mode does not: macOS compares windowed Chromium, so a headless macOS baseline differs by antialiased glyph edges.
 coverage-review.md[SE4T]: F:Reviews WebUI test coverage. | R:- | A:- | S:-
-gates.md[SE4M]: F:Documents WebUI verification gates and evidence requirements. | R:- | A:- | S:-
+gates.md[SE4M]: F:Describes WebUI verification and the evidence each suite supplies. | R:code:scripts/verify-webui-package.mjs | A:- | S:Windows package acceptance follows the default browser into native folder selection and reads back the session.
 
 ===/<repository>/packages/webui/scripts/===
 host-event-catalogue.mjs[SE4T]: F:Collects host event types for the WebUI event catalogue. | R:- | A:- | S:-
@@ -5770,7 +5770,7 @@ package.json[FV4T]: F:Declares the WebUI npm release version, launcher mapping, 
 ===/<repository>/release/webui-npm/bin/===
 mcode-webui.mjs[EG6L]: F:Starts the packaged WebUI runtime and listeners, opens the local browser with eligible desktop capabilities and coordinates shutdown. | R:code:release/webui-npm/bin/native-directory-picker.mjs | A:- | S:Only the automatically opened URL carries the native grant. Printed access URLs omit it.
 native-directory-picker.mjs[IU5S]: F:Grants eligible desktop launches a cancellable system folder picker, validates its result and chooses an accessible starting folder for Zenity. | R:code:release/webui-npm/bin/native-directory-picker.ps1 | A:createNativeDirectoryPicker,nativeDirectoryLaunchUrl,nativeDirectoryPickerEligible | S:Zenity needs a trailing slash to override stale portal history. Distinguish GTK dismissal from startup failure.
-native-directory-picker.ps1[IS5T]: F:Runs the fixed interactive Windows folder chooser and emits the selected directory or a cancellation result. | R:code:release/webui-npm/bin/native-directory-picker.mjs | A:- | S:Decline a noninteractive session; the fixed program does not evaluate browser-supplied text.
+native-directory-picker.ps1[IS5T]: F:Compiles the Windows Shell folder picker in the interactive PowerShell process and emits selected or cancelled JSON. | R:code:release/webui-npm/bin/native-directory-picker.mjs | A:- | S:Decline noninteractive sessions. Browser input never becomes PowerShell or C# source.
 
 ===/<repository>/schemas/plugins/===
 app-v1.schema.json[SE4T]: F:Defines the v1 plugin app schema. | R:- | A:- | S:-
@@ -5808,7 +5808,7 @@ run-webui-server.mjs[EV4M]: F:Boots the WebUI development service, browser bridg
 source-candidate.mjs[SE4T]: F:Validates an incoming source candidate. | R:- | A:- | S:-
 source-inventory.mjs[SE4M]: F:Generates and checks the public source inventory. | R:- | A:- | S:-
 verify-cli-release.mjs[SE4T]: F:Verifies packaged CLI release artifacts. | R:- | A:- | S:-
-verify-webui-package.mjs[TV4M]: F:Packs and installs the WebUI distribution in isolation, then verifies SDK exports, launcher startup, HTTP assets and browser bridge admission. | R:code:scripts/package-webui-npm.mjs,code:release/webui-npm/package.json | A:--package-dir, --full-access | S:Resolve the Feishu SDK from the installed server directory to avoid using workspace dependencies.
+verify-webui-package.mjs[TV5M]: F:Installs a WebUI npm archive and exercises the launcher, Windows project selection, SDK, HTTP assets, bridge admission and shutdown. | R:code:scripts/package-webui-npm.mjs,code:scripts/lib/webui-native-project-journey.mjs | A:--archive, --package-dir, --full-access | S:Verify the launcher-opened home page and persisted session after reload. Keep the original failure through cleanup.
 verify.mjs[SE4M]: F:Runs repository verification gates. | R:- | A:- | S:-
 
 ===/<repository>/scripts/lib/===
@@ -5846,6 +5846,9 @@ webui-publication.d.mts[SE4S]: F:Declares helpers for WebUI package publication.
 webui-publication.mjs[SE4M]: F:Implements validation and preparation for WebUI publication. | R:- | A:- | S:-
 webui-raw-control-budget.json[SE4T]: F:Tracks allowances for raw WebUI controls. | R:- | A:- | S:-
 workspace-sources-plugin.mjs[SE4T]: F:Resolves workspace sources during bundling. | R:- | A:- | S:-
+webui-native-project-journey.mjs[TV5S]: F:Exercises home project selection, cancellation and persisted session grouping in a launcher-opened browser. | R:code:scripts/verify-webui-package.mjs | A:verifyNativeProjectJourney | S:Requires both OS interaction and the actual HTTP response. Reload the page to read the saved session.
+webui-native-project-launch.mjs[TV5S]: F:Starts the installed Windows npm command in a terminal and supplies its automatically opened browser tab for acceptance. | R:code:scripts/verify-webui-package.mjs | A:launchNativeProjectBrowser | S:Temporarily directs the default HTTP handler to an isolated profile on a disposable desktop. Restore the original policy on exit.
+webui-windows-folder-dialog.ps1[TV5M]: F:Operates the installed Windows picker dialog to select a directory or cancel during package verification. | R:code:scripts/verify-webui-package.mjs,code:release/webui-npm/bin/native-directory-picker.ps1 | A:LauncherPid, PickerScript, Action, Directory | S:Match the launcher and encoded script before addressing its Shell window. Read back the navigated directory and capture only that window.
 
 ===/<repository>/scripts/perf/===
 config.json[SE4T]: F:Configures performance measurements. | R:- | A:- | S:-

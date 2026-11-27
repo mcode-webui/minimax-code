@@ -262,7 +262,7 @@ async function verifyWindowsProjectEntry(installed, entry) {
   const launcherEntry = path.join(installed, "bin/mcode-webui.mjs");
   const driveDialog = async ({ action, signal }) => {
     const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
-      "-LauncherPid", String(browser.launcherPid), "-LauncherEntry", launcherEntry, "-Action", action];
+      "-LauncherPid", String(browser.launcherPid), "-LauncherEntry", launcherEntry, "-BrowserPid", String(browser.browserPid), "-Action", action];
     if (action === "select") args.push("-Directory", directory);
     const { stdout } = await promisify(execFile)("powershell.exe", args, {
       signal, timeout: 45_000, windowsHide: true,

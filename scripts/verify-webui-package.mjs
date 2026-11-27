@@ -1,16 +1,20 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import spawnCommand from "cross-spawn";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArgs } from "node:util";
+import { parseArgs, promisify } from "node:util";
 import { once } from "node:events";
 import { request as httpRequest } from "node:http";
 import { WebSocket } from "ws";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const { values } = parseArgs({ options: { "package-dir": { type: "string" }, "full-access": { type: "boolean", default: false } } });
+const { values } = parseArgs({ options: {
+  "package-dir": { type: "string" }, archive: { type: "string" }, "full-access": { type: "boolean", default: false },
+} });
+if (values.archive && values["package-dir"]) throw new Error("Choose one of --archive or --package-dir");
 
 /**
  * The two extension identities the packaged host is configured with.
@@ -43,8 +47,7 @@ function run(command, args, options = {}) {
   if (result.error || result.status !== 0) throw new Error(`${path.basename(command)} failed: ${result.error?.message ?? result.stderr ?? result.signal}`);
   return result.stdout;
 }
-let child;
-try {
+function packCandidate() {
   const packageDir = values["package-dir"] ? path.resolve(values["package-dir"]) : path.join(work, "package");
   // The package is built with the store's public key, so it carries the
   // published identity it admits. That is the point of this acceptance: the
@@ -54,16 +57,17 @@ try {
       env: { ...process.env, MAVIS_BROWSER_STORE_CHROME_PUBLIC_KEY: STORE_PUBLIC_KEY },
     });
   }
-  const publishedIds = readPublishedIds(path.join(packageDir, "bin", "store-extension-ids.json"));
-  const publishedId = publishedIds.chrome;
-  if (!publishedId) {
-    throw new Error("The installed WebUI package carries no published extension identity; a published package is built with the store's public key");
-  }
   // `npm pack --json` answered with an array before npm 12 and with an object
   // keyed by package name after it, so both shapes are read here.
   const packOutput = JSON.parse(run(npm, ["pack", packageDir, "--json", "--pack-destination", work]));
   const packed = Array.isArray(packOutput) ? packOutput : Object.values(packOutput);
   if (packed.length !== 1) throw new Error(`Expected exactly one WebUI npm archive, got ${packed.length}`);
+  return path.join(work, packed[0].filename);
+}
+
+let child;
+try {
+  const archive = values.archive ? path.resolve(values.archive) : packCandidate();
   const prefix = path.join(work, "install");
   // npm 12 blocks dependency install scripts unless they are named, and the two
   // native modules this package needs are built by those scripts. A global
@@ -71,7 +75,6 @@ try {
   // project-scoped install — so the acceptance installs the way a person must,
   // which is also the only way the startup below can be exercised at all.
   const npmMajor = Number(run(npm, ["--version"]).trim().split(".")[0]);
-  const archive = path.join(work, packed[0].filename);
   const allowScripts = "better-sqlite3,bufferutil,node-pty,utf-8-validate";
   run(
     npm,
@@ -79,8 +82,16 @@ try {
       ? ["install", "-g", "--prefix", prefix, "--no-audit", "--no-fund", `--allow-scripts=${allowScripts}`, archive]
       : ["install", "--prefix", prefix, "--no-audit", "--no-fund", archive],
   );
-  const manifest = JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf8"));
-  const installed = resolveInstalledPackage(prefix, manifest.name);
+  const { name } = JSON.parse(readFileSync(path.join(root, "release/webui-npm/package.json"), "utf8"));
+  const installed = resolveInstalledPackage(prefix, name);
+  const manifest = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"));
+  const publishedId = readPublishedIds(path.join(installed, "bin", "store-extension-ids.json")).chrome;
+  if (!publishedId) throw new Error("The installed WebUI package carries no published extension identity");
+  if (process.platform === "win32") {
+    const digest = createHash("sha512").update(readFileSync(archive)).digest("base64");
+    console.log(`Testing installed ${manifest.name}@${manifest.version} on Windows, sha512-${digest}`);
+    await verifyWindowsProjectSelection(installed);
+  }
   run(process.execPath, ["--input-type=module", "-e",
     `const sdk = await import("@larksuiteoapi/node-sdk");
     for (const name of ["WSClient", "EventDispatcher"]) {
@@ -205,6 +216,35 @@ async function availablePort() {
   const port = probe.address().port;
   await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
   return port;
+}
+
+async function verifyWindowsProjectSelection(installed) {
+  const { launchNativeProjectBrowser } = await import("./lib/webui-native-project-launch.mjs");
+  const { verifyNativeProjectJourney } = await import("./lib/webui-native-project-journey.mjs");
+  const directory = mkdtempSync(path.join(work, "Project 示例 "));
+  const browser = await launchNativeProjectBrowser({ installed, work, port: await availablePort(), miniappPort: await availablePort() });
+  try {
+    const driver = path.join(root, "scripts/lib/webui-windows-folder-dialog.ps1");
+    const pickerScript = path.join(installed, "bin/native-directory-picker.ps1");
+    const driveDialog = async ({ action, signal }) => {
+      const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
+        "-LauncherPid", String(browser.launcherPid), "-PickerScript", pickerScript, "-Action", action];
+      if (action === "select") args.push("-Directory", directory);
+      await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
+    };
+    const result = await verifyNativeProjectJourney({ page: browser.page, directory, driveDialog });
+    console.log(`Windows home project selection passed: native select and cancel, persisted session ${result.sessionId}`);
+  } catch (error) {
+    const evidenceDir = process.env.WEBUI_BROWSER_OUTPUT_DIR;
+    if (evidenceDir) {
+      mkdirSync(evidenceDir, { recursive: true });
+      await browser.page.screenshot({ path: path.join(evidenceDir, "windows-project-picker.png"), timeout: 5000 })
+        .catch(() => console.warn("Could not capture the isolated WebUI page."));
+    }
+    throw error;
+  } finally {
+    await browser.close();
+  }
 }
 
 /**

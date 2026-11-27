@@ -1,7 +1,9 @@
-import { fork, spawnSync } from 'node:child_process';
+import { fork, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
+import { readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { createInterface } from 'node:readline';
 import { setTimeout as delay } from 'node:timers/promises';
 
 function powershell(script, env = {}) {
@@ -85,20 +87,27 @@ if ((Get-ItemPropertyValue -LiteralPath $userKey -Name UserDataDir) -cne $env:WE
   }
 }
 
-function startInstalledCommand(installed, work, port, miniappPort) {
+function launcherEnvironment(installed, work, port, miniappPort) {
   const modules = path.resolve(installed, '..', '..');
   const shimDirectory = [path.join(modules, '.bin'), path.dirname(modules)]
     .find((dir) => existsSync(path.join(dir, 'mcode-webui.cmd')));
   if (!shimDirectory) throw new Error('npm did not install a Windows mcode-webui command shim.');
-  // Windows keeps the driver's loaded native DLL mapped until this verifier exits.
-  // Use the checkout's test driver so the temporary npm installation can be removed.
-  const { spawn } = createRequire(new URL('../../packages/webui/package.json', import.meta.url))('node-pty');
   const env = {
     ...process.env, MINIMAX_DATA_DIR: path.join(work, 'native-data'), WEBUI_HOST: '127.0.0.1',
     WEBUI_SERVER_PORT: String(port), WEBUI_MINIAPP_PORT: String(miniappPort), WEBUI_OPEN_BROWSER: '',
   };
+  delete env.WEBUI_DESKTOP_HOST;
+  delete env.WEBUI_LAUNCH_URL_FILE;
   const pathKey = Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'Path';
   env[pathKey] = shimDirectory + path.delimiter + (env[pathKey] ?? '');
+  return env;
+}
+
+function startInstalledCommand(installed, work, port, miniappPort) {
+  // Windows keeps the driver's loaded native DLL mapped until this verifier exits.
+  // Use the checkout's test driver so the temporary npm installation can be removed.
+  const { spawn } = createRequire(new URL('../../packages/webui/package.json', import.meta.url))('node-pty');
+  const env = launcherEnvironment(installed, work, port, miniappPort);
   const term = spawn(path.join(process.env.SystemRoot, 'System32', 'cmd.exe'), ['/d', '/c', 'mcode-webui.cmd'], {
     cwd: work, env, cols: 120, rows: 30,
   });
@@ -221,20 +230,76 @@ function startTerminalDriver(installed, work, port, miniappPort) {
   };
 }
 
-export async function launchNativeProjectBrowser({ installed, work, port, miniappPort }) {
+// A desktop host starts the installed command without a console and consumes its private file.
+// A person starting the same command in the background manually opens the address it prints.
+function startBackgroundCommand(installed, work, port, miniappPort, entry) {
+  const env = launcherEnvironment(installed, work, port, miniappPort);
+  env.MINIMAX_DATA_DIR = mkdtempSync(path.join(work, 'background-data-'));
+  const handoffFile = path.join(env.MINIMAX_DATA_DIR, 'launch-url');
+  if (entry === 'desktop-handoff') {
+    env.WEBUI_DESKTOP_HOST = '1';
+    env.WEBUI_LAUNCH_URL_FILE = handoffFile;
+    env.WEBUI_OPEN_BROWSER = '0';
+  }
+  const child = spawn(path.join(process.env.SystemRoot, 'System32', 'cmd.exe'), ['/d', '/c', 'mcode-webui.cmd'], {
+    cwd: work, env, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true,
+  });
+  const printed = Promise.withResolvers();
+  const exited = new Promise((resolve) => child.once('close', resolve));
+  child.once('error', () => printed.resolve(undefined));
+  child.once('exit', () => printed.resolve(undefined));
+  const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
+  lines.on('line', (line) => {
+    const match = /^\[mcode-webui\] WebUI running at (\S+)$/u.exec(line);
+    if (match) printed.resolve(match[1]);
+  });
+  return {
+    pid: child.pid,
+    async pageUrl() {
+      const address = await Promise.race([printed.promise, delay(60_000, undefined, { ref: false })]);
+      if (!address || !URL.canParse(address)) throw new Error('The background launcher did not print a valid access URL.');
+      const url = new URL(address);
+      if (url.origin !== `http://127.0.0.1:${port}` || url.hash) throw new Error('Unexpected origin or private fragment in the printed access URL.');
+      if (entry === 'manual') return address;
+      const handoff = await readFile(handoffFile, 'utf8');
+      if (!URL.canParse(handoff)) throw new Error('The desktop host handoff did not contain a valid URL.');
+      const privateUrl = new URL(handoff);
+      if (privateUrl.origin !== url.origin) throw new Error('The desktop host handoff does not identify its installed launcher.');
+      return handoff;
+    },
+    async close() {
+      try {
+        if (child.pid && child.exitCode === null && child.signalCode === null) {
+          // The npm shim owns the Node launcher and any modal worker beneath it.
+          spawnSync(path.join(process.env.SystemRoot, 'System32', 'taskkill.exe'), ['/T', '/F', '/PID', String(child.pid)], {
+            stdio: 'ignore', windowsHide: true, timeout: 5000,
+          });
+        }
+        const closed = await Promise.race([exited.then(() => true), delay(5000, false, { ref: false })]);
+        if (!closed) throw new Error('The background launcher process tree did not close.');
+      } finally {
+        lines.close();
+        await rm(handoffFile, { force: true });
+      }
+    },
+  };
+}
+
+export async function launchNativeProjectBrowser({ installed, work, port, miniappPort, entry = 'terminal' }) {
   const hosted = process.env.GITHUB_ACTIONS === 'true' && process.env.RUNNER_ENVIRONMENT === 'github-hosted';
   if (process.platform !== 'win32' || (!hosted && process.env.WEBUI_TEST_DISPOSABLE_DESKTOP !== '1')) {
     throw new Error('Run the Windows project-selection gate on a hosted Windows runner or set WEBUI_TEST_DISPOSABLE_DESKTOP=1 in a disposable Windows desktop account.');
   }
+  if (!['terminal', 'desktop-handoff', 'manual'].includes(entry)) throw new Error('Unknown Windows project-selection entry.');
   const { chromium } = await import('@playwright/test');
   const { executable, policy, versionUrl } = defaultHttpBrowser();
   const profile = mkdtempSync(path.join(work, 'native-browser-'));
   const restore = redirectRunnerBrowser(policy, profile);
   let context;
-  let terminal;
+  let launcher;
   async function close() {
     try {
-      await terminal?.close();
+      await launcher?.close();
     } finally {
       try { await context?.close(); }
       finally { restore(); }
@@ -248,13 +313,24 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
     if (path.relative(profile, path.dirname(actualProfile)) !== '') throw new Error('The browser did not open in the test profile.');
     await version.close();
     console.log(`Verified the isolated profile of the default HTTP browser (${path.basename(executable)}).`);
-    terminal = startTerminalDriver(installed, work, port, miniappPort);
-    const launcherPid = await terminal.launcherPid();
+    if (entry !== 'terminal') {
+      launcher = startBackgroundCommand(installed, work, port, miniappPort, entry);
+      const address = await launcher.pageUrl();
+      const page = await context.newPage();
+      // A Playwright navigation error can contain the credential and handoff fragment.
+      try { await page.goto(address, { waitUntil: 'domcontentloaded', timeout: 30_000 }); }
+      catch { throw new Error(`Could not open the ${entry} page supplied by the background launcher.`); }
+      await page.bringToFront();
+      console.log(`Opened the installed background launcher through the ${entry} entry in a fresh browser profile.`);
+      return { page, launcherPid: launcher.pid, close };
+    }
+    launcher = startTerminalDriver(installed, work, port, miniappPort);
+    const launcherPid = await launcher.launcherPid();
     console.log('Started the installed mcode-webui command in a Windows terminal.');
     const origin = `http://127.0.0.1:${port}`;
     const deadline = Date.now() + 60_000;
     do {
-      terminal.assertRunning();
+      launcher.assertRunning();
       const page = context.pages().find((tab) => tab.url().startsWith(origin + '/'));
       if (page) {
         console.log('Observed the WebUI tab automatically opened by the launcher.');

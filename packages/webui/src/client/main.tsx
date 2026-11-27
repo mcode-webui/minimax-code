@@ -20,7 +20,7 @@ import { ArchonPage } from "./shell/ArchonPage.js";
 import { WebuiErrorBoundary } from "./shell/WebuiErrorBoundary.js";
 import { WebuiStartupFallback } from "./shell/StartupFallback.js";
 import { WebuiBrowserCapabilitiesProvider } from "./bindings/browser-capabilities.js";
-import { canPickNativeWorkspaceDirectory, captureNativeDirectoryLaunchGrant, pickNativeWorkspaceDirectory } from "./platform/native-directory-picker.js";
+import { captureNativeDirectoryLaunchGrant, pickNativeWorkspaceDirectory } from "./platform/native-directory-picker.js";
 import { createWebuiBrowserDom } from "./platform/browser-dom.js";
 import { MiniAppStandalone } from "./features/miniapp/ui/MiniAppStandalone.public.js";
 import { WebuiMiniAppWorkflowsProvider } from "./features/miniapp/bindings/use-miniapp-workflows.js";
@@ -327,7 +327,6 @@ const browserCapabilities = {
   dom: createWebuiBrowserDom(globalThis.document, globalThis.window),
   storage: createWebuiBrowserStorage(getWebuiBrowserStorage()),
   nativeDirectoryPicker: {
-    available: canPickNativeWorkspaceDirectory,
     choose: pickNativeWorkspaceDirectory,
   },
   // The runtime's data directory is a fact about this host: the composition

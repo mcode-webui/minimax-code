@@ -597,8 +597,7 @@
     color: var(--text_default_tertiary);
     opacity: 0.55;
   }
-  /* The recent list is a shared dropdown surface; this says only what its
-   * workspace rows need. The directory browser uses the shared dialog shell. */
+  /* Layout for the project menu's recent directories and commands. */
   .webui-workspace-picker-menu {
     display: flex;
     min-width: 220px;

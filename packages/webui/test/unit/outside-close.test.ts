@@ -267,7 +267,7 @@ describe("Mention list — pointerdown outside the composer region closes; Escap
   });
 });
 
-describe("Workspace picker — pointerdown outside its own wrap closes; no keydown listener", () => {
+describe("Workspace picker closes on outside pointerdown and Escape", () => {
   it("closes on pointerdown outside the trigger-and-panel wrap", () => {
     expect(
       evaluateOutsideClose({
@@ -278,7 +278,7 @@ describe("Workspace picker — pointerdown outside its own wrap closes; no keydo
     ).toBe("close");
   });
 
-  it("ignores pointerdown inside the wrap (trigger, 最近 rows, or the browser dialog)", () => {
+  it("ignores pointerdown inside the trigger and menu", () => {
     expect(
       evaluateOutsideClose({
         surface: "workspacePicker",
@@ -288,7 +288,7 @@ describe("Workspace picker — pointerdown outside its own wrap closes; no keydo
     ).toBe("ignore");
   });
 
-  it("is `not-subscribed` for keydown events (Escape was never wired)", () => {
+  it("closes on Escape", () => {
     expect(
       evaluateOutsideClose({
         surface: "workspacePicker",
@@ -296,10 +296,10 @@ describe("Workspace picker — pointerdown outside its own wrap closes; no keydo
         key: "Escape",
         insideContainer: false,
       }),
-    ).toBe("not-subscribed");
+    ).toBe("close");
   });
 
-  it("is `not-subscribed` for mousedown events (pointerdown only)", () => {
+  it("is `not-subscribed` for legacy mousedown events", () => {
     expect(
       evaluateOutsideClose({
         surface: "workspacePicker",
@@ -517,9 +517,10 @@ describe("policy catalogue — exactly the expected subscribed kinds per surface
     ]);
   });
 
-  it("Workspace picker subscribes pointerdown only", () => {
+  it("Workspace picker subscribes pointerdown + keydown", () => {
     expect(WEBUI_OUTSIDE_CLOSE_POLICIES.workspacePicker.subscribedKinds).toEqual([
       "pointerdown",
+      "keydown",
     ]);
   });
 
@@ -538,7 +539,7 @@ describe("policy catalogue — exactly the expected subscribed kinds per surface
   });
 });
 
-describe("onEscape flag — every dropdown flips it on; the directory browser does not", () => {
+describe("onEscape flag for each dropdown", () => {
   it("UserMenu.onEscape is true", () => {
     expect(WEBUI_OUTSIDE_CLOSE_POLICIES.userMenu.onEscape).toBe(true);
   });
@@ -559,8 +560,8 @@ describe("onEscape flag — every dropdown flips it on; the directory browser do
     expect(WEBUI_OUTSIDE_CLOSE_POLICIES.mentionList.onEscape).toBe(true);
   });
 
-  it("WorkspacePicker.onEscape is undefined (no keydown listener)", () => {
-    expect(WEBUI_OUTSIDE_CLOSE_POLICIES.workspacePicker.onEscape).toBeUndefined();
+  it("WorkspacePicker.onEscape is true", () => {
+    expect(WEBUI_OUTSIDE_CLOSE_POLICIES.workspacePicker.onEscape).toBe(true);
   });
 
   it("SlashPopover.onEscape is true", () => {

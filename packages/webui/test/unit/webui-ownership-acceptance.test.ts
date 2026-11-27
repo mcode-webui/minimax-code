@@ -78,7 +78,6 @@ describe("V30 · publication replaced the ledger, and nothing excuses a private 
       "features/account/bindings/use-account-workflows.public.tsx",
       "features/terminal/projection/terminal-size.public.ts",
       "features/sessions/projection/worktree-state.public.ts",
-      "features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx",
     ];
     for (const relative of published) {
       expect(existsSync(`${clientRoot}${relative}`), relative).toBe(true);

@@ -37,7 +37,6 @@ import {
 } from "../../src/client/features/sessions/projection/rail-groups.js";
 import { sessionHash } from "../../src/client/projection/common/router.js";
 import { WebuiSessionTranscript as BaseWebuiSessionTranscript } from "../../src/client/features/transcript/ui/SessionTranscript.js";
-import { WebuiWorkspaceDirectoryBrowser } from "../../src/client/features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.js";
 import {
   WebuiIconContextArchive,
   WebuiIconContextCopy,
@@ -2453,30 +2452,6 @@ describe("WebUI composer app-to-helper seam", () => {
       { name: "main", workspaceDir: "/work/minimax-code", teamModeOff: false },
     ]);
     expect(getState().phase).toBe("done");
-  });
-
-  it("offers a manual absolute-path field when the transport cannot browse directories", () => {
-    // The old picker resolved to "" on any engine without File.path, and the
-    // caller dropped that falsy value — clicking 选择新项目 did nothing at all.
-    // Without browseWorkspaceDirs the popover must show a usable field.
-    const markup = renderToStaticMarkup(
-      createElement(WebuiWorkspaceDirectoryBrowser, {
-        onSelect: () => undefined,
-        onCancel: () => undefined,
-      }),
-    );
-
-    expect(markup).toContain("项目绝对路径");
-    expect(markup).toContain('data-webui-workspace-manual="true"');
-    // The two actions belong to the dialog frame: `WebuiDialogActions` renders
-    // through the footer context, and the frame needs a portal target that a
-    // server render does not have. What the browser owns is handing them to it.
-    const browserSource = readFileSync(
-      new URL("../../src/client/features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.tsx", import.meta.url),
-      "utf8",
-    );
-    expect(browserSource).toContain("<WebuiDialogActions>");
-    expect(browserSource).toContain("使用此目录");
   });
 
   it("migrates the in-flight home turn into the created session and leaves home clean", async () => {

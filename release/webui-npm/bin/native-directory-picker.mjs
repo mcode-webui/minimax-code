@@ -1,11 +1,15 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { accessSync, constants } from 'node:fs';
+import { access, readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
-export function nativeDirectoryPickerEligible({ platform, tty, bindHost, fullAccess, browserSetting }) {
+export function nativeDirectoryPickerEligible({ platform, tty, bindHost, fullAccess, browserSetting, env = process.env }) {
   const setting = browserSetting?.trim().toLowerCase();
-  return platform === 'win32' && tty === true && !fullAccess
+  const desktop = platform === 'win32' || platform === 'darwin'
+    || (platform === 'linux' && Boolean(env.DISPLAY || env.WAYLAND_DISPLAY));
+  return desktop && tty === true && !fullAccess && !env.SSH_CONNECTION && !env.SSH_TTY
     && ['127.0.0.1', '::1'].includes(bindHost)
     && !['0', 'false', 'no', 'off', 'never'].includes(setting);
 }
@@ -16,24 +20,111 @@ export function nativeDirectoryLaunchUrl(url, grant) {
   return result.href;
 }
 
+function isExecutable(file) {
+  try { accessSync(file, constants.X_OK); return true; } catch { return false; }
+}
+
+async function zenityStartingFolder(previous, userHome) {
+  for (const candidate of [previous, userHome]) {
+    if (!candidate || !path.posix.isAbsolute(candidate)) continue;
+    // Zenity treats a filename without the final slash as a child of the starting folder.
+    const folder = candidate.endsWith('/') ? candidate : candidate + '/';
+    let timer;
+    try {
+      // A disconnected share must not hold the chooser's HTTP flight indefinitely.
+      await Promise.race([
+        access(folder, constants.R_OK | constants.X_OK),
+        new Promise((_, reject) => { timer = setTimeout(reject, 1000); }),
+      ]);
+      return folder;
+    } catch { /* Try the next local starting folder. */ }
+    finally { clearTimeout(timer); }
+  }
+  return '/';
+}
+
+function unixDirectoryCommand(platform, env, executable) {
+  if (platform === 'darwin') {
+    // Standard Additions runs the chooser in the owned osascript process.
+    return ['/usr/bin/osascript', ['-e', [
+      'try', 'activate', 'return POSIX path of (choose folder)',
+      'on error number -128', 'return "cancelled"', 'end try',
+    ].join('\n')]];
+  }
+  if (platform !== 'linux') return;
+  const kde = env.XDG_CURRENT_DESKTOP?.split(':').some((name) => name.toLowerCase() === 'kde');
+  for (const program of kde ? ['kdialog', 'zenity'] : ['zenity', 'kdialog']) {
+    // Use the distribution's installed chooser, independent of the project and its PATH.
+    for (const bin of ['/usr/bin', '/run/current-system/sw/bin']) {
+      const file = path.posix.join(bin, program);
+      if (executable(file)) {
+        const args = program === 'zenity' ? ['--file-selection', '--directory'] : ['--getexistingdirectory', '.'];
+        return [file, args];
+      }
+    }
+  }
+}
+
+function directoryResult(platform, code, output, cancelExitCode) {
+  if (platform === 'linux' && code === cancelExitCode && output === '') return { kind: 'cancelled' };
+  if (code !== 0) throw unavailable();
+  if (platform === 'win32') {
+    const result = JSON.parse(output.replace(/^\uFEFF/, '').trim());
+    if (result.kind === 'cancelled') return { kind: 'cancelled' };
+    if (result.kind === 'selected' && typeof result.directory === 'string'
+        && path.win32.isAbsolute(result.directory) && !/[\0\r\n]/.test(result.directory)) {
+      return { kind: 'selected', directory: result.directory };
+    }
+  } else {
+    // Remove just the command's line terminator. Spaces and newlines can belong to a Unix folder name.
+    const directory = output.endsWith('\n') ? output.slice(0, -1) : output;
+    if (platform === 'darwin' && directory === 'cancelled') return { kind: 'cancelled' };
+    if (path.posix.isAbsolute(directory) && !directory.includes('\0')) {
+      // macOS folder aliases include a trailing slash. Match existing project paths, keeping
+      // a separator after significant whitespace so workspaceDir.trim() preserves the folder.
+      const folder = directory.replace(/\/+$/u, '') || '/';
+      return { kind: 'selected', directory: /\s$/u.test(folder) ? folder + '/' : folder };
+    }
+  }
+  throw unavailable();
+}
+
+const unavailable = () => new Error('Native folder selection is unavailable');
+
 // A narrow launcher-owned provider, never a shell/command execution endpoint.
-export function createWindowsDirectoryPicker({
+export function createNativeDirectoryPicker({
+  platform = process.platform, env = process.env, executable = isExecutable,
   spawnProcess = spawn, readScript = () => readFile(new URL('./native-directory-picker.ps1', import.meta.url), 'utf8'),
-  windowsRoot = process.env.SystemRoot, architecture = process.arch,
+  windowsRoot = env.SystemRoot, architecture = process.arch,
 } = {}) {
+  const command = unixDirectoryCommand(platform, env, executable);
+  if (platform !== 'win32' && !command) return;
+  const zenity = command && path.posix.basename(command[0]) === 'zenity';
+  // GTK startup also exits 1 when the display is gone. Give user dismissal its own status.
+  const cancelExitCode = zenity ? 9 : 1;
+  const chooserEnv = zenity ? { ...env, ZENITY_CANCEL: '9', ZENITY_ESC: '9', ZENITY_OK: '0', ZENITY_ERROR: '2' } : env;
+  let lastZenityDirectory;
   let active;
   let disposed = false;
-  const unavailable = () => new Error('Native folder selection is unavailable');
   return {
     grant: randomUUID(),
     async choose(signal) {
-      if (disposed || active || signal.aborted || !windowsRoot || !path.win32.isAbsolute(windowsRoot)) throw unavailable();
-      let script;
-      try { script = await readScript(); } catch { throw unavailable(); }
       if (disposed || active || signal.aborted) throw unavailable();
-      // A 32-bit launcher must reach 64-bit Windows PowerShell, not its redirected SysWOW64 copy.
-      const system = architecture === 'ia32' ? 'Sysnative' : 'System32';
-      const executable = path.win32.join(windowsRoot, system, 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+      let invocation = command;
+      if (zenity) {
+        // Without current_folder the GNOME portal restores its own possibly deleted last folder.
+        const folder = await zenityStartingFolder(lastZenityDirectory, env.HOME ?? homedir());
+        invocation = [command[0], [...command[1], '--filename=' + folder]];
+      } else if (platform === 'win32') {
+        if (!windowsRoot || !path.win32.isAbsolute(windowsRoot)) throw unavailable();
+        let script;
+        try { script = await readScript(); } catch { throw unavailable(); }
+        // A 32-bit launcher must reach 64-bit Windows PowerShell, not its redirected SysWOW64 copy.
+        const system = architecture === 'ia32' ? 'Sysnative' : 'System32';
+        invocation = [path.win32.join(windowsRoot, system, 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+          ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')]];
+      }
+      if (disposed || active || signal.aborted) throw unavailable();
       return new Promise((resolve, reject) => {
         let child;
         let output = '';
@@ -61,8 +152,7 @@ export function createWindowsDirectoryPicker({
         // Independent bound also covers callers other than the HTTP service.
         const timer = setTimeout(abort, 120_000);
         try {
-          child = spawnProcess(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand',
-            Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, shell: false, stdio: ['ignore', 'pipe', 'ignore'] });
+          child = spawnProcess(...invocation, { env: chooserEnv, windowsHide: true, shell: false, stdio: ['ignore', 'pipe', 'ignore'] });
           active = { abort, closed };
           signal.addEventListener('abort', abort, { once: true });
           if (signal.aborted) abort();
@@ -72,20 +162,16 @@ export function createWindowsDirectoryPicker({
             if (Buffer.byteLength(output) > 32768) abort();
           });
           child.once('error', () => {
-            if (!child.pid) { active = undefined; markClosed(); }
             finish(unavailable());
           });
           child.once('close', (code) => {
             active = undefined;
             markClosed();
-            if (aborting || code !== 0) { finish(unavailable()); return; }
+            if (aborting) { finish(unavailable()); return; }
             try {
-              const result = JSON.parse(output.replace(/^\uFEFF/, '').trim());
-              if (result.kind === 'cancelled') finish(null, { kind: 'cancelled' });
-              else if (result.kind === 'selected' && typeof result.directory === 'string'
-                && path.win32.isAbsolute(result.directory) && !/[\0\r\n]/.test(result.directory)) {
-                finish(null, { kind: 'selected', directory: result.directory });
-              } else finish(unavailable());
+              const result = directoryResult(platform, code, output, cancelExitCode);
+              if (zenity && result.kind === 'selected') lastZenityDirectory = result.directory;
+              finish(null, result);
             } catch { finish(unavailable()); }
           });
         } catch { active = undefined; finish(unavailable()); }

@@ -7,7 +7,6 @@ export interface WebuiBrowserCapabilities {
   readonly dom: WebuiBrowserDom;
   readonly storage: WebuiBrowserStorage;
   readonly nativeDirectoryPicker?: {
-    readonly available: () => boolean;
     readonly choose: (signal: AbortSignal) => Promise<NativeWorkspaceDirectoryResult>;
   };
   /**

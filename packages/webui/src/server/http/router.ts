@@ -99,14 +99,15 @@ export async function serveHttpRequest(
     await serveDesignAsset(request, response, url, context.port);
     return;
   }
-  if (url.pathname === "/native-directory-picker") {
+  const authorizeNativeDirectory = url.pathname === "/native-directory-picker/authorize";
+  if (authorizeNativeDirectory || url.pathname === "/native-directory-picker") {
     if (request.method !== "POST" || url.search || !context.nativeDirectoryRoute) {
       rejectHttp(response, 404, "Not Found"); return;
     }
     await context.nativeDirectoryRoute.handle(request, response, {
       host: context.host, port: context.boundTcpPort(), credential: context.credential,
       fullAccess: context.fullAccess,
-    });
+    }, authorizeNativeDirectory ? "authorize" : "choose");
     return;
   }
   if (request.method === "GET" && url.pathname === "/session-transfer") {

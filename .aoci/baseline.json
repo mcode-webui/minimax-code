@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T05:53:26Z",
-  "updated_at": "2026-11-21T07:49:14Z",
+  "updated_at": "2026-11-27T02:05:06Z",
   "files": {
     ".agents/skills/changelog-card-publish/SKILL.md": {
       "role": "index",
@@ -773,9 +773,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "a85735b4eb916288d6547aa0fd3c8b5d906a7483d3d9132c822e721e2dc9e71d",
-      "size": 647060,
-      "normalized_sha256": "a85735b4eb916288d6547aa0fd3c8b5d906a7483d3d9132c822e721e2dc9e71d"
+      "sha256": "bbf8e4086eb0094d75c85248efce5d45ce06c9545133845a35e1cbd1ddd4b646",
+      "size": 647738,
+      "normalized_sha256": "bbf8e4086eb0094d75c85248efce5d45ce06c9545133845a35e1cbd1ddd4b646"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -788,6 +788,742 @@
       "sha256": "5ca1db5e1bf5432ca60e816fe4b836e9018cbeecf2d296a96f31beb6e1d2a56d",
       "size": 301,
       "normalized_sha256": "5ca1db5e1bf5432ca60e816fe4b836e9018cbeecf2d296a96f31beb6e1d2a56d"
+    },
+    "dist-webui-npm/client/assets/fonts/brand/Nunito-latin.woff2": {
+      "role": "observe",
+      "sha256": "20fc9b6fc618e7c3c68d3ac750a2a5dfbceb8521675458d2cea580b5693e4798",
+      "size": 39152
+    },
+    "dist-webui-npm/client/assets/fonts/brand/OFL.txt": {
+      "role": "observe",
+      "sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+      "size": 4385,
+      "normalized_sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65"
+    },
+    "dist-webui-npm/client/assets/img/agent-avatar-explore.svg": {
+      "role": "observe",
+      "sha256": "209982d1ea785ae20d8cf0e4a8d713f456a8975f086a34970d68ea49da68f295",
+      "size": 2922,
+      "normalized_sha256": "209982d1ea785ae20d8cf0e4a8d713f456a8975f086a34970d68ea49da68f295"
+    },
+    "dist-webui-npm/client/assets/img/agent-avatar-verifier.svg": {
+      "role": "observe",
+      "sha256": "cca276240e5d757cd8aa17e97f17f1ba8cc3768dfe2ee8f3207f641651e91b55",
+      "size": 3715,
+      "normalized_sha256": "cca276240e5d757cd8aa17e97f17f1ba8cc3768dfe2ee8f3207f641651e91b55"
+    },
+    "dist-webui-npm/client/assets/img/agent-avatar-worker.svg": {
+      "role": "observe",
+      "sha256": "66376531709e0cddbdc329ba9eadcebb7a089d1f809d94151da26440ef961866",
+      "size": 3200,
+      "normalized_sha256": "66376531709e0cddbdc329ba9eadcebb7a089d1f809d94151da26440ef961866"
+    },
+    "dist-webui-npm/client/assets/img/corner-dark.svg": {
+      "role": "observe",
+      "sha256": "8d85ae76ff1400252502ff43355ebf04952d7b272ab6495dd524e2ca72ffb324",
+      "size": 1958,
+      "normalized_sha256": "8d85ae76ff1400252502ff43355ebf04952d7b272ab6495dd524e2ca72ffb324"
+    },
+    "dist-webui-npm/client/assets/img/corner-light.svg": {
+      "role": "observe",
+      "sha256": "28df0c234fc672ebc8305e1c0f5d359f881427efd9affc2e287b6928aa472534",
+      "size": 2054,
+      "normalized_sha256": "28df0c234fc672ebc8305e1c0f5d359f881427efd9affc2e287b6928aa472534"
+    },
+    "dist-webui-npm/client/assets/img/dark.14c569ba.svg": {
+      "role": "observe",
+      "sha256": "a64cd45ab4de8db44cfda52917159cbc7838b042a3968ada29474b40aeacc9d4",
+      "size": 1431,
+      "normalized_sha256": "a64cd45ab4de8db44cfda52917159cbc7838b042a3968ada29474b40aeacc9d4"
+    },
+    "dist-webui-npm/client/assets/img/light.d3fbb1aa.svg": {
+      "role": "observe",
+      "sha256": "8bf01ce03c8200af34c0b92d97ffc217be4822f09c3f34238d832213be362703",
+      "size": 1431,
+      "normalized_sha256": "8bf01ce03c8200af34c0b92d97ffc217be4822f09c3f34238d832213be362703"
+    },
+    "dist-webui-npm/client/assets/img/system.aba90841.svg": {
+      "role": "observe",
+      "sha256": "cc4d3e9fb25c633a5f770386bba2dadcd730a5a8eb53c86036655f3fd2b6ed0a",
+      "size": 1937,
+      "normalized_sha256": "cc4d3e9fb25c633a5f770386bba2dadcd730a5a8eb53c86036655f3fd2b6ed0a"
+    },
+    "dist-webui-npm/client/fonts/KaTeX_AMS-Regular.ttf": {
+      "role": "observe",
+      "sha256": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
+      "size": 63632
+    },
+    "dist-webui-npm/client/fonts/KaTeX_AMS-Regular.woff": {
+      "role": "observe",
+      "sha256": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
+      "size": 33516
+    },
+    "dist-webui-npm/client/fonts/KaTeX_AMS-Regular.woff2": {
+      "role": "observe",
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "size": 28076
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Bold.ttf": {
+      "role": "observe",
+      "sha256": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
+      "size": 12368
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Bold.woff": {
+      "role": "observe",
+      "sha256": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
+      "size": 7716
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Bold.woff2": {
+      "role": "observe",
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "size": 6912
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Regular.ttf": {
+      "role": "observe",
+      "sha256": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
+      "size": 12344
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Regular.woff": {
+      "role": "observe",
+      "sha256": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
+      "size": 7656
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Caligraphic-Regular.woff2": {
+      "role": "observe",
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "size": 6908
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Bold.ttf": {
+      "role": "observe",
+      "sha256": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
+      "size": 19584
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Bold.woff": {
+      "role": "observe",
+      "sha256": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
+      "size": 13296
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Bold.woff2": {
+      "role": "observe",
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "size": 11348
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Regular.ttf": {
+      "role": "observe",
+      "sha256": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
+      "size": 19572
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Regular.woff": {
+      "role": "observe",
+      "sha256": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
+      "size": 13208
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Fraktur-Regular.woff2": {
+      "role": "observe",
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "size": 11316
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Bold.ttf": {
+      "role": "observe",
+      "sha256": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
+      "size": 51336
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Bold.woff": {
+      "role": "observe",
+      "sha256": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
+      "size": 29912
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Bold.woff2": {
+      "role": "observe",
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "size": 25324
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-BoldItalic.ttf": {
+      "role": "observe",
+      "sha256": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
+      "size": 32968
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-BoldItalic.woff": {
+      "role": "observe",
+      "sha256": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
+      "size": 19412
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-BoldItalic.woff2": {
+      "role": "observe",
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "size": 16780
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Italic.ttf": {
+      "role": "observe",
+      "sha256": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
+      "size": 33580
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Italic.woff": {
+      "role": "observe",
+      "sha256": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
+      "size": 19676
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Italic.woff2": {
+      "role": "observe",
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "size": 16988
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Regular.ttf": {
+      "role": "observe",
+      "sha256": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
+      "size": 53580
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Regular.woff": {
+      "role": "observe",
+      "sha256": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
+      "size": 30772
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Main-Regular.woff2": {
+      "role": "observe",
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "size": 26272
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-BoldItalic.ttf": {
+      "role": "observe",
+      "sha256": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
+      "size": 31196
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-BoldItalic.woff": {
+      "role": "observe",
+      "sha256": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
+      "size": 18668
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-BoldItalic.woff2": {
+      "role": "observe",
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "size": 16400
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-Italic.ttf": {
+      "role": "observe",
+      "sha256": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
+      "size": 31308
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-Italic.woff": {
+      "role": "observe",
+      "sha256": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
+      "size": 18748
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Math-Italic.woff2": {
+      "role": "observe",
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "size": 16440
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Bold.ttf": {
+      "role": "observe",
+      "sha256": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
+      "size": 24504
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Bold.woff": {
+      "role": "observe",
+      "sha256": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
+      "size": 14408
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Bold.woff2": {
+      "role": "observe",
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "size": 12216
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Italic.ttf": {
+      "role": "observe",
+      "sha256": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
+      "size": 22364
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Italic.woff": {
+      "role": "observe",
+      "sha256": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
+      "size": 14112
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Italic.woff2": {
+      "role": "observe",
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "size": 12028
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Regular.ttf": {
+      "role": "observe",
+      "sha256": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
+      "size": 19436
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Regular.woff": {
+      "role": "observe",
+      "sha256": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
+      "size": 12316
+    },
+    "dist-webui-npm/client/fonts/KaTeX_SansSerif-Regular.woff2": {
+      "role": "observe",
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "size": 10344
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Script-Regular.ttf": {
+      "role": "observe",
+      "sha256": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
+      "size": 16648
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Script-Regular.woff": {
+      "role": "observe",
+      "sha256": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
+      "size": 10588
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Script-Regular.woff2": {
+      "role": "observe",
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "size": 9644
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size1-Regular.ttf": {
+      "role": "observe",
+      "sha256": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
+      "size": 12228
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size1-Regular.woff": {
+      "role": "observe",
+      "sha256": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
+      "size": 6496
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size1-Regular.woff2": {
+      "role": "observe",
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "size": 5468
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size2-Regular.ttf": {
+      "role": "observe",
+      "sha256": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
+      "size": 11508
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size2-Regular.woff": {
+      "role": "observe",
+      "sha256": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
+      "size": 6188
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size2-Regular.woff2": {
+      "role": "observe",
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "size": 5208
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size3-Regular.ttf": {
+      "role": "observe",
+      "sha256": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
+      "size": 7588
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size3-Regular.woff": {
+      "role": "observe",
+      "sha256": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
+      "size": 4420
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size3-Regular.woff2": {
+      "role": "observe",
+      "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+      "size": 3624
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size4-Regular.ttf": {
+      "role": "observe",
+      "sha256": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
+      "size": 10364
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size4-Regular.woff": {
+      "role": "observe",
+      "sha256": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
+      "size": 5980
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Size4-Regular.woff2": {
+      "role": "observe",
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "size": 4928
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Typewriter-Regular.ttf": {
+      "role": "observe",
+      "sha256": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
+      "size": 27556
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Typewriter-Regular.woff": {
+      "role": "observe",
+      "sha256": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
+      "size": 16028
+    },
+    "dist-webui-npm/client/fonts/KaTeX_Typewriter-Regular.woff2": {
+      "role": "observe",
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "size": 13568
+    },
+    "dist-webui-npm/client/fonts/LICENSE.katex-fonts": {
+      "role": "observe",
+      "sha256": "00a890c71e7cf602c5237d25f7ac9fc9fa0a094f4af5d32c7c9e30e81971b792",
+      "size": 220,
+      "normalized_sha256": "00a890c71e7cf602c5237d25f7ac9fc9fa0a094f4af5d32c7c9e30e81971b792"
+    },
+    "dist-webui/client/assets/fonts/brand/Nunito-latin.woff2": {
+      "role": "observe",
+      "sha256": "20fc9b6fc618e7c3c68d3ac750a2a5dfbceb8521675458d2cea580b5693e4798",
+      "size": 39152
+    },
+    "dist-webui/client/assets/fonts/brand/OFL.txt": {
+      "role": "observe",
+      "sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+      "size": 4385,
+      "normalized_sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65"
+    },
+    "dist-webui/client/assets/img/agent-avatar-explore.svg": {
+      "role": "observe",
+      "sha256": "209982d1ea785ae20d8cf0e4a8d713f456a8975f086a34970d68ea49da68f295",
+      "size": 2922,
+      "normalized_sha256": "209982d1ea785ae20d8cf0e4a8d713f456a8975f086a34970d68ea49da68f295"
+    },
+    "dist-webui/client/assets/img/agent-avatar-verifier.svg": {
+      "role": "observe",
+      "sha256": "cca276240e5d757cd8aa17e97f17f1ba8cc3768dfe2ee8f3207f641651e91b55",
+      "size": 3715,
+      "normalized_sha256": "cca276240e5d757cd8aa17e97f17f1ba8cc3768dfe2ee8f3207f641651e91b55"
+    },
+    "dist-webui/client/assets/img/agent-avatar-worker.svg": {
+      "role": "observe",
+      "sha256": "66376531709e0cddbdc329ba9eadcebb7a089d1f809d94151da26440ef961866",
+      "size": 3200,
+      "normalized_sha256": "66376531709e0cddbdc329ba9eadcebb7a089d1f809d94151da26440ef961866"
+    },
+    "dist-webui/client/assets/img/corner-dark.svg": {
+      "role": "observe",
+      "sha256": "8d85ae76ff1400252502ff43355ebf04952d7b272ab6495dd524e2ca72ffb324",
+      "size": 1958,
+      "normalized_sha256": "8d85ae76ff1400252502ff43355ebf04952d7b272ab6495dd524e2ca72ffb324"
+    },
+    "dist-webui/client/assets/img/corner-light.svg": {
+      "role": "observe",
+      "sha256": "28df0c234fc672ebc8305e1c0f5d359f881427efd9affc2e287b6928aa472534",
+      "size": 2054,
+      "normalized_sha256": "28df0c234fc672ebc8305e1c0f5d359f881427efd9affc2e287b6928aa472534"
+    },
+    "dist-webui/client/assets/img/dark.14c569ba.svg": {
+      "role": "observe",
+      "sha256": "a64cd45ab4de8db44cfda52917159cbc7838b042a3968ada29474b40aeacc9d4",
+      "size": 1431,
+      "normalized_sha256": "a64cd45ab4de8db44cfda52917159cbc7838b042a3968ada29474b40aeacc9d4"
+    },
+    "dist-webui/client/assets/img/light.d3fbb1aa.svg": {
+      "role": "observe",
+      "sha256": "8bf01ce03c8200af34c0b92d97ffc217be4822f09c3f34238d832213be362703",
+      "size": 1431,
+      "normalized_sha256": "8bf01ce03c8200af34c0b92d97ffc217be4822f09c3f34238d832213be362703"
+    },
+    "dist-webui/client/assets/img/minimax-design-octopus.svg": {
+      "role": "observe",
+      "sha256": "1b5c5b974e660e24d624333270a1571b3e5e9f09738946b1ae29d25b9733a193",
+      "size": 1687,
+      "normalized_sha256": "1b5c5b974e660e24d624333270a1571b3e5e9f09738946b1ae29d25b9733a193"
+    },
+    "dist-webui/client/assets/img/system.aba90841.svg": {
+      "role": "observe",
+      "sha256": "cc4d3e9fb25c633a5f770386bba2dadcd730a5a8eb53c86036655f3fd2b6ed0a",
+      "size": 1937,
+      "normalized_sha256": "cc4d3e9fb25c633a5f770386bba2dadcd730a5a8eb53c86036655f3fd2b6ed0a"
+    },
+    "dist-webui/client/fonts/KaTeX_AMS-Regular.ttf": {
+      "role": "observe",
+      "sha256": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
+      "size": 63632
+    },
+    "dist-webui/client/fonts/KaTeX_AMS-Regular.woff": {
+      "role": "observe",
+      "sha256": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
+      "size": 33516
+    },
+    "dist-webui/client/fonts/KaTeX_AMS-Regular.woff2": {
+      "role": "observe",
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "size": 28076
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Bold.ttf": {
+      "role": "observe",
+      "sha256": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
+      "size": 12368
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Bold.woff": {
+      "role": "observe",
+      "sha256": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
+      "size": 7716
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Bold.woff2": {
+      "role": "observe",
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "size": 6912
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Regular.ttf": {
+      "role": "observe",
+      "sha256": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
+      "size": 12344
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Regular.woff": {
+      "role": "observe",
+      "sha256": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
+      "size": 7656
+    },
+    "dist-webui/client/fonts/KaTeX_Caligraphic-Regular.woff2": {
+      "role": "observe",
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "size": 6908
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Bold.ttf": {
+      "role": "observe",
+      "sha256": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
+      "size": 19584
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Bold.woff": {
+      "role": "observe",
+      "sha256": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
+      "size": 13296
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Bold.woff2": {
+      "role": "observe",
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "size": 11348
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Regular.ttf": {
+      "role": "observe",
+      "sha256": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
+      "size": 19572
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Regular.woff": {
+      "role": "observe",
+      "sha256": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
+      "size": 13208
+    },
+    "dist-webui/client/fonts/KaTeX_Fraktur-Regular.woff2": {
+      "role": "observe",
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "size": 11316
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Bold.ttf": {
+      "role": "observe",
+      "sha256": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
+      "size": 51336
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Bold.woff": {
+      "role": "observe",
+      "sha256": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
+      "size": 29912
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Bold.woff2": {
+      "role": "observe",
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "size": 25324
+    },
+    "dist-webui/client/fonts/KaTeX_Main-BoldItalic.ttf": {
+      "role": "observe",
+      "sha256": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
+      "size": 32968
+    },
+    "dist-webui/client/fonts/KaTeX_Main-BoldItalic.woff": {
+      "role": "observe",
+      "sha256": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
+      "size": 19412
+    },
+    "dist-webui/client/fonts/KaTeX_Main-BoldItalic.woff2": {
+      "role": "observe",
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "size": 16780
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Italic.ttf": {
+      "role": "observe",
+      "sha256": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
+      "size": 33580
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Italic.woff": {
+      "role": "observe",
+      "sha256": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
+      "size": 19676
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Italic.woff2": {
+      "role": "observe",
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "size": 16988
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Regular.ttf": {
+      "role": "observe",
+      "sha256": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
+      "size": 53580
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Regular.woff": {
+      "role": "observe",
+      "sha256": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
+      "size": 30772
+    },
+    "dist-webui/client/fonts/KaTeX_Main-Regular.woff2": {
+      "role": "observe",
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "size": 26272
+    },
+    "dist-webui/client/fonts/KaTeX_Math-BoldItalic.ttf": {
+      "role": "observe",
+      "sha256": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
+      "size": 31196
+    },
+    "dist-webui/client/fonts/KaTeX_Math-BoldItalic.woff": {
+      "role": "observe",
+      "sha256": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
+      "size": 18668
+    },
+    "dist-webui/client/fonts/KaTeX_Math-BoldItalic.woff2": {
+      "role": "observe",
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "size": 16400
+    },
+    "dist-webui/client/fonts/KaTeX_Math-Italic.ttf": {
+      "role": "observe",
+      "sha256": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
+      "size": 31308
+    },
+    "dist-webui/client/fonts/KaTeX_Math-Italic.woff": {
+      "role": "observe",
+      "sha256": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
+      "size": 18748
+    },
+    "dist-webui/client/fonts/KaTeX_Math-Italic.woff2": {
+      "role": "observe",
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "size": 16440
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Bold.ttf": {
+      "role": "observe",
+      "sha256": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
+      "size": 24504
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Bold.woff": {
+      "role": "observe",
+      "sha256": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
+      "size": 14408
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Bold.woff2": {
+      "role": "observe",
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "size": 12216
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Italic.ttf": {
+      "role": "observe",
+      "sha256": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
+      "size": 22364
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Italic.woff": {
+      "role": "observe",
+      "sha256": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
+      "size": 14112
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Italic.woff2": {
+      "role": "observe",
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "size": 12028
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Regular.ttf": {
+      "role": "observe",
+      "sha256": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
+      "size": 19436
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Regular.woff": {
+      "role": "observe",
+      "sha256": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
+      "size": 12316
+    },
+    "dist-webui/client/fonts/KaTeX_SansSerif-Regular.woff2": {
+      "role": "observe",
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "size": 10344
+    },
+    "dist-webui/client/fonts/KaTeX_Script-Regular.ttf": {
+      "role": "observe",
+      "sha256": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
+      "size": 16648
+    },
+    "dist-webui/client/fonts/KaTeX_Script-Regular.woff": {
+      "role": "observe",
+      "sha256": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
+      "size": 10588
+    },
+    "dist-webui/client/fonts/KaTeX_Script-Regular.woff2": {
+      "role": "observe",
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "size": 9644
+    },
+    "dist-webui/client/fonts/KaTeX_Size1-Regular.ttf": {
+      "role": "observe",
+      "sha256": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
+      "size": 12228
+    },
+    "dist-webui/client/fonts/KaTeX_Size1-Regular.woff": {
+      "role": "observe",
+      "sha256": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
+      "size": 6496
+    },
+    "dist-webui/client/fonts/KaTeX_Size1-Regular.woff2": {
+      "role": "observe",
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "size": 5468
+    },
+    "dist-webui/client/fonts/KaTeX_Size2-Regular.ttf": {
+      "role": "observe",
+      "sha256": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
+      "size": 11508
+    },
+    "dist-webui/client/fonts/KaTeX_Size2-Regular.woff": {
+      "role": "observe",
+      "sha256": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
+      "size": 6188
+    },
+    "dist-webui/client/fonts/KaTeX_Size2-Regular.woff2": {
+      "role": "observe",
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "size": 5208
+    },
+    "dist-webui/client/fonts/KaTeX_Size3-Regular.ttf": {
+      "role": "observe",
+      "sha256": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
+      "size": 7588
+    },
+    "dist-webui/client/fonts/KaTeX_Size3-Regular.woff": {
+      "role": "observe",
+      "sha256": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
+      "size": 4420
+    },
+    "dist-webui/client/fonts/KaTeX_Size3-Regular.woff2": {
+      "role": "observe",
+      "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+      "size": 3624
+    },
+    "dist-webui/client/fonts/KaTeX_Size4-Regular.ttf": {
+      "role": "observe",
+      "sha256": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
+      "size": 10364
+    },
+    "dist-webui/client/fonts/KaTeX_Size4-Regular.woff": {
+      "role": "observe",
+      "sha256": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
+      "size": 5980
+    },
+    "dist-webui/client/fonts/KaTeX_Size4-Regular.woff2": {
+      "role": "observe",
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "size": 4928
+    },
+    "dist-webui/client/fonts/KaTeX_Typewriter-Regular.ttf": {
+      "role": "observe",
+      "sha256": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
+      "size": 27556
+    },
+    "dist-webui/client/fonts/KaTeX_Typewriter-Regular.woff": {
+      "role": "observe",
+      "sha256": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
+      "size": 16028
+    },
+    "dist-webui/client/fonts/KaTeX_Typewriter-Regular.woff2": {
+      "role": "observe",
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "size": 13568
+    },
+    "dist-webui/client/fonts/LICENSE.katex-fonts": {
+      "role": "observe",
+      "sha256": "00a890c71e7cf602c5237d25f7ac9fc9fa0a094f4af5d32c7c9e30e81971b792",
+      "size": 220,
+      "normalized_sha256": "00a890c71e7cf602c5237d25f7ac9fc9fa0a094f4af5d32c7c9e30e81971b792"
     },
     "docs/README.md": {
       "role": "index",
@@ -22962,9 +23698,9 @@
     },
     "packages/webui/docs/client/composer.md": {
       "role": "index",
-      "sha256": "871a0e2ccf6965d6c009ceb7f4fc317a56955179d968d0e43bcba82a5e9a5d49",
-      "size": 7314,
-      "normalized_sha256": "871a0e2ccf6965d6c009ceb7f4fc317a56955179d968d0e43bcba82a5e9a5d49"
+      "sha256": "47dd63d0f09ae1b645278e70ec142b64ca24fc40dedbc3f557fa0a0f84b5a59d",
+      "size": 7679,
+      "normalized_sha256": "47dd63d0f09ae1b645278e70ec142b64ca24fc40dedbc3f557fa0a0f84b5a59d"
     },
     "packages/webui/docs/client/design.md": {
       "role": "index",
@@ -23752,9 +24488,9 @@
     },
     "packages/webui/src/client/bindings/browser-capabilities.tsx": {
       "role": "index",
-      "sha256": "79f29dd97472d40fc395ead78fdcfa2c1bdf0d3d1528207e8a307ee9f240b5b4",
-      "size": 1800,
-      "normalized_sha256": "79f29dd97472d40fc395ead78fdcfa2c1bdf0d3d1528207e8a307ee9f240b5b4"
+      "sha256": "93e84c45c6717b8a8c1a058669d53c7e2fb200e069c5ee7bad4f88066f9edffc",
+      "size": 1761,
+      "normalized_sha256": "93e84c45c6717b8a8c1a058669d53c7e2fb200e069c5ee7bad4f88066f9edffc"
     },
     "packages/webui/src/client/bindings/browser-effects.ts": {
       "role": "index",
@@ -24280,9 +25016,9 @@
     },
     "packages/webui/src/client/features/composer/ui/ComposerProjectRow.tsx": {
       "role": "index",
-      "sha256": "36e9acd9cbcf0c89d7c6cbf97d6855deebcd9105a907baf8c2b1e95569c44d5c",
-      "size": 10283,
-      "normalized_sha256": "36e9acd9cbcf0c89d7c6cbf97d6855deebcd9105a907baf8c2b1e95569c44d5c"
+      "sha256": "5ac3bbbc338349a401f0e3a3da859af6925dceaa4f53a785bdf6da98738400b9",
+      "size": 7383,
+      "normalized_sha256": "5ac3bbbc338349a401f0e3a3da859af6925dceaa4f53a785bdf6da98738400b9"
     },
     "packages/webui/src/client/features/composer/ui/ComposerSubmissionControls.tsx": {
       "role": "index",
@@ -24304,15 +25040,15 @@
     },
     "packages/webui/src/client/features/composer/ui/WebuiComposer.tsx": {
       "role": "index",
-      "sha256": "6a5ab8d4ea25b2f94325e00677487e422bdf49322ec530fc68404f0fc1c492de",
-      "size": 56824,
-      "normalized_sha256": "6a5ab8d4ea25b2f94325e00677487e422bdf49322ec530fc68404f0fc1c492de"
+      "sha256": "3ebbbc82b98f6c58d13db959c798823d79bef7333dbdc72c912d145ce42e1d4f",
+      "size": 55740,
+      "normalized_sha256": "3ebbbc82b98f6c58d13db959c798823d79bef7333dbdc72c912d145ce42e1d4f"
     },
     "packages/webui/src/client/features/composer/ui/composer.css": {
       "role": "index",
-      "sha256": "6bc8c3043c8976726113500fa073d4fe5a3ad2ea4fe32145f894cf3ab0c09383",
-      "size": 25125,
-      "normalized_sha256": "6bc8c3043c8976726113500fa073d4fe5a3ad2ea4fe32145f894cf3ab0c09383"
+      "sha256": "41b45d46994745348a9b5c332203115fc171ec7357055e1f0cc1433707fa77af",
+      "size": 25040,
+      "normalized_sha256": "41b45d46994745348a9b5c332203115fc171ec7357055e1f0cc1433707fa77af"
     },
     "packages/webui/src/client/features/composer/ui/slash-palette.ts": {
       "role": "index",
@@ -25983,15 +26719,15 @@
     },
     "packages/webui/src/client/features/workspace/application/workspace-files-owner.ts": {
       "role": "index",
-      "sha256": "f75178e2309e528bfe72b6cd182ed68e26b35803e187079ac3d3b8ecfcdeb2c8",
-      "size": 15951,
-      "normalized_sha256": "f75178e2309e528bfe72b6cd182ed68e26b35803e187079ac3d3b8ecfcdeb2c8"
+      "sha256": "2d0a4dd75c7af68a557a03a57591612109ce908151645ae59870e81eb9a3b4e9",
+      "size": 15937,
+      "normalized_sha256": "2d0a4dd75c7af68a557a03a57591612109ce908151645ae59870e81eb9a3b4e9"
     },
     "packages/webui/src/client/features/workspace/application/workspace-owner-contracts.ts": {
       "role": "index",
-      "sha256": "da326d1ce0f4bb0908c70630469bd9ff1ea581980c0659023c18bcbd4c4da102",
-      "size": 6214,
-      "normalized_sha256": "da326d1ce0f4bb0908c70630469bd9ff1ea581980c0659023c18bcbd4c4da102"
+      "sha256": "079a47512bcda4cfb2e252b41a87a5067ad7ad994398799e4bdfc0ae68150ea9",
+      "size": 6150,
+      "normalized_sha256": "079a47512bcda4cfb2e252b41a87a5067ad7ad994398799e4bdfc0ae68150ea9"
     },
     "packages/webui/src/client/features/workspace/application/workspace-panel-owner.ts": {
       "role": "index",
@@ -26073,9 +26809,9 @@
     },
     "packages/webui/src/client/features/workspace/projection/workspace-name.public.ts": {
       "role": "index",
-      "sha256": "204689756fd56e22a75cd3fc4e22aa6264821a908fce57ec762d4e30fadd263b",
-      "size": 1130,
-      "normalized_sha256": "204689756fd56e22a75cd3fc4e22aa6264821a908fce57ec762d4e30fadd263b"
+      "sha256": "5b3ab0a8d1033c6c58296c3293963303139c97989cb006eac713c685cc2080e9",
+      "size": 1066,
+      "normalized_sha256": "5b3ab0a8d1033c6c58296c3293963303139c97989cb006eac713c685cc2080e9"
     },
     "packages/webui/src/client/features/workspace/projection/workspace-panel-state.ts": {
       "role": "index",
@@ -26187,9 +26923,9 @@
     },
     "packages/webui/src/client/main.tsx": {
       "role": "index",
-      "sha256": "616ec01a05fda560cd2e480cbb83ddffbc5c2ab7df287996722af70d08e54dee",
-      "size": 19313,
-      "normalized_sha256": "616ec01a05fda560cd2e480cbb83ddffbc5c2ab7df287996722af70d08e54dee"
+      "sha256": "054e04fb3b105ff6493003e82b0c0717dd9a297b20bc07a970d74ac48a1a66a8",
+      "size": 19232,
+      "normalized_sha256": "054e04fb3b105ff6493003e82b0c0717dd9a297b20bc07a970d74ac48a1a66a8"
     },
     "packages/webui/src/client/platform/app-mode.ts": {
       "role": "index",
@@ -26229,9 +26965,9 @@
     },
     "packages/webui/src/client/platform/native-directory-picker.ts": {
       "role": "index",
-      "sha256": "b07a14694310212327d9e38295dbacb8373c2f159ab01c4b2e1467a4e09ee3dd",
-      "size": 2679,
-      "normalized_sha256": "b07a14694310212327d9e38295dbacb8373c2f159ab01c4b2e1467a4e09ee3dd"
+      "sha256": "483e1d372180d7db1d9543bdd4007bb8cff09a774fdb629d7c3921fe338a0ab1",
+      "size": 4017,
+      "normalized_sha256": "483e1d372180d7db1d9543bdd4007bb8cff09a774fdb629d7c3921fe338a0ab1"
     },
     "packages/webui/src/client/platform/no-project.ts": {
       "role": "index",
@@ -26349,9 +27085,9 @@
     },
     "packages/webui/src/client/projection/common/outside-close.ts": {
       "role": "index",
-      "sha256": "35d62d90c603595c036ef09e5519632a7cfbbef26d4267ff4821c15b94e226e7",
-      "size": 11622,
-      "normalized_sha256": "35d62d90c603595c036ef09e5519632a7cfbbef26d4267ff4821c15b94e226e7"
+      "sha256": "dc6c4e6d542cf7f14986b695ddeda9bba46dae4ab84ff09153c7731f4c6e2d36",
+      "size": 11304,
+      "normalized_sha256": "dc6c4e6d542cf7f14986b695ddeda9bba46dae4ab84ff09153c7731f4c6e2d36"
     },
     "packages/webui/src/client/projection/common/overlay-geometry.ts": {
       "role": "index",
@@ -27626,9 +28362,9 @@
     },
     "packages/webui/src/server/credentials.ts": {
       "role": "index",
-      "sha256": "9618b500c010c94c3bb6fd3fb6d53c978c9cce853a39fe25e1b8352c7e3de016",
-      "size": 5129,
-      "normalized_sha256": "9618b500c010c94c3bb6fd3fb6d53c978c9cce853a39fe25e1b8352c7e3de016"
+      "sha256": "654ec58599d3e448d7688d6db0b8d91af807bf9da4571f8502604587b739cd91",
+      "size": 5155,
+      "normalized_sha256": "654ec58599d3e448d7688d6db0b8d91af807bf9da4571f8502604587b739cd91"
     },
     "packages/webui/src/server/envelope.ts": {
       "role": "index",
@@ -27668,9 +28404,9 @@
     },
     "packages/webui/src/server/http/native-directory.ts": {
       "role": "index",
-      "sha256": "0ac397d9eb53a1ef4d350965ebab6b769f62d316380151081a70ce7a602feeb5",
-      "size": 5881,
-      "normalized_sha256": "0ac397d9eb53a1ef4d350965ebab6b769f62d316380151081a70ce7a602feeb5"
+      "sha256": "54768c4bcd271ba2b98306d1988797a54d69b865d4e188c13553cddfc127810e",
+      "size": 7022,
+      "normalized_sha256": "54768c4bcd271ba2b98306d1988797a54d69b865d4e188c13553cddfc127810e"
     },
     "packages/webui/src/server/http/responses.ts": {
       "role": "index",
@@ -27680,9 +28416,9 @@
     },
     "packages/webui/src/server/http/router.ts": {
       "role": "index",
-      "sha256": "99f619263b7b17a40464c3a13816bce64dc6cb62658921f503ec1654bc4613d7",
-      "size": 7730,
-      "normalized_sha256": "99f619263b7b17a40464c3a13816bce64dc6cb62658921f503ec1654bc4613d7"
+      "sha256": "582849fb8149d44972f776f21252d4bbc4e68eb3e005b522c1cc69edbb3b7541",
+      "size": 7899,
+      "normalized_sha256": "582849fb8149d44972f776f21252d4bbc4e68eb3e005b522c1cc69edbb3b7541"
     },
     "packages/webui/src/server/http/session-transfer.ts": {
       "role": "index",
@@ -28484,9 +29220,9 @@
     },
     "packages/webui/test/browser/composer.spec.mjs": {
       "role": "index",
-      "sha256": "76aaefd985bc4a09577b60285604d1b667402f736ba4f5220e0ada3348b7ccc5",
-      "size": 38037,
-      "normalized_sha256": "76aaefd985bc4a09577b60285604d1b667402f736ba4f5220e0ada3348b7ccc5"
+      "sha256": "e291d98b60c8720386f1f1e970c89160fc0a8a82167d2afa36b4f721909de2e7",
+      "size": 41152,
+      "normalized_sha256": "e291d98b60c8720386f1f1e970c89160fc0a8a82167d2afa36b4f721909de2e7"
     },
     "packages/webui/test/browser/connection-status.spec.mjs": {
       "role": "index",
@@ -28526,9 +29262,9 @@
     },
     "packages/webui/test/browser/fixture.mjs": {
       "role": "index",
-      "sha256": "1586e6f5a983eebf111eedd5cf3dbec5378e1396c04d48cd5ded9d3d96423cce",
-      "size": 53704,
-      "normalized_sha256": "1586e6f5a983eebf111eedd5cf3dbec5378e1396c04d48cd5ded9d3d96423cce"
+      "sha256": "a63ffdf4bcfab2140427a37e6afbe54b25d81c0f0d301fa68c0698a3c1d00a75",
+      "size": 53239,
+      "normalized_sha256": "a63ffdf4bcfab2140427a37e6afbe54b25d81c0f0d301fa68c0698a3c1d00a75"
     },
     "packages/webui/test/browser/fonts/LICENSE.noto-fonts": {
       "role": "observe",
@@ -28728,9 +29464,9 @@
     },
     "packages/webui/test/browser/recovered-surfaces.spec.mjs": {
       "role": "index",
-      "sha256": "76d33ab3b47fcb63e4ab60c9bdb4db290ae02a652696cf9a3781c4b0dbc5e94d",
-      "size": 16594,
-      "normalized_sha256": "76d33ab3b47fcb63e4ab60c9bdb4db290ae02a652696cf9a3781c4b0dbc5e94d"
+      "sha256": "e18b637fa4b22f9afa99579aab90d1a48f0f77e0831717f85d618129509e744a",
+      "size": 15406,
+      "normalized_sha256": "e18b637fa4b22f9afa99579aab90d1a48f0f77e0831717f85d618129509e744a"
     },
     "packages/webui/test/browser/rendering-integrity.spec.mjs": {
       "role": "index",
@@ -30236,9 +30972,9 @@
     },
     "packages/webui/test/unit/native-directory-picker.test.ts": {
       "role": "observe",
-      "sha256": "7d2b835154b1d3298b2df7d2625bccee67aac0d618a51366f824228781b91608",
-      "size": 10208,
-      "normalized_sha256": "7d2b835154b1d3298b2df7d2625bccee67aac0d618a51366f824228781b91608"
+      "sha256": "9834b074a39a75c641cfb42889c7ed6b23e028f79e8df414662505c24f01fb55",
+      "size": 13559,
+      "normalized_sha256": "9834b074a39a75c641cfb42889c7ed6b23e028f79e8df414662505c24f01fb55"
     },
     "packages/webui/test/unit/observation-scheduler.test.ts": {
       "role": "observe",
@@ -30254,9 +30990,9 @@
     },
     "packages/webui/test/unit/outside-close.test.ts": {
       "role": "observe",
-      "sha256": "421bc035bf7d24acc74276d368f1955a1c2916dec1517f51742350e676400c3f",
-      "size": 17968,
-      "normalized_sha256": "421bc035bf7d24acc74276d368f1955a1c2916dec1517f51742350e676400c3f"
+      "sha256": "6187b3b1866c05bde28526cf866e9ff0d810d0df5f1a1e492012aaebb430afe8",
+      "size": 17788,
+      "normalized_sha256": "6187b3b1866c05bde28526cf866e9ff0d810d0df5f1a1e492012aaebb430afe8"
     },
     "packages/webui/test/unit/overlay-coordinator.test.ts": {
       "role": "observe",
@@ -30752,9 +31488,9 @@
     },
     "packages/webui/test/unit/turn-boundary-prohibitions.test.ts": {
       "role": "observe",
-      "sha256": "91f98c7003717f369783213ddf3150b464885846fa5eba991824dca013c316b9",
-      "size": 14732,
-      "normalized_sha256": "91f98c7003717f369783213ddf3150b464885846fa5eba991824dca013c316b9"
+      "sha256": "27cf57fb20a913813c29956d688b98986484ae254a0adcb2d3ebf0c1d8863d42",
+      "size": 14631,
+      "normalized_sha256": "27cf57fb20a913813c29956d688b98986484ae254a0adcb2d3ebf0c1d8863d42"
     },
     "packages/webui/test/unit/turn-command-views.test.ts": {
       "role": "observe",
@@ -30968,9 +31704,9 @@
     },
     "packages/webui/test/unit/webui-ownership-acceptance.test.ts": {
       "role": "observe",
-      "sha256": "80c4b0ec98270a0d432adb24d01f4314c1741b7ae719aabc372d018ec85b87f9",
-      "size": 16199,
-      "normalized_sha256": "80c4b0ec98270a0d432adb24d01f4314c1741b7ae719aabc372d018ec85b87f9"
+      "sha256": "0967fd95c2da0c6efae3fd5f10bb8f47e6475c1af347e34a81a81b5905d1787f",
+      "size": 16126,
+      "normalized_sha256": "0967fd95c2da0c6efae3fd5f10bb8f47e6475c1af347e34a81a81b5905d1787f"
     },
     "packages/webui/test/unit/webui-package.test.ts": {
       "role": "observe",
@@ -31028,9 +31764,9 @@
     },
     "packages/webui/test/unit/webui-service.test.ts": {
       "role": "observe",
-      "sha256": "bce7c8f30c8f94432d3e6f2c4d39f901d9235fcfb42f929a5030853c71ddf1b9",
-      "size": 205545,
-      "normalized_sha256": "bce7c8f30c8f94432d3e6f2c4d39f901d9235fcfb42f929a5030853c71ddf1b9"
+      "sha256": "d6c737a9fd17c3418d50264acb99d1ea5398ddef1a6711bc6a47a7a209a7cb4e",
+      "size": 207413,
+      "normalized_sha256": "d6c737a9fd17c3418d50264acb99d1ea5398ddef1a6711bc6a47a7a209a7cb4e"
     },
     "packages/webui/test/unit/webui-session-catalog.test.ts": {
       "role": "observe",
@@ -31064,9 +31800,9 @@
     },
     "packages/webui/test/unit/webui-shell.test.ts": {
       "role": "observe",
-      "sha256": "db2984f37bee6de40ecfc0dba2c2ba060f3fdde241a9134a344e8c40a5273475",
-      "size": 163634,
-      "normalized_sha256": "db2984f37bee6de40ecfc0dba2c2ba060f3fdde241a9134a344e8c40a5273475"
+      "sha256": "d52e1e938d244adf89b7250a2a1f7da06b6950b6690341d46365605001eae784",
+      "size": 162325,
+      "normalized_sha256": "d52e1e938d244adf89b7250a2a1f7da06b6950b6690341d46365605001eae784"
     },
     "packages/webui/test/unit/webui-startup-diagnosis.test.ts": {
       "role": "observe",
@@ -31200,12 +31936,6 @@
       "size": 9398,
       "normalized_sha256": "624ad0ba2bd63e3ea279808f16fbf63fc9ceafd88410a958d5da2a6f4bcc18d4"
     },
-    "packages/webui/test/unit/workspace-directory-browser.test.ts": {
-      "role": "observe",
-      "sha256": "96ad62f00198e202e9bd732940c8601452e0d48e3debf119d341b07e21ded21c",
-      "size": 2873,
-      "normalized_sha256": "96ad62f00198e202e9bd732940c8601452e0d48e3debf119d341b07e21ded21c"
-    },
     "packages/webui/test/unit/workspace-panel-state.test.ts": {
       "role": "observe",
       "sha256": "5ae53af784033802c98fc13b6901819cc4f1d1f199ad87dac078225697486550",
@@ -31322,9 +32052,9 @@
     },
     "release/public-source.json": {
       "role": "index",
-      "sha256": "5e05960d9c561ee8cb010f90357a586ae65320e0b6bd527de5ae9464358ed4e9",
-      "size": 457466,
-      "normalized_sha256": "5e05960d9c561ee8cb010f90357a586ae65320e0b6bd527de5ae9464358ed4e9"
+      "sha256": "b67b73df5e297f22c6a541708d248f1e59f1d62c454ef36fb66f901846a272aa",
+      "size": 457301,
+      "normalized_sha256": "b67b73df5e297f22c6a541708d248f1e59f1d62c454ef36fb66f901846a272aa"
     },
     "release/webui-npm/README.md": {
       "role": "index",
@@ -31334,15 +32064,15 @@
     },
     "release/webui-npm/bin/mcode-webui.mjs": {
       "role": "index",
-      "sha256": "f3be0ffe5b722eca8164d593b1cf2ae90adf57e7ddeb15fd7b7e400410702f64",
-      "size": 19231,
-      "normalized_sha256": "f3be0ffe5b722eca8164d593b1cf2ae90adf57e7ddeb15fd7b7e400410702f64"
+      "sha256": "87873421144cc558b8edf433201006dc0a0f954ec66ff8085e581aaa0d985db4",
+      "size": 19229,
+      "normalized_sha256": "87873421144cc558b8edf433201006dc0a0f954ec66ff8085e581aaa0d985db4"
     },
     "release/webui-npm/bin/native-directory-picker.mjs": {
       "role": "index",
-      "sha256": "745c6b89dc20bf4bf1f50e88736c86608c09c4b8ce2ca16f0a0353cab039f4f8",
-      "size": 4985,
-      "normalized_sha256": "745c6b89dc20bf4bf1f50e88736c86608c09c4b8ce2ca16f0a0353cab039f4f8"
+      "sha256": "b1db6d6e249316c9fbe2d8e20962077d68db756062fb52b7e66fbd9f6e24ee80",
+      "size": 9069,
+      "normalized_sha256": "b1db6d6e249316c9fbe2d8e20962077d68db756062fb52b7e66fbd9f6e24ee80"
     },
     "release/webui-npm/bin/native-directory-picker.ps1": {
       "role": "index",
@@ -31652,9 +32382,9 @@
     },
     "scripts/lib/webui-overlay-inventory.json": {
       "role": "index",
-      "sha256": "9a59236ba8ca09879208b57ecc66f7aec2554269003ea6b7df21bea8c379fc96",
-      "size": 10112,
-      "normalized_sha256": "9a59236ba8ca09879208b57ecc66f7aec2554269003ea6b7df21bea8c379fc96"
+      "sha256": "e900fa7acf6abf0dc54c519617cbf98c86e70e8e4eb33d782794591c464e9927",
+      "size": 10036,
+      "normalized_sha256": "e900fa7acf6abf0dc54c519617cbf98c86e70e8e4eb33d782794591c464e9927"
     },
     "scripts/lib/webui-presentation-coverage.d.mts": {
       "role": "index",
@@ -31670,9 +32400,9 @@
     },
     "scripts/lib/webui-presentation-inventory.json": {
       "role": "index",
-      "sha256": "b030576cd28af7ccb7605cd462d763f45a063929381d0e728620722fe933f634",
-      "size": 56142,
-      "normalized_sha256": "b030576cd28af7ccb7605cd462d763f45a063929381d0e728620722fe933f634"
+      "sha256": "9d8589ea981694053c57fe35661539a77e46d2c0eee7062894b5e78ef3cd7803",
+      "size": 55826,
+      "normalized_sha256": "9d8589ea981694053c57fe35661539a77e46d2c0eee7062894b5e78ef3cd7803"
     },
     "scripts/lib/webui-publication.d.mts": {
       "role": "index",
@@ -31850,9 +32580,9 @@
     },
     "test/source-sync.test.mjs": {
       "role": "index",
-      "sha256": "7a41ec7d036c4503afef5ad9796d9c3037015deb4cb5b3a06d0ffb5448128319",
-      "size": 104761,
-      "normalized_sha256": "7a41ec7d036c4503afef5ad9796d9c3037015deb4cb5b3a06d0ffb5448128319"
+      "sha256": "9a0073dfde7c0b9b82d5c42b1cbd037c005d7048e31d10639f102e80760703da",
+      "size": 109182,
+      "normalized_sha256": "9a0073dfde7c0b9b82d5c42b1cbd037c005d7048e31d10639f102e80760703da"
     },
     "test/sqlite-message-contention.test.ts": {
       "role": "observe",
@@ -31862,9 +32592,9 @@
     },
     "test/vitest-suites.json": {
       "role": "index",
-      "sha256": "506569a42861dd8efa6c5d7f57111edea93ed18154a3585cac80adf9e8f31839",
-      "size": 43731,
-      "normalized_sha256": "506569a42861dd8efa6c5d7f57111edea93ed18154a3585cac80adf9e8f31839"
+      "sha256": "6a50b13d87082b7a8c662a9d7c5f20bdfe2bf292322d7c94989eb0fd4a50318f",
+      "size": 43661,
+      "normalized_sha256": "6a50b13d87082b7a8c662a9d7c5f20bdfe2bf292322d7c94989eb0fd4a50318f"
     },
     "test/windows-contract.test.mjs": {
       "role": "index",

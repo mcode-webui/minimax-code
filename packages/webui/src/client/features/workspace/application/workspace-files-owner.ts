@@ -61,7 +61,7 @@ export type WebuiDirectoryBrowseState =
 
 export interface WebuiWorkspaceFilesState {
   readonly fileTree: WebuiWorkspaceFileTreeState;
-  /** The directory browser's listing: the view renders, the owner reads. */
+  /** The latest directory listing requested from the host. */
   readonly directoryBrowse: WebuiDirectoryBrowseState;
   /** File read results, keyed by the caller's tab id. */
   readonly files: ReadonlyMap<string, WebuiWorkspaceFileContentState>;

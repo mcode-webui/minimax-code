@@ -11,6 +11,7 @@ dist-webui-npm/
 !.env.example
 .DS_Store
 .idea/
+.openidea/
 .codegraph/
 dist-*.zip
 dist-store-*/

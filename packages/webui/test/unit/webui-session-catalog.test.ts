@@ -14,7 +14,7 @@ import { createWebuiSessionStore } from "../../src/client/application/session-st
 import { createWebuiSessionWorkflows } from "../../src/client/features/sessions/application/session-workflows.js";
 import { createWebuiSessionScopeManager } from "../../src/client/conversation/session-scope.js";
 import { selectWebuiWorkspaceProgress } from "../../src/client/features/workspace/projection/workspace-progress.js";
-import type { WebuiClientSession } from "../../src/client/features/sessions/contracts/session-view.js";
+import type { WebuiClientProject, WebuiClientSession } from "../../src/client/features/sessions/contracts/session-view.js";
 import type { WebuiSessionLookupResult } from "../../src/shared/contracts/session.js";
 import { selectWebuiSessionAgentName, selectWebuiSessionLookups } from "../../src/client/features/sessions/projection/session-lookups.js";
 
@@ -408,6 +408,34 @@ describe("session workflows", () => {
     await first;
 
     expect(workflows.getProjectsSnapshot()).toEqual({ loading: false, projects: current });
+    workflows.dispose();
+  });
+
+  it("reads project membership after creation and reconciles creations during a pending read", async () => {
+    const reads: Array<(rows: readonly WebuiClientProject[]) => void> = [];
+    const workflows = createWebuiSessionWorkflows({
+      store: createWebuiSessionStore(), composer: purger(), port: {
+        loadProjects: () => new Promise<readonly WebuiClientProject[]>((resolve) => { reads.push(resolve); }),
+      } as Parameters<typeof createWebuiSessionWorkflows>[0]["port"],
+    });
+    const expected: WebuiClientProject = {
+      projectId: 2, workspaceDir: "/later", projectKind: "workspace", hidden: false, pinned: false,
+      orderIndex: 0, recentAtMs: 1, latestActivityAtMs: 1, sessionCount: 1,
+    };
+    const initial = workflows.loadProjects();
+    reads[0]!([]);
+    await initial;
+    workflows.applyFact({ kind: "created", sessionId: "first" });
+    workflows.applyFact({ kind: "created", sessionId: "second" });
+    workflows.applyFact({ kind: "created", sessionId: "third" });
+    expect(reads).toHaveLength(2);
+    reads[1]!([]);
+    await Promise.resolve();
+    expect(reads).toHaveLength(3);
+    expect(workflows.getProjectsSnapshot().loading).toBe(true);
+    reads[2]!([expected]);
+    await Promise.resolve();
+    expect(workflows.getProjectsSnapshot()).toEqual({ loading: false, projects: [expected] });
     workflows.dispose();
   });
 

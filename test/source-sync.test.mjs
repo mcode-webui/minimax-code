@@ -1593,16 +1593,16 @@ test('the desktop version the marketplace is filtered by is declared in exactly 
   assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
 });
 
-test('native folder launcher grant is restricted to interactive or desktop-hosted local desktop loopback', () => {
+test('a desktop loopback launch offers folder selection to paired browsers with or without a terminal', () => {
   const local = { platform: 'win32', tty: true, bindHost: '127.0.0.1', fullAccess: false, env: {} };
   for (const change of [{}, { platform: 'darwin' }, { platform: 'linux', env: { DISPLAY: ':0' } },
-    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }, { desktopHost: true, tty: false }]) {
+    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }, { desktopHost: true, tty: false }, { tty: false }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), true);
   }
   for (const change of [{ platform: 'linux' }, { platform: 'freebsd' }, { env: { SSH_TTY: '/dev/pts/0' } },
     { platform: 'linux', env: { DISPLAY: ':0', SSH_CONNECTION: 'forwarded session' } },
     { fullAccess: true }, { bindHost: '0.0.0.0' }, { bindHost: '192.168.1.1' },
-    { tty: false }, { desktopHost: true, tty: false, env: { SSH_TTY: '/dev/pts/0' } },
+    { desktopHost: true, tty: false, env: { SSH_TTY: '/dev/pts/0' } },
     { desktopHost: true, tty: false, fullAccess: true }, { desktopHost: true, tty: false, bindHost: '0.0.0.0' }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), false);
   }

@@ -18,10 +18,10 @@ function localTarget() {
       target?.origin === url.origin && target.token) return target;
 }
 
-async function pairBrowser(origin: string, token: string, grant: string): Promise<string | undefined> {
+async function pairBrowser(origin: string, token: string, headers: Record<string, string>, signal?: AbortSignal): Promise<string | undefined> {
   const response = await globalThis.fetch(`${origin}/native-directory-picker/authorize`, {
     method: "POST", mode: "same-origin", credentials: "same-origin", redirect: "error",
-    headers: { "X-Webui-Native-Grant": grant, "X-Webui-Token": token },
+    headers: { ...headers, "X-Webui-Token": token }, ...(signal ? { signal } : {}),
   });
   if (!response.ok) return;
   const result: unknown = await response.json();
@@ -31,6 +31,34 @@ async function pairBrowser(origin: string, token: string, grant: string): Promis
   try { getWebuiBrowserStorage()?.setItem(pairingKey, result.browserKey); }
   catch { /* The launcher tab can still use its in-memory key. */ }
   return result.browserKey;
+}
+
+async function pairLocalBrowser(origin: string, token: string, signal: AbortSignal): Promise<string | undefined> {
+  // A forwarded WebUI can return the host's port number, but the new address
+  // resolves on the browser's own computer. Never send a credential to it.
+  try {
+    const challenge = await fetch(`${origin}/native-directory-picker/authorize`, {
+      method: "POST", mode: "same-origin", credentials: "same-origin", redirect: "error", signal,
+      headers: { "X-Webui-Native-Local": "1", "X-Webui-Token": token },
+    });
+    if (!challenge.ok) return;
+    const { localOrigin } = await challenge.json();
+    if (typeof localOrigin !== "string") return;
+    const url = new URL(localOrigin);
+    if (url.origin !== localOrigin || url.protocol !== "http:" || url.hostname !== new URL(origin).hostname ||
+        url.origin === origin || !url.port) return;
+    const receipt = await fetch(localOrigin + "/", {
+      method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", redirect: "error",
+      signal: AbortSignal.any([signal, AbortSignal.timeout(5_000)]),
+    });
+    if (!receipt.ok) return;
+    const { proof } = await receipt.json();
+    if (typeof proof !== "string" || !uuid.test(proof)) return;
+    return await pairBrowser(origin, token, { "X-Webui-Native-Local": "1", "X-Webui-Native-Proof": proof }, signal);
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return;
+  }
 }
 
 export function captureNativeDirectoryLaunchGrant(): void {
@@ -45,7 +73,7 @@ export function captureNativeDirectoryLaunchGrant(): void {
   globalThis.history.replaceState(globalThis.history.state, "", url.href);
   const target = localTarget();
   if (target && uuid.test(grant)) {
-    launchPairing = pairBrowser(target.origin, target.token, grant).catch(() => undefined);
+    launchPairing = pairBrowser(target.origin, target.token, { "X-Webui-Native-Grant": grant }).catch(() => undefined);
   }
 }
 export async function pickNativeWorkspaceDirectory(signal: AbortSignal): Promise<NativeWorkspaceDirectoryResult> {
@@ -55,11 +83,19 @@ export async function pickNativeWorkspaceDirectory(signal: AbortSignal): Promise
   // A later launch may have paired another tab since this page loaded.
   try { browserKey = getWebuiBrowserStorage()?.getItem(pairingKey) ?? browserKey; }
   catch { /* Use this tab's key when browser storage cannot be read. */ }
-  if (!browserKey || !uuid.test(browserKey)) return { kind: "unavailable" };
-  const response = await globalThis.fetch(`${target.origin}/native-directory-picker`, {
+  const choose = (key: string) => globalThis.fetch(`${target.origin}/native-directory-picker`, {
     method: "POST", mode: "same-origin", credentials: "same-origin", redirect: "error", signal,
-    headers: { "X-Webui-Native-Browser": browserKey, "X-Webui-Token": target.token },
+    headers: { "X-Webui-Native-Browser": key, "X-Webui-Token": target.token },
   });
+  let response = browserKey && uuid.test(browserKey) ? await choose(browserKey) : undefined;
+  // A stale key from the previous server process is refused before the
+  // provider is invoked. Re-pair once; never repeat a submitted selection.
+  if (!response || (response.status === 403 && !launchPairing)) {
+    browserKey = await pairLocalBrowser(target.origin, target.token, signal);
+    if (!browserKey) return { kind: "unavailable" };
+    launchPairing = Promise.resolve(browserKey);
+    response = await choose(browserKey);
+  }
   if ([401, 403, 404].includes(response.status)) return { kind: "unavailable" };
   if (!response.ok) throw new Error(response.status === 409 ? "已有系统目录选择窗口，请先完成或取消。" : "系统目录选择失败，请重试。");
   const result: unknown = await response.json();

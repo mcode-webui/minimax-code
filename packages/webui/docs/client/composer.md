@@ -36,7 +36,7 @@ the notice shows a transfer error beside its action so the user can select anoth
 ## Workspace folder selection
 
 On the home page, `选择新项目` opens the system folder chooser in the browser
-paired by an interactive local `mcode-webui` launch. Windows opens the native
+on the computer running `mcode-webui`. Windows opens the native
 `IFileOpenDialog` from a short-lived koffi worker, which also brings the dialog
 to the foreground when the server was started in the background; macOS uses its
 system dialog. On a Linux desktop the launcher uses Zenity or KDialog. Zenity opens
@@ -48,14 +48,14 @@ Cancelling returns to the home page with the previous selection.
 
 The tab opened by the launcher exchanges its temporary grant for a browser key
 and a separate HttpOnly session cookie. Reloaded pages and other tabs on the
-same origin use that pairing. After a restart, the launcher tab renews it for
-the browser. A remote or unpaired browser can select a recent project or
-`不需要项目`. Requesting a new folder without a native chooser displays a notice.
+same origin use that pairing. A manually opened local page can establish a
+pairing through a temporary loopback listener. Remote pages can select a recent
+project or `不需要项目`. Requesting a new folder without a native chooser displays a notice.
 
 A local desktop host that embeds the page can receive the same grant URL through
 `WEBUI_LAUNCH_URL_FILE` when it starts `mcode-webui` with `WEBUI_DESKTOP_HOST=1`.
-The file is owner-only and the grant remains one-time; the route's loopback,
-Host, Origin, cookie, grant and browserKey checks are unchanged. `WEBUI_OPEN_BROWSER`
+The file is owner-only. The route checks loopback, Host, Origin, credentials and
+browser pairing. `WEBUI_OPEN_BROWSER`
 still controls only the system browser.
 
 ## Where the pieces live

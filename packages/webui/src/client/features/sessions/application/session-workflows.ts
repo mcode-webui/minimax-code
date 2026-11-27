@@ -409,12 +409,32 @@ export function createWebuiSessionWorkflows(deps: {
   let archived: WebuiArchivedSessionsState = initialWebuiArchivedSessionsState;
   let projects: WebuiProjectsState = { loading: false };
   let projectRequestVersion = 0;
+  let projectsInvalidated = false;
   let disposed = false;
   const projectListeners = new Set<() => void>();
   const setProjects = (next: WebuiProjectsState): void => {
     projects = next;
     for (const listener of [...projectListeners]) listener();
   };
+  async function loadProjects(): Promise<readonly WebuiClientProject[]> {
+    if (!port.loadProjects || disposed) return projects.projects ?? [];
+    const version = ++projectRequestVersion;
+    projectsInvalidated = false;
+    setProjects({ ...projects, loading: true, error: undefined });
+    try {
+      const result = await port.loadProjects();
+      if (!disposed && version === projectRequestVersion && !projectsInvalidated)
+        setProjects({ loading: false, projects: result });
+      return result;
+    } catch (error) {
+      if (!disposed && version === projectRequestVersion && !projectsInvalidated)
+        setProjects({ ...projects, loading: false, error: message(error) });
+      throw error;
+    } finally {
+      if (!disposed && version === projectRequestVersion && projectsInvalidated)
+        void loadProjects().catch(() => undefined);
+    }
+  }
   const archivedListeners = new Set<() => void>();
   const setArchived = (next: WebuiArchivedSessionsState): void => {
     archived = next;
@@ -766,6 +786,10 @@ export function createWebuiSessionWorkflows(deps: {
       if (disposed || removedSessionIds.has(fact.sessionId)) return;
       retireCatalogReads();
       if (fact.kind === "created") {
+        // Creating from another client or /new changes the same rail as a home
+        // submission. A read started before the commit needs one trailing read.
+        if (projects.loading) projectsInvalidated = true;
+        else void loadProjects().catch(() => undefined);
         // A creation normally names an entity this client has never read.
         // Repair through the authoritative query before applying known-only patches.
         if (flatPending === undefined) void loadFlat();
@@ -946,27 +970,7 @@ export function createWebuiSessionWorkflows(deps: {
       projectListeners.add(listener);
       return () => projectListeners.delete(listener);
     },
-    loadProjects: async () => {
-      if (!port.loadProjects) return [];
-      if (disposed) return projects.projects ?? [];
-      const version = ++projectRequestVersion;
-      setProjects({ ...projects, loading: true, error: undefined });
-      try {
-        const result = await port.loadProjects();
-        if (disposed || version !== projectRequestVersion) return result;
-        setProjects({ loading: false, projects: result });
-        return result;
-      } catch (error) {
-        if (!disposed && version === projectRequestVersion) {
-          setProjects({ loading: false, ...(projects.projects ? { projects: projects.projects } : {}), error: message(error) });
-        }
-        throw error;
-      } finally {
-        if (!disposed && version === projectRequestVersion && projects.loading) {
-          setProjects({ ...projects, loading: false });
-        }
-      }
-    },
+    loadProjects,
     retainedDeletionDrafts: () => retainedSnapshot,
     subscribeRetainedDrafts: (listener) => {
       retainedListeners.add(listener);

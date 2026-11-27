@@ -213,6 +213,11 @@ execution. Stop acknowledgements are fenced by the generation captured at invoca
 acknowledgement cannot settle a newer turn. Execution activity, delivery completion and persistence
 confirmation remain separate facts.
 
+The sessions owner refreshes the rail's project records on a committed `session.created`
+event, including sessions created by `/new` or another client. Multiple creations during a
+pending read trigger one fresh lookup after it settles. Sending the first message can proceed
+while that lookup is pending.
+
 The selected session's metadata is read from the catalogue entity map, independently of the flat
 and tree pages' membership. Selection acquires missing metadata through the existing `getSession`
 operation; concurrent same-identity reads coalesce, and navigation does not redirect their result.

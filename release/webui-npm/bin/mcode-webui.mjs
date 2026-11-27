@@ -263,12 +263,11 @@ const terminal = new WebuiTerminalManager();
 // The bridge's pairings follow the switches, so the persisted authorization has
 // to reach them before the service starts serving.
 await browser.initialize();
-// Kept out of help/version and disabled for unattended, remote and full-access runs.
+// A desktop loopback launch offers the provider. The browser must still pair.
 const { nativeDirectoryPickerEligible, createNativeDirectoryPicker, nativeDirectoryLaunchUrl } =
   await import("./native-directory-picker.mjs");
 const nativeDirectoryPicker = nativeDirectoryPickerEligible({
-  platform: process.platform, tty: Boolean(process.stdout.isTTY), desktopHost,
-  bindHost, fullAccess: args["full-access"],
+  platform: process.platform, bindHost, fullAccess: args["full-access"],
 }) ? createNativeDirectoryPicker() : undefined;
 const service = new WebuiService({
   nativeDirectoryPicker,

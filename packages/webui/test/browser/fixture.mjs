@@ -713,16 +713,6 @@ export function installFixtureTransport() {
       if (typeof body?.mode === "string") permissionMode = body.mode;
       return { mode: permissionMode };
     }
-    // A directory listing with an EMPTY `entries` array, not the `{}` default:
-    // the workspace directory browser reads `listing?.entries.length` and the
-    // missing array threw `Cannot read properties of undefined (reading
-    // 'length')` on every open of the workspace picker.
-    if (operation === "browseWorkspaceDirs")
-      return {
-        dir: typeof body?.dir === "string" ? body.dir : "",
-        entries: [],
-        truncated: false,
-      };
     if (operation === "getSigninPanel") return clone(signinPanel);
     if (operation === "getSessionUsage") return {};
     if (operation === "listUserModelProviders") return clone(modelProviders);

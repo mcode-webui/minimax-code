@@ -1,5 +1,4 @@
-// The home composer's project row: the workspace picker, its recent list and the
-// directory browser it opens.
+// The home composer's project row and its native folder chooser.
 //
 // This was the tail of the `WebuiComposer` render. It is the unit that
 // carries where the composer sits on the home surface: the row lives INSIDE the
@@ -8,22 +7,16 @@
 // makes the card and the band one continuous surface instead of two stacked
 // boxes meeting along a seam.
 //
-// It owns the state only it uses (whether the directory browser is showing).
-// The recent list is a `WebuiDropdown`, so the shared skeleton dismisses it and
-// gives it the surface and the motion every other dropdown in the client has;
-// the directory browser it opens is a dialog, not a dropdown, and registers as
-// a layer of its own, so the coordinator dismisses it and it keeps no listener.
-// The menu's open state stays a prop because the shell owns it.
+// The shell owns the recent menu's open state. The row owns its pending
+// native chooser.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { WebuiDropdown } from "../../../ui/Dropdown.js";
 import { WebuiButton } from "../../../ui/button.js";
-import { WebuiDialog } from "../../../ui/dialog.js";
-import { useWebuiToastError } from "../../../ui/toast.js";
+import { useWebuiToast } from "../../../ui/toast.js";
 import { useWebuiBrowserCapabilities } from "../../../bindings/browser-capabilities.js";
 import { workspaceProjectName } from "../../../features/workspace/projection/workspace-name.public.js";
-import { WebuiWorkspaceDirectoryBrowser } from "../../../features/workspace/ui/WebuiWorkspaceDirectoryBrowser.public.js";
 import { WebuiIconCheck, WebuiIconFolder } from "../../../shell/icons.js";
 
 export interface WebuiComposerProjectRowProps {
@@ -45,61 +38,40 @@ export function WebuiComposerProjectRow({
   onMenuOpenChange,
   onSelectProject,
 }: WebuiComposerProjectRowProps) {
-  const { dom, nativeDirectoryPicker } = useWebuiBrowserCapabilities();
-  const [browserOpen, setBrowserOpen] = useState(false);
-  const [nativeMode, setNativeMode] = useState(false);
-  const [nativePending, setNativePending] = useState(false);
-  const [nativeError, setNativeError] = useState("");
-  useWebuiToastError(nativeError);
+  const { nativeDirectoryPicker } = useWebuiBrowserCapabilities();
+  const { show } = useWebuiToast();
   const request = useRef<AbortController | null>(null);
-  const nativeAddButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => () => {
-    request.current?.abort();
-    request.current = null;
-  }, []);
+  useEffect(() => () => request.current?.abort(), []);
 
-  function closeBrowser() {
+  function selectProject(dir: string | undefined) {
+    // The browser stays interactive while the independent OS window is open.
+    // A later choice from the menu takes precedence over its eventual result.
     request.current?.abort();
     request.current = null;
-    setNativePending(false);
-    setNativeError("");
-    setBrowserOpen(false);
+    onSelectProject(dir);
   }
 
-  function showServerBrowser() {
-    request.current?.abort();
-    request.current = null;
-    setNativePending(false);
-    setNativeError("");
-    setNativeMode(false);
-  }
-
-  async function addFolder() {
-    if (!nativeDirectoryPicker || request.current) return;
+  async function chooseNewProject() {
+    onMenuOpenChange(false);
+    if (request.current) return;
     const current = new AbortController();
     request.current = current;
-    setNativePending(true);
-    setNativeError("");
     try {
-      const result = await nativeDirectoryPicker.choose(current.signal);
-      if (request.current !== current) return;
-      if (result.kind === "selected") {
-        closeBrowser();
+      const result = await nativeDirectoryPicker?.choose(current.signal);
+      if (current.signal.aborted) return;
+      if (!result || result.kind === "unavailable") {
+        show({ tone: "error", message: "系统文件夹选择器不可用，请在运行 WebUI 的电脑上通过 mcode-webui 启动器打开页面。" });
+      } else if (result.kind === "selected") {
         onSelectProject(result.directory);
-      } else if (result.kind === "unavailable") {
-        showServerBrowser();
       }
     } catch (error) {
-      if (request.current === current) {
-        setNativeError(error instanceof Error && !(error instanceof TypeError)
+      if (!current.signal.aborted) {
+        show({ tone: "error", message: error instanceof Error && !(error instanceof TypeError)
           ? error.message
-          : "无法打开系统目录选择，请重试或选择服务端目录。");
+          : "无法打开系统文件夹选择器，请重试。" });
       }
     } finally {
-      if (request.current === current) {
-        request.current = null;
-        setNativePending(false);
-      }
+      if (request.current === current) request.current = null;
     }
   }
 
@@ -160,7 +132,7 @@ export function WebuiComposerProjectRow({
                     data-webui-workspace-recent={dir}
                     className="webui-workspace-option"
                     title={dir}
-                    onClick={() => onSelectProject(dir)}
+                    onClick={() => selectProject(dir)}
                   >
                     <WebuiIconFolder className="flex-shrink-0" />
                     <span className="min-w-0 flex-1 truncate text-left">
@@ -179,11 +151,7 @@ export function WebuiComposerProjectRow({
             aria-selected={false}
             data-webui-workspace-action="add-new"
             className="webui-workspace-option"
-            onClick={() => {
-              onMenuOpenChange(false);
-              setNativeMode(nativeDirectoryPicker?.available() ?? false);
-              setBrowserOpen(true);
-            }}
+            onClick={() => void chooseNewProject()}
           >
             <WebuiIconFolder className="flex-shrink-0" />
             <span className="min-w-0 flex-1 truncate text-left">
@@ -196,7 +164,7 @@ export function WebuiComposerProjectRow({
             aria-selected={projectDir === undefined}
             data-webui-workspace-action="no-project"
             className="webui-workspace-option"
-            onClick={() => onSelectProject(undefined)}
+            onClick={() => selectProject(undefined)}
           >
             <WebuiIconFolder className="flex-shrink-0" />
             <span className="min-w-0 flex-1 truncate text-left">
@@ -204,45 +172,6 @@ export function WebuiComposerProjectRow({
             </span>
           </WebuiButton>
         </WebuiDropdown>
-        <WebuiDialog
-          id="composer-directory-browser"
-          open={browserOpen}
-          title={nativeMode ? "选择新项目" : "选择项目目录"}
-          description={nativeMode ? "选择此电脑上的文件夹" : "选择运行 WebUI 的主机上用于新会话的工作目录"}
-          width="standard"
-          portalTarget={dom.portalTarget()}
-          initialFocusRef={nativeMode ? nativeAddButton : undefined}
-          onClose={closeBrowser}
-          dismissOnEscape
-          dismissOnBackdrop
-          testId="webui-workspace-browser-dialog"
-          dataAttributes={{ "data-webui-workspace-browser-dialog": "true" }}
-          bodyClassName="webui-workspace-browser-dialog-body"
-        >
-          {nativeMode ? (
-            <div className="flex flex-col gap-3 p-4" aria-busy={nativePending}>
-              <div className="flex flex-wrap items-center gap-2">
-                <WebuiButton ref={nativeAddButton} type="button" variant="primary" loading={nativePending}
-                  loadingLabel="正在等待系统选择窗口…" onClick={() => void addFolder()}>
-                  {nativePending ? "正在等待系统选择窗口…" : "+ 添加文件夹"}
-                </WebuiButton>
-                <WebuiButton type="button" variant="plain" disabled={nativePending}
-                  onClick={showServerBrowser}>
-                  浏览服务端目录
-                </WebuiButton>
-              </div>
-            </div>
-          ) : (
-            <WebuiWorkspaceDirectoryBrowser
-              initialDir={projectDir}
-              onSelect={(dir) => {
-                closeBrowser();
-                onSelectProject(dir);
-              }}
-              onCancel={closeBrowser}
-            />
-          )}
-        </WebuiDialog>
       </div>
     </div>
   );

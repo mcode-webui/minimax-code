@@ -257,12 +257,12 @@ const terminal = new WebuiTerminalManager();
 // to reach them before the service starts serving.
 await browser.initialize();
 // Kept out of help/version and disabled for unattended, remote and full-access runs.
-const { nativeDirectoryPickerEligible, createWindowsDirectoryPicker, nativeDirectoryLaunchUrl } =
+const { nativeDirectoryPickerEligible, createNativeDirectoryPicker, nativeDirectoryLaunchUrl } =
   await import("./native-directory-picker.mjs");
 const nativeDirectoryPicker = nativeDirectoryPickerEligible({
   platform: process.platform, tty: Boolean(process.stdout.isTTY), bindHost,
   fullAccess: args["full-access"], browserSetting: process.env.WEBUI_OPEN_BROWSER,
-}) ? createWindowsDirectoryPicker() : undefined;
+}) ? createNativeDirectoryPicker() : undefined;
 const service = new WebuiService({
   nativeDirectoryPicker,
   port,

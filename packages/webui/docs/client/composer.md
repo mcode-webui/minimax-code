@@ -35,15 +35,20 @@ the notice shows a transfer error beside its action so the user can select anoth
 
 ## Workspace folder selection
 
-For a locally launched Windows WebUI with a native directory-picker grant, opening
-`选择新项目` offers `选择此电脑上的文件夹` and `添加文件夹`. The add action opens the
-native Windows directory chooser; confirming a folder changes the next session's work
-directory. Cancelling the system chooser, dismissing the WebUI dialog or failing to
-open the chooser does not change the current workspace.
+On the home page, `选择新项目` opens the system folder chooser in the browser
+paired by an interactive local `mcode-webui` launch. Windows and macOS use their
+system dialogs. On a Linux desktop the launcher uses Zenity or KDialog. Zenity opens
+in the last folder confirmed during this launch if it still exists, or in the user's
+home directory. This lets the chooser open even if a desktop application previously
+selected a folder that has since been removed. Confirming
+a folder sets its absolute path as the working directory for the next session.
+Cancelling returns to the home page with the previous selection.
 
-Remote browsers and launches without the local grant use the existing server
-directory browser instead. Its paths refer to the machine running WebUI, not
-to the browser's device. The native entry also offers this fallback explicitly.
+The tab opened by the launcher exchanges its temporary grant for a browser key
+and a separate HttpOnly session cookie. Reloaded pages and other tabs on the
+same origin use that pairing. After a restart, the launcher tab renews it for
+the browser. A remote or unpaired browser can select a recent project or
+`不需要项目`. Requesting a new folder without a native chooser displays a notice.
 
 ## Where the pieces live
 

@@ -44,7 +44,7 @@
     },
     "features/composer/ui/ComposerProjectRow.tsx": {
       "disposition": "managed",
-      "note": "the project menu layers on the shared dropdown, and the directory browser it opens is a modal layer of its own, so the coordinator dismisses it and it holds no listener"
+      "note": "the home project menu uses the shared dropdown; the operating system owns its folder chooser"
     },
     "features/composer/ui/ContextUsageIndicator.tsx": {
       "disposition": "managed",

@@ -69,14 +69,14 @@ export type WebuiCookieCredential =
  * `absent`, so a caller can say "your cookie is malformed" instead of claiming
  * nothing was presented.
  */
-export function credentialFromCookie(header: string | undefined): WebuiCookieCredential {
+export function credentialFromCookie(header: string | undefined, cookieName = WEBUI_CREDENTIAL_COOKIE): WebuiCookieCredential {
   if (!header) return { kind: "absent" };
   let malformed = false;
   for (const part of header.split(";")) {
     const separator = part.indexOf("=");
     if (separator < 0) continue;
     const name = part.slice(0, separator).trim();
-    if (name !== WEBUI_CREDENTIAL_COOKIE) continue;
+    if (name !== cookieName) continue;
     const token = decodeCookieValue(part.slice(separator + 1).trim());
     if (token !== undefined) return { kind: "presented", token };
     malformed = true;

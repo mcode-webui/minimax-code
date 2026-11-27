@@ -11,14 +11,13 @@
 // it. The `.public` suffix changes nothing about what the module is — the
 // classifier strips it, so this is still `projection/`, still the same rule.
 
+import { basenamePath } from "../../../projection/common/paths.js";
+
 /**
- * The project name a workspace directory displays as: its last path segment, or
- * the "未选项目" copy when nothing is chosen.
+ * A project displays its last path segment, the root itself when it has no
+ * segment, or "未选项目" when nothing is chosen.
  */
 export function workspaceProjectName(workspaceDir?: string): string {
   const value = workspaceDir?.trim();
-  if (!value) return "未选项目";
-  const normalized = value.replace(/[\\/]+$/u, "");
-  const parts = normalized.split(/[\\/]/u).filter(Boolean);
-  return parts.at(-1) || normalized;
+  return value ? basenamePath(value) : "未选项目";
 }

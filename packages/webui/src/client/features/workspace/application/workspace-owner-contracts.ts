@@ -1,11 +1,10 @@
 // The narrow owner contracts the Workspace facade hands out.
 //
 // The facade is one object because the panels render one composition. It is not
-// one object because every reader wants every resource: the composer renders a
-// file tree, the directory browser renders two resources at once, and the canvas
-// reads a canvas. Handing each of them the whole facade meant a capability added
-// to Archive was, in the type system, a member every consumer had gained — which
-// is the coupling this file exists to break.
+// one object because every reader wants every resource: the archive view reads
+// artifacts, and the canvas reads a canvas. Handing each the whole facade meant
+// a capability added to Archive was, in the type system, a member every consumer
+// had gained — which is the coupling this file exists to break.
 //
 // What each contract names is what its reader *renders*. A reader that grows a
 // new resource gets a new contract, not a wider one; a resource that grows a

@@ -534,7 +534,6 @@
       "packages/webui/test/unit/webui-workspace-html-preview.test.tsx",
       "packages/webui/test/unit/webui-workspace-media-preview.test.tsx",
       "packages/webui/test/unit/native-directory-picker.test.ts",
-      "packages/webui/test/unit/workspace-directory-browser.test.ts",
       "packages/webui/test/unit/workspace-panel-state.test.ts",
       "packages/webui/test/unit/workspace-queries.test.ts",
       "packages/webui/test/unit/workspace-review-owner.test.ts",

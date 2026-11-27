@@ -177,21 +177,6 @@ function WebuiComposerGoalPanel({
  *  it — an inline default would be a fresh array every render. */
 const EMPTY_WORKSPACE_DIRS: readonly string[] = [];
 
-/**
- * Directory browser behind the composer's "选择新项目".
- *
- * A browser cannot name a directory for us: the File System Access API
- * hands back a bare directory name and `webkitRelativePath` is relative — while
- * the server requires a real absolute path for a session's working
- * directory. So the server enumerates this machine's directories and the
- * user picks from what it reports.
- *
- * When the transport has no `browseWorkspaceDirs` — a static fixture
- * transport, or a server that predates the operation — the browser falls
- * back to a manual absolute-path field. Either way a failure is shown in
- * the popover; it never resolves to a silent no-op.
- */
-
 export function WebuiComposer({
   sessionId,
   sessionLayout = false,
@@ -459,9 +444,6 @@ export function WebuiComposer({
   // in. The mention list and the command palette hang off it, because it is
   // the box a reader sees; a caret has no rectangle to measure.
   const composerInputContainerRef = useRef<HTMLDivElement | null>(null);
-  // The workspace picker's own container: the 选择文件夹 trigger plus whichever
-  // panel it has open (the 最近 list or the directory browser). The picker has
-  // to be judged against THIS, not `composerRegionRef` — see the effect below.
   const fieldId = useId();
   // The session's context-window reading, and the two records that own half of
   // it each.
@@ -643,8 +625,6 @@ export function WebuiComposer({
   // the palette have no trigger of their own — a keystroke in the textarea
   // opens them — so they name the composer's region as the place a press
   // inside is not a dismissal, and the composer still owns their cursors.
-  // The workspace picker's outside-close listener moved with the row itself
-  // (ComposerProjectRow), which owns that container and its two flags.
   //
   // Which side the palette opens on is NOT decided here. The palette's own
   // height decides it, and its height is only known where it is measured and

@@ -1165,6 +1165,32 @@ describe("WebUI service", () => {
     } });
     expect(accepted.status).toBe(200);
     expect(await accepted.json()).toEqual({ kind: "selected", directory: os.tmpdir() });
+    const authorize = origin + "/native-directory-picker/authorize";
+    const pair = () => fetch(authorize, { method: "POST", headers: { ...headers, "X-Webui-Token": info.credential.token } });
+    expect((await fetch(authorize, { headers })).status).toBe(404);
+    const authorized = await pair();
+    expect(authorized.status).toBe(200);
+    expect(authorized.headers.get("cache-control")).toBe("no-store");
+    const { browserKey } = await authorized.json() as { browserKey: string };
+    const setCookie = authorized.headers.get("set-cookie")!;
+    expect(setCookie).toMatch(new RegExp(`^webui_native_directory_${info.tcpPort}=[a-f0-9-]+; Path=/native-directory-picker; SameSite=Strict; HttpOnly$`));
+    const cookie = setCookie.split(";")[0]!;
+    expect(new Set([cookie.split("=")[1], browserKey, grant, info.credential.token]).size).toBe(4);
+    expect(await (await pair()).json()).toEqual({ browserKey }); // A retry preserves the authorization of existing tabs.
+    expect(choose).toHaveBeenCalledTimes(1); // Exchanging a proof never opens a dialog.
+    const pairedHeaders = {
+      Origin: origin, "Sec-Fetch-Site": "same-origin", "X-Webui-Token": info.credential.token,
+      Cookie: cookie, "X-Webui-Native-Browser": browserKey,
+    };
+    const pick = (extra: Record<string, string> = {}) => fetch(origin + "/native-directory-picker", {
+      method: "POST", headers: { ...pairedHeaders, ...extra },
+    });
+    expect((await pick({ Cookie: "" })).status).toBe(403);
+    expect((await pick({ "X-Webui-Native-Browser": "" })).status).toBe(403);
+    expect((await pick({ "X-Webui-Token": "" })).status).toBe(401);
+    expect((await fetch(authorize, { method: "POST", headers: pairedHeaders })).status).toBe(403);
+    expect(await (await pick()).json()).toEqual({ kind: "selected", directory: os.tmpdir() });
+    expect(choose).toHaveBeenCalledTimes(2);
     await service.close(); expect(dispose).toHaveBeenCalledTimes(1);
   });
 

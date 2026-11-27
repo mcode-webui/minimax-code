@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { once } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createNativeDirectoryRoute, validateNativeDirectory } from "../../src/server/http/native-directory.js";
-import { captureNativeDirectoryLaunchGrant, canPickNativeWorkspaceDirectory, pickNativeWorkspaceDirectory } from "../../src/client/platform/native-directory-picker.js";
+import { captureNativeDirectoryLaunchGrant, pickNativeWorkspaceDirectory } from "../../src/client/platform/native-directory-picker.js";
 
 const grant = "11111111-2222-3333-4444-555555555555";
 const context = { host: "127.0.0.1", port: 2233, credential: { token: "test-token" }, fullAccess: false };
@@ -60,25 +60,66 @@ describe("native directory HTTP desktop capability", () => {
     { "x-forwarded-host": "example.test" }, { "x-webui-native-grant": "wrong" },
   ])("denies unsafe request %j without invoking provider", async (headers) => {
     const choose = vi.fn(); const route = createNativeDirectoryRoute({ grant, choose, dispose: async () => {} });
-    const res = response(); await route.handle(request(headers), asResponse(res), context);
-    expect(res.statusCode).toBe(403); expect(choose).not.toHaveBeenCalled();
+    for (const action of ["choose", "authorize"] as const) {
+      const res = response(); await route.handle(request(headers), asResponse(res), context, action);
+      expect(res.statusCode).toBe(403); expect(res.setHeader).not.toHaveBeenCalledWith("Set-Cookie", expect.anything());
+    }
+    expect(choose).not.toHaveBeenCalled();
   });
   it.each([{ ...context, fullAccess: true }, { ...context, host: "0.0.0.0" }])("denies deployment %j", async (admission) => {
-    const choose = vi.fn(); const res = response();
-    await createNativeDirectoryRoute({ grant, choose, dispose: async () => {} }).handle(request(), asResponse(res), admission);
-    expect(res.statusCode).toBe(403); expect(choose).not.toHaveBeenCalled();
+    const choose = vi.fn(); const route = createNativeDirectoryRoute({ grant, choose, dispose: async () => {} });
+    for (const action of ["choose", "authorize"] as const) {
+      const res = response(); await route.handle(request(), asResponse(res), admission, action);
+      expect(res.statusCode).toBe(403);
+    }
+    expect(choose).not.toHaveBeenCalled();
   });
   it("requires credential even in a locally admitted service and refuses remote sockets", async () => {
     const choose = vi.fn(); const route = createNativeDirectoryRoute({ grant, choose, dispose: async () => {} });
-    const missing = response(); await route.handle(request({ "x-webui-token": "" }), asResponse(missing), context);
-    expect(missing.statusCode).toBe(401);
-    const remote = response(); await route.handle(request({}, "192.0.2.1"), asResponse(remote), context);
-    expect(remote.statusCode).toBe(403); expect(choose).not.toHaveBeenCalled();
+    for (const action of ["choose", "authorize"] as const) {
+      const missing = response(); await route.handle(request({ "x-webui-token": "" }), asResponse(missing), context, action);
+      expect(missing.statusCode).toBe(401);
+      const remote = response(); await route.handle(request({}, "192.0.2.1"), asResponse(remote), context, action);
+      expect(remote.statusCode).toBe(403);
+    }
+    expect(choose).not.toHaveBeenCalled();
   });
   it("accepts no request body or client-selected path", async () => {
-    const choose = vi.fn(); const res = response();
-    await createNativeDirectoryRoute({ grant, choose, dispose: async () => {} }).handle(request({ "content-length": "10" }), asResponse(res), context);
-    expect(res.statusCode).toBe(400); expect(choose).not.toHaveBeenCalled();
+    const choose = vi.fn(); const route = createNativeDirectoryRoute({ grant, choose, dispose: async () => {} });
+    for (const action of ["choose", "authorize"] as const) {
+      const res = response(); await route.handle(request({ "content-length": "10" }), asResponse(res), context, action);
+      expect(res.statusCode).toBe(400);
+    }
+    expect(choose).not.toHaveBeenCalled();
+  });
+  it("rotates both browser proofs when the service restarts on the same port", async () => {
+    const choose = vi.fn(async () => ({ kind: "cancelled" as const }));
+    const makeRoute = () => createNativeDirectoryRoute({ grant, choose, dispose: async () => {} });
+    async function pair(route: ReturnType<typeof makeRoute>) {
+      const res = response();
+      await route.handle(request(), asResponse(res), context, "authorize");
+      expect(res.statusCode).toBe(200);
+      const cookie = res.setHeader.mock.calls.find(([name]) => name === "Set-Cookie")?.[1] as string;
+      return { "x-webui-native-grant": "", "x-webui-native-browser": JSON.parse(res.body).browserKey as string,
+        cookie: cookie.split(";")[0]! };
+    }
+    const previous = makeRoute();
+    const oldProofs = await pair(previous);
+    await previous.dispose();
+    const current = makeRoute();
+    const newProofs = await pair(current);
+    expect(newProofs.cookie).not.toBe(oldProofs.cookie);
+    expect(newProofs["x-webui-native-browser"]).not.toBe(oldProofs["x-webui-native-browser"]);
+    for (const stale of [oldProofs, { ...newProofs, cookie: oldProofs.cookie }, { ...oldProofs, cookie: newProofs.cookie }]) {
+      const res = response();
+      await current.handle(request(stale), asResponse(res), context);
+      expect(res.statusCode).toBe(403);
+    }
+    expect(choose).not.toHaveBeenCalled();
+    const accepted = response();
+    await current.handle(request(newProofs), asResponse(accepted), context);
+    expect(JSON.parse(accepted.body)).toEqual({ kind: "cancelled" });
+    expect(choose).toHaveBeenCalledTimes(1);
   });
   it.each([
     [{ kind: "selected", directory: tmpdir() }, 200],
@@ -115,33 +156,68 @@ describe("native directory HTTP desktop capability", () => {
 
 function browser(url = `http://127.0.0.1:2233/#nativeDirectoryGrant=${grant}&session=A`) {
   vi.stubGlobal("location", new URL(url));
-  const replaceState = vi.fn(); vi.stubGlobal("history", { state: null, replaceState });
+  const replaceState = vi.fn();
+  vi.stubGlobal("history", { state: null, replaceState });
   vi.stubGlobal("__WEBUI_CONFIG__", { websocketUrl: "ws://127.0.0.1:2233", token: "test-token" });
-  captureNativeDirectoryLaunchGrant(); return replaceState;
+  captureNativeDirectoryLaunchGrant();
+  return replaceState;
 }
+
 describe("native directory launch grant transport", () => {
-  it("strips fragment immediately, preserves session, and sends secrets only in same-origin headers", async () => {
-    const replace = browser(); expect(replace.mock.calls[0]?.[2]).toBe("http://127.0.0.1:2233/#session=A");
-    expect(canPickNativeWorkspaceDirectory()).toBe(true);
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ kind: "selected", directory: "C:\\Work" })));
-    vi.stubGlobal("fetch", fetch); const signal = new AbortController().signal;
+  const origin = "http://127.0.0.1:2233";
+  const browserKey = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const signal = new AbortController().signal;
+
+  it("exchanges the fragment before choosing, and uses the browser pairing after a refresh or a new launch", async () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (k: string) => storage.get(k), setItem: (k: string, v: string) => storage.set(k, v) });
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({ browserKey }))
+      .mockImplementation(async () => Response.json({ kind: "selected", directory: "C:\\Work" }));
+    vi.stubGlobal("fetch", fetch);
+    const replace = browser();
+    expect(replace.mock.calls[0]?.[2]).toBe(origin + "/#session=A");
     expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "selected", directory: "C:\\Work" });
-    expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:2233/native-directory-picker", {
-      method: "POST", credentials: "same-origin", signal, headers: { "X-Webui-Native-Grant": grant, "X-Webui-Token": "test-token" },
-    });
+    expect(fetch.mock.calls[0]).toEqual([origin + "/native-directory-picker/authorize", expect.objectContaining({
+      credentials: "same-origin", headers: { "X-Webui-Native-Grant": grant, "X-Webui-Token": "test-token" },
+    })]);
+    expect([...storage.values()]).toEqual([browserKey]);
+
+    browser(origin + "/");
+    await pickNativeWorkspaceDirectory(signal);
+    expect(fetch.mock.calls[2]).toEqual([origin + "/native-directory-picker", expect.objectContaining({
+      signal, headers: { "X-Webui-Native-Browser": browserKey, "X-Webui-Token": "test-token" },
+    })]);
+    // A different tab pairs a restarted launcher while this page remains open.
+    const newKey = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    for (const key of storage.keys()) storage.set(key, newKey);
+    await pickNativeWorkspaceDirectory(signal);
+    expect(fetch.mock.calls[3]?.[1].headers["X-Webui-Native-Browser"]).toBe(newKey);
   });
-  it("does not grant a refreshed, remote or mismatched-runtime page native access", async () => {
-    for (const url of ["http://127.0.0.1:2233/", `http://example.test/#nativeDirectoryGrant=${grant}`]) {
-      browser(url); expect(canPickNativeWorkspaceDirectory()).toBe(false);
-    }
-    browser(); vi.stubGlobal("__WEBUI_CONFIG__", { websocketUrl: "ws://127.0.0.1:9999", token: "test-token" });
-    expect(await pickNativeWorkspaceDirectory(new AbortController().signal)).toEqual({ kind: "unavailable" });
+
+  it("uses the key in memory if storage is unavailable and preserves cancellation", async () => {
+    vi.stubGlobal("localStorage", undefined);
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ browserKey }))
+      .mockResolvedValueOnce(Response.json({ kind: "cancelled" }))
+      .mockResolvedValueOnce(new Response("", { status: 403 }));
+    vi.stubGlobal("fetch", fetch);
+    browser();
+    expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "cancelled" });
+    expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
   });
-  it("reports cancel and revokes unsupported grants instead of selecting a path", async () => {
-    browser(); vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ kind: "cancelled" }))));
-    expect(await pickNativeWorkspaceDirectory(new AbortController().signal)).toEqual({ kind: "cancelled" });
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 403 })));
-    expect(await pickNativeWorkspaceDirectory(new AbortController().signal)).toEqual({ kind: "unavailable" });
-    expect(canPickNativeWorkspaceDirectory()).toBe(false);
+
+  it("does not contact a picker from an unpaired, remote, or mismatched-runtime page", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("localStorage", undefined);
+    browser(origin + "/");
+    expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
+    vi.stubGlobal("localStorage", { getItem: () => browserKey });
+    browser(`http://example.test/#nativeDirectoryGrant=${grant}`);
+    expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
+    browser(origin + "/");
+    vi.stubGlobal("__WEBUI_CONFIG__", { websocketUrl: "ws://127.0.0.1:9999", token: "test-token" });
+    expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
 // Desktop capability supplied only by an interactive local launcher. General
 // WebUI credentials alone never authorize opening native desktop UI.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { timingSafeEqual } from "node:crypto";
-import { credentialPresented, type WebuiCredential } from "../credentials.js";
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { credentialFromCookie, credentialPresented, type WebuiCredential } from "../credentials.js";
 import { stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import { rejectHttp } from "./responses.js";
@@ -44,17 +44,26 @@ export async function validateNativeDirectory(
 }
 export function createNativeDirectoryRoute(picker: WebuiNativeDirectoryPicker, timeoutMs = 120_000) {
   let active: { controller: AbortController; settled: Promise<unknown> } | undefined;
+  let pairing: { browserKey: string; cookieToken: string } | undefined;
   let closed = false;
   return {
-    async handle(request: IncomingMessage, response: ServerResponse, context: Admission): Promise<void> {
+    async handle(request: IncomingMessage, response: ServerResponse, context: Admission, action: "choose" | "authorize" = "choose"): Promise<void> {
       response.setHeader("Cache-Control", "no-store");
       const authority = context.host === "::1" ? `[::1]:${context.port}` : `${context.host}:${context.port}`;
       if (closed || context.fullAccess || !loopback(context.host) || !loopback(request.socket.remoteAddress) ||
           !context.port || request.headers.host !== authority || request.headers.origin !== `http://${authority}` ||
           request.headers["sec-fetch-site"] !== "same-origin" ||
-          Object.keys(request.headers).some((key) => key === "forwarded" || key.startsWith("x-forwarded-")) ||
-          !equalSecret(request.headers["x-webui-native-grant"], picker.grant)) {
+          Object.keys(request.headers).some((key) => key === "forwarded" || key.startsWith("x-forwarded-"))) {
         rejectHttp(response, 403, "Native directory selection unavailable"); return;
+      }
+      const cookieName = `webui_native_directory_${context.port}`;
+      if (!equalSecret(request.headers["x-webui-native-grant"], picker.grant)) {
+        const cookie = credentialFromCookie(request.headers.cookie, cookieName);
+        // Cookies follow a host across ports. The second proof belongs to the exact browser origin.
+        if (action === "authorize" || !pairing || cookie.kind !== "presented" ||
+            !equalSecret(cookie.token, pairing.cookieToken) || !equalSecret(request.headers["x-webui-native-browser"], pairing.browserKey)) {
+          rejectHttp(response, 403, "Native directory selection unavailable"); return;
+        }
       }
       if (!credentialPresented(context.credential,
         typeof request.headers["x-webui-token"] === "string" ? request.headers["x-webui-token"] : undefined,
@@ -65,6 +74,13 @@ export function createNativeDirectoryRoute(picker: WebuiNativeDirectoryPicker, t
       if ((request.headers["content-length"] !== undefined && request.headers["content-length"] !== "0") ||
           request.headers["transfer-encoding"] !== undefined) {
         rejectHttp(response, 400, "Native directory selection accepts no body"); return;
+      }
+      if (action === "authorize") {
+        pairing ??= { browserKey: randomUUID(), cookieToken: randomUUID() };
+        response.setHeader("Set-Cookie", `${cookieName}=${pairing.cookieToken}; Path=/native-directory-picker; SameSite=Strict; HttpOnly`);
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ browserKey: pairing.browserKey }));
+        return;
       }
       if (active) { rejectHttp(response, 409, "A directory chooser is already open"); return; }
       const controller = new AbortController();

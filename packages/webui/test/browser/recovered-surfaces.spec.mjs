@@ -198,7 +198,7 @@ test("the sign-in flyout completes its shared surface exit when another account 
   await expect(signinPanel).toHaveCount(0);
 });
 
-test("the workspace picker opens 选择新项目 without tripping the error boundary", async ({ page }) => {
+test("the workspace picker keeps the home surface usable when a native chooser is unavailable", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -216,38 +216,12 @@ test("the workspace picker opens 选择新项目 without tripping the error boun
     .not.toBe(idleBackground);
   await chooseNew.click();
 
-  // The fixture answers an honest listing, and the owner normalises what
-  // comes back before the view sees it: a body that is not a listing degrades
-  // to an empty directory rather than to a blank page. This is the guard for
-  // that — the picker opens either way, and nothing is left in the boundary.
-  const browser = page.locator('[data-webui-workspace-browser="true"]');
-  await expect(browser).toBeVisible();
-  await expect(page.locator(".webui-composer-menu-empty")).toBeVisible();
+  await expect(page.locator('[data-webui-toast-tone="error"]')).toContainText("系统文件夹选择器不可用");
+  await expect(page.getByRole("listbox", { name: "工作目录" })).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".webui-workspace-bar-trigger")).toBeEnabled();
   await expect(boundary(page)).toHaveCount(0);
   expect(pageErrors).toEqual([]);
-
-  await page.evaluate(() => {
-    window.__workspaceBrowserExitAnimation = undefined;
-    document.addEventListener("animationend", (event) => {
-      // The picker is a surface inside the shared modal frame now, so the exit
-      // animation runs on whichever element the frame animates; what the test is
-      // about is that closing it animates rather than vanishing.
-      if (
-        event.target instanceof HTMLElement &&
-        event.target.closest('[data-testid="webui-workspace-browser-dialog"]') !== null
-      ) {
-        window.__workspaceBrowserExitAnimation = event.animationName;
-      }
-    }, { capture: true });
-  });
-  // The directory browser lives inside the shared dialog now, so the frame owns
-  // the close control.
-  await page.getByTestId("webui-workspace-browser-dialog")
-    .getByRole("button", { name: "关闭" })
-    .click();
-  await expect.poll(() => page.evaluate(() => window.__workspaceBrowserExitAnimation))
-    .toBe("webui-motion-surface-exit");
-  await expect(browser).toHaveCount(0);
 });
 
 test("choosing a permission mode survives the write-then-read-back check", async ({ page }) => {

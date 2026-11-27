@@ -541,41 +541,88 @@ test("the workspace picker opens above its row, inside the viewport", async ({ p
   expect(box.position).toBe("fixed");
   expect(box.top).toBeGreaterThanOrEqual(0);
   expect(box.bottom).toBeLessThanOrEqual(box.height);
+  await page.keyboard.press("Escape");
+  await expect(popup).toBeHidden();
 });
 
-test("native workspace picker preserves selection on cancel and accepts a drive path", async ({ page }) => {
-  const grant = "12345678-1234-1234-1234-123456789abc";
-  const folder = "E:\\Games\\OtherProject";
-  let calls = 0;
-  await page.route("**/native-directory-picker", async (route) => {
+const pickerGrant = "12345678-1234-1234-1234-123456789abc";
+const pickerBrowserKey = "ab123456-1234-1234-1234-123456789abc";
+const pickerCookie = "webui_native_directory_4179=synthetic-pairing";
+
+async function openLaunchedWorkspacePicker(page) {
+  await page.route("**/native-directory-picker/authorize", async (route) => {
     expect(route.request().method()).toBe("POST");
-    expect(route.request().headers()["x-webui-native-grant"]).toBe(grant);
+    expect(route.request().headers()["x-webui-native-grant"]).toBe(pickerGrant);
     expect(route.request().headers()["x-webui-token"]).toBe("synthetic-token");
-    calls += 1;
-    await route.fulfill({ json: calls === 1
-      ? { kind: "cancelled" }
-      : { kind: "selected", directory: folder } });
+    await route.fulfill({
+      headers: { "Set-Cookie": `${pickerCookie}; Path=/native-directory-picker; SameSite=Strict; HttpOnly` },
+      json: { browserKey: pickerBrowserKey },
+    });
   });
-  await openApp(page, `#nativeDirectoryGrant=${grant}`);
-  expect(new URL(page.url()).hash).not.toContain(grant);
-  const row = page.locator('[data-webui-workspace-picker="true"]').first();
-  const previous = await row.innerText();
-  await row.click();
-  await page.getByRole("option", { name: "选择新项目" }).click();
-  const dialog = page.getByRole("dialog", { name: "选择新项目" });
-  await expect(dialog.getByText("选择此电脑上的文件夹")).toBeVisible();
-  const add = dialog.getByRole("button", { name: "添加文件夹" });
-  await add.click();
-  await expect.poll(() => calls).toBe(1);
-  await expect(add).toBeEnabled();
-  await expect(row).toHaveText(previous);
-  await add.click();
-  await expect(dialog).toBeHidden();
-  await expect(row).toHaveText("OtherProject");
+  await openApp(page, `#nativeDirectoryGrant=${pickerGrant}`);
+  expect(new URL(page.url()).hash).not.toContain(pickerGrant);
+}
+
+for (const [folder, label] of [
+  ["E:\\Games\\OtherProject", "OtherProject"],
+  ["E:\\", "E:"],
+  ["/", "/"],
+]) {
+  test(`the native workspace picker displays and submits the confirmed path ${folder}`, async ({ page }) => {
+    let calls = 0;
+    await page.route("**/native-directory-picker", async (route) => {
+      expect(route.request().method()).toBe("POST");
+      expect(route.request().headers()["x-webui-native-browser"]).toBe(pickerBrowserKey);
+      expect(await route.request().headerValue("cookie")).toContain(pickerCookie);
+      expect(route.request().headers()["x-webui-token"]).toBe("synthetic-token");
+      calls += 1;
+      await route.fulfill({ json: calls === 1
+        ? { kind: "cancelled" }
+        : { kind: "selected", directory: folder } });
+    });
+    await openLaunchedWorkspacePicker(page);
+    const row = page.locator('[data-webui-workspace-picker="true"]').first();
+    const chooseNew = page.getByRole("option", { name: "选择新项目" });
+    await expect(row).toHaveText("workspace");
+    await row.click();
+    await Promise.all([page.waitForResponse("**/native-directory-picker"), chooseNew.click()]);
+    await expect(chooseNew).toBeHidden();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(row).toHaveText("workspace");
+    await row.click();
+    await chooseNew.click();
+    await expect(row).toHaveText(label);
+    expect(calls).toBe(2);
+    await composer(page).fill("Use the selected project");
+    await page.getByRole("button", { name: "发送" }).click();
+    await expect.poll(() => page.evaluate(() =>
+      window.__fixture.requests.find((request) => request.operation === "createSession")?.body.workspaceDir,
+    )).toBe(folder);
+  });
+}
+
+test("the paired browser can open the native workspace picker in a fresh tab and after reload", async ({ page, context }) => {
+  await context.route("**/native-directory-picker", async (route) => {
+    expect(route.request().headers()["x-webui-native-browser"]).toBe(pickerBrowserKey);
+    expect(await route.request().headerValue("cookie")).toContain(pickerCookie);
+    await route.fulfill({ json: { kind: "selected", directory: "/synthetic/Project" } });
+  });
+  await openLaunchedWorkspacePicker(page);
+  const select = async (tab) => {
+    const row = tab.locator('[data-webui-workspace-picker="true"]');
+    await row.click();
+    await tab.getByRole("option", { name: "选择新项目" }).click();
+    await expect(row).toHaveText("Project");
+  };
+  await select(page);
+  const otherTab = await context.newPage();
+  await openApp(otherTab, "");
+  await select(otherTab);
+  await otherTab.reload();
+  await select(otherTab);
 });
 
-test("dismissing the WebUI dialog aborts the pending native workspace picker", async ({ page }) => {
-  const grant = "12345678-1234-1234-1234-123456789abc";
+test("a newer workspace choice aborts the pending native workspace picker and ignores a late result", async ({ page }) => {
   await configureFixture(page, () => {
     const fetch = window.fetch.bind(window);
     window.fetch = (url, options) => {
@@ -591,34 +638,54 @@ test("dismissing the WebUI dialog aborts the pending native workspace picker", a
       });
     };
   });
-  await openApp(page, `#nativeDirectoryGrant=${grant}`);
+  await openLaunchedWorkspacePicker(page);
   const row = page.locator('[data-webui-workspace-picker="true"]').first();
-  const previous = await row.innerText();
   await row.click();
   await page.getByRole("option", { name: "选择新项目" }).click();
-  const dialog = page.getByRole("dialog", { name: "选择新项目" });
-  await dialog.getByRole("button", { name: "添加文件夹" }).click();
-  await expect(dialog.getByRole("button", { name: "正在等待系统选择窗口" })).toBeDisabled();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.__nativeDirectoryRequest?.aborted)).toBe(false);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await row.click();
+  await page.getByRole("option", { name: "不需要项目" }).click();
   expect(await page.evaluate(() => window.__nativeDirectoryRequest.aborted)).toBe(true);
   await page.evaluate(() => window.__completeNativeDirectoryRequest());
-  await expect(row).toHaveText(previous);
+  await expect(row).toHaveText("选择文件夹");
 });
 
-test("ordinary WebUI clients use the server directory browser", async ({ page }) => {
+for (const [status, message] of [[403, "mcode-webui 启动器"], [503, "系统目录选择失败"]]) {
+  test(`native workspace picker reports HTTP ${status} and preserves the selection`, async ({ page }) => {
+    await page.route("**/native-directory-picker", (route) => route.fulfill({ status }));
+    await openLaunchedWorkspacePicker(page);
+    const row = page.locator('[data-webui-workspace-picker="true"]').first();
+    await row.click();
+    await page.getByRole("option", { name: "选择新项目" }).click();
+    await expect(page.locator('[data-webui-toast-tone="error"]')).toContainText(message);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(await requestCount(page, "browseWorkspaceDirs")).toBe(0);
+    await expect(row).toHaveText("workspace");
+  });
+}
+
+test("an unpaired workspace picker explains the local launch requirement and still offers recent projects", async ({ page }) => {
   let nativeCalls = 0;
   await page.route("**/native-directory-picker", async (route) => {
     nativeCalls += 1;
     await route.abort();
   });
   await openApp(page, "#");
-  await page.locator('[data-webui-workspace-picker="true"]').first().click();
+  const row = page.locator('[data-webui-workspace-picker="true"]');
+  await row.click();
   await page.getByRole("option", { name: "选择新项目" }).click();
-  const dialog = page.getByRole("dialog", { name: "选择项目目录" });
-  await expect(dialog.getByText("选择运行 WebUI 的主机上用于新会话的工作目录")).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "添加文件夹" })).toHaveCount(0);
+  await expect(page.locator('[data-webui-toast-tone="error"]')).toContainText("mcode-webui 启动器");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await requestCount(page, "browseWorkspaceDirs")).toBe(0);
   expect(nativeCalls).toBe(0);
+  await expect(row).toHaveText("workspace");
+  await row.click();
+  await page.getByRole("option", { name: "不需要项目" }).click();
+  await expect(row).toHaveText("选择文件夹");
+  await row.click();
+  await page.getByRole("option", { name: "workspace" }).click();
+  await expect(row).toHaveText("workspace");
 });
 
 test("↑ recalls committed inputs; a manual edit exits the browse", async ({ page }) => {

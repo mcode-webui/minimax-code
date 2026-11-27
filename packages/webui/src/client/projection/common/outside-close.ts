@@ -1,9 +1,9 @@
 /**
  * Outside-close policy catalogue.
  *
- * Seven WebUI surfaces close themselves when an interaction happens outside
+ * Eight WebUI surfaces close themselves when an interaction happens outside
  * the surface's container. The implementations vary across components
- * today; this module captures the seven existing behaviours as data so the
+ * today; this module captures their behaviours as data so the
  * truth table lives in one place and a future refactor (e.g. unifying
  * pointerdown + mousedown into a single hook) can read from it without
  * rebuilding the matrix.
@@ -15,9 +15,7 @@
  * Most of the surfaces below are `WebuiDropdown`s
  * (`client/ui/Dropdown.tsx`), and the shared skeleton is what implements their
  * row: it listens to pointerdown and to Escape, and closes the popup when the
- * press lands outside the trigger and the popup. The one surface that is not
- * a dropdown — the directory browser under the workspace picker — still
- * attaches its own listener, and its row says so.
+ * press lands outside the trigger and the popup.
  *
  * Pointer-event vocabulary:
  *
@@ -39,6 +37,7 @@
  *   | permissionMenu | close               | ignore             | close  |
  *   | composerMenu   | close               | ignore             | close  |
  *   | mentionList    | close               | ignore             | close  |
+ *   | workspacePicker| close               | ignore             | close  |
  *   | slashPopover   | close (clear draft) | ignore             | close  |
  *   | contextMenu    | close               | ignore             | close  |
  *
@@ -129,10 +128,10 @@ export const WEBUI_OUTSIDE_CLOSE_POLICIES: {
   },
   workspacePicker: {
     surface: "workspacePicker",
-    subscribedKinds: ["pointerdown"],
+    subscribedKinds: ["pointerdown", "keydown"],
     usesContainerContains: true,
-    notes:
-      "The workspace picker's DIRECTORY BROWSER listens to pointerdown only; its container is its own wrap — the trigger pill plus the browser dialog — so any other click dismisses it. It had no Escape handler of its own: Escape was never wired for this surface. It is wired now, but not here — the browser is a managed layer, so the coordinator answers the Escape for it. This table records what each surface did while it answered its own events; it has no production caller left.",
+    onEscape: true,
+    notes: "The home project menu uses WebuiDropdown. Its trigger and menu form the managed layer. Choosing a new project closes the menu before the OS folder chooser opens.",
   },
   slashPopover: {
     surface: "slashPopover",
@@ -178,6 +177,7 @@ export const WEBUI_OUTSIDE_CLOSE_POLICIES: {
  *   | mentionList    | pointerdown | (any)   | false  | close      |
  *   | workspacePicker| pointerdown | (any)  | true   | ignore     |
  *   | workspacePicker| pointerdown | (any)  | false  | close      |
+ *   | workspacePicker| keydown     | Escape | (any)  | close      |
  *   | slashPopover   | pointerdown | (any)   | true   | ignore     |
  *   | slashPopover   | pointerdown | (any)   | false  | close      |
  *   | contextMenu    | pointerdown | (any)   | true   | ignore     |

@@ -43,7 +43,7 @@ mcode-webui
 使用 **npm 12 及以上版本**时，需要显式允许原生依赖的安装脚本：
 
 ```bash
-npm install --global @minimax-webui/minimax-code --allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate
+npm install --global @minimax-webui/minimax-code --allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate
 ```
 
 服务默认监听 `http://127.0.0.1:2233/`，在交互式终端启动时会打开默认浏览器。如果没有自动打开，使用终端打印的地址。使用期间保持服务进程运行，按 **Ctrl+C** 停止。

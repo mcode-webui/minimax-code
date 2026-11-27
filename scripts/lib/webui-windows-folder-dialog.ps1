@@ -3,7 +3,7 @@
 #requires -Version 5.1
 param(
     [Parameter(Mandatory)][int]$LauncherPid,
-    [Parameter(Mandatory)][string]$PickerScript,
+    [Parameter(Mandatory)][string]$PickerWorker,
     [Parameter(Mandatory)][ValidateSet('select', 'cancel')][string]$Action,
     [string]$Directory
 )
@@ -166,7 +166,7 @@ $launchRoot = Get-Process -Id $LauncherPid
 if ($launchRoot.SessionId -ne [Diagnostics.Process]::GetCurrentProcess().SessionId) {
     throw "The launcher PID $LauncherPid is in another Windows session."
 }
-$launcherPath = Join-Path (Get-Item -LiteralPath $PickerScript).DirectoryName 'mcode-webui.mjs'
+$launcherPath = Join-Path (Get-Item -LiteralPath $PickerWorker).DirectoryName 'mcode-webui.mjs'
 # A Windows npm bin shim may put cmd.exe above node.exe. Search only this launch tree.
 # The entry point is Node's first argument, whether the absolute path needs quoting or not.
 function Find-LauncherNode($process) {
@@ -186,13 +186,11 @@ $nodes = @(Find-LauncherNode $startProcess)
 if ($nodes.Count -ne 1) { throw "Expected one installed WebUI Node entry in the tree of PID $LauncherPid; found $($nodes.Count)." }
 $launcher = Get-Process -Id $nodes[0].ProcessId
 [void]$launcher.Handle
-# Node encodes the UTF-8 source (including its original line endings) as UTF-16LE.
-# Compare the argument, never print the encoded command or inspect unrelated processes.
-$sourceBytes = [IO.File]::ReadAllBytes($PickerScript)
-$source = [Text.Encoding]::UTF8.GetString($sourceBytes)
-$payload = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($source))
-$expectedArgument = '-EncodedCommand\s+"?' + [regex]::Escape($payload) + '"?\s*$'
-$filter = "ParentProcessId=$($launcher.Id) AND Name='powershell.exe'"
+# The worker is the launcher's direct node child whose entry point is the
+# installed native-directory-picker-worker.cjs. Compare the argument, never
+# print or inspect unrelated processes.
+$expectedArgument = '"?' + [regex]::Escape($PickerWorker) + '"?\s*$'
+$filter = "ParentProcessId=$($launcher.Id) AND Name='node.exe'"
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $picker = $null
 $dialog = $null
@@ -201,11 +199,11 @@ $children = [System.Windows.Automation.TreeScope]::Children
 while ($clock.Elapsed.TotalSeconds -lt 20) {
     if ($launcher.HasExited) { throw "The WebUI launcher PID $LauncherPid exited before showing the chooser." }
     if (-not $picker) {
-        $matchesScript = @(Get-CimInstance Win32_Process -Filter $filter -Property $processFields |
+        $matchesWorker = @(Get-CimInstance Win32_Process -Filter $filter -Property $processFields |
             Where-Object { $_.CommandLine -cmatch $expectedArgument })
-        if ($matchesScript.Count -gt 1) { throw 'More than one child matches the installed picker script.' }
-        if ($matchesScript.Count -eq 1) {
-            $picker = Get-Process -Id $matchesScript[0].ProcessId -ErrorAction SilentlyContinue
+        if ($matchesWorker.Count -gt 1) { throw 'More than one child matches the installed picker worker.' }
+        if ($matchesWorker.Count -eq 1) {
+            $picker = Get-Process -Id $matchesWorker[0].ProcessId -ErrorAction SilentlyContinue
             if ($picker) {
                 [void]$picker.Handle
                 $pidCondition = [System.Windows.Automation.PropertyCondition]::new(
@@ -214,7 +212,7 @@ while ($clock.Elapsed.TotalSeconds -lt 20) {
         }
     }
     if ($picker) {
-        if ($picker.HasExited) { throw "The matching PowerShell PID $($picker.Id) exited without showing its folder dialog." }
+        if ($picker.HasExited) { throw "The matching picker worker PID $($picker.Id) exited without showing its folder dialog." }
         $visible = @($root.FindAll($children, $pidCondition) |
             Where-Object { $_.Current.ClassName -eq '#32770' -and -not $_.Current.IsOffscreen })
         if ($visible.Count -gt 1) { throw "Ambiguous chooser: PID $($picker.Id) owns multiple visible dialogs." }
@@ -225,8 +223,8 @@ while ($clock.Elapsed.TotalSeconds -lt 20) {
     }
     Start-Sleep -Milliseconds 120
 }
-if (-not $picker) { throw "No PowerShell child of launcher PID $LauncherPid matched the installed chooser script." }
-if (-not $dialog) { throw "The matching PowerShell PID $($picker.Id) did not display a visible #32770 dialog." }
+if (-not $picker) { throw "No node child of launcher PID $LauncherPid matched the installed picker worker." }
+if (-not $dialog) { throw "The matching picker worker PID $($picker.Id) did not display a visible #32770 dialog." }
 $window = [IntPtr]$dialog.Current.NativeWindowHandle
 if (-not [WebuiTestDesktop]::OwnsDialog($window, $picker.Id)) { throw 'The visible UI element has no matching native dialog handle.' }
 function Open-AddressEdit {

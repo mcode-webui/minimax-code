@@ -1,17 +1,22 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { accessSync, constants } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-export function nativeDirectoryPickerEligible({ platform, tty, bindHost, fullAccess, browserSetting, env = process.env }) {
-  const setting = browserSetting?.trim().toLowerCase();
+import { createWin32DirectoryPicker } from './native-directory-picker-win32.mjs';
+
+export function nativeDirectoryPickerEligible({ platform, tty, desktopHost = false, bindHost, fullAccess, env = process.env }) {
+  // Ordinary launches stay interactive. A desktop host opts in explicitly
+  // because its embedded page cannot supply a TTY; the Win32 worker brings the
+  // dialog to the foreground itself. WEBUI_OPEN_BROWSER only controls the
+  // system browser and never this capability.
   const desktop = platform === 'win32' || platform === 'darwin'
     || (platform === 'linux' && Boolean(env.DISPLAY || env.WAYLAND_DISPLAY));
-  return desktop && tty === true && !fullAccess && !env.SSH_CONNECTION && !env.SSH_TTY
-    && ['127.0.0.1', '::1'].includes(bindHost)
-    && !['0', 'false', 'no', 'off', 'never'].includes(setting);
+  const attended = desktopHost === true || tty === true;
+  return desktop && attended && !fullAccess && !env.SSH_CONNECTION && !env.SSH_TTY
+    && ['127.0.0.1', '::1'].includes(bindHost);
 }
 
 export function nativeDirectoryLaunchUrl(url, grant) {
@@ -68,23 +73,14 @@ function unixDirectoryCommand(platform, env, executable) {
 function directoryResult(platform, code, output, cancelExitCode) {
   if (platform === 'linux' && code === cancelExitCode && output === '') return { kind: 'cancelled' };
   if (code !== 0) throw unavailable();
-  if (platform === 'win32') {
-    const result = JSON.parse(output.replace(/^\uFEFF/, '').trim());
-    if (result.kind === 'cancelled') return { kind: 'cancelled' };
-    if (result.kind === 'selected' && typeof result.directory === 'string'
-        && path.win32.isAbsolute(result.directory) && !/[\0\r\n]/.test(result.directory)) {
-      return { kind: 'selected', directory: result.directory };
-    }
-  } else {
-    // Remove just the command's line terminator. Spaces and newlines can belong to a Unix folder name.
-    const directory = output.endsWith('\n') ? output.slice(0, -1) : output;
-    if (platform === 'darwin' && directory === 'cancelled') return { kind: 'cancelled' };
-    if (path.posix.isAbsolute(directory) && !directory.includes('\0')) {
-      // macOS folder aliases include a trailing slash. Match existing project paths, keeping
-      // a separator after significant whitespace so workspaceDir.trim() preserves the folder.
-      const folder = directory.replace(/\/+$/u, '') || '/';
-      return { kind: 'selected', directory: /\s$/u.test(folder) ? folder + '/' : folder };
-    }
+  // Remove just the command's line terminator. Spaces and newlines can belong to a Unix folder name.
+  const directory = output.endsWith('\n') ? output.slice(0, -1) : output;
+  if (platform === 'darwin' && directory === 'cancelled') return { kind: 'cancelled' };
+  if (path.posix.isAbsolute(directory) && !directory.includes('\0')) {
+    // macOS folder aliases include a trailing slash. Match existing project paths, keeping
+    // a separator after significant whitespace so workspaceDir.trim() preserves the folder.
+    const folder = directory.replace(/\/+$/u, '') || '/';
+    return { kind: 'selected', directory: /\s$/u.test(folder) ? folder + '/' : folder };
   }
   throw unavailable();
 }
@@ -94,11 +90,11 @@ const unavailable = () => new Error('Native folder selection is unavailable');
 // A narrow launcher-owned provider, never a shell/command execution endpoint.
 export function createNativeDirectoryPicker({
   platform = process.platform, env = process.env, executable = isExecutable,
-  spawnProcess = spawn, readScript = () => readFile(new URL('./native-directory-picker.ps1', import.meta.url), 'utf8'),
-  windowsRoot = env.SystemRoot, architecture = process.arch,
+  spawnProcess = spawn,
 } = {}) {
+  if (platform === 'win32') return createWin32DirectoryPicker({ spawnProcess });
   const command = unixDirectoryCommand(platform, env, executable);
-  if (platform !== 'win32' && !command) return;
+  if (!command) return;
   const zenity = command && path.posix.basename(command[0]) === 'zenity';
   // GTK startup also exits 1 when the display is gone. Give user dismissal its own status.
   const cancelExitCode = zenity ? 9 : 1;
@@ -115,14 +111,6 @@ export function createNativeDirectoryPicker({
         // Without current_folder the GNOME portal restores its own possibly deleted last folder.
         const folder = await zenityStartingFolder(lastZenityDirectory, env.HOME ?? homedir());
         invocation = [command[0], [...command[1], '--filename=' + folder]];
-      } else if (platform === 'win32') {
-        if (!windowsRoot || !path.win32.isAbsolute(windowsRoot)) throw unavailable();
-        let script;
-        try { script = await readScript(); } catch { throw unavailable(); }
-        // A 32-bit launcher must reach 64-bit Windows PowerShell, not its redirected SysWOW64 copy.
-        const system = architecture === 'ia32' ? 'Sysnative' : 'System32';
-        invocation = [path.win32.join(windowsRoot, system, 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
-          ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')]];
       }
       if (disposed || active || signal.aborted) throw unavailable();
       return new Promise((resolve, reject) => {

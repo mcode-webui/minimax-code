@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, realpathSync, symlinkSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, realpathSync, statSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -26,6 +26,7 @@ import { extensionIdFromPublicKey, parseExtensionIdList, readStoreExtensionIds }
 import { validateExceptionLedger, sourceFingerprint } from '../scripts/lib/webui-dependency-rules.mjs';
 import { acceptanceRecordFiles, restoreAcceptanceRecords } from '../scripts/lib/acceptance-records.mjs';
 import { createNativeDirectoryPicker, nativeDirectoryPickerEligible, nativeDirectoryLaunchUrl } from '../release/webui-npm/bin/native-directory-picker.mjs';
+import { browserOpenEnabled, handoffDesktopLaunchUrl } from '../release/webui-npm/bin/desktop-launch.mjs';
 
 test('public WebUI CI runs only WebUI checks and cannot publish packages', () => {
   const activeWorkflows = readdirSync(new URL('../.github/workflows/', import.meta.url))
@@ -1589,25 +1590,90 @@ test('the desktop version the marketplace is filtered by is declared in exactly 
   assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
 });
 
-test('native folder launcher grant is restricted to authenticated interactive desktop loopback', () => {
+test('native folder launcher grant is restricted to interactive or desktop-hosted local desktop loopback', () => {
   const local = { platform: 'win32', tty: true, bindHost: '127.0.0.1', fullAccess: false, env: {} };
   for (const change of [{}, { platform: 'darwin' }, { platform: 'linux', env: { DISPLAY: ':0' } },
-    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }]) {
+    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }, { desktopHost: true, tty: false }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), true);
   }
   for (const change of [{ platform: 'linux' }, { platform: 'freebsd' }, { env: { SSH_TTY: '/dev/pts/0' } },
     { platform: 'linux', env: { DISPLAY: ':0', SSH_CONNECTION: 'forwarded session' } },
-    { tty: false }, { fullAccess: true }, { bindHost: '0.0.0.0' }, { bindHost: '192.168.1.1' }, { browserSetting: 'off' }]) {
+    { fullAccess: true }, { bindHost: '0.0.0.0' }, { bindHost: '192.168.1.1' },
+    { tty: false }, { desktopHost: true, tty: false, env: { SSH_TTY: '/dev/pts/0' } },
+    { desktopHost: true, tty: false, fullAccess: true }, { desktopHost: true, tty: false, bindHost: '0.0.0.0' }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), false);
   }
-  assert.equal(nativeDirectoryPickerEligible({ ...local, tty: false, browserSetting: '1' }), false);
   const plain = 'http://127.0.0.1:2233/?token=fixture';
   const granted = nativeDirectoryLaunchUrl(plain, 'synthetic-native-grant');
   assert.equal(granted.split('#')[0], plain);
   assert.equal(new URLSearchParams(new URL(granted).hash.slice(1)).get('nativeDirectoryGrant'), 'synthetic-native-grant');
   const launcher = readFileSync(new URL('../release/webui-npm/bin/mcode-webui.mjs', import.meta.url), 'utf8');
   assert.match(launcher, /openBrowser\(nativeDirectoryPicker \? nativeDirectoryLaunchUrl\(browserUrl, nativeDirectoryPicker.grant\) : browserUrl, browserUrl\)/);
-  assert.doesNotMatch(launcher, /console\.(?:log|warn|error)\([^\n]*(?:nativeDirectoryPicker.grant|\$\{url\}|error.message)/);
+  assert.match(launcher, /handoffDesktopLaunchUrl/);
+  assert.match(launcher, /browserOpenEnabled\(process\.env\.WEBUI_OPEN_BROWSER, process\.stdout\.isTTY\)/);
+  assert.match(launcher, /WEBUI_DESKTOP_HOST/);
+  assert.match(launcher, /WEBUI_LAUNCH_URL_FILE/);
+  assert.doesNotMatch(launcher, /console\.(?:log|warn|error)\([^\n]*(?:nativeDirectoryPicker\.grant|\$\{url\})/);
+});
+
+test('desktop launch URL handoff is owner-only, atomic and conditional', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'mcode-launch-'));
+  try {
+    const file = path.join(directory, 'launch.url');
+    const base = 'http://127.0.0.1:2233/?token=fixture';
+    const grant = 'synthetic-native-grant';
+    const expected = nativeDirectoryLaunchUrl(base, grant);
+    const written = await handoffDesktopLaunchUrl({
+      desktopHost: true, picker: { grant }, file, browserUrl: base,
+    });
+    assert.equal(written.kind, 'written');
+    assert.equal(readFileSync(file, 'utf8'), expected);
+    if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o600);
+    assert.deepEqual(readdirSync(directory), ['launch.url']);
+
+    writeFileSync(file, 'old');
+    assert.equal((await handoffDesktopLaunchUrl({
+      desktopHost: true, picker: { grant }, file, browserUrl: base,
+    })).kind, 'written');
+    assert.equal(readFileSync(file, 'utf8'), expected);
+    assert.deepEqual(readdirSync(directory), ['launch.url']);
+
+    const skippedFile = path.join(directory, 'skipped.url');
+    assert.equal((await handoffDesktopLaunchUrl({
+      desktopHost: false, picker: { grant }, file: skippedFile, browserUrl: base,
+    })).kind, 'skipped');
+    assert.equal((await handoffDesktopLaunchUrl({
+      desktopHost: true, file: skippedFile, browserUrl: base,
+    })).kind, 'skipped');
+    assert.equal((await handoffDesktopLaunchUrl({
+      desktopHost: true, picker: { grant }, browserUrl: base,
+    })).kind, 'skipped');
+    assert.equal(existsSync(skippedFile), false);
+
+    assert.equal((await handoffDesktopLaunchUrl({
+      desktopHost: true, picker: { grant }, file: 'relative.url', browserUrl: base,
+    })).kind, 'failed');
+    const missing = path.join(directory, 'missing', 'launch.url');
+    const failed = await handoffDesktopLaunchUrl({
+      desktopHost: true, picker: { grant }, file: missing, browserUrl: base,
+    });
+    assert.equal(failed.kind, 'failed');
+    assert.ok(failed.error instanceof Error);
+    assert.equal(existsSync(missing), false);
+    assert.deepEqual(readdirSync(directory), ['launch.url']);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('WEBUI_OPEN_BROWSER=0 never opens a browser', () => {
+  assert.equal(browserOpenEnabled('0', true), false);
+  assert.equal(browserOpenEnabled('0', false), false);
+  assert.equal(browserOpenEnabled('never', true), false);
+  assert.equal(browserOpenEnabled('1', false), true);
+  assert.equal(browserOpenEnabled(undefined, true), true);
+  assert.equal(browserOpenEnabled(undefined, false), false);
+  assert.equal(browserOpenEnabled('', true), true);
 });
 
 test('native folder on macOS and Linux distinguishes chosen paths, user dismissal and failed helpers', async () => {
@@ -1700,39 +1766,40 @@ test('native folder Zenity starts in an existing folder even after the previousl
     await choose('/');
   });
 
-test('native folder chooser uses a fixed STA program and narrow selected/cancel results', async () => {
+test('native folder chooser drives the koffi worker and narrow selected/cancel results', async () => {
   const { EventEmitter } = await import('node:events');
-  const { PassThrough } = await import('node:stream');
   let child; let invocation;
-  const picker = createNativeDirectoryPicker({ platform: 'win32', windowsRoot: 'C:\\Windows', architecture: 'ia32', readScript: async () => 'fixed script', spawnProcess: (...args) => {
-    invocation = args; child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => true; return child;
+  const picker = createNativeDirectoryPicker({ platform: 'win32', spawnProcess: (...args) => {
+    invocation = args; child = new EventEmitter(); child.kill = () => true; child.unref = () => {}; return child;
   } });
   const selected = picker.choose(new AbortController().signal);
   await Promise.resolve();
-  assert.match(invocation[0], /Sysnative\\WindowsPowerShell\\v1.0\\powershell.exe$/);
-  assert.deepEqual(invocation[1].slice(0, 5), ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand']);
-  assert.equal(Buffer.from(invocation[1][5], 'base64').toString('utf16le'), 'fixed script');
-  assert.equal(invocation[2].shell, false);
-  child.stdout.write(JSON.stringify({ kind: 'selected', directory: 'D:\\项目\\work' })); child.emit('close', 0);
+  assert.equal(invocation[0], process.execPath);
+  assert.match(invocation[1][0], /native-directory-picker-worker\.cjs$/);
+  assert.deepEqual(invocation[2].stdio, ['ignore', 'ignore', 'ignore', 'ipc']);
+  assert.equal(invocation[2].windowsHide, true);
+  child.emit('message', { kind: 'showing', threadId: 7 });
+  child.emit('message', { kind: 'done', path: 'D:\\项目\\work' });
+  child.emit('close', 0);
   assert.deepEqual(await selected, { kind: 'selected', directory: 'D:\\项目\\work' });
   const cancelled = picker.choose(new AbortController().signal); await Promise.resolve();
-  child.stdout.write('{"kind":"cancelled"}'); child.emit('close', 0);
+  child.emit('message', { kind: 'done', path: null });
+  child.emit('close', 0);
   assert.deepEqual(await cancelled, { kind: 'cancelled' });
   await picker.dispose();
   await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
-  const script = readFileSync(new URL('../release/webui-npm/bin/native-directory-picker.ps1', import.meta.url), 'utf8');
-  assert.match(script, /UserInteractive/); assert.match(script, /SessionId -eq 0/);
-  assert.match(script, /0x20u \| 0x40u \| 0x800u \| 0x2000000u/);
-  assert.match(script, /0x800704C7/); assert.match(script, /dialog.Show\(IntPtr.Zero\)/);
-  assert.doesNotMatch(script, /\$args|Invoke-Expression|Start-Process/);
+  const worker = readFileSync(new URL('../release/webui-npm/bin/native-directory-picker-worker.cjs', import.meta.url), 'utf8');
+  assert.match(worker, /require\('koffi'\)/);
+  assert.match(worker, /keybd_event/);
+  assert.match(worker, /dc1c5a9c-e88a-4dde-a5a1-60f82a20aef7/);
+  assert.doesNotMatch(worker, /Invoke-Expression|Start-Process/);
 });
 
-test('native folder abort kills its child and keeps it busy until close; failures disclose no output', async () => {
+test('native folder abort kills its worker and keeps it busy until close; failures disclose no output', async () => {
   const { EventEmitter } = await import('node:events');
-  const { PassThrough } = await import('node:stream');
   let child; let killed = 0;
-  const picker = createNativeDirectoryPicker({ platform: 'win32', windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
-    child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => { killed++; return true; }; return child;
+  const picker = createNativeDirectoryPicker({ platform: 'win32', spawnProcess: () => {
+    child = new EventEmitter(); child.kill = () => { killed++; return true; }; child.unref = () => {}; return child;
   } });
   const controller = new AbortController(); const pending = picker.choose(controller.signal); await Promise.resolve();
   let settled = false;
@@ -1744,23 +1811,24 @@ test('native folder abort kills its child and keeps it busy until close; failure
   await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
   child.emit('close', 1); await rejection;
   const malformed = picker.choose(new AbortController().signal); await Promise.resolve();
-  child.stdout.write('private-path-or-error'); child.emit('close', 0);
+  child.emit('message', { kind: 'error', message: 'private-path-or-error' });
+  child.emit('close', 0);
   await assert.rejects(malformed, /^Error: Native folder selection is unavailable$/);
   await picker.dispose();
 });
 
-test('native folder chooser rejects pre-abort and malformed output and waits for disposal close', async () => {
+test('native folder chooser rejects pre-abort and malformed paths and waits for disposal close', async () => {
   const { EventEmitter } = await import('node:events');
-  const { PassThrough } = await import('node:stream');
   let child; let launches = 0;
-  const picker = createNativeDirectoryPicker({ platform: 'win32', windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
-    launches++; child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => true; return child;
+  const picker = createNativeDirectoryPicker({ platform: 'win32', spawnProcess: () => {
+    launches++; child = new EventEmitter(); child.kill = () => true; child.unref = () => {}; return child;
   } });
   const aborted = new AbortController(); aborted.abort();
   await assert.rejects(picker.choose(aborted.signal), /unavailable/); assert.equal(launches, 0);
-  for (const output of ['{"kind":"selected","directory":"relative"}', '{"kind":"unexpected"}']) {
+  for (const candidate of ['relative', 'C:\\bad\0path']) {
     const pending = picker.choose(new AbortController().signal); await Promise.resolve();
-    child.stdout.write(output); child.emit('close', 0);
+    child.emit('message', { kind: 'done', path: candidate });
+    child.emit('close', 0);
     await assert.rejects(pending, /unavailable/);
   }
   const pending = picker.choose(new AbortController().signal); await Promise.resolve();
@@ -1771,19 +1839,16 @@ test('native folder chooser rejects pre-abort and malformed output and waits for
   child.emit('close', 1); await rejected; await disposal; assert.equal(disposed, true);
 });
 
-test('native folder termination watchdog permanently fails closed if the process does not exit', async () => {
+test('native folder termination watchdog permanently fails closed if the worker does not exit', async () => {
   const { EventEmitter } = await import('node:events');
-  const { PassThrough } = await import('node:stream');
   let child; let kills = 0;
-  const picker = createNativeDirectoryPicker({ platform: 'win32', windowsRoot: 'C:\\Windows', readScript: async () => 'fixed', spawnProcess: () => {
-    child = new EventEmitter(); child.stdout = new PassThrough(); child.kill = () => { kills++; return false; }; return child;
+  const picker = createNativeDirectoryPicker({ platform: 'win32', spawnProcess: () => {
+    child = new EventEmitter(); child.kill = () => { kills++; return false; }; child.unref = () => {}; return child;
   } });
   const controller = new AbortController();
   const pending = picker.choose(controller.signal); await Promise.resolve();
   const rejected = assert.rejects(pending, /unavailable/);
   controller.abort(); await rejected;
   assert.equal(kills, 1);
-  child.emit('close', 1);
   await assert.rejects(picker.choose(new AbortController().signal), /unavailable/);
-  await picker.dispose();
 });

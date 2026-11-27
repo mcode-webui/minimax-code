@@ -87,13 +87,13 @@ let child;
 await withCleanup(async () => {
   const archive = values.archive ? path.resolve(values.archive) : packCandidate();
   const prefix = path.join(work, "install");
-  // npm 12 blocks dependency install scripts unless they are named, and the two
+  // npm 12 blocks dependency install scripts unless they are named, and the
   // native modules this package needs are built by those scripts. A global
   // install is the shape that accepts the flag — npm 12 refuses it for a
   // project-scoped install — so the acceptance installs the way a person must,
   // which is also the only way the startup below can be exercised at all.
   const npmMajor = Number(run(npm, ["--version"]).trim().split(".")[0]);
-  const allowScripts = "better-sqlite3,bufferutil,node-pty,utf-8-validate";
+  const allowScripts = "better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate";
   run(
     npm,
     npmMajor >= 12
@@ -242,10 +242,10 @@ async function verifyWindowsProjectSelection(installed) {
   const directory = mkdtempSync(path.join(work, "Project 示例 "));
   const browser = await launchNativeProjectBrowser({ installed, work, port: await availablePort(), miniappPort: await availablePort() });
   const driver = path.join(root, "scripts/lib/webui-windows-folder-dialog.ps1");
-  const pickerScript = path.join(installed, "bin/native-directory-picker.ps1");
+  const pickerWorker = path.join(installed, "bin/native-directory-picker-worker.cjs");
   const driveDialog = async ({ action, signal }) => {
     const args = ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-File", driver,
-      "-LauncherPid", String(browser.launcherPid), "-PickerScript", pickerScript, "-Action", action];
+      "-LauncherPid", String(browser.launcherPid), "-PickerWorker", pickerWorker, "-Action", action];
     if (action === "select") args.push("-Directory", directory);
     const { stdout } = await promisify(execFile)("powershell.exe", args, { signal, timeout: 45_000, windowsHide: true });
     console.log(stdout.trim());

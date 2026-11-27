@@ -121,30 +121,42 @@ function startInstalledCommand(installed, work, port, miniappPort) {
             stdio: 'ignore', windowsHide: true, timeout: 5000,
           });
         await Promise.race([exited, delay(5000, undefined, { ref: false })]);
-        if (!exit) throw result.error ?? new Error(`Could not stop the test launcher (taskkill exit ${result.status}).`);
+        if (!exit) {
+          // The PTY's output pipe can outlive cmd.exe. Check the OS process as well.
+          try { process.kill(term.pid, 0); } catch (error) { if (error.code === 'ESRCH') return; throw error; }
+          throw result.error ?? new Error(`Could not stop the test launcher (taskkill exit ${result.status}).`);
+        }
       }
     },
   };
 }
 
 // node-pty 1.1 leaves a named-pipe Worker listening after the console exits.
-// Only the PTY owner exits explicitly, after it has observed its launcher close.
+// The owner acknowledges the launcher exit over IPC; the parent then ends the owner.
 if (process.send && process.argv[1] === import.meta.filename && process.argv[2] === '--terminal-driver') {
+  const send = (value) => new Promise((resolve, reject) => process.send(value, (error) => error ? reject(error) : resolve()));
+  const disconnected = new Promise((resolve) => process.once('disconnect', resolve));
   try {
-    const disconnected = new Promise((resolve) => process.once('disconnect', () => resolve(true)));
+    const shutdown = Promise.withResolvers();
+    process.on('message', (message) => { if (message === 'shutdown') shutdown.resolve(true); });
+    disconnected.then(() => shutdown.resolve(true));
     const term = startInstalledCommand(...process.argv.slice(3));
     try {
-      process.send(term.pid);
-      if (!await Promise.race([disconnected, term.exited.then(() => false)])) {
+      await send(term.pid);
+      if (!await Promise.race([shutdown.promise, term.exited.then(() => false)])) {
         throw new Error('The installed mcode-webui command exited before teardown.');
       }
     } finally {
+      if (process.connected) process.send('closing-launcher', () => {});
       await term.close();
     }
-    process.exit(0);
+    if (process.connected) await send('launcher-closed');
   } catch (error) {
-    process.stderr.write(`Windows terminal driver failed: ${error.message}\n`, () => process.exit(1));
+    if (process.connected) await send({ failure: error.message });
   }
+  // If the parent disappears before reaping us, release the stranded Worker.
+  await disconnected;
+  process.kill(process.pid, 'SIGKILL');
 }
 
 function startTerminalDriver(installed, work, port, miniappPort) {
@@ -152,16 +164,31 @@ function startTerminalDriver(installed, work, port, miniappPort) {
     execArgv: [], stdio: ['ignore', 'ignore', 'inherit', 'ipc'], windowsHide: true,
   });
   const ready = Promise.withResolvers();
+  const closedLauncher = Promise.withResolvers();
+  const exited = Promise.withResolvers();
   let stopped = false;
   let failure;
-  driver.once('message', ready.resolve);
-  driver.once('error', (error) => { failure = error; ready.resolve(); });
-  const exited = new Promise((resolve) => driver.once('close', (code, signal) => {
-    stopped = true;
-    if (code !== 0) failure ??= new Error(`The Windows terminal driver exited with ${signal ?? code}.`);
+  function fail(error) {
+    failure ??= error;
     ready.resolve();
-    resolve();
-  }));
+    closedLauncher.resolve(false);
+  }
+  driver.on('message', (message) => {
+    if (Number.isSafeInteger(message)) ready.resolve(message);
+    else if (message === 'closing-launcher') console.log('The terminal driver is closing its launcher.');
+    else if (message === 'launcher-closed') closedLauncher.resolve(true);
+    else if (typeof message?.failure === 'string') fail(new Error(message.failure));
+  });
+  driver.on('error', fail);
+  // A ConPTY descendant can inherit a pipe. 'exit' confirms the process's OS
+  // handle has signalled; 'close' also waits for all the inherited stdio pipes.
+  driver.once('exit', (code, signal) => {
+    stopped = true;
+    if (!driver.killed) fail(new Error(`The Windows terminal driver exited with ${signal ?? code} before teardown completed.`));
+    ready.resolve();
+    closedLauncher.resolve(false);
+    exited.resolve();
+  });
   return {
     async launcherPid() {
       const pid = await Promise.race([ready.promise, delay(20_000, undefined, { ref: false })]);
@@ -172,17 +199,24 @@ function startTerminalDriver(installed, work, port, miniappPort) {
       if (failure || stopped) throw failure ?? new Error('The Windows terminal driver closed before opening its browser tab.');
     },
     async close() {
-      if (driver.connected) driver.disconnect();
-      await Promise.race([exited, delay(20_000, undefined, { ref: false })]);
-      if (!stopped) {
-        // A stuck native call must fail the gate. Remove only the dedicated driver's process tree.
+      if (!driver.pid) throw failure ?? new Error('The Windows terminal driver did not start.');
+      console.log('Requesting shutdown of the installed Windows launcher.');
+      if (driver.connected) driver.send('shutdown', (error) => { if (error) fail(error); });
+      const confirmed = await Promise.race([closedLauncher.promise, delay(20_000, false, { ref: false })]);
+      if (confirmed) console.log('The terminal driver confirmed that the launcher exited.');
+      if (!confirmed && !stopped) {
+        // On missing acknowledgement the launcher may still be in this tree.
         spawnSync(path.join(process.env.SystemRoot, 'System32', 'taskkill.exe'), ['/T', '/F', '/PID', String(driver.pid)], {
           stdio: 'ignore', windowsHide: true, timeout: 5000,
         });
-        await Promise.race([exited, delay(5000, undefined, { ref: false })]);
-        throw new Error(`The Windows terminal driver timed out during cleanup (exited=${stopped}).`);
       }
+      if (!stopped) driver.kill('SIGKILL');
+      if (driver.connected) driver.disconnect();
+      await Promise.race([exited.promise, delay(5000, undefined, { ref: false })]);
+      if (!stopped) throw new Error('Could not confirm the Windows terminal driver exited.');
       if (failure) throw failure;
+      if (!confirmed) throw new Error('The terminal driver did not confirm that the launcher exited.');
+      console.log('Confirmed the terminal driver process exited.');
     },
   };
 }

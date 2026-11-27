@@ -43,7 +43,7 @@ mcode-webui
 With **npm 12 or later**, explicitly allow the native dependency install scripts:
 
 ```bash
-npm install --global @minimax-webui/minimax-code --allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate
+npm install --global @minimax-webui/minimax-code --allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate
 ```
 
 The service listens on `http://127.0.0.1:2233/` and opens your default browser when launched in an interactive terminal. If it does not open, use the address printed in the terminal. Keep the process running while you work; press **Ctrl+C** to stop it.

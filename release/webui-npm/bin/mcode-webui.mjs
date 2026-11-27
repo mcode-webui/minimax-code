@@ -92,7 +92,7 @@ process.env.MAVIS_BUILTIN_AGENTS_DIR ??= path.join(packageRoot, "assets/agents")
  * The check is here, at the composition root, because it is the last place that
  * knows both the dependency list and the package name a person can reinstall.
  */
-const NATIVE_MODULES = ["better-sqlite3", "node-pty"];
+const NATIVE_MODULES = ["better-sqlite3", ...(process.platform === "win32" ? ["koffi"] : []), "node-pty"];
 /**
  * Load each module the way the runtime will.
  *
@@ -105,6 +105,7 @@ const NATIVE_PROBES = {
   "better-sqlite3": (module) => {
     new module(":memory:").close();
   },
+  "koffi": () => {},
   "node-pty": () => {},
 };
 const unbuilt = [];
@@ -260,8 +261,7 @@ await browser.initialize();
 const { nativeDirectoryPickerEligible, createNativeDirectoryPicker, nativeDirectoryLaunchUrl } =
   await import("./native-directory-picker.mjs");
 const nativeDirectoryPicker = nativeDirectoryPickerEligible({
-  platform: process.platform, tty: Boolean(process.stdout.isTTY), bindHost,
-  fullAccess: args["full-access"], browserSetting: process.env.WEBUI_OPEN_BROWSER,
+  platform: process.platform, bindHost, fullAccess: args["full-access"],
 }) ? createNativeDirectoryPicker() : undefined;
 const service = new WebuiService({
   nativeDirectoryPicker,

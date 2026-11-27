@@ -36,8 +36,10 @@ the notice shows a transfer error beside its action so the user can select anoth
 ## Workspace folder selection
 
 On the home page, `选择新项目` opens the system folder chooser in the browser
-paired by an interactive local `mcode-webui` launch. Windows and macOS use their
-system dialogs. On a Linux desktop the launcher uses Zenity or KDialog. Zenity opens
+paired by an interactive local `mcode-webui` launch. Windows opens the native
+`IFileOpenDialog` from a short-lived koffi worker, which also brings the dialog
+to the foreground when the server was started in the background; macOS uses its
+system dialog. On a Linux desktop the launcher uses Zenity or KDialog. Zenity opens
 in the last folder confirmed during this launch if it still exists, or in the user's
 home directory. This lets the chooser open even if a desktop application previously
 selected a folder that has since been removed. Confirming

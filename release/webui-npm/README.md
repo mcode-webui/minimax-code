@@ -14,18 +14,19 @@ explicitly — npm 12 blocks dependency install scripts unless they are named:
 
 ```sh
 npm install --global @minimax-webui/minimax-code \
-  --allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate
+  --allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate
 ```
 
 Or allow them for every global install:
 
 ```sh
-npm config set allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate --location=user
+npm config set allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate --location=user
 ```
 
-An install that skipped them leaves `better-sqlite3` without its binding, and
-`mcode-webui` then stops at startup and prints the reinstall command instead of
-running. npm 11 and earlier print the same warning but still run the scripts.
+An install that skipped them leaves a native module (`better-sqlite3` or
+`koffi`) without its binding, and `mcode-webui` then stops at startup and prints
+the reinstall command instead of running. npm 11 and earlier print the same
+warning but still run the scripts.
 
 The server listens on `http://127.0.0.1:2233/`. Set `WEBUI_SERVER_PORT` to
 change the port or `MINIMAX_DATA_DIR` to change the local data directory. The

@@ -22,7 +22,7 @@ With npm 12 or later, explicitly allow the native dependency install scripts:
 
 ```sh
 npm install --global @minimax-webui/minimax-code \
-  --allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate
+  --allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate
 ```
 
 To install the preview channel, use `@minimax-webui/minimax-code@preview` instead.
@@ -198,7 +198,7 @@ node scripts/package-webui-npm.mjs --version 0.1.6-dev.1 \
   --outdir ../minimax-code-webui-build/package
 npm pack ../minimax-code-webui-build/package --pack-destination ../minimax-code-webui-build
 npm install --global ../minimax-code-webui-build/minimax-webui-minimax-code-0.1.6-dev.1.tgz \
-  --allow-scripts=better-sqlite3,bufferutil,node-pty,utf-8-validate
+  --allow-scripts=better-sqlite3,bufferutil,koffi,node-pty,utf-8-validate
 mcode-webui --version
 WEBUI_OPEN_BROWSER=0 mcode-webui --full-access
 ```

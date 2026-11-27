@@ -4,6 +4,7 @@ import { readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
+import { stripVTControlCharacters } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 
 function powershell(script, env = {}) {
@@ -100,14 +101,14 @@ function launcherEnvironment(installed, work, port, miniappPort) {
   delete env.WEBUI_LAUNCH_URL_FILE;
   const pathKey = Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'Path';
   env[pathKey] = shimDirectory + path.delimiter + (env[pathKey] ?? '');
-  return env;
+  return { env, shim: path.join(shimDirectory, 'mcode-webui.cmd') };
 }
 
 function startInstalledCommand(installed, work, port, miniappPort) {
   // Windows keeps the driver's loaded native DLL mapped until this verifier exits.
   // Use the checkout's test driver so the temporary npm installation can be removed.
   const { spawn } = createRequire(new URL('../../packages/webui/package.json', import.meta.url))('node-pty');
-  const env = launcherEnvironment(installed, work, port, miniappPort);
+  const { env } = launcherEnvironment(installed, work, port, miniappPort);
   const term = spawn(path.join(process.env.SystemRoot, 'System32', 'cmd.exe'), ['/d', '/c', 'mcode-webui.cmd'], {
     cwd: work, env, cols: 120, rows: 30,
   });
@@ -233,7 +234,7 @@ function startTerminalDriver(installed, work, port, miniappPort) {
 // A desktop host starts the installed command without a console and consumes its private file.
 // A person starting the same command in the background manually opens the address it prints.
 function startBackgroundCommand(installed, work, port, miniappPort, entry) {
-  const env = launcherEnvironment(installed, work, port, miniappPort);
+  const { env, shim } = launcherEnvironment(installed, work, port, miniappPort);
   env.MINIMAX_DATA_DIR = mkdtempSync(path.join(work, 'background-data-'));
   const handoffFile = path.join(env.MINIMAX_DATA_DIR, 'launch-url');
   if (entry === 'desktop-handoff') {
@@ -241,31 +242,55 @@ function startBackgroundCommand(installed, work, port, miniappPort, entry) {
     env.WEBUI_LAUNCH_URL_FILE = handoffFile;
     env.WEBUI_OPEN_BROWSER = '0';
   }
-  const child = spawn(path.join(process.env.SystemRoot, 'System32', 'cmd.exe'), ['/d', '/c', 'mcode-webui.cmd'], {
-    cwd: work, env, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true,
+  const origin = `http://127.0.0.1:${port}`;
+  // /s consumes the outer quotes, leaving a quoted npm shim even in a prefix with spaces.
+  const child = spawn(path.join(process.env.SystemRoot, 'System32', 'cmd.exe'), ['/d', '/s', '/c', '""%WEBUI_GATE_SHIM%""'], {
+    cwd: work, env: { ...env, WEBUI_GATE_SHIM: shim }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, windowsVerbatimArguments: true,
   });
-  const printed = Promise.withResolvers();
   const exited = new Promise((resolve) => child.once('close', resolve));
-  child.once('error', () => printed.resolve(undefined));
-  child.once('exit', () => printed.resolve(undefined));
-  const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
-  lines.on('line', (line) => {
-    const match = /^\[mcode-webui\] WebUI running at (\S+)$/u.exec(line);
-    if (match) printed.resolve(match[1]);
+  let spawnError;
+  let address;
+  const categories = new Set();
+  child.once('error', (error) => { spawnError = error.code ?? 'spawn-failed'; });
+  const output = ['stdout', 'stderr'].map((name) => {
+    const stream = child[name];
+    const stats = { name, bytes: 0, lines: 0 };
+    stream.on('data', (chunk) => { stats.bytes += chunk.length; });
+    const reader = createInterface({ input: stream, crlfDelay: Infinity });
+    reader.on('line', (raw) => {
+      stats.lines++;
+      const line = stripVTControlCharacters(raw).trim();
+      const errors = line.match(/\b(?:EADDRINUSE|EACCES|EPERM|ENOENT|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|SQLITE_BUSY|SQLITE_CANTOPEN)\b/g) ?? [];
+      for (const code of errors) categories.add(code);
+      if (line.includes('a native module this package needs was not built')) categories.add('native-binding');
+      if (line.includes('could not write WEBUI_LAUNCH_URL_FILE')) categories.add('handoff-write');
+      const match = /\[mcode-webui\] (?:WebUI running at|open) (https?:\/\/\S+)/u.exec(line);
+      if (match) address = match[1];
+    });
+    return stats;
   });
   return {
     pid: child.pid,
     async pageUrl() {
-      const address = await Promise.race([printed.promise, delay(60_000, undefined, { ref: false })]);
-      if (!address || !URL.canParse(address)) throw new Error('The background launcher did not print a valid access URL.');
-      const url = new URL(address);
-      if (url.origin !== `http://127.0.0.1:${port}` || url.hash) throw new Error('Unexpected origin or private fragment in the printed access URL.');
-      if (entry === 'manual') return address;
-      const handoff = await readFile(handoffFile, 'utf8');
-      if (!URL.canParse(handoff)) throw new Error('The desktop host handoff did not contain a valid URL.');
-      const privateUrl = new URL(handoff);
-      if (privateUrl.origin !== url.origin) throw new Error('The desktop host handoff does not identify its installed launcher.');
-      return handoff;
+      const deadline = Date.now() + 60_000;
+      while (Date.now() < deadline && !spawnError && child.exitCode === null && child.signalCode === null) {
+        if (address && (!URL.canParse(address) || new URL(address).origin !== origin || new URL(address).hash)) {
+          throw new Error('The printed access URL has an invalid origin or includes a private fragment.');
+        }
+        if (entry === 'manual' && address) return address;
+        if (entry === 'desktop-handoff' && existsSync(handoffFile)) {
+          const handoff = await readFile(handoffFile, 'utf8');
+          if (!URL.canParse(handoff) || new URL(handoff).origin !== origin) {
+            throw new Error('The desktop host handoff does not identify its installed launcher.');
+          }
+          return handoff;
+        }
+        await delay(100);
+      }
+      const listener = await fetch(origin, { signal: AbortSignal.timeout(2000), redirect: 'manual' })
+        .then(async (response) => { await response.body?.cancel(); return response.status; }, () => 'unreachable');
+      const streams = output.map(({ name, bytes, lines }) => `${name}=${bytes}B/${lines}lines`).join(', ');
+      throw new Error(`No usable ${entry} launch URL (pid=${child.pid ?? 'none'}, process=${spawnError ?? child.exitCode ?? child.signalCode ?? 'running'}, listener=${listener}, handoffFile=${existsSync(handoffFile)}, ${streams}, codes=${[...categories].join(',') || 'none'}).`);
     },
     async close() {
       try {
@@ -278,7 +303,6 @@ function startBackgroundCommand(installed, work, port, miniappPort, entry) {
         const closed = await Promise.race([exited.then(() => true), delay(5000, false, { ref: false })]);
         if (!closed) throw new Error('The background launcher process tree did not close.');
       } finally {
-        lines.close();
         await rm(handoffFile, { force: true });
       }
     },

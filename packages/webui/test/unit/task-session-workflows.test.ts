@@ -51,7 +51,6 @@ interface HarnessOptions {
   ) => Promise<WebuiClientCreateSessionResult>;
   readonly loadFlat?: () => Promise<void>;
   readonly loadTree?: () => Promise<void>;
-  readonly loadProjects?: () => Promise<void>;
   readonly store?: WebuiSessionStore;
   readonly noProjectPersisted?: boolean;
 }
@@ -80,10 +79,6 @@ function harness(options: HarnessOptions = {}) {
       loadTree: async () => {
         catalogueCalls.push("tree");
         await options.loadTree?.();
-      },
-      loadProjects: async () => {
-        catalogueCalls.push("projects");
-        await options.loadProjects?.();
       },
     },
     ...(options.createSession
@@ -274,28 +269,6 @@ describe("the creation use case", () => {
     const bodyless = harness({ createSession: async () => ({}) });
     const outcome = await bodyless.workflows.submit({});
     expect(outcome).toMatchObject({ kind: "creation-failed" });
-  });
-
-  it("refreshes the project list after a session is created", async () => {
-    const { workflows, catalogueCalls } = harness({
-      createSession: async () => ({ sessionId: "s1" }),
-    });
-    const outcome = await workflows.submit({ workspaceDir: "/new-project" });
-    expect(outcome).toMatchObject({ kind: "created", sessionId: "s1" });
-    expect(catalogueCalls).toEqual(["flat", "tree", "projects"]);
-  });
-
-  it("keeps the created session when the project refresh fails", async () => {
-    const { workflows } = harness({
-      createSession: async () => ({ sessionId: "s1" }),
-      loadProjects: async () => {
-        throw new Error("projects down");
-      },
-    });
-    await expect(workflows.submit({ workspaceDir: "/new-project" })).resolves.toMatchObject({
-      kind: "created",
-      sessionId: "s1",
-    });
   });
 
   it("records a catalogue failure without undoing the created session", async () => {

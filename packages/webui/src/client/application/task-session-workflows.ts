@@ -45,15 +45,12 @@ export interface WebuiTaskSessionStorage {
 /**
  * The catalogue reads creation completion invalidates. Injected because
  * `client/application/` composes owners rather than calling transport itself.
- * The project list is one of those reads: a session created in a new directory
- * adds a project row the rail only sees after this read.
  */
 export interface WebuiTaskSessionCatalogue {
   readonly canLoadFlat: boolean;
   readonly canLoadTree: boolean;
   readonly loadFlat: () => Promise<void>;
   readonly loadTree: () => Promise<void>;
-  readonly loadProjects?: () => Promise<unknown>;
 }
 
 export interface WebuiTaskSessionDeps {
@@ -295,12 +292,6 @@ export function createWebuiTaskSessionWorkflows(
         // the created session and does not trigger a second creation.
         catalogueError = formatWebuiError(error);
       }
-      // A session created in a new directory adds a project row. The session
-      // catalogue above does not carry project records, so the rail would keep
-      // its pre-creation grouping until a full page reload without this read.
-      // The projects owner keeps its own error state; a failure here must not
-      // turn a successful creation into a failed one.
-      try { await catalogue.loadProjects?.(); } catch { /* Projects owns the rail's retry/error surface. */ }
 
       return {
         kind: "created",

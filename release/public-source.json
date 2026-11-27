@@ -61,8 +61,6 @@
     ".gitignore",
     ".gitleaks.toml",
     ".npmrc",
-    ".openidea/.gitignore",
-    ".openidea/changelists.json",
     ".plan/browser-use/board/.notes-numbers",
     ".plan/browser-use/board/.spec-number",
     ".plan/browser-use/board/HANDOFF.md",

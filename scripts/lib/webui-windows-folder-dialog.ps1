@@ -3,11 +3,15 @@
 #requires -Version 5.1
 param(
     [Parameter(Mandatory)][int]$LauncherPid,
-    [Parameter(Mandatory)][string]$PickerWorker,
-    [Parameter(Mandatory)][ValidateSet('select', 'cancel')][string]$Action,
+    [Parameter(Mandatory)][string]$LauncherEntry,
+    [Parameter(Mandatory)][ValidateSet('baseline', 'select', 'cancel')][string]$Action,
+    [int]$BrowserPid,
     [string]$Directory
 )
 $ErrorActionPreference = 'Stop'
+if ($Action -eq 'baseline' -and $BrowserPid -le 0) {
+    throw 'Browser foreground precondition requires the PID of the tested browser.'
+}
 if ($Action -eq 'select' -and ($Directory -notmatch '^(?:[A-Za-z]:[\\/]|\\\\)' -or -not [IO.Directory]::Exists($Directory))) {
     throw 'The selected test directory must be an existing absolute path.'
 }
@@ -42,10 +46,11 @@ public static class WebuiTestDesktop {
     }
     delegate bool EnumProc(IntPtr handle, IntPtr unused);
     [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint thread, ref GuiThread info);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] static extern bool IsChild(IntPtr parent, IntPtr child);
     [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr child);
-    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool IsWindowEnabled(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr unused);
     [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr hwnd);
@@ -61,9 +66,21 @@ public static class WebuiTestDesktop {
         GetClassName(hwnd, name, name.Capacity);
         return name.ToString();
     }
-    public static bool OwnsDialog(IntPtr hwnd, uint expected) {
+    public static uint WindowProcessId(IntPtr hwnd) {
         uint pid;
-        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out pid) != 0 && pid == expected && Class(hwnd) == "#32770";
+        return hwnd != IntPtr.Zero && GetWindowThreadProcessId(hwnd, out pid) != 0 ? pid : 0u;
+    }
+    public static bool OwnsDialog(IntPtr hwnd, uint expected) {
+        return WindowProcessId(hwnd) == expected && Class(hwnd) == "#32770";
+    }
+    public static bool HasShellControls(IntPtr dialog) {
+        bool found = false;
+        EnumChildWindows(dialog, delegate(IntPtr child, IntPtr unused) {
+            var name = Class(child);
+            found = name == "SHELLDLL_DefView" || name == "Breadcrumb Parent";
+            return !found;
+        }, IntPtr.Zero);
+        return found;
     }
     static IntPtr Focus(IntPtr dialog) {
         uint pid;
@@ -166,7 +183,8 @@ $launchRoot = Get-Process -Id $LauncherPid
 if ($launchRoot.SessionId -ne [Diagnostics.Process]::GetCurrentProcess().SessionId) {
     throw "The launcher PID $LauncherPid is in another Windows session."
 }
-$launcherPath = Join-Path (Get-Item -LiteralPath $PickerWorker).DirectoryName 'mcode-webui.mjs'
+if (-not [IO.Path]::IsPathRooted($LauncherEntry)) { throw 'The installed launcher entry must be an absolute path.' }
+$launcherPath = (Get-Item -LiteralPath $LauncherEntry -ErrorAction Stop).FullName
 # A Windows npm bin shim may put cmd.exe above node.exe. Search only this launch tree.
 # The entry point is Node's first argument, whether the absolute path needs quoting or not.
 function Find-LauncherNode($process) {
@@ -186,45 +204,58 @@ $nodes = @(Find-LauncherNode $startProcess)
 if ($nodes.Count -ne 1) { throw "Expected one installed WebUI Node entry in the tree of PID $LauncherPid; found $($nodes.Count)." }
 $launcher = Get-Process -Id $nodes[0].ProcessId
 [void]$launcher.Handle
-# The worker is the launcher's direct node child whose entry point is the
-# installed native-directory-picker-worker.cjs. Compare the argument, never
-# print or inspect unrelated processes.
-$expectedArgument = '"?' + [regex]::Escape($PickerWorker) + '"?\s*$'
-$filter = "ParentProcessId=$($launcher.Id) AND Name='node.exe'"
+# A common dialog can be owned by the launcher or by a helper at any depth.
+# Resolve ancestry only for visible Win32 dialogs on this test desktop.
+function Test-LauncherDescendant([int]$processId) {
+    $visited = @{}
+    while ($processId -gt 0 -and -not $visited.ContainsKey($processId)) {
+        if ($processId -eq $launcher.Id) { return $true }
+        $visited[$processId] = $true
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -Property ParentProcessId
+        if (-not $process) { return $false }
+        $processId = $process.ParentProcessId
+    }
+    return $false
+}
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $picker = $null
 $dialog = $null
 $root = [System.Windows.Automation.AutomationElement]::RootElement
 $children = [System.Windows.Automation.TreeScope]::Children
+$dialogClass = [System.Windows.Automation.PropertyCondition]::new(
+    [System.Windows.Automation.AutomationElement]::ClassNameProperty, '#32770')
 while ($clock.Elapsed.TotalSeconds -lt 20) {
     if ($launcher.HasExited) { throw "The WebUI launcher PID $LauncherPid exited before showing the chooser." }
-    if (-not $picker) {
-        $matchesWorker = @(Get-CimInstance Win32_Process -Filter $filter -Property $processFields |
-            Where-Object { $_.CommandLine -cmatch $expectedArgument })
-        if ($matchesWorker.Count -gt 1) { throw 'More than one child matches the installed picker worker.' }
-        if ($matchesWorker.Count -eq 1) {
-            $picker = Get-Process -Id $matchesWorker[0].ProcessId -ErrorAction SilentlyContinue
-            if ($picker) {
-                [void]$picker.Handle
-                $pidCondition = [System.Windows.Automation.PropertyCondition]::new(
-                    [System.Windows.Automation.AutomationElement]::ProcessIdProperty, [int]$picker.Id)
+    $visible = @($root.FindAll($children, $dialogClass) | Where-Object {
+        $current = $_.Current
+        -not $current.IsOffscreen -and (Test-LauncherDescendant $current.ProcessId) -and
+            [WebuiTestDesktop]::OwnsDialog([IntPtr]$current.NativeWindowHandle, $current.ProcessId) -and
+            ($Action -eq 'baseline' -or [WebuiTestDesktop]::HasShellControls([IntPtr]$current.NativeWindowHandle))
+    })
+    if ($Action -eq 'baseline') {
+        if ($visible.Count -gt 0) { throw 'The installed launcher already owns a visible dialog before the project selection.' }
+        $activation = [Diagnostics.Stopwatch]::StartNew()
+        do {
+            $foreground = [WebuiTestDesktop]::GetForegroundWindow()
+            $owner = [WebuiTestDesktop]::WindowProcessId($foreground)
+            if ($owner -eq $BrowserPid) {
+                Write-Output "Project selection precondition: browser PID $BrowserPid owns foreground HWND $foreground."
+                return
             }
-        }
+            Start-Sleep -Milliseconds 50
+        } while ($activation.ElapsedMilliseconds -lt 3000)
+        throw "Browser foreground precondition failed before the chooser click: expected PID $BrowserPid, last foreground HWND $foreground owned by PID $owner."
     }
-    if ($picker) {
-        if ($picker.HasExited) { throw "The matching picker worker PID $($picker.Id) exited without showing its folder dialog." }
-        $visible = @($root.FindAll($children, $pidCondition) |
-            Where-Object { $_.Current.ClassName -eq '#32770' -and -not $_.Current.IsOffscreen })
-        if ($visible.Count -gt 1) { throw "Ambiguous chooser: PID $($picker.Id) owns multiple visible dialogs." }
-        if ($visible.Count -eq 1) {
-            $dialog = $visible[0]
-            break
-        }
+    if ($visible.Count -gt 1) { throw 'The installed launcher owns multiple visible Shell dialogs; the chooser is ambiguous.' }
+    if ($visible.Count -eq 1) {
+        $dialog = $visible[0]
+        $picker = Get-Process -Id $dialog.Current.ProcessId
+        [void]$picker.Handle
+        break
     }
     Start-Sleep -Milliseconds 120
 }
-if (-not $picker) { throw "No node child of launcher PID $LauncherPid matched the installed picker worker." }
-if (-not $dialog) { throw "The matching picker worker PID $($picker.Id) did not display a visible #32770 dialog." }
+if (-not $dialog) { throw "The installed launcher PID $($launcher.Id) did not display a visible Common Item Dialog." }
 $window = [IntPtr]$dialog.Current.NativeWindowHandle
 if (-not [WebuiTestDesktop]::OwnsDialog($window, $picker.Id)) { throw 'The visible UI element has no matching native dialog handle.' }
 function Open-AddressEdit {
@@ -249,8 +280,18 @@ function Save-DialogImage {
         [WebuiTestDesktop]::Capture($window, $file)
     } catch { Write-Warning 'Could not capture the native dialog window.' }
 }
-$stage = 'wait for visible chooser controls'
+$stage = 'wait for the chooser to take the foreground'
 try {
+    # A visible Shell dialog can still be behind the browser. Observe its exact HWND
+    # before the driver sends any input, which could itself activate the dialog.
+    $activation = [Diagnostics.Stopwatch]::StartNew()
+    while ([WebuiTestDesktop]::GetForegroundWindow() -ne $window) {
+        if ($picker.HasExited) { throw 'The chooser exited before taking the foreground.' }
+        if ($activation.ElapsedMilliseconds -ge 3000) { throw 'The visible chooser did not become the foreground window within 3 seconds.' }
+        Start-Sleep -Milliseconds 50
+    }
+    Write-Output "Windows folder dialog PID $($picker.Id): observed foreground HWND $window before $Action."
+    $stage = 'wait for visible chooser controls'
     # Shell creates the top-level HWND before it finishes populating its controls.
     $ready = [Diagnostics.Stopwatch]::StartNew()
     while (-not [WebuiTestDesktop]::Controls($window) -and $ready.ElapsedMilliseconds -lt 3000) {
@@ -286,8 +327,12 @@ try {
         if ($ready.ElapsedMilliseconds -gt 4000) { throw 'The common dialog did not expose its enabled button.' }
         Start-Sleep -Milliseconds 100
     }
-    $stage = 'wait for the native chooser process to exit'
-    if (-not $picker.WaitForExit(5000)) { throw 'The chooser remained open after clicking the dialog button.' }
+    $stage = 'wait for the native chooser to close'
+    $ready.Restart()
+    while ([WebuiTestDesktop]::OwnsDialog($window, $picker.Id) -and [WebuiTestDesktop]::IsWindowVisible($window)) {
+        if ($ready.ElapsedMilliseconds -ge 5000) { throw 'The chooser remained open after clicking the dialog button.' }
+        Start-Sleep -Milliseconds 100
+    }
 } catch {
     $controls = '(dialog closed)'
     if ([WebuiTestDesktop]::OwnsDialog($window, $picker.Id)) {

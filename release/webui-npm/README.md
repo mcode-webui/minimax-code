@@ -74,12 +74,10 @@ server is listening, the launcher writes the page URL with its
 opens that URL in its own embedded page, and the existing grant/cookie/browserKey
 pairing completes. The file contains only the URL — no JSON, no extra fields.
 
-`WEBUI_DESKTOP_HOST=1` also lets the native-directory picker be created without
-an interactive TTY; ordinary launches still require one. `WEBUI_OPEN_BROWSER=0`
-still only means "do not open the system browser" and never disables the picker.
-The HTTP route's loopback, Host, Origin, `Sec-Fetch-Site`, cookie, grant and
-browserKey checks are unchanged. If the handoff file cannot be written, the
-launcher logs the path and the host should fall back to the printed bare WebUI
-URL; the native picker may then be unavailable.
+Local desktop launches can open the native-directory picker without an
+interactive TTY. A manually opened local page establishes browser pairing through
+a short-lived loopback listener. `WEBUI_OPEN_BROWSER=0` controls automatic
+browser opening. If the handoff file cannot be written, the host can use the
+printed WebUI URL.
 
 The package requires a supported Node.js version shown in its `engines` field.

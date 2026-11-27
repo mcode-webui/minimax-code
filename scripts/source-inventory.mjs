@@ -35,6 +35,8 @@ const skipped = new Set([
   // but not to this scan, and without the entry any developer who happens to have
   // the tool installed fails `check:source` over a file they never wrote.
   ".codegraph",
+  // OpenIDEA's per-user changelists belong to the editor, not the source archive.
+  ".openidea",
   // The scratch directory of a working session, in the same category: git
   // ignores it, it is machine-local, and it holds screenshots and one-off
   // scripts rather than source. Without the entry any developer who has one

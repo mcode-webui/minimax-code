@@ -7,15 +7,12 @@ import path from 'node:path';
 
 import { createWin32DirectoryPicker } from './native-directory-picker-win32.mjs';
 
-export function nativeDirectoryPickerEligible({ platform, tty, desktopHost = false, bindHost, fullAccess, env = process.env }) {
-  // Ordinary launches stay interactive. A desktop host opts in explicitly
-  // because its embedded page cannot supply a TTY; the Win32 worker brings the
-  // dialog to the foreground itself. WEBUI_OPEN_BROWSER only controls the
-  // system browser and never this capability.
+export function nativeDirectoryPickerEligible({ platform, bindHost, fullAccess, env = process.env }) {
+  // A background service can have an attended desktop. Browser pairing
+  // establishes local access when the user requests the chooser.
   const desktop = platform === 'win32' || platform === 'darwin'
     || (platform === 'linux' && Boolean(env.DISPLAY || env.WAYLAND_DISPLAY));
-  const attended = desktopHost === true || tty === true;
-  return desktop && attended && !fullAccess && !env.SSH_CONNECTION && !env.SSH_TTY
+  return desktop && !fullAccess && !env.SSH_CONNECTION && !env.SSH_TTY
     && ['127.0.0.1', '::1'].includes(bindHost);
 }
 

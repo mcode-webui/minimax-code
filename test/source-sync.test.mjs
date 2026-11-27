@@ -28,7 +28,7 @@ import { acceptanceRecordFiles, restoreAcceptanceRecords } from '../scripts/lib/
 import { createNativeDirectoryPicker, nativeDirectoryPickerEligible, nativeDirectoryLaunchUrl } from '../release/webui-npm/bin/native-directory-picker.mjs';
 import { browserOpenEnabled, handoffDesktopLaunchUrl } from '../release/webui-npm/bin/desktop-launch.mjs';
 
-test('public WebUI CI runs only WebUI checks and cannot publish packages', () => {
+test('public WebUI CI verifies the source inventory and WebUI checks and cannot publish packages', () => {
   const activeWorkflows = readdirSync(new URL('../.github/workflows/', import.meta.url))
     .filter(name => /\.ya?ml$/.test(name)).sort();
   // The manual baseline refresh is a second active workflow: it records the
@@ -83,7 +83,7 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   assert.doesNotMatch(browserConfig, /process\.env\.WEBUI_BROWSER_OUTPUT_DIR/);
   // The steps that prepare the machine are not WebUI checks: they install the
   // dependencies, the browser and the media binary the Design paths run for
-  // real. Every other step has to be a WebUI command from this repository.
+  // real. The source inventory is shared with the repository release gates.
   const ffmpeg = job.steps.find(step => step.name === 'Install FFmpeg');
   assert.ok(ffmpeg, 'the native Design media paths run FFmpeg for real');
   assert.match(ffmpeg.run, /ffmpeg/);
@@ -99,12 +99,13 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
   for (const command of commands) {
     if (provisioning.includes(command)) continue;
     const script = command === browserCommand ? 'pnpm test:webui-browser' : command;
-    assert.match(script, /^pnpm (?:typecheck|check|build|install|test):webui(?:-[a-z]+)?$/);
+    if (script !== 'pnpm check:source') assert.match(script, /^pnpm (?:typecheck|check|build|install|test):webui(?:-[a-z]+)?$/);
     assert.ok(Object.hasOwn(manifest.scripts, script.slice('pnpm '.length)), command);
   }
   const nativeTests = "matrix.lane.name == 'units' || matrix.lane.shard";
   const checks = "matrix.lane.name == 'checks'";
   const laneConditions = {
+    'pnpm check:source': "runner.os == 'Linux' && matrix.lane.name == 'checks'",
     'pnpm typecheck:webui': checks,
     'pnpm check:webui-dependency': checks,
     'pnpm check:webui-presentation': checks,
@@ -125,6 +126,8 @@ test('public WebUI CI runs only WebUI checks and cannot publish packages', () =>
     assert.equal(step?.if, condition, `${command} must run in its assigned jobs`);
     assert.equal(step['continue-on-error'], undefined, `${command} must fail the job on a regression`);
   }
+  assert.ok(commands.indexOf('pnpm check:source') < commands.indexOf('pnpm install --frozen-lockfile'),
+    'Verify the public inventory before package installation can create local files');
   for (const prerequisite of ['pnpm build:webui', 'pnpm install:webui-browsers', ffmpeg.run, 'pnpm exec playwright install-deps chromium']) {
     for (const command of ['pnpm test:webui', browserCommand]) {
       assert.ok(commands.indexOf(prerequisite) < commands.indexOf(command), `Run ${prerequisite} before ${command}`);
@@ -1590,16 +1593,16 @@ test('the desktop version the marketplace is filtered by is declared in exactly 
   assert.deepEqual(offenders, [], 'the declared desktop version is written in the shared module only');
 });
 
-test('native folder launcher grant is restricted to interactive or desktop-hosted local desktop loopback', () => {
+test('a desktop loopback launch offers folder selection to paired browsers with or without a terminal', () => {
   const local = { platform: 'win32', tty: true, bindHost: '127.0.0.1', fullAccess: false, env: {} };
   for (const change of [{}, { platform: 'darwin' }, { platform: 'linux', env: { DISPLAY: ':0' } },
-    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }, { desktopHost: true, tty: false }]) {
+    { platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' } }, { desktopHost: true, tty: false }, { tty: false }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), true);
   }
   for (const change of [{ platform: 'linux' }, { platform: 'freebsd' }, { env: { SSH_TTY: '/dev/pts/0' } },
     { platform: 'linux', env: { DISPLAY: ':0', SSH_CONNECTION: 'forwarded session' } },
     { fullAccess: true }, { bindHost: '0.0.0.0' }, { bindHost: '192.168.1.1' },
-    { tty: false }, { desktopHost: true, tty: false, env: { SSH_TTY: '/dev/pts/0' } },
+    { desktopHost: true, tty: false, env: { SSH_TTY: '/dev/pts/0' } },
     { desktopHost: true, tty: false, fullAccess: true }, { desktopHost: true, tty: false, bindHost: '0.0.0.0' }]) {
     assert.equal(nativeDirectoryPickerEligible({ ...local, ...change }), false);
   }

@@ -206,12 +206,15 @@ describe("native directory launch grant transport", () => {
     expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
   });
 
-  it("does not contact a picker from an unpaired, remote, or mismatched-runtime page", async () => {
+  it("requests local pairing only from a same-origin loopback page", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
     vi.stubGlobal("localStorage", undefined);
     browser(origin + "/");
     expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]?.[0]).toBe(origin + "/native-directory-picker/authorize");
+    fetch.mockClear();
     vi.stubGlobal("localStorage", { getItem: () => browserKey });
     browser(`http://example.test/#nativeDirectoryGrant=${grant}`);
     expect(await pickNativeWorkspaceDirectory(signal)).toEqual({ kind: "unavailable" });

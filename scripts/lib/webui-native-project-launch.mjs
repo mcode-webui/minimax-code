@@ -1,9 +1,8 @@
-import { spawnSync } from 'node:child_process';
+import { fork, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { chromium } from '@playwright/test';
 
 function powershell(script, env = {}) {
   const exe = path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
@@ -109,7 +108,7 @@ function startInstalledCommand(installed, work, port, miniappPort) {
   const exited = new Promise((resolve) => term.onExit((result) => { exit = result; resolve(); }));
   return {
     pid: term.pid,
-    assertRunning() { if (exit) throw new Error(`mcode-webui exited with code ${exit.exitCode} before opening its browser tab.`); },
+    exited,
     async close() {
       if (exit) return;
       term.write('\x03');
@@ -128,11 +127,72 @@ function startInstalledCommand(installed, work, port, miniappPort) {
   };
 }
 
+// node-pty 1.1 leaves a named-pipe Worker listening after the console exits.
+// Only the PTY owner exits explicitly, after it has observed its launcher close.
+if (process.send && process.argv[1] === import.meta.filename && process.argv[2] === '--terminal-driver') {
+  try {
+    const disconnected = new Promise((resolve) => process.once('disconnect', () => resolve(true)));
+    const term = startInstalledCommand(...process.argv.slice(3));
+    try {
+      process.send(term.pid);
+      if (!await Promise.race([disconnected, term.exited.then(() => false)])) {
+        throw new Error('The installed mcode-webui command exited before teardown.');
+      }
+    } finally {
+      await term.close();
+    }
+    process.exit(0);
+  } catch (error) {
+    process.stderr.write(`Windows terminal driver failed: ${error.message}\n`, () => process.exit(1));
+  }
+}
+
+function startTerminalDriver(installed, work, port, miniappPort) {
+  const driver = fork(import.meta.filename, ['--terminal-driver', installed, work, String(port), String(miniappPort)], {
+    execArgv: [], stdio: ['ignore', 'ignore', 'inherit', 'ipc'], windowsHide: true,
+  });
+  const ready = Promise.withResolvers();
+  let stopped = false;
+  let failure;
+  driver.once('message', ready.resolve);
+  driver.once('error', (error) => { failure = error; ready.resolve(); });
+  const exited = new Promise((resolve) => driver.once('close', (code, signal) => {
+    stopped = true;
+    if (code !== 0) failure ??= new Error(`The Windows terminal driver exited with ${signal ?? code}.`);
+    ready.resolve();
+    resolve();
+  }));
+  return {
+    async launcherPid() {
+      const pid = await Promise.race([ready.promise, delay(20_000, undefined, { ref: false })]);
+      if (!Number.isSafeInteger(pid) || pid <= 0) throw failure ?? new Error('The Windows terminal driver did not report a launcher PID.');
+      return pid;
+    },
+    assertRunning() {
+      if (failure || stopped) throw failure ?? new Error('The Windows terminal driver closed before opening its browser tab.');
+    },
+    async close() {
+      if (driver.connected) driver.disconnect();
+      await Promise.race([exited, delay(20_000, undefined, { ref: false })]);
+      if (!stopped) {
+        // A stuck native call must fail the gate. Remove only the dedicated driver's process tree.
+        spawnSync(path.join(process.env.SystemRoot, 'System32', 'taskkill.exe'), ['/T', '/F', '/PID', String(driver.pid)], {
+          stdio: 'ignore', windowsHide: true, timeout: 5000,
+        });
+        await Promise.race([exited, delay(5000, undefined, { ref: false })]);
+        throw new Error(`The Windows terminal driver timed out during cleanup (exited=${stopped}).`);
+      }
+      if (failure) throw failure;
+    },
+  };
+}
+
 export async function launchNativeProjectBrowser({ installed, work, port, miniappPort }) {
   const hosted = process.env.GITHUB_ACTIONS === 'true' && process.env.RUNNER_ENVIRONMENT === 'github-hosted';
   if (process.platform !== 'win32' || (!hosted && process.env.WEBUI_TEST_DISPOSABLE_DESKTOP !== '1')) {
     throw new Error('Run the Windows project-selection gate on a hosted Windows runner or set WEBUI_TEST_DISPOSABLE_DESKTOP=1 in a disposable Windows desktop account.');
   }
+  const { chromium } = await import('@playwright/test');
   const { executable, policy, versionUrl } = defaultHttpBrowser();
   const profile = mkdtempSync(path.join(work, 'native-browser-'));
   const restore = redirectRunnerBrowser(policy, profile);
@@ -154,7 +214,8 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
     if (path.relative(profile, path.dirname(actualProfile)) !== '') throw new Error('The browser did not open in the test profile.');
     await version.close();
     console.log(`Verified the isolated profile of the default HTTP browser (${path.basename(executable)}).`);
-    terminal = startInstalledCommand(installed, work, port, miniappPort);
+    terminal = startTerminalDriver(installed, work, port, miniappPort);
+    const launcherPid = await terminal.launcherPid();
     console.log('Started the installed mcode-webui command in a Windows terminal.');
     const origin = `http://127.0.0.1:${port}`;
     const deadline = Date.now() + 60_000;
@@ -163,7 +224,7 @@ export async function launchNativeProjectBrowser({ installed, work, port, miniap
       const page = context.pages().find((tab) => tab.url().startsWith(origin + '/'));
       if (page) {
         console.log('Observed the WebUI tab automatically opened by the launcher.');
-        return { page, launcherPid: terminal.pid, close };
+        return { page, launcherPid, close };
       }
       await delay(100);
     } while (Date.now() < deadline);
